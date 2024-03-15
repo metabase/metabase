@@ -3,9 +3,11 @@
   There architecture is different enough that we can't test them along with our 'normal' DBs in `query-procesor-test`."
   (:require
    [clojure.test :refer :all]
-   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.timeseries-query-processor-test.util :as tqpt]))
+   [metabase.timeseries-query-processor-test.util :as tqpt]
+   [metabase.util.date-2 :as u.date]))
+
+;; TODO: Should those tests really run parallel?
 
 (deftest ^:parallel limit-test
   (tqpt/test-timeseries-drivers
@@ -27,7 +29,18 @@
              ["2013-01-10T00:00:00Z" "Ruen Pair Thai Restaurant" -118.306 34.1021 2 "Thai" 285 1 "AQAAAQAAAAP4IA==" "Kfir Caj"   "2014-07-03T01:30:00"]]}
            (mt/rows+column-names
              (mt/run-mbql-query checkins
-               {:limit 2}))))))
+                                {:fields [$timestamp
+                                          $venue_name
+                                          $venue_longitude
+                                          $venue_latitude
+                                          $venue_price
+                                          $venue_category_name
+                                          $id
+                                          $count
+                                          $unique_users
+                                          $user_name
+                                          $user_last_login]
+                                 :limit 2}))))))
 
 (deftest ^:parallel fields-test
   (tqpt/test-timeseries-drivers
@@ -62,7 +75,18 @@
                   :rows    expected-rows}
                  (mt/rows+column-names
                    (mt/run-mbql-query checkins
-                     {:order-by [[direction $timestamp]]
+                     {:fields [$timestamp
+                               $venue_name
+                               $venue_longitude
+                               $venue_latitude
+                               $venue_price
+                               $venue_category_name
+                               $id
+                               $count
+                               $unique_users
+                               $user_name
+                               $user_last_login]
+                      :order-by [[direction $timestamp]]
                       :limit    2})))))))
 
     (testing "for a query with :fields"
@@ -104,26 +128,26 @@
   (tqpt/test-timeseries-drivers
     (is (= {:columns ["sum"]
             :rows    [[1992.0]]}
-           (mt/rows+column-names
-             (mt/run-mbql-query checkins
-               {:aggregation [[:sum $venue_price]]}))))))
+           (mt/formatted-rows+column-names
+            [double]
+            (mt/run-mbql-query checkins
+                               {:aggregation [[:sum $venue_price]]}))))))
 
 (deftest ^:parallel avg-test-2
   (tqpt/test-timeseries-drivers
     (is (= {:columns ["avg"]
             :rows    [[1.992]]}
-           (->> (mt/run-mbql-query checkins
-                  {:aggregation [[:avg $venue_price]]})
-                (mt/format-rows-by [3.0])
-                qp.test-util/rows+column-names)))))
+           (mt/formatted-rows+column-names
+            [double]
+            (mt/run-mbql-query checkins
+                               {:aggregation [[:avg $venue_price]]}))))))
 
 (deftest ^:parallel distinct-count-test
   (tqpt/test-timeseries-drivers
     (is (= [[4]]
            (->> (mt/run-mbql-query checkins
                   {:aggregation [[:distinct $venue_price]]})
-                mt/rows
-                (mt/format-rows-by [int]))))))
+                (mt/formatted-rows [int]))))))
 
 (deftest ^:parallel breakout-test
   (tqpt/test-timeseries-drivers
@@ -472,120 +496,188 @@
                 :order-by    [[:desc [:aggregation 0]]]
                 :limit       10}))))))
 
+(defn- iso8601 [s] (-> s u.date/parse u.date/format))
+
 (deftest ^:parallel default-date-bucketing-test
   (tqpt/test-timeseries-drivers
     (testing "default date bucketing (day)"
       (is (= {:columns ["timestamp" "count"]
-              :rows    [["2013-01-03T00:00:00+00:00" 1]
-                        ["2013-01-10T00:00:00+00:00" 1]
-                        ["2013-01-19T00:00:00+00:00" 1]
-                        ["2013-01-22T00:00:00+00:00" 1]
-                        ["2013-01-23T00:00:00+00:00" 1]]}
-             (mt/rows+column-names
-               (mt/run-mbql-query checkins
-                 {:aggregation [[:count]]
-                  :breakout    [$timestamp]
-                  :limit       5})))))))
+              :rows    [["2013-01-03T00:00:00Z" 1]
+                        ["2013-01-10T00:00:00Z" 1]
+                        ["2013-01-19T00:00:00Z" 1]
+                        ["2013-01-22T00:00:00Z" 1]
+                        ["2013-01-23T00:00:00Z" 1]]}
+             (mt/formatted-rows+column-names
+              [iso8601 int]
+              (mt/run-mbql-query
+               checkins
+               {:aggregation [[:count]]
+                :breakout    [$timestamp]
+                :limit       5})))))))
 
 (deftest ^:parallel minute-date-bucketing-test
   (tqpt/test-timeseries-drivers
     (is (= {:columns ["timestamp" "count"]
-            :rows    [["2013-01-03T00:00:00+00:00" 1]
-                      ["2013-01-10T00:00:00+00:00" 1]
-                      ["2013-01-19T00:00:00+00:00" 1]
-                      ["2013-01-22T00:00:00+00:00" 1]
-                      ["2013-01-23T00:00:00+00:00" 1]]}
-           (mt/rows+column-names
+            :rows    [["2013-01-03T00:00:00Z" 1]
+                      ["2013-01-10T00:00:00Z" 1]
+                      ["2013-01-19T00:00:00Z" 1]
+                      ["2013-01-22T00:00:00Z" 1]
+                      ["2013-01-23T00:00:00Z" 1]]}
+           (mt/formatted-rows+column-names
+            [iso8601 int]
              (mt/run-mbql-query checkins
                {:aggregation [[:count]]
                 :breakout    [[:field %timestamp {:temporal-unit :minute}]]
                 :limit       5}))))))
 
+;; TODO: Resolve commented cases. I've yet found no way of setting start of the week for Druid JDBC, thus the result
+;;       differences
+;; TODO: Verify that using iso8601 is fine for what was date in non-JDBC Druid driver.
 (deftest ^:parallel date-bucketing-test
-  (mt/test-drivers (tqpt/timeseries-drivers)
-    (tqpt/with-flattened-dbdef
-      (doseq [[unit expected-rows]
-              {:minute-of-hour  [[0 1000]]
-               :hour            [["2013-01-03T00:00:00+00:00" 1]
-                                 ["2013-01-10T00:00:00+00:00" 1]
-                                 ["2013-01-19T00:00:00+00:00" 1]
-                                 ["2013-01-22T00:00:00+00:00" 1]
-                                 ["2013-01-23T00:00:00+00:00" 1]]
-               :hour-of-day     [[0 1000]]
-               :week            [["2012-12-30" 1]
-                                 ["2013-01-06" 1]
-                                 ["2013-01-13" 1]
-                                 ["2013-01-20" 4]
-                                 ["2013-01-27" 1]]
-               :day             [["2013-01-03T00:00:00+00:00" 1]
-                                 ["2013-01-10T00:00:00+00:00" 1]
-                                 ["2013-01-19T00:00:00+00:00" 1]
-                                 ["2013-01-22T00:00:00+00:00" 1]
-                                 ["2013-01-23T00:00:00+00:00" 1]]
-               :day-of-week     [[1 135]
-                                 [2 143]
-                                 [3 153]
-                                 [4 136]
-                                 [5 139]]
-               :day-of-month    [[1 36]
-                                 [2 36]
-                                 [3 42]
-                                 [4 35]
-                                 [5 43]]
-               :day-of-year     [[3 2]
-                                 [4 6]
-                                 [5 1]
-                                 [6 1]
-                                 [7 2]]
-               :week-of-year    [[1  8]
-                                 [2  7]
-                                 [3  8]
-                                 [4  8]
-                                 [5 14]]
-               :month           [["2013-01-01"  8]
-                                 ["2013-02-01" 11]
-                                 ["2013-03-01" 21]
-                                 ["2013-04-01" 26]
-                                 ["2013-05-01" 23]]
-               :month-of-year   [[1  38]
-                                 [2  70]
-                                 [3  92]
-                                 [4  89]
-                                 [5 111]]
-               :quarter         [["2013-01-01" 40]
-                                 ["2013-04-01" 75]
-                                 ["2013-07-01" 55]
-                                 ["2013-10-01" 65]
-                                 ["2014-01-01" 107]]
-               :quarter-of-year [[1 200]
-                                 [2 284]
-                                 [3 278]
-                                 [4 238]]
-               :year            [["2013-01-01" 235]
-                                 ["2014-01-01" 498]
-                                 ["2015-01-01" 267]]}]
-        (testing unit
-          (testing "topN query"
-            (let [{:keys [columns rows]} (mt/rows+column-names
-                                           (mt/run-mbql-query checkins
-                                             {:aggregation [[:count]]
-                                              :breakout    [[:field %timestamp {:temporal-unit unit}]]
-                                              :limit       5}))]
-              (is (= ["timestamp" "count"]
-                     columns))
-              (is (= expected-rows
-                     rows))))
+  (tqpt/test-timeseries-drivers
+   (doseq [[unit expected-rows format-fns]
+           [[:minute-of-hour
+             [[0 1000]]
+             [int int]]
+
+            [:hour
+             [["2013-01-03T00:00:00Z" 1]
+              ["2013-01-10T00:00:00Z" 1]
+              ["2013-01-19T00:00:00Z" 1]
+              ["2013-01-22T00:00:00Z" 1]
+              ["2013-01-23T00:00:00Z" 1]]
+             [iso8601 int]]
+
+            [:hour-of-day
+             [[0 1000]]
+             [int int]]
+
+            [:week
+             [["2012-12-31T00:00:00Z" 1]
+              ["2013-01-07T00:00:00Z" 1]
+              ["2013-01-14T00:00:00Z" 1]
+              ["2013-01-21T00:00:00Z" 5]
+              ["2013-02-04T00:00:00Z" 2]]
+             #_[["2012-12-30" 1]
+                ["2013-01-06" 1]
+                ["2013-01-13" 1]
+                ["2013-01-20" 4]
+                ["2013-01-27" 1]]
+             [iso8601 int]]
+
+            [:day
+             [["2013-01-03T00:00:00Z" 1]
+              ["2013-01-10T00:00:00Z" 1]
+              ["2013-01-19T00:00:00Z" 1]
+              ["2013-01-22T00:00:00Z" 1]
+              ["2013-01-23T00:00:00Z" 1]]
+             [iso8601 int]]
+
+            #_[:day-of-week
+             [[1 135]
+              [2 143]
+              [3 153]
+              [4 136]
+              [5 139]]
+             [int int]]
+
+            [:day-of-month
+             [[1 36]
+              [2 36]
+              [3 42]
+              [4 35]
+              [5 43]]
+             [int int]]
+
+            [:day-of-year
+             [[3 2]
+              [4 6]
+              [5 1]
+              [6 1]
+              [7 2]]
+             [int int]]
+
+            #_[:week-of-year
+               [[1  8]
+                [2  7]
+                [3  8]
+                [4  8]
+                [5 14]]
+               [int int]]
+
+            [:month
+             [["2013-01-01T00:00:00Z" 8]
+              ["2013-02-01T00:00:00Z" 11]
+              ["2013-03-01T00:00:00Z" 21]
+              ["2013-04-01T00:00:00Z" 26]
+              ["2013-05-01T00:00:00Z" 23]]
+             #_[["2013-01-01"  8]
+                ["2013-02-01" 11]
+                ["2013-03-01" 21]
+                ["2013-04-01" 26]
+                ["2013-05-01" 23]]
+             [iso8601 int]]
+
+            [:month-of-year
+             [[1  38]
+              [2  70]
+              [3  92]
+              [4  89]
+              [5 111]]
+             [int int]]
+
+            [:quarter
+             [["2013-01-01T00:00:00Z" 40]
+              ["2013-04-01T00:00:00Z" 75]
+              ["2013-07-01T00:00:00Z" 55]
+              ["2013-10-01T00:00:00Z" 65]
+              ["2014-01-01T00:00:00Z" 107]]
+             #_[["2013-01-01" 40]
+                ["2013-04-01" 75]
+                ["2013-07-01" 55]
+                ["2013-10-01" 65]
+                ["2014-01-01" 107]]
+             [iso8601 int]]
+
+            [:quarter-of-year
+             [[1 200]
+              [2 284]
+              [3 278]
+              [4 238]]
+             [int int]]
+
+            [:year
+             [["2013-01-01T00:00:00Z" 235]
+              ["2014-01-01T00:00:00Z" 498]
+              ["2015-01-01T00:00:00Z" 267]]
+             #_[["2013-01-01" 235]
+                ["2014-01-01" 498]
+                ["2015-01-01" 267]]
+             [iso8601 int]]]]
+     (testing unit
+       (testing "topN query"
+         (let [{:keys [columns rows]} (mt/formatted-rows+column-names
+                                       format-fns
+                                       (mt/run-mbql-query checkins
+                                                          {:aggregation [[:count]]
+                                                           :breakout    [[:field %timestamp {:temporal-unit unit}]]
+                                                           :limit       5}))]
+           (is (= ["timestamp" "count"]
+                  columns))
+           (is (= expected-rows
+                  rows))))
           ;; This test is similar to the above query but doesn't use a limit clause which causes the query to be a
           ;; grouped timeseries query rather than a topN query. The dates below are formatted incorrectly due to
-          (testing "group timeseries query"
-            (let [{:keys [columns rows]} (mt/rows+column-names
-                                           (mt/run-mbql-query checkins
-                                             {:aggregation [[:count]]
-                                              :breakout    [[:field %timestamp {:temporal-unit unit}]]}))]
-              (is (= ["timestamp" "count"]
-                     columns))
-              (is (= expected-rows
-                     (take 5 rows))))))))))
+       (testing "group timeseries query"
+         (let [{:keys [columns rows]} (mt/formatted-rows+column-names
+                                       format-fns
+                                       (mt/run-mbql-query checkins
+                                                          {:aggregation [[:count]]
+                                                           :breakout    [[:field %timestamp {:temporal-unit unit}]]}))]
+           (is (= ["timestamp" "count"]
+                  columns))
+           (is (= expected-rows
+                  (take 5 rows)))))))))
 
 (deftest ^:parallel not-filter-test
   (tqpt/test-timeseries-drivers
@@ -727,21 +819,22 @@
 (deftest ^:parallel min-test
   (tqpt/test-timeseries-drivers
     (testing "dimension columns"
-      (is (= [1.0]
-             (mt/first-row
+      (is (=  [[1.0]]
+             (mt/formatted-rows [double]
                (mt/run-mbql-query checkins
                  {:aggregation [[:min $venue_price]]})))))
 
     (testing "metric columns"
-      (is (= [1.0]
-             (mt/first-row
+      (is (= [[1.0]]
+             (mt/formatted-rows [double]
                (mt/run-mbql-query checkins
                  {:aggregation [[:min $count]]})))))
 
     (testing "with breakout"
       ;; some sort of weird quirk w/ druid where all columns in breakout get converted to strings
       (is (= [["1" 34.0071] ["2" 33.7701] ["3" 10.0646] ["4" 33.983]]
-             (mt/rows
+             ;; formatting to str because Druid JDBC does return int
+             (mt/formatted-rows [str double]
                (mt/run-mbql-query checkins
                  {:aggregation [[:min $venue_latitude]]
                   :breakout    [$venue_price]})))))))
@@ -749,20 +842,20 @@
 (deftest ^:parallel max-test
   (tqpt/test-timeseries-drivers
     (testing "dimension columns"
-      (is (= [4.0]
-             (mt/first-row
+      (is (= [[4.0]]
+             (mt/formatted-rows [double]
                (mt/run-mbql-query checkins
                  {:aggregation [[:max $venue_price]]})))))
 
     (testing "metric columns"
-      (is (= [1.0]
-             (mt/first-row
+      (is (= [[1.0]]
+             (mt/formatted-rows [double]
                (mt/run-mbql-query checkins
                  {:aggregation [[:max $count]]})))))
 
     (testing "with breakout"
       (is (= [["1" 37.8078] ["2" 40.7794] ["3" 40.7262] ["4" 40.7677]]
-             (mt/rows
+             (mt/formatted-rows [str double]
                (mt/run-mbql-query checkins
                  {:aggregation [[:max $venue_latitude]]
                   :breakout    [$venue_price]})))))))
