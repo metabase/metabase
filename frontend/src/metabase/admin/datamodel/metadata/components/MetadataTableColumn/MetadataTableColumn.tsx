@@ -1,9 +1,11 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button/Button";
+import AdminS from "metabase/css/admin.module.css";
 import Fields from "metabase/entities/fields";
 import * as Urls from "metabase/lib/urls";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -117,9 +119,14 @@ const MetadataTableColumn = ({
               </div>
             </div>
           </div>
-          <div className="MetadataTable-title flex flex-column flex-full mt1 mr1">
+          <div
+            className={cx(
+              AdminS.MetadataTableTitle,
+              "flex flex-column flex-full mt1 mr1",
+            )}
+          >
             <ColumnInput
-              className="TableEditor-field-description rounded"
+              className={cx(AdminS.TableEditorFieldDescription, "rounded")}
               type="text"
               value={field.description ?? ""}
               onBlurChange={handleChangeDescription}

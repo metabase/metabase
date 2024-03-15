@@ -1,6 +1,9 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Link, IndexLink } from "react-router";
 import { t } from "ttag";
+
+import AdminS from "metabase/css/admin.module.css";
 
 export function LeftNavPaneItem({ name, path, index = false }) {
   return (
@@ -8,16 +11,22 @@ export function LeftNavPaneItem({ name, path, index = false }) {
       {index ? (
         <IndexLink
           to={path}
-          className="AdminList-item flex align-center justify-between no-decoration"
-          activeClassName="selected"
+          className={cx(
+            AdminS.AdminListItem,
+            "flex align-center justify-between no-decoration",
+          )}
+          activeClassName={AdminS.selected}
         >
           {name}
         </IndexLink>
       ) : (
         <Link
           to={path}
-          className="AdminList-item flex align-center justify-between no-decoration"
-          activeClassName="selected"
+          className={cx(
+            AdminS.AdminListItem,
+            "flex align-center justify-between no-decoration",
+          )}
+          activeClassName={AdminS.selected}
         >
           {name}
         </Link>
@@ -31,7 +40,10 @@ export function LeftNavPaneItemBack({ path }) {
     <li>
       <Link
         to={path}
-        className="AdminList-item flex align-center justify-between no-decoration link text-bold"
+        className={cx(
+          AdminS.AdminListItem,
+          "flex align-center justify-between no-decoration link text-bold",
+        )}
       >
         &lt; {t`Back`}
       </Link>
@@ -43,9 +55,13 @@ export function LeftNavPane({ children }) {
   return (
     <aside
       data-testid="admin-left-nav-pane"
-      className="MetadataEditor-table-list AdminList flex-no-shrink"
+      className={cx(AdminS.AdminList, "flex-no-shrink")}
     >
-      <ul className="AdminList-items pt1" aria-label="admin-list-items">
+      <ul
+        className="AdminList-items pt1"
+        data-testid="admin-list-items"
+        aria-label="admin-list-items"
+      >
         {children}
       </ul>
     </aside>

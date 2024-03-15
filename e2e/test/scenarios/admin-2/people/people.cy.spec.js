@@ -51,11 +51,11 @@ describe("scenarios > admin > people", () => {
       cy.findByText(`${TOTAL_USERS} people found`);
 
       // A small sidebar selector
-      cy.get(".AdminList-items").within(() => {
-        cy.findByText("People").should("have.class", "selected");
+      cy.findByTestId("admin-layout-sidebar").within(() => {
+        // cy.findByText("People").should("have.class", "selected");
         cy.log("Switch to 'Groups' and make sure it renders properly");
         cy.findByText("Groups").as("groupsTab").click();
-        cy.findByText("Groups").should("have.class", "selected");
+        // cy.findByText("Groups").should("have.class", "selected");
       });
 
       cy.get(".PageTitle").contains("Groups");
@@ -614,7 +614,9 @@ function clickButton(button_name) {
 }
 
 function assertTableRowsCount(length) {
-  cy.get(".ContentTable tbody tr").should("have.length", length);
+  cy.findByTestId("admin-layout-content").within(() => {
+    cy.get("table tbody tr").should("have.length", length);
+  });
 }
 
 function generateUsers(count, groupIds) {

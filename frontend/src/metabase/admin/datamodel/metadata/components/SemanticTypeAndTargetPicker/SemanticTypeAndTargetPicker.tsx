@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { currency } from "cljs/metabase.shared.util.currency";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select, { Option } from "metabase/core/components/Select";
+import AdminS from "metabase/css/admin.module.css";
 import { trackStructEvent } from "metabase/lib/analytics";
 import * as MetabaseCore from "metabase/lib/core";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
@@ -96,9 +97,12 @@ const SemanticTypeAndTargetPicker = ({
   );
 
   return (
-    <div className={cx(hasSeparator ? "flex align-center" : null)}>
+    <div
+      data-testid="semantic-type-target-picker"
+      className={cx(hasSeparator ? "flex align-center" : null)}
+    >
       <Select
-        className={cx("TableEditor-field-semantic-type mt0", className)}
+        className={cx(AdminS.TableEditorFieldSemanticType, "mt0", className)}
         value={field.semantic_type}
         onChange={handleChangeSemanticType}
         options={TYPE_OPTIONS}
@@ -111,7 +115,8 @@ const SemanticTypeAndTargetPicker = ({
       {showCurrencyTypeSelect && (
         <Select
           className={cx(
-            "TableEditor-field-target inline-block",
+            AdminS.TableEditorFieldTarget,
+            "inline-block",
             hasSeparator ? "mt0" : "mt1",
             className,
           )}
@@ -134,9 +139,13 @@ const SemanticTypeAndTargetPicker = ({
       {showFKTargetSelect && hasSeparator && <FieldSeparator />}
       {showFKTargetSelect && (
         <Select
+          buttonProps={{
+            "data-testid": "fk-target-select",
+          }}
           disabled={!hasIdFields}
           className={cx(
-            "TableEditor-field-target text-wrap",
+            AdminS.TableEditorFieldTarget,
+            "text-wrap",
             hasSeparator ? "mt0" : "mt1",
             className,
           )}

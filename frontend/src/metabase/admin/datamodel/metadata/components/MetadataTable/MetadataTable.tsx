@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
 import { connect } from "react-redux";
@@ -5,6 +6,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Radio from "metabase/core/components/Radio/Radio";
+import AdminS from "metabase/css/admin.module.css";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -100,7 +102,7 @@ const MetadataTable = ({
   );
 
   return (
-    <div className="MetadataTable full">
+    <div className={cx(AdminS.MetadataTable, "full")}>
       <TableTitleSection
         table={table}
         tab={tab}
@@ -160,7 +162,7 @@ const TableTitleSection = ({
   );
 
   return (
-    <div className="MetadataTable-title flex flex-column">
+    <div className={cx(AdminS.MetadataTableTitle, "flex flex-column")}>
       {tab === "columns" ? (
         <>
           <TableNameInput

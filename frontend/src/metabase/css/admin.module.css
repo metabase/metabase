@@ -2,55 +2,67 @@
   --page-header-padding: 2.375rem;
 }
 
-:global(.ContentTable) {
+:global(.ContentTable),
+.ContentTable {
   width: 100%;
   border-collapse: collapse;
   border-spacing: 0;
   text-align: left;
 }
 
-:global(.ContentTable thead) {
+:global(.ContentTable thead),
+.ContentTable thead {
   border-bottom: 1px solid var(--color-border);
 }
 
-:global(.PageHeader) {
+:global(.PageHeader),
+.PageHeader {
   padding-top: var(--page-header-padding);
   padding-bottom: var(--page-header-padding);
 }
 
-:global(.PageTitle) {
+:global(.PageTitle),
+.PageTitle {
   margin: 0;
 }
 
-:global(.Table-actions) {
+:global(.TableActions),
+.TableActions {
   text-align: right;
 }
 
-:global(.ContentTable .Table-actions) {
+:global(.ContentTable .TableActions),
+.ContentTable .TableActions {
   opacity: 0;
 }
 
 :global(.ContentTable td),
-:global(.ContentTable th) {
+:global(.ContentTable th),
+.ContentTable td,
+.ContentTable th {
   padding: 1em;
 }
 
-:global(.ContentTable th) {
+:global(.ContentTable th),
+.ContentTable th {
   color: var(--color-text-dark);
   padding: 1em;
 }
 
 /* TODO: remove this and apply AdminHoverItem to content rows */
-:global(.ContentTable tbody tr:hover) {
+:global(.ContentTable tbody tr:hover),
+.ContentTable tbody tr:hover {
   background-color: var(--color-brand-alpha-04);
 }
 
-:global(.ContentTable tr:hover .Table-actions) {
+:global(.ContentTable tr:hover .TableActions),
+.ContentTable tr:hover .TableActions {
   opacity: 1;
   transition: opacity 0.2s linear;
 }
 
-:global(.AdminList) {
+:global(.AdminList),
+.AdminList {
   background-color: var(--color-bg-light);
   border: var(--border-size) var(--border-style) var(--color-border);
   border-radius: var(--default-border-radius);
@@ -60,11 +72,13 @@
   padding-bottom: 0.75em;
 }
 
-:global(.AdminList-search) {
+:global(.AdminListSearch),
+.AdminListSearch {
   position: relative;
 }
 
-:global(.AdminList-search .Icon) {
+:global(.AdminListSearch .Icon),
+.AdminListSearch .Icon {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -73,7 +87,8 @@
   color: var(--color-text-light);
 }
 
-:global(.AdminList-search .AdminInput) {
+:global(.AdminListSearch .AdminInput),
+.AdminListSearch .AdminInput {
   padding: 0.5em;
   padding-left: 2em;
   font-size: 18px;
@@ -83,19 +98,23 @@
   border-bottom-color: var(--color-border);
 }
 
-:global(.AdminList-item) {
+:global(.AdminListItem),
+.AdminListItem {
   padding: 0.75em 1em 0.75em 1em;
   border: var(--border-size) var(--border-style) transparent;
   border-radius: var(--default-border-radius);
   margin-bottom: 0.25em;
 }
 
-:global(.AdminList-item.selected) {
+:global(.AdminListItem.selected),
+.AdminListItem.selected {
   color: var(--color-brand);
 }
 
-:global(.AdminList-item.selected),
-:global(.AdminList-item:hover) {
+:global(.AdminListItem.selected),
+:global(.AdminListItem:hover),
+.AdminListItem.selected,
+.AdminListItem:hover {
   background-color: white;
   border-color: var(--color-border);
   margin-left: -0.5em;
@@ -105,7 +124,8 @@
   box-shadow: 0 1px 2px var(--color-shadow);
 }
 
-:global(.AdminList-section) {
+:global(.AdminListSection),
+.AdminListSection {
   margin-top: 1em;
   padding: 0.5em 1em 0.5em 1em;
   text-transform: uppercase;
@@ -115,14 +135,16 @@
   padding-right: 15px; /* set so that table visibility icons align */
 }
 
-:global(.AdminInput) {
+:global(.AdminInput),
+.AdminInput {
   color: var(--color-text-dark);
   padding: var(--padding-1);
   background-color: var(--color-bg-light);
   border: 1px solid transparent;
 }
 
-:global(.AdminInput:focus) {
+:global(.AdminInput:focus),
+.AdminInput:focus {
   border-color: var(--color-brand);
   box-shadow: none;
   outline: 0;
@@ -142,56 +164,64 @@
   border-color: color-mod(var(--color-border) blackness(10%));
 }
 
-:global(.MetadataTable) {
+:global(.MetadataTable),
+.MetadataTable {
   min-width: 800px;
 }
 
-:global(.MetadataTable-title) {
+:global(.MetadataTableTitle),
+.MetadataTableTitle {
   background-color: var(--color-bg-white);
 }
 
-:global(.TableEditor-field-description) {
+:global(.TableEditorFieldDescription),
+.TableEditorFieldDescription {
   font-size: 14px;
 }
 
-:global(.TableEditor-field-semantic-type),
-:global(.TableEditor-field-target) {
+:global(.TableEditorFieldSemanticType),
+:global(.TableEditorFieldTarget),
+.TableEditorFieldSemanticType,
+.TableEditorFieldTarget {
   margin-top: 3px;
 }
 
-:global(.SettingsInput) {
+:global(.SettingsInput),
+.SettingsInput {
   width: 400px;
 }
 
-:global(.SettingsPassword) {
+:global(.SettingsPassword),
+.SettingsPassword {
   width: 200px;
 }
 
-:global(.UserActionsSelect) {
+:global(.UserActionsSelect),
+.UserActionsSelect {
   min-width: 180px;
 }
 
-:global(.AdminTable) {
+:global(.AdminTable),
+.AdminTable {
   border-collapse: collapse;
   border-spacing: 0;
   text-align: left;
 }
 
-:global(.AdminTable th) {
+:global(.AdminTable th),
+.AdminTable th {
   text-transform: uppercase;
   color: var(--color-text-medium);
   padding: var(--padding-1);
   font-weight: normal;
 }
 
-:global(.AdminTable thead) {
+:global(.AdminTable thead),
+.AdminTable thead {
   border-bottom: var(--border-size) var(--border-style) var(--color-border);
 }
 
-:global(.AdminTable tbody tr:first-child td) {
+:global(.AdminTable tbody tr:first-child td),
+.AdminTable tbody tr:first-child td {
   padding-top: var(--margin-1);
-}
-
-:global(.ColumnSortHelper) {
-  box-shadow: 0 7px 20px var(--color-shadow);
 }

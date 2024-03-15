@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useEffect, useState } from "react";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
@@ -7,6 +8,8 @@ const { fontFamilyMonospace } = getThemeOverrides();
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/index.module.css";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import { ApiKeysApi } from "metabase/services";
 import { Stack, Title, Text, Button, Group, Icon } from "metabase/ui";
@@ -49,7 +52,7 @@ function ApiKeysTable({
 }) {
   return (
     <Stack data-testid="api-keys-table" pb="lg">
-      <table className="ContentTable border-bottom">
+      <table className={cx(AdminS.ContentTable, CS.borderBottom)}>
         <thead>
           <tr>
             <th>{t`Key name`}</th>

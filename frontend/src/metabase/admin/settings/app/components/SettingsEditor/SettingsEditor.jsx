@@ -13,6 +13,7 @@ import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
 import { AdminLayout } from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/components/ErrorPages";
 import SaveStatus from "metabase/components/SaveStatus";
+import AdminS from "metabase/css/admin.module.css";
 import title from "metabase/hoc/Title";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
@@ -217,12 +218,12 @@ class SettingsEditor extends Component {
         const [sectionNamePrefix] = activeSectionName.split("/");
 
         const classes = cx(
-          "AdminList-item",
+          AdminS.AdminListItem,
           "flex",
           "align-center",
           "justify-between",
           "no-decoration",
-          { selected: slug === sectionNamePrefix },
+          { [AdminS.selected]: slug === sectionNamePrefix },
         );
 
         // if this is the Updates section && there is a new version then lets add a little indicator
@@ -237,7 +238,11 @@ class SettingsEditor extends Component {
 
         return (
           <li key={slug}>
-            <Link to={"/admin/settings/" + slug} className={classes}>
+            <Link
+              data-testid="settings-sidebar-link"
+              to={"/admin/settings/" + slug}
+              className={classes}
+            >
               <span>{section.name}</span>
               {newVersionIndicator}
             </Link>
@@ -247,8 +252,16 @@ class SettingsEditor extends Component {
     );
 
     return (
-      <aside className="MetadataEditor-table-list AdminList flex-no-shrink">
-        <ul className="AdminList-items pt1">
+      <aside
+        className={cx(
+          AdminS.AdminList,
+          "MetadataEditor-table-list flex-no-shrink",
+        )}
+      >
+        <ul
+          className="AdminList-items pt1"
+          data-testid="admin-list-settings-items"
+        >
           <ErrorBoundary>{renderedSections}</ErrorBoundary>
         </ul>
       </aside>
