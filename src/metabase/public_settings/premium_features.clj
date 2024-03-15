@@ -148,8 +148,11 @@
         pub-key   (with-open [rdr (io/reader (io/resource "airgap/pubkey.pem"))]
                     (keys/public-key rdr))
         decrypted (jwt/decrypt token pub-key {:alg :rsa-oaep :enc :a128cbc-hs256})]
-    (when (token-valid-now? decrypted)
-      decrypted)))
+    (if (token-valid-now? decrypted)
+      decrypted
+      {:valid         false
+       :status        (tru "Unable to validate token")
+       :error-details (tru "Token validation failed.")})))
 
 (mu/defn max-users-allowed
   "Returns the max users value from an airgapped key, or nil indicating there is no limt."

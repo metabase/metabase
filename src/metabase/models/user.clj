@@ -102,11 +102,9 @@
     (throw (Exception. (trs "Instance has not been initialized"))))
   (when-let [max-users (premium-features/max-users-allowed)]
     ;; If you add a new usery thing that is not a user, this must be updated
-    (when (> max-users
-             (t2/count :model/User {:where [:and
-                                            [:not= :id config/internal-mb-user-id]
-                                            [:not= :type "api-key"]]}))
-      (throw (Exception. (trs "You have reached the maximum number of users for your plan. Please upgrade to add more users.")))))
+    (when (>= (t2/count :model/User :is_active true, :type :personal)
+              max-users)
+      (throw (Exception. (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users." max-users)))))
   (merge
    insert-default-values
    user
