@@ -5,7 +5,7 @@
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.events :as events]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models :refer [Metric  MetricImportantField Table]]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]

@@ -4,9 +4,9 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.serialization.names :refer [fully-qualified-name]]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
@@ -48,7 +48,7 @@
   [mbql]
   (-> mbql
       mbql.normalize/normalize-tokens
-      (mbql.u/replace
+      (lib.util.match/replace
         ;; `integer?` guard is here to make the operation idempotent
         [:field (id :guard integer?) opts]
         [:field (fully-qualified-name Field id) (mbql-id->fully-qualified-name opts)]
@@ -71,7 +71,7 @@
 
 (defn- ids->fully-qualified-names
   [entity]
-  (mbql.u/replace entity
+  (lib.util.match/replace entity
     mbql-entity-reference?
     (mbql-id->fully-qualified-name &match)
 

@@ -4,20 +4,18 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.database :refer [Database]]
    [metabase.models.query :as query]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features
-    :as premium-features
-    :refer [defenterprise]]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -139,7 +137,7 @@
   more appropriate; Dashboard stuff uses ID while Card stuff tends to use `:name` at this point).
 
   Background: some more-specific parameter types aren't allowed for certain types of parameters.
-  See [[metabase.mbql.schema/parameter-types]] for details."
+  See [[metabase.legacy-mbql.schema/parameter-types]] for details."
   [parameter-name
    widget-type          :- ::lib.schema.template-tag/widget-type
    parameter-value-type :- ::lib.schema.parameter/type]
@@ -160,7 +158,7 @@
   [{parameter-name :name, :keys [target]}]
   (or
    parameter-name
-   (mbql.u/match-one target
+   (lib.util.match/match-one target
      [:template-tag tag-name]
      (name tag-name))))
 
@@ -208,7 +206,7 @@
   `StreamingResponse`.
 
   `context` is a keyword describing the situation in which this query is being ran, e.g. `:question` (from a Saved
-  Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.mbql.schema/Context]] for all valid
+  Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.legacy-mbql.schema/Context]] for all valid
   options."
   [card-id :- ::lib.schema.id/card
    export-format

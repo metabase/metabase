@@ -1,8 +1,8 @@
-(ns metabase.mbql.normalize-test
+(ns metabase.legacy-mbql.normalize-test
   (:require
    [clojure.set :as set]
    [clojure.test :as t]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))

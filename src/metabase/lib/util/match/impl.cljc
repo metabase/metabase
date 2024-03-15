@@ -1,4 +1,4 @@
-(ns metabase.mbql.util.match.impl
+(ns metabase.lib.util.match.impl
   "Internal implementation of the MBQL `match` and `replace` macros. Don't use these directly.")
 
 ;; have to do this at runtime because we don't know if a symbol is a class or pred or whatever when we compile the macro

@@ -1,15 +1,15 @@
-(ns metabase.mbql.util.match
+(ns metabase.lib.util.match
   "Internal implementation of the MBQL `match` and `replace` macros. Don't use these directly."
   (:refer-clojure :exclude [replace])
   (:require
    [clojure.core.match]
    [clojure.walk :as walk]
-   [metabase.mbql.util.match.impl :as metabase.mbql.util.match.impl]
+   [metabase.lib.util.match.impl]
    [net.cgrand.macrovich :as macros]))
 
 (defn- generate-pattern
   "Generate a single approprate pattern for use with core.match based on the `pattern` input passed into `match` or
-  `replace`. "
+  `replace`."
   [pattern]
   (cond
     (keyword? pattern)
@@ -23,7 +23,7 @@
     [pattern]
 
     (symbol? pattern)
-    `[(~'_ :guard (metabase.mbql.util.match.impl/match-with-pred-or-class ~pattern))]
+    `[(~'_ :guard (metabase.lib.util.match.impl/match-with-pred-or-class ~pattern))]
 
     :else
     [pattern]))
@@ -94,7 +94,7 @@
           (match** [~'&match]
                    ~@(generate-patterns-and-results match-fn-symb patterns-and-results, :wrap-result-forms? true)
                    ~@(when-not (skip-else-clause? patterns-and-results)
-                       [:else `(metabase.mbql.util.match.impl/match-in-collection ~match-fn-symb ~'&parents ~'&match)])))
+                       [:else `(metabase.lib.util.match.impl/match-in-collection ~match-fn-symb ~'&parents ~'&match)])))
         []
         ~form)))))
 
@@ -180,7 +180,7 @@
   how you may have destructured it; `&parents` is bound to a sequence of keywords naming the parent top-level keys and
   clauses of the match.
 
-    (mbql.u/match {:filter [:time-interval [:field 1 nil] :current :month]} :field
+    (lib.util.match/match {:filter [:time-interval [:field 1 nil] :current :month]} :field
       ;; &parents will be [:filter :time-interval]
       (when (contains? (set &parents) :time-interval)
         &match))
@@ -207,7 +207,7 @@
 ;;
 ;;
 ;;    ;; get *all* the source tables
-;;    (mbql.u/match-all query
+;;    (lib.util.match/match-all query
 ;;      (&match :guard (every-pred map? :source-table))
 ;;      (:source-table &match))
 
@@ -220,7 +220,7 @@
         (match** [~'&match]
                  ~@(generate-patterns-and-results replace-fn-symb patterns-and-results, :wrap-result-forms? false)
                  ~@(when-not (skip-else-clause? patterns-and-results)
-                     [:else `(metabase.mbql.util.match.impl/replace-in-collection ~replace-fn-symb ~'&parents ~'&match)])))
+                     [:else `(metabase.lib.util.match.impl/replace-in-collection ~replace-fn-symb ~'&parents ~'&match)])))
       []
       ~form)))
 
@@ -238,6 +238,6 @@
   "Like `replace`, but only replaces things in the part of `x` in the keypath `ks` (i.e. the way to `update-in` works.)"
   {:style/indent 2}
   [x ks & patterns-and-results]
-  `(metabase.mbql.util.match.impl/update-in-unless-empty ~x ~ks (fn [x#] (replace* x# ~patterns-and-results))))
+  `(metabase.lib.util.match.impl/update-in-unless-empty ~x ~ks (fn [x#] (replace* x# ~patterns-and-results))))
 
 ;; TODO - it would be useful to have something like a `replace-all` function as well

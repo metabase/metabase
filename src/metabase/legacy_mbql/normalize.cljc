@@ -1,4 +1,4 @@
-(ns metabase.mbql.normalize
+(ns metabase.legacy-mbql.normalize
   "Logic for taking any sort of weird MBQL query and normalizing it into a standardized, canonical form. You can think
   of this like taking any 'valid' MBQL query and rewriting it as-if it was written in perfect up-to-date MBQL in the
   latest version. There are four main things done here, done as four separate steps:
@@ -32,9 +32,9 @@
    [clojure.set :as set]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.mbql.util.match :as mbql.match]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.schema.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -285,7 +285,7 @@
                           [k (transform-fn v)])))
                  tag-definition)]
     ;; `:widget-type` is a required key for Field Filter (dimension) template tags -- see
-    ;; [[metabase.mbql.schema/TemplateTag:FieldFilter]] -- but prior to v42 it wasn't usually included by the
+    ;; [[metabase.legacy-mbql.schema/TemplateTag:FieldFilter]] -- but prior to v42 it wasn't usually included by the
     ;; frontend. See #20643. If it's not present, just add in `:category` which will make things work they way they
     ;; did in the past.
     (cond-> tag-def
@@ -707,7 +707,7 @@
   "Convert old MBQL 95 single-aggregations like `{:aggregation :count}` or `{:aggregation [:count]}` to MBQL 98+
   multiple-aggregation syntax (e.g. `{:aggregation [[:count]]}`)."
   [aggregations]
-  (mbql.match/replace aggregations
+  (lib.schema.match/replace aggregations
     seq? (recur (vec &match))
 
     ;; something like {:aggregations :count} -- MBQL 95 single aggregation
@@ -744,7 +744,7 @@
 (defn- canonicalize-order-by
   "Make sure order by clauses like `[:asc 10]` get `:field-id` added where appropriate, e.g. `[:asc [:field-id 10]]`"
   [clauses]
-  (mbql.match/replace clauses
+  (lib.schema.match/replace clauses
     seq? (recur (vec &match))
 
     ;; MBQL 95 reversed [<field> <direction>] clause
@@ -854,7 +854,7 @@
     query
     ;; get a set of all Field clauses (of any type) in the breakout. For temporal-bucketed fields, we'll include both
     ;; the bucketed `[:datetime-field <field> ...]` clause and the `<field>` clause it wraps
-    (let [breakout-fields (into #{} cat (mbql.match/match breakout
+    (let [breakout-fields (into #{} cat (lib.schema.match/match breakout
                                           [:field id-or-name opts]
                                           [&match
                                            [:field id-or-name (dissoc opts :temporal-unit)]]))]

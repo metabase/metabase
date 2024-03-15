@@ -5,10 +5,10 @@
   (:require
    [clojure.set :as set]
    [metabase.api.common :as api]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -63,7 +63,7 @@
   [query]
   (set
    (flatten
-    (mbql.u/match query
+    (lib.util.match/match query
       ;; if we come across a native query just put a placeholder (`::native`) there so we know we need to
       ;; add native permissions to the complete set below.
       (m :guard (every-pred map? :native))

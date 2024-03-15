@@ -17,9 +17,9 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.db :as mdb]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
@@ -894,7 +894,7 @@
   [mbql]
   (-> mbql
       mbql.normalize/normalize-tokens
-      (mbql.u/replace
+      (lib.util.match/replace
         ;; `integer?` guard is here to make the operation idempotent
        [:field (id :guard integer?) opts]
        [:field (*export-field-fk* id) (mbql-id->fully-qualified-name opts)]
@@ -938,7 +938,7 @@
 
 (defn- ids->fully-qualified-names
   [entity]
-  (mbql.u/replace entity
+  (lib.util.match/replace entity
                   mbql-entity-reference?
                   (mbql-id->fully-qualified-name &match)
 
@@ -984,7 +984,7 @@
 
 (defn- mbql-fully-qualified-names->ids*
   [entity]
-  (mbql.u/replace entity
+  (lib.util.match/replace entity
     ;; handle legacy `:field-id` forms encoded prior to 0.39.0
     ;; and also *current* expresion forms used in parameter mapping dimensions
     ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
@@ -1264,7 +1264,7 @@
           (m/update-existing-in [:pivot_table.column_split :columns] mbql-fully-qualified-names->ids)))
 
 (defn- export-visualizations [entity]
-  (mbql.u/replace
+  (lib.util.match/replace
    entity
    ["field-id" (id :guard number?)]
    ["field-id" (*export-field-fk* id)]
@@ -1325,7 +1325,7 @@
                    (*import-fk* id (link-card-model->toucan-model model)))}))))
 
 (defn- import-visualizations [entity]
-  (mbql.u/replace
+  (lib.util.match/replace
    entity
    [(:or :field-id "field-id") (fully-qualified-name :guard vector?) tail]
    [:field-id (*import-field-fk* fully-qualified-name) (import-visualizations tail)]

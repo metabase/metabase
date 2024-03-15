@@ -3,8 +3,9 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.automagic-dashboards.util :as magic.util]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -94,7 +95,7 @@
   [root [item-type :as item-reference]]
   (case item-type
     (:field "field") (let [normalized-field-reference (mbql.normalize/normalize item-reference)
-                           temporal-unit              (mbql.u/match-one normalized-field-reference
+                           temporal-unit              (lib.util.match/match-one normalized-field-reference
                                                                         [:field _ (opts :guard :temporal-unit)]
                                                                         (:temporal-unit opts))
                            {:keys [display_name] :as field-record} (cond-> (->> normalized-field-reference

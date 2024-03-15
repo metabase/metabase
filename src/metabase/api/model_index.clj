@@ -3,7 +3,7 @@
    [compojure.core :refer [POST]]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
    [metabase.models.model-index :as model-index :refer [ModelIndex]]
    [metabase.task.index-values :as task.index-values]

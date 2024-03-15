@@ -1,8 +1,8 @@
-(ns metabase.mbql.util-test
+(ns metabase.legacy-mbql.util-test
   (:require
    [clojure.string :as str]
    [clojure.test :as t]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.types]))
 
 (comment metabase.types/keep-me)

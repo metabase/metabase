@@ -1,6 +1,6 @@
-(ns metabase.mbql.schema.macros
+(ns metabase.legacy-mbql.schema.macros
   (:require
-   [metabase.mbql.schema.helpers :as metabase.mbql.schema.helpers]
+   [metabase.legacy-mbql.schema.helpers]
    [metabase.util.malli.registry :as mr]))
 
 (defn- stringify-names [arg-names-and-schemas]
@@ -33,10 +33,10 @@
   (let [[symb-name clause-name] (if (vector? clause-name)
                                   clause-name
                                   [clause-name (or (:clause-name (meta clause-name)) clause-name)])
-        clause-registry-name    (keyword "metabase.mbql.schema" (name symb-name))]
+        clause-registry-name    (keyword "metabase.legacy-mbql.schema" (name symb-name))]
     `(do
        (mr/register! ~clause-registry-name
-                     (metabase.mbql.schema.helpers/clause ~(keyword clause-name) ~@(stringify-names arg-names-and-schemas)))
+                     (metabase.legacy-mbql.schema.helpers/clause ~(keyword clause-name) ~@(stringify-names arg-names-and-schemas)))
        (def ~(vary-meta symb-name assoc
                         :clause-name (keyword clause-name)
                         :clause-form (into [(keyword clause-name)]
@@ -51,7 +51,7 @@
 
     (one-of field-id field-literal)"
   [& clauses]
-  `(metabase.mbql.schema.helpers/one-of*
+  `(metabase.legacy-mbql.schema.helpers/one-of*
     ~@(for [clause clauses]
         [`(or (:clause-name (meta (resolve '~clause)))
               '~clause)
