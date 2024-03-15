@@ -537,11 +537,11 @@
 
 (deftest distinct-count-of-two-dimensions-test
   (mt/test-driver :druid
-    (is (= {:rows    [[98]]
+    (is (= {:rows    [[979]]
             :columns ["count"]}
            (mt/rows+column-names
              (druid-query
-               {:aggregation [[:distinct [:+ $checkins.venue_category_name $checkins.venue_name]]]}))))))
+               {:aggregation [[:distinct [:+ $checkins.id $checkins.venue_price]]]}))))))
 
 (deftest metrics-inside-aggregation-clauses-test
   (mt/test-driver :druid

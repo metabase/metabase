@@ -173,7 +173,7 @@
         select-sql-args (sql.qp/format-honeysql driver select-hsql)
         query-results (jdbc/query jdbc-spec
                                   select-sql-args
-                                  {:identifiers identity, :transaction? false})]
+                                  {:identifiers identity, :transaction? false, :keywordize? false})]
     (if (next query-results)
       (log/warn "cannot identify row inserted by" create-hsql "using results" results)
       (first query-results))))

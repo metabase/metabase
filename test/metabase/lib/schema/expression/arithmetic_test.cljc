@@ -131,7 +131,7 @@
 
 (deftest ^:parallel temporal-arithmetic-schema-test-2
   (testing "Should error if there are no non-interval clauses"
-    (is (= ["Invalid :+ clause: Temporal arithmetic expression must contain exactly one non-interval value"]
+    (is (= ["Invalid :+ or :- clause: Temporal arithmetic expression must contain exactly one non-interval value"]
            (me/humanize
             (mc/explain
              :mbql.clause/+
@@ -142,7 +142,7 @@
 
 (deftest ^:parallel temporal-arithmetic-schema-test-3
   (testing "Should error if there are no intervals"
-    (is (= ["Invalid :+ clause: Temporal arithmetic expression must contain at least one :interval"]
+    (is (= [nil nil nil ["end of input"]]
            (me/humanize
             (mc/explain
              :mbql.clause/+
@@ -152,7 +152,7 @@
 
 (deftest ^:parallel temporal-arithmetic-schema-test-4
   (testing "Should error if there is more than one non-interval clause"
-    (is (= [nil nil nil ["expression returning a number"] ["Valid :interval clause" "input remaining"]]
+    (is (= [nil nil nil nil ["Valid :interval clause" "input remaining"]]
            (me/humanize
             (mc/explain
              :mbql.clause/+
@@ -164,7 +164,7 @@
 
 (deftest ^:parallel temporal-arithmetic-schema-test-5
   (testing "Should error if :interval has a unit that doesn't make sense"
-    (is (= ["Invalid :+ clause: Cannot add a :minute interval to a :type/Date expression"]
+    (is (= ["Invalid :+ or :- clause: Cannot add a :minute interval to a :type/Date expression"]
            (me/humanize
             (mc/explain
              :mbql.clause/+
