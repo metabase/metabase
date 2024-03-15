@@ -73,3 +73,7 @@ export function shouldEnableSearch(
   const staticValues = getListParameterStaticValues(parameter);
   return !staticValues || staticValues.length > maxCount;
 }
+
+export function getSingleValue(value: any) {
+  return Array.isArray(value) ? value[0] : value;
+}

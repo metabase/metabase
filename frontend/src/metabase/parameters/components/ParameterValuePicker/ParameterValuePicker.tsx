@@ -12,7 +12,11 @@ import { ListPickerConnected } from "./ListPickerConnected";
 import { OwnDatePicker } from "./OwnDatePicker";
 import { ListPickerWrapper } from "./ParameterValuePicker.styled";
 import { PlainValueInput } from "./PlainValueInput";
-import { shouldUsePlainInput, shouldUseListPicker } from "./core";
+import {
+  shouldUsePlainInput,
+  shouldUseListPicker,
+  getSingleValue,
+} from "./core";
 
 interface ParameterValuePickerProps {
   tag: TemplateTag;
@@ -28,6 +32,12 @@ interface ParameterValuePickerProps {
 /**
  * This component is designed to be controlled outside,
  * without keeping its own state.
+ *
+ * However, its decendats such as ListPickerValue, may have
+ * their own state but will reset it based on props.
+ *
+ * NB! If something breaks here, you probably shouldn't revert anything,
+ * and instead just make it render DefaultParameterValueWidget.
  */
 export function ParameterValuePicker(props: ParameterValuePickerProps) {
   const { tag, parameter, value, onValueChange } = props;
@@ -68,7 +78,7 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
     return (
       <ListPickerWrapper>
         <ListPickerConnected
-          value={Array.isArray(value) ? value[0] : value} // TODO
+          value={getSingleValue(value)} // TODO
           parameter={parameter}
           onChange={onValueChange}
           forceSearchItemCount={50}
