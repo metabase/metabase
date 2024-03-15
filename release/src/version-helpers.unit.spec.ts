@@ -9,6 +9,7 @@ import {
   isLatestVersion,
   getBuildRequirements,
   getNextVersions,
+  getMilestoneName,
 } from "./version-helpers";
 
 describe("version-helpers", () => {
@@ -392,5 +393,18 @@ describe("version-helpers", () => {
       expect(() => getNextVersions("v2.75")).toThrow();
       expect(() => getNextVersions("v0.75-RC2")).toThrow();
     });
+  });
+});
+
+describe("getMilestoneName", () => {
+  it.each([
+    ["v0.50.0", "0.50"],
+    ["v1.50.0", "0.50"],
+    ["v1.50.0-rc1", "0.50"],
+    ["v1.50.0-RC1", "0.50"],
+    ["v0.50.1", "0.50.1"],
+    ["v1.50.1", "0.50.1"],
+  ])("%s -> %s", (input, expected) => {
+    expect(getMilestoneName(input)).toBe(expected);
   });
 });
