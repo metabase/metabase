@@ -226,7 +226,6 @@ class Dashboard extends Component {
       setParameterValue,
       setParameterIndex,
       setEditingParameter,
-      isHeaderVisible,
       isAutoApplyFilters,
     } = this.props;
 
@@ -273,30 +272,28 @@ class Dashboard extends Component {
       >
         {() => (
           <DashboardStyled>
-            {isHeaderVisible && (
-              <HeaderContainer
-                isFullscreen={isFullscreen}
-                isNightMode={shouldRenderAsNightMode}
-              >
-                <DashboardHeader
-                  {...this.props}
-                  onEditingChange={this.setEditing}
-                  setDashboardAttribute={this.setDashboardAttribute}
-                  addParameter={addParameter}
-                  parametersWidget={parametersWidget}
-                  onSharingClick={this.onSharingClick}
-                />
+            <HeaderContainer
+              isFullscreen={isFullscreen}
+              isNightMode={shouldRenderAsNightMode}
+            >
+              <DashboardHeader
+                {...this.props}
+                onEditingChange={this.setEditing}
+                setDashboardAttribute={this.setDashboardAttribute}
+                addParameter={addParameter}
+                parametersWidget={parametersWidget}
+                onSharingClick={this.onSharingClick}
+              />
 
-                {shouldRenderParametersWidgetInEditMode && (
-                  <ParametersWidgetContainer
-                    data-testid="edit-dashboard-parameters-widget-container"
-                    isEditing={isEditing}
-                  >
-                    {parametersWidget}
-                  </ParametersWidgetContainer>
-                )}
-              </HeaderContainer>
-            )}
+              {shouldRenderParametersWidgetInEditMode && (
+                <ParametersWidgetContainer
+                  data-testid="edit-dashboard-parameters-widget-container"
+                  isEditing={isEditing}
+                >
+                  {parametersWidget}
+                </ParametersWidgetContainer>
+              )}
+            </HeaderContainer>
 
             <DashboardBody isEditingOrSharing={isEditing || isSharing}>
               <ParametersAndCardsContainer

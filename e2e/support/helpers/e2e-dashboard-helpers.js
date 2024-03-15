@@ -167,6 +167,10 @@ export function deleteTab(tabName) {
   });
 }
 
+export function goToTab(tabName) {
+  cy.findByRole("tab", { name: tabName }).click();
+}
+
 export function visitDashboardAndCreateTab({ dashboardId, save = true }) {
   visitDashboard(dashboardId);
   editDashboard();
@@ -248,3 +252,23 @@ export const getNextUnsavedDashboardCardId = (() => {
 export const dashboardHeader = () => {
   return cy.findByTestId("dashboard-header");
 };
+
+export const dashboardGrid = () => {
+  return cy.findByTestId("dashboard-grid");
+};
+
+export function createDashboardWithTabs({
+  dashcards,
+  tabs,
+  ...dashboardDetails
+}) {
+  return cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+    cy.request("put", `/api/dashboard/${dashboard.id}/cards`, {
+      cards: dashcards,
+      ordered_tabs: tabs,
+    });
+    cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+      ...dashboard,
+    }).then(({ body: dashboard }) => cy.wrap(dashboard));
+  });
+}
