@@ -25,7 +25,7 @@ describe("issue 37009", () => {
     cy.findByTestId("dataset-edit-bar")
       .button("Save")
       .should("be.disabled")
-      .realHover();
+      .trigger("mousemove", { force: true });
     cy.findByRole("tooltip").should(
       "have.text",
       "You must run the query before you can save this model",
@@ -52,9 +52,9 @@ describe("issue 37009", () => {
     popover().findByText("Edit query definition").click();
     focusNativeEditor().type(" WHERE CATEGORY = 'Gadget'");
     cy.findByTestId("dataset-edit-bar")
-      .button("Save")
+      .button("Save changes")
       .should("be.disabled")
-      .realHover();
+      .trigger("mousemove", { force: true });
     cy.findByRole("tooltip").should(
       "have.text",
       "You must run the query before you can save this model",
