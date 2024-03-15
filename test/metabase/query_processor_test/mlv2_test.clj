@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.serialize :as lib.serialize]
    [metabase.query-processor.store :as qp.store]
@@ -17,9 +18,11 @@
   in [[metabase.query-processor.preprocess/test-mlv2-normalization]]."
   [query :- :map]
   (u/prog1 query
-    (when *enable-mlv2-normalization-tests*
-      ;; we only want to run on top-level preprocessing steps, we don't want to do this on recursive preprocesses because
-      ;; lots of extra keys get added and moved around that we don't need to worry about normalizing.
+    (when (and *enable-mlv2-normalization-tests*
+               ;; only test for H2, we don't need to test basically the same exact queries in all the driver tests.
+               (contains? #{:h2 nil} driver/*driver*))
+      ;; we only want to run on top-level preprocessing steps, we don't want to do this on recursive preprocesses
+      ;; because lots of extra keys get added and moved around that we don't need to worry about normalizing.
       (when-not (qp.store/miscellaneous-value [::tested])
         (qp.store/store-miscellaneous-value! [::tested] true)
         (testing (str "\n\n"
