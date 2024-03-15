@@ -3,4 +3,5 @@ export * from "./DelayGroup";
 export * from "./Divider";
 export * from "./FocusTrap";
 export * from "./Paper";
+export * from "./Rem";
 export * from "./Transition";
