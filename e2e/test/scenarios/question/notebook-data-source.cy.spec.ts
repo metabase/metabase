@@ -172,6 +172,25 @@ describe("scenarios > notebook > data source", () => {
         });
       },
     );
+
+    it("should correctly display a table as the model's source when editing simple model's query", () => {
+      cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/*`).as("dbSchema");
+      cy.visit(`/model/${ORDERS_MODEL_ID}/query`);
+      cy.wait("@dbSchema");
+
+      cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
+      popover().within(() => {
+        cy.findByTestId("source-database").should(
+          "have.text",
+          "Sample Database",
+        );
+        cy.findByLabelText("Orders").should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+      });
+    });
   });
 
   describe("saved entity as a source (aka the virtual table)", () => {
