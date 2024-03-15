@@ -537,7 +537,7 @@
 ;;; ------------------------------------------------ Actions related ------------------------------------------------
 
 ;; API tests are in [[metabase.api.action-test]]
-(deftest ^:parallel actions-maybe-parse-sql-error-test
+(deftest actions-maybe-parse-sql-error-test
   (testing "violate not null constraint"
     (is (= {:type :metabase.actions.error/violate-not-null-constraint
             :message "F1 must have values."
