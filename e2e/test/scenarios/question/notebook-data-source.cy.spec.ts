@@ -55,5 +55,24 @@ describe("scenarios > notebook > data source", () => {
           .and("have.attr", "aria-selected", "false");
       });
     });
+
+    // There is a huge discrepancy between how we render this popover vs the one for models
+    // That's the reason this test is a bit vague. Will be reported as a separate issue
+    // and covered in a separate reproduction.
+    it("should not show models if only saved questions exist", () => {
+      cy.createQuestion({
+        name: "GUI Question",
+        query: { "source-table": REVIEWS_ID, limit: 1 },
+        display: "table",
+      });
+
+      startNewQuestion();
+      popover().within(() => {
+        cy.get(".List-section-title")
+          .should("have.length", 2)
+          .and("contain", "Saved Questions")
+          .and("not.contain", "Models");
+      });
+    });
   });
 });
