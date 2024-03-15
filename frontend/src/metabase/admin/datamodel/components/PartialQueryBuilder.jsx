@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { connect } from "react-redux";
@@ -6,6 +7,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Link from "metabase/core/components/Link";
+import ButtonsS from "metabase/css/components/buttons.module.css";
 import Tables from "metabase/entities/tables";
 import * as Urls from "metabase/lib/urls";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -101,7 +103,7 @@ class PartialQueryBuilder extends Component {
               to={previewUrl}
               target={window.OSX ? null : "_blank"}
               rel="noopener noreferrer"
-              className="Button Button--primary"
+              className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
             >{t`Preview`}</Link>
           </div>
         </GuiQueryEditor>

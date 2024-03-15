@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type * as React from "react";
 import { useState } from "react";
 import { useAsyncFn } from "react-use";
@@ -9,6 +10,7 @@ import QuestionLoader from "metabase/containers/QuestionLoader";
 import QuestionPicker from "metabase/containers/QuestionPicker";
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
+import CS from "metabase/css/core/index.css";
 import { EntityName } from "metabase/entities/containers/EntityName";
 import { GTAPApi } from "metabase/services";
 import type { IconName } from "metabase/ui";
@@ -152,7 +154,7 @@ const EditSandboxingModal = ({
         )}
         {(!shouldUseSavedQuestion || policy.card_id != null) &&
           (hasAttributesOptions || hasValidMappings ? (
-            <div className="p3 border-top border-bottom">
+            <div className={cx(CS.p3, CS.borderTop, CS.borderBottom)}>
               {shouldUseSavedQuestion && (
                 <div className="pb2">
                   {t`You can optionally add additional filters here based on user attributes. These filters will be applied on top of any filters that are already in this saved question.`}

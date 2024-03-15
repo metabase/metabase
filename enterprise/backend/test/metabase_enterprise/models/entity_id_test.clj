@@ -36,7 +36,6 @@
     :model/HTTPAction
     :model/ImplicitAction
     :model/QueryAction
-    :model/Activity
     :model/ApplicationPermissionsRevision
     :model/AuditLog
     :model/BookmarkOrdering
