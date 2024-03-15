@@ -34,6 +34,7 @@ type IllustrationWidgetProps = {
 };
 
 const MB = 1024 * 1024;
+const IMAGE_SIZE_LIMIT = 2 * MB;
 
 export function IllustrationWidget({
   id,
@@ -78,7 +79,7 @@ export function IllustrationWidget({
   function handleFileUpload(fileEvent: ChangeEvent<HTMLInputElement>) {
     if (fileEvent.target.files && fileEvent.target.files.length > 0) {
       const file = fileEvent.target.files[0];
-      if (file.size > 2 * MB) {
+      if (file.size > IMAGE_SIZE_LIMIT) {
         setErrorMessage(
           t`The image you chose is larger than 2MB. Please choose another one.`,
         );
