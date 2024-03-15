@@ -6,6 +6,7 @@ import _ from "underscore";
 
 import { ErrorMessage } from "metabase/components/ErrorMessage";
 import Modal from "metabase/components/Modal";
+import ButtonsS from "metabase/css/components/buttons.module.css";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
@@ -86,7 +87,7 @@ export default class VisualizationResult extends Component {
                   </p>
                 )}
                 <button
-                  className="Button"
+                  className={ButtonsS.Button}
                   onClick={() => window.history.back()}
                 >
                   {t`Back to previous results`}

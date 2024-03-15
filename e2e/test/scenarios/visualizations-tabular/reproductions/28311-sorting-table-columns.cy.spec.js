@@ -4,7 +4,7 @@ import {
   restore,
   visitQuestionAdhoc,
   getDraggableElements,
-  moveDnDKitColumnVertical,
+  moveDnDKitElement,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -62,10 +62,9 @@ describe("issue 25250", () => {
     cy.findByText("Product ID").should("be.visible");
 
     cy.findByTestId("viz-settings-button").click();
-    moveDnDKitColumnVertical(
-      getDraggableElements().contains("Product ID"),
-      -100,
-    );
+    moveDnDKitElement(getDraggableElements().contains("Product ID"), {
+      vertical: -100,
+    });
     getDraggableElements().eq(0).should("contain", "Product ID");
   });
 });

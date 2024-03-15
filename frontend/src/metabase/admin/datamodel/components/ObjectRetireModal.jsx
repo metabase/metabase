@@ -5,6 +5,8 @@ import { t } from "ttag";
 
 import ActionButton from "metabase/components/ActionButton";
 import ModalContent from "metabase/components/ModalContent";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 
 export default class ObjectRetireModal extends Component {
   constructor(props, context) {
@@ -46,14 +48,14 @@ export default class ObjectRetireModal extends Component {
           </div>
 
           <div className="Form-actions ml-auto">
-            <a className="Button" onClick={this.props.onClose}>
+            <a className={ButtonsS.Button} onClick={this.props.onClose}>
               {t`Cancel`}
             </a>
             <ActionButton
               actionFn={this.handleSubmit.bind(this)}
-              className={cx("Button ml2", {
-                "Button--danger": valid,
-                disabled: !valid,
+              className={cx(ButtonsS.Button, CS.ml2, {
+                [ButtonsS.ButtonDanger]: valid,
+                [CS.disabled]: !valid,
               })}
               normalText={t`Retire`}
               activeText={t`Retiring…`}

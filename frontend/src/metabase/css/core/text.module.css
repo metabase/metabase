@@ -5,7 +5,8 @@
 
 /* center */
 :global(.text-centered),
-.text-centered {
+.text-centered,
+.textCentered {
   text-align: center;
 }
 
@@ -92,7 +93,8 @@
 }
 
 :global(.text-uppercase),
-.text-uppercase {
+.text-uppercase,
+.textUppercase {
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -109,12 +111,14 @@
   text-transform: none;
 }
 
-:global(.text-normal) {
+:global(.text-normal),
+.textNormal {
   font-weight: 400;
 }
 
 :global(.text-bold),
-.text-bold {
+.text-bold,
+.textBold {
   font-weight: 700;
 }
 

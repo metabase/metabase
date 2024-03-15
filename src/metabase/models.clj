@@ -35,6 +35,7 @@
    [metabase.models.pulse-channel-recipient :as pulse-channel-recipient]
    [metabase.models.query-cache :as query-cache]
    [metabase.models.query-execution :as query-execution]
+   [metabase.models.query-field :as query-field]
    [metabase.models.revision :as revision]
    [metabase.models.secret :as secret]
    [metabase.models.segment :as segment]
@@ -87,6 +88,7 @@
          pulse/keep-me
          query-cache/keep-me
          query-execution/keep-me
+         query-field/keep-me
          revision/keep-me
          secret/keep-me
          segment/keep-me
