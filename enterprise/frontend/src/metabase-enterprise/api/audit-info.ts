@@ -11,3 +11,5 @@ export const auditInfoApi = Api.injectEndpoints({
     }),
   }),
 });
+
+export const { useGetAuditInfoQuery } = auditInfoApi;

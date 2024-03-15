@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import EntityMenuItem from "metabase/components/EntityMenuItem";
 import { useDispatch } from "metabase/lib/redux";
-import { auditInfoApi } from "metabase-enterprise/api";
+import { useGetAuditInfoQuery } from "metabase-enterprise/api";
 import type { DashboardId } from "metabase-types/api";
 
 interface InstanceAnalyticsButtonProps {
@@ -16,11 +16,7 @@ export const InstanceAnalyticsButton = ({
   linkQueryParams,
 }: InstanceAnalyticsButtonProps) => {
   const dispatch = useDispatch();
-  const {
-    data: auditInfo,
-    error,
-    isLoading,
-  } = auditInfoApi.useGetAuditInfoQuery();
+  const { data: auditInfo, error, isLoading } = useGetAuditInfoQuery();
 
   if (isLoading || error || !auditInfo) {
     return null;
