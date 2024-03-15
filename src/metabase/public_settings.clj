@@ -444,6 +444,23 @@
   :feature    :whitelabel
   :default    true)
 
+(defsetting login-page-illustration
+  (deferred-tru "Options for displaying the illustration on the login page.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel
+  :default    "default")
+
+(defsetting login-page-illustration-custom
+  (deferred-tru "The custom illustration for the login page.")
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel)
+
 (def ^:private help-link-options
   #{:metabase :hidden :custom})
 
