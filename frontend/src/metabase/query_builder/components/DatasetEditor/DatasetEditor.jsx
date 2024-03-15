@@ -1,6 +1,6 @@
 import { merge } from "icepick";
 import PropTypes from "prop-types";
-import { useEffect, useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
@@ -29,6 +29,7 @@ import {
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
 import { getMetadata } from "metabase/selectors/metadata";
+import { Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import {
   checkCanBeModel,
@@ -37,14 +38,14 @@ import {
 import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 
 import {
-  Root,
   DatasetEditBar,
   FieldTypeIcon,
   MainContainer,
   QueryEditorContainer,
-  TableHeaderColumnName,
-  TableContainer,
+  Root,
   TabHintToastContainer,
+  TableContainer,
+  TableHeaderColumnName,
 } from "./DatasetEditor.styled";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
@@ -414,20 +415,21 @@ function DatasetEditor(props) {
     [datasetEditorTab, renderSelectableTableColumnHeader],
   );
 
-  const canSaveChanges = useMemo(() => {
-    const { isNative } = Lib.queryDisplayInfo(dataset.query());
-    const isEmpty = !isNative
-      ? Lib.databaseID(dataset.query()) == null
-      : dataset.legacyQuery().isEmpty();
-    const everyFieldHasDisplayName = fields.every(field => field.display_name);
+  const { isNative } = Lib.queryDisplayInfo(dataset.query());
+  const isEmpty = !isNative
+    ? Lib.databaseID(dataset.query()) == null
+    : dataset.legacyQuery().isEmpty();
 
-    return (
-      !isEmpty &&
-      isDirty &&
-      (!isNative || !isResultDirty) &&
-      everyFieldHasDisplayName
-    );
-  }, [dataset, fields, isDirty, isResultDirty]);
+  const canSaveChanges =
+    !isEmpty &&
+    isDirty &&
+    (!isNative || !isResultDirty) &&
+    fields.every(field => field.display_name);
+
+  const saveButtonTooltipLabel =
+    !isEmpty && isDirty && isNative && isResultDirty
+      ? t`You must run the query before you can save this model`
+      : undefined;
 
   const sidebar = getSidebar(
     { ...props, modelIndexes },
@@ -439,6 +441,19 @@ function DatasetEditor(props) {
       focusFirstField,
       onFieldMetadataChange,
     },
+  );
+
+  const saveButton = (
+    <ActionButton
+      key="save"
+      disabled={!canSaveChanges}
+      actionFn={handleSave}
+      normalText={dataset.isSaved() ? t`Save changes` : t`Save`}
+      activeText={t`Saving…`}
+      failedText={t`Save failed`}
+      successText={t`Saved`}
+      className="Button Button--primary Button--small"
+    />
   );
 
   return (
@@ -467,16 +482,17 @@ function DatasetEditor(props) {
             small
             onClick={handleCancelClick}
           >{t`Cancel`}</Button>,
-          <ActionButton
-            key="save"
-            disabled={!canSaveChanges}
-            actionFn={handleSave}
-            normalText={dataset.isSaved() ? t`Save changes` : t`Save`}
-            activeText={t`Saving…`}
-            failedText={t`Save failed`}
-            successText={t`Saved`}
-            className="Button Button--primary Button--small"
-          />,
+          saveButtonTooltipLabel ? (
+            <Tooltip
+              key="save"
+              refProp="innerRef"
+              label={saveButtonTooltipLabel}
+            >
+              {saveButton}
+            </Tooltip>
+          ) : (
+            saveButton
+          ),
         ]}
       />
       <Root>
