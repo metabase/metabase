@@ -4,6 +4,7 @@ import {
   isLatestVersion,
   getNextVersions,
   isValidVersionString,
+  getMilestoneName,
 } from "./version-helpers";
 
 import type { ReleaseProps, Issue } from "./types";
@@ -12,7 +13,7 @@ const getMilestones = async ({
   github,
   owner,
   repo,
-}: Omit<ReleaseProps, 'version'>) => {
+}: Omit<ReleaseProps, "version">) => {
   const milestones = await github.rest.issues.listMilestones({
     owner,
     repo,
@@ -34,7 +35,7 @@ export const findMilestone = async ({
   const expectedMilestoneName = getOSSVersion(version)
     .replace(/^v/, "")
     .replace(/-rc\d+$/i, "") // RC versions use the major version milestone
-    .replace(/\.0$/, '');
+    .replace(/\.0$/, "");
 
   return milestones.find(
     (milestone: { title: string; number: number }) =>
@@ -69,8 +70,8 @@ export const openNextMilestones = async ({
   repo,
   version,
 }: ReleaseProps) => {
-  const nextMilestones = getNextVersions(version).map(version =>
-    getOSSVersion(version).replace(/^v/, ""),
+  const nextMilestones = getNextVersions(version).map(versionString =>
+    getMilestoneName(versionString),
   );
 
   await Promise.all(

@@ -177,3 +177,7 @@ export const getNextVersions = (versionString: string): string[] => {
 
   return [];
 };
+
+export const getMilestoneName = (versionString: string) => {
+  return getOSSVersion(versionString).replace(/^v/, "").replace(/\.0$/, "");
+};
