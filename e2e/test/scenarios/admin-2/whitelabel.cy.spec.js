@@ -212,6 +212,7 @@ describeEE("formatting > whitelabel", () => {
           cy.findByText("logo.jpeg").should("be.visible");
         });
         undoToast().findByText("Changes saved").should("be.visible");
+        undoToast().icon("close").click();
 
         cy.findByTestId("login-page-illustration-setting").within(() => {
           cy.button("Remove custom illustration").click();
@@ -220,6 +221,8 @@ describeEE("formatting > whitelabel", () => {
           );
           cy.findByDisplayValue("Lighthouse").should("be.visible");
         });
+        undoToast().findByText("Changes saved").should("be.visible");
+        undoToast().icon("close").click();
 
         cy.log("test uploading a valid image file");
         cy.findByTestId("login-page-illustration-setting").within(() => {
