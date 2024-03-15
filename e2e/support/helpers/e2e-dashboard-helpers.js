@@ -354,3 +354,17 @@ export const getNextUnsavedDashboardCardId = (() => {
   let id = 0;
   return () => --id;
 })();
+
+export function createDashboardWithTabs({
+  dashcards,
+  tabs,
+  ...dashboardDetails
+}) {
+  return cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+    cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+      ...dashboard,
+      dashcards,
+      tabs,
+    }).then(({ body: dashboard }) => cy.wrap(dashboard));
+  });
+}

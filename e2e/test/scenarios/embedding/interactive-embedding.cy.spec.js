@@ -18,7 +18,6 @@ import {
   createDashboardWithTabs,
   goToTab,
 } from "e2e/support/helpers";
-import { createMockDashboardCard } from "metabase-types/api/mocks";
 
 describeEE("scenarios > embedding > full app", () => {
   beforeEach(() => {
@@ -297,7 +296,7 @@ describeEE("scenarios > embedding > full app", () => {
       cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
         "not.exist",
       );
-      dashboardGrid().findByText("Rows 1-6 of first 2000").should("be.visible");
+      dashboardGrid().findByText("Rows 1-8 of first 2000").should("be.visible");
     });
 
     it("should hide the dashboard with multiple tabs header by a param and allow selecting tabs (metabase#38429, metabase#39002)", () => {
@@ -309,12 +308,15 @@ describeEE("scenarios > embedding > full app", () => {
         },
         tabs: [FIRST_TAB, SECOND_TAB],
         dashcards: [
-          createMockDashboardCard({
+          {
+            id: -1,
             dashboard_tab_id: FIRST_TAB.id,
             card_id: ORDERS_QUESTION_ID,
+            row: 0,
+            col: 0,
             size_x: 10,
             size_y: 8,
-          }),
+          },
         ],
       }).then(dashboard => {
         visitDashboardUrl({
@@ -325,7 +327,7 @@ describeEE("scenarios > embedding > full app", () => {
       cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
         "not.exist",
       );
-      dashboardGrid().findByText("Rows 1-6 of first 2000").should("be.visible");
+      dashboardGrid().findByText("Rows 1-8 of first 2000").should("be.visible");
       goToTab(SECOND_TAB.name);
       cy.findByTestId("dashboard-parameters-and-cards")
         .findByText("There's nothing here, yet.")
