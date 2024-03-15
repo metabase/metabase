@@ -20,11 +20,15 @@
     ;; Duplicates are flattened.
     #{"foo" "bar"} "SELECT * FROM table WHERE {{foo}} AND some_field = {{bar  }} OR {{  foo}}"
     ;; Ignoring non-alphanumeric vars
-    #{} "SELECT * FROM table WHERE {{&foo}}"))
+    #{} "SELECT * FROM table WHERE {{&foo}}")
+    ;; also find optional template tags
+    #{"foo" "bar"} "SELECT * FROM table WHERE {{foo}} AND some_field = {{bar  }} [[ OR {{  foo}} ]]"
+  )
 
 (deftest ^:parallel snippet-tag-test
   (are [exp input] (= exp (set (keys (lib.native/extract-template-tags input))))
     #{"snippet:   foo  "} "SELECT * FROM table WHERE {{snippet:   foo  }} AND some_field IS NOT NULL"
+    #{"snippet:   foo  "} "SELECT * FROM table WHERE {{  snippet:   foo  }} AND some_field IS NOT NULL"
     #{"snippet:   foo  *#&@"} "SELECT * FROM table WHERE {{snippet:   foo  *#&@}}"
     ;; TODO: This logic should trim the whitespace and unify these two snippet names.
     ;; I think this is a bug in the original code but am aiming to reproduce it exactly for now.
@@ -39,21 +43,49 @@
     ;; Tech debt issue: #39378
     #{"#123" "#123-with-slug"} "SELECT * FROM table WHERE {{ #123 }} AND {{  #123-with-slug  }}"
     #{"#123"} "SELECT * FROM table WHERE {{ #not-this }} AND {{#123}}"
+    #{"#123"} "SELECT * FROM table WHERE [[ {{ #not-this }} AND ]] {{#123}}"
     #{} "{{ #123foo }}"))
+
+(deftest ^:parallel optional-template-tags-test
+  (let [foo {:type      :text
+             :name      "foo"
+             :optional  false
+             :id        string?}
+        bar {:type :text
+             :name      "bar"
+             :optional  true
+             :id        string?}]
+    (testing "valid optional tags"
+      (are [exp input] (=? exp input)
+        {"foo" foo} (lib.native/extract-template-tags "SELECT * FROM table WHERE {{ foo }}")
+        {"bar" bar} (lib.native/extract-template-tags "SELECT * FROM table [[ WHERE {{ bar }} ]] ")
+        {"foo" foo "bar" bar} (lib.native/extract-template-tags "SELECT * FROM table WHERE {{ foo }} [[ AND {{ bar }} ]] ")))
+    (testing "badly nested tags"
+      (are [exp input] (=? exp input)
+        {"foo" foo} (lib.native/extract-template-tags "SELECT * FROM table WHERE [[ {{ bar ]] }} AND ]] {{ foo }}")
+        {"foo" foo} (lib.native/extract-template-tags "SELECT * FROM table WHERE [[ {{ bar [[ }} AND ]] {{ foo }}")
+        {"foo" foo} (lib.native/extract-template-tags "SELECT * FROM table WHERE [[ {{ bar {{ }} AND ]] {{ foo }}")
+        {} (lib.native/extract-template-tags "SELECT * FROM table WHERE {{ foo [[ }}")
+        {} (lib.native/extract-template-tags "SELECT * FROM table WHERE {{ foo ]] }}")
+        {} (lib.native/extract-template-tags "SELECT * FROM table WHERE {{ foo {{ }}")
+        {} (lib.native/extract-template-tags "SELECT * FROM table WHERE {{ foo }} }}")))))
 
 (deftest ^:parallel template-tags-test
   (testing "snippet tags"
     (is (=? {"snippet:foo" {:type         :snippet
                             :name         "snippet:foo"
                             :snippet-name "foo"
+                            :optional     false
                             :id           string?}}
             (lib.native/extract-template-tags "SELECT * FROM table WHERE {{snippet:foo}}")))
     (is (=? {"snippet:foo"  {:type         :snippet
                              :name         "snippet:foo"
                              :snippet-name "foo"
+                             :optional     false
                              :id           string?}
              "snippet: foo" {:type         :snippet
                              :name         "snippet: foo"
+                             :optional     false
                              :snippet-name "foo"
                              :id           string?}}
             ;; TODO: This should probably be considered a bug - whitespace matters for the name.
@@ -64,11 +96,13 @@
     (let [old-tag {:type         :text
                    :name         "foo"
                    :display-name "Foo"
+                   :optional     false
                    :id           (str (random-uuid))}]
       (testing "changes display-name if the original is not customized"
         (is (=? {"bar" {:type         :text
                         :name         "bar"
                         :display-name "Bar"
+                        :optional     (:optional old-tag)
                         :id           (:id old-tag)}}
                 (lib.native/extract-template-tags "SELECT * FROM {{bar}}"
                                                   {"foo" old-tag}))))
@@ -76,6 +110,7 @@
         (is (=? {"bar" {:type         :text
                         :name         "bar"
                         :display-name "Custom Name"
+                        :optional     (:optional old-tag)
                         :id           (:id old-tag)}}
                 (lib.native/extract-template-tags "SELECT * FROM {{bar}}"
                                                   {"foo" (assoc old-tag :display-name "Custom Name")}))))
@@ -84,11 +119,13 @@
         (let [other {:type         :text
                      :name         "other"
                      :display-name "Some Var"
+                     :optional     (:optional old-tag)
                      :id           (str (random-uuid))}]
           (is (=? {"other" other
                    "bar"   {:type         :text
                             :name         "bar"
                             :display-name "Bar"
+                            :optional     (:optional old-tag)
                             :id           (:id old-tag)}}
                   (lib.native/extract-template-tags "SELECT * FROM {{bar}} AND field = {{other}}"
                                                     {"foo"   old-tag
@@ -98,6 +135,7 @@
     (let [mktag (fn [base]
                   (merge {:type    :text
                           :display-name (u.humanization/name->human-readable-name :simple (:name base))
+                          :optional     (or (:optional base) false)
                           :id           string?}
                          base))
           v1    (mktag {:name "foo"})
@@ -300,6 +338,7 @@
                              :name "foo"
                              :widget-type :text
                              :display-name "foo"
+                             :optional true
                              :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})))
   (is (lib/can-run lib.tu/venues-query))
   (mu/disable-enforcement

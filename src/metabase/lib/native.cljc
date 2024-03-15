@@ -17,25 +17,80 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
+(def separator-pattern
+  "The pattern used to split text at the first separator."
+  #"(.*?)(\{\{|}}|\[\[|]])(.*)")
+
+(mu/defn ^:private tokenize-query :- [:sequential :string]
+  "Tokenize the query for easier parsing.
+   This splits the string at the separators defined in `separator-pattern`
+   but keeps them in the resulting sequence."
+  [query-text :- :string]
+  (if-let [[_ before separator after] (re-matches separator-pattern query-text)]
+    (lazy-cat [before separator] (tokenize-query after))
+    [query-text]))
+
+(mr/def ::template-tag-with-context
+   [:map
+    [:name [:maybe :string]]
+    [:optional :boolean]])
+
+(mu/defn ^:private parse-template-tags :- [:sequential ::template-tag-with-context]
+  "Parse the tokenized query into a sequence of tags, possibly with invalid content."
+  [toks :- [:sequential :string]]
+  (loop [tags []
+         [token & tail] toks
+         in-optional-block false
+         in-template-tag false
+         current-template-text ""]
+    (if (nil? token)
+      tags
+      (case token
+        "{{" (recur tags tail in-optional-block true "")
+        "}}" (if in-template-tag
+              ;; close the current template tag
+              (recur (conj tags {:name current-template-text :optional in-optional-block}) tail in-optional-block false "")
+              (recur tags tail in-optional-block in-template-tag current-template-text))
+        "[[" (recur tags tail (not in-template-tag) in-template-tag current-template-text)
+        "]]" (recur tags tail (if in-template-tag in-optional-block false) in-template-tag current-template-text)
+        (if in-template-tag
+          (recur tags tail in-optional-block in-template-tag (str current-template-text token))
+          (recur tags tail in-optional-block in-template-tag current-template-text))))))
+
 (def ^:private variable-tag-regex
-  #"\{\{\s*([A-Za-z0-9_\.]+)\s*\}\}")
+  #"^([A-Za-z0-9_\.]+)\s*$")
 
 (def ^:private snippet-tag-regex
-  #"\{\{\s*(snippet:\s*[^}]+)\s*\}\}")
+  #"^(snippet:.+)$")
 
 (def ^:private card-tag-regex
-  #"\{\{\s*(#([0-9]*)(-[a-z0-9-]*)?)\s*\}\}")
+  #"^(#[0-9]+(?:-[a-z0-9-]*)?)\s*$")
 
 (def ^:private tag-regexes
-  [variable-tag-regex snippet-tag-regex card-tag-regex])
+  [snippet-tag-regex card-tag-regex variable-tag-regex])
 
-(mu/defn ^:private recognize-template-tags :- [:set ::common/non-blank-string]
-  "Given the text of a native query, extract a possibly-empty set of template tag strings from it."
+(mu/defn ^:private format-template-tag-name :- [:maybe :string]
+  "Format and validate a template tag's content."
+  [content :- :string]
+  (second (some #(re-matches % (str/triml content)) tag-regexes)))
+
+(mu/defn ^:private format-template-tag :- ::template-tag-with-context
+  "Format a template tags name."
+  [tag :- ::template-tag-with-context]
+  (update tag :name format-template-tag-name))
+
+(mu/defn ^:private format-template-tags :- [:sequential ::template-tag-with-context]
+  "Format all template tags and filter out invalid ones."
+  [tags :- [:sequential ::template-tag-with-context]]
+  (filter :name (map format-template-tag tags)))
+
+(mu/defn ^:private recognize-template-tags :- [:sequential ::template-tag-with-context]
+  "Find all template tags and test if they are optional."
   [query-text :- ::common/non-blank-string]
-  (into #{}
-        (comp (mapcat #(re-seq % query-text))
-              (map second))
-        tag-regexes))
+  (let [toks          (tokenize-query query-text)
+        tags          (parse-template-tags toks)
+        template-tags (format-template-tags tags)]
+    template-tags))
 
 (defn- tag-name->card-id [tag-name]
   (when-let [[_ id-str] (re-matches #"^#(\d+)(-[a-z0-9-]*)?$" tag-name)]
@@ -45,9 +100,10 @@
   (when (str/starts-with? tag-name "snippet:")
     (str/trim (subs tag-name (count "snippet:")))))
 
-(defn- fresh-tag [tag-name]
+(defn- fresh-tag [tag]
   {:type :text
-   :name tag-name
+   :name (:name tag)
+   :optional (:optional tag)
    :id   (str (random-uuid))})
 
 (defn- finish-tag [{tag-name :name :as tag}]
@@ -62,8 +118,9 @@
            {:display-name (u.humanization/name->human-readable-name :simple tag-name)})))
 
 (defn- rename-template-tag
-  [existing-tags old-name new-name]
-  (let [old-tag       (get existing-tags old-name)
+  [existing-tags old-tag new-tag]
+  (let [new-name      (:name new-tag)
+        old-name      (:name old-tag)
         display-name  (if (= (:display-name old-tag)
                              (u.humanization/name->human-readable-name :simple old-name))
                         ;; Replace the display name if it was the default; keep it if customized.
@@ -72,20 +129,25 @@
         new-tag       (-> old-tag
                           (dissoc :snippet-name :card-id :snippet-id)
                           (assoc :display-name display-name
-                                 :name         new-name))]
+                                 :name         new-name
+                                 :optional     (:optional new-tag)))]
     (-> existing-tags
         (dissoc old-name)
         (assoc new-name new-tag))))
 
 (defn- unify-template-tags
-  [query-tag-names existing-tags existing-tag-names]
-  (let [new-tags (set/difference query-tag-names existing-tag-names)
-        old-tags (set/difference existing-tag-names query-tag-names)
-        tags     (if (= 1 (count new-tags) (count old-tags))
+  [query-tags existing-tags]
+  (let [tag-names (set (map :name query-tags))
+        existing-tag-names (set (keys (or existing-tags {})))
+        new-tag-names (set/difference tag-names existing-tag-names)
+        old-tag-names (set/difference existing-tag-names tag-names)
+        new-tags (filter #(contains? new-tag-names (:name %)) query-tags)
+        old-tags (filter #(contains? old-tag-names (:name %)) (vals existing-tags))
+        tags     (if (= 1 (count new-tag-names) (count old-tag-names))
                    ;; With exactly one change, we treat it as a rename.
                    (rename-template-tag existing-tags (first old-tags) (first new-tags))
                    ;; With more than one change, just drop the old ones and add the new.
-                   (merge (m/remove-keys old-tags existing-tags)
+                   (merge (m/remove-keys old-tag-names existing-tags)
                           (m/index-by :name (map fresh-tag new-tags))))]
     (update-vals tags finish-tag)))
 
@@ -106,11 +168,11 @@
    (extract-template-tags query-text nil))
   ([query-text    :- ::common/non-blank-string
     existing-tags :- [:maybe ::lib.schema.template-tag/template-tag-map]]
-   (let [query-tag-names    (not-empty (recognize-template-tags query-text))
+   (let [query-tags    (not-empty (recognize-template-tags query-text))
          existing-tag-names (not-empty (set (keys existing-tags)))]
-     (if (or query-tag-names existing-tag-names)
+     (if (or query-tags existing-tag-names)
        ;; If there's at least some tags, unify them.
-       (unify-template-tags query-tag-names existing-tags existing-tag-names)
+       (unify-template-tags query-tags existing-tags)
        ;; Otherwise just an empty map, no tags.
        {}))))
 
