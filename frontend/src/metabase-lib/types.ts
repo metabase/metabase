@@ -65,6 +65,8 @@ export type OrderByDirection = "asc" | "desc";
 declare const FilterClause: unique symbol;
 export type FilterClause = unknown & { _opaque: typeof FilterClause };
 
+export type Filterable = FilterClause | ExpressionClause | SegmentMetadata;
+
 declare const Join: unique symbol;
 export type Join = unknown & { _opaque: typeof Join };
 

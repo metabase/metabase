@@ -8,6 +8,7 @@ import { t } from "ttag";
 
 import IconBorder from "metabase/components/IconBorder";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import CS from "metabase/css/core/index.css";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -317,7 +318,7 @@ export class GuiQueryEditor extends Component {
         </div>
         <div className="GuiBuilder-row flex flex-full">
           {this.renderViewSection()}
-          <div className="flex-full" />
+          <div className={CS.flexFull} />
           {this.props.children}
         </div>
       </div>

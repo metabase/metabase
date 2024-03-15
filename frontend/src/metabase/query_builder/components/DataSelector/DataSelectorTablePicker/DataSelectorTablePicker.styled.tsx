@@ -27,13 +27,12 @@ export const DataSelectorTablePickerHeaderClickable = styled.span<Props>`
 
 export const DataSelectorTablePickerHeaderDatabaseName = styled.span`
   flex-wrap: wrap;
-  margin-left: ${space(1)};
+  margin-inline-start: ${space(1)};
 `;
 
 export const DataSelectorTablePickerHeaderSchemaName = styled.span`
   color: ${color("text-medium")};
   flex-wrap: wrap;
-  margin-left: ${space(1)};
 `;
 
 export const LinkToDocsContainer = styled.div`
@@ -46,4 +45,10 @@ export const LinkToDocsContainer = styled.div`
 export const NoTablesFound = styled.div`
   padding: ${space(4)};
   text-align: center;
+`;
+
+export const DataSelectorHeaderDivider = styled.span`
+  color: ${color("text-medium")};
+  display: inline-block;
+  margin-inline: ${space(1)};
 `;

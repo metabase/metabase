@@ -58,7 +58,7 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
 
   return (
     <OptionsRoot data-testid="new-model-options">
-      <Grid className="justifyCenter">
+      <Grid>
         {hasDataAccess && (
           <OptionsGridItem itemsCount={itemsCount}>
             <NewModelOption

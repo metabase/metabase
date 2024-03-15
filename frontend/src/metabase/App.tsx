@@ -13,6 +13,7 @@ import {
 } from "metabase/components/ErrorPages";
 import { UndoListing } from "metabase/containers/UndoListing";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
+import CS from "metabase/css/core/index.css";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import { initializeIframeResizer } from "metabase/lib/dom";
 import AppBar from "metabase/nav/containers/AppBar";
@@ -97,7 +98,7 @@ function App({
   return (
     <ErrorBoundary onError={onError}>
       <ScrollToTop>
-        <AppContainer className="spread">
+        <AppContainer className={CS.spread}>
           <KeyboardTriggeredErrorModal />
           <AppBanner location={location} />
           {isAppBarVisible && <AppBar />}
