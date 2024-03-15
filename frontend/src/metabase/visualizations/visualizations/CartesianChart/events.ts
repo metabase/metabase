@@ -310,6 +310,28 @@ export const getTimelineEventsHoverData = (
   };
 };
 
+export const getGoalLineHoverData = (
+  settings: ComputedVisualizationSettings,
+  event: EChartsSeriesMouseEvent,
+) => {
+  const element = event.event.event.target as Element;
+
+  if (element?.nodeName !== "text") {
+    return null;
+  }
+
+  return {
+    element,
+    data: [
+      {
+        col: null,
+        key: settings["graph.goal_label"] ?? "",
+        value: settings["graph.goal_value"] ?? "",
+      },
+    ],
+  };
+};
+
 export const getSeriesClickData = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,

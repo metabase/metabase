@@ -42,7 +42,6 @@ export function getGoalLineSeriesOption(
     },
     // we hide the above line, it only exists to prevent the goal line from
     // rendering out of bounds
-    silent: true,
     markLine: {
       data: [{ name: "goal-line", yAxis: settings["graph.goal_value"] }],
       label: {
