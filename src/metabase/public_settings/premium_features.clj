@@ -136,10 +136,13 @@
 (mu/defn ^:private token-valid-now? [token :- TokenStatus] :- :boolean
   (t/before? (t/instant) (t/instant (:valid-thru token))))
 
+(defn- airgap-token? [token]
+  (str/starts-with? token "airgap_"))
+
 (mu/defn ^:private decode-airgap-token :- TokenStatus
   "Given an encrypted airgap token, decrypts it and returns a TokenStatus"
   [token]
-  (when-not (str/starts-with? token "airgap_")
+  (when-not (airgap-token? "airgap_")
     (throw (ex-info "Malformed airgap token" {:token token})))
   (let [token     (str/replace token #"^airgap_" "")
         pub-key   (with-open [rdr (io/reader (io/resource "airgap/pubkey.pem"))]
@@ -152,7 +155,7 @@
   "Returns the max users value from an airgapped key, or nil indicating there is no limt."
   [] :- [:or pos-int? :nil]
   (let [token (premium-embedding-token)]
-    (when (str/starts-with? "airgap_" token)
+    (when (airgap-token? token)
       (let [max-users (:max-users (decode-airgap-token token))]
         (when (pos? max-users) max-users)))))
 
