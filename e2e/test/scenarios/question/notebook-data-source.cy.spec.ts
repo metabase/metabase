@@ -1,4 +1,4 @@
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   SECOND_COLLECTION_ID,
@@ -29,12 +29,9 @@ describe("scenarios > notebook > data source", () => {
     });
 
     it("should display tables from the only existing database by default", () => {
-      cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/*`).as("dbSchema");
-
       cy.visit("/");
       cy.findByTestId("app-bar").findByText("New").click();
       popover().findByTextEnsureVisible("Question").click();
-      cy.wait("@dbSchema");
 
       popover().within(() => {
         cy.findByTestId("source-database").should(
@@ -174,9 +171,7 @@ describe("scenarios > notebook > data source", () => {
     );
 
     it("should correctly display a table as the model's source when editing simple model's query", () => {
-      cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/*`).as("dbSchema");
       cy.visit(`/model/${ORDERS_MODEL_ID}/query`);
-      cy.wait("@dbSchema");
 
       cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
       popover().within(() => {
