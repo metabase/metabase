@@ -137,7 +137,7 @@
   (t/before? (t/instant) (t/instant (:valid-thru token))))
 
 (defn- airgap-token? [token]
-  (str/starts-with? token "airgap_"))
+  (and token (str/starts-with? token "airgap_")))
 
 (mu/defn ^:private decode-airgap-token :- TokenStatus
   "Given an encrypted airgap token, decrypts it and returns a TokenStatus"
@@ -154,13 +154,21 @@
        :status        (tru "Unable to validate token")
        :error-details (tru "Token validation failed.")})))
 
-(mu/defn max-users-allowed
+(mu/defn ^:private max-users-allowed
   "Returns the max users value from an airgapped key, or nil indicating there is no limt."
   [] :- [:or pos-int? :nil]
-  (let [token (premium-embedding-token)]
+  (when-let [token (premium-embedding-token)]
     (when (airgap-token? token)
       (let [max-users (:max-users (decode-airgap-token token))]
         (when (pos? max-users) max-users)))))
+
+(defn airgap-check-user-count
+  "Checks that, when in an airgap context, the allowed user count is acceptable."
+  []
+  (when-let [max-users (max-users-allowed)]
+    ;; If you add a new usery thing that is not a user, this must be updated
+    (when (>= (t2/count :model/User :is_active true, :type :personal) max-users)
+      (throw (Exception. (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users." max-users))))))
 
 (mu/defn ^:private fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
@@ -285,6 +293,8 @@
     ;; validate the new value if we're not unsetting it
     (try
       (when (seq new-value)
+        (when (mc/validate [:re AirgapToken] new-value)
+          (airgap-check-user-count))
         (when-not (or (mc/validate [:re RemoteCheckedToken] new-value)
                       (mc/validate [:re AirgapToken] new-value))
           (throw (ex-info (tru "Token format is invalid.")
