@@ -21,8 +21,8 @@ export interface StringSetting {
 type IllustrationWidgetProps = {
   id?: string;
   setting: StringSetting;
-  onChange: (value: IllustrationSettingValue) => void;
-  onChangeSetting: (key: EnterpriseSettingKey, value: unknown) => void;
+  onChange: (value: IllustrationSettingValue) => Promise<void>;
+  onChangeSetting: (key: EnterpriseSettingKey, value: unknown) => Promise<void>;
   settingValues: Partial<EnterpriseSettings>;
   defaultIllustrationLabel: string;
   customIllustrationSetting:
@@ -59,7 +59,7 @@ export function IllustrationWidget({
     [defaultIllustrationLabel],
   );
 
-  function handleChange(value: IllustrationSettingValue) {
+  async function handleChange(value: IllustrationSettingValue) {
     setErrorMessage("");
     // Avoid saving the same value
     // When setting.value is set to the default value its value would be `null`
@@ -68,11 +68,12 @@ export function IllustrationWidget({
     }
 
     if (value === "custom" && settingValues[customIllustrationSetting]) {
-      onChange("custom");
+      await onChange("custom");
     } else if (value === "custom") {
       fileInputRef.current?.click();
     } else {
-      onChange(value);
+      await onChange(value);
+      await onChange("default");
     }
   }
 
@@ -98,7 +99,7 @@ export function IllustrationWidget({
         setFileName(file.name);
         // Setting 2 setting values at the same time could result in one of them not being saved
         await onChange("custom");
-        onChangeSetting(customIllustrationSetting, dataUri);
+        await onChangeSetting(customIllustrationSetting, dataUri);
       };
       reader.readAsDataURL(file);
     }
@@ -111,7 +112,7 @@ export function IllustrationWidget({
     setFileName("");
     // Setting 2 setting values at the same time could result in one of them not being saved
     await onChange("default");
-    onChangeSetting(customIllustrationSetting, null);
+    await onChangeSetting(customIllustrationSetting, null);
   }
 
   const isCustomIllustration = value === "custom";
