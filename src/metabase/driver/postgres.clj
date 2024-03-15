@@ -272,10 +272,10 @@
             :where     [:= :c.relnamespace :n.oid]
             :order-by  [:type :schema :name]}
     (seq schemas)
-    (sql.helpers/where [:in :n.nspname (map #(driver/escape-entity-name-for-metadata :postgres %) schemas)])
+    (sql.helpers/where [:in :n.nspname schemas])
 
     (seq tables)
-    (sql.helpers/where [:in :c.relname (map #(driver/escape-entity-name-for-metadata :postgres %) tables)])
+    (sql.helpers/where [:in :c.relname tables])
 
     (seq types)
     (sql.helpers/where (into [:or] (map #(get table-type-clauses %) types))))
