@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { Location } from "history";
 import { type MouseEvent, type ReactNode, useState, Fragment } from "react";
 import { useMount } from "react-use";
@@ -16,6 +17,8 @@ import Modal from "metabase/components/Modal";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link/Link";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import type { NewDashCardOpts } from "metabase/dashboard/actions";
 import {
   addActionToDashboard,
@@ -317,7 +320,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
     return [
       <Button
         key="cancel"
-        className="Button Button--small mr1"
+        className={cx(ButtonsS.Button, ButtonsS.ButtonSmall, CS.mr1)}
         onClick={() => onRequestCancel()}
       >
         {t`Cancel`}
@@ -330,7 +333,11 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
         <span>
           <ActionButton
             actionFn={() => onSave()}
-            className="Button Button--primary Button--small"
+            className={cx(
+              ButtonsS.Button,
+              ButtonsS.ButtonPrimary,
+              ButtonsS.ButtonSmall,
+            )}
             normalText={t`Save`}
             activeText={t`Saving…`}
             failedText={t`Save failed`}
@@ -630,7 +637,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
   return (
     <>
       <DashboardHeaderComponent
-        headerClassName="wrapper"
+        headerClassName={CS.wrapper}
         location={location}
         dashboard={dashboard}
         collection={collection}

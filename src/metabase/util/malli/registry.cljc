@@ -62,6 +62,11 @@
   (reset! cache {})
   nil)
 
+(defn schema
+  "Get the Malli schema for `type` from the registry."
+  [type]
+  (malli.registry/schema registry type))
+
 #?(:clj
    (defmacro def
      "Like [[clojure.spec.alpha/def]]; add a Malli schema to our registry."

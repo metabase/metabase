@@ -7,6 +7,7 @@ import ReactDOM from "react-dom";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
@@ -241,9 +242,9 @@ export default class Gauge extends Component {
     const expandWidthFactor = width / svgWidth;
 
     return (
-      <div className={cx(className, "relative")}>
+      <div className={cx(className, CS.relative)}>
         <div
-          className="absolute overflow-hidden"
+          className={cx(CS.absolute, "overflow-hidden")}
           style={{
             width: svgWidth * expandWidthFactor,
             height: svgHeight,
