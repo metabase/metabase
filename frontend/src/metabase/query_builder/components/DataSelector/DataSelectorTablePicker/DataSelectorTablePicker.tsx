@@ -140,7 +140,7 @@ const DataSelectorTablePicker = ({
     return (
       <Section>
         <DataSelectorSectionHeader header={header} />
-        <Box p="xl" ta="center">{t`No tables found in this database.`}</Box>
+        <Box p="4rem" ta="center">{t`No tables found in this database.`}</Box>
       </Section>
     );
   }
