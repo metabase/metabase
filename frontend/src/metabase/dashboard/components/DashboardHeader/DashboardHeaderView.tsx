@@ -6,8 +6,9 @@ import { t } from "ttag";
 
 import EditBar from "metabase/components/EditBar";
 import { updateDashboard } from "metabase/dashboard/actions";
+import { getIsHeaderVisible } from "metabase/dashboard/selectors";
 import { color } from "metabase/lib/colors";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import type { Collection, Dashboard } from "metabase-types/api";
 
@@ -63,6 +64,8 @@ export function DashboardHeaderComponent({
   const header = useRef<HTMLDivElement>(null);
   const dispatch = useDispatch();
 
+  const isDashboardHeaderVisible = useSelector(getIsHeaderVisible);
+
   const _headerButtons = useMemo(
     () => (
       <HeaderButtonSection
@@ -107,43 +110,45 @@ export function DashboardHeaderComponent({
         </EditWarning>
       )}
       <div>
-        <HeaderRow
-          isNavBarOpen={isNavBarOpen}
-          className={cx("QueryBuilder-section", headerClassName)}
-          data-testid="dashboard-header"
-          ref={header}
-        >
-          <HeaderContent hasSubHeader showSubHeader={showSubHeader}>
-            <HeaderCaptionContainer>
-              <HeaderCaption
-                key={dashboard.name}
-                initialValue={dashboard.name}
-                placeholder={t`Add title`}
-                isDisabled={!dashboard.can_write}
-                data-testid="dashboard-name-heading"
-                onChange={handleUpdateCaption}
-              />
-              <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
-                color={color("brand")}
-                collection={collection}
-                entity="dashboard"
-              />
-            </HeaderCaptionContainer>
-            <HeaderBadges>
-              {isLastEditInfoVisible && (
-                <HeaderLastEditInfoLabel
-                  item={dashboard}
-                  onClick={onLastEditInfoClick}
-                  className=""
+        {isDashboardHeaderVisible && (
+          <HeaderRow
+            isNavBarOpen={isNavBarOpen}
+            className={cx("QueryBuilder-section", headerClassName)}
+            data-testid="dashboard-header"
+            ref={header}
+          >
+            <HeaderContent hasSubHeader showSubHeader={showSubHeader}>
+              <HeaderCaptionContainer>
+                <HeaderCaption
+                  key={dashboard.name}
+                  initialValue={dashboard.name}
+                  placeholder={t`Add title`}
+                  isDisabled={!dashboard.can_write}
+                  data-testid="dashboard-name-heading"
+                  onChange={handleUpdateCaption}
                 />
-              )}
-            </HeaderBadges>
-          </HeaderContent>
+                <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
+                  color={color("brand")}
+                  collection={collection}
+                  entity="dashboard"
+                />
+              </HeaderCaptionContainer>
+              <HeaderBadges>
+                {isLastEditInfoVisible && (
+                  <HeaderLastEditInfoLabel
+                    item={dashboard}
+                    onClick={onLastEditInfoClick}
+                    className=""
+                  />
+                )}
+              </HeaderBadges>
+            </HeaderContent>
 
-          <HeaderButtonsContainer isNavBarOpen={isNavBarOpen}>
-            {_headerButtons}
-          </HeaderButtonsContainer>
-        </HeaderRow>
+            <HeaderButtonsContainer isNavBarOpen={isNavBarOpen}>
+              {_headerButtons}
+            </HeaderButtonsContainer>
+          </HeaderRow>
+        )}
         <HeaderRow isNavBarOpen={isNavBarOpen}>
           <DashboardTabs location={location} isEditing={isEditing} />
         </HeaderRow>
