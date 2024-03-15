@@ -4,7 +4,7 @@ import { forwardRef } from "react";
 import { ResizableBox } from "react-resizable";
 
 import CS from "metabase/css/core/index.css";
-import { color, darken } from "metabase/lib/colors";
+import { darken } from "metabase/lib/colors";
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
 import { Flex, Box } from "metabase/ui";
 
@@ -41,7 +41,7 @@ const Handle = forwardRef(function Handle(props, ref) {
       <Box
         w="6.25rem"
         h="xs"
-        bg={darken(color("border"), 0.03)}
+        bg={darken("border", 0.03)}
         style={{
           borderRadius: "xs",
         }}
