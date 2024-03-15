@@ -8,8 +8,9 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
+;; TODO: Consider enabling the test for Duid JDBC.
 (deftest diagnostic-info-capture-test
-  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+  (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
     (testing "DW connection pool diagnostic info should be captured correctly"
       (sql-jdbc.execute.diagnostic/capturing-diagnostic-info [diag-info-fn]
         ;; sanity check

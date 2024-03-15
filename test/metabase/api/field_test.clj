@@ -720,6 +720,7 @@
              (-> (mt/user-http-request :crowberto :get 200 (format "field/%d" (u/the-id field)))
                  :settings))))))
 
+;; TODO: Verify that different line ordering is ok.
 (deftest search-values-test
   (testing "make sure `search-values` works on with our various drivers"
     (mt/test-drivers (mt/normal-drivers)
@@ -731,19 +732,23 @@
                                         "Red"
                                         nil)))))
     (tqpt/test-timeseries-drivers
-      (is (= [["139" "Red Medicine"]
-              ["148" "Fred 62"]
-              ["308" "Fred 62"]
-              ["375" "Red Medicine"]
-              ["396" "Fred 62"]
-              ["589" "Fred 62"]
-              ["648" "Fred 62"]
-              ["72" "Red Medicine"]
-              ["977" "Fred 62"]]
-             (api.field/search-values (t2/select-one Field :id (mt/id :checkins :id))
-                                      (t2/select-one Field :id (mt/id :checkins :venue_name))
-                                      "Red"
-                                      nil)))))
+      (is (= (sort-by first [["139" "Red Medicine"]
+                             ["148" "Fred 62"]
+                             ["308" "Fred 62"]
+                             ["375" "Red Medicine"]
+                             ["396" "Fred 62"]
+                             ["589" "Fred 62"]
+                             ["648" "Fred 62"]
+                             ["72" "Red Medicine"]
+                             ["977" "Fred 62"]])
+             (->> (api.field/search-values (t2/select-one Field :id (mt/id :checkins :id))
+                                           (t2/select-one Field :id (mt/id :checkins :venue_name))
+                                           "Red"
+                                           nil)
+                  ;; Druid JDBC returns id as int and non-JDBC as str. Also ordering is different. Following lines
+                  ;; mitigate that.
+                  (mapv #(update % 0 str))
+                  (sort-by first))))))
   (testing "make sure limit works"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [[1 "Red Medicine"]]

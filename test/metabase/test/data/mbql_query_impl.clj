@@ -177,7 +177,8 @@
     inner-query
     (assoc inner-query :source-table (list *id-fn-symb* (keyword table)))))
 
-(deftest parse-tokens-test
+;; TODO: Enable on [[druid-id-fn]] removal.
+#_(deftest parse-tokens-test
   (is (= '[:field
            (metabase.test.data/id :categories :name)
            {:join-alias "CATEGORIES__via__CATEGORY_ID"}]

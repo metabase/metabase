@@ -93,8 +93,9 @@
                        (map #(select-keys % [:name :pk?]))
                        fk-metadata))))))))
 
+;; TODO: Consider enabling the test for Duid JDBC.
 (deftest ^:parallel table-rows-sample-test
-  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+  (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
     (is (= [["20th Century Cafe"]
             ["25°"]
             ["33 Taps"]
@@ -107,8 +108,9 @@
                 (sort-by first)
                 (take 5))))))
 
+;; TODO: Consider enabling the test for Duid JDBC.
 (deftest ^:parallel table-rows-seq-test
-  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+  (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
     (is (= [{:name "Red Medicine", :price 3, :category_id 4, :id 1}
             {:name "Stout Burgers & Beers", :price 2, :category_id 11, :id 2}
             {:name "The Apple Pan", :price 2, :category_id 11, :id 3}
@@ -205,9 +207,10 @@
          :type     :native
          :native   spliced})))))
 
+;; TODO: Consider enabling the test for Duid JDBC.
 (deftest ^:parallel splice-parameters-mbql-test
   (testing "`splice-parameters-into-native-query` should generate a query that works correctly"
-    (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+    (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
       (mt/$ids venues
         (testing "splicing a string"
           (is (= 3

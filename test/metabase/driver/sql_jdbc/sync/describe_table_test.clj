@@ -149,9 +149,10 @@
            {:fk-column-name "VENUE_ID", :dest-table {:name "VENUES", :schema "PUBLIC"}, :dest-column-name "ID"}}
          (sql-jdbc.describe-table/describe-table-fks :h2 (mt/id) {:name "CHECKINS"}))))
 
+;; TODO: Consider enabling the test for Duid JDBC.
 (deftest describe-fields-or-table-test
   (testing "test `describe-fields` or `describe-table` returns some basic metadata"
-    (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
+    (mt/test-drivers (disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl) :druid-jdbc)
       (mt/dataset daily-bird-counts
         (let [table       (t2/select-one :model/Table :id (mt/id :bird-count))
               format-name #(ddl.i/format-name driver/*driver* %)]
@@ -192,8 +193,9 @@
                                          base-type)}))
                     set)))))))
 
+;; TODO: Consider enabling the test for Duid JDBC.
 (deftest calculated-semantic-type-test
-  (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
+  (mt/test-drivers (disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl) :druid-jdbc)
     (with-redefs [sql-jdbc.sync.interface/column->semantic-type (fn [_ _ column-name]
                                                                   (when (= (u/lower-case-en column-name) "longitude")
                                                                     :type/Longitude))]

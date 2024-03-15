@@ -38,7 +38,7 @@
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
 ;; Non-"normal" drivers are tested in [[metabase.timeseries-query-processor-test]] and elsewhere
-(def ^:private abnormal-drivers
+(def abnormal-drivers
   "Drivers that are so weird that we can't run the normal driver tests against them."
   #{:druid :druid-jdbc :googleanalytics})
 
