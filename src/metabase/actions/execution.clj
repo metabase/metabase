@@ -7,7 +7,7 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.lib.schema.actions :as lib.schema.actions]
-   [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models :refer [Card DashboardCard Database Table]]
    [metabase.models.action :as action]
@@ -103,7 +103,10 @@
 (mu/defn ^:private build-implicit-query :- [:map
                                             [:query          ::mbql.s/Query]
                                             [:row-parameters ::lib.schema.actions/row]
-                                            [:prefetch-parameters {:optional true} [:tuple ::lib.schema.parameter/parameter]]]
+                                            ;; TODO -- the schema for these should probably be
+                                            ;; `:metabase.lib.schema.parameter/parameter` instead of `:any`, but I'm not
+                                            ;; 100% sure about that.
+                                            [:prefetch-parameters {:optional true} [:tuple :any]]]
   [{:keys [model_id parameters] :as _action} implicit-action request-parameters]
   (let [{database-id :db_id
          table-id :id :as table} (implicit-action-table model_id)
@@ -123,10 +126,10 @@
         pk-field                 (first pk-fields)
         ;; Ignore params with nil values; the client doesn't reliably omit blank, optional parameters from the
         ;; request. See discussion at #29049
-        simple-parameters        (->> (update-keys request-parameters (comp keyword slug->field-name))
+        simple-parameters        (->> (update-keys request-parameters slug->field-name)
                                       (filter (fn [[_k v]] (some? v)))
                                       (into {}))
-        pk-field-name            (keyword (:name pk-field))
+        pk-field-name            (:name pk-field)
         row-parameters           (cond-> simple-parameters
                                    (not= implicit-action :row/create) (dissoc pk-field-name))
         requires-pk?             (contains? #{:row/delete :row/update} implicit-action)]
@@ -165,7 +168,7 @@
     (binding [qp.perms/*card-id* (:model_id action)]
       (actions/perform-action! implicit-action arg-map))))
 
-(defn execute-action!
+(mu/defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
   [action request-parameters]
   (let [;; if a value is supplied for a hidden parameter, it should raise an error
@@ -192,10 +195,12 @@
       (execute-custom-action action request-parameters)
       (throw (ex-info (tru "Unknown action type {0}." (name (:type action))) action)))))
 
-(defn execute-dashcard!
+(mu/defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters
    of shape `{<parameter-id> <value>}."
-  [dashboard-id dashcard-id request-parameters]
+  [dashboard-id       :- ::lib.schema.id/dashboard
+   dashcard-id        :- ::lib.schema.id/dashcard
+   request-parameters :- [:maybe [:map-of :string :any]]]
   (let [dashcard (api/check-404 (t2/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))

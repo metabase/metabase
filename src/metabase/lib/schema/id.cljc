@@ -55,6 +55,9 @@
 (mr/def ::dashboard
   pos-int?)
 
+(mr/def ::dashcard
+  pos-int?)
+
 (mr/def ::user
   pos-int?)
 

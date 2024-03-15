@@ -1134,10 +1134,10 @@
   [dashboard-id dashcard-id :as {{:keys [parameters], :as _body} :body}]
   {dashboard-id ms/PositiveInt
    dashcard-id  ms/PositiveInt
-   parameters  [:maybe [:map-of :keyword :any]]}
+   parameters  [:maybe [:map-of :string :any]]}
   (api/read-check :model/Dashboard dashboard-id)
   ;; Undo middleware string->keyword coercion
-  (actions.execution/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name)))
+  (actions.execution/execute-dashcard! dashboard-id dashcard-id parameters))
 
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 
