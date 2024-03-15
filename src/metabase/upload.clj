@@ -628,7 +628,7 @@
         (f relaxed-type))))
 
 (defn- field-changes
-  "Given existing and newly inferred types for the given `fields`, calculate the added and updated fields."
+  "Given existing and newly inferred types for the given `field-names`, calculate which fields need to be added or updated, along with their new types."
   [field-names existing-types new-types]
   (reduce
    (fn [m [f e n]]
