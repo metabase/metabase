@@ -8,11 +8,10 @@ import { Button, Flex, Icon, Paper, Select, Text } from "metabase/ui";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
+  IllustrationValue,
 } from "metabase-enterprise/settings/types";
 
 import { LighthouseImage, PreviewImage } from "./IllustrationWidget.styled";
-
-type IllustrationValue = "default" | "no-illustration" | "custom";
 
 export interface StringSetting {
   value: IllustrationValue | null;
