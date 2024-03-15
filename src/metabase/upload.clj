@@ -581,10 +581,19 @@
       :type/Date                   ::date
       :type/Text                   ::text)))
 
-(defn- missing-error-markdown [missing]
+(defn- not-blank [s]
+  (when-not (str/blank? s)
+    s))
+
+(defn- extra-and-missing-error-markdown [extra missing]
   (when (seq missing)
-    (let [header (tru "The CSV file is missing columns that are in the table:")]
-      (str/join "\n" (cons header (map #(str "- " %) missing))))))
+    (->> [[(tru "The CSV file is missing columns that are in the table:") missing]
+          [(tru "There are new columns in the CSV file that are not in the table:") extra]]
+         (keep (fn [[header columns]]
+                 (when (seq columns)
+                   (str/join "\n" (cons header (map #(str "- " %) columns))))))
+         (str/join "\n\n")
+         (not-blank))))
 
 (def ^:private allowed-type-upgrades
   "A mapping of which types a column can be implicitly relaxed to, based on the content of appended values."
@@ -600,13 +609,13 @@
   ;; Assumes table-cols are unique when normalized
   (let [normalized-field-names (keys fields-by-normed-name)
         normalized-header      (map normalize-column-name header)
-        [_extra missing _both] (data/diff (set normalized-header) (set normalized-field-names))]
+        [extra missing _both]  (data/diff (set normalized-header) (set normalized-field-names))]
     ;; check for duplicates
     (when (some #(< 1 %) (vals (frequencies normalized-header)))
       (throw (ex-info (tru "The CSV file contains duplicate column names.")
                       {:status-code 422})))
     (when missing
-      (let [error-message (missing-error-markdown missing)]
+      (let [error-message (extra-and-missing-error-markdown extra missing)]
         (throw (ex-info error-message {:status-code 422}))))))
 
 (defn- matching-or-upgradable? [current-type relaxed-type]

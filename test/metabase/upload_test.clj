@@ -1350,34 +1350,53 @@
 (deftest append-column-mismatch-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
-      (testing "Append should fail if there are missing columns in the CSV file"
+      (testing "Append should fail only if there are missing columns in the CSV file"
         (doseq [[csv-rows error-message]
                 {[""]
                  (trim-lines "The CSV file is missing columns that are in the table:
                               - id
                               - name")
 
+                 ;; Extra columns are fine, as long as none are missing.
+                 ["_mb_row_id,id,extra 1, extra 2,name"]
+                 nil
+
                  ["_mb_row_id,extra 1, extra 2"]
                  (trim-lines "The CSV file is missing columns that are in the table:
                               - id
-                              - name")
+                              - name
+
+                              There are new columns in the CSV file that are not in the table:
+                              - extra_2
+                              - extra_1")
 
                  ["_mb_row_id,id, extra 2"]
                  (trim-lines "The CSV file is missing columns that are in the table:
-                              - name")}]
+                              - name
+
+                              There are new columns in the CSV file that are not in the table:
+                              - extra_2")}]
           (with-upload-table!
             [table (create-upload-table!
                     {:col->upload-type (ordered-map/ordered-map
                                         :id         ::upload/int
                                         :name       ::upload/varchar-255)
                      :rows [[1,"some_text"]]})]
+
             (let [file (csv-file-with csv-rows (mt/random-name))]
-              (is (= {:message error-message
-                      :data    {:status-code 422}}
-                     (catch-ex-info (append-csv! {:file file :table-id (:id table)}))))
-              (testing "Check the data was not uploaded into the table"
-                (is (= [[1 "some_text"]]
-                       (rows-for-table table))))
+              (when error-message
+                (is (= {:message error-message
+                        :data    {:status-code 422}}
+                       (catch-ex-info (append-csv! {:file file :table-id (:id table)}))))
+                (testing "Check the data was not uploaded into the table"
+                  (is (= [[1 "some_text"]]
+                         (rows-for-table table)))))
+
+              (when-not error-message
+                (testing "Check the data was uploaded into the table"
+                  ;; No exception is thrown - but there were also no rows in the table to check
+                  (append-csv! {:file file :table-id (:id table)})))
+
               (io/delete-file file))))))))
 
 (deftest append-all-types-test
