@@ -149,10 +149,12 @@
       decrypted)))
 
 (mu/defn max-users-allowed
-  "Returns the max users value from an airgapped key, or nil indicating there is none."
+  "Returns the max users value from an airgapped key, or nil indicating there is no limt."
   [] :- [:or pos-int? :nil]
-  (let [max-users (:max-users (decode-airgap-token (premium-embedding-token)))]
-    (when (pos? max-users) max-users)))
+  (let [token (premium-embedding-token)]
+    (when (str/starts-with? "airgap_" token)
+      (let [max-users (:max-users (decode-airgap-token token))]
+        (when (pos? max-users) max-users)))))
 
 (mu/defn ^:private fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
