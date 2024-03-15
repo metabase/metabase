@@ -24,7 +24,6 @@
   excluded-schemas
   fallback-metadata-query
   filtered-syncable-schemas
-  get-tables
   have-select-privilege?]
 
  [sql-jdbc.describe-table

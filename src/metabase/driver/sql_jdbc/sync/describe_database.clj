@@ -32,6 +32,23 @@
    (fn [^ResultSet rs]
      #(.getString rs "TABLE_SCHEM"))))
 
+(defn syncable-schemas-for-db
+  "Returns a collection of syncable schemas for a db if exists."
+  [database]
+  (let [driver                 (:engine database)
+        schema-filter-prop     (driver.u/find-schema-filters-prop driver)
+        schema-filter-patterns (when (and (some? schema-filter-prop) (some? database))
+                                 (driver.s/db-details->schema-filter-patterns (:name schema-filter-prop) database))]
+    (when (seq schema-filter-patterns)
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       database
+       nil
+       (fn [conn]
+         (into [] (sql-jdbc.sync.interface/filtered-syncable-schemas
+                   driver conn (.getMetaData conn)
+                   (first schema-filter-patterns) (second schema-filter-patterns))))))))
+
 (defmethod sql-jdbc.sync.interface/filtered-syncable-schemas :sql-jdbc
   [driver _ metadata schema-inclusion-patterns schema-exclusion-patterns]
   (eduction (remove (set (sql-jdbc.sync.interface/excluded-schemas driver)))
@@ -107,10 +124,6 @@
                               remarks))
              :type        (.getString rset "TABLE_TYPE")}))))
 
-(defmethod sql-jdbc.sync.interface/get-tables :sql-jdbc
-  [& args]
-  (apply jdbc-get-tables args))
-
 (defn db-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
   schema. Returns a reducible sequence of results."
@@ -120,9 +133,9 @@
   ;; this by passing in `"%"` instead -- consider making this the default behavior. See this Slack thread
   ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706220295862639?thread_ts=1706156558.940489&cid=C04DN5VRQM6 for
   ;; more info.
-  (sql-jdbc.sync.interface/get-tables driver conn db-name-or-nil schema-or-nil "%"
-                                      ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"
-                                       "EXTERNAL TABLE" "DYNAMIC_TABLE"]))
+  (jdbc-get-tables driver conn db-name-or-nil schema-or-nil "%"
+                   ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"
+                    "EXTERNAL TABLE" "DYNAMIC_TABLE"]))
 
 (defn- schema+table-with-select-privileges
   [driver conn]
@@ -214,18 +227,9 @@
     db-or-id-or-spec
     nil
     (fn [^Connection conn]
-      (let [schema-filter-prop      (driver.u/find-schema-filters-prop driver)
-            has-schema-filter-prop? (some? schema-filter-prop)
-            database                (db-or-id-or-spec->database db-or-id-or-spec)
-            default-active-tbl-fn   #(into #{} (sql-jdbc.sync.interface/active-tables driver conn nil nil))]
-        (if has-schema-filter-prop?
-          ;; TODO: the else of this branch seems uncessary, why do you want to call describe-database on a database that
-          ;; does not exists?
-          (if (some? database)
-            (let [prop-nm                                 (:name schema-filter-prop)
-                  [inclusion-patterns exclusion-patterns] (driver.s/db-details->schema-filter-patterns
-                                                           prop-nm
-                                                           database)]
-              (into #{} (sql-jdbc.sync.interface/active-tables driver conn inclusion-patterns exclusion-patterns)))
-            (default-active-tbl-fn))
-          (default-active-tbl-fn)))))})
+      (let [schema-filter-prop   (driver.u/find-schema-filters-prop driver)
+            database             (db-or-id-or-spec->database db-or-id-or-spec)
+            [inclusion-patterns
+             exclusion-patterns] (when (and (some? schema-filter-prop) (some? database))
+                                   (driver.s/db-details->schema-filter-patterns (:name schema-filter-prop) database))]
+        (into #{} (sql-jdbc.sync.interface/active-tables driver conn inclusion-patterns exclusion-patterns)))))})

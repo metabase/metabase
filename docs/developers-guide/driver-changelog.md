@@ -5,8 +5,6 @@ title: Driver interface changelog
 # Driver Interface Changelog
 
 ## Metabase 0.50.0
-- The multimethod `metabase.driver.sql-jdbc.sync.interface/get-tables` has been added. The default implement of this will
-  call the DatabaseMetadata.getTables method. This method will be used to fetch additional table metadata in a single DB call.
 
 ## Metabase 0.49.0
 

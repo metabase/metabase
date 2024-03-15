@@ -1367,15 +1367,16 @@
          (mt/db)
          nil
          (fn [conn]
-           (let [do-test (fn [& {:keys [schema-pattern table-pattern types]
+           (let [do-test (fn [& {:keys [schema-pattern table-pattern schemas tables types]
                                  :or   {schema-pattern "%"
+                                        schemas        nil
                                         table-pattern  "%"
+                                        tables         nil
                                         types          nil}
                                  :as _opts}]
                            (is (= (into #{} (#'sql-jdbc.describe-database/jdbc-get-tables
                                              :postgres conn nil schema-pattern table-pattern types))
-                                  (into #{} (sql-jdbc.sync/get-tables
-                                             :postgres conn nil schema-pattern table-pattern types)))))]
+                                  (into #{} (#'postgres/get-tables conn schemas tables types)))))]
              (doseq [stmt ["CREATE TABLE public.table (id INTEGER, type TEXT);"
                            "CREATE UNIQUE INDEX idx_table_type ON public.table(type);"
                            "CREATE TABLE public.partition_table (id INTEGER) PARTITION BY RANGE (id);"
@@ -1390,8 +1391,8 @@
              (testing "without any filters"
                (do-test))
              (testing "filter by schema"
-               (do-test :schema-pattern "private"))
+               (do-test :schema-pattern "private" :schemas ["private"]))
              (testing "filter by table name"
-               (do-test :table-pattern "table%"))
+               (do-test :table-pattern "table" :tables ["table"]))
              (testing "filter by type"
                (do-test :types ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"])))))))))
