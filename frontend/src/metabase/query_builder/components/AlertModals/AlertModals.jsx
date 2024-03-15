@@ -43,6 +43,7 @@ import {
   getDefaultAlert,
 } from "metabase-lib/v1/Alert";
 
+import AlertModalsS from "./AlertModals.module.css";
 import { AlertModalFooter, DangerZone } from "./AlertModals.styled";
 
 const getScheduleFromChannel = channel =>
@@ -381,7 +382,12 @@ export class DeleteAlertSection extends Component {
     const { onDeleteAlert } = this.props;
 
     return (
-      <DangerZone className="DangerZone mt4 pt4 mb2 p3 rounded bordered relative">
+      <DangerZone
+        className={cx(
+          AlertModalsS.AlertModalsBorder,
+          "DangerZone bordered mt4 pt4 mb2 p3 rounded relative",
+        )}
+      >
         <h3
           className={cx(CS.textError, CS.absolute, CS.top, CS.bgWhite, CS.px1)}
           style={{ marginTop: "-12px" }}
@@ -633,8 +639,18 @@ function RawDataAlertTipInner(props) {
   const showMultiSeriesGoalAlert = goalEnabled && isMultiSeries;
 
   return (
-    <div className="border-row-divider p3 flex align-center">
-      <div className="circle flex align-center justify-center bg-light p2 mr2 text-medium">
+    <div
+      className={cx(
+        AlertModalsS.AlertModalsBorder,
+        "border-row-divider p3 flex align-center",
+      )}
+    >
+      <div
+        className={cx(
+          AlertModalsS.AlertModalsBorder,
+          "circle flex align-center justify-center bg-light p2 mr2 text-medium",
+        )}
+      >
         <Icon name="lightbulb" size="20" />
       </div>
       {showMultiSeriesGoalAlert ? <MultiSeriesAlertTip /> : <NormalAlertTip />}

@@ -16,7 +16,7 @@ import {
 import {
   CreateAlertModalContent,
   UpdateAlertModalContent,
-} from "metabase/query_builder/components/AlertModals";
+} from "metabase/query_builder/components/AlertModals/AlertModals";
 import { getQuestionAlerts } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
