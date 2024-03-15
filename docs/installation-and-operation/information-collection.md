@@ -6,11 +6,11 @@ redirect_from:
 
 # About the anonymous usage data we collect
 
-If you've opted in to provide us with anonymous usage data (thank you!), Metabase will phone home some anonymous usage data collected via Google Analytics and Snowplow.
+If you've opted in to provide us with anonymous usage data (thank you!), Metabase will phone home some data collected via Google Analytics and Snowplow.
 
 **We only collect Metabase data; we don't collect any of your data.** We don't collect any usernames, emails, server IPs, database details of any kind, or any personally identifiable information.
 
-We use the Metabase information you voluntarily share to understand how people are actually using Metabase, which helps us prioritize what to work on next.
+The data helps us understand how people are actually using Metabase, which in turn helps us prioritize what to work on next.
 
 ## Opting out of anonymous usage data
 
