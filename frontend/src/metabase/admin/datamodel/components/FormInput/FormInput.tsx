@@ -2,6 +2,8 @@ import cx from "classnames";
 import type { InputHTMLAttributes, Ref } from "react";
 import { forwardRef } from "react";
 
+import InputS from "metabase/css/core/inputs.module.css";
+
 import { FormInputRoot } from "./FormInput.styled";
 
 interface FormInputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -18,7 +20,7 @@ const FormInput = forwardRef(function FormInput(
       {...props}
       value={props.value ?? ""}
       ref={ref}
-      className={cx("input", className)}
+      className={cx(InputS.input, className)}
       type="text"
       touched={touched}
       error={error}

@@ -9,6 +9,7 @@ import _ from "underscore";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import ButtonsS from "metabase/css/components/buttons.module.css";
+import InputS from "metabase/css/core/inputs.module.css";
 import Search from "metabase/entities/search";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
@@ -128,7 +129,7 @@ class SnippetSidebarInner extends React.Component {
                   className="text-heavy h3 overflow-hidden"
                 >
                   <input
-                    className="input input--borderless p0"
+                    className={cx(InputS.input, "input--borderless p0")}
                     ref={e => (this.searchBox = e)}
                     onChange={e =>
                       this.setState({ searchString: e.target.value })

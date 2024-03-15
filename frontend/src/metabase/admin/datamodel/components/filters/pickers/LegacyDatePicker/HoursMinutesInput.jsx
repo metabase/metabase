@@ -2,6 +2,7 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import NumericInput from "metabase/components/NumericInput";
+import InputS from "metabase/css/core/inputs.module.css";
 import { has24HourModeSetting } from "metabase/lib/time";
 import { Icon } from "metabase/ui";
 
@@ -37,7 +38,7 @@ const HoursMinutesInput = ({
     <span className="px1">:</span>
     <NumericInput
       data-testid="minutes-input"
-      className="input"
+      className={InputS.input}
       style={{ height: 36 }}
       size={2}
       maxLength={2}
