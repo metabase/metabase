@@ -3,6 +3,7 @@ import {
   appBar,
   describeEE,
   main,
+  mantinePopover,
   popover,
   restore,
   setTokenFeatures,
@@ -17,9 +18,11 @@ function checkFavicon(url) {
 
 function checkLogo() {
   cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(logo_data => {
-    cy.get(`img[src="data:image/jpeg;base64,${logo_data}"]`);
+    cy.get(`img[src="data:image/jpeg;base64,${logo_data}"]`).should("exist");
   });
 }
+
+const MB = 1024 * 1024;
 
 describeEE("formatting > whitelabel", () => {
   beforeEach(() => {
@@ -60,73 +63,192 @@ describeEE("formatting > whitelabel", () => {
     });
   });
 
-  describe("company logo", () => {
-    beforeEach(() => {
-      cy.log("Add a logo");
-      cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(logo_data => {
-        cy.request("PUT", "/api/setting/application-logo-url", {
-          value: `data:image/jpeg;base64,${logo_data}`,
+  describe("image uploads", () => {
+    describe("company logo", () => {
+      beforeEach(() => {
+        cy.log("Add a logo");
+        cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
+          logo_data => {
+            cy.request("PUT", "/api/setting/application-logo-url", {
+              value: `data:image/jpeg;base64,${logo_data}`,
+            });
+          },
+        );
+      });
+
+      it("changes should reflect on admin's dashboard", () => {
+        cy.visit("/");
+        checkLogo();
+      });
+
+      it("changes should reflect while signed out", () => {
+        cy.signOut();
+        cy.visit("/");
+        checkLogo();
+      });
+
+      it("changes should reflect on user's dashboard", () => {
+        cy.signInAsNormalUser();
+        cy.visit("/");
+        checkLogo();
+      });
+    });
+
+    describe("favicon", () => {
+      it("should work for people that set favicon URL before we change the input to file input", () => {
+        const faviconUrl =
+          "https://cdn.ecosia.org/assets/images/ico/favicon.ico";
+        cy.request("PUT", "/api/setting/application-favicon-url", {
+          value: faviconUrl,
+        });
+        checkFavicon(faviconUrl);
+        cy.signInAsNormalUser();
+        cy.visit("/");
+        cy.get('head link[rel="icon"]')
+          .get('[href="https://cdn.ecosia.org/assets/images/ico/favicon.ico"]')
+          .should("have.length", 1);
+      });
+
+      it("should show up in user's HTML", () => {
+        cy.visit("/admin/settings/whitelabel");
+        cy.log("Add favicon");
+
+        cy.findByLabelText("Favicon").selectFile(
+          {
+            contents: "e2e/support/assets/favicon.ico",
+            mimeType: "image/jpeg",
+          },
+          { force: true },
+        );
+        undoToast().findByText("Changes saved").should("be.visible");
+        cy.readFile("e2e/support/assets/favicon.ico", "base64").then(
+          base64Url => {
+            const faviconUrl = `data:image/jpeg;base64,${base64Url}`;
+            cy.wrap(faviconUrl).as("faviconUrl");
+            checkFavicon(faviconUrl);
+          },
+        );
+        cy.signInAsNormalUser();
+        cy.visit("/");
+        cy.get("@faviconUrl").then(faviconUrl => {
+          cy.get('head link[rel="icon"]')
+            .get(`[href="${faviconUrl}"]`)
+            .should("have.length", 1);
         });
       });
     });
 
-    it("changes should reflect on admin's dashboard", () => {
-      cy.visit("/");
-      checkLogo();
-    });
+    describe("login page illustration", () => {
+      it("should only allow uploading a valid image files (PNG, JPG, SVG)", () => {
+        /**
+         * Unfortunately, we couldn't test the browser file selector with Cypress yet.
+         * With `input.selectFile`, we still can select any files unlike the browser file selector
+         * which would respect the `accept` attribute (which specifies the accepted MIME types).
+         */
+        cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
-    it("changes should reflect while signed out", () => {
-      cy.signOut();
-      cy.visit("/");
-      checkLogo();
-    });
+        cy.findByTestId("login-page-illustration-setting").within(() => {
+          cy.log("test error message for file size > 2MB");
+          /**
+           * This makes sure we scroll to the component which sits at the bottom of the page.
+           */
+          cy.findByLabelText("Login page").click();
+        });
+        mantinePopover().findByText("Custom").click();
+        cy.findByTestId("login-page-illustration-setting").within(() => {
+          cy.findByTestId("file-input").selectFile(
+            {
+              contents: Cypress.Buffer.from("a".repeat(2 * MB + 1)),
+              fileName: "big-file.jpg",
+              mimeType: "image/jpeg",
+            },
+            { force: true },
+          );
+          cy.findByText(
+            "The image you chose is larger than 2MB. Please choose another one.",
+          ).should("be.visible");
+          cy.findByText("big-file.jpg").should("not.exist");
 
-    it("changes should reflect on user's dashboard", () => {
-      cy.signInAsNormalUser();
-      cy.visit("/");
-      checkLogo();
-    });
-  });
+          /**
+           * 1. This doesn't actually open the file browser on Cypress,
+           * but I did this to simulate selecting an option because
+           * doing this would clear the error message.
+           *
+           * 2. For some reason, `cy.findByLabelText("Login page").click()` doesn't work here.
+           */
+          cy.findByRole("searchbox", { name: "Login page" }).click();
+        });
+        mantinePopover().findByText("Custom").click();
+        cy.log("test uploading a corrupted file");
+        cy.findByTestId("login-page-illustration-setting").within(() => {
+          cy.findByTestId("file-input").selectFile(
+            {
+              contents: Cypress.Buffer.from("a".repeat(2 * MB)),
+              fileName: "corrupted-file.jpg",
+              mimeType: "image/jpeg",
+            },
+            { force: true },
+          );
+          cy.findByText(
+            "The image you chose is corrupted. Please choose another one.",
+          ).should("be.visible");
+          cy.findByText("corrupted-file.jpg").should("not.exist");
+        });
 
-  describe("favicon", () => {
-    it("should work for people that set favicon URL before we change the input to file input", () => {
-      const faviconUrl = "https://cdn.ecosia.org/assets/images/ico/favicon.ico";
-      cy.request("PUT", "/api/setting/application-favicon-url", {
-        value: faviconUrl,
-      });
-      checkFavicon(faviconUrl);
-      cy.signInAsNormalUser();
-      cy.visit("/");
-      cy.get('head link[rel="icon"]')
-        .get('[href="https://cdn.ecosia.org/assets/images/ico/favicon.ico"]')
-        .should("have.length", 1);
-    });
+        cy.log("test removing the custom illustration");
+        /**
+         * I opted for uploading the same file twice rather than uploading once,
+         * testing the login page, and revisiting the settings page to test removing it.
+         * Since visiting multiple pages should make the test runs slower.
+         */
+        cy.findByTestId("login-page-illustration-setting").within(() => {
+          cy.findByTestId("file-input").selectFile(
+            {
+              contents: "e2e/support/assets/logo.jpeg",
+              mimeType: "image/jpeg",
+            },
+            { force: true },
+          );
+          cy.findByText("logo.jpeg").should("be.visible");
+        });
+        undoToast().findByText("Changes saved").should("be.visible");
+        undoToast().icon("close").click();
 
-    it("should show up in user's HTML", () => {
-      cy.visit("/admin/settings/whitelabel");
-      cy.log("Add favicon");
+        cy.findByTestId("login-page-illustration-setting").within(() => {
+          cy.button("Remove custom illustration").click();
+          cy.log(
+            "the default option should be selected once removing the custom illustration",
+          );
+          cy.findByDisplayValue("Lighthouse").should("be.visible");
+        });
+        undoToast().findByText("Changes saved").should("be.visible");
+        undoToast().icon("close").click();
 
-      cy.findByLabelText("Favicon").selectFile(
-        {
-          contents: "e2e/support/assets/favicon.ico",
-          mimeType: "image/jpeg",
-        },
-        { force: true },
-      );
-      undoToast().findByText("Changes saved").should("be.visible");
-      cy.readFile("e2e/support/assets/favicon.ico", "base64").then(
-        base64Url => {
-          const faviconUrl = `data:image/jpeg;base64,${base64Url}`;
-          cy.wrap(faviconUrl).as("faviconUrl");
-          checkFavicon(faviconUrl);
-        },
-      );
-      cy.signInAsNormalUser();
-      cy.visit("/");
-      cy.get("@faviconUrl").then(faviconUrl => {
-        cy.get('head link[rel="icon"]')
-          .get(`[href="${faviconUrl}"]`)
-          .should("have.length", 1);
+        cy.log("test uploading a valid image file");
+        cy.findByTestId("login-page-illustration-setting").within(() => {
+          cy.findByTestId("file-input").selectFile(
+            {
+              contents: "e2e/support/assets/logo.jpeg",
+              mimeType: "image/jpeg",
+            },
+            { force: true },
+          );
+          cy.findByText("logo.jpeg").should("be.visible");
+        });
+        undoToast().findByText("Changes saved").should("be.visible");
+
+        cy.signOut();
+        cy.visit("/");
+
+        cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
+          logo_data => {
+            cy.findByTestId("login-page-container").should(
+              "have.css",
+              "background-image",
+              `url("data:image/jpeg;base64,${logo_data}")`,
+            );
+          },
+        );
       });
     });
   });

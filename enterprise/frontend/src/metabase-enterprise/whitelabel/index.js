@@ -18,6 +18,7 @@ import {
   getApplicationName,
   getIsWhiteLabeling,
   getLoadingMessage,
+  getLoginPageIllustration,
   getShowMetabaseLinks,
 } from "metabase-enterprise/settings/selectors";
 
@@ -25,9 +26,12 @@ import ColorSettingsWidget from "./components/ColorSettingsWidget";
 import FontFilesWidget from "./components/FontFilesWidget";
 import FontWidget from "./components/FontWidget";
 import { HelpLinkSettings } from "./components/HelpLinkSettings";
+import { IllustrationWidget } from "./components/IllustrationWidget";
 import { ImageUpload } from "./components/ImageUpload";
 import { LandingPageWidget } from "./components/LandingPageWidget";
+import { LoginPageIllustrationDescription } from "./components/LoginPageIllustrationDescription";
 import LogoIcon from "./components/LogoIcon";
+import { MetabotToggleWidget } from "./components/MetabotToggleWidget";
 import {
   MetabaseLinksToggleDescription,
   SwitchWidget,
@@ -150,48 +154,17 @@ if (hasPremiumFeature("whitelabel")) {
             widget: SettingTextInput,
           },
           {
-            key: "-toggle-group",
-            tab: "conceal-metabase",
-            display_name: t`Homepage, Documentation and References`,
-            // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
-            description: t`Control the display of homepage visuals and greeting message plus other Metabase elements such as links to Metabase documentation and Metabase references in your instance.`,
-            type: "hidden",
-          },
-          {
-            key: "show-lighthouse-illustration",
-            tab: "conceal-metabase",
-            description: null,
-            type: "boolean",
-            defaultValue: true,
-            widget: SwitchWidget,
-            props: {
-              label: t`Show lighthouse illustration on the home and login pages`,
-              mt: "-0.5rem",
-            },
-          },
-          {
             key: "show-metabase-links",
             tab: "conceal-metabase",
-            description: null,
+            display_name: t`Documentation and references`,
+            // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
+            description: t`Control the display of Metabase documentation and Metabase references in your instance.`,
             widget: SwitchWidget,
             props: {
               // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
               label: jt`Show links and references to Metabase ${(
                 <MetabaseLinksToggleDescription key="show-metabase-links-description-tooltip" />
               )}`,
-              mt: "-1rem",
-            },
-          },
-          {
-            key: "show-metabot",
-            tab: "conceal-metabase",
-            description: null,
-            type: "boolean",
-            defaultValue: true,
-            widget: SwitchWidget,
-            props: {
-              label: t`Show metabot and greeting on the homepage`,
-              mt: "-1rem",
             },
           },
           {
@@ -210,6 +183,42 @@ if (hasPremiumFeature("whitelabel")) {
             ),
             widget: HelpLinkSettings,
             defaultValue: "metabase",
+          },
+          {
+            key: "-metabase-illustration",
+            tab: "conceal-metabase",
+            // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
+            display_name: t`Metabase illustrations`,
+            // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
+            description: t`Customize each of the illustrations in Metabase`,
+            type: "hidden",
+          },
+          {
+            key: "show-metabot",
+            tab: "conceal-metabase",
+            display_name: (
+              <Text fw="bold" transform="none">{t`Metabot greeting`}</Text>
+            ),
+            description: null,
+            type: "boolean",
+            defaultValue: true,
+            widget: MetabotToggleWidget,
+          },
+          {
+            key: "login-page-illustration",
+            tab: "conceal-metabase",
+            display_name: (
+              <LoginPageIllustrationDescription errorMessageContainerId="login-page-illustration-error-container" />
+            ),
+            description: null,
+            type: "string",
+            widget: IllustrationWidget,
+            props: {
+              defaultIllustrationLabel: t`Lighthouse`,
+              customIllustrationSetting: "login-page-illustration-custom",
+              errorMessageContainerId:
+                "login-page-illustration-error-container",
+            },
           },
         ],
       },
@@ -246,4 +255,5 @@ if (hasPremiumFeature("whitelabel")) {
   PLUGIN_SELECTORS.getIsWhiteLabeling = getIsWhiteLabeling;
   PLUGIN_SELECTORS.getApplicationName = getApplicationName;
   PLUGIN_SELECTORS.getShowMetabaseLinks = getShowMetabaseLinks;
+  PLUGIN_SELECTORS.getLoginPageIllustration = getLoginPageIllustration;
 }
