@@ -42,15 +42,17 @@
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
+   [clojure.tools.macro :as macro]
    [compojure.core :as compojure]
    [medley.core :as m]
    [metabase.api.common.internal
     :refer [add-route-param-schema
             auto-coerce
             route-dox
-            validate-params
             route-fn-name
+            validate-params
             wrap-response-if-needed]]
+   [metabase.api.common.openapi :as openapi]
    [metabase.config :as config]
    [metabase.events :as events]
    [metabase.models.interface :as mi]
@@ -59,10 +61,13 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [potemkin :as p]
    [ring.middleware.multipart-params :as mp]
    [toucan2.core :as t2]))
 
 (declare check-403 check-404)
+
+(p/import-vars [openapi openapi-object])
 
 ;;; ----------------------------------------------- DYNAMIC VARIABLES ------------------------------------------------
 ;; These get bound by middleware for each HTTP request.
@@ -314,11 +319,17 @@
         allowed-params  (mapv keyword (keys arg->schema))
         prep-route      #'compojure/prepare-route
         multipart?      (get (meta method) :multipart false)
-        handler-wrapper (if multipart? mp/wrap-multipart-params identity)]
+        handler-wrapper (if multipart? mp/wrap-multipart-params identity)
+        schema          (into [:map] (for [[k v] arg->schema]
+                                       [(keyword k) v]))]
     `(def ~(vary-meta fn-name
-                      assoc
-                      :doc          docstr
-                      :is-endpoint? true)
+                      merge
+                      {:doc          docstr
+                       :method       method-kw
+                       :path         route
+                       :schema       schema
+                       :is-endpoint? true}
+                      (meta method))
        ;; The next form is a copy of `compojure/compile-route`, with the sole addition of the call to
        ;; `validate-param-values`. This is because to validate the request body we need to intercept the request
        ;; before the destructuring takes place. I.e., we need to validate the value of `(:body request#)`, and that's
@@ -392,14 +403,29 @@
     (api/define-routes api/+check-superuser) ; all API endpoints in this namespace will require superuser access"
   {:style/indent 0}
   [& middleware]
-  (let [api-route-fns (namespace->api-route-fns *ns*)
-        routes        `(compojure/routes ~@api-route-fns)
+  (let [api-route-fns (vec (namespace->api-route-fns *ns*))
+        routes        `(with-meta (compojure/routes ~@api-route-fns) {:routes ~api-route-fns})
         docstring     (str "Routes for " *ns*)]
-    `(def ~(vary-meta 'routes assoc :doc (api-routes-docstring *ns* api-route-fns middleware))
+    `(def ~(vary-meta 'routes assoc
+                      :doc    (api-routes-docstring *ns* api-route-fns middleware)
+                      :routes api-route-fns)
        ~docstring
        ~(if (seq middleware)
           `(-> ~routes ~@middleware)
           routes))))
+
+(defmacro context
+  "Replacement for `compojure.core/context`, but with metadata"
+  [path args & routes]
+  `(with-meta (compojure/context ~path ~args ~@routes) {:routes (vector ~@routes)
+                                                        :path   ~path}))
+
+(defmacro defroutes
+  "Replacement for `compojure.core/defroutes, but with metadata"
+  [name & routes]
+  (let [[name routes] (macro/name-with-attributes name routes)
+        name          (vary-meta name assoc :routes (vec routes))]
+    `(def ~name (compojure/routes ~@routes))))
 
 (defn +check-superuser
   "Wrap a Ring handler to make sure the current user is a superuser before handling any requests.

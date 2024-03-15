@@ -423,6 +423,7 @@
   metabase-enterprise.serialization.test-util/with-dbs                                 clojure.core/fn
   metabase.actions.test-util/with-actions                                              clojure.core/let
   metabase.api.common/let-404                                                          clojure.core/let
+  metabase.api.common/defroutes                                                        clojure.core/def
   metabase.api.search-test/do-test-users                                               clojure.core/let
   metabase.async.api-response-test/with-response                                       clojure.core/let
   metabase.dashboard-subscription-test/with-dashboard-sub-for-card                     clojure.core/let
