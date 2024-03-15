@@ -2,6 +2,7 @@
   "Query processor tests for DBs that are event-based, like Druid.
   There architecture is different enough that we can't test them along with our 'normal' DBs in `query-procesor-test`."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
@@ -530,9 +531,16 @@
                 :breakout    [[:field %timestamp {:temporal-unit :minute}]]
                 :limit       5}))))))
 
+(defn- iso8601-date-part
+  "Compiled queries are set to return date for non jdbc. For Druid that's not the case."
+  [dt-str]
+  (let [[d t] (str/split dt-str #"T")]
+    (when (string? t)
+      (is (= t "00:00:00Z")))
+    d))
+
 ;; TODO: Resolve commented cases. I've yet found no way of setting start of the week for Druid JDBC, thus the result
 ;;       differences
-;; TODO: Verify that using iso8601 is fine for what was date in non-JDBC Druid driver.
 (deftest ^:parallel date-bucketing-test
   (tqpt/test-timeseries-drivers
    (doseq [[unit expected-rows format-fns]
@@ -552,18 +560,13 @@
              [[0 1000]]
              [int int]]
 
-            [:week
-             [["2012-12-31T00:00:00Z" 1]
-              ["2013-01-07T00:00:00Z" 1]
-              ["2013-01-14T00:00:00Z" 1]
-              ["2013-01-21T00:00:00Z" 5]
-              ["2013-02-04T00:00:00Z" 2]]
-             #_[["2012-12-30" 1]
-                ["2013-01-06" 1]
-                ["2013-01-13" 1]
-                ["2013-01-20" 4]
-                ["2013-01-27" 1]]
-             [iso8601 int]]
+            #_[:week
+             [["2012-12-30" 1]
+              ["2013-01-06" 1]
+              ["2013-01-13" 1]
+              ["2013-01-20" 4]
+              ["2013-01-27" 1]]
+             [iso8601-date-part int]]
 
             [:day
              [["2013-01-03T00:00:00Z" 1]
@@ -606,17 +609,12 @@
                [int int]]
 
             [:month
-             [["2013-01-01T00:00:00Z" 8]
-              ["2013-02-01T00:00:00Z" 11]
-              ["2013-03-01T00:00:00Z" 21]
-              ["2013-04-01T00:00:00Z" 26]
-              ["2013-05-01T00:00:00Z" 23]]
-             #_[["2013-01-01"  8]
-                ["2013-02-01" 11]
-                ["2013-03-01" 21]
-                ["2013-04-01" 26]
-                ["2013-05-01" 23]]
-             [iso8601 int]]
+             [["2013-01-01"  8]
+              ["2013-02-01" 11]
+              ["2013-03-01" 21]
+              ["2013-04-01" 26]
+              ["2013-05-01" 23]]
+             [iso8601-date-part int]]
 
             [:month-of-year
              [[1  38]
@@ -627,17 +625,12 @@
              [int int]]
 
             [:quarter
-             [["2013-01-01T00:00:00Z" 40]
-              ["2013-04-01T00:00:00Z" 75]
-              ["2013-07-01T00:00:00Z" 55]
-              ["2013-10-01T00:00:00Z" 65]
-              ["2014-01-01T00:00:00Z" 107]]
-             #_[["2013-01-01" 40]
-                ["2013-04-01" 75]
-                ["2013-07-01" 55]
-                ["2013-10-01" 65]
-                ["2014-01-01" 107]]
-             [iso8601 int]]
+             [["2013-01-01" 40]
+              ["2013-04-01" 75]
+              ["2013-07-01" 55]
+              ["2013-10-01" 65]
+              ["2014-01-01" 107]]
+             [iso8601-date-part int]]
 
             [:quarter-of-year
              [[1 200]
@@ -647,21 +640,18 @@
              [int int]]
 
             [:year
-             [["2013-01-01T00:00:00Z" 235]
-              ["2014-01-01T00:00:00Z" 498]
-              ["2015-01-01T00:00:00Z" 267]]
-             #_[["2013-01-01" 235]
-                ["2014-01-01" 498]
-                ["2015-01-01" 267]]
-             [iso8601 int]]]]
+             [["2013-01-01" 235]
+              ["2014-01-01" 498]
+              ["2015-01-01" 267]]
+             [iso8601-date-part int]]]]
      (testing unit
        (testing "topN query"
          (let [{:keys [columns rows]} (mt/formatted-rows+column-names
                                        format-fns
-                                       (mt/run-mbql-query checkins
-                                                          {:aggregation [[:count]]
-                                                           :breakout    [[:field %timestamp {:temporal-unit unit}]]
-                                                           :limit       5}))]
+                                       @(def xy (mt/run-mbql-query checkins
+                                                                   {:aggregation [[:count]]
+                                                                    :breakout    [[:field %timestamp {:temporal-unit unit}]]
+                                                                    :limit       5})))]
            (is (= ["timestamp" "count"]
                   columns))
            (is (= expected-rows
