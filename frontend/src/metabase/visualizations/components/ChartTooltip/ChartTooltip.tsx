@@ -26,7 +26,12 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
     }
 
     if (hovered.stackedTooltipModel) {
-      return <StackedDataTooltip {...hovered.stackedTooltipModel} />;
+      return (
+        <StackedDataTooltip
+          {...hovered.stackedTooltipModel}
+          settings={settings}
+        />
+      );
     }
 
     return <KeyValuePairChartTooltip hovered={hovered} settings={settings} />;

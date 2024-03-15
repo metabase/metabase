@@ -14,6 +14,7 @@ import {
 export interface TooltipRowProps extends TooltipRowModel {
   isHeader?: boolean;
   percent?: number;
+  isNormalized?: boolean;
 }
 
 export const TooltipRow = ({
@@ -22,6 +23,7 @@ export const TooltipRow = ({
   color,
   percent,
   isHeader,
+  isNormalized,
   formatter = (value: unknown) => String(value),
 }: TooltipRowProps) => (
   <TooltipRowRoot isHeader={isHeader}>
@@ -30,7 +32,10 @@ export const TooltipRow = ({
         <ColorIndicator size={isHeader ? 12 : 8} color={color} />
       </ColorIndicatorCell>
     )}
-    <Cell data-testid="row-name">{name}</Cell>
+    <Cell data-testid="row-name">
+      {isNormalized && "% "}
+      {name}
+    </Cell>
     <ValueCell data-testid="row-value">{formatter(value)}</ValueCell>
     {percent != null ? (
       <PercentCell data-testid="row-percent">

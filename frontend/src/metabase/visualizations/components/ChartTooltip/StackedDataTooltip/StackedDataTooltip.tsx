@@ -1,6 +1,9 @@
 import { useMemo } from "react";
 import { color } from "metabase/lib/colors";
-import type { StackedTooltipModel } from "metabase/visualizations/types";
+import type {
+  ComputedVisualizationSettings,
+  StackedTooltipModel,
+} from "metabase/visualizations/types";
 import { TooltipRow, TooltipTotalRow } from "../TooltipRow";
 import {
   DataPointHeader,
@@ -19,13 +22,16 @@ import {
 
 const MAX_BODY_ROWS = 8;
 
-type StackedDataTooltipProps = StackedTooltipModel;
+type StackedDataTooltipProps = StackedTooltipModel & {
+  settings: ComputedVisualizationSettings;
+};
 
 const StackedDataTooltip = ({
   headerTitle,
   headerRows,
   bodyRows = [],
   grandTotal,
+  settings,
   showTotal,
   showPercentages,
   totalFormatter = (value: unknown) => String(value),
@@ -38,6 +44,10 @@ const StackedDataTooltip = ({
   const rowsTotal = useMemo(
     () => getTotalValue(sortedHeaderRows, sortedBodyRows),
     [sortedHeaderRows, sortedBodyRows],
+  );
+  const isNormalized = useMemo(
+    () => settings["stackable.stack_type"] === "normalized",
+    [settings],
   );
 
   const isShowingTotalSensible =
@@ -74,6 +84,7 @@ const StackedDataTooltip = ({
               percent={
                 showPercentages ? getPercent(rowsTotal, row.value) : undefined
               }
+              isNormalized={isNormalized}
               {...row}
             />
           ))}
@@ -87,6 +98,7 @@ const StackedDataTooltip = ({
                 percent={
                   showPercentages ? getPercent(rowsTotal, row.value) : undefined
                 }
+                isNormalized={isNormalized}
                 {...row}
               />
             ))}
