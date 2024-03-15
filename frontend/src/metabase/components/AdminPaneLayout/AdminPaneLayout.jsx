@@ -3,6 +3,7 @@ import { Fragment } from "react";
 
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import AdminS from "metabase/css/admin.module.css";
 
 import { Container, HeadingContainer } from "./AdminPaneLayout.styled";
 
@@ -20,7 +21,7 @@ const AdminPaneTitle = ({
     <Container>
       <HeadingContainer>
         {headingContent && <Fragment>{headingContent}</Fragment>}
-        {title && <h2 className="PageTitle">{title}</h2>}
+        {title && <h2 className={AdminS.PageTitle}>{title}</h2>}
         {buttonText && buttonLink && (
           <Link to={buttonLink} className={buttonClassName}>
             <Button primary>{buttonText}</Button>

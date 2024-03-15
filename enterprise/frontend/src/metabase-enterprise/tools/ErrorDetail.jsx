@@ -104,7 +104,7 @@ function ErrorDetailDisplay(props) {
     );
 
     return [
-      <h2 className="PageTitle py2" key="card_name">
+      <h2 className={cx(AdminS.PageTitle, "py2")} key="card_name">
         {
           <Link to={cardUrlVal} className={cardLinkClass}>
             {resRow[nameToResCol.card_name]}
