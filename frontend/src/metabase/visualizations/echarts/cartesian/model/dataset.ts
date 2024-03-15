@@ -269,39 +269,40 @@ export const getNullReplacerTransform = (
   );
 };
 
+const hasInterpolatedSeries = (
+  seriesModels: SeriesModel[],
+  settings: ComputedVisualizationSettings,
+) => {
+  return seriesModels.some(seriesModel => {
+    return (
+      settings.series(seriesModel.legacySeriesSettingsObjectKey)[
+        "line.missing"
+      ] !== "none"
+    );
+  });
+};
+
 /**
  * Returns datum transformation function for stacked areas series with "interpolate" missing values setting.
  * It replaces null values with 0 if at least one series has non-null value.
  */
 const getStackedAreasInterpolateTransform = (
   seriesModels: SeriesModel[],
-  settings: ComputedVisualizationSettings,
 ): TransformFn => {
-  const interpolateDataKeys = seriesModels
-    .filter(
-      seriesModel =>
-        settings.series(seriesModel.legacySeriesSettingsObjectKey)[
-          "line.missing"
-        ] === "interpolate",
-    )
-    .map(seriesModel => seriesModel.dataKey);
+  const seriesKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
 
   return (datum: Datum) => {
-    const hasAnyNonNullSeries = seriesModels.some(
-      seriesModel => datum[seriesModel.dataKey] != null,
-    );
-
-    if (hasAnyNonNullSeries) {
-      const transformedRecord = { ...datum };
-      for (const key of interpolateDataKeys) {
-        if (key in datum) {
-          transformedRecord[key] = datum[key] == null ? 0 : datum[key];
-        }
-      }
-      return transformedRecord;
+    const hasAtLeastOneSeriesValue = seriesKeys.some(key => datum[key] != null);
+    if (!hasAtLeastOneSeriesValue) {
+      return datum;
     }
 
-    return datum;
+    const transformedDatum = { ...datum };
+    for (const seriesModel of seriesModels) {
+      const dataKey = seriesModel.dataKey;
+      transformedDatum[dataKey] = datum[dataKey] == null ? 0 : datum[dataKey];
+    }
+    return transformedDatum;
   };
 };
 
@@ -369,8 +370,9 @@ export const applyVisualizationSettingsDataTransformations = (
     {
       condition:
         settings["stackable.stack_type"] != null &&
-        settings["stackable.stack_display"] === "area",
-      fn: getStackedAreasInterpolateTransform(seriesModels, settings),
+        settings["stackable.stack_display"] === "area" &&
+        hasInterpolatedSeries(seriesModels, settings),
+      fn: getStackedAreasInterpolateTransform(seriesModels),
     },
   ]);
 };
