@@ -273,7 +273,7 @@
   "Return an automagic dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`."
   [entity entity-id-or-query prefix dashboard-template show]
   {entity             Entity
-   entity-id-or-query string?
+   entity-id-or-query ms/NonBlankString
    show               Show
    prefix             Prefix
    dashboard-template DashboardTemplate}
@@ -287,7 +287,7 @@
    query `cell-query`."
   [entity entity-id-or-query cell-query show]
   {entity             Entity
-   entity-id-or-query string?
+   entity-id-or-query ms/NonBlankString
    show               Show
    cell-query         Base64EncodedJSON}
   (-> (->entity entity entity-id-or-query)
@@ -299,7 +299,7 @@
    query `cell-query` using dashboard-template `dashboard-template`."
   [entity entity-id-or-query cell-query prefix dashboard-template show]
   {entity             Entity
-   entity-id-or-query string?
+   entity-id-or-query ms/NonBlankString
    show               Show
    prefix             Prefix
    dashboard-template DashboardTemplate
@@ -314,7 +314,7 @@
    `comparison-entity` with id `comparison-entity-id-or-query.`"
   [entity entity-id-or-query show comparison-entity comparison-entity-id-or-query]
   {show               Show
-   entity-id-or-query string?
+   entity-id-or-query ms/NonBlankString
    entity             Entity
    comparison-entity  ComparisonEntity}
   (let [left      (->entity entity entity-id-or-query)
@@ -329,7 +329,7 @@
    compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`."
   [entity entity-id-or-query prefix dashboard-template show comparison-entity comparison-entity-id-or-query]
   {entity             Entity
-   entity-id-or-query string?
+   entity-id-or-query ms/NonBlankString
    show               Show
    prefix             Prefix
    dashboard-template DashboardTemplate
@@ -348,7 +348,7 @@
    `comparison-entity-id-or-query.`."
   [entity entity-id-or-query cell-query show comparison-entity comparison-entity-id-or-query]
   {entity             Entity
-   entity-id-or-query string?
+   entity-id-or-query ms/NonBlankString
    show               Show
    cell-query         Base64EncodedJSON
    comparison-entity  ComparisonEntity}
@@ -365,7 +365,7 @@
    `comparison-entity` with id `comparison-entity-id-or-query.`."
   [entity entity-id-or-query cell-query prefix dashboard-template show comparison-entity comparison-entity-id-or-query]
   {entity             Entity
-   entity-id-or-query string?
+   entity-id-or-query ms/NonBlankString
    show               Show
    prefix             Prefix
    dashboard-template DashboardTemplate
