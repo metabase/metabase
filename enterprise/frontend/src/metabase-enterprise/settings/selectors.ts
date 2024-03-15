@@ -1,8 +1,13 @@
+import type { IllustrationValue } from "metabase/plugins";
 import { getSetting, getSettings } from "metabase/selectors/settings";
 
 import { LOADING_MESSAGE_BY_SETTING } from "../whitelabel/lib/loading-message";
 
-import type { EnterpriseSettings, EnterpriseState } from "./types";
+import type {
+  EnterpriseSettings,
+  EnterpriseState,
+  IllustrationSettingValue,
+} from "./types";
 
 const DEFAULT_LOGO_URL = "app/assets/img/logo.svg";
 
@@ -34,17 +39,28 @@ export function getShowMetabaseLinks(state: EnterpriseState) {
   return getSetting(state, "show-metabase-links");
 }
 
-export function getLoginPageIllustration(state: EnterpriseState) {
-  const illustrationOption = getSetting(state, "login-page-illustration");
-  if (illustrationOption === "default") {
-    return "app/img/bridge.svg";
-  }
+export function getLoginPageIllustration(
+  state: EnterpriseState,
+): IllustrationValue {
+  const illustrationOption = getSetting(
+    state,
+    "login-page-illustration",
+  ) as IllustrationSettingValue;
 
-  if (illustrationOption === "no-illustration") {
-    return null;
-  }
+  switch (illustrationOption) {
+    case "default":
+      return {
+        src: "app/img/bridge.svg",
+        isDefault: true,
+      };
 
-  if (illustrationOption === "custom") {
-    return getSetting(state, "login-page-illustration-custom");
+    case "no-illustration":
+      return null;
+
+    case "custom":
+      return {
+        src: getSetting(state, "login-page-illustration-custom") as string,
+        isDefault: false,
+      };
   }
 }

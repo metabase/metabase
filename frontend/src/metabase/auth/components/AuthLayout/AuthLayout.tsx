@@ -23,8 +23,8 @@ export const AuthLayout = ({ children }: AuthLayoutProps): JSX.Element => {
       {loginPageIllustration && (
         <LayoutIllustration
           data-testid="login-page-container"
-          backgroundImageSrc={loginPageIllustration}
-          isDefault={loginPageIllustration === "app/img/bridge.svg"}
+          backgroundImageSrc={loginPageIllustration.src}
+          isDefault={loginPageIllustration.isDefault}
         />
       )}
       <LayoutBody>

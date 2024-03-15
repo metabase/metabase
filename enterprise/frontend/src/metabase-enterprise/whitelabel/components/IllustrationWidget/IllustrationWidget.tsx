@@ -8,14 +8,14 @@ import { Button, Flex, Icon, Paper, Select, Text } from "metabase/ui";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
-  IllustrationValue,
+  IllustrationSettingValue,
 } from "metabase-enterprise/settings/types";
 
 import { LighthouseImage, PreviewImage } from "./IllustrationWidget.styled";
 
 export interface StringSetting {
-  value: IllustrationValue | null;
-  default: IllustrationValue;
+  value: IllustrationSettingValue | null;
+  default: IllustrationSettingValue;
 }
 
 type IllustrationWidgetProps = {
@@ -59,7 +59,7 @@ export function IllustrationWidget({
     [defaultIllustrationLabel],
   );
 
-  function handleChange(value: IllustrationValue) {
+  function handleChange(value: IllustrationSettingValue) {
     setErrorMessage("");
     // Avoid saving the same value
     // When setting.value is set to the default value its value would be `null`
@@ -184,7 +184,7 @@ export function IllustrationWidget({
 }
 
 interface GetPreviewImageProps {
-  value: IllustrationValue;
+  value: IllustrationSettingValue;
   customSource: string | undefined;
 }
 
