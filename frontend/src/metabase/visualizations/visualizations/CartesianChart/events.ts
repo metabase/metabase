@@ -1,6 +1,7 @@
 import _ from "underscore";
 import type {
   BaseCartesianChartModel,
+  ChartDataset,
   DataKey,
   Datum,
   DimensionModel,
@@ -34,7 +35,10 @@ import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import {
+  ORIGINAL_INDEX_DATA_KEY,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { isStructured } from "metabase-lib/queries/utils/card";
 import Question from "metabase-lib/Question";
 import {
@@ -231,12 +235,29 @@ export const canBrush = (
   );
 };
 
+function getDataIndex(
+  transformedDataset: ChartDataset,
+  echartsDataIndex: number | undefined,
+) {
+  if (echartsDataIndex == null) {
+    return undefined;
+  }
+
+  const originalDataIndex =
+    transformedDataset[echartsDataIndex][ORIGINAL_INDEX_DATA_KEY];
+  return originalDataIndex ?? echartsDataIndex;
+}
+
 export const getSeriesHoverData = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
 ) => {
-  const { dataIndex, seriesId } = event;
+  const { dataIndex: echartsDataIndex, seriesId } = event;
+  const dataIndex = getDataIndex(
+    chartModel.transformedDataset,
+    echartsDataIndex,
+  );
   const seriesIndex = findSeriesModelIndexById(chartModel, seriesId);
 
   if (seriesIndex < 0 || dataIndex == null) {
@@ -337,7 +358,11 @@ export const getSeriesClickData = (
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
 ): ClickObject | undefined => {
-  const { seriesId, dataIndex } = event;
+  const { seriesId, dataIndex: echartsDataIndex } = event;
+  const dataIndex = getDataIndex(
+    chartModel.transformedDataset,
+    echartsDataIndex,
+  );
   const seriesIndex = findSeriesModelIndexById(chartModel, seriesId);
   const seriesModel = chartModel.seriesModels[seriesIndex];
 

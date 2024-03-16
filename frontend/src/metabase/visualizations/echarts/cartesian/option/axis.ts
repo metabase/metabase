@@ -13,7 +13,6 @@ import type {
 } from "metabase/visualizations/types";
 import type {
   BaseCartesianChartModel,
-  CategoryXAxisModel,
   Extent,
   NumericXAxisModel,
   TimeSeriesXAxisModel,
@@ -107,6 +106,25 @@ export const getDimensionTicksDefaultOption = (
   };
 };
 
+const getHistogramTicksOptions = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  chartMeasurements: ChartMeasurements,
+) => {
+  if (settings["graph.x_axis.scale"] !== "histogram") {
+    return {};
+  }
+
+  const histogramDimensionWidth =
+    chartMeasurements.boundaryWidth / chartModel.transformedDataset.length;
+
+  return {
+    padding: [0, histogramDimensionWidth, 0, 0],
+    showMinLabel: false,
+    showMaxLabel: true,
+  };
+};
+
 const getRotateAngle = (settings: ComputedVisualizationSettings) => {
   switch (settings["graph.x_axis.axis_enabled"]) {
     case "rotate-45":
@@ -179,7 +197,7 @@ export const buildDimensionAxis = (
   }
 
   return buildCategoricalDimensionAxis(
-    xAxisModel,
+    chartModel,
     settings,
     chartMeasurements,
     renderingContext,
@@ -273,12 +291,14 @@ export const buildTimeSeriesDimensionAxis = (
 };
 
 export const buildCategoricalDimensionAxis = (
-  xAxisModel: CategoryXAxisModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
 ): CategoryAxisBaseOption => {
-  const { formatter } = xAxisModel;
+  const {
+    xAxisModel: { formatter },
+  } = chartModel;
 
   return {
     ...getCommonDimensionAxisOptions(
@@ -290,6 +310,7 @@ export const buildCategoricalDimensionAxis = (
     axisLabel: {
       margin: CHART_STYLE.axisTicksMarginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
+      ...getHistogramTicksOptions(chartModel, settings, chartMeasurements),
       formatter: (value: string) => {
         return ` ${formatter(value)} `; // spaces force padding between ticks
       },
