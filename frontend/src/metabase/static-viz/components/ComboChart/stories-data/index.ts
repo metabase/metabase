@@ -9,8 +9,11 @@ import areaFullyNullDimension37902 from "./area-fully-null-dimension-37902.json"
 import barLinearXScale from "./bar-linear-x-scale.json";
 import barHistogramXScale from "./bar-histogram-x-scale.json";
 import barHistogramMultiSeries from "./bar-histogram-multi-series.json";
+import barHistogramMultiSeriesBinned from "./bar-histogram-multi-series-binned.json";
+import barHistogramSeriesBreakout from "./bar-histogram-series-breakout.json";
 import barHistogramStacked from "./bar-histogram-stacked.json";
 import barHistogramStackedNormalized from "./bar-histogram-stacked-normalized.json";
+import barHistogramUnaggregatedDimension from "./bar-histogram-unaggregated-dimension.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import barStackedNormalizedEmptySpace37880 from "./bar-stacked-normalized-empty-space-37880.json";
 import barTwoAxesStackedWithNegativeValues from "./bar-two-axes-stacked-with-negative-values.json";
@@ -37,6 +40,7 @@ import trendMultiSeriesNormalizedStackedBar from "./trend-multi-series-normalize
 import trendCombo from "./trend-combo.json";
 import trendComboPower from "./trend-combo-power.json";
 import trendComboLog from "./trend-combo-log.json";
+import comboHistogram from "./combo-histogram.json";
 import comboBarsBecomeStackedInStaticViz38827 from "./combo-becomes-stacked-in-static-viz-38827.json";
 import combinedBarTimeSeriesDifferentGranularityWithBreakout from "./combined-bar-timeseries-different-granularity-with-breakout.json";
 import barsBreakoutSortedWithNegativeValuesPowerYAxis from "./bars-breakout-sorted-with-negative-values-power-y-axis.json";
@@ -66,8 +70,11 @@ export const data = {
   barLinearXScale,
   barHistogramXScale,
   barHistogramMultiSeries,
+  barHistogramMultiSeriesBinned,
+  barHistogramSeriesBreakout,
   barHistogramStacked,
   barHistogramStackedNormalized,
+  barHistogramUnaggregatedDimension,
   barOrdinalXScale,
   barTwoAxesStackedWithNegativeValues,
   barBreakoutWithLineSeriesStackedRightAxisOnly,
@@ -95,6 +102,7 @@ export const data = {
   trendCombo,
   trendComboPower,
   trendComboLog,
+  comboHistogram,
   comboBarsBecomeStackedInStaticViz38827,
   combinedBarTimeSeriesDifferentGranularityWithBreakout,
   longDimensionNameCutOff37420,
