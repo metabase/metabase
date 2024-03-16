@@ -9,6 +9,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Modal from "metabase/components/Modal";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Select, { Option } from "metabase/core/components/Select";
+import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { uuid } from "metabase/lib/utils";
 import { SettingsApi, GeoJSONApi } from "metabase/services";
@@ -146,7 +147,7 @@ export default class CustomGeoJSONWidget extends Component {
           <SettingHeader setting={setting} />
           {!this.state.map && (
             <button
-              className="Button Button--primary ml1"
+              className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary, CS.ml1)}
               onClick={() =>
                 this.setState({
                   map: {
@@ -235,7 +236,9 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }) => (
                   action={() => onDeleteMap(map)}
                   title={t`Delete custom map`}
                 >
-                  <button className="Button Button--danger">{t`Remove`}</button>
+                  <button
+                    className={cx(ButtonsS.Button, ButtonsS.ButtonDanger)}
+                  >{t`Remove`}</button>
                 </Confirm>
               </td>
             </tr>
@@ -344,9 +347,9 @@ const EditMap = ({
               onChange={e => onMapChange({ ...map, url: e.target.value })}
             />
             <button
-              className={cx("Button ml1", {
-                "Button--primary": !geoJson,
-                disabled: !map.url,
+              className={cx(ButtonsS.Button, CS.ml1, {
+                [ButtonsS.ButtonPrimary]: !geoJson,
+                [CS.disabled]: !map.url,
               })}
               onClick={onLoadGeoJson}
             >
@@ -398,12 +401,12 @@ const EditMap = ({
     <div className="py1 flex">
       <div className="ml-auto">
         <button
-          className={cx("Button Button")}
+          className={ButtonsS.Button}
           onClick={onCancel}
         >{t`Cancel`}</button>
         <button
-          className={cx("Button Button--primary ml1", {
-            disabled:
+          className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary, CS.ml1, {
+            [CS.disabled]:
               !map.name || !map.url || !map.region_name || !map.region_key,
           })}
           onClick={onSave}

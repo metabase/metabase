@@ -116,7 +116,7 @@
                     (not= widget-type :none))
                [param-name widget-type]
 
-               (contains? mbql.s/raw-value-template-tag-types tag-type)
+               (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
                [param-name tag-type])))
       (filter some?))
      (get-in query [:native :template-tags]))))

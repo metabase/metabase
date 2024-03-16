@@ -12,6 +12,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.literal :as lib.schema.literal]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
    [metabase.mbql.schema.macros :refer [defclause one-of]]
    [metabase.shared.util.i18n :as i18n]
@@ -1171,14 +1172,6 @@
     ;; optional map to be appended to filter clause
     [:options {:optional true} [:maybe [:map-of :keyword :any]]]]])
 
-(def raw-value-template-tag-types
-  "Set of valid values of `:type` for raw value template tags."
-  #{:number :text :date :boolean})
-
-(def ^:private TemplateTag:RawValue:Type
-  "Valid values of `:type` for raw value template tags."
-  (into [:enum] raw-value-template-tag-types))
-
 ;; Example:
 ;;
 ;;    {:id           "35f1ecd4-d622-6d14-54be-750c498043cb"
@@ -1194,7 +1187,7 @@
    ;; `:type` is used be the FE to determine which type of widget to display for the template tag, and to determine
    ;; which types of parameters are allowed to be passed in for this template tag.
    [:map
-    [:type TemplateTag:RawValue:Type]]])
+    [:type ::lib.schema.template-tag/raw-value.type]]])
 
 (mr/def ::TemplateTag
   [:multi
@@ -1557,18 +1550,6 @@
 
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------
-
-(def saved-questions-virtual-database-id
-  "The ID used to signify that a database is 'virtual' rather than physical.
-
-   A fake integer ID is used so as to minimize the number of changes that need to be made on the frontend -- by using
-   something that would otherwise be a legal ID, *nothing* need change there, and the frontend can query against this
-   'database' none the wiser. (This integer ID is negative which means it will never conflict with a *real* database
-   ID.)
-
-   This ID acts as a sort of flag. The relevant places in the middleware can check whether the DB we're querying is
-   this 'virtual' database and take the appropriate actions."
-  lib.schema.id/saved-questions-virtual-database-id)
 
 ;; To the reader: yes, this seems sort of hacky, but one of the goals of the Nested Query Initiative™ was to minimize
 ;; if not completely eliminate any changes to the frontend. After experimenting with several possible ways to do this

@@ -366,8 +366,9 @@
       (throw (ex-info (tru "Error determining value for parameter {0}: {1}"
                            (pr-str (:name tag))
                            (ex-message e))
-                      {:tag  tag
-                       :type (or (:type (ex-data e)) qp.error-type/invalid-parameter)}
+                      {:tag    tag
+                       :type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)
+                       :params params}
                       e)))))
 
 (mu/defn query->params-map :- [:map-of ms/NonBlankString ParsedParamValue]

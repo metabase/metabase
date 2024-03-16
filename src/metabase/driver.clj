@@ -115,7 +115,7 @@
 (add-watch
  #'hierarchy
  nil
- (fn [_ _ _ _]
+ (fn [_key _ref _old-state _new-state]
    (when (not= hierarchy driver.impl/hierarchy)
      ;; this is a dev-facing error so no need to i18n it.
      (throw (Exception. (str "Don't alter #'metabase.driver/hierarchy directly, since it is imported from "
@@ -586,7 +586,10 @@
 
     ;; Does the driver support a faster `sync-fields` step by fetching all FK metadata in a single collection?
     ;; if so, `metabase.driver/describe-fields` must be implemented instead of `metabase.driver/describe-table`
-    :describe-fields})
+    :describe-fields
+
+    ;; Does the driver support fingerprint the fields. Default is true
+    :fingerprint})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -620,7 +623,8 @@
                               :date-arithmetics                       true
                               :temporal-extract                       true
                               :schemas                                true
-                              :test/jvm-timezone-setting              true}]
+                              :test/jvm-timezone-setting              true
+                              :fingerprint                            true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 (defmulti ^String escape-alias

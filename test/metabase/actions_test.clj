@@ -33,7 +33,7 @@
   (mt/format-name (name field-name)))
 
 (defn- categories-row-count []
-  (first (mt/first-row (mt/run-mbql-query categories {:aggregation [[:count]]}))))
+  (first (mt/first-row (mt/run-mbql-query categories {:aggregation [[:count]], :limit 1}))))
 
 (deftest create-test
   (testing "row/create"
@@ -126,11 +126,15 @@
       (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
         (binding [*current-user-permissions-set* (delay #{"/"})]
           (testing "Should return a 400 if Database feature flag is disabled."
-            (is (partial= ["Actions are not enabled." {:database-id (mt/id)}]
-                          (try
-                            (actions/perform-action! action request-body)
-                            (catch Exception e
-                              [(ex-message e) (ex-data e)]))))))))))
+            (is (thrown-with-msg?
+                 Throwable
+                 #"\QActions are not enabled.\E"
+                 (actions/perform-action! action request-body)))
+            (try
+              (actions/perform-action! action request-body)
+              (catch Throwable e
+                (is (=? {:database-id (mt/id)}
+                        (ex-data e)))))))))))
 
 (driver/register! ::feature-flag-test-driver, :parent :h2)
 
@@ -239,7 +243,7 @@
               (is (= 75
                      (categories-row-count))))))))))
 
-(defmacro is-ex-data [expected-schema actual-call]
+(defmacro ^:private is-ex-data [expected-schema actual-call]
   `(try
      ~actual-call
      (is (= true false))

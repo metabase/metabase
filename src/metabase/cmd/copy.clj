@@ -70,7 +70,6 @@
     :model/BookmarkOrdering
     :model/DashboardCard
     :model/DashboardCardSeries
-    :model/Activity
     :model/Pulse
     :model/PulseCard
     :model/PulseChannel
