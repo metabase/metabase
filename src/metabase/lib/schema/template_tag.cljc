@@ -4,7 +4,6 @@
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.mbql.schema :as mbql.s]
    [metabase.util.malli.registry :as mr]))
 
 ;; Schema for valid values of `:widget-type` for a [[TemplateTag:FieldFilter]].
@@ -24,10 +23,15 @@
    {:decode/normalize common/normalize-keyword}
    :snippet :card :dimension :number :text :date])
 
+(mr/def ::name
+  [:ref
+   {:decode/normalize common/normalize-string-key}
+   ::common/non-blank-string])
+
 ;;; Things required by all template tag types.
 (mr/def ::common
   [:map
-   [:name         ::common/non-blank-string]
+   [:name         ::name]
    [:display-name ::common/non-blank-string]
    ;; TODO -- `:id` is actually 100% required but we have a lot of tests that don't specify it because this constraint
    ;; wasn't previously enforced; we need to go in and fix those tests and make this non-optional
@@ -107,9 +111,13 @@
      [:card-id ::id/card]]]
    [:ref ::disallow-dimension]])
 
+(def raw-value-template-tag-types
+  "Set of valid values of `:type` for raw value template tags."
+  #{:number :text :date :boolean})
+
 ;; Valid values of `:type` for raw value template tags.
 (mr/def ::raw-value.type
-  (into [:enum] mbql.s/raw-value-template-tag-types))
+  (into [:enum] raw-value-template-tag-types))
 
 ;; Example:
 ;;
@@ -143,7 +151,7 @@
 
 (mr/def ::template-tag-map
   [:and
-   [:map-of ::common/non-blank-string [:ref ::template-tag]]
+   [:map-of ::name ::template-tag]
    ;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.
    [:fn
     {:error/message "keys in template tag map must match the :name of their values"}

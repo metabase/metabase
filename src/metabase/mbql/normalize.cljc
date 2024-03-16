@@ -36,6 +36,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -360,6 +361,10 @@
     (cond-> native-query
       (seq (:template-tags native-query)) (update :template-tags normalize-template-tags))))
 
+(defn- normalize-actions-row [row]
+  (cond-> row
+    (map? row) (update-keys u/qualified-name)))
+
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
   `:expressions` key in an MBQL query should preserve the case of the expression names; this custom behavior is
@@ -384,8 +389,8 @@
    :context         #(some-> % maybe-normalize-token)
    :source-metadata {::sequence normalize-source-metadata}
    :viz-settings    maybe-normalize-token
-   :create-row      identity
-   :update-row      identity})
+   :create-row      normalize-actions-row
+   :update-row      normalize-actions-row})
 
 (defn normalize-tokens
   "Recursively normalize tokens in `x`.

@@ -15,8 +15,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
+   [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 (defmethod lib.metadata.calculation/metadata-method :mbql/query

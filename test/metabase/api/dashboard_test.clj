@@ -4003,7 +4003,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest param-values-no-field-ids-test
-  (testing "Ensure param value looktup works for values where field ids are not provided, but field refs are."
+  (testing "Ensure param value lookup works for values where field ids are not provided, but field refs are."
     ;; This is a common case for nested queries
     (mt/dataset test-data
       (mt/with-temp-copy-of-db
