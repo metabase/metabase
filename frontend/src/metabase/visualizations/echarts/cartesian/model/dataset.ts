@@ -22,7 +22,7 @@ import { isEmpty } from "metabase/lib/validate";
 
 import { getBreakoutDistinctValues } from "metabase/visualizations/echarts/cartesian/model/series";
 import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
-import { isNotNull } from "metabase/lib/types";
+import { checkNumber, isNotNull } from "metabase/lib/types";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
@@ -333,6 +333,23 @@ function filterNullDimensionValues(dataset: ChartDataset) {
   return filteredDataset;
 }
 
+function getHistogramDataset(
+  dataset: ChartDataset,
+  histogramInterval: number | undefined,
+) {
+  const interval = histogramInterval ?? 1;
+
+  dataset.unshift({
+    [X_AXIS_DATA_KEY]: checkNumber(dataset[0][X_AXIS_DATA_KEY]) - interval,
+  });
+  dataset.push({
+    [X_AXIS_DATA_KEY]:
+      checkNumber(dataset[dataset.length - 1][X_AXIS_DATA_KEY]) + interval,
+  });
+
+  return dataset;
+}
+
 /**
  * Modifies the dataset for visualization according to the specified visualization settings.
  *
@@ -346,7 +363,7 @@ export const applyVisualizationSettingsDataTransformations = (
   xAxisModel: XAxisModel,
   seriesModels: SeriesModel[],
   settings: ComputedVisualizationSettings,
-): ChartDataset => {
+) => {
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
 
   if (
@@ -355,6 +372,10 @@ export const applyVisualizationSettingsDataTransformations = (
     xAxisModel.isHistogram
   ) {
     dataset = filterNullDimensionValues(dataset);
+  }
+
+  if (xAxisModel.axisType === "category" && xAxisModel.isHistogram) {
+    dataset = getHistogramDataset(dataset, xAxisModel.histogramInterval);
   }
 
   return transformDataset(dataset, [

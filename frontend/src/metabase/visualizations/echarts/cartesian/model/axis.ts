@@ -810,10 +810,16 @@ export function getXAxisModel(
     });
   };
 
+  const histogramInterval = isHistogram
+    ? dimensionColumn.binning_info?.bin_width ??
+      computeNumericDataInverval(dataset.map(datum => datum[X_AXIS_DATA_KEY]))
+    : undefined;
+
   return {
     formatter,
     label,
     isHistogram,
+    histogramInterval,
     axisType: "category",
   };
 }
