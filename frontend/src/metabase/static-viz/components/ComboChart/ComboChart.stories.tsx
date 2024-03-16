@@ -105,6 +105,20 @@ BarHistogramMultiSeries.args = {
   renderingContext,
 };
 
+export const BarHistogramMultiSeriesBinned = Template.bind({});
+BarHistogramMultiSeriesBinned.args = {
+  rawSeries: data.barHistogramMultiSeriesBinned as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarHistogramSeriesBreakout = Template.bind({});
+BarHistogramSeriesBreakout.args = {
+  rawSeries: data.barHistogramSeriesBreakout as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const BarHistogramStacked = Template.bind({});
 BarHistogramStacked.args = {
   rawSeries: data.barHistogramStacked as any,
@@ -115,6 +129,13 @@ BarHistogramStacked.args = {
 export const BarHistogramStackedNormalized = Template.bind({});
 BarHistogramStackedNormalized.args = {
   rawSeries: data.barHistogramStackedNormalized as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarHistogramUnaggregatedDimension = Template.bind({});
+BarHistogramUnaggregatedDimension.args = {
+  rawSeries: data.barHistogramUnaggregatedDimension as any,
   dashcardSettings: {},
   renderingContext,
 };
@@ -297,6 +318,13 @@ TrendComboPower.args = {
 export const TrendComboLog = Template.bind({});
 TrendComboLog.args = {
   rawSeries: data.trendComboLog as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const ComboHistogram = Template.bind({});
+ComboHistogram.args = {
+  rawSeries: data.comboHistogram as any,
   dashcardSettings: {},
   renderingContext,
 };
