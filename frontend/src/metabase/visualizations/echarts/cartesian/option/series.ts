@@ -536,7 +536,7 @@ export const buildEChartsSeries = (
           return buildEChartsLineAreaSeries(
             seriesModel,
             seriesSettings,
-            chartModel.dataset,
+            chartModel.transformedDataset,
             settings,
             yAxisIndex,
             hasMultipleSeries,

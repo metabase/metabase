@@ -193,7 +193,7 @@ export const getTicksDimensions = (
         : 0);
 
     const { firstXTickWidth, lastXTickWidth } = getXAxisTicksWidth(
-      chartModel.dataset,
+      chartModel.transformedDataset,
       settings,
       chartModel.xAxisModel.formatter,
       renderingContext,
@@ -253,7 +253,8 @@ export const getChartPadding = (
     currentBoundaryWidth -= yAxisNameTotalWidth;
   }
 
-  const dimensionWidth = currentBoundaryWidth / chartModel.dataset.length;
+  const dimensionWidth =
+    currentBoundaryWidth / chartModel.transformedDataset.length;
 
   const firstTickOverflow = Math.min(
     ticksDimensions.firstXTickWidth / 2 -

@@ -20,7 +20,7 @@
         "graph.dimensions": ["X"],
         "graph.series_order_dimension": null,
         "graph.series_order": null,
-        "graph.x_axis.scale": "histogram",
+        "graph.x_axis.scale": "category",
         "graph.metrics": ["Y"]
       },
       "collection_preview": true,
