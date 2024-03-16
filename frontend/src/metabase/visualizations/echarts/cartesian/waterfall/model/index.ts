@@ -38,6 +38,7 @@ export const getWaterfallChartModel = (
     singleRawSeries,
     cardsColumns[0],
     false,
+    true,
     settings,
     renderingContext,
   );
