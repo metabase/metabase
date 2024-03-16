@@ -30,7 +30,6 @@
    [metabase.models.query :as query]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
-   [metabase.moderation :as moderation]
    [metabase.native-query-analyzer :as query-analyzer]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features
@@ -163,10 +162,6 @@
                                 [:not= :cache_hit true]
                                 [:= :card_id id]]})
       first vals first))
-
-;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
-(comment moderation/keep-me)
-
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 

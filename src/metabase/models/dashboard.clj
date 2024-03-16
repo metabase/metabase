@@ -24,7 +24,6 @@
    [metabase.models.pulse-card :as pulse-card]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
-   [metabase.moderation :as moderation]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.async :as qp.async]
    [metabase.util :as u]
@@ -217,8 +216,6 @@
                                                  :where     [:in :dashboard.id (into #{} (map u/the-id) dashboards)]}))]
       (for [dashboard dashboards]
         (assoc dashboard :collection_authority_level (get coll-id->level (u/the-id dashboard)))))))
-
-(comment moderation/keep-me)
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
