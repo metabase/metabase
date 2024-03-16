@@ -26,6 +26,7 @@ import { isNotNull } from "metabase/lib/types";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
+  ORIGINAL_INDEX_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
@@ -315,6 +316,23 @@ export const applySquareRootScaling = (value: RowValue): RowValue => {
   return value;
 };
 
+function filterNullDimensionValues(dataset: ChartDataset) {
+  // TODO show warning message
+  const filteredDataset: ChartDataset = [];
+
+  dataset.forEach((datum, originalIndex) => {
+    if (datum[X_AXIS_DATA_KEY] == null) {
+      return;
+    }
+    filteredDataset.push({
+      ...datum,
+      [ORIGINAL_INDEX_DATA_KEY]: originalIndex,
+    });
+  });
+
+  return filteredDataset;
+}
+
 /**
  * Modifies the dataset for visualization according to the specified visualization settings.
  *
@@ -330,6 +348,14 @@ export const applyVisualizationSettingsDataTransformations = (
   settings: ComputedVisualizationSettings,
 ): ChartDataset => {
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
+
+  if (
+    xAxisModel.axisType === "value" ||
+    xAxisModel.axisType === "time" ||
+    xAxisModel.isHistogram
+  ) {
+    dataset = filterNullDimensionValues(dataset);
+  }
 
   return transformDataset(dataset, [
     getNullReplacerTransform(settings, seriesModels),
