@@ -666,3 +666,11 @@
   "In Metabase the FK key used for automagic hydration should use underscores (work around upstream Toucan 2 issue)."
   [_original-model dest-key _hydrated-key]
   [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])
+
+(defn common-batched-hydration
+  [hydration-key items key->hydrated-items-fn getter-key]
+  (assert (fn? key->hydrated-items-fn))
+  (when (seq items)
+    (let [key->hydrated-items (key->hydrated-items-fn)]
+      (for [item items]
+        (assoc item hydration-key (get key->hydrated-items (get item getter-key)))))))
