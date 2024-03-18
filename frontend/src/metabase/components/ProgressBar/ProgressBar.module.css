@@ -1,0 +1,32 @@
+.ProgressWrapper {
+  position: relative;
+  border-radius: 99px;
+  transition: border-color 0.3s;
+}
+
+.Progress {
+  overflow: hidden;
+  position: relative;
+  height: 100%;
+  top: 0;
+  left: 0;
+  border-radius: inherit;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  transition: background-color 0.3s;
+}
+
+.Progress::before {
+  position: absolute;
+  content: "";
+  left: 0;
+  height: 100%;
+  animation: none;
+  background-color: var(--color-bg-black);
+  display: none;
+}
+
+.Progress.animated::before {
+  animation: progress-bar 1.5s linear infinite;
+  display: block;
+}

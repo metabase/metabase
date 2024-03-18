@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import PropTypes from "prop-types";
 import { Component } from "react";
 
+import AnimationS from "metabase/css/core/animation.module.css";
 import { color as c } from "metabase/lib/colors";
 
 const propTypes = {
@@ -21,28 +22,26 @@ const ProgressWrapper = styled.div`
 `;
 
 const Progress = styled.div`
-      overflow: hidden;
-      background-color: ${props => props.color};
-      position: relative;
-      height: 100%;
-      top: 0;
-      left: 0;
-      border-radius: inherit;
-      border-top-left-radius: 0;
-      border-bottom-left-radius: 0;
-      width: ${props => props.width}%;
-      transition: background-color 0.3s;
-      ":before": {
-        display: ${props => (props.animated ? "block" : "none")};
-        position: absolute;
-        content: "";
-        left: 0;
-        width: ${props => props.width / 4}%;
-        height: 100%;
-        background-color: ${c("bg-black")};
-        animation: ${props =>
-          props.animated ? "progress-bar 1.5s linear infinite" : "none"};
-      },
+  overflow: hidden;
+  background-color: ${props => props.color};
+  position: relative;
+  height: 100%;
+  top: 0;
+  left: 0;
+  border-radius: inherit;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  width: ${props => props.width}%;
+  transition: background-color 0.3s;
+"&::before": {
+  display: ${props => (props.animated ? "block" : "none")};
+  position: absolute;
+  content: "";
+  left: 0;
+  width: ${props => props.width / 4}%;
+  height: 100%;
+  background-color: ${c("bg-black")};
+},
 `;
 
 // @Question - why is this separate from our progress Viz type?
@@ -64,8 +63,24 @@ export default class ProgressBar extends Component {
     const width = percentage * 100;
 
     return (
-      <ProgressWrapper color={color} height={height} className={className}>
-        <Progress width={width} animated={animated} color={color} />
+      <ProgressWrapper
+        style={{
+          width: "200px",
+        }}
+        color={color}
+        height={height}
+        className={className}
+      >
+        <Progress
+          width={width}
+          animated={animated}
+          color={color}
+          className={
+            animated
+              ? AnimationS.ProgressBarAnimation
+              : AnimationS.ProgressBarNoAnimation
+          }
+        />
       </ProgressWrapper>
     );
   }
