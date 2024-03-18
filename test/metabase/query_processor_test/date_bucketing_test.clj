@@ -1035,8 +1035,7 @@
                     {:aggregation [[:count]]
                      :filter      [:time-interval $timestamp :last :week]})))))))))
 
-;; Commenting out for now because this is blocking CI
-#_(deftest ^:parallel time-interval-expression-test
+(deftest ^:parallel time-interval-expression-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (mt/dataset checkins:1-per-day
       (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -1045,11 +1044,11 @@
             timestamp-col (m/find-first (comp #{(mt/id :checkins :timestamp)} :id) (lib/visible-columns query))
             query (-> query
                       (lib/expression "Date" timestamp-col)
-                      (lib/filter (lib/time-interval timestamp-col :current :quarter))
+                      (lib/filter (lib/time-interval timestamp-col :current :week))
                       (as-> $q (lib/filter $q (lib/time-interval
                                                 (m/find-first (comp #{"Date"} :name) (lib/visible-columns $q))
-                                                :current :quarter))))]
-        (is (= 30
+                                                :current :week))))]
+        (is (= 7
                (count (mt/rows (qp/process-query query)))))))))
 
 ;; Make sure that when referencing the same field multiple times with different units we return the one that actually

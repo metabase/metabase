@@ -617,7 +617,7 @@
             (is (some? table))))))))
 
 (deftest load-from-csv-offset-datetime-test
-  (testing "Upload a CSV file with a datetime column"
+  (testing "Upload a CSV file with an offset datetime column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (mt/with-dynamic-redefs [driver/db-default-timezone (constantly "Z")
@@ -1133,7 +1133,6 @@
                     :user-id (str (mt/user->id :rasta))}
                    (last (snowplow-test/pop-event-data-and-user-id!))))))))))
 
-
 (deftest csv-upload-audit-log-test
   ;; Just test with h2 because these events are independent of the driver
   (mt/test-driver :h2
@@ -1351,40 +1350,53 @@
 (deftest append-column-mismatch-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
-      (testing "Append should fail if there are extra or missing columns in the CSV file"
+      (testing "Append should fail only if there are missing columns in the CSV file"
         (doseq [[csv-rows error-message]
-                {["_mb_row_id,id,name,extra column one,EXTRA COLUMN TWO"]
-                 (trim-lines "The CSV file contains extra columns that are not in the table:
-                              - extra_column_two
-                              - extra_column_one")
-
-                 [""]
+                {[""]
                  (trim-lines "The CSV file is missing columns that are in the table:
                               - id
                               - name")
 
-                 ["_mb_row_id,extra 1, extra 2"]
-                 (trim-lines "The CSV file contains extra columns that are not in the table:
-                              - extra_2
-                              - extra_1
+                 ;; Extra columns are fine, as long as none are missing.
+                 ["_mb_row_id,id,extra 1, extra 2,name"]
+                 nil
 
-                              The CSV file is missing columns that are in the table:
+                 ["_mb_row_id,extra 1, extra 2"]
+                 (trim-lines "The CSV file is missing columns that are in the table:
                               - id
-                              - name")}]
+                              - name
+
+                              There are new columns in the CSV file that are not in the table:
+                              - extra_2
+                              - extra_1")
+
+                 ["_mb_row_id,id, extra 2"]
+                 (trim-lines "The CSV file is missing columns that are in the table:
+                              - name
+
+                              There are new columns in the CSV file that are not in the table:
+                              - extra_2")}]
           (with-upload-table!
             [table (create-upload-table!
                     {:col->upload-type (ordered-map/ordered-map
                                         :id         ::upload/int
                                         :name       ::upload/varchar-255)
                      :rows [[1,"some_text"]]})]
-            (let [file  (csv-file-with csv-rows (mt/random-name))]
-              (is (= {:message error-message
-                      :data {:status-code 422}}
-                     (catch-ex-info (append-csv! {:file     file
-                                                  :table-id (:id table)}))))
-              (testing "Check the data was not uploaded into the table"
-                (is (= [[1 "some_text"]]
-                       (rows-for-table table))))
+
+            (let [file (csv-file-with csv-rows (mt/random-name))]
+              (when error-message
+                (is (= {:message error-message
+                        :data    {:status-code 422}}
+                       (catch-ex-info (append-csv! {:file file :table-id (:id table)}))))
+                (testing "Check the data was not uploaded into the table"
+                  (is (= [[1 "some_text"]]
+                         (rows-for-table table)))))
+
+              (when-not error-message
+                (testing "Check the data was uploaded into the table"
+                  ;; No exception is thrown - but there were also no rows in the table to check
+                  (append-csv! {:file file :table-id (:id table)})))
+
               (io/delete-file file))))))))
 
 (deftest append-all-types-test
@@ -1638,6 +1650,21 @@
                     [2 "Puke Nightstalker" "Nothing - you can't prove it"]]
                    (rows-for-table table))))
           (io/delete-file file))))))
+
+(deftest append-new-column-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (with-uploads-allowed
+     (testing "Append should handle new columns being added in the latest CSV"
+       (with-upload-table! [table (create-upload-table!)]
+         ;; Reorder as well for good measure
+         (let [csv-rows ["game,name" "Witticisms,Fluke Skytalker"]
+               file     (csv-file-with csv-rows (mt/random-name))]
+           (testing "The new row is inserted with the values correctly reordered"
+             (is (= {:row-count 1} (append-csv! {:file file, :table-id (:id table)})))
+             (is (= [[1 "Obi-Wan Kenobi" nil]
+                     [2 "Fluke Skytalker" "Witticisms"]]
+                    (rows-for-table table))))
+           (io/delete-file file)))))))
 
 (deftest append-type-mismatch-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
