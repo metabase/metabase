@@ -41,7 +41,7 @@ describe("MetricForm", () => {
     expect(screen.getByText("12,345")).toBeInTheDocument(); // with compact formatting, we'd have 1
   });
 
-  it("should render description", () => {
+  it("should render description", async () => {
     const DESCRIPTION = "description";
 
     render(
@@ -53,12 +53,12 @@ describe("MetricForm", () => {
       />,
     );
 
-    userEvent.hover(getIcon("info_filled"));
+    await userEvent.hover(getIcon("info_filled"));
 
     expect(screen.getByRole("tooltip")).toHaveTextContent(DESCRIPTION);
   });
 
-  it("should render markdown in description", () => {
+  it("should render markdown in description", async () => {
     const DESCRIPTION = "[link](https://metabase.com)";
 
     render(
@@ -70,7 +70,7 @@ describe("MetricForm", () => {
       />,
     );
 
-    userEvent.hover(getIcon("info_filled"));
+    await userEvent.hover(getIcon("info_filled"));
 
     expect(
       within(screen.getByRole("tooltip")).getByRole("link"),

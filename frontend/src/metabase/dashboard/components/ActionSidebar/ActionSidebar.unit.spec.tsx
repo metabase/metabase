@@ -68,10 +68,10 @@ const setup = (
 };
 
 const navigateToActionCreatorModal = async () => {
-  userEvent.click(screen.getByText("Pick an action"));
+  await userEvent.click(screen.getByText("Pick an action"));
   await waitForLoaderToBeRemoved();
-  userEvent.click(screen.getByText(collectionItem.name));
-  userEvent.click(screen.getByText("Create new action"));
+  await userEvent.click(screen.getByText(collectionItem.name));
+  await userEvent.click(screen.getByText("Create new action"));
   await waitForLoaderToBeRemoved();
 };
 
@@ -92,8 +92,8 @@ describe("Dashboard > ActionSidebar", () => {
     expect(textInput).toHaveValue(
       actionDashcard.visualization_settings["button.label"] as string,
     );
-    userEvent.clear(textInput);
-    userEvent.type(textInput, "xyz");
+    await userEvent.clear(textInput);
+    await userEvent.type(textInput, "xyz");
 
     await waitFor(() =>
       expect(vizUpdateSpy).toHaveBeenLastCalledWith({ "button.label": "xyz" }),
@@ -106,8 +106,8 @@ describe("Dashboard > ActionSidebar", () => {
     const dropdown = screen.getByLabelText("Button variant");
 
     expect(screen.getByText("Primary")).toBeInTheDocument();
-    userEvent.click(dropdown);
-    userEvent.click(screen.getByText("Danger"));
+    await userEvent.click(dropdown);
+    await userEvent.click(screen.getByText("Danger"));
 
     await waitFor(() =>
       expect(vizUpdateSpy).toHaveBeenLastCalledWith({
@@ -120,7 +120,7 @@ describe("Dashboard > ActionSidebar", () => {
     const { closeSpy } = setup();
 
     const closeButton = screen.getByRole("button", { name: "Close" });
-    userEvent.click(closeButton);
+    await userEvent.click(closeButton);
 
     await waitFor(() => expect(closeSpy).toHaveBeenCalledTimes(1));
   });
@@ -136,7 +136,7 @@ describe("Dashboard > ActionSidebar", () => {
       setup();
       await navigateToActionCreatorModal();
 
-      userEvent.click(document.body);
+      await userEvent.click(document.body);
 
       const mockNativeQueryEditor = screen.getByTestId(
         "mock-native-query-editor",
@@ -151,7 +151,7 @@ describe("Dashboard > ActionSidebar", () => {
 
       const cancelButton = screen.getByRole("button", { name: "Cancel" });
 
-      userEvent.click(cancelButton);
+      await userEvent.click(cancelButton);
 
       expect(
         screen.queryByTestId("mock-native-query-editor"),

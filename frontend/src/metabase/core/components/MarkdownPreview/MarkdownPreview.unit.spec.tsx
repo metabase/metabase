@@ -35,10 +35,10 @@ describe("MarkdownPreview", () => {
     expect(screen.getByText(MARKDOWN_AS_TEXT)).toBeInTheDocument();
   });
 
-  it("should not show tooltip with markdown formatting on hover when text is not truncated", () => {
+  it("should not show tooltip with markdown formatting on hover when text is not truncated", async () => {
     setup();
 
-    userEvent.hover(screen.getByText(MARKDOWN_AS_TEXT));
+    await userEvent.hover(screen.getByText(MARKDOWN_AS_TEXT));
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 
@@ -66,10 +66,10 @@ describe("MarkdownPreview", () => {
       }
     });
 
-    it("should show tooltip with markdown formatting on hover when text is truncated", () => {
+    it("should show tooltip with markdown formatting on hover when text is truncated", async () => {
       setup();
 
-      userEvent.hover(screen.getByText(MARKDOWN_AS_TEXT));
+      await userEvent.hover(screen.getByText(MARKDOWN_AS_TEXT));
 
       const tooltip = screen.getByRole("tooltip");
       expect(tooltip).not.toHaveTextContent(MARKDOWN);

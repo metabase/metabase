@@ -59,23 +59,23 @@ describe("SettingTextInput (metabase/ui)", () => {
       expect(screen.getByDisplayValue(value)).toBeInTheDocument();
     });
 
-    it("should call onChange without leading or trailing spaces string", () => {
+    it("should call onChange without leading or trailing spaces string", async () => {
       const value = "/";
       const { onChange } = setup({ setting, value, type: "text", normalize });
 
       const input = screen.getByDisplayValue(value);
-      userEvent.clear(input);
-      userEvent.type(input, "  /  ");
+      await userEvent.clear(input);
+      await userEvent.type(input, "  /  ");
       input.blur();
       expect(onChange).toHaveBeenCalledWith("/");
     });
 
-    it("should call onChange with null", () => {
+    it("should call onChange with null", async () => {
       const value = "/";
       const { onChange } = setup({ setting, value, type: "text", normalize });
 
       const input = screen.getByDisplayValue(value);
-      userEvent.clear(input);
+      await userEvent.clear(input);
       input.blur();
       expect(onChange).toHaveBeenCalledWith(null);
     });

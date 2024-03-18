@@ -156,10 +156,10 @@ describe("TypeFilterContent", () => {
     const options = getCheckboxes();
 
     for (let i = 0; i < options.length; i++) {
-      userEvent.click(options[i]);
+      await userEvent.click(options[i]);
     }
 
-    userEvent.click(screen.getByText("Apply"));
+    await userEvent.click(screen.getByText("Apply"));
     expect(onChangeFilters).toHaveReturnedTimes(1);
     expect(onChangeFilters).toHaveBeenLastCalledWith(TEST_TYPES);
   });
@@ -170,9 +170,9 @@ describe("TypeFilterContent", () => {
     const options = getCheckboxes();
     const checkedOptions = options.filter(option => option.checked);
     for (const checkedOption of checkedOptions) {
-      userEvent.click(checkedOption);
+      await userEvent.click(checkedOption);
     }
-    userEvent.click(screen.getByText("Apply"));
+    await userEvent.click(screen.getByText("Apply"));
     expect(onChangeFilters).toHaveReturnedTimes(1);
     expect(onChangeFilters).toHaveBeenLastCalledWith([]);
   });

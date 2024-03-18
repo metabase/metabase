@@ -28,8 +28,8 @@ async function baseSetup({
 
   render(<UncontrolledOptionEditor />);
 
-  userEvent.click(getIcon("list"));
-  userEvent.unhover(getIcon("list"));
+  await userEvent.click(getIcon("list"));
+  await userEvent.unhover(getIcon("list"));
   await screen.findByRole("tooltip");
 
   const input = screen.getByPlaceholderText("Enter one option per line");
@@ -66,8 +66,8 @@ describe("OptionEditor", () => {
     it("should handle changes correctly", async () => {
       const { input, saveButton, onChange } = await setup({ options: [] });
 
-      userEvent.type(input, options.join("\n"));
-      userEvent.click(saveButton);
+      await userEvent.type(input, options.join("\n"));
+      await userEvent.click(saveButton);
 
       expect(input).toHaveValue(options.join("\n"));
       expect(saveButton).toBeDisabled();
@@ -77,8 +77,8 @@ describe("OptionEditor", () => {
     it("should close popover on save", async () => {
       const { input, saveButton } = await setup({ options: [] });
 
-      userEvent.type(input, options.join("\n"));
-      userEvent.click(saveButton);
+      await userEvent.type(input, options.join("\n"));
+      await userEvent.click(saveButton);
 
       expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     });
@@ -90,20 +90,20 @@ describe("OptionEditor", () => {
         fieldType: "number",
       });
 
-      userEvent.type(input, "foo\nbar");
-      userEvent.click(saveButton);
+      await userEvent.type(input, "foo\nbar");
+      await userEvent.click(saveButton);
 
       expect(screen.getByText("Invalid number format")).toBeInTheDocument();
       expect(saveButton).toBeDisabled();
       expect(onChange).not.toHaveBeenCalled();
 
-      userEvent.clear(input);
+      await userEvent.clear(input);
       expect(
         screen.queryByText("Invalid number format"),
       ).not.toBeInTheDocument();
 
-      userEvent.type(input, "1\n2");
-      userEvent.click(saveButton);
+      await userEvent.type(input, "1\n2");
+      await userEvent.click(saveButton);
 
       expect(onChange).toHaveBeenCalledWith([1, 2]);
     });
@@ -114,8 +114,8 @@ describe("OptionEditor", () => {
         options: [],
       });
 
-      userEvent.type(input, "1\n2\n\n2\n\n1\n\n");
-      userEvent.click(saveButton);
+      await userEvent.type(input, "1\n2\n\n2\n\n1\n\n");
+      await userEvent.click(saveButton);
 
       expect(onChange).toHaveBeenCalledWith([1, 2]);
     });
@@ -127,8 +127,8 @@ describe("OptionEditor", () => {
           options: [],
         });
 
-        userEvent.type(input, "1\n2\n\n2\n\n1\n\n");
-        userEvent.click(saveButton);
+        await userEvent.type(input, "1\n2\n\n2\n\n1\n\n");
+        await userEvent.click(saveButton);
 
         expect(onChange).toHaveBeenCalledWith(["1", "2"]);
       });

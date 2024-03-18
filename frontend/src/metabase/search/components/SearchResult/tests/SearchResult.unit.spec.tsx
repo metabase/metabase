@@ -78,7 +78,7 @@ describe("SearchResult", () => {
   it("should redirect to search result page when clicking item", async () => {
     const { history } = setup({ result: TEST_RESULT_QUESTION });
 
-    userEvent.click(screen.getByText(TEST_RESULT_QUESTION.name));
+    await userEvent.click(screen.getByText(TEST_RESULT_QUESTION.name));
 
     const expectedPath = TEST_RESULT_QUESTION.getUrl();
 
@@ -97,12 +97,12 @@ describe("SearchResult", () => {
       expect(getIcon("bolt")).toBeInTheDocument();
     });
 
-    it("redirects to x-ray page when clicking on x-ray button", () => {
+    it("redirects to x-ray page when clicking on x-ray button", async () => {
       const { history } = setup({ result: TEST_RESULT_INDEXED_ENTITY });
 
       expect(getIcon("bolt")).toBeInTheDocument();
 
-      userEvent.click(getIcon("bolt"));
+      await userEvent.click(getIcon("bolt"));
 
       const expectedPath = `/auto/dashboard/model_index/${TEST_RESULT_INDEXED_ENTITY.model_index_id}/primary_key/${TEST_RESULT_INDEXED_ENTITY.id}`;
 

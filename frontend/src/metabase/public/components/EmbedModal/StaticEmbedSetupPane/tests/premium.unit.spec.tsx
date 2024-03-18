@@ -15,8 +15,8 @@ describe("Static Embed Setup phase - EE, with token", () => {
     },
   ])("$resourceType", ({ resourceType }) => {
     describe("Overview tab", () => {
-      it("should render content", () => {
-        setup({
+      it("should render content", async () => {
+        await setup({
           props: {
             resourceType,
           },
@@ -40,7 +40,7 @@ describe("Static Embed Setup phase - EE, with token", () => {
 
     describe("Appearance tab", () => {
       it("should render Font selector", async () => {
-        setup({
+        await setup({
           props: {
             resourceType,
           },
@@ -52,7 +52,7 @@ describe("Static Embed Setup phase - EE, with token", () => {
         const fontSelect = screen.getByLabelText("Font");
         expect(fontSelect).toBeVisible();
 
-        userEvent.click(fontSelect);
+        await userEvent.click(fontSelect);
 
         const popover = await screen.findByRole("grid");
 
@@ -60,7 +60,7 @@ describe("Static Embed Setup phase - EE, with token", () => {
           expect(within(popover).getByText(fontName)).toBeVisible();
         });
 
-        userEvent.click(within(popover).getByText(FONTS_MOCK_VALUES[0]));
+        await userEvent.click(within(popover).getByText(FONTS_MOCK_VALUES[0]));
 
         expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
           `font=${encodeURIComponent(FONTS_MOCK_VALUES[0])}`,
@@ -68,7 +68,7 @@ describe("Static Embed Setup phase - EE, with token", () => {
       });
 
       it('should not render "Powered by Metabase" banner caption', async () => {
-        setup({
+        await setup({
           props: {
             resourceType,
           },
@@ -82,8 +82,8 @@ describe("Static Embed Setup phase - EE, with token", () => {
         ).not.toBeInTheDocument();
       });
 
-      it("should render link to documentation", () => {
-        setup({
+      it("should render link to documentation", async () => {
+        await setup({
           props: {
             resourceType,
           },
@@ -107,8 +107,8 @@ describe("Static Embed Setup phase - EE, with token", () => {
       });
 
       if (resourceType === "question") {
-        it('should render "Download data" control', () => {
-          setup({
+        it('should render "Download data" control', async () => {
+          await setup({
             props: {
               resourceType,
               resource: getMockResource(resourceType, true),
@@ -121,7 +121,7 @@ describe("Static Embed Setup phase - EE, with token", () => {
           expect(screen.getByText("Download data")).toBeVisible();
           expect(screen.getByLabelText("Download data")).toBeChecked();
 
-          userEvent.click(screen.getByLabelText("Download data"));
+          await userEvent.click(screen.getByLabelText("Download data"));
 
           expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
             `hide_download_button=true`,

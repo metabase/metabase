@@ -391,11 +391,11 @@ describe("ViewHeader", () => {
           });
         });
 
-        it("calls save function on title update", () => {
+        it("calls save function on title update", async () => {
           const { onSave } = setup({ card });
           const title = screen.getByTestId("saved-question-header-title");
-          userEvent.clear(title);
-          userEvent.type(title, "New Title{enter}");
+          await userEvent.clear(title);
+          await userEvent.type(title, "New Title{enter}");
           expect(title).toHaveValue("New Title");
           title.blur();
           expect(onSave).toHaveBeenCalled();

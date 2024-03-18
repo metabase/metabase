@@ -51,14 +51,14 @@ describe("PasswordPanel", () => {
   it("should login successfully", async () => {
     setup();
 
-    userEvent.type(screen.getByLabelText("Email address"), TEST_EMAIL);
-    userEvent.type(screen.getByLabelText("Password"), TEST_PASSWORD);
+    await userEvent.type(screen.getByLabelText("Email address"), TEST_EMAIL);
+    await userEvent.type(screen.getByLabelText("Password"), TEST_PASSWORD);
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
     });
 
-    userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await waitFor(() => {
       expect(fetchMock.done("path:/api/session")).toBe(true);

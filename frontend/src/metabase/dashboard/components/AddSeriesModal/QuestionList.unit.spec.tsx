@@ -67,7 +67,7 @@ describe("QuestionList", () => {
       last_cursor: _.last(compatibleCardsFirstPage)?.id,
     });
 
-    userEvent.click(
+    await userEvent.click(
       await screen.findByRole("button", {
         name: /load more/i,
       }),
@@ -75,7 +75,7 @@ describe("QuestionList", () => {
 
     const secondPageItem = await screen.findByText("compatible card 50 page 2");
 
-    userEvent.click(secondPageItem);
+    await userEvent.click(secondPageItem);
     expect(onSelect).toHaveBeenCalledWith(compatibleCardsSecondPage[0], true);
   });
 
@@ -107,7 +107,7 @@ describe("QuestionList", () => {
       },
     );
 
-    userEvent.type(
+    await userEvent.type(
       screen.getByPlaceholderText("Search for a question"),
       "search text",
     );

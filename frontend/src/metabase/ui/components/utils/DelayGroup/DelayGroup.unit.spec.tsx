@@ -36,10 +36,10 @@ describe("DelayGroup", () => {
 
     expect(button).toHaveTextContent("delay: true");
 
-    userEvent.hover(button);
+    await userEvent.hover(button);
     expect(button).toHaveTextContent("delay: false");
 
-    userEvent.unhover(button);
+    await userEvent.unhover(button);
     expect(button).toHaveTextContent("delay: false");
 
     act(function () {

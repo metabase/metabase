@@ -121,7 +121,7 @@ describe("EntityPickerModal", () => {
       await within(tabList).findByRole("tab", { name: /All the bar/ }),
     ).toBeInTheDocument();
 
-    userEvent.click(
+    await userEvent.click(
       await within(tabList).findByRole("tab", { name: /All the bar/ }),
     );
 
@@ -158,7 +158,7 @@ describe("EntityPickerModal", () => {
       onConfirm,
     });
 
-    userEvent.type(await screen.findByPlaceholderText("Search…"), "My ", {
+    await userEvent.type(await screen.findByPlaceholderText("Search…"), "My ", {
       delay: 50,
     });
 
@@ -169,7 +169,7 @@ describe("EntityPickerModal", () => {
 
     expect(await screen.findAllByTestId("search-result-item")).toHaveLength(2);
 
-    userEvent.click(await screen.findByText("Search Result 1"));
+    await userEvent.click(await screen.findByText("Search Result 1"));
 
     expect(onItemSelect).toHaveBeenCalledTimes(1);
   });
@@ -188,7 +188,9 @@ describe("EntityPickerModal", () => {
     expect(
       await screen.findByRole("button", { name: "Click Me" }),
     ).toBeInTheDocument();
-    userEvent.click(await screen.findByRole("button", { name: "Click Me" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Click Me" }),
+    );
 
     expect(actionFn).toHaveBeenCalledTimes(1);
   });

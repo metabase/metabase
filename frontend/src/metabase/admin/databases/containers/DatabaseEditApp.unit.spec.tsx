@@ -111,7 +111,7 @@ describe("DatabaseEditApp", () => {
       expect(saveButton).toBeDisabled();
 
       const connectionField = await screen.findByLabelText("Connection String");
-      userEvent.type(connectionField, "Test Connection");
+      await userEvent.type(connectionField, "Test Connection");
 
       await waitFor(() => {
         expect(saveButton).toBeEnabled();
@@ -123,7 +123,7 @@ describe("DatabaseEditApp", () => {
 
       const displayNameInput = await screen.findByLabelText("Display name");
 
-      userEvent.type(displayNameInput, "Test database");
+      await userEvent.type(displayNameInput, "Test database");
       const mockEvent = await waitFor(() => {
         return callMockEvent(mockEventListener, "beforeunload");
       });
@@ -147,8 +147,8 @@ describe("DatabaseEditApp", () => {
       await waitForLoaderToBeRemoved();
 
       const displayNameInput = await screen.findByLabelText("Display name");
-      userEvent.type(displayNameInput, "ab");
-      userEvent.type(displayNameInput, "{backspace}{backspace}");
+      await userEvent.type(displayNameInput, "ab");
+      await userEvent.type(displayNameInput, "{backspace}{backspace}");
 
       history.goBack();
 
@@ -165,7 +165,7 @@ describe("DatabaseEditApp", () => {
       await waitForLoaderToBeRemoved();
 
       const displayNameInput = await screen.findByLabelText("Display name");
-      userEvent.type(displayNameInput, "Test database");
+      await userEvent.type(displayNameInput, "Test database");
 
       history.goBack();
 
@@ -180,16 +180,16 @@ describe("DatabaseEditApp", () => {
       await waitForLoaderToBeRemoved();
 
       const displayNameInput = await screen.findByLabelText("Display name");
-      userEvent.type(displayNameInput, "Test database");
+      await userEvent.type(displayNameInput, "Test database");
       const connectionStringInput = await screen.findByLabelText(
         "Connection String",
       );
-      userEvent.type(
+      await userEvent.type(
         connectionStringInput,
         "file:/sample-database.db;USER=GUEST;PASSWORD=guest",
       );
 
-      userEvent.click(await screen.findByText("Save"));
+      await userEvent.click(await screen.findByText("Save"));
 
       await waitFor(() => {
         expect(history.getCurrentLocation().pathname).toEqual(

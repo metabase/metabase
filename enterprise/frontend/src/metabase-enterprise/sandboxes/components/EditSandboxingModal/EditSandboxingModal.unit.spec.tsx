@@ -97,13 +97,13 @@ describe("EditSandboxingModal", () => {
 
         expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
-        userEvent.click(screen.getByText("Pick a column"));
-        userEvent.click(await screen.findByText("ID"));
+        await userEvent.click(screen.getByText("Pick a column"));
+        await userEvent.click(await screen.findByText("ID"));
 
-        userEvent.click(screen.getByText("Pick a user attribute"));
-        userEvent.click(await screen.findByText("foo"));
+        await userEvent.click(screen.getByText("Pick a user attribute"));
+        await userEvent.click(await screen.findByText("foo"));
 
-        userEvent.click(screen.getByText("Save"));
+        await userEvent.click(screen.getByText("Save"));
 
         await waitFor(() =>
           expect(onSave).toHaveBeenCalledWith({
@@ -129,15 +129,15 @@ describe("EditSandboxingModal", () => {
 
         expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByText(
             "Use a saved question to create a custom view for this table",
           ),
         );
 
-        userEvent.click(await screen.findByText("sandbox question"));
+        await userEvent.click(await screen.findByText("sandbox question"));
 
-        userEvent.click(screen.getByText("Save"));
+        await userEvent.click(screen.getByText("Save"));
 
         await waitFor(() => {
           expect(screen.queryByText("Saving...")).not.toBeInTheDocument();
@@ -175,15 +175,15 @@ describe("EditSandboxingModal", () => {
 
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
-      userEvent.click(
+      await userEvent.click(
         screen.getByText(
           "Use a saved question to create a custom view for this table",
         ),
       );
 
-      userEvent.click(await screen.findByText("sandbox question"));
+      await userEvent.click(await screen.findByText("sandbox question"));
 
-      userEvent.click(screen.getByText("Save"));
+      await userEvent.click(screen.getByText("Save"));
 
       await waitFor(() => {
         expect(screen.queryByText("Saving...")).not.toBeInTheDocument();

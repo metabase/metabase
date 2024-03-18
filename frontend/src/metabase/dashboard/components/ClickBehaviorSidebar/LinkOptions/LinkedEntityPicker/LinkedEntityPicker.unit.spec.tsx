@@ -146,9 +146,9 @@ describe("LinkedEntityPicker", () => {
             dashboard: dashboardInPublicCollection,
             searchResults: [dashboardSearchResult],
           });
-          userEvent.click(screen.getByRole("button", { name: "Search" }));
+          await userEvent.click(screen.getByRole("button", { name: "Search" }));
           const typedText = "dashboard";
-          userEvent.type(
+          await userEvent.type(
             screen.getByPlaceholderText("Search"),
             `${typedText}{enter}`,
           );
@@ -201,9 +201,9 @@ describe("LinkedEntityPicker", () => {
             dashboard: dashboardInPersonalCollection,
             searchResults: [dashboardSearchResult],
           });
-          userEvent.click(screen.getByRole("button", { name: "Search" }));
+          await userEvent.click(screen.getByRole("button", { name: "Search" }));
           const typedText = "dashboard";
-          userEvent.type(
+          await userEvent.type(
             screen.getByPlaceholderText("Search"),
             `${typedText}{enter}`,
           );
@@ -272,9 +272,9 @@ describe("LinkedEntityPicker", () => {
             dashboard: dashboardInPublicCollection,
             searchResults: [questionSearchResult],
           });
-          userEvent.click(screen.getByRole("button", { name: "Search" }));
+          await userEvent.click(screen.getByRole("button", { name: "Search" }));
           const typedText = "question";
-          userEvent.type(
+          await userEvent.type(
             screen.getByPlaceholderText("Search"),
             `${typedText}{enter}`,
           );
@@ -332,9 +332,9 @@ describe("LinkedEntityPicker", () => {
             dashboard: dashboardInPersonalCollection,
             searchResults: [questionSearchResult],
           });
-          userEvent.click(screen.getByRole("button", { name: "Search" }));
+          await userEvent.click(screen.getByRole("button", { name: "Search" }));
           const typedText = "question";
-          userEvent.type(
+          await userEvent.type(
             screen.getByPlaceholderText("Search"),
             `${typedText}{enter}`,
           );

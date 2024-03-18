@@ -1,51 +1,51 @@
 import { render, screen } from "@testing-library/react";
-import userEvent, { specialChars } from "@testing-library/user-event";
+import userEvent from "@testing-library/user-event";
 
 import CheckBox from "./CheckBox";
 
 describe("CheckBox", () => {
-  it("should receive focus on tab", () => {
+  it("should receive focus on tab", async () => {
     const onChange = jest.fn();
 
     render(<CheckBox checked={false} onChange={onChange} />);
 
     const checkbox = screen.getByRole("checkbox");
-    userEvent.tab();
+    await userEvent.tab();
 
     expect(checkbox).toHaveFocus();
   });
 
-  it("should change on enter", () => {
+  it("should change on enter", async () => {
     const onChange = jest.fn();
 
     render(<CheckBox checked={false} onChange={onChange} />);
 
     const checkbox = screen.getByRole("checkbox");
-    userEvent.tab();
-    userEvent.type(checkbox, specialChars.enter);
+    await userEvent.tab();
+    await userEvent.type(checkbox, "{Enter}");
 
     expect(onChange).toHaveBeenCalled();
   });
 
-  it("should change on space", () => {
+  it("should change on space", async () => {
     const onChange = jest.fn();
 
     render(<CheckBox checked={false} onChange={onChange} />);
 
     const checkbox = screen.getByRole("checkbox");
-    userEvent.tab();
-    userEvent.type(checkbox, specialChars.space);
+    await userEvent.tab();
+    await userEvent.type(checkbox, "Space");
 
     expect(onChange).toHaveBeenCalled();
   });
 
-  it("should change on click", () => {
+  it("should change on click", async () => {
     const onChange = jest.fn();
 
     render(<CheckBox checked={false} onChange={onChange} />);
 
     const checkbox = screen.getByRole("checkbox");
-    userEvent.click(checkbox);
+    await userEvent.click(checkbox);
 
     expect(checkbox).toHaveFocus();
     expect(onChange).toHaveBeenCalled();

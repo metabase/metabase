@@ -9,7 +9,7 @@ describe("SharingSidebar Enterprise Bundle", () => {
     it("should not show advanced filtering options without the feature flag", async () => {
       setup({ isAdmin: true, email: true, hasEnterprisePlugins: true });
 
-      userEvent.click(await screen.findByText("Email it"));
+      await userEvent.click(await screen.findByText("Email it"));
 
       await screen.findByText("Email this dashboard");
 
@@ -21,7 +21,7 @@ describe("SharingSidebar Enterprise Bundle", () => {
     it("should not show advanced filtering options without the feature flag", async () => {
       setup({ isAdmin: true, slack: true, hasEnterprisePlugins: true });
 
-      userEvent.click(await screen.findByText("Send it to Slack"));
+      await userEvent.click(await screen.findByText("Send it to Slack"));
 
       await screen.findByText("Send this dashboard to Slack");
 

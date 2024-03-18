@@ -39,11 +39,11 @@ describe("SavedQuestionHeaderButton", () => {
     expect(screen.getByText("foo")).toBeInTheDocument();
   });
 
-  it("calls onSave on input blur", () => {
+  it("calls onSave on input blur", async () => {
     const { onSave } = setup({ question });
 
     const title = screen.getByTestId("saved-question-header-title");
-    userEvent.type(title, "1");
+    await userEvent.type(title, "1");
     title.blur();
 
     expect(onSave).toHaveBeenCalled();

@@ -13,26 +13,26 @@ const TestColorPicker = () => {
 };
 
 describe("ColorPicker", () => {
-  it("should input a color inline", () => {
+  it("should input a color inline", async () => {
     render(<TestColorPicker />);
 
     const color = Color.rgb(0, 0, 0);
     const input = screen.getByRole("textbox");
-    userEvent.clear(input);
-    userEvent.type(input, color.hex());
+    await userEvent.clear(input);
+    await userEvent.type(input, color.hex());
 
     expect(screen.getByLabelText(color.hex())).toBeInTheDocument();
   });
 
   it("should input a color in a popover", async () => {
     render(<TestColorPicker />);
-    userEvent.click(screen.getByLabelText("white"));
+    await userEvent.click(screen.getByLabelText("white"));
 
     const color = Color.rgb(0, 0, 0);
     const tooltip = await screen.findByRole("tooltip");
     const input = within(tooltip).getByRole("textbox");
-    userEvent.clear(input);
-    userEvent.type(input, color.hex());
+    await userEvent.clear(input);
+    await userEvent.type(input, color.hex());
 
     expect(screen.getByLabelText(color.hex())).toBeInTheDocument();
   });
