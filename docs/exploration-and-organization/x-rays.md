@@ -8,13 +8,17 @@ redirect_from:
 
 X-rays are a way to get automatic insights and explorations of your data.
 
+## How X-rays works
+
+X-rays act as super-powered insight generators. When you use an X-ray on your tables or models, it automatically analyzes the data, identifying patterns, key metrics, and interesting trends. Think of it as having a data analyst instantly review your data and highlight what's important. Metabase then selects a relevant template to ask the right questions and generates a custom dashboard on the fly, complete with charts, graphs, and summaries that are ready for you to save and utilize.
+
 ## Get automatic insights when clicking on a chart
 
 One great way to explore your data in general in Metabase is to click on points of interest in charts and selecting **Automatic insights**.
 
 ![Automatic insights in the drill-through menu](./images/automatic-insights.png)
 
-Metabase will give you some options: 
+Metabase will give you some options:
 
 - **X-ray**
 - **Compare to the rest**
