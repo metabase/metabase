@@ -107,7 +107,7 @@
   (mt/with-database-timezone-id nil
     (testing "\nsystem timezone should not affect the queries that get generated"
       (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-        (mt/with-system-timezone-id system-timezone-id
+        (mt/with-system-timezone-id! system-timezone-id
           (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                    (t/local-date "2019-11-18")
                                                    (t/local-time 0)
@@ -238,7 +238,7 @@
 (deftest almost-e2e-test-1
   ;; system timezone ID shouldn't affect generated query
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (mt/with-system-timezone-id system-timezone-id
+    (mt/with-system-timezone-id! system-timezone-id
       (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                (t/local-date "2019-11-18")
                                                (t/local-time 0)
@@ -267,7 +267,7 @@
 
 (deftest almost-e2e-test-2
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (mt/with-system-timezone-id system-timezone-id
+    (mt/with-system-timezone-id! system-timezone-id
       (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                (t/local-date "2019-11-18")
                                                (t/local-time 0)
@@ -282,7 +282,7 @@
 (deftest almost-e2e-test-3
   (testing "system timezone ID shouldn't affect generated query"
     (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-      (mt/with-system-timezone-id system-timezone-id
+      (mt/with-system-timezone-id! system-timezone-id
         (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                  (t/local-date "2019-11-18")
                                                  (t/local-time 0)
@@ -339,7 +339,7 @@
 (deftest almost-e2e-time-interval-test
   (testing "Make sure filtering by the previous 4 months actually filters against the right months (#10701)"
     (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-      (mt/with-system-timezone-id system-timezone-id
+      (mt/with-system-timezone-id! system-timezone-id
         (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                  (t/local-date "2019-11-18")
                                                  (t/local-time 0)
