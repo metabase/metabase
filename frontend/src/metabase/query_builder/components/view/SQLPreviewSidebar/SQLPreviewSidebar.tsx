@@ -30,7 +30,7 @@ interface UpdateQuestionOpts {
   shouldUpdateUrl?: boolean;
 }
 
-interface ConvertQueryModalProps {
+interface SQLPreviewSidebarProps {
   question: Question;
   onLoadQuery: () => Promise<NativeQueryForm>;
   onUpdateQuestion: (question: Question, opts?: UpdateQuestionOpts) => void;
@@ -38,13 +38,13 @@ interface ConvertQueryModalProps {
   onClose?: () => void;
 }
 
-const ConvertQueryModal = ({
+const SQLPreviewSidebar = ({
   question,
   onLoadQuery,
   onUpdateQuestion,
   onSetUIControls,
   onClose,
-}: ConvertQueryModalProps): JSX.Element => {
+}: SQLPreviewSidebarProps): JSX.Element => {
   const engineType = getEngineNativeType(question.database()?.engine);
   const { query, error, isLoading } = useNativeQuery(question, onLoadQuery);
 
@@ -85,4 +85,4 @@ const mapStateToProps = (state: State) => ({
 });
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps)(ConvertQueryModal);
+export default connect(mapStateToProps)(SQLPreviewSidebar);
