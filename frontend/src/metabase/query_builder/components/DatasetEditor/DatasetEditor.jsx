@@ -446,23 +446,6 @@ function DatasetEditor(props) {
     },
   );
 
-  const saveButton = (
-    <ActionButton
-      key="save"
-      disabled={!canSaveChanges}
-      actionFn={handleSave}
-      normalText={dataset.isSaved() ? t`Save changes` : t`Save`}
-      activeText={t`Saving…`}
-      failedText={t`Save failed`}
-      successText={t`Saved`}
-      className={cx(
-        ButtonsS.Button,
-        ButtonsS.ButtonPrimary,
-        ButtonsS.ButtonSmall,
-      )}
-    />
-  );
-
   return (
     <>
       <DatasetEditBar
@@ -489,17 +472,27 @@ function DatasetEditor(props) {
             small
             onClick={handleCancelClick}
           >{t`Cancel`}</Button>,
-          saveButtonTooltipLabel ? (
-            <Tooltip
+          <Tooltip
+            key="save"
+            refProp="innerRef"
+            label={saveButtonTooltipLabel}
+            disabled={!saveButtonTooltipLabel}
+          >
+            <ActionButton
               key="save"
-              refProp="innerRef"
-              label={saveButtonTooltipLabel}
-            >
-              {saveButton}
-            </Tooltip>
-          ) : (
-            saveButton
-          ),
+              disabled={!canSaveChanges}
+              actionFn={handleSave}
+              normalText={dataset.isSaved() ? t`Save changes` : t`Save`}
+              activeText={t`Saving…`}
+              failedText={t`Save failed`}
+              successText={t`Saved`}
+              className={cx(
+                ButtonsS.Button,
+                ButtonsS.ButtonPrimary,
+                ButtonsS.ButtonSmall,
+              )}
+            />
+          </Tooltip>,
         ]}
       />
       <Root>
