@@ -379,7 +379,7 @@
   (if (map? new-db-perms)
     (doseq [[schema new-schema-perms] new-db-perms]
       (update-schema-level-create-queries-permissions! group-id db-id schema new-schema-perms))
-    (case new-db-perms
+    (when new-db-perms
       (data-perms/set-database-permission! group-id db-id :perms/create-queries new-db-perms))))
 
 (defn- update-db-level-view-data-permissions!
