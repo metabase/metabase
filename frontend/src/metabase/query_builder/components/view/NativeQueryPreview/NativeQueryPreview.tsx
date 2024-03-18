@@ -14,9 +14,9 @@ import {
   ModalRoot,
   ModalTitle,
   ModalWarningIcon,
-} from "./NativeQueryModal.styled";
+} from "./NativeQueryPreview.styled";
 
-interface NativeQueryModalProps {
+interface NativeQueryPreviewProps {
   title: string;
   query?: string;
   error?: string;
@@ -25,14 +25,14 @@ interface NativeQueryModalProps {
   onClose?: () => void;
 }
 
-export const NativeQueryModal = ({
+export const NativeQueryPreview = ({
   title,
   query,
   error,
   isLoading,
   children,
   onClose,
-}: NativeQueryModalProps): JSX.Element => {
+}: NativeQueryPreviewProps): JSX.Element => {
   return (
     <ModalRoot>
       <ModalHeader>
