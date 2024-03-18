@@ -14,7 +14,7 @@ export const loadMetadataForCard =
   async (dispatch: Dispatch, getState: GetState) => {
     // metadata which can be inferred from the query - source table, joined tables
     await dispatch(loadMetadata(card, options));
-    // additional metadata - tables of FK fields in the source table
+    // additional metadata - target FK fields and tables
     await dispatch(loadMetadata(card));
 
     // metadata for ad-hoc questions based on this question
