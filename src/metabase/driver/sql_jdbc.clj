@@ -186,7 +186,7 @@
     (qp.writeback/execute-write-sql! db-id sql)))
 
 (defmethod driver/alter-columns! :sql-jdbc
-  [driver db-id table-name column-definitions & {:as _settings}]
+  [driver db-id table-name column-definitions]
   (qp.writeback/execute-write-sql! db-id (sql-jdbc.sync/alter-columns-sql driver table-name column-definitions)))
 
 (defmethod driver/syncable-schemas :sql-jdbc

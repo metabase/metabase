@@ -588,6 +588,9 @@
 (defn- extra-and-missing-error-markdown [extra missing]
   (when (seq missing)
     (->> [[(tru "The CSV file is missing columns that are in the table:") missing]
+          ;; Even though we allow new columns to be implicitly added by uploads, we mention then in the error messages
+          ;; for missing fields as a common case will be the misspelling of names. Seeing the actual and expected
+          ;; names together could help customers spot the root cause more easily.
           [(tru "There are new columns in the CSV file that are not in the table:") extra]]
          (keep (fn [[header columns]]
                  (when (seq columns)
