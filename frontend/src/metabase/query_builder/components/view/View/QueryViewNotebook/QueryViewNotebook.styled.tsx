@@ -18,6 +18,7 @@ export const NotebookContainer = styled.div<{
   top: 0;
   transform: translateY(-100%);
   z-index: 2;
+  display: flex;
 
   ${({ transitionTime }) =>
     css`

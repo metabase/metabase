@@ -2,6 +2,7 @@ import PropTypes from "prop-types";
 import { useEffect, useState } from "react";
 
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
+import SQLPreviewSidebar from "metabase/query_builder/components/view/ConvertQueryModal";
 
 import { NotebookContainer } from "./QueryViewNotebook.styled";
 
@@ -29,6 +30,7 @@ const QueryViewNotebook = ({ isNotebookContainerOpen, ...props }) => {
       onTransitionEnd={handleTransitionEnd}
     >
       {shouldShowNotebook && <Notebook {...props} />}
+      <SQLPreviewSidebar />
     </NotebookContainer>
   );
 };
