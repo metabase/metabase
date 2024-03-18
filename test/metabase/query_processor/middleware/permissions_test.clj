@@ -88,7 +88,10 @@
 (deftest nested-native-query-test
   (testing "Make sure nested native query fails to run if current user doesn't have perms"
     (t2.with-temp/with-temp [:model/Database db {}]
-      (data-perms/set-database-permission! (perms-group/all-users) (u/the-id db) :perms/native-query-editing :no)
+      (data-perms/set-database-permission! (perms-group/all-users)
+                                           (u/the-id db)
+                                           :perms/create-queries
+                                           :query-builder)
       (is (thrown-with-msg?
            ExceptionInfo
            perms-error-msg
