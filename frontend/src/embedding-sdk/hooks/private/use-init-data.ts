@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import _ from "underscore";
 
 import { reloadSettings } from "metabase/admin/settings/settings";
 import api from "metabase/lib/api";
@@ -6,6 +7,8 @@ import { refreshCurrentUser } from "metabase/redux/user";
 import registerVisualizations from "metabase/visualizations/register";
 
 import type { SDKConfigType } from "../../config";
+
+const registerVisualizationsOnce = _.once(registerVisualizations);
 
 type InitDataLoaderProps = {
   store: any;
@@ -23,7 +26,7 @@ export const useInitData = ({
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    registerVisualizations();
+    registerVisualizationsOnce();
   }, []);
 
   useEffect(() => {

@@ -13,6 +13,7 @@ import type { SDKConfigType } from "./config";
 import { EmbeddingContext } from "./context";
 import { useInitData } from "./hooks";
 
+import "metabase/css/vendor.css";
 import "./styles.css";
 
 const MetabaseProviderInternal = ({
