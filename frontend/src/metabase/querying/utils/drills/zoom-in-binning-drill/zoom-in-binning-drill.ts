@@ -5,10 +5,9 @@ import type * as Lib from "metabase-lib";
 
 export const zoomInBinningDrill: Drill<Lib.ZoomDrillThruInfo> = ({
   drill,
-  clicked,
+  isDashboard,
   applyDrill,
 }) => {
-  const isDashboard = clicked?.extraData?.dashboard != null;
   return [
     {
       name: "zoom-in.binning",
