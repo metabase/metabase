@@ -58,7 +58,6 @@ export function ListPicker(props: ListPickerProps) {
       nothingFound={noResultsText}
       onSearchChange={onSearchChange}
       onDropdownOpen={onDropdownOpen}
-      selectOnBlur
       inputWrapperOrder={["label", "input", "error", "description"]}
     />
   );
