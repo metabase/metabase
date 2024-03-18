@@ -169,7 +169,10 @@ There may be additional permissions required for other Athena functionality, lik
         "glue:GetTable",
         "glue:GetTables",
         "glue:GetTableVersion",
-        "glue:GetTableVersions"
+        "glue:GetTableVersions",
+        "glue:GetDatabases",
+        "glue:GetTables",
+        "glue:GetDatabase"
       ],
       "Resource": "*"
     },
