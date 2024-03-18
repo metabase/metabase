@@ -76,6 +76,7 @@ export function shouldEnableSearch(
 }
 
 // TODO Change this (metabase#40226)
-export function getSingleString(value: unknown) {
-  return String(Array.isArray(value) ? value[0] : value);
+export function getSingleStringOrNull(value: unknown): null | string {
+  const single = Array.isArray(value) ? value[0] : value;
+  return single == null ? single : String(single);
 }
