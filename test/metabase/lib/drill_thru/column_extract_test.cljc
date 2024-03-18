@@ -36,7 +36,7 @@
       (fn [_test-case {:keys [column] :as _context} {:keys [click column-type]}]
         (and (= click :header)
              (or (= column-type :datetime)
-                 (= (:semantic-type column) :type/URL)))))))
+                 (#{:type/URL :type/Email} (:semantic-type column))))))))
 
 (deftest ^:parallel returns-column-extract-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -277,6 +277,10 @@
   #?(:clj  @#'lib.drill-thru.column-extract/host->subdomain-regex
      :cljs lib.drill-thru.column-extract/host->subdomain-regex))
 
+(def ^:private email->domain-regex
+  #?(:clj  @#'lib.drill-thru.column-extract/email->domain-regex
+     :cljs lib.drill-thru.column-extract/email->domain-regex))
+
 (deftest ^:parallel column-extract-url->domain-test
   ;; There's no URL columns in the same dataset, but let's pretend there's one called People.HOMEPAGE.
   (let [homepage (assoc (meta/field-metadata :people :email)
@@ -397,3 +401,12 @@
        nil         "www.usa.gov"
        nil         "www.dot.va.gov"
        "licensing" "www.licensing.dot.va.gov"))
+
+(deftest ^:parallel email->domain-regex-test
+  (are [domain email] (= domain (re-find email->domain-regex email))
+       "metabase"   "braden@metabase.com"
+       "homeoffice" "mholmes@homeoffice.gov.uk"
+       "someisp"    "john.smith@mail.someisp.com"
+       "amazon"     "trk@amazon.co.uk"
+       "hatena"     "takashi@hatena.ne.jp"
+       "ne"         "takashi@www.ne.jp"))

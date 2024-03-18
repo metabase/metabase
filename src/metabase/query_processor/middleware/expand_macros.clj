@@ -25,7 +25,7 @@
 ;;; "legacy macro" as used below means EITHER a legacy Metric or a legacy Segment.
 (mr/def ::legacy-macro
   [:or
-   ::lib.schema.metadata/metric
+   ::lib.schema.metadata/legacy-metric
    ::lib.schema.metadata/segment])
 
 (mr/def ::macro-type
