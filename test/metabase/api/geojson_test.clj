@@ -8,7 +8,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [ring.adapter.jetty9 :as ring-jetty])
+   [ring.adapter.jetty :as ring-jetty])
   (:import
    (org.eclipse.jetty.server Server)))
 
