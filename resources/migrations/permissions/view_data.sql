@@ -55,8 +55,9 @@ SELECT pg.id AS group_id,
                          SELECT 1
                          FROM permissions_group_membership pgm_inner
                          JOIN sandboxes s ON s.group_id = pgm_inner.group_id
-                         JOIN metabase_table mt ON mt.id = s.table_id AND mt.db_id = md.id
-                         WHERE pgm_inner.user_id = pgm.user_id
+                         JOIN metabase_table mt ON mt.id = s.table_id
+                         WHERE mt.db_id = md.id
+                          AND pgm_inner.user_id = pgm.user_id
                      )
                  )
            ) THEN 'legacy-no-self-service'
