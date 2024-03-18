@@ -554,6 +554,14 @@
                 (mdb.query/reducible-query {:select-distinct [:collection_id :type]
                                             :from            [:report_card]
                                             :where           [:= :archived false]}))
+
+        collections-containing-dashboards
+        (->> (t2/query {:select-distinct [:collection_id]
+                        :from :report_dashboard
+                        :where [:= :archived false]})
+             (map :collection_id)
+             (into #{}))
+
         descendants (collection/descendants-flat parent-coll (collection/visible-collection-ids->honeysql-filter-clause
                                                               :id
                                                               visible-collection-ids))
@@ -567,8 +575,11 @@
                          (conj accu parent-id)))
                      #{}))
 
+
+
         child-type->coll-id-set
-        (merge child-type->coll-id-set {:collection collections-containing-collections})
+        (merge child-type->coll-id-set {:collection collections-containing-collections
+                                        :dashboard collections-containing-dashboards})
 
         ;; why are we calling `annotate-collections` on all descendants, when we only need the collections in `colls`
         ;; to be annotated? Because `annotate-collections` works by looping through the collections it's passed and
