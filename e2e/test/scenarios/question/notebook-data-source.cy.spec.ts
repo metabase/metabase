@@ -25,6 +25,7 @@ import {
   isOSS,
   isEE,
 } from "e2e/support/helpers";
+
 const { REVIEWS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > notebook > data source", () => {
@@ -231,7 +232,7 @@ describe("scenarios > notebook > data source", () => {
       name: "GUI Model",
       query: { "source-table": REVIEWS_ID, limit: 1 },
       display: "table",
-      type: "model",
+      type: "model" as const,
       collection_id: SECOND_COLLECTION_ID,
     };
 
@@ -241,16 +242,7 @@ describe("scenarios > notebook > data source", () => {
     });
 
     it("data selector should properly show a model as the source (metabase#39699)", () => {
-      cy.createQuestion(
-        {
-          name: "GUI Model",
-          query: { "source-table": REVIEWS_ID, limit: 1 },
-          display: "table",
-          type: "model",
-          collection_id: SECOND_COLLECTION_ID,
-        },
-        { visitQuestion: true },
-      );
+      cy.createQuestion(modelDetails, { visitQuestion: true });
       openNotebook();
       cy.findByTestId("data-step-cell")
         .should("have.text", modelDetails.name)
