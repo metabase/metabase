@@ -243,19 +243,14 @@
                   [:= :c.archived false])]
     :order-by [[:pc.position :asc]]}))
 
-(mi/define-simple-hydration-method cards
-  :cards
-  "Return the Cards associated with this `notification`."
-  [notification-or-id]
-  (cards* notification-or-id))
-
-(methodical/defmethod t2/batched-hydrate [:default :cards]
+(methodical/defmethod t2/batched-hydrate [:model/Pulse :cards]
   [_model k pulses]
-  (mi/common-batched-hydration k
-                               pulses
-                               #(->> (cards* (map :id pulses))
-                                     (group-by :pulse_id))
-                               :id))
+  (mi/common-batched-hydration
+   k
+   pulses
+   #(->> (cards* (map :id pulses))
+         (group-by :pulse_id))
+   :id))=
 
 ;;; ---------------------------------------- Notification Fetching Helper Fns ----------------------------------------
 

@@ -182,27 +182,34 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(mi/define-simple-hydration-method tabs
-  :tabs
-  "Return the ordered DashboardTabs associated with `dashboard-or-id`, sorted by tab position."
-  [dashboard-or-id]
-  (t2/select :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id) {:order-by [[:position :asc]]}))
+(methodical/defmethod t2/batched-hydrate [:model/Dashboard :tabs]
+  [_model k dashboards]
+  (mi/common-batched-hydration
+   k
+   dashboards
+   #(group-by :dashboard_id (t2/select :model/DashboardTab
+                                       :dashboard_id [:in (map :id dashboards)]
+                                       {:order-by [[:id :asc][:position :asc]]}))
+   :id))
 
-(mi/define-simple-hydration-method dashcards
-  :dashcards
-  "Return the DashboardCards associated with `dashboard`, in the order they were created."
-  [dashboard-or-id]
-  (t2/select DashboardCard
-             {:select    [:dashcard.* [:collection.authority_level :collection_authority_level]]
-              :from      [[:report_dashboardcard :dashcard]]
-              :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]
-                          [:collection :collection] [:= :collection.id :card.collection_id]]
-              :where     [:and
-                          [:= :dashcard.dashboard_id (u/the-id dashboard-or-id)]
-                          [:or
-                           [:= :card.archived false]
-                           [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
-              :order-by  [[:dashcard.created_at :asc]]}))
+(methodical/defmethod t2/batched-hydrate [:model/Dashboard :dashcards]
+  [_model k dashboards]
+  (mi/common-batched-hydration
+   k
+   dashboards
+   #(group-by :dashboard_id
+              (t2/select :model/DashboardCard
+                         {:select    [:dashcard.* [:collection.authority_level :collection_authority_level]]
+                          :from      [[:report_dashboardcard :dashcard]]
+                          :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]
+                                      [:collection :collection] [:= :collection.id :card.collection_id]]
+                          :where     [:and
+                                      [:in :dashcard.dashboard_id (map :id dashboards)]
+                                      [:or
+                                       [:= :card.archived false]
+                                       [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
+                          :order-by  [[:dashcard.dashboard_id] [:dashcard.created_at :asc]]}))
+   :id))
 
 (mi/define-batched-hydration-method collections-authority-level
   :collection_authority_level
@@ -240,13 +247,13 @@
 (defmethod revision/serialize-instance :model/Dashboard
   [_model _id dashboard]
   (let [dashcards (or (:dashcards dashboard)
-                      (dashcards dashboard))
+                      (:dashcards (t2/hydrate dashboard :dashcards)))
         dashcards (when (seq dashcards)
                     (if (contains? (first dashcards) :series)
                       dashcards
                       (t2/hydrate dashcards :series)))
         tabs  (or (:tabs dashboard)
-                  (tabs dashboard))]
+                  (:tabs (t2/hydrate dashboard :tabs)))]
     (-> (apply dissoc dashboard excluded-columns-for-dashboard-revision)
         (assoc :cards (vec (for [dashboard-card dashcards]
                              (-> (apply dissoc dashboard-card excluded-columns-for-dashcard-revision)

@@ -166,7 +166,7 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(methodical/defmethod t2/batched-hydrate [:default :field_values]
+(methodical/defmethod t2/batched-hydrate [:model/Table :field_values]
   "Return the FieldValues for all Fields belonging to a single `table`."
   [_model k tables]
   (mi/common-batched-hydration
@@ -180,7 +180,7 @@
         (update-vals (fn [fvs] (->> fvs (map (juxt :field_id :values)) (into {})))))
    :id))
 
-(methodical/defmethod t2/batched-hydrate [:default :pk_field]
+(methodical/defmethod t2/batched-hydrate [:model/Table :pk_field]
   [_model k tables]
   (mi/common-batched-hydration
    k tables

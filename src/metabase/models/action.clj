@@ -71,11 +71,13 @@
 (t2/deftransforms :model/HTTPAction
   {:template transform-json-with-nested-parameters})
 
-(mi/define-simple-hydration-method model
-  :model
-  "Return the Card this action uses as a model."
-  [{:keys [model_id]}]
-  (t2/select-one Card :id model_id))
+(methodical/defmethod t2/batched-hydrate [:model/Action :model]
+  [_model k actions]
+  (mi/common-batched-hydration
+   k
+   actions
+   #(t2/select-pk->fn identity :model/Card :id [:in (map :model_id actions)])
+   :model_id))
 
 (defn- check-model-is-not-a-saved-question
   [model-id]

@@ -1023,3 +1023,27 @@
       (is (= (set (for [card [card1 card2 card3]]
                     ["Card" (:id card)]))
              (serdes/descendants "Dashboard" (:id dashboard)))))))
+
+(deftest hydrate-tabs-test
+  (mt/with-temp
+    [:model/Dashboard    dash1      {:name "A dashboard"}
+     :model/DashboardTab dash1-tab1 {:name "Tab 1", :dashboard_id (:id dash1)}
+     :model/DashboardTab dash1-tab2 {:name "Tab 2", :dashboard_id (:id dash1)}
+     :model/Dashboard    dash2      {:name "Another dashboard"}
+     :model/DashboardTab dash2-tab1 {:name "Dash 2 tab 1" :dashboard_id (:id dash2)}
+     :model/DashboardTab dash2-tab2 {:name "Dash 2 tab 2" :dashboard_id (:id dash2)}]
+    (is (=? [[dash1-tab1 dash1-tab2]
+             [dash2-tab1 dash2-tab2]]
+            (map :tabs (t2/hydrate [dash1 dash2] :tabs))))))
+
+(deftest hydrate-dashcards-test
+  (mt/with-temp
+    [:model/Dashboard     dash1       {:name "A dashboard"}
+     :model/DashboardCard dash1-card1 {:dashboard_id (:id dash1)}
+     :model/DashboardCard dash1-card2 {:dashboard_id (:id dash1)}
+     :model/Dashboard     dash2       {:name "Another dashboard"}
+     :model/DashboardCard dash2-card1 {:dashboard_id (:id dash2)}
+     :model/DashboardCard dash2-card2 {:dashboard_id (:id dash2)}]
+    (is (=? [[dash1-card1 dash1-card2]
+             [dash2-card1 dash2-card2]]
+            (map :dashcards (t2/hydrate [dash1 dash2] :dashcards))))))

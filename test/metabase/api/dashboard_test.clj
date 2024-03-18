@@ -1578,9 +1578,9 @@
 (defn- current-cards
   "Returns the current ordered cards of a dashboard."
   [dashboard-id]
-  (-> dashboard-id
-      dashboard/dashcards
-      (t2/hydrate :series)))
+  (-> (t2/select-one :model/Dashboard dashboard-id)
+      (t2/hydrate [:dashcards :series])
+      :dashcards))
 
 (defn do-with-update-cards-parameter-mapping-permissions-fixtures! [f]
   (do-with-add-card-parameter-mapping-permissions-fixtures!
