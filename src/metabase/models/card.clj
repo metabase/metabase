@@ -584,8 +584,8 @@
     (cond
       (or
        ;; query didn't change, preserve existing metadata
-       (and (= (mbql.normalize/normalize original-query)
-               (mbql.normalize/normalize query))
+       (and (= (normalize-query original-query)
+               (normalize-query query))
             valid-metadata?)
        ;; only sent valid metadata in the edit. Metadata might be the same, might be different. We save in either case
        (and (nil? query)

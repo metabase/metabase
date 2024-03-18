@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [malli.error :as me]
+   [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -557,11 +558,10 @@
   If you have only the inner query map (`{:source-table 2 ...}` or similar), call [[js-legacy-inner-query->pMBQL]]
   instead."
   [query-map]
-  (-> query-map
-      from-json
-      (u/assoc-default :type :query)
-      mbql.normalize/normalize
-      ->pMBQL))
+  (let [clj-map (from-json query-map)]
+    (if (= (:lib/type clj-map) "mbql/query")
+      (lib.normalize/normalize clj-map)
+      (-> clj-map (u/assoc-default :type :query) mbql.normalize/normalize ->pMBQL))))
 
 (defn js-legacy-inner-query->pMBQL
   "Given a JSON-formatted *inner* query, transform it to pMBQL.

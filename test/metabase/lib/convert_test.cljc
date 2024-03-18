@@ -224,6 +224,7 @@
                   :type     :query
                   :query    {:source-table "card__100"}}]
     (is (=? {:lib/type :mbql/query
+             :database 1
              :stages   [{:lib/type    :mbql.stage/mbql
                          :source-card 100}]}
             (lib.convert/->pMBQL original)))

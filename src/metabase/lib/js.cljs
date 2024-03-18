@@ -122,7 +122,10 @@
 (defn ^:export legacy-query
   "Coerce a CLJS pMBQL query back to (1) a legacy query (2) in vanilla JS."
   [query-map]
-  (-> query-map lib.query/->legacy-MBQL fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
+  (-> (if (lib.util/source-metric-id query-map)
+        (dissoc query-map :lib/metadata)
+        (lib.query/->legacy-MBQL query-map))
+      fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
 
 (defn ^:export append-stage
   "Adds a new blank stage to the end of the pipeline"
@@ -357,7 +360,7 @@
    (lib.core/normalize (js->clj source-clause :keywordize-keys true))
    (lib.core/normalize (js->clj target-clause :keywordize-keys true))))
 
-(defn- prep-query-for-equals [a-query field-ids]
+(defn- prep-query-for-equals-legacy [a-query field-ids]
   (-> a-query
       mbql.js/normalize-cljs
       ;; If `:native` exists, but it doesn't have `:template-tags`, add it.
@@ -369,6 +372,19 @@
                                     ;; We ignore the order of the fields in the lists, but need to make sure any dupes
                                     ;; match up. Therefore de-dupe with `frequencies` rather than simply `set`.
                                     (assoc inner-query :fields (frequencies fields)))))))
+
+(defn- prep-query-for-equals-pMBQL
+  [a-query field-ids]
+  (let [pMBQL-query (lib.convert/js-legacy-query->pMBQL a-query)
+        fields (or (some->> (lib.core/fields pMBQL-query)
+                            (map #(assoc % 1 {})))
+                   (mapv (fn [id] [:field {} id]) field-ids))]
+    (lib.util/update-query-stage pMBQL-query -1 assoc :fields (frequencies fields))))
+
+(defn- prep-query-for-equals [a-query field-ids]
+  (if (and a-query (aget a-query "lib/type"))
+    (prep-query-for-equals-pMBQL a-query field-ids)
+    (prep-query-for-equals-legacy a-query field-ids)))
 
 (defn- compare-legacy-field-refs
   [[key1 id1 opts1]
@@ -390,12 +406,15 @@
          (= (first x) (first y) :field))
     (compare-legacy-field-refs x y)
 
-    ;; Otherwise this is a duplicate of clojure.core/=.
+    ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid values don't
+    ;; have to match.
     (and (map? x) (map? y))
-    (and (= (set (keys x)) (set (keys y)))
-         (every? (fn [[k v]]
-                   (query=* v (get y k)))
-                 x))
+    (let [x (dissoc x :lib/uuid)
+          y (dissoc y :lib/uuid)]
+      (and (= (set (keys x)) (set (keys y)))
+           (every? (fn [[k v]]
+                     (query=* v (get y k)))
+                   x)))
 
     (and (sequential? x) (sequential? y))
     (and (= (count x) (count y))
