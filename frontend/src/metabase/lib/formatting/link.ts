@@ -49,7 +49,7 @@ export function renderLinkURLForClick(
     ({ value, column }: TemplateForClickFormatFunctionParamsType) => {
       const valueForLinkTemplate = formatValueForLinkTemplate(value, column);
 
-      if (valueForLinkTemplate === null) {
+      if ([null, "(empty)"].includes(valueForLinkTemplate)) {
         return "";
       }
 
