@@ -2,7 +2,6 @@ import { assoc, dissoc, assocIn } from "icepick";
 import { parse } from "url";
 
 import { createMockMetadata } from "__support__/metadata";
-import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
 import { deserializeCardFromUrl } from "metabase/lib/card";
 import Question from "metabase-lib/v1/Question";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
