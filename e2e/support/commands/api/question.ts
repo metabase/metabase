@@ -101,55 +101,61 @@ type Options = {
   interceptAlias?: string;
 };
 
-Cypress.Commands.add("archiveQuestion", (id: Card["id"]) => {
+const createQuestion = (
+  questionDetails: StructuredQuestionDetails,
+  options?: Options,
+) => {
+  const { database = SAMPLE_DB_ID, name, query } = questionDetails;
+
+  if (!query) {
+    throw new Error('"query" attribute missing in questionDetails');
+  }
+
+  logAction("Create a QB question", name);
+
+  return question(
+    {
+      ...questionDetails,
+      dataset_query: { type: "query", query, database },
+    },
+    options,
+  );
+};
+
+const createNativeQuestion = (
+  questionDetails: NativeQuestionDetails,
+  options?: Options,
+) => {
+  const { database = SAMPLE_DB_ID, name, native } = questionDetails;
+
+  if (!native) {
+    throw new Error('"native" attribute missing in questionDetails');
+  }
+
+  logAction("Create a native question", name);
+
+  return question(
+    {
+      ...questionDetails,
+      dataset_query: { type: "native", native, database },
+    },
+    options,
+  );
+};
+
+const archiveQuestion = (id: Card["id"]) => {
   cy.log(`Archiving a question with id: ${id}`);
 
   return cy.request("PUT", `/api/card/${id}`, {
     archived: true,
   });
-});
+};
 
-Cypress.Commands.add(
-  "createQuestion",
-  (questionDetails: StructuredQuestionDetails, options?: Options) => {
-    const { database = SAMPLE_DB_ID, name, query } = questionDetails;
+Cypress.Commands.add("archiveQuestion", archiveQuestion);
 
-    if (!query) {
-      throw new Error('"query" attribute missing in questionDetails');
-    }
+Cypress.Commands.add("createQuestion", createQuestion);
 
-    logAction("Create a QB question", name);
-
-    return question(
-      {
-        ...questionDetails,
-        dataset_query: { type: "query", query, database },
-      },
-      options,
-    );
-  },
-);
-
-Cypress.Commands.add(
-  "createNativeQuestion",
-  (questionDetails: NativeQuestionDetails, options?: Options) => {
-    const { database = SAMPLE_DB_ID, name, native } = questionDetails;
-
-    if (!native) {
-      throw new Error('"native" attribute missing in questionDetails');
-    }
-
-    logAction("Create a native question", name);
-
-    return question(
-      {
-        ...questionDetails,
-        dataset_query: { type: "native", native, database },
-      },
-      options,
-    );
-  },
-);
+Cypress.Commands.add("createNativeQuestion", createNativeQuestion);
 
 const question = (
   {
