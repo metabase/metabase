@@ -41,7 +41,6 @@ export function shouldUseListPicker(parameter: Parameter): boolean {
     parameter.type === "category" &&
     (parameter.values_query_type === "list" ||
       parameter.values_query_type === "search") &&
-    // parameter with unset source config and no values
     parameter.values_source_config !== undefined
   );
 }
