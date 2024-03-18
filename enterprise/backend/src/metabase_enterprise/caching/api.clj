@@ -16,7 +16,7 @@
 
 (defn- assert-valid-models [model ids]
   (if (= model "root")
-    (when-not (zero? (first ids))
+    (when-not (= [0] ids)
       (throw (ex-info (tru "Root configuration is only valid with model_id = 0") {:status-code 400
                                                                                   :model_id    (first ids)})))
     (api/check-404 (t2/select-one (case model
