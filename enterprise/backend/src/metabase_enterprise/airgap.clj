@@ -14,13 +14,16 @@
 (defn- token? [token]
   (and token (str/starts-with? token "airgap_")))
 
+(defn- pubkey-reader []
+  (io/reader (io/resource "airgap/pubkey.pem")))
+
 (mu/defn ^:private decode-token :- :map
   "Given an encrypted airgap token, decrypts it and returns a TokenStatus"
   [token]
   (when-not (token? token)
     (throw (ex-info "Malformed airgap token" {:token token})))
   (let [token     (str/replace token #"^airgap_" "")
-        pub-key   (with-open [rdr (io/reader (io/resource "airgap/pubkey.pem"))]
+        pub-key   (with-open [rdr (pubkey-reader)]
                     (keys/public-key rdr))
         decrypted (jwt/decrypt token pub-key {:alg :rsa-oaep :enc :a128cbc-hs256})]
     (if (valid-now? decrypted)
