@@ -1541,7 +1541,7 @@
              (finally
                (io/delete-file file))))
 
-         (is (= {:data {"size_mb"      5.245208740234375E-5
+         (is (= {:data {"size_mb"     5.245208740234375E-5
                         "num_columns" 2
                         "num_rows"    1
                         "event"       "csv_append_failed"}
