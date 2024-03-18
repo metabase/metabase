@@ -279,12 +279,7 @@
     []
     (eduction
      (describe-fields-xf driver db)
-     (sql-jdbc.execute/do-with-connection-with-options
-      driver
-      db
-      nil
-      (fn [conn]
-        (sql-jdbc.execute/reducible-query driver conn (describe-fields-sql driver args)))))))
+     (sql-jdbc.execute/reducible-query db (describe-fields-sql driver args)))))
 
 (defn- describe-table-fks*
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
@@ -322,12 +317,7 @@
   (if (or (and schema-names (empty? schema-names))
           (and table-names (empty? table-names)))
     []
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     db
-     nil
-     (fn [conn]
-       (sql-jdbc.execute/reducible-query driver conn (describe-fks-sql driver args))))))
+    (sql-jdbc.execute/reducible-query db (describe-fks-sql driver args))))
 
 (defn describe-table-indexes
   "Default implementation of [[metabase.driver/describe-table-indexes]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
