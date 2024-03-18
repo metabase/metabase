@@ -35,7 +35,7 @@ describe("ActionCreator > Query Actions", () => {
 
     it("should show clickable data reference icon", async () => {
       await setup();
-      userEvent.click(getIcon("reference"));
+      await userEvent.click(getIcon("reference"));
 
       expect(screen.getAllByText("Data Reference")).toHaveLength(2);
       expect(
@@ -56,12 +56,10 @@ describe("ActionCreator > Query Actions", () => {
 
         // put query into textbox
         const view = screen.getByTestId("mock-native-query-editor");
-        userEvent.paste(
-          within(view).getByRole("textbox"),
-          "select * from orders where {{paramNane}}",
-        );
+        within(view).getByRole("textbox").click();
+        await userEvent.paste("select * from orders where {{paramNane}}");
 
-        userEvent.click(screen.getByRole("button", { name: "Save" }));
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
         // form is rendered
         expect(
@@ -82,12 +80,10 @@ describe("ActionCreator > Query Actions", () => {
 
         // put query into textbox
         const view = screen.getByTestId("mock-native-query-editor");
-        userEvent.paste(
-          within(view).getByRole("textbox"),
-          "select * from orders where {{paramNane}}",
-        );
+        within(view).getByRole("textbox").click();
+        await userEvent.paste("select * from orders where {{paramNane}}");
 
-        userEvent.click(screen.getByRole("button", { name: "Save" }));
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
         // form is rendered
         expect(

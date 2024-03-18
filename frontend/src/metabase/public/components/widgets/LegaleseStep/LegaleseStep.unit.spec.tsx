@@ -58,7 +58,7 @@ describe("LegaleseStep", () => {
     );
 
     const { goToNextStep } = setup();
-    userEvent.click(screen.getByText("Agree and continue"));
+    await userEvent.click(screen.getByText("Agree and continue"));
 
     expect(settingPutCalls.calls().length).toBe(1);
     expect(await settingPutCalls.lastCall()?.request?.json()).toEqual({

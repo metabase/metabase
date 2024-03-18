@@ -201,7 +201,7 @@ describe("FileUploadStatus", () => {
 
     await setupCollectionContent();
 
-    userEvent.upload(
+    await userEvent.upload(
       screen.getByTestId("upload-input"),
       new File(["foo, bar"], "test.csv", { type: "text/csv" }),
     );
@@ -229,7 +229,7 @@ describe("FileUploadStatus", () => {
 
     await setupCollectionContent({ collectionId: secondCollectionId });
 
-    userEvent.upload(
+    await userEvent.upload(
       screen.getByTestId("upload-input"),
       new File(["foo, bar"], "test.csv", { type: "text/csv" }),
     );
@@ -238,7 +238,7 @@ describe("FileUploadStatus", () => {
       await screen.findByText("Select upload destination"),
     ).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole("button", { name: "Create model" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create model" }));
 
     act(() => {
       jest.advanceTimersByTime(500);
@@ -263,7 +263,7 @@ describe("FileUploadStatus", () => {
 
     await setupCollectionContent({ collectionId: secondCollectionId });
 
-    userEvent.upload(
+    await userEvent.upload(
       screen.getByTestId("upload-input"),
       new File(["foo, bar"], "test.csv", { type: "text/csv" }),
     );
@@ -272,7 +272,7 @@ describe("FileUploadStatus", () => {
       await screen.findByText("Select upload destination"),
     ).toBeInTheDocument();
 
-    userEvent.click(screen.getByText("Append to a model"));
+    await userEvent.click(screen.getByText("Append to a model"));
     const submitButton = await screen.findByRole("button", {
       name: "Append to model",
     });
@@ -281,7 +281,7 @@ describe("FileUploadStatus", () => {
     await screen.findByText("my uploaded model");
 
     await waitFor(() => expect(submitButton).toBeEnabled());
-    userEvent.click(submitButton);
+    await userEvent.click(submitButton);
 
     act(() => {
       jest.advanceTimersByTime(500);
@@ -306,7 +306,7 @@ describe("FileUploadStatus", () => {
 
     await setupCollectionContent({ collectionId: thirdCollection.id });
 
-    userEvent.upload(
+    await userEvent.upload(
       screen.getByTestId("upload-input"),
       new File(["foo, bar"], "test.csv", { type: "text/csv" }),
     );
@@ -315,20 +315,20 @@ describe("FileUploadStatus", () => {
       await screen.findByText("Select upload destination"),
     ).toBeInTheDocument();
 
-    userEvent.click(screen.getByText("Append to a model"));
+    await userEvent.click(screen.getByText("Append to a model"));
     const submitButton = await screen.findByRole("button", {
       name: "Append to model",
     });
 
-    userEvent.click(await screen.findByPlaceholderText("Select a model"));
-    userEvent.click(
+    await userEvent.click(await screen.findByPlaceholderText("Select a model"));
+    await userEvent.click(
       await within(await screen.findByRole("listbox")).findByText(
         "my uploaded model",
       ),
     );
 
     await waitFor(() => expect(submitButton).toBeEnabled());
-    userEvent.click(submitButton);
+    await userEvent.click(submitButton);
 
     act(() => {
       jest.advanceTimersByTime(500);
@@ -411,7 +411,7 @@ describe("FileUploadStatus", () => {
 
     await setupCollectionContent();
 
-    userEvent.upload(
+    await userEvent.upload(
       screen.getByTestId("upload-input"),
       new File(["foo, bar"], "test.csv", { type: "text/csv" }),
     );
@@ -432,7 +432,7 @@ describe("FileUploadStatus", () => {
       await screen.findByText("Error uploading your file"),
     ).toBeInTheDocument();
 
-    userEvent.click(await screen.findByText("Show error details"));
+    await userEvent.click(await screen.findByText("Show error details"));
 
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
@@ -446,7 +446,7 @@ describe("FileUploadStatus", () => {
 
       await setupCollectionContent();
 
-      userEvent.upload(
+      await userEvent.upload(
         screen.getByTestId("upload-input"),
         new File(["foo, bar"], "test.csv", { type: "text/csv" }),
       );

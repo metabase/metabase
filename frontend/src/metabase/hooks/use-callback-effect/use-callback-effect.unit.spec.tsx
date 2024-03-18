@@ -36,7 +36,7 @@ describe("useCallbackEffect", () => {
 
     render(<TestComponent callback={callback} />);
 
-    userEvent.click(screen.getByRole("button", { name: "Schedule" }));
+    await userEvent.click(screen.getByRole("button", { name: "Schedule" }));
 
     expect(screen.getByText("Status: scheduled")).toBeInTheDocument();
     expect(callback).not.toHaveBeenCalled();

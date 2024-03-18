@@ -25,29 +25,29 @@ describe("BetweenPicker", () => {
     jest.useRealTimers();
   });
 
-  it("should change the filter by calendar", () => {
+  it("should change the filter by calendar", async () => {
     const initialFilter = ["between", field, "2022-08-10", "2022-08-29"];
 
     render(<TestBetweenPicker initialFilter={initialFilter} />);
-    userEvent.click(screen.getByText("12"));
-    userEvent.click(screen.getByText("20"));
+    await userEvent.click(screen.getByText("12"));
+    await userEvent.click(screen.getByText("20"));
 
     expect(screen.getByDisplayValue("08/12/2022")).toBeInTheDocument();
     expect(screen.getByDisplayValue("08/20/2022")).toBeInTheDocument();
   });
 
-  it("should change the filter by keyboard and calendar", () => {
+  it("should change the filter by keyboard and calendar", async () => {
     const initialFilter = ["between", field, "2022-08-10", "2022-08-29"];
 
     render(<TestBetweenPicker initialFilter={initialFilter} />);
 
     const startDateInput = screen.getByDisplayValue("08/10/2022");
-    userEvent.clear(startDateInput);
-    userEvent.type(startDateInput, "07/25/2022");
-    userEvent.tab();
+    await userEvent.clear(startDateInput);
+    await userEvent.type(startDateInput, "07/25/2022");
+    await userEvent.tab();
 
     const endDateInput = screen.getByDisplayValue("08/29/2022");
-    userEvent.click(screen.getByText("20"));
+    await userEvent.click(screen.getByText("20"));
 
     expect(startDateInput).toHaveValue("07/25/2022");
     expect(endDateInput).toHaveValue("08/20/2022");

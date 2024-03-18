@@ -27,7 +27,7 @@ describe("ModerationReviewIcon", () => {
     expect(screen.getByLabelText("verified icon")).toBeInTheDocument();
   });
 
-  it("should show a tooltip on hover when moderator is loaded", () => {
+  it("should show a tooltip on hover when moderator is loaded", async () => {
     const props = getProps({
       review: createMockModerationReview({
         moderator_id: 1,
@@ -38,7 +38,7 @@ describe("ModerationReviewIcon", () => {
     });
 
     render(<ModerationReviewIcon {...props} />);
-    userEvent.hover(screen.getByLabelText("verified icon"));
+    await userEvent.hover(screen.getByLabelText("verified icon"));
 
     expect(screen.getByText("You verified this")).toBeInTheDocument();
     expect(screen.getByText("a year ago")).toBeInTheDocument();
