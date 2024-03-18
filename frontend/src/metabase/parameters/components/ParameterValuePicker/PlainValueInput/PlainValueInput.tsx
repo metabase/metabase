@@ -3,7 +3,7 @@ import type { ChangeEvent } from "react";
 import { TextInput } from "metabase/ui";
 
 import { PickerIcon } from "../ParameterValuePicker.styled";
-import { handleInputKeyup } from "../util";
+import { blurOnCommitKey } from "../util";
 
 interface PlainValueInputProps {
   value: string | null;
@@ -30,7 +30,8 @@ export function PlainValueInput(props: PlainValueInputProps) {
     <TextInput
       value={value ?? ""} // required by Mantine
       onChange={handleChange}
-      onKeyUp={handleInputKeyup}
+      // Values are "committed" immediately because it's controlled from the outside
+      onKeyUp={blurOnCommitKey}
       placeholder={placeholder}
       rightSection={icon}
     />

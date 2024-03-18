@@ -1,7 +1,7 @@
 import { Select, Loader } from "metabase/ui";
 
 import { PickerIcon } from "../ParameterValuePicker.styled";
-import { handleInputKeyup } from "../util";
+import { blurOnCommitKey } from "../util";
 
 import S from "./ListPicker.css";
 
@@ -54,7 +54,7 @@ export function ListPicker(props: ListPickerProps) {
       rightSection={icon}
       placeholder={placeholder}
       searchable={enableSearch}
-      onKeyUp={handleInputKeyup}
+      onKeyUp={blurOnCommitKey}
       nothingFound={noResultsText}
       onSearchChange={onSearchChange}
       onDropdownOpen={onDropdownOpen}

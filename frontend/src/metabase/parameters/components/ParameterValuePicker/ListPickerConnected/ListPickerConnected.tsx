@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useReducer } from "react";
+import { useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { useDebouncedCallback } from "metabase/hooks/use-debounced-callback";
@@ -87,7 +88,6 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
         payload: { isLoading: true, query },
       });
       fetchUpdateDebounced(query);
-      return;
     }
   };
 
@@ -106,9 +106,8 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, parameter]);
-  // Cleanup
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => () => cancelFetch(), []);
+
+  useUnmount(cancelFetch); // Cleanup
 
   const staticValues = getListParameterStaticValues(parameter);
   const enableSearch = shouldEnableSearch(parameter, forceSearchItemCount);
@@ -125,7 +124,7 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
 
   return (
     <ListPicker
-      value={value ?? ""}
+      value={value ?? ""} // Can't be null for the underlying Select
       values={staticValues ?? fetchedValues}
       onClear={() => ownOnChange(null)}
       onChange={ownOnChange}

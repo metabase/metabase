@@ -54,7 +54,7 @@ export function getListParameterStaticValues(
   parameter: Parameter,
 ): string[] | null {
   if (isStaticListParam(parameter)) {
-    return parameter.values_source_config?.values as string[];
+    return parameter.values_source_config?.values ?? null;
   }
   return null;
 }
