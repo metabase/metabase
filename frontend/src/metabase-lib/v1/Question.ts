@@ -436,7 +436,7 @@ class Question {
    * of Question interface instead of Query interface makes it more convenient to also change the current visualization
    */
 
-  composeDataset(): Question {
+  composeQuery(): Question {
     if (!this.isSaved()) {
       return this;
     }
@@ -448,12 +448,12 @@ class Question {
     return this.setQuery(query);
   }
 
-  composeThisQuery(): Question {
+  composeQueryAdHoc(): Question {
     if (!this.isSaved()) {
       return this;
     }
 
-    const query = this.composeDataset().query();
+    const query = this.composeQuery().query();
     return Question.create({ metadata: this.metadata() }).setQuery(query);
   }
 
@@ -601,7 +601,7 @@ class Question {
     const queries =
       this.type() === "question"
         ? [this.query()]
-        : [this.query(), this.composeDataset().query()];
+        : [this.query(), this.composeQuery().query()];
     return queries.flatMap(query => Lib.dependentMetadata(query));
   }
 
