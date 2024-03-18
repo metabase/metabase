@@ -416,6 +416,23 @@ describe("ListPickerConnected", () => {
         ).toBeVisible(),
       );
     });
+
+    it("works with wrong types of values", async () => {
+      const fetchValuesMock = getResolvedValuesMock([[true], [false]]);
+      setup({
+        value: null,
+        parameter: getCardBoundParam(),
+        fetchValuesMock,
+      });
+
+      const input = screen.getByPlaceholderText("Start typing to filter…");
+      userEvent.click(input);
+      await waitFor(() => {
+        expect(fetchValuesMock).toHaveBeenCalledTimes(1);
+      });
+      expect(screen.getByText("true")).toBeVisible();
+      expect(screen.getByText("false")).toBeVisible();
+    });
   });
 });
 
