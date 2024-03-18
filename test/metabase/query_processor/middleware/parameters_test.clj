@@ -23,7 +23,28 @@
           :native          {:query "WOW", :parameters ["My Param"]}
           :user-parameters ["My Param"]}
          (#'parameters/move-top-level-params-to-inner-query
-          {:type :native, :native {:query "WOW"}, :parameters ["My Param"]}))))
+          {:type :native, :native {:query "WOW"}, :parameters ["My Param"]})))
+  (testing "when top-level query is a model"
+    (testing "and there are parameters, wrap it up as a :source-query"
+      (is (= {:type            :query
+              :query           {:source-query {:source-table 5}
+                                :parameters   ["My Param"]}
+              :info            {:metadata/model-metadata []}
+              :user-parameters ["My Param"]}
+             (#'parameters/move-top-level-params-to-inner-query
+               {:type       :query
+                :query      {:source-table 5}
+                :parameters ["My Param"]
+                :info       {:metadata/model-metadata []}}))))
+    (testing "without parameters, leave the model at the top level"
+      (is (= {:type            :query
+              :query           {:source-table 5
+                                :parameters   ["My Param"]}
+              :user-parameters ["My Param"]}
+             (#'parameters/move-top-level-params-to-inner-query
+               {:type       :query
+                :query      {:source-table 5}
+                :parameters ["My Param"]}))))))
 
 (defn- substitute-params [query]
   (letfn [(thunk []

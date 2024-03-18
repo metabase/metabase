@@ -303,8 +303,8 @@
                                        :last_name  "Corv"
                                        :email      "crowberto@metabase.com"
                                        :timestamp  true}})
-              (-> (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine")
-                  first
+              (-> (m/find-first #(= (:id %) crowberto-dash)
+                                (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine"))
                   (update-in [:last-edit-info :timestamp] boolean)))))
 
     (testing "f=all shouldn't return archived dashboards"
@@ -334,8 +334,10 @@
                (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "archived")))))))
 
     (testing "f=mine return dashboards created by caller but do not include archived"
-      (is (= #{crowberto-dash}
-             (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine"))))))))
+      (let [ids (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine")))]
+        (is (contains? ids crowberto-dash)      "Should contain Crowberto's dashboard")
+        (is (not (contains? ids rasta-dash))    "Should not contain Rasta's dashboard")
+        (is (not (contains? ids archived-dash)) "Should not contain archied dashboard")))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             GET /api/dashboard/:id                                             |
@@ -659,7 +661,7 @@
             dashboard-load-b (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id))
             param-values     (mt/user-http-request :rasta :get 200 (format "dashboard/%s/params/%s/values" dashboard-id "foo"))]
         (testing "The initial dashboard-load fetches parameter values only if they already exist (#38826)"
-          (is (some? (:param_values dashboard-load-a)))
+          (is (seq (:param_values dashboard-load-a)))
           (is (nil? (:param_values dashboard-load-b))))
         (testing "Request to values endpoint triggers computation of field values if missing."
           (is (= ["20th Century Cafe" "25°" "33 Taps"]
@@ -3568,11 +3570,11 @@
                                                     {:parameters {"id" 1}})))
                 (is (= [1 "Shop"]
                        (mt/first-row
-                         (mt/run-mbql-query categories {:filter [:= $id 1]})))))
+                        (mt/run-mbql-query categories {:filter [:= $id 1]})))))
               (testing "Missing required parameter according to the template tag"
-                (is (partial= {:message "Error executing Action: Error building query parameter map: Error determining value for parameter \"id\": You'll need to pick a value for 'ID' before this query can run."}
-                              (mt/user-http-request :crowberto :post 500 execute-path
-                                                    {:parameters {"name" "Bird"}})))
+                (is (=? {:message #"Error executing Action: .* Error building query parameter map: Error determining value for parameter \"id\": You'll need to pick a value for 'ID' before this query can run."}
+                        (mt/user-http-request :crowberto :post 500 execute-path
+                                              {:parameters {"name" "Bird"}})))
                 (is (= [1 "Shop"]
                        (mt/first-row
                         (mt/run-mbql-query categories {:filter [:= $id 1]})))))
@@ -3582,7 +3584,7 @@
                                                     {:parameters {"id" 1 "name" "Bird"}})))
                 (is (= [1 "Bird Shop"]
                        (mt/first-row
-                         (mt/run-mbql-query categories {:filter [:= $id 1]})))))
+                        (mt/run-mbql-query categories {:filter [:= $id 1]})))))
               (testing "Should affect 0 rows if id is out of range"
                 (is (= {:rows-affected 0}
                        (mt/user-http-request :crowberto :post 200 execute-path
@@ -3770,9 +3772,9 @@
                  ;; Difference between h2 and postgres, in and out
                  {:field-name "adatetimetz" :base-type :type/DateTimeWithTZ #_#_::good "2020-02-02 14:39:59-0700" ::bad "not date"}]]
       (mt/with-temp-test-data
-        ["types"
-         (map #(dissoc % ::good ::bad) types)
-         [["init"]]]
+        [["types"
+          (map #(dissoc % ::good ::bad) types)
+          [["init"]]]]
         (mt/with-actions-enabled
           (mt/with-actions [{card-id :id} {:type :model :dataset_query (mt/mbql-query types)}
                             {:keys [action-id]} {:type :implicit :kind "row/create"}]
@@ -3984,22 +3986,6 @@
                       (mt/with-temp [PermissionsGroup {group-id :id} {}
                                      PermissionsGroupMembership _ {:user_id  (mt/user->id :rasta)
                                                                    :group_id group-id}]
-                        (comment ;; We do not currently support /execute/ permission
-                          (is (partial= {:message "You don't have permissions to do that."}
-                                        (mt/user-http-request :rasta :post 403 execute-path
-                                                              {:parameters {"id" 1}}))
-                              "Execution permission should be required"))
-                        (mt/user-http-request
-                         :crowberto :put 200 "permissions/execution/graph"
-                         (assoc-in (perms/execution-perms-graph) [:groups group-id (mt/id)] :all))
-                        (is (= :all
-                               (get-in (perms/execution-perms-graph) [:groups group-id (mt/id)]))
-                            "Should be able to set execution permission")
-                        (is (= {:rows-affected 1}
-                               (mt/user-http-request :rasta :post 200 execute-path
-                                                     {:parameters {"id" 1}}))
-                            "Execution and data permissions should be enough")
-
                         (data-perms.graph/update-data-perms-graph!* [group-id (mt/id) :data]
                                                                     {:schemas :block})
                         (data-perms.graph/update-data-perms-graph!* [(:id (perms-group/all-users)) (mt/id) :data]

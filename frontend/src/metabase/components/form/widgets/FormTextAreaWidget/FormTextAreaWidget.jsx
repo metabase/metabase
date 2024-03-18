@@ -23,6 +23,7 @@ const FormTextAreaWidget = ({
       aria-labelledby={`${field.name}-label`}
       tabIndex={tabIndex}
       {...formDomOnlyProps(field)}
+      value={field.value || ""}
     />
     {helperText && (
       <HelpText

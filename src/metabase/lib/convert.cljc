@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -217,6 +218,7 @@
     (-> (lib.util/pipeline m)
         (update :stages (fn [stages]
                           (mapv ->pMBQL stages)))
+        lib.normalize/normalize
         (assoc :lib.convert/converted? true)
         clean)
     (update-vals m ->pMBQL)))
@@ -275,6 +277,10 @@
   [[_tag aggregation options]]
   (let [[tag opts & args] (->pMBQL aggregation)]
     (into [tag (merge opts options)] args)))
+
+(defmethod ->pMBQL :time-interval
+  [[_tag field n unit options]]
+  (lib.options/ensure-uuid [:time-interval (or options {}) (->pMBQL field) n unit]))
 
 (defn legacy-query-from-inner-query
   "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff
@@ -407,16 +413,17 @@
 (defmethod ->legacy-MBQL :aggregation [[_ opts agg-uuid :as ag]]
   (if (map? opts)
     (try
-      (let [opts (options->legacy-MBQL opts)
+      (let [opts     (options->legacy-MBQL opts)
             base-agg [:aggregation (get-or-throw! *pMBQL-uuid->legacy-index* agg-uuid)]]
         (if (seq opts)
-          [:aggregation-options base-agg opts]
+          (conj base-agg opts)
           base-agg))
       (catch #?(:clj Throwable :cljs :default) e
         (throw (ex-info (lib.util/format "Error converting aggregation reference to pMBQL: %s" (ex-message e))
                         {:ref ag}
                         e))))
-    ;; Our conversion is a bit too aggressive and we're hitting legacy refs like [:aggregation 0] inside source_metadata that are only used for legacy and thus can be ignored
+    ;; Our conversion is a bit too aggressive and we're hitting legacy refs like [:aggregation 0] inside
+    ;; source_metadata that are only used for legacy and thus can be ignored
     ag))
 
 (defmethod ->legacy-MBQL :dispatch-type/sequential [xs]

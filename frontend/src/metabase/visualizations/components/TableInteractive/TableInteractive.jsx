@@ -16,6 +16,7 @@ import Button from "metabase/core/components/Button";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { zoomInRow } from "metabase/query_builder/actions";
@@ -30,9 +31,9 @@ import {
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
-import { isAdHocModelQuestionCard } from "metabase-lib/metadata/utils/models";
-import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
-import { memoizeClass } from "metabase-lib/utils";
+import { isAdHocModelQuestionCard } from "metabase-lib/v1/metadata/utils/models";
+import { isID, isPK, isFK } from "metabase-lib/v1/types/utils/isa";
+import { memoizeClass } from "metabase-lib/v1/utils";
 
 import MiniBar from "../MiniBar";
 
@@ -753,7 +754,6 @@ class TableInteractive extends Component {
         }}
       >
         <HeaderCell
-          data-testid={isVirtual ? undefined : "header-cell"}
           ref={e => (this.headerRefs[columnIndex] = e)}
           style={{
             ...style,
@@ -776,6 +776,9 @@ class TableInteractive extends Component {
               "justify-end": isRightAligned,
             },
           )}
+          role="columnheader"
+          aria-label={columnTitle}
+          data-testid={isVirtual ? undefined : "header-cell"}
           onClick={
             // only use the onClick if not draggable since it's also handled in Draggable's onStop
             isClickable && !isDraggable
@@ -997,7 +1000,7 @@ class TableInteractive extends Component {
                 data-testid="TableInteractive-root"
               >
                 <canvas
-                  className="spread"
+                  className={CS.spread}
                   style={{ pointerEvents: "none", zIndex: 999 }}
                   width={width}
                   height={height}

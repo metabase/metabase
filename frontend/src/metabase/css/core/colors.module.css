@@ -23,7 +23,8 @@
 }
 
 :global(.text-default),
-.text-default {
+.text-default,
+.textDefault {
   color: var(--color-text-dark);
 }
 
@@ -33,7 +34,8 @@
 
 /* brand */
 :global(.text-brand),
-.text-brand {
+.text-brand,
+.textBrand {
   color: var(--color-brand);
 }
 
@@ -47,6 +49,7 @@
 
 :global(.text-error),
 .text-error,
+.textError,
 :global(.text-error-hover:hover) {
   color: var(--color-error);
 }
@@ -68,12 +71,14 @@
 }
 
 :global(.text-light),
-.text-light {
+.text-light,
+.textLight {
   color: var(--color-text-light);
 }
 
 :global(.text-medium),
 .text-medium,
+.textMedium,
 :global(.text-medium-hover:hover) {
   color: var(--color-text-medium);
 }
@@ -96,12 +101,13 @@
 /* white  - move to bottom for specificity since its often used on hovers, etc */
 :global(.text-white),
 .text-white,
+.textWhite,
 :global(.text-white-hover:hover) {
   color: var(--color-text-white);
 }
 
 :global(.bg-white),
-.bg-white {
+.bgWhite {
   background-color: var(--color-bg-white);
 }
 

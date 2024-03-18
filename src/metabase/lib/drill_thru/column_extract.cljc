@@ -23,10 +23,15 @@
    [metabase.shared.util.time :as shared.ut]
    [metabase.util.malli :as mu]))
 
-(defn- column-extract-temporal-units []
-  (vec (for [unit [:hour-of-day :day-of-month :day-of-week :month-of-year :quarter-of-year :year]]
-         {:key          unit
-          :display-name (lib.temporal-bucket/describe-temporal-unit unit)})))
+(defn- column-extract-temporal-units [column]
+  (let [time-units [:hour-of-day]
+        date-units [:day-of-month :day-of-week :month-of-year :quarter-of-year :year]]
+    (vec (for [unit (concat (when-not (lib.types.isa/date-without-time? column)
+                              time-units)
+                            (when-not (lib.types.isa/time? column)
+                              date-units))]
+           {:key          unit
+            :display-name (lib.temporal-bucket/describe-temporal-unit unit)}))))
 
 (mu/defn column-extract-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.column-extract]
   "Column clicks on temporal columns only.
@@ -41,7 +46,7 @@
     (merge {:lib/type     :metabase.lib.drill-thru/drill-thru
             :type         :drill-thru/column-extract
             :display-name (i18n/tru "Extract day, month…")
-            :extractions  (column-extract-temporal-units)}
+            :extractions  (column-extract-temporal-units column)}
            (lib.drill-thru.column-filter/prepare-query-for-drill-addition
              query stage-number column column-ref :expression))))
 

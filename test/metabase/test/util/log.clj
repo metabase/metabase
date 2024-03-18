@@ -237,6 +237,7 @@
            (logs#)))))))
 
 ;; TODO -- this macro should probably just take a binding for the `logs` function so you can eval when needed
+;; Tech debt issue: #39335
 (defmacro with-log-messages-for-level [ns+level & body]
   (macros/case
     :clj  `(with-log-messages-for-level-clj ~ns+level ~@body)

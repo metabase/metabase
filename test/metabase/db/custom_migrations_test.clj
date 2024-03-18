@@ -12,7 +12,7 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.models :refer [User]]
@@ -1505,13 +1505,13 @@
 (defn- table-and-column-of-type
   [ttype]
   (->> (t2/query
-        [(case (mdb.connection/db-type)
+        [(case (mdb/db-type)
            :postgres
            (format "SELECT table_name, column_name, is_nullable FROM information_schema.columns WHERE data_type = '%s' AND table_schema = 'public';"
                    ttype)
            :mysql
            (format "SELECT table_name, column_name, is_nullable FROM information_schema.columns WHERE data_type = '%s' AND table_schema = '%s';"
-                   ttype (-> (mdb.connection/data-source) .getConnection .getCatalog))
+                   ttype (-> (mdb/data-source) .getConnection .getCatalog))
            :h2
            (format "SELECT table_name, column_name, is_nullable FROM information_schema.columns WHERE data_type = '%s';"
                    ttype))])
@@ -1521,7 +1521,7 @@
 
 (deftest unify-type-of-time-columns-test
   (impl/test-migrations ["v49.00-054"] [migrate!]
-    (let [db-type       (mdb.connection/db-type)
+    (let [db-type       (mdb/db-type)
           datetime-type (case db-type
                           :postgres "timestamp without time zone"
                           :h2       "TIMESTAMP"

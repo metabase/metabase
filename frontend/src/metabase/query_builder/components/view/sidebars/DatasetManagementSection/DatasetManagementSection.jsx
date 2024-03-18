@@ -7,7 +7,7 @@ import {
   setQueryBuilderMode,
   turnDatasetIntoQuestion,
 } from "metabase/query_builder/actions";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 
 import {
   Button,

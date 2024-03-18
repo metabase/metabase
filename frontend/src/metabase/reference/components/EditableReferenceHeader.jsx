@@ -8,6 +8,7 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 import L from "metabase/components/List/List.module.css";
 import Button from "metabase/core/components/Button";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
 import S from "./ReferenceHeader.module.css";
@@ -27,7 +28,7 @@ const EditableReferenceHeader = ({
   displayNameFormField,
   nameFormField,
 }) => (
-  <div className="wrapper">
+  <div className={CS.wrapper}>
     <div className={cx("relative", L.header)}>
       <div className="flex align-center mr1">
         {headerIcon && (

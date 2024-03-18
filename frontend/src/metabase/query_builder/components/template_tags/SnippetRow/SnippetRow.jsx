@@ -3,6 +3,7 @@ import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import Snippets from "metabase/entities/snippets";
 import { Icon } from "metabase/ui";
 
@@ -23,7 +24,8 @@ class SnippetRowInner extends Component {
       <div
         className={cx(
           { "border-transparent": !isOpen },
-          "border-bottom border-top",
+          CS.borderBottom,
+          CS.borderTop,
         )}
       >
         <div

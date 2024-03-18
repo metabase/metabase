@@ -1,4 +1,4 @@
-import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 export function getSearchItemTableOrCardId(searchResultItem) {
   // NOTE: in the entire application when we want to use saved questions as tables

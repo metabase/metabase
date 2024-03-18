@@ -8,7 +8,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import {
   createSampleDatabase,
   PRODUCTS_ID,

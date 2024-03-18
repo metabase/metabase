@@ -4,7 +4,8 @@
   Drivers with test extensions know how to load a `DatabaseDefinition` into an actual physical database. This
   functionality allows us to easily test with multiple datasets.
 
-  TODO - We should rename this namespace to `metabase.driver.test-extensions` or something like that."
+  TODO - We should rename this namespace to `metabase.driver.test-extensions` or something like that.
+  Tech debt issue: #39363"
   (:require
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
@@ -61,6 +62,7 @@
     ;; default is nullable
    [:not-null?         {:optional true} [:maybe :boolean]]
    [:unique?           {:optional true} [:maybe :boolean]]
+   [:pk?               {:optional true} [:maybe :boolean]]
    ;; should we create an index for this field?
    [:indexed?          {:optional true} [:maybe :boolean]]
    [:semantic-type     {:optional true} [:maybe ms/FieldSemanticOrRelationType]]
@@ -90,6 +92,7 @@
    (ms/InstanceOfClass DatabaseDefinition)])
 
 ;; TODO - this should probably be a protocol instead
+;; Tech debt issue: #39350
 (defmulti ^DatabaseDefinition get-dataset-definition
   "Return a definition of a dataset, so a test database can be created from it. Returns a map matching
   the [[ValidDatabaseDefinition]] schema."
@@ -465,6 +468,7 @@
    [:sequential [:sequential :any]]])
 
 ;; TODO - not sure everything below belongs in this namespace
+;; Tech debt issue: #39363
 
 (mu/defn ^:private dataset-field-definition :- ValidFieldDefinition
   "Parse a Field definition (from a `defdatset` form or EDN file) and return a FieldDefinition instance for
@@ -616,6 +620,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO - maybe this should go in a different namespace
+;; Tech debt issue: #39363
 
 (mu/defn ^:private tabledef-with-name :- ValidTableDefinition
   "Return `TableDefinition` with `table-name` in `dbdef`."

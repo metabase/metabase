@@ -5,7 +5,7 @@ import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 import type { Card, UnsavedCard } from "metabase-types/api";
 import {
   ORDERS,

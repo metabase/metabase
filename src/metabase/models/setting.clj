@@ -492,8 +492,6 @@
         (when (seq v)
           v)))))
 
-(def ^:private ^:dynamic *disable-cache* false)
-
 (def ^:private ^:dynamic *disable-init* false)
 
 (declare get)
@@ -524,7 +522,7 @@
     ;; cannot use db (and cache populated from db) if db is not set up
     (when (and (db-is-set-up?) (allows-site-wide-values? setting))
       (not-empty
-        (if *disable-cache*
+        (if config/*disable-setting-cache*
           (db-value setting)
           (do
             ;; gotcha - returns immediately if another process is restoring it, i.e. before it's been populated
@@ -702,11 +700,11 @@
   unless *disable-init* has been bound to a truthy value."
   [setting-definition-or-name]
   (let [{:keys [cache? getter enabled? default feature]} (resolve-setting setting-definition-or-name)
-        disable-cache?                                   (or *disable-cache* (not cache?))]
+        disable-cache?                                   (or config/*disable-setting-cache* (not cache?))]
     (if (or (and feature (not (has-feature? feature)))
             (and enabled? (not (enabled?))))
       default
-      (binding [*disable-cache* disable-cache?]
+      (binding [config/*disable-setting-cache* disable-cache?]
         (getter)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -806,7 +804,7 @@
             ;; Record the fact that a Setting has been updated so eventually other instances (if applicable) find out
             ;; about it (For Settings that don't use the Cache, don't update the `last-updated` value, because it will
             ;; cause other instances to do needless reloading of the cache from the DB)
-            (when-not *disable-cache*
+            (when-not config/*disable-setting-cache*
               (setting.cache/update-settings-last-updated!))))
         ;; Now return the `new-value`.
         new-value))))
@@ -947,7 +945,7 @@
     (when-not bypass-read-only?
       (when (= setter :none)
         (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." name)))))
-    (binding [*disable-cache* (not cache?)]
+    (binding [config/*disable-setting-cache* (not cache?)]
       (set-with-audit-logging! setting new-value bypass-read-only?))))
 
 

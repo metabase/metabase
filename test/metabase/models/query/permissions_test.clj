@@ -12,7 +12,6 @@
    [metabase.models.permissions :as perms]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.table :refer [Table]]
-   [metabase.query-processor-test.test-mlv2 :as qp-test.mlv2]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -216,23 +215,14 @@
              :query    {:source-query {:native "SELECT * FROM CHECKINS"}}}
             :throw-exceptions? true)))))
 
-
-;;; --------------------------------------------- invalid/legacy queries ---------------------------------------------
-
 (deftest ^:parallel invalid-queries-test
   (testing "invalid/legacy queries should return perms for something that doesn't exist so no one gets to see it"
-    (binding [qp-test.mlv2/*skip-conversion-tests* true]
-      (is (= {:perms/data-access {0 :unrestricted}}
-             (query-perms/required-perms
-              (mt/mbql-query venues
-                {:filter [:WOW 100 200]})))))))
+    (is (= {:perms/data-access {0 :unrestricted}}
+           (query-perms/required-perms
+            (mt/mbql-query venues
+              {:filter [:WOW 100 200]}))))))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                   JOINS 2.0                                                    |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(deftest joins-test
+(deftest ^:parallel joins-test
   (testing "Are permissions calculated correctly for JOINs?"
     (t2.with-temp/with-temp [Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
                                                  (mt/mbql-query checkins
