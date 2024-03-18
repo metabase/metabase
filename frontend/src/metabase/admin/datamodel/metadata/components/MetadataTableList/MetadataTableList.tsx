@@ -107,7 +107,7 @@ const MetadataTableList = ({
 
   return (
     <aside
-      data-testid="metadata-table-list"
+      data-testid="admin-metadata-table-list"
       className={cx(
         "MetadataEditor-table-list flex-no-shrink",
         AdminS.AdminList,
@@ -120,7 +120,7 @@ const MetadataTableList = ({
           onBack={handleSelectDatabase}
         />
       )}
-      <ul className="AdminList-items">
+      <ul>
         {visibleTables.length > 0 && (
           <TableHeader
             tables={visibleTables}
@@ -200,7 +200,7 @@ const TableBreadcrumbs = ({ schemaId, onBack }: TableBreadcrumbsProps) => {
         <Icon name="chevronleft" size={10} />
         {t`Schemas`}
       </BackIconContainer>
-      <span className="mx1">-</span>
+      <span className="mx1">/</span>
       <span>{getSchemaName(schemaId)}</span>
     </h4>
   );
@@ -282,7 +282,7 @@ const TableRow = ({
       <AdminListItem
         disabled={!isSyncCompleted(table)}
         onClick={handleSelect}
-        data-testid="metadata-table-list-item"
+        data-testid="admin-metadata-table-list-item"
         className={cx(
           "flex align-center no-decoration text-wrap justify-between",
           AdminS.AdminListItem,

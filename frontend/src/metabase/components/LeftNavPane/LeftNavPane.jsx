@@ -4,6 +4,7 @@ import { Link, IndexLink } from "react-router";
 import { t } from "ttag";
 
 import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 
 export function LeftNavPaneItem({ name, path, index = false }) {
   return (
@@ -13,7 +14,10 @@ export function LeftNavPaneItem({ name, path, index = false }) {
           to={path}
           className={cx(
             AdminS.AdminListItem,
-            "flex align-center justify-between no-decoration",
+            CS.flex,
+            CS.alignCenter,
+            CS.noDecoration,
+            "justify-between",
           )}
           activeClassName={AdminS.selected}
         >
@@ -24,7 +28,10 @@ export function LeftNavPaneItem({ name, path, index = false }) {
           to={path}
           className={cx(
             AdminS.AdminListItem,
-            "flex align-center justify-between no-decoration",
+            CS.flex,
+            CS.alignCenter,
+            CS.noDecoration,
+            "justify-between",
           )}
           activeClassName={AdminS.selected}
         >
@@ -42,7 +49,11 @@ export function LeftNavPaneItemBack({ path }) {
         to={path}
         className={cx(
           AdminS.AdminListItem,
-          "flex align-center justify-between no-decoration link text-bold",
+          CS.flex,
+          CS.alignCenter,
+          CS.noDecoration,
+          CS.textBold,
+          "justify-between link",
         )}
       >
         &lt; {t`Back`}
@@ -55,13 +66,9 @@ export function LeftNavPane({ children }) {
   return (
     <aside
       data-testid="admin-left-nav-pane"
-      className={cx(AdminS.AdminList, "flex-no-shrink")}
+      className={cx(AdminS.AdminList, CS.flexNoShrink)}
     >
-      <ul
-        className="AdminList-items pt1"
-        data-testid="admin-list-items"
-        aria-label="admin-list-items"
-      >
+      <ul className={CS.pt1} aria-label="admin-list-items">
         {children}
       </ul>
     </aside>
