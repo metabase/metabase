@@ -93,9 +93,9 @@
        false))))
 
 (defn- jdbc-get-tables
-  [driver ^Connection conn catalog schema-pattern tablename-pattern types]
+  [driver ^DatabaseMetaData metadata catalog schema-pattern tablename-pattern types]
   (sql-jdbc.sync.common/reducible-results
-   #(.getTables (.getMetaData conn) catalog
+   #(.getTables metadata catalog
                 (some->> schema-pattern (driver/escape-entity-name-for-metadata driver))
                 (some->> tablename-pattern (driver/escape-entity-name-for-metadata driver))
                 (when (seq types) (into-array String types)))
@@ -110,13 +110,13 @@
 (defn db-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
   schema. Returns a reducible sequence of results."
-  [driver ^Connection conn ^String schema-or-nil ^String db-name-or-nil]
+  [driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
   ;; seems like some JDBC drivers like Snowflake are dumb and still narrow the search results by the current session
   ;; schema if you pass in `nil` for `schema-or-nil`, which means not to narrow results at all... For Snowflake, I fixed
   ;; this by passing in `"%"` instead -- consider making this the default behavior. See this Slack thread
   ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706220295862639?thread_ts=1706156558.940489&cid=C04DN5VRQM6 for
   ;; more info.
-  (jdbc-get-tables driver conn db-name-or-nil schema-or-nil "%"
+  (jdbc-get-tables driver metadata db-name-or-nil schema-or-nil "%"
                    ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"
                     "EXTERNAL TABLE" "DYNAMIC_TABLE"]))
 
@@ -167,7 +167,7 @@
                         (eduction
                          (comp (filter have-select-privilege-fn?)
                                (map #(dissoc % :type)))
-                         (db-tables driver conn schema db-name-or-nil))))
+                         (db-tables driver metadata schema db-name-or-nil))))
               syncable-schemas)))
 
 (defmethod sql-jdbc.sync.interface/active-tables :sql-jdbc

@@ -248,8 +248,8 @@
 
 (defn- get-tables
   ;; have it as its own method for ease of testing
-  [conn schemas tables]
-  (sql-jdbc.execute/reducible-query :postgres conn (get-tables-sql schemas tables)))
+  [database schemas tables]
+  (sql-jdbc.execute/reducible-query database (get-tables-sql schemas tables)))
 
 (defmethod driver/describe-database :postgres
   [driver database]
@@ -262,7 +262,7 @@
       (if-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
         (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn :postgres conn)]
           (into #{} (comp (filter have-select-privilege?) (map #(dissoc % :type)))
-                (get-tables conn syncable-schemas nil)))
+                (get-tables database syncable-schemas nil)))
         #{})))})
 
 ;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same

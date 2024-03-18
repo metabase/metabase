@@ -42,7 +42,9 @@
    [metabase.util.log :as log]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -1366,7 +1368,7 @@
          :postgres
          (mt/db)
          nil
-         (fn [conn]
+         (fn [^Connection conn]
            (let [do-test (fn [& {:keys [schema-pattern table-pattern schemas tables]
                                  :or   {schema-pattern "public%" ;; postgres get-tables exclude system tables by default
                                         schemas        nil
@@ -1374,9 +1376,9 @@
                                         tables         nil}
                                  :as _opts}]
                            (is (= (into #{} (#'sql-jdbc.describe-database/jdbc-get-tables
-                                             :postgres conn nil schema-pattern table-pattern
+                                             :postgres (.getMetaData conn) nil schema-pattern table-pattern
                                              ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))
-                                  (into #{} (#'postgres/get-tables conn schemas tables)))))]
+                                  (into #{} (#'postgres/get-tables (mt/db) schemas tables)))))]
              (doseq [stmt ["CREATE TABLE public.table (id INTEGER, type TEXT);"
                            "CREATE UNIQUE INDEX idx_table_type ON public.table(type);"
                            "CREATE TABLE public.partition_table (id INTEGER) PARTITION BY RANGE (id);"
