@@ -1,3 +1,7 @@
+// TypeScript doesn't recognize `onlyOn` on the `cy` object.
+// Hence, we have to import it as a standalone helper.
+import { onlyOn } from "@cypress/skip-test";
+
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -18,6 +22,7 @@ import {
   saveQuestion,
   visitModel,
   openQuestionActions,
+  isOSS,
 } from "e2e/support/helpers";
 const { REVIEWS_ID } = SAMPLE_DATABASE;
 
@@ -28,27 +33,32 @@ describe("scenarios > notebook > data source", () => {
       cy.signInAsAdmin();
     });
 
-    it("should display tables from the only existing database by default", () => {
-      cy.visit("/");
-      cy.findByTestId("app-bar").findByText("New").click();
-      popover().findByTextEnsureVisible("Question").click();
-      cy.findByTestId("data-step-cell").should(
-        "have.text",
-        "Pick your starting data",
-      );
-
-      popover().within(() => {
-        cy.findByTestId("source-database").should(
+    it(
+      "should display tables from the only existing database by default",
+      { tags: "@OSS" },
+      () => {
+        onlyOn(isOSS);
+        cy.visit("/");
+        cy.findByTestId("app-bar").findByText("New").click();
+        popover().findByTextEnsureVisible("Question").click();
+        cy.findByTestId("data-step-cell").should(
           "have.text",
-          "Sample Database",
+          "Pick your starting data",
         );
-        cy.findAllByRole("option")
-          .should("have.length", 8)
-          .each(table => {
-            cy.wrap(table).should("have.attr", "aria-selected", "false");
-          });
-      });
-    });
+
+        popover().within(() => {
+          cy.findByTestId("source-database").should(
+            "have.text",
+            "Sample Database",
+          );
+          cy.findAllByRole("option")
+            .should("have.length", 8)
+            .each(table => {
+              cy.wrap(table).should("have.attr", "aria-selected", "false");
+            });
+        });
+      },
+    );
 
     it("should not show saved questions if only models exist (metabase#25142)", () => {
       cy.createQuestion({
