@@ -49,7 +49,7 @@
    :perms/manage-table-metadata {:model :model/Table :values [:yes :no]}
    :perms/create-queries        {:model :model/Table :values [:query-builder-and-native :query-builder :no]}
 
-   :perms/view-data             {:model :model/Database :values [:unrestricted :blocked]}
+   :perms/view-data             {:model :model/Database :values [:unrestricted :legacy-no-self-service :blocked]}
    :perms/native-query-editing  {:model :model/Database :values [:yes :no]}
    :perms/manage-database       {:model :model/Database :values [:yes :no]}})
 
