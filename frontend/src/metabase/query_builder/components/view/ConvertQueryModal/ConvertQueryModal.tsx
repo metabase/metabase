@@ -12,7 +12,7 @@ import type Question from "metabase-lib/v1/Question";
 import type { NativeQueryForm } from "metabase-types/api";
 import type { QueryBuilderUIControls, State } from "metabase-types/store";
 
-import NativeQueryModal, { useNativeQuery } from "../NativeQueryModal";
+import { NativeQueryModal, useNativeQuery } from "../NativeQueryModal";
 
 import { createDatasetQuery } from "./utils";
 

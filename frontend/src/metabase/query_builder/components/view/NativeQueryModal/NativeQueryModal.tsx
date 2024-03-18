@@ -25,7 +25,7 @@ interface NativeQueryModalProps {
   onClose?: () => void;
 }
 
-const NativeQueryModal = ({
+export const NativeQueryModal = ({
   title,
   query,
   error,
@@ -58,6 +58,3 @@ const NativeQueryModal = ({
     </ModalRoot>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default NativeQueryModal;

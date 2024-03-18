@@ -1,3 +1,2 @@
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export { default } from "./NativeQueryModal";
+export { NativeQueryModal } from "./NativeQueryModal";
 export { useNativeQuery } from "./use-native-query";

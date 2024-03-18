@@ -10,7 +10,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
-import NativeQueryModal, { useNativeQuery } from "../NativeQueryModal";
+import { NativeQueryModal, useNativeQuery } from "../NativeQueryModal";
 
 import { ModalExternalLink } from "./PreviewQueryModal.styled";
 
