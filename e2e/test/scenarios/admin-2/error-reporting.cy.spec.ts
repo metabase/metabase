@@ -32,7 +32,7 @@ describe("error reporting modal", () => {
       expect(fileContent).to.have.property("backendErrors");
       expect(fileContent).to.have.property("userLogs");
       expect(fileContent).to.have.property("logs");
-      expect(fileContent).to.have.property("instanceInfo");
+      expect(fileContent).to.have.property("bugReportDetails");
     });
   });
 
@@ -61,7 +61,7 @@ describe("error reporting modal", () => {
       expect(fileContent).to.have.property("backendErrors");
       expect(fileContent).to.have.property("userLogs");
       expect(fileContent).to.have.property("logs");
-      expect(fileContent).to.have.property("instanceInfo");
+      expect(fileContent).to.have.property("bugReportDetails");
       expect(fileContent).to.have.property("entityInfo");
       expect(fileContent).not.to.have.property("queryResults");
     });
@@ -84,7 +84,7 @@ describe("error reporting modal", () => {
       expect(fileContent).to.have.property("backendErrors");
       expect(fileContent).to.have.property("userLogs");
       expect(fileContent).to.have.property("logs");
-      expect(fileContent).to.have.property("instanceInfo");
+      expect(fileContent).to.have.property("bugReportDetails");
       expect(fileContent).to.have.property("entityInfo");
       expect(fileContent).to.have.property("queryResults");
     });
@@ -117,7 +117,7 @@ describe("error reporting modal", () => {
       expect(fileContent).to.have.property("backendErrors");
       expect(fileContent).to.have.property("userLogs");
       expect(fileContent).to.have.property("logs");
-      expect(fileContent).to.have.property("instanceInfo");
+      expect(fileContent).to.have.property("bugReportDetails");
       expect(fileContent).to.have.property("entityInfo");
       expect(fileContent).to.have.property("queryResults");
     });
@@ -144,7 +144,7 @@ describe("error reporting modal", () => {
       expect(fileContent.url).to.include("/dashboard/");
 
       expect(fileContent).to.have.property("frontendErrors");
-      expect(fileContent).to.have.property("instanceInfo");
+      expect(fileContent).to.have.property("bugReportDetails");
       expect(fileContent).to.have.property("entityInfo");
       expect(fileContent).not.to.have.property("logs");
       expect(fileContent).not.to.have.property("userLogs");
