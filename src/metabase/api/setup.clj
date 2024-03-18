@@ -88,9 +88,7 @@
   (public-settings/site-name! site-name)
   (public-settings/admin-email! email)
   (when site-locale
-    (public-settings/site-locale! site-locale))
-  ;; default to `true` the setting will set itself correctly whether a boolean or boolean string is specified
-  (public-settings/anon-tracking-enabled! true))
+    (public-settings/site-locale! site-locale)))
 
 (api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
