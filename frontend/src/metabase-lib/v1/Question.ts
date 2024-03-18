@@ -436,7 +436,7 @@ class Question {
    * of Question interface instead of Query interface makes it more convenient to also change the current visualization
    */
 
-  composeQuery(): Question {
+  composeQuestion(): Question {
     if (!this.isSaved()) {
       return this;
     }
@@ -448,12 +448,12 @@ class Question {
     return this.setQuery(query);
   }
 
-  composeQueryAdHoc(): Question {
+  composeQuestionAdHoc(): Question {
     if (!this.isSaved()) {
       return this;
     }
 
-    const query = this.composeQuery().query();
+    const query = this.composeQuestion().query();
     return Question.create({ metadata: this.metadata() }).setQuery(query);
   }
 

@@ -200,12 +200,12 @@ class Visualization extends PureComponent {
     const question = new Question(card, metadata);
 
     // Datasets in QB should behave as raw tables opened in simple mode
-    // composeQuery replaces the dataset_query with a clean query using the dataset as a source table
+    // composeQuestion replaces the dataset_query with a clean query using the dataset as a source table
     // Ideally, this logic should happen somewhere else
     return question.type() === "model" &&
       isQueryBuilder &&
       queryBuilderMode !== "dataset"
-      ? question.composeQuery()
+      ? question.composeQuestion()
       : question;
   }
 

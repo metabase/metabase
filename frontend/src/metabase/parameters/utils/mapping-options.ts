@@ -157,7 +157,9 @@ export function getParameterMappingOptions(
   if (!isNative || isModel) {
     // treat the dataset/model question like it is already composed so that we can apply
     // dataset/model-specific metadata to the underlying dimension options
-    const query = isModel ? question.composeQuery().query() : question.query();
+    const query = isModel
+      ? question.composeQuestion().query()
+      : question.query();
     const stageIndex = -1;
     const availableColumns = Lib.filterableColumns(query, stageIndex);
     const parameterColumns = parameter
