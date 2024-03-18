@@ -5,6 +5,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Card, Flex, Icon, Text, Title } from "metabase/ui";
 
 import { removeShowEmbedHomepageFlag } from "../../utils";
@@ -16,6 +17,7 @@ type EmbedMinimalHomepageProps = {
 export const EmbedMinimalHomepage = ({
   onDismiss,
 }: EmbedMinimalHomepageProps) => {
+  const isAdmin = useSelector(getUserIsAdmin);
   const learnMoreBaseUrl = useSelector(state =>
     // eslint-disable-next-line no-unconditional-metabase-links-render -- this is only visible to admins
     getDocsUrl(state, { page: "embedding/start" }),
@@ -30,6 +32,10 @@ export const EmbedMinimalHomepage = ({
     // this card is only visible once
     removeShowEmbedHomepageFlag();
   }, []);
+
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <Card px={40} py={32} maw={320}>

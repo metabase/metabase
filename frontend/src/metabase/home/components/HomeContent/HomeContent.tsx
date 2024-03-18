@@ -8,7 +8,7 @@ import {
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { getUser } from "metabase/selectors/user";
 import { Box } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { PopularItem, RecentItem, User } from "metabase-types/api";
@@ -22,7 +22,6 @@ import { HomeXraySection } from "../HomeXraySection";
 
 export const HomeContent = (): JSX.Element | null => {
   const user = useSelector(getUser);
-  const isAdmin = useSelector(getUserIsAdmin);
   const isXrayEnabled = useSelector(getIsXrayEnabled);
   const { data: databases, error: databasesError } = useDatabaseListQuery();
   const { data: recentItems, error: recentItemsError } = useRecentItemListQuery(
@@ -55,7 +54,7 @@ export const HomeContent = (): JSX.Element | null => {
     return (
       <>
         <HomeXraySection />
-        {isAdmin && showEmbedHomepage && (
+        {showEmbedHomepage && (
           <Box mt={64}>
             <EmbedMinimalHomepage
               onDismiss={() => setShowEmbedHomepage(false)}
@@ -66,7 +65,9 @@ export const HomeContent = (): JSX.Element | null => {
     );
   }
 
-  return null;
+  return showEmbedHomepage ? (
+    <EmbedMinimalHomepage onDismiss={() => setShowEmbedHomepage(false)} />
+  ) : null;
 };
 
 const isLoading = (
