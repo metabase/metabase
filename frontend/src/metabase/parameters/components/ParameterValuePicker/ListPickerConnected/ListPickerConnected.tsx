@@ -18,7 +18,6 @@ import {
   reducer,
   shouldFetchInitially,
   shouldFetchOnSearch,
-  shouldReset,
 } from "./state";
 
 interface ListPickerConnectedProps {
@@ -44,7 +43,7 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
     reducer,
     getDefaultState(value, getResetKey(parameter)),
   );
-  const { values: fetchedValues, isLoading, errorMsg } = state;
+  const { values: fetchedValues, isLoading, errorMsg, resetKey } = state;
 
   const fetchAndUpdate = useCallback(
     async (query: string) => {
@@ -106,12 +105,12 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
   useEffect(
     function resetOnParameterChange() {
       const newResetKey = getResetKey(parameter);
-      if (shouldReset(state, newResetKey)) {
+      if (resetKey !== newResetKey) {
         dispatch({ type: "RESET", payload: { newResetKey } });
         ownOnChange(null);
       }
     },
-    [state, parameter, ownOnChange],
+    [resetKey, parameter, ownOnChange],
   );
   useUnmount(cancelFetch); // Cleanup
 

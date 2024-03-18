@@ -17,7 +17,6 @@ type Action =
     }
   | { type: "SET_LAST_CHANGE"; payload: { value: string | null } }
   | { type: "SET_ERROR"; payload: { msg: string } }
-  | { type: "SET_RESET_KEY"; payload: { key: string } }
   | { type: "RESET"; payload: { newResetKey: string } };
 
 interface State {
@@ -74,12 +73,6 @@ export function reducer(state: State, action: Action): State {
         lastValue: action.payload.value,
       };
 
-    case "SET_RESET_KEY":
-      return {
-        ...state,
-        resetKey: action.payload.key,
-      };
-
     case "SET_ERROR":
       return {
         ...state,
@@ -125,8 +118,4 @@ export function shouldFetchOnSearch(
     // visible values.
     (query === null || query !== state.lastValue)
   );
-}
-
-export function shouldReset(state: State, newResetKey: string) {
-  return state.resetKey !== newResetKey;
 }
