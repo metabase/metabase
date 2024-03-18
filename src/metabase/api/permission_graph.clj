@@ -55,7 +55,7 @@
 
 (def ^:private TablePerms
   [:or
-   [:enum :all :segmented :none :full :limited]
+   [:enum :all :segmented :none :full :limited :unrestricted :query-builder :no]
    [:map
     [:read {:optional true} [:enum :all :none]]
     [:query {:optional true} [:enum :all :none :segmented]]]])
@@ -72,7 +72,20 @@
 
 (def ^:private Schemas
   [:or
-   [:enum :all :segmented :none :block :full :limited :impersonated]
+   [:enum
+    :all
+    :segmented
+    :none
+    :block
+    :blocked
+    :full
+    :limited
+    :impersonated
+    :unrestricted
+    :legacy-no-self-service
+    :query-builder-and-native
+    :query-builder
+    :no]
    SchemaGraph])
 
 (def ^:private DataPerms
@@ -94,8 +107,9 @@
    [:map-of
     Id
     [:map
+     [:view-data {:optional true} Schemas]
+     [:create-queries {:optional true} Schemas]
      [:data {:optional true} "DataPerms"]
-     [:query {:optional true} "DataPerms"]
      [:download {:optional true} "DataPerms"]
      [:data-model {:optional true} "DataPerms"]
      ;; We use :yes and :no instead of booleans for consistency with the application perms graph, and
