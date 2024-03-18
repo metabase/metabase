@@ -22,7 +22,8 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -52,7 +53,8 @@
 (mu/defn store-miscellaneous-value!
   "Store a miscellaneous value in a the cache. Persists for the life of this QP invocation, including for recursive
   calls."
-  [ks v]
+  [ks :- [:sequential :any]
+   v]
   (swap! *store* assoc-in ks v))
 
 (mu/defn miscellaneous-value
@@ -60,7 +62,8 @@
   ([ks]
    (miscellaneous-value ks nil))
 
-  ([ks not-found]
+  ([ks :- [:sequential :any]
+    not-found]
    (get-in @*store* ks not-found)))
 
 (defn cached-fn
@@ -101,26 +104,27 @@
       (throw (ex-info "QP Store Metadata Provider is not initialized yet; initialize it with `qp.store/with-metadata-provider`."
                       {}))))
 
+(mr/def ::database-id-or-metadata-providerable
+  [:or
+   ::lib.schema.id/database
+   ::lib.schema.metadata/metadata-providerable])
+
 (mu/defn ^:private ->metadata-provider :- ::lib.schema.metadata/metadata-provider
-  [database-id-or-metadata-provider :- [:or
-                                        ::lib.schema.id/database
-                                        ::lib.schema.metadata/metadata-provider]]
-  (if (integer? database-id-or-metadata-provider)
-    (lib.metadata.jvm/application-database-metadata-provider database-id-or-metadata-provider)
-    database-id-or-metadata-provider))
+  [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable]
+  (if (integer? database-id-or-metadata-providerable)
+    (lib.metadata.jvm/application-database-metadata-provider database-id-or-metadata-providerable)
+    database-id-or-metadata-providerable))
 
 (mu/defn ^:private validate-existing-provider
   "Impl for [[with-metadata-provider]]; if there's already a provider, just make sure we're not trying to change the
   Database. We don't need to replace it."
-  [database-id-or-metadata-provider :- [:or
-                                        ::lib.schema.id/database
-                                        ::lib.schema.metadata/metadata-provider]]
+  [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable]
   (let [old-provider (miscellaneous-value [::metadata-provider])]
-    (when-not (identical? old-provider database-id-or-metadata-provider)
-      (let [new-database-id      (if (integer? database-id-or-metadata-provider)
-                                   database-id-or-metadata-provider
+    (when-not (identical? old-provider database-id-or-metadata-providerable)
+      (let [new-database-id      (if (integer? database-id-or-metadata-providerable)
+                                   database-id-or-metadata-providerable
                                    (throw (ex-info "Cannot replace MetadataProvider with another one after it has been bound"
-                                                   {:old-provider old-provider, :new-provider database-id-or-metadata-provider})))
+                                                   {:old-provider old-provider, :new-provider database-id-or-metadata-providerable})))
             existing-database-id (u/the-id (lib.metadata/database old-provider))]
         (when-not (= new-database-id existing-database-id)
           (throw (ex-info (tru "Attempting to initialize metadata provider with new Database {0}. Queries can only reference one Database. Already referencing: {1}"
@@ -132,10 +136,8 @@
 
 (mu/defn ^:private set-metadata-provider!
   "Create a new metadata provider and save it."
-  [database-id-or-metadata-provider :- [:or
-                                        ::lib.schema.id/database
-                                        ::lib.schema.metadata/metadata-provider]]
-  (let [new-provider (->metadata-provider database-id-or-metadata-provider)]
+  [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable]
+  (let [new-provider (->metadata-provider database-id-or-metadata-providerable)]
     ;; validate the new provider.
     (try
       (lib.metadata/database new-provider)
@@ -145,25 +147,26 @@
                         e))))
     (store-miscellaneous-value! [::metadata-provider] new-provider)))
 
-(defn do-with-metadata-provider
+(mu/defn do-with-metadata-provider
   "Implementation for [[with-metadata-provider]]."
-  [database-id-or-metadata-provider thunk]
+  [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable
+   thunk                                :- [:=> [:cat] :any]]
   (cond
     (or (not (initialized?))
         *TESTS-ONLY-allow-replacing-metadata-provider*)
     (binding [*store*                                        (atom {})
               *TESTS-ONLY-allow-replacing-metadata-provider* false]
-      (do-with-metadata-provider database-id-or-metadata-provider thunk))
+      (do-with-metadata-provider database-id-or-metadata-providerable thunk))
 
     ;; existing provider
     (miscellaneous-value [::metadata-provider])
     (do
-      (validate-existing-provider database-id-or-metadata-provider)
+      (validate-existing-provider database-id-or-metadata-providerable)
       (thunk))
 
     :else
     (do
-      (set-metadata-provider! database-id-or-metadata-provider)
+      (set-metadata-provider! database-id-or-metadata-providerable)
       (thunk))))
 
 (defmacro with-metadata-provider
@@ -173,8 +176,8 @@
 
   If a MetadataProvider is already bound, this is a no-op."
   {:style/indent [:defn]}
-  [database-id-or-metadata-provider & body]
-  `(do-with-metadata-provider ~database-id-or-metadata-provider (^:once fn* [] ~@body)))
+  [database-id-or-metadata-providerable & body]
+  `(do-with-metadata-provider ~database-id-or-metadata-providerable (^:once fn* [] ~@body)))
 
 ;;; TODO -- mark this deprecated in favor of the version in `lib.metadata`
 (mu/defn bulk-metadata :- [:maybe [:sequential [:map

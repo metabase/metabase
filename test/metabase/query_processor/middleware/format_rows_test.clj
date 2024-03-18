@@ -42,7 +42,7 @@
                    {:order-by [[:asc $id]]
                     :limit    5})))))
       (testing "with report timezone"
-        (mt/with-report-timezone-id "America/Los_Angeles"
+        (mt/with-report-timezone-id! "America/Los_Angeles"
           (is (= (cond
                    (= driver/*driver* :sqlite)
                    [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00"]
@@ -70,7 +70,7 @@
                      {:order-by [[:asc $id]]
                       :limit    5})))))))))
 
-(deftest format-value-test
+(deftest ^:parallel format-value-test
   ;; `t` = original value
   ;; `expected` = the same value when shifted to `zone`
   (doseq [[t expected zone]
