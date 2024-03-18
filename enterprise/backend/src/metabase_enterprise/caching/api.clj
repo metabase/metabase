@@ -42,6 +42,7 @@
          :or   {model "root"}}
         :query-params}]
   {model      (ms/QueryVectorOf CachingModel)
+   ;; note that `nil` in `collection` means all configurations not scoped to any particular collection
    collection [:maybe ms/PositiveInt]}
   (validation/check-has-application-permission :setting)
   (let [items (t2/select :model/CacheConfig
