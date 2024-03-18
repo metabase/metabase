@@ -617,9 +617,8 @@
     (when (some #(< 1 %) (vals (frequencies normalized-header)))
       (throw (ex-info (tru "The CSV file contains duplicate column names.")
                       {:status-code 422})))
-    (when missing
-      (let [error-message (extra-and-missing-error-markdown extra missing)]
-        (throw (ex-info error-message {:status-code 422}))))))
+    (when-let [error-message (extra-and-missing-error-markdown extra missing)]
+      (throw (ex-info error-message {:status-code 422})))))
 
 (defn- matching-or-upgradable? [current-type relaxed-type]
   (or (nil? current-type)
