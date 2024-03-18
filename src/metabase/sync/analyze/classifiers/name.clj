@@ -11,7 +11,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
-(def ^:private bool-or-int-type #{:type/Boolean :type/Integer})
+(def ^:private bool-int-type #{:type/Boolean :type/Integer})
 (def ^:private float-type       #{:type/Float})
 (def ^:private int-type         #{:type/Integer})
 (def ^:private int-or-text-type #{:type/Integer :type/Text})
@@ -46,7 +46,7 @@
    [#"^.*_latitude$"               float-type       :type/Latitude]
    [#"^.*_type$"                   int-or-text-type :type/Category]
    [#"^.*_url$"                    text-type        :type/URL]
-   [#"^active$"                    bool-or-int-type :type/Category]
+   [#"^active$"                    bool-int-type    :type/Category]
    [#"^city$"                      text-type        :type/City]
    [#"^country"                    text-type        :type/Country]
    [#"_country$"                   text-type        :type/Country]

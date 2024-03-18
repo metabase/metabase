@@ -66,13 +66,13 @@
 ;;     |  /     \
 ;;     | /       \
 ;;     |/         \
-;; boolean-or-int  auto-incrementing-int-pk
+;; boolean-int  auto-incrementing-int-pk
 ;;
-;; `boolean-or-int` is a special type with two parents, where we parse it as a boolean if the whole
-;; column's values are of that type. additionally a column cannot have a boolean-or-int type, but
-;; a value can. if there is a column with a boolean-or-int value and an integer value, the column will be int
-;; if there is a column with a boolean-or-int value and a boolean value, the column will be boolean
-;; if there is a column with only boolean-or-int values, the column will be parsed as if it were boolean
+;; `boolean-int` is a special type with two parents, where we parse it as a boolean if the whole
+;; column's values are of that type. additionally a column cannot have a boolean-int type, but
+;; a value can. if there is a column with a boolean-int value and an integer value, the column will be int
+;; if there is a column with a boolean-int value and a boolean value, the column will be boolean
+;; if there is a column with only boolean-int values, the column will be parsed as if it were boolean
 ;;
 ;; </code></pre>
 
@@ -81,8 +81,8 @@
   We use an [[metabase.util.ordered-hierarchy]] for its topological sorting, which simplify writing efficient and
   consistent implementations for of our type inference, parsing, and relaxation."
   (-> (make-hierarchy)
-      (derive ::boolean-or-int ::boolean)
-      (derive ::boolean-or-int ::int)
+      (derive ::boolean-int ::boolean)
+      (derive ::boolean-int ::int)
       (derive ::auto-incrementing-int-pk ::int)
       (derive ::int ::float)
       (derive ::date ::datetime)
@@ -94,7 +94,7 @@
 
 (def ^:private abstract->concrete
   "Not all value types correspond to database types. For those that don't, this maps to their concrete ancestor."
-  {::boolean-or-int ::boolean})
+  {::boolean-int ::boolean})
 
 (def ^:private value-types
   "All type tags which values can be inferred as. An ordered set from most to least specialized."
@@ -167,7 +167,7 @@
 (defn- boolean-string? [s]
   (boolean (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" s)))
 
-(defn- boolean-or-int-string? [s]
+(defn- boolean-int-string? [s]
   (contains? #{"0" "1"} s))
 
 (defn- varchar-255? [s]
@@ -190,7 +190,7 @@
 
 (mu/defn ^:private settings->type->check :- type->check-schema
   [{:keys [number-separators] :as _settings}]
-  {::boolean-or-int  boolean-or-int-string?
+  {::boolean-int     boolean-int-string?
    ::boolean         boolean-string?
    ::offset-datetime offset-datetime-string?
    ::date            date-string?

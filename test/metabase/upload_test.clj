@@ -32,7 +32,7 @@
 
 (def ^:private bool-type        ::upload/boolean)
 (def ^:private int-type         ::upload/int)
-(def ^:private bool-or-int-type ::upload/boolean-or-int)
+(def ^:private bool-int-type    ::upload/boolean-int)
 (def ^:private float-type       ::upload/float)
 (def ^:private vchar-type       ::upload/varchar-255)
 (def ^:private date-type        ::upload/date)
@@ -143,8 +143,8 @@
            ["9’986’000"  9986000        int-type ".’"]
            ["$0"         0              int-type]
            ["-1"         -1             int-type]
-           ["0"          false          bool-or-int-type]
-           ["1"          true           bool-or-int-type]
+           ["0"          false          bool-int-type]
+           ["1"          true           bool-int-type]
            ["9.986.000"  "9.986.000"    vchar-type ".,"]
            ["3.14"       3.14           float-type]
            ["3.14"       3.14           float-type "."]
@@ -244,7 +244,7 @@
   (doseq [[type-a            type-b           expected]
           [[bool-type        bool-type        bool-type]
            [bool-type        int-type         vchar-type]
-           [bool-type        bool-or-int-type bool-type]
+           [bool-type        bool-int-type    bool-type]
            [bool-type        date-type        vchar-type]
            [bool-type        datetime-type    vchar-type]
            [bool-type        vchar-type       vchar-type]
@@ -255,8 +255,8 @@
            [int-type         datetime-type    vchar-type]
            [int-type         vchar-type       vchar-type]
            [int-type         text-type        text-type]
-           [int-type         bool-or-int-type int-type]
-           [bool-or-int-type bool-or-int-type bool-or-int-type]
+           [int-type         bool-int-type    int-type]
+           [bool-int-type    bool-int-type    bool-int-type]
            [float-type       vchar-type       vchar-type]
            [float-type       text-type        text-type]
            [float-type       date-type        vchar-type]
