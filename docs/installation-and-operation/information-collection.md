@@ -41,8 +41,6 @@ If you're self-hosting Metabase, you can opt out of providing us with your anony
 
 If you're in the process of setting up your Metabase, you can also toggle off tracking during the `Usage Data Preferences` onboarding step. We collect a few anonymous events before that point, but won't do so anymore if you choose to opt out.
 
-If you're on Metabase Cloud, you cannot opt out of anonymous usage data collection entirely, as we require some standard SaaS usage data to run the service.
-
 ## Further reading
 
 Check out our page on [data privacy and security](https://www.metabase.com/security).
