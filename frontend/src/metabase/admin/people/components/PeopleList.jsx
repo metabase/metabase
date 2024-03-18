@@ -181,7 +181,7 @@ const PeopleList = ({
   return (
     <section className="pb4">
       <table
-        data-testid="people-list-table"
+        data-testid="admin-people-list-table"
         className={cx(AdminS.ContentTable, CS.borderBottom)}
       >
         <thead>
