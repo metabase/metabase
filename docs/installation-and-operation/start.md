@@ -44,7 +44,7 @@ Rest in peace, Internet Explorer.
 
 ## [About the anonymous usage data we collect](./information-collection.md).
 
-We collect Metabase data to improve the product. We don't collect your data.
+We collect anonymous Metabase usage data to improve the product. We don't collect your data.
 
 ## [Command line commands](./commands.md)
 
