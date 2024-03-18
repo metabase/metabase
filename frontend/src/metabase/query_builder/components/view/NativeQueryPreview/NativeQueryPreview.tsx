@@ -1,20 +1,10 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { NativeCodePanel } from "../NativeCodePanel";
+import { color } from "metabase/lib/colors";
+import { rem, Flex, Box, Icon, Loader } from "metabase/ui";
 
-import {
-  ModalBody,
-  ModalCloseButton,
-  ModalCloseIcon,
-  ModalDivider,
-  ModalFooter,
-  ModalHeader,
-  ModalLoadingSpinner,
-  ModalRoot,
-  ModalTitle,
-  ModalWarningIcon,
-} from "./NativeQueryPreview.styled";
+import { NativeCodePanel } from "../NativeCodePanel";
 
 interface NativeQueryPreviewProps {
   title: string;
@@ -25,6 +15,53 @@ interface NativeQueryPreviewProps {
   onClose?: () => void;
 }
 
+const Header = ({ children }: { children: ReactNode }) => (
+  <Flex align="center" mb="1.5rem">
+    {children}
+  </Flex>
+);
+
+const ModalWarningIcon = () => (
+  <Icon
+    name="warning"
+    size="1rem"
+    color={color("error")}
+    style={{ flex: "0 0 auto", marginRight: `${rem(12)}` }}
+  />
+);
+
+const Title = ({ children }: { children: string }) => (
+  <Box
+    c={color("text-dark")}
+    fz={rem(20)}
+    lh={rem(24)}
+    fw="bold"
+    style={{ flex: "1 1 auto" }}
+  >
+    {children}
+  </Box>
+);
+
+const CloseButton = ({ onClose }: Pick<NativeQueryPreviewProps, "onClose">) => (
+  <Flex
+    align="center"
+    justify="center"
+    style={{ borderRadius: `${rem(6)}`, cursor: "pointer" }}
+  >
+    <Icon name="close" onClick={onClose} color={color("text-light")} />
+  </Flex>
+);
+
+const Divider = () => (
+  <Box mb="lg" style={{ borderTop: `1px solid ${color("border")}` }}></Box>
+);
+
+const Footer = ({ children }: { children: ReactNode }) => (
+  <Flex justify="end" mt="lg">
+    {children}
+  </Flex>
+);
+
 export const NativeQueryPreview = ({
   title,
   query,
@@ -34,27 +71,36 @@ export const NativeQueryPreview = ({
   onClose,
 }: NativeQueryPreviewProps): JSX.Element => {
   return (
-    <ModalRoot>
-      <ModalHeader>
-        {error && <ModalWarningIcon name="warning" />}
-        <ModalTitle>
-          {error ? t`An error occurred in your query` : title}
-        </ModalTitle>
-        <ModalCloseButton>
-          <ModalCloseIcon name="close" onClick={onClose} />
-        </ModalCloseButton>
-      </ModalHeader>
-      {error && <ModalDivider />}
-      <ModalBody isCentered={isLoading}>
+    <Flex
+      direction="column"
+      p="xl"
+      miw={rem(640)}
+      maw={rem(1360)}
+      mih={rem(320)}
+      mah={rem(1440)}
+    >
+      <Header>
+        {error && <ModalWarningIcon />}
+        <Title>{error ? t`An error occurred in your query` : title}</Title>
+        <CloseButton onClose={onClose} />
+      </Header>
+      {error && <Divider />}
+      <Flex
+        direction="column"
+        justify={isLoading ? "center" : undefined}
+        align={isLoading ? "center" : undefined}
+        mih={0}
+        style={{ flex: "1 1 auto" }}
+      >
         {isLoading ? (
-          <ModalLoadingSpinner />
+          <Loader c={color("brand")} />
         ) : error ? (
           <NativeCodePanel value={error} isHighlighted />
         ) : query ? (
           <NativeCodePanel value={query} isCopyEnabled />
         ) : null}
-      </ModalBody>
-      {children && <ModalFooter>{children}</ModalFooter>}
-    </ModalRoot>
+      </Flex>
+      {children && <Footer>{children}</Footer>}
+    </Flex>
   );
 };
