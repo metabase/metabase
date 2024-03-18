@@ -19,7 +19,7 @@ export const loadMetadataForCard =
 
     // metadata for ad-hoc questions based on this question
     const question = new Question(card, getMetadata(getState()));
-    if (question.type() !== "question") {
+    if (question.isSaved() && question.type() !== "question") {
       const adhocCard = question.composeQuestionAdhoc().card();
       await dispatch(loadMetadataForCard(adhocCard));
     }
