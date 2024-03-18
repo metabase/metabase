@@ -13,18 +13,18 @@ export const loadMetadataForCard =
   (card: Card, options?: LoadMetadataOptions) =>
   async (dispatch: Dispatch, getState: GetState) => {
     // 1 - metadata which can be inferred from the query
-    await loadMetadata(card, options);
+    await dispatch(loadMetadata(card, options));
     // 2 - additional metadata such as FK tables
-    await loadMetadata(card);
+    await dispatch(loadMetadata(card));
 
     const question = new Question(card, getMetadata(getState()));
     if (question.type() !== "question") {
       const adhocCard = question.composeQueryAdHoc().card();
 
       // 3 - additional metadata for ad-hoc questions based on this question
-      await loadMetadata(adhocCard);
+      await dispatch(loadMetadata(adhocCard));
       // 4 - additional metadata for metadata overrides
-      await loadMetadata(adhocCard);
+      await dispatch(loadMetadata(adhocCard));
     }
   };
 

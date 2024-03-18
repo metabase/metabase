@@ -168,14 +168,15 @@
                         (integer? id))]
          {:type :field, :id id}))
      (when-let [table-id (or (:source-table base-stage)
-                             (some->> (:source-card base-stage) (str "card__")))]
-       (concat
-        [{:type :table, :id table-id}]
-        (for [field (lib.metadata/fields metadata-providerable table-id)]
-          (when-let [target (:target field)]
-            {:type :table, :id (:table-id target)}
-            (when-let [fk-target-field-id (:fk-target-field-id field)]
-              {:type :field, :id fk-target-field-id})))))
+                             (lib.util/legacy-string-table-id->card-id (:source-card base-stage)))]
+       (let [fields (lib.metadata/fields metadata-providerable table-id)]
+         (concat
+           [{:type :table, :id table-id}]
+           (for [{:keys [fk-target-field-id]} fields
+                :when (some? fk-target-field-id)]
+             (when-let [fk-target-field (lib.metadata/field metadata-providerable fk-target-field-id)]
+               {:type :table, :id (:table-id fk-target-field)}
+               {:type :field, :id fk-target-field-id})))))
      (for [stage (:stages query-or-join)
            join (:joins stage)
            dependent (query-dependents metadata-providerable join)]

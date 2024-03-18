@@ -303,7 +303,7 @@ export const loadMetadataForDependentItems =
         case "schema":
           return [Schemas.actions.fetchList({ dbId: id }, options)];
         case "table":
-          return [Tables.actions.fetch({ id }, options)];
+          return [Tables.actions.fetchMetadata({ id }, options)];
         case "field":
           return [Fields.actions.fetch({ id }, options)];
         default:
