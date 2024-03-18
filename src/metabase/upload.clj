@@ -40,8 +40,6 @@
 
 (set! *warn-on-reflection* true)
 
-;;;; <pre><code>
-;;;;
 ;;;; +------------------+
 ;;;; | Schema detection |
 ;;;; +------------------+
@@ -53,6 +51,8 @@
 ;; following edges from left to right - not that this is not guaranteed to be a least common ancestor!
 ;;
 ;; See [[metabase.util.ordered-hierarchy/first-common-ancestor]] for more details.
+;;
+;; <pre><code>
 ;;
 ;;                 text
 ;;                  |
@@ -73,6 +73,8 @@
 ;;         │     |      |
 ;;         │     │      │
 ;; *boolean-or-int*  auto-incrementing-int-pk
+;;
+;; </code></pre>
 ;;
 ;; We have a number of special "abstract" nodes in this graph:
 ;;
@@ -95,8 +97,6 @@
 ;; each node until you reach a concrete node. Structuring the graph this way not only gives us more
 ;; value out of a single graphic, it also makes it simpler to prove that our graph meets some
 ;; structural guarantess in our tests. It also saves us from some arbitrary visualization choices.
-;;
-;; </code></pre>
 
 (def ^:private h
   "This hierarchy defines a relationship between value types and their specializations.
