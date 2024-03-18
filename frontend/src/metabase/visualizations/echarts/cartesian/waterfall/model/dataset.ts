@@ -18,7 +18,7 @@ import {
   WATERFALL_TOTAL_KEY,
   WATERFALL_VALUE_KEY,
 } from "metabase/visualizations/echarts/cartesian/waterfall/constants";
-import { isNotNull, isNumber } from "metabase/lib/types";
+import { isNotNull } from "metabase/lib/types";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 
@@ -65,16 +65,21 @@ export const getWaterfallDataset = (
 
   dataset.forEach((datum, index) => {
     const prevDatum = index === 0 ? null : transformedDataset[index - 1];
-    const rawValue = datum[originalSeriesKey];
-    const value = isNumber(rawValue) ? rawValue : 0;
+    const value = datum[originalSeriesKey];
 
-    const start = prevDatum == null ? 0 : prevDatum.end;
-    const end =
-      prevDatum == null ? value : getNumberOr(prevDatum?.end, 0) + value;
+    let start;
+    let end;
+    if (prevDatum == null) {
+      start = 0;
+      end = value;
+    } else {
+      start = getNumberOr(prevDatum.end, 0);
+      end = start + getNumberOr(value, 0);
+    }
 
     const waterfallDatum: Datum = {
       [X_AXIS_DATA_KEY]: datum[X_AXIS_DATA_KEY],
-      [WATERFALL_VALUE_KEY]: end - getNumberOr(start, 0),
+      [WATERFALL_VALUE_KEY]: value,
       [WATERFALL_START_KEY]: start,
       [WATERFALL_END_KEY]: end,
     };
