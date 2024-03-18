@@ -64,3 +64,29 @@ export function getLoginPageIllustration(
       };
   }
 }
+
+export function getLandingPageIllustration(
+  state: EnterpriseState,
+): IllustrationValue {
+  const illustrationOption = getSetting(
+    state,
+    "landing-page-illustration",
+  ) as IllustrationSettingValue;
+
+  switch (illustrationOption) {
+    case "default":
+      return {
+        src: "app/img/bridge.svg",
+        isDefault: true,
+      };
+
+    case "no-illustration":
+      return null;
+
+    case "custom":
+      return {
+        src: getSetting(state, "landing-page-illustration-custom") as string,
+        isDefault: false,
+      };
+  }
+}

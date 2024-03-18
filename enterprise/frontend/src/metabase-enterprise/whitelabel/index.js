@@ -19,6 +19,7 @@ import {
   getIsWhiteLabeling,
   getLoadingMessage,
   getLoginPageIllustration,
+  getLandingPageIllustration,
   getShowMetabaseLinks,
 } from "metabase-enterprise/settings/selectors";
 
@@ -318,4 +319,5 @@ if (hasPremiumFeature("whitelabel")) {
   PLUGIN_SELECTORS.getApplicationName = getApplicationName;
   PLUGIN_SELECTORS.getShowMetabaseLinks = getShowMetabaseLinks;
   PLUGIN_SELECTORS.getLoginPageIllustration = getLoginPageIllustration;
+  PLUGIN_SELECTORS.getLandingPageIllustration = getLandingPageIllustration;
 }

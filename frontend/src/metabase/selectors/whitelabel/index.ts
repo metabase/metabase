@@ -24,3 +24,7 @@ export function getShowMetabaseLinks(state: State) {
 export function getLoginPageIllustration(state: State) {
   return PLUGIN_SELECTORS.getLoginPageIllustration(state);
 }
+
+export function getLandingPageIllustration(state: State) {
+  return PLUGIN_SELECTORS.getLandingPageIllustration(state);
+}

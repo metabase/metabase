@@ -139,6 +139,12 @@ export const PLUGIN_SELECTORS = {
       isDefault: true,
     };
   },
+  getLandingPageIllustration: (_state: State): IllustrationValue => {
+    return {
+      src: "app/img/bridge.svg",
+      isDefault: true,
+    };
+  },
 };
 
 export type IllustrationValue = {
