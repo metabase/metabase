@@ -89,6 +89,10 @@ class Question {
    */
   _parameterValues: ParameterValues;
 
+  private __mlv2Query: Lib.Query | undefined;
+
+  private __mlv2MetadataProvider: Lib.MetadataProvider | undefined;
+
   /**
    * Question constructor
    */
@@ -756,46 +760,33 @@ class Question {
     return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
   }
 
-  query(metadata = this._metadata): Query {
+  query(): Query {
     if (this._legacyQuery() instanceof InternalQuery) {
       throw new Error("Internal query is not supported by MLv2");
     }
 
-    const databaseId = this.datasetQuery()?.database;
-
-    // cache the metadata provider we create for our metadata.
-    if (metadata === this._metadata) {
-      if (!this.__mlv2MetadataProvider) {
-        this.__mlv2MetadataProvider = Lib.metadataProvider(
-          databaseId,
-          metadata,
-        );
-      }
-      metadata = this.__mlv2MetadataProvider;
-    }
-
-    if (this.__mlv2QueryMetadata !== metadata) {
-      this.__mlv2QueryMetadata = null;
-      this.__mlv2Query = null;
-    }
-
-    if (!this.__mlv2Query) {
-      this.__mlv2QueryMetadata = metadata;
-      this.__mlv2Query = Lib.fromLegacyQuery(
-        databaseId,
-        metadata,
-        this.datasetQuery(),
-      );
-    }
+    this.__mlv2Query ??= Lib.fromLegacyQuery(
+      this.datasetQuery()?.database,
+      this.metadataProvider(),
+      this.datasetQuery(),
+    );
 
     // Helpers for working with the current query from CLJS REPLs.
     if (process.env.NODE_ENV === "development") {
-      window.__MLv2_metadata = metadata;
+      window.__MLv2_metadata = this.__mlv2MetadataProvider;
       window.__MLv2_query = this.__mlv2Query;
       window.Lib = Lib;
     }
 
     return this.__mlv2Query;
+  }
+
+  private metadataProvider(): Lib.MetadataProvider {
+    this.__mlv2MetadataProvider ??= Lib.metadataProvider(
+      this.datasetQuery()?.database,
+      this.metadata(),
+    );
+    return this.__mlv2MetadataProvider;
   }
 
   setQuery(query: Query): Question {
