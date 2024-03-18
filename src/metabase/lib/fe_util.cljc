@@ -173,7 +173,7 @@
          (concat
            [{:type :table, :id table-id}]
            (for [{:keys [fk-target-field-id]} fields
-                :when (some? fk-target-field-id)]
+                :when fk-target-field-id]
              (when-let [fk-target-field (lib.metadata/field metadata-providerable fk-target-field-id)]
                {:type :table, :id (:table-id fk-target-field)}
                {:type :field, :id fk-target-field-id})))))
