@@ -17,7 +17,7 @@
 (defn- select-ready-to-run
   "Fetch whatever cache configs for a given `strategy` are ready to be updated."
   [strategy]
-  (assert #{:query :schedule} strategy)
+  (assert (#{:query :schedule} strategy))
   (t2/select :model/CacheConfig :strategy strategy {:where [:or
                                                             [:= :next_run_at nil]
                                                             [:<= :next_run_at (t/offset-date-time)]]}))
