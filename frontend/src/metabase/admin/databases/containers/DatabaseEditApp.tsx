@@ -12,15 +12,15 @@ import _ from "underscore";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import { GenericError } from "metabase/components/ErrorPages";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { GenericError } from "metabase/containers/ErrorPages";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import title from "metabase/hoc/Title";
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import Database from "metabase-lib/metadata/Database";
+import Database from "metabase-lib/v1/metadata/Database";
 import type {
   Database as DatabaseType,
   DatabaseData,

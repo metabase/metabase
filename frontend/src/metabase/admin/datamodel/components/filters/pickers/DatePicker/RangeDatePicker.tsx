@@ -3,12 +3,12 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 import { useCallback, useState } from "react";
 
 import Calendar from "metabase/components/Calendar";
-import type Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
   clearDateRangeFilterTime,
   getDateRangeFilterValue,
   setDateRangeFilterValue,
-} from "metabase-lib/queries/utils/date-filters";
+} from "metabase-lib/v1/queries/utils/date-filters";
 
 import { DateContainer, DateDivider } from "./RangeDatePicker.styled";
 import type { SingleDatePickerProps } from "./SingleDatePicker";

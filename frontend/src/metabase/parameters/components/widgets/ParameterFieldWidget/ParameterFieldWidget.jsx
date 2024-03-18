@@ -13,9 +13,8 @@ import {
 import {
   getFilterArgumentFormatOptions,
   isEqualsOperator,
-  isFuzzyOperator,
-} from "metabase-lib/operators/utils";
-import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
+} from "metabase-lib/v1/operators/utils";
+import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 
 import { normalizeValue } from "./normalizeValue";
 
@@ -47,7 +46,6 @@ export default function ParameterFieldWidget({
   const operator = deriveFieldOperatorFromParameter(parameter);
   const { numFields = 1, multi = false, verboseName } = operator || {};
   const isEqualsOp = isEqualsOperator(operator);
-  const disableSearch = operator && isFuzzyOperator(operator);
 
   const supportsMultipleValues =
     multi && !parameter.hasVariableTemplateTagTarget;
@@ -88,7 +86,6 @@ export default function ParameterFieldWidget({
               fields={fields}
               autoFocus={index === 0}
               multi={supportsMultipleValues}
-              disableSearch={disableSearch}
               formatOptions={
                 operator && getFilterArgumentFormatOptions(operator, index)
               }

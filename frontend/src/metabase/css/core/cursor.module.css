@@ -1,5 +1,6 @@
 :global(.cursor-pointer),
-.cursor-pointer {
+.cursor-pointer,
+.cursorPointer {
   cursor: pointer;
 }
 

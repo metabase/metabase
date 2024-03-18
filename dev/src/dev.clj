@@ -12,6 +12,8 @@
 ;;
 ;; - [Getting started with backend development](https://github.com/metabase/metabase/blob/master/docs/developers-guide/devenv.md#backend-development)
 ;; - [Additional notes on using tools.deps](https://github.com/metabase/metabase/wiki/Migrating-from-Leiningen-to-tools.deps)
+;; - [Use the dev-scripts repo to run various local DBs](https://github.com/metabase/dev-scripts)
+;; - [If you're on mac and need a VM to run Windows, Linux.. etc checkout UTM](https://mac.getutm.app/)
 ;; - [Other tips](https://github.com/metabase/metabase/wiki/Metabase-Backend-Dev-Secrets)
 ;;
 ;; ## Important Parts of the Codebase
@@ -48,9 +50,8 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.core :as mbc]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.db.env :as mdb.env]
-   [metabase.db.setup :as mdb.setup]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -249,8 +250,8 @@
   ([]
    (migrate! :up))
   ([direction & [version]]
-   (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source)
-                       direction version)))
+   (mdb/migrate! (mdb/db-type) (mdb/data-source)
+                 direction version)))
 
 (methodical/defmethod t2.connection/do-with-connection :model/Database
   "Support running arbitrary queries against data warehouse DBs for easy REPL debugging. Only works for SQL+JDBC drivers
@@ -303,11 +304,11 @@
     (or (t2/select-one Database :name "Application Database")
         #_:clj-kondo/ignore
         (let [details (#'metabase.db.env/broken-out-details
-                       (mdb.connection/db-type)
+                       (mdb/db-type)
                        @#'metabase.db.env/env)
               app-db  (first (t2/insert-returning-instances! Database
                                                              {:name    "Application Database"
-                                                              :engine  (mdb.connection/db-type)
+                                                              :engine  (mdb/db-type)
                                                               :details details}))]
           (sync/sync-database! app-db)
           app-db))))

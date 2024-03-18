@@ -16,6 +16,7 @@ import {
   setupModelIndexEndpoints,
   setupSearchEndpoints,
   setupTimelinesEndpoints,
+  setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -40,6 +41,7 @@ import {
   createMockNativeDatasetQuery,
   createMockNativeQuery,
   createMockResultsMetadata,
+  createMockSettings,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockUnsavedCard,
@@ -231,6 +233,7 @@ export const setup = async ({
   setupDatabasesEndpoints([TEST_DB]);
   setupCardDataset(dataset);
   setupSearchEndpoints([]);
+  setupPropertiesEndpoints(createMockSettings());
   setupCollectionsEndpoints({ collections: [] });
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);

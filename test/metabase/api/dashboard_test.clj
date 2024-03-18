@@ -303,8 +303,8 @@
                                        :last_name  "Corv"
                                        :email      "crowberto@metabase.com"
                                        :timestamp  true}})
-              (-> (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine")
-                  first
+              (-> (m/find-first #(= (:id %) crowberto-dash)
+                                (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine"))
                   (update-in [:last-edit-info :timestamp] boolean)))))
 
     (testing "f=all shouldn't return archived dashboards"
@@ -334,8 +334,10 @@
                (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "archived")))))))
 
     (testing "f=mine return dashboards created by caller but do not include archived"
-      (is (= #{crowberto-dash}
-             (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine"))))))))
+      (let [ids (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine")))]
+        (is (contains? ids crowberto-dash)      "Should contain Crowberto's dashboard")
+        (is (not (contains? ids rasta-dash))    "Should not contain Rasta's dashboard")
+        (is (not (contains? ids archived-dash)) "Should not contain archied dashboard")))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             GET /api/dashboard/:id                                             |
@@ -659,7 +661,7 @@
             dashboard-load-b (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id))
             param-values     (mt/user-http-request :rasta :get 200 (format "dashboard/%s/params/%s/values" dashboard-id "foo"))]
         (testing "The initial dashboard-load fetches parameter values only if they already exist (#38826)"
-          (is (some? (:param_values dashboard-load-a)))
+          (is (seq (:param_values dashboard-load-a)))
           (is (nil? (:param_values dashboard-load-b))))
         (testing "Request to values endpoint triggers computation of field values if missing."
           (is (= ["20th Century Cafe" "25°" "33 Taps"]
@@ -3984,22 +3986,6 @@
                       (mt/with-temp [PermissionsGroup {group-id :id} {}
                                      PermissionsGroupMembership _ {:user_id  (mt/user->id :rasta)
                                                                    :group_id group-id}]
-                        (comment ;; We do not currently support /execute/ permission
-                          (is (partial= {:message "You don't have permissions to do that."}
-                                        (mt/user-http-request :rasta :post 403 execute-path
-                                                              {:parameters {"id" 1}}))
-                              "Execution permission should be required"))
-                        (mt/user-http-request
-                         :crowberto :put 200 "permissions/execution/graph"
-                         (assoc-in (perms/execution-perms-graph) [:groups group-id (mt/id)] :all))
-                        (is (= :all
-                               (get-in (perms/execution-perms-graph) [:groups group-id (mt/id)]))
-                            "Should be able to set execution permission")
-                        (is (= {:rows-affected 1}
-                               (mt/user-http-request :rasta :post 200 execute-path
-                                                     {:parameters {"id" 1}}))
-                            "Execution and data permissions should be enough")
-
                         (data-perms.graph/update-data-perms-graph!* [group-id (mt/id) :data]
                                                                     {:schemas :block})
                         (data-perms.graph/update-data-perms-graph!* [(:id (perms-group/all-users)) (mt/id) :data]

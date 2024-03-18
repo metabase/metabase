@@ -8,7 +8,7 @@ import {
   getNativeEditorSelectedText,
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 import { createMockTable } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,

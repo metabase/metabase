@@ -11,8 +11,8 @@ import QueryDownloadPopover from "metabase/query_builder/components/QueryDownloa
 import { Icon } from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import InternalQuery from "metabase-lib/queries/InternalQuery";
+import type Question from "metabase-lib/v1/Question";
+import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
 import type {
   DashboardId,
   DashCardId,

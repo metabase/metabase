@@ -2,7 +2,7 @@ import type { KeyboardEvent, MouseEvent } from "react";
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { Group, Text, Box } from "metabase/ui";
+import { rem, Group, Text, Box } from "metabase/ui";
 import type { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import type { SmartScalarComparisonPeriodsAgo } from "metabase-types/api";
 
@@ -96,7 +96,7 @@ export function PeriodsAgoMenuOption({
   );
 
   return (
-    <MenuItemStyled py="0.25rem" aria-selected={isSelected}>
+    <MenuItemStyled py="xs" aria-selected={isSelected}>
       <Box px="sm" onClick={() => onChange({ type, value }, true)}>
         <Group spacing="sm">
           <NumberInputStyled
@@ -106,7 +106,7 @@ export function PeriodsAgoMenuOption({
             onKeyPress={handleInputEnter}
             onClick={handleInputClick}
             size="xs"
-            w="3.5rem"
+            w={rem(56)}
             required
             ref={inputRef}
           />

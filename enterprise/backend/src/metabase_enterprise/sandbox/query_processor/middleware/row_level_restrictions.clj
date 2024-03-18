@@ -8,7 +8,7 @@
    [metabase-enterprise.sandbox.api.util :as mt.api.u]
    [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.mbql.schema :as mbql.s]
@@ -29,8 +29,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  query->gtap                                                   |
@@ -152,7 +150,7 @@
 (def ^:private ^{:arglists '([table-id])} original-table-metadata
   (memoize/ttl
    ^{::memoize/args-fn (fn [[table-id]]
-                         [(mdb.connection/unique-identifier) table-id])}
+                         [(mdb/unique-identifier) table-id])}
    (fn [table-id]
      (mbql-query-metadata {:source-table table-id}))
    :ttl/threshold (u/minutes->ms 1)))

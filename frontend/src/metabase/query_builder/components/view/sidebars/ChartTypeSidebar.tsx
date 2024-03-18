@@ -10,8 +10,8 @@ import visualizations from "metabase/visualizations";
 import { sanatizeResultData } from "metabase/visualizations/shared/utils/data";
 import type { Visualization } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import type Query from "metabase-lib/queries/Query";
+import type Question from "metabase-lib/v1/Question";
+import type Query from "metabase-lib/v1/queries/Query";
 
 import {
   OptionIconContainer,

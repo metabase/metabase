@@ -9,7 +9,7 @@
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
@@ -33,7 +33,7 @@
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
 (defn- magic-group [group-name]
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn []
      (u/prog1 (t2/select-one PermissionsGroup :name group-name)
        ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see

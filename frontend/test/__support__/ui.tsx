@@ -12,6 +12,7 @@ import { Router, useRouterHistory } from "react-router";
 import { routerReducer, routerMiddleware } from "react-router-redux";
 import _ from "underscore";
 
+import { Api } from "metabase/api";
 import mainReducers from "metabase/reducers-main";
 import publicReducers from "metabase/reducers-public";
 import { ThemeProvider } from "metabase/ui";
@@ -77,10 +78,14 @@ export function renderWithProviders(
     reducers = { ...reducers, ...customReducers };
   }
 
+  const storeMiddleware = _.compact([
+    Api.middleware,
+    history && routerMiddleware(history),
+  ]);
   const store = getStore(
     reducers,
     initialState,
-    history ? [routerMiddleware(history)] : [],
+    storeMiddleware,
   ) as unknown as Store<State>;
 
   const wrapper = (props: any) => (

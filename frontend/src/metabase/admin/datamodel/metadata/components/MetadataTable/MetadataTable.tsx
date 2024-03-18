@@ -8,8 +8,8 @@ import Radio from "metabase/core/components/Radio/Radio";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import type Field from "metabase-lib/metadata/Field";
-import type Table from "metabase-lib/metadata/Table";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type {
   DatabaseId,
   SchemaId,

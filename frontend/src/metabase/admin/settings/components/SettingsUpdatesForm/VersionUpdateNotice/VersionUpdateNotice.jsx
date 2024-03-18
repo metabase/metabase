@@ -1,9 +1,12 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import HostingInfoLink from "metabase/admin/settings/components/widgets/HostingInfoLink";
 import Text from "metabase/components/type/Text";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { getIsPaidPlan } from "metabase/selectors/settings";
@@ -77,7 +80,12 @@ function NewVersionAvailable({ currentVersion }) {
           {t`You're running ${currentVersion}`}
         </span>
         <ExternalLink
-          className="Button Button--white Button--medium borderless"
+          className={cx(
+            ButtonsS.Button,
+            ButtonsS.ButtonWhite,
+            ButtonsS.ButtonMedium,
+            CS.borderless,
+          )}
           href={
             "https://www.metabase.com/docs/" +
             latestVersion +

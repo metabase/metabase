@@ -135,7 +135,11 @@
                                                           :dashboard_id dashboard-id}]
             (is (= 1 (t2/count DashboardCard :id dashcard-id)))
             (action/update! {:id action-id, :archived true} {:id action-id})
-            (is (zero? (t2/count DashboardCard :id dashcard-id))))))
+            (is (zero? (t2/count DashboardCard :id dashcard-id)))))))))
+
+(deftest dashcard-deletion-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+    (mt/with-actions-enabled
       (testing "Dashcards are deleted after actions are deleted entirely"
         (mt/with-actions [{:keys [action-id]} {}]
           (mt/with-temp [Dashboard {dashboard-id :id} {}

@@ -16,7 +16,7 @@
   "States of `persisted_info` records which can be refreshed."
   :feature :cache-granular-controls
   []
-  #{"creating" "persisted" "error"})
+  #{"refreshing" "creating" "persisted" "error"})
 
 (defenterprise prunable-states
   "States of `persisted_info` records which can be pruned."

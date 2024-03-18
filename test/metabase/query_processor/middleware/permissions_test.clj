@@ -11,9 +11,11 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.setup :as qp.setup]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli.fn :as mu.fn]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -22,7 +24,8 @@
   (let [qp (fn [query _rff]
              (qp.pipeline/*result* query))
         qp (qp.perms/check-query-permissions qp)]
-    (qp query (constantly conj))))
+    (qp.setup/with-qp-setup [query query]
+      (qp query (constantly conj)))))
 
 (defn- check-perms-for-rasta
   "Check permissions for `query` with rasta as the current user."
@@ -31,15 +34,17 @@
 
 (def ^:private perms-error-msg #"You do not have permissions to run this query\.")
 
-(deftest ^:parallel native-query-perms-test
+(deftest native-query-perms-test
   (testing "Make sure the NATIVE query fails to run if current user doesn't have perms"
-    (is (thrown-with-msg?
-         ExceptionInfo
-         perms-error-msg
-         (check-perms-for-rasta
-          {:database 1000
-           :type     :native
-           :native   {:query "SELECT * FROM VENUES"}})))))
+    (t2.with-temp/with-temp [:model/Database db {}]
+      (data-perms/set-database-permission! (perms-group/all-users) (u/the-id db) :perms/native-query-editing :no)
+      (is (thrown-with-msg?
+           ExceptionInfo
+           perms-error-msg
+           (check-perms-for-rasta
+            {:database (u/the-id db)
+             :type     :native
+             :native   {:query "SELECT * FROM VENUES"}}))))))
 
 (deftest native-query-perms-test-2
   (testing "...but it should work if user has perms"
@@ -80,15 +85,17 @@
                :type     :query
                :query    {:source-table (u/the-id table)}}))))))
 
-(deftest ^:parallel nested-native-query-test
+(deftest nested-native-query-test
   (testing "Make sure nested native query fails to run if current user doesn't have perms"
-    (is (thrown-with-msg?
-         ExceptionInfo
-         perms-error-msg
-         (check-perms-for-rasta
-          {:database 1000
-           :type     :query
-           :query   {:source-query {:native "SELECT * FROM VENUES"}}})))))
+    (t2.with-temp/with-temp [:model/Database db {}]
+      (data-perms/set-database-permission! (perms-group/all-users) (u/the-id db) :perms/native-query-editing :no)
+      (is (thrown-with-msg?
+           ExceptionInfo
+           perms-error-msg
+           (check-perms-for-rasta
+            {:database (u/the-id db)
+             :type     :query
+             :query   {:source-query {:native "SELECT * FROM VENUES"}}}))))))
 
 (deftest nested-native-query-test-2
   (testing "...but it should work if user has perms [nested native queries]"
@@ -156,23 +163,29 @@
                    Table    _       {:db_id (u/the-id db)}
                    Table    table-2 {:db_id (u/the-id db)}
                    Card     card    {:dataset_query {:database (u/the-id db), :type :query,
-                                                               :query {:source-table (u/the-id table-2)}}}]
+                                                     :query    {:source-table (u/the-id table-2)}}}]
       (let [card-id   (:id card)
             tag-name  (str "#" card-id)
             query-sql (format "SELECT * FROM {{%s}} AS x" tag-name)]
         ;; query should be returned by middleware unchanged
         (is (= {:database (u/the-id db)
-                :type :native
-                :native {:query         query-sql,
-                         :template-tags {tag-name {:id tag-name, :name tag-name, :display-name tag-name, :type "card",
-                                                   :card card-id}}}}
+                :type     :native
+                :native   {:query         query-sql
+                           :template-tags {tag-name {:id           tag-name
+                                                     :name         tag-name
+                                                     :display-name tag-name
+                                                     :type         "card"
+                                                     :card-id      card-id}}}}
                (check-perms-for-rasta
                 {:database (u/the-id db)
                  :type     :native
                  :native   {:query         query-sql
                             :template-tags {tag-name
-                                            {:id tag-name, :name tag-name, :display-name tag-name,
-                                             :type "card", :card card-id}}}})))))))
+                                            {:id           tag-name
+                                             :name         tag-name
+                                             :display-name tag-name
+                                             :type         "card"
+                                             :card-id      card-id}}}})))))))
 
 (deftest template-tags-referenced-queries-test-3
   (testing "Fails for native query referenced in template tag, when user has no perms to referenced query"
@@ -200,23 +213,29 @@
     (mt/with-temp [Database db   {}
                    Card     card {:dataset_query
                                   {:database (u/the-id db), :type :native,
-                                   :native {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]
-      (let [card-id  (:id card)
-            tag-name (str "#" card-id)
+                                   :native   {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]
+      (let [card-id   (:id card)
+            tag-name  (str "#" card-id)
             query-sql (format "SELECT * FROM {{%s}} AS x" tag-name)]
         ;; query should be returned by middleware unchanged
         (is (= {:database (u/the-id db)
                 :type     :native
-                :native   {:query query-sql
-                           :template-tags {tag-name {:id tag-name, :name tag-name, :display-name tag-name, :type "card",
-                                                     :card card-id}}}}
+                :native   {:query         query-sql
+                           :template-tags {tag-name {:id           tag-name
+                                                     :name         tag-name
+                                                     :display-name tag-name
+                                                     :type         "card"
+                                                     :card-id      card-id}}}}
                (check-perms-for-rasta
                 {:database (u/the-id db)
                  :type     :native
                  :native   {:query         query-sql
                             :template-tags {tag-name
-                                            {:id tag-name, :name tag-name, :display-name tag-name,
-                                             :type "card", :card card-id}}}})))))))
+                                            {:id           tag-name
+                                             :name         tag-name
+                                             :display-name tag-name
+                                             :type         "card"
+                                             :card-id      card-id}}}})))))))
 
 (deftest query-action-permissions-test
   (testing "Query action permissions"
@@ -336,3 +355,19 @@
                clojure.lang.ExceptionInfo
                #"You do not have permissions to run this query"
                (process-query))))))))
+
+(deftest e2e-ignore-user-supplied-compiled-from-mbql-key
+  (testing "Make sure the NATIVE query fails to run if current user doesn't have perms even if you try to include an MBQL :query"
+    (t2.with-temp/with-temp [:model/Database db    {}
+                             :model/Table    table {:db_id (u/the-id db)}]
+      (data-perms/set-database-permission! (perms-group/all-users) (u/the-id db) :perms/native-query-editing :no)
+      (mt/with-test-user :rasta
+        (binding [mu.fn/*enforce* false]
+          (is (thrown-with-msg?
+               ExceptionInfo
+               perms-error-msg
+               (qp/process-query
+                {:database              (u/the-id db)
+                 :type                  :native
+                 :qp/compiled-from-mbql {:source-table (u/the-id table)}
+                 :native                {:query "SELECT * FROM VENUES"}}))))))))

@@ -4,18 +4,28 @@
    [clojure.test :refer [deftest testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
-   [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    #?@(:clj  ([metabase.test :as mt])
-       :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+       :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [metabase.lib.test-util :as lib.tu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(defn- column-extract-temporal-units []
-  #?(:clj  (#'lib.drill-thru.column-extract/column-extract-temporal-units)
-     :cljs (lib.drill-thru.column-extract/column-extract-temporal-units)))
+(def ^:private time-extraction-units
+  [{:key :hour-of-day, :display-name "Hour of day"}])
+
+(def ^:private date-extraction-units
+  [{:key :day-of-month,    :display-name "Day of month"}
+   {:key :day-of-week,     :display-name "Day of week"}
+   {:key :month-of-year,   :display-name "Month of year"}
+   {:key :quarter-of-year, :display-name "Quarter of year"}
+   {:key :year,            :display-name "Year"}])
+
+(def ^:private datetime-extraction-units
+  (concat time-extraction-units date-extraction-units))
 
 (deftest ^:parallel column-extract-availability-test
   (testing "column-extract is avaiable for column clicks on temporal columns"
@@ -32,7 +42,7 @@
     :query-type  :unaggregated
     :column-name "CREATED_AT"
     :expected    {:type        :drill-thru/column-extract
-                  :extractions (column-extract-temporal-units)}}))
+                  :extractions datetime-extraction-units}}))
 
 (defn- case-extraction
   "Returns `=?` friendly value for a `:case`-based extraction, eg. `:day-of-week`.
@@ -52,7 +62,7 @@
       :column-name    "CREATED_AT"
       :drill-type     :drill-thru/column-extract
       :expected       {:type         :drill-thru/column-extract
-                       :extractions  (column-extract-temporal-units)
+                       :extractions  datetime-extraction-units
                        ;; Query unchanged
                        :query        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
                        :stage-number -1}
@@ -70,7 +80,7 @@
       :column-name    "CREATED_AT"
       :drill-type     :drill-thru/column-extract
       :expected       {:type         :drill-thru/column-extract
-                       :extractions  (column-extract-temporal-units)
+                       :extractions  datetime-extraction-units
                        ;; Query unchanged
                        :query        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
                        :stage-number -1}
@@ -88,7 +98,7 @@
       :column-name    "CREATED_AT"
       :drill-type     :drill-thru/column-extract
       :expected       {:type         :drill-thru/column-extract
-                       :extractions  (column-extract-temporal-units)
+                       :extractions  datetime-extraction-units
                        ;; Query unchanged
                        :query        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
                        :stage-number -1}
@@ -105,7 +115,7 @@
       :column-name    "CREATED_AT"
       :drill-type     :drill-thru/column-extract
       :expected       {:type         :drill-thru/column-extract
-                       :extractions  (column-extract-temporal-units)
+                       :extractions  datetime-extraction-units
                        ;; Query unchanged
                        :query        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
                        :stage-number -1}
@@ -121,7 +131,7 @@
       :column-name    "CREATED_AT"
       :drill-type     :drill-thru/column-extract
       :expected       {:type         :drill-thru/column-extract
-                       :extractions  (column-extract-temporal-units)
+                       :extractions  datetime-extraction-units
                        ;; Query unchanged
                        :query        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
                        :stage-number -1}
@@ -137,7 +147,7 @@
       :column-name    "CREATED_AT"
       :drill-type     :drill-thru/column-extract
       :expected       {:type         :drill-thru/column-extract
-                       :extractions  (column-extract-temporal-units)
+                       :extractions  datetime-extraction-units
                        ;; Query unchanged
                        :query        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
                        :stage-number -1}
@@ -157,7 +167,7 @@
          :drill-type     :drill-thru/column-extract
          :custom-query   query
          :expected       {:type         :drill-thru/column-extract
-                          :extractions  (column-extract-temporal-units)
+                          :extractions  datetime-extraction-units
                           :query        query
                           :stage-number -1}
          :drill-args     ["day-of-month"]
@@ -180,7 +190,7 @@
          :drill-type     :drill-thru/column-extract
          :custom-query   query
          :expected       {:type         :drill-thru/column-extract
-                          :extractions  (column-extract-temporal-units)
+                          :extractions  datetime-extraction-units
                           :query        (lib/append-stage query)
                           :stage-number -1}
          :drill-args     ["day-of-month"]
@@ -200,7 +210,7 @@
             :column-name    "CREATED_AT"
             :drill-type     :drill-thru/column-extract
             :expected       {:type         :drill-thru/column-extract
-                             :extractions  (column-extract-temporal-units)
+                             :extractions  datetime-extraction-units
                              ;; Query unchanged
                              :query        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
                              :stage-number -1}
@@ -209,3 +219,45 @@
                                        [(case-extraction :get-day-of-week "Day of week" (meta/id :orders :created-at)
                                                          ["domingo" "lunes" "martes" "miércoles" "jueves"
                                                           "viernes" "sábado"])]}]}})))))
+
+(deftest ^:parallel column-extract-relevant-units-test-1-time
+  (let [ship-time (assoc (meta/field-metadata :orders :created-at)
+                         :id             9999001
+                         :name           "SHIP_TIME"
+                         :display-name   "Ship time"
+                         :base-type      :type/Time
+                         :effective-type :type/Time
+                         :semantic-type  :type/Time)
+        mp        (lib/composed-metadata-provider
+                    (lib.tu/mock-metadata-provider {:fields [ship-time]})
+                    meta/metadata-provider)
+        query     (lib/query mp (lib.metadata/table mp (meta/id :orders)))]
+    (lib.drill-thru.tu/test-returns-drill
+      {:drill-type   :drill-thru/column-extract
+       :click-type   :header
+       :query-type   :unaggregated
+       :column-name  "SHIP_TIME"
+       :custom-query query
+       :expected     {:type        :drill-thru/column-extract
+                      :extractions time-extraction-units}})))
+
+(deftest ^:parallel column-extract-relevant-units-test-2-date
+  (let [arrival   (assoc (meta/field-metadata :orders :created-at)
+                         :id             9999001
+                         :name           "ARRIVAL_DATE"
+                         :display-name   "Expected arrival"
+                         :base-type      :type/Date
+                         :effective-type :type/Date
+                         :semantic-type  :type/Date)
+        mp        (lib/composed-metadata-provider
+                    (lib.tu/mock-metadata-provider {:fields [arrival]})
+                    meta/metadata-provider)
+        query     (lib/query mp (lib.metadata/table mp (meta/id :orders)))]
+    (lib.drill-thru.tu/test-returns-drill
+      {:drill-type   :drill-thru/column-extract
+       :click-type   :header
+       :query-type   :unaggregated
+       :column-name  "ARRIVAL_DATE"
+       :custom-query query
+       :expected     {:type        :drill-thru/column-extract
+                      :extractions date-extraction-units}})))
