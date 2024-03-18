@@ -1546,8 +1546,8 @@
                                    :location "/1/3/"
                                    :here     #{:card}
                                    :children [{:name "G", :id 7, :location "/1/3/6/", :children []}]}]}]}
-          {:name "aaa", :id 9, :location "/", :children [] :here #{:card}}
-          {:name "H", :id 8, :location "/", :children []}]
+          {:name "H", :id 8, :location "/", :children []}
+          {:name "aaa", :id 9, :location "/", :children [] :here #{:card}}]
          (collection/collections->tree
           {:dataset #{4 5} :card #{6 9}}
           [{:name "A", :id 1, :location "/"}
@@ -1596,28 +1596,40 @@
                                                   {:id 5, :name "a", :location "/3/1/2/"}
                                                   {:id 6, :name "a", :location "/3/"}])]
       (testing (format "Permutation: %s" (pr-str (map :id collections)))
-        (is (= [{:id       3
-                 :name     "a"
-                 :location "/"
-                 :children [{:id       1
-                             :name     "a"
-                             :location "/3/"
-                             :children [{:id       2
-                                         :name     "a"
-                                         :location "/3/1/"
-                                         :children [{:id       5
-                                                     :name     "a"
-                                                     :location "/3/1/2/"
-                                                     :children []}]}
-                                        {:id       4
-                                         :name     "a"
-                                         :location "/3/1/"
-                                         :children []}]}
-                            {:id       6
-                             :name     "a"
-                             :location "/3/"
-                             :children []}]}]
-               (collection/collections->tree {} collections)))))))
+        (let [id->idx (into {} (map-indexed
+                                (fn [i c]
+                                  [(:id c) i])
+                                collections))
+              correctly-order (fn [colls]
+                                (sort-by (comp id->idx :id) colls))]
+          (testing "sanity check: correctly-order puts collections into the order they were passed in"
+            (is (= collections (correctly-order collections))))
+          (testing "A correct tree is generated, with children ordered as they were passed in"
+            (is (= [{:id       3
+                     :name     "a"
+                     :location "/"
+                     :children (correctly-order
+                                [{:id       1
+                                  :name     "a"
+                                  :location "/3/"
+                                  :children (correctly-order
+                                             [{:id       2
+                                               :name     "a"
+                                               :location "/3/1/"
+                                               :children (correctly-order
+                                                          [{:id       5
+                                                            :name     "a"
+                                                            :location "/3/1/2/"
+                                                            :children []}])}
+                                              {:id       4
+                                               :name     "a"
+                                               :location "/3/1/"
+                                               :children []}])}
+                                 {:id       6
+                                  :name     "a"
+                                  :location "/3/"
+                                  :children []}])}]
+                   (collection/collections->tree {} collections)))))))))
 
 (deftest ^:parallel annotate-collections-test
   (let [collections [{:id 1, :name "a", :location "/"}
