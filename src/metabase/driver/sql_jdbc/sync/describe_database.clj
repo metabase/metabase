@@ -188,7 +188,7 @@
                        (driver.s/include-schema? schema-inclusion-filters schema-exclusion-filters table-schema)
                        (have-select-privilege-fn? table)))))
       (map #(dissoc % :type)))
-     (db-tables driver conn nil db-name-or-nil))))
+     (db-tables driver (.getMetaData conn) nil db-name-or-nil))))
 
 (defn- db-or-id-or-spec->database [db-or-id-or-spec]
   (cond (mi/instance-of? :model/Database db-or-id-or-spec)
