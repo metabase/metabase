@@ -79,7 +79,6 @@ export function IllustrationWidget({
       fileInputRef.current?.click();
     } else {
       await onChange(value);
-      await onChange("default");
     }
   }
 
