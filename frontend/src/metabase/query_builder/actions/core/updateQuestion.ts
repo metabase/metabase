@@ -214,14 +214,8 @@ export const updateQuestion = (
       }
     }
 
-    const currentDependencies = currentQuestion
-      ? currentQuestion.dependentMetadata()
-      : [];
-    const nextDependencies = newQuestion.dependentMetadata();
     try {
-      if (!_.isEqual(currentDependencies, nextDependencies)) {
-        await dispatch(loadMetadataForCard(newQuestion.card()));
-      }
+      await dispatch(loadMetadataForCard(newQuestion.card()));
     } catch (e) {
       // this will fail if user doesn't have data permissions but thats ok
       console.warn("Couldn't load metadata", e);
