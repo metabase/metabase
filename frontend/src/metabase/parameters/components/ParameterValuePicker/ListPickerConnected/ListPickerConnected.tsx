@@ -6,7 +6,7 @@ import type { Parameter, ParameterValues } from "metabase-types/api";
 
 import { ListPicker } from "../ListPicker";
 import {
-  getFlatValueList,
+  getFlattenedStrings,
   getListParameterStaticValues,
   shouldEnableSearch,
 } from "../core";
@@ -52,7 +52,7 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
         dispatch({
           type: "SET_VALUES",
           payload: {
-            values: getFlatValueList(res.values as string[][]),
+            values: getFlattenedStrings(res.values),
             hasMore: res.has_more_values,
             resetKey: getResetKey(parameter),
           },

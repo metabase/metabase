@@ -15,7 +15,7 @@ import { PlainValueInput } from "./PlainValueInput";
 import {
   shouldUsePlainInput,
   shouldUseListPicker,
-  getSingleValue,
+  getSingleString,
 } from "./core";
 
 interface ParameterValuePickerProps {
@@ -78,7 +78,7 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
     return (
       <ListPickerWrapper>
         <ListPickerConnected
-          value={getSingleValue(value)} // TODO
+          value={getSingleString(value)} // TODO
           parameter={parameter}
           onChange={onValueChange}
           forceSearchItemCount={50}
