@@ -42,14 +42,14 @@
                 [:type keyword?]
                 [:schedule u.cron/CronScheduleString]
                 ^:internal
-                [:last-expired-at [:maybe some?]]]]
+                [:invalidated-at [:maybe some?]]]]
     [:query    [:map {:closed true}
                 [:type keyword?]
                 [:field_id int?]
                 [:aggregation [:enum "max" "count"]]
                 [:schedule u.cron/CronScheduleString]
                 ^:internal
-                [:last-expired-at [:maybe some?]]]]]])
+                [:invalidated-at [:maybe some?]]]]]])
 
 (def CacheStrategyAPI
   "Schema for a caching strategy for the API"
@@ -104,7 +104,7 @@
           item (t2/select-one :model/CacheConfig :id q)]
       (if item
         (cond-> (:strategy (row->config item))
-          (:last_expired_at item) (assoc :last-expired-at (:last_expired_at item)))
+          (:invalidated_at item) (assoc :invalidated-at (:invalidated_at item)))
         (when-let [ttl (granular-duration-hours card dashboard-id)]
           {:type     :duration
            :duration ttl
@@ -126,15 +126,15 @@
           timestamp (t/minus (t/offset-date-time) duration)]
       (backend.db/prepare-statement conn query-hash timestamp))))
 
-(defmethod fetch-cache-stmt-ee* :schedule [{:keys [last-expired-at] :as strategy} query-hash conn]
-  (if-not last-expired-at
+(defmethod fetch-cache-stmt-ee* :schedule [{:keys [invalidated-at] :as strategy} query-hash conn]
+  (if-not invalidated-at
     (log/debugf "Caching strategy %s was not run yet" (pr-str strategy))
-    (backend.db/prepare-statement conn query-hash last-expired-at)))
+    (backend.db/prepare-statement conn query-hash invalidated-at)))
 
-(defmethod fetch-cache-stmt-ee* :query [{:keys [last-expired-at] :as strategy} query-hash conn]
-  (if-not last-expired-at
+(defmethod fetch-cache-stmt-ee* :query [{:keys [invalidated-at] :as strategy} query-hash conn]
+  (if-not invalidated-at
     (log/debugf "Caching strategy %s was never run yet" (pr-str strategy))
-    (backend.db/prepare-statement conn query-hash last-expired-at)))
+    (backend.db/prepare-statement conn query-hash invalidated-at)))
 
 (defmethod fetch-cache-stmt-ee* :nocache [_ _ _]
   nil)

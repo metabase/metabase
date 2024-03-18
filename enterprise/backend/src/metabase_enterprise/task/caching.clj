@@ -32,14 +32,14 @@
         (t/offset-date-time (t/zone-offset)))))
 
 (defn- refresh-schedule-configs!
-  "Update `last_expired_at` for every cache config with `:schedule` strategy"
+  "Update `invalidated_at` for every cache config with `:schedule` strategy"
   []
   (let [now (t/offset-date-time)]
     (count
      (for [{:keys [id config]} (select-ready-to-run :schedule)]
        (t2/update! :model/CacheConfig {:id id}
                    {:next_run_at     (calc-next-run (:schedule config) now)
-                    :last_expired_at now})))))
+                    :invalidated_at now})))))
 
 (defn- refresh-query-config! [db-id table-id field-id {:keys [id config state]}]
   (let [query       {:database db-id
@@ -53,10 +53,10 @@
     (t2/update! :model/CacheConfig {:id id}
                      (cond-> {:next_run_at next-run-at}
                        (not= marker result) (assoc :state {:marker result}
-                                                   :last_expired_at now)))))
+                                                   :invalidated_at now)))))
 
 (defn- refresh-query-configs!
-  "Fetches `:query`-strategy configs wants to re-check their queries, runs those queries and updates `last_expired_at`
+  "Fetches `:query`-strategy configs wants to re-check their queries, runs those queries and updates `invalidated_at`
   where `(:marker state)` is not equal to the result of the query."
   []
   (when-let [configs (seq (select-ready-to-run :query))]

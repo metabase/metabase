@@ -6027,8 +6027,8 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  name: last_expired_at
-                  remarks: indicates when a cache was expired last time for schedule-based strategies
+                  name: invalidated_at
+                  remarks: indicates when a cache was invalidated last time for schedule-based strategies
                   type: ${timestamp_type}
                   constraints:
                     nullable: true
