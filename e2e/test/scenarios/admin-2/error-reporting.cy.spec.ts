@@ -1,5 +1,10 @@
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import { modal, restore, visitDashboard } from "e2e/support/helpers";
+import {
+  createQuestion,
+  modal,
+  restore,
+  visitDashboard,
+} from "e2e/support/helpers";
 
 const downloadsFolder = Cypress.config("downloadsFolder");
 
@@ -38,7 +43,7 @@ describe("error reporting modal", () => {
 
   it("should include question-specific data when triggered on the question page", () => {
     cy.signInAsAdmin();
-    cy.createQuestion(
+    createQuestion(
       {
         name: "Diagnostic Question 1",
         query: { "source-table": 1, limit: 10 },
@@ -92,7 +97,7 @@ describe("error reporting modal", () => {
 
   it("can include query data on question pages", () => {
     cy.signInAsAdmin();
-    cy.createQuestion(
+    createQuestion(
       {
         name: "Diagnostic Question 1",
         query: { "source-table": 1, limit: 10 },

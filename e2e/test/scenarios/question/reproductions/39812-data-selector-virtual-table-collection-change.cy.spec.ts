@@ -1,13 +1,14 @@
 import {
-  ORDERS_MODEL_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  visitModel,
+  createQuestion,
   openNotebook,
   openQuestionActions,
   popover,
+  restore,
+  visitModel,
   visitQuestion,
 } from "e2e/support/helpers";
 
@@ -45,7 +46,7 @@ describe("issue 39812", () => {
       query: { "source-table": `card__${SOURCE_QUESTION_ID}` },
     };
 
-    cy.createQuestion(nestedQuestionDetails, {
+    createQuestion(nestedQuestionDetails, {
       wrapId: true,
       idAlias: "nestedQuestionId",
     });
