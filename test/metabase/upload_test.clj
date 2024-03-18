@@ -1109,27 +1109,29 @@
   ;; Just test with h2 because snowplow should be independent of the driver
   (mt/test-driver :h2
     (snowplow-test/with-fake-snowplow-collector
-      (with-upload-table!
-        [_table (card->table (upload-example-csv!))]
-        (is (=? {:data    {"model_id"          pos?
-                           "size_mb"           3.910064697265625E-5
-                           "num_columns"       2
-                           "num_rows"          2
-                           "generated_columns" 1
-                           "upload_seconds"    pos?
-                           "event"             "csv_upload_successful"}
-                 :user-id (str (mt/user->id :rasta))}
-                (last (snowplow-test/pop-event-data-and-user-id!))))
-        (mt/with-dynamic-redefs [upload/load-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
-          (try (upload-example-csv!)
-               (catch Throwable _
-                 nil))
-          (is (= {:data {"size_mb"     3.910064697265625E-5
-                         "num_columns" 2
-                         "num_rows"    2
-                         "event"       "csv_upload_failed"}
-                  :user-id (str (mt/user->id :rasta))}
-                 (last (snowplow-test/pop-event-data-and-user-id!)))))))))
+      (with-upload-table! [_table (card->table (upload-example-csv!))]
+        (testing "Successfully creating a CSV Upload publishes statistics to Snowplow"
+          (is (=? {:data    {"model_id"          pos?
+                             "size_mb"           3.910064697265625E-5
+                             "num_columns"       2
+                             "num_rows"          2
+                             "generated_columns" 1
+                             "upload_seconds"    pos?
+                             "event"             "csv_upload_successful"}
+                   :user-id (str (mt/user->id :rasta))}
+                  (last (snowplow-test/pop-event-data-and-user-id!)))))
+
+        (testing "Failures when creating a CSV Upload will publish statistics to Snowplow"
+          (mt/with-dynamic-redefs [upload/load-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+            (try (upload-example-csv!)
+                 (catch Throwable _
+                   nil))
+            (is (= {:data    {"size_mb"     3.910064697265625E-5
+                              "num_columns" 2
+                              "num_rows"    2
+                              "event"       "csv_upload_failed"}
+                    :user-id (str (mt/user->id :rasta))}
+                   (last (snowplow-test/pop-event-data-and-user-id!))))))))))
 
 
 (deftest csv-upload-audit-log-test
@@ -1517,36 +1519,38 @@
     (snowplow-test/with-fake-snowplow-collector
 
      (with-upload-table! [table (create-upload-table!)]
-       (let [csv-rows ["name" "Luke Skywalker"]
-             file     (csv-file-with csv-rows (mt/random-name))]
-         (append-csv! {:file file, :table-id (:id table)})
-
-         (is (=? {:data    {"size_mb"           1.811981201171875E-5
-                            "num_columns"       1
-                            "num_rows"          1
-                            "generated_columns" 0
-                            "upload_seconds"    pos?
-                            "event"             "csv_append_successful"}
-                  :user-id (str (mt/user->id :crowberto))}
-                 (last (snowplow-test/pop-event-data-and-user-id!))))
-
-         (io/delete-file file))
-
-       (mt/with-dynamic-redefs [upload/load-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
-         (let [csv-rows ["mispelled_name, unexpected_column" "Duke Cakewalker, r2dj"]
+       (testing "Successfully appending to CSV Uploads publishes statistics to Snowplow"
+         (let [csv-rows ["name" "Luke Skywalker"]
                file     (csv-file-with csv-rows (mt/random-name))]
-           (try
-             (append-csv! {:file file, :table-id (:id table)})
-             (catch Throwable _)
-             (finally
-               (io/delete-file file))))
+           (append-csv! {:file file, :table-id (:id table)})
 
-         (is (= {:data {"size_mb"     5.245208740234375E-5
-                        "num_columns" 2
-                        "num_rows"    1
-                        "event"       "csv_append_failed"}
-                 :user-id (str (mt/user->id :crowberto))}
-                (last (snowplow-test/pop-event-data-and-user-id!)))))))))
+           (is (=? {:data    {"size_mb"           1.811981201171875E-5
+                              "num_columns"       1
+                              "num_rows"          1
+                              "generated_columns" 0
+                              "upload_seconds"    pos?
+                              "event"             "csv_append_successful"}
+                    :user-id (str (mt/user->id :crowberto))}
+                   (last (snowplow-test/pop-event-data-and-user-id!))))
+
+           (io/delete-file file)))
+
+       (testing "Failures when appending to CSV Uploads will publish statistics to Snowplow"
+         (mt/with-dynamic-redefs [upload/load-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+           (let [csv-rows ["mispelled_name, unexpected_column" "Duke Cakewalker, r2dj"]
+                 file     (csv-file-with csv-rows (mt/random-name))]
+             (try
+               (append-csv! {:file file, :table-id (:id table)})
+               (catch Throwable _)
+               (finally
+                 (io/delete-file file))))
+
+           (is (= {:data    {"size_mb"     5.245208740234375E-5
+                             "num_columns" 2
+                             "num_rows"    1
+                             "event"       "csv_append_failed"}
+                   :user-id (str (mt/user->id :crowberto))}
+                  (last (snowplow-test/pop-event-data-and-user-id!))))))))))
 
 (deftest csv-append-audit-log-test
   ;; Just test with h2 because these events are independent of the driver
