@@ -26,14 +26,15 @@ export function OwnDatePicker(props: OwnDatePickerProps) {
   const { value, parameter, onChange, placeholder } = props;
   const [isOpen, setIsOpen] = useState(false);
   const formatted = formatParameterValue(value, parameter);
-  const parameterType = parameter.type as DateParameterType; // TODO fix types in Parameter
+  // TODO fix Parameter types (metabase#40226)
+  const parameterType = parameter.type as DateParameterType;
 
   const openPopover = () => setIsOpen(true);
   const closePopover = () => setIsOpen(false);
 
   const [triggerRef, setTriggerRef] = useState<HTMLDivElement | null>(null);
 
-  // TODO this should be not needed?
+  // TODO this should be not needed (metabase#40226)
   const dropdownRef = useClickOutside(closePopover, null, [triggerRef]);
 
   const icon = value ? (
@@ -53,7 +54,8 @@ export function OwnDatePicker(props: OwnDatePickerProps) {
     ? undefined
     : { style: { pointerEvents: "none" } };
 
-  // TODO this should be removed as soon as we reconcile all dropdowns and make them use Mantine
+  // TODO this should be removed as soon as we reconcile all dropdowns
+  // and make them use Mantine (metabase#40226)
   const zIndex = hasInnerPopovers(parameterType) ? 3 : undefined;
 
   return (
@@ -101,7 +103,7 @@ function DateComponentRouter(props: {
       return (
         <DateRelativeWidget
           {...componentProps}
-          // TODO fix types
+          // TODO fix types (metabase#40226)
           setValue={val => props.setValue(val ?? null)}
         />
       );
@@ -130,7 +132,7 @@ function hasInnerPopovers(type: DateParameterType) {
   );
 }
 
-// TODO this should be in the Lib or somewhere else
+// TODO this should be in the Lib or somewhere else (metabase#40226)
 function DEPRECATED_getInitialDateValue(
   value: string | undefined,
   parameterType: ParameterType,

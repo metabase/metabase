@@ -25,9 +25,7 @@ interface ParameterValuePickerProps {
   onValueChange: (value: any) => void;
 }
 
-// TODO setting default value on blur/closing picker
-// TODO error states
-// TODO filter input for numbers
+// TODO Add additional behaviors (metabase#40226)
 
 /**
  * This component is designed to be controlled outside,
@@ -78,7 +76,7 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
     return (
       <ListPickerWrapper>
         <ListPickerConnected
-          value={getSingleString(value)} // TODO
+          value={getSingleString(value)}
           parameter={parameter}
           onChange={onValueChange}
           forceSearchItemCount={50}

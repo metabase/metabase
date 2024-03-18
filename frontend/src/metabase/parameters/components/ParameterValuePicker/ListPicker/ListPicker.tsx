@@ -19,7 +19,7 @@ interface ListPickerProps {
   errorMessage?: string;
 }
 
-// TODO show "remove" button when typing in search for static list parameters
+// TODO show "remove" button when typing, static list parameters (metabase#40226)
 export function ListPicker(props: ListPickerProps) {
   const {
     value,
