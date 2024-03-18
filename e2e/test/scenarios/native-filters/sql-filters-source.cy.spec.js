@@ -100,9 +100,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       cy.findByTestId("sidebar-content")
         .findByPlaceholderText("Start typing to filter…")
         .click();
-      popover().within(() => {
-        cy.findByText("Gadget").click();
-      });
+      popover().findByText("Gadget").click();
     });
 
     it("should be able to use a structured question source without saving the question", () => {
