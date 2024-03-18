@@ -6,6 +6,7 @@ import { t } from "ttag";
 
 import Button from "metabase/core/components/Button/Button";
 import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import * as Urls from "metabase/lib/urls";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -19,7 +20,6 @@ import {
   ColumnInput,
   FieldSettingsLink,
 } from "./MetadataTableColumn.styled";
-
 interface OwnProps {
   field: Field;
   idFields: Field[];
@@ -126,7 +126,7 @@ const MetadataTableColumn = ({
             )}
           >
             <ColumnInput
-              className={cx(AdminS.TableEditorFieldDescription, "rounded")}
+              className={cx(AdminS.TableEditorFieldDescription, CS.rounded)}
               type="text"
               value={field.description ?? ""}
               onBlurChange={handleChangeDescription}

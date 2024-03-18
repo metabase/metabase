@@ -78,12 +78,7 @@ const MetadataSchemaList = ({
   }, [selectedDatabaseId, selectedSchemaId, allSchemas, onSelectSchema]);
 
   return (
-    <aside
-      className={cx(
-        "MetadataEditor-table-list flex-no-shrink",
-        AdminS.AdminList,
-      )}
-    >
+    <aside className={cx(AdminS.AdminList, CS.flexNoShrink)}>
       <div className={AdminS.AdminListSearch}>
         <Icon name="search" size={16} />
         <input
@@ -130,9 +125,12 @@ const SchemaRow = ({ schema, isSelected, onSelectSchema }: SchemaRowProps) => {
     <li key={schema.id}>
       <a
         className={cx(
-          "flex align-center no-decoration text-wrap",
+          "text-wrap",
           AdminS.AdminListItem,
-          { selected: isSelected },
+          { [AdminS.selected]: isSelected },
+          CS.flex,
+          CS.alignCenter,
+          CS.noDecoration,
         )}
         onClick={handleSelect}
       >

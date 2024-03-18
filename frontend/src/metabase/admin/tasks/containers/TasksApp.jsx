@@ -9,6 +9,7 @@ import PaginationControls from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
 import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import Database from "metabase/entities/databases";
 import Task from "metabase/entities/tasks";
 
@@ -62,7 +63,7 @@ class TasksAppInner extends Component {
           </SectionControls>
         </SectionHeader>
 
-        <table className={cx(AdminS.ContentTable, "mt2")}>
+        <table className={cx(AdminS.ContentTable, CS.mt2)}>
           <thead>
             <tr>
               <th>{t`Task`}</th>

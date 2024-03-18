@@ -330,9 +330,11 @@ const EditMap = ({
             <input
               type="text"
               className={cx(
-                "bordered rounded h3",
                 AdminS.AdminInput,
                 AdminS.SettingsInput,
+                CS.bordered,
+                CS.rounded,
+                CS.h3,
               )}
               placeholder={t`e.g. United Kingdom, Brazil, Mars`}
               value={map.name}
@@ -343,13 +345,15 @@ const EditMap = ({
         <SettingContainer
           description={t`URL for the GeoJSON file you want to use`}
         >
-          <div className="flex">
+          <div className={CS.flex}>
             <input
               type="text"
               className={cx(
                 AdminS.AdminInput,
                 AdminS.SettingsInput,
-                "bordered rounded h3",
+                CS.bordered,
+                CS.rounded,
+                CS.h3,
               )}
               placeholder={t`Like https://my-mb-server.com/maps/my-map.json`}
               value={map.url}

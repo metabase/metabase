@@ -220,10 +220,10 @@ class SettingsEditor extends Component {
 
         const classes = cx(
           AdminS.AdminListItem,
-          "flex",
-          "align-center",
+          CS.flex,
+          CS.alignCenter,
+          CS.noDecoration,
           "justify-between",
-          "no-decoration",
           { [AdminS.selected]: slug === sectionNamePrefix },
         );
 
@@ -253,13 +253,7 @@ class SettingsEditor extends Component {
     );
 
     return (
-      <aside
-        className={cx(
-          AdminS.AdminList,
-          CS.flexNoShrink,
-          "MetadataEditor-table-list",
-        )}
-      >
+      <aside className={cx(AdminS.AdminList, CS.flexNoShrink)}>
         <ul className={CS.pt1} data-testid="admin-list-settings-items">
           <ErrorBoundary>{renderedSections}</ErrorBoundary>
         </ul>
