@@ -11,14 +11,14 @@ export function shouldUsePlainInput(parameter: Parameter) {
     return false;
   }
 
-  // TODO this is current behavior, although for number/= we MIGHT
+  // This is current behavior, although for number/= we MIGHT
   // allow picking multiple values, so it should eventually take arity into account
   if (isNumberParameter(parameter)) {
     const subtype = getParameterSubType(parameter);
     return subtype === "=";
   }
 
-  // TODO this means "string" + "input box" is selected
+  // This means "string" + "input box" is selected
   if (
     parameter.type === "category" &&
     (parameter.values_query_type == null ||
@@ -59,6 +59,7 @@ export function getListParameterStaticValues(
   return null;
 }
 
+// TODO Change this (metabase#40226)
 export function getFlattenedStrings(values: unknown[][] | unknown[]): string[] {
   return values.flat(1).map(value => String(value));
 }
@@ -74,6 +75,7 @@ export function shouldEnableSearch(
   return !staticValues || staticValues.length > maxCount;
 }
 
+// TODO Change this (metabase#40226)
 export function getSingleString(value: unknown) {
   return String(Array.isArray(value) ? value[0] : value);
 }
