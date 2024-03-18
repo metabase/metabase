@@ -1825,14 +1825,6 @@
                           (append!)))))
                 (io/delete-file file)))))))))
 
-(defn- first-non-abstract-first-parent [value-type]
-  (cond (nil? value-type) nil
-
-        (#'upload/abstract->concrete value-type)
-        (recur (first (parents @#'upload/h value-type)))
-
-        :else value-type))
-
 (deftest column-type-test
   (let [column-type #'upload/column-type]
     (testing "Unknown value types are treated as text"
@@ -1845,6 +1837,5 @@
       (doseq [[value-type expected-column-type] @#'upload/abstract->concrete]
         (is (= expected-column-type (column-type value-type)))
         ;; Strictly speaking we only require that there is a route from each abstract node to its column type which only
-        ;; traverses through abstract nodes, but it's much simpler to enforce this convention. This consistency also
-        ;; keeps the graph easier to reason about and may save us from future foot guns.
-        (is (= expected-column-type (first-non-abstract-first-parent value-type)))))))
+        ;; traverses through abstract nodes, but it's much simpler to enforce this stronger condition.
+        (is (contains? (parents @#'upload/h value-type) expected-column-type))))))

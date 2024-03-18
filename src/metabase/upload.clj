@@ -103,9 +103,6 @@
   We use an [[metabase.util.ordered-hierarchy]] for its topological sorting, which simplify writing efficient and
   consistent implementations for of our type inference, parsing, and relaxation."
   (make-hierarchy
-   ;; override the parent ordering for ::explicit-int
-   {::explicit-int [::int ::float-or-int]}
-
    [::text
     [::varchar-255
      [::boolean ::boolean-or-int]
