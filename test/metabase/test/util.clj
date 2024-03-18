@@ -27,7 +27,6 @@
             User]]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions.graph :as data-perms.graph]
-   [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -673,7 +672,7 @@
   "Additional conditions applied to the query to find the max ID for a model prior to a test run. This can be used to
   exclude rows which intentionally use non-sequential IDs, like the internal user."
   {:arglists '([model])}
-  mi/model)
+  t2/resolve-model)
 
 (defmethod with-max-model-id-additional-conditions :default
   [_]
@@ -684,8 +683,8 @@
   [:not= :id config/internal-mb-user-id])
 
 (defmethod with-max-model-id-additional-conditions :model/Database
- [_]
- [:not= :id perms/audit-db-id])
+  [_]
+  [:not= :id perms/audit-db-id])
 
 (defn- model->model&pk [model]
   (if (vector? model)
@@ -714,9 +713,7 @@
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
           (t2/query-one
            {:delete-from (t2/table-name model)
-            :where       (if (seq additional-conditions)
-                           [:and max-id-condition additional-conditions]
-                           max-id-condition)}))))))
+            :where       [:and max-id-condition additional-conditions]}))))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
