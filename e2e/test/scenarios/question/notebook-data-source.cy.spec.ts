@@ -5,25 +5,26 @@ import { onlyOn } from "@cypress/skip-test";
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  SECOND_COLLECTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_MODEL_ID,
+  SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import {
-  popover,
-  restore,
-  startNewQuestion,
-  openReviewsTable,
-  openNotebook,
-  visitQuestion,
-  resetTestTable,
-  resyncDatabase,
-  visualize,
-  saveQuestion,
-  visitModel,
-  openQuestionActions,
-  isOSS,
   isEE,
+  isOSS,
+  openNotebook,
+  openQuestionActions,
+  openReviewsTable,
+  popover,
+  resetTestTable,
+  restore,
+  resyncDatabase,
+  saveQuestion,
+  startNewQuestion,
+  visitModel,
+  visitQuestion,
+  visualize,
 } from "e2e/support/helpers";
 
 const { REVIEWS_ID } = SAMPLE_DATABASE;
@@ -228,7 +229,7 @@ describe("scenarios > notebook > data source", () => {
   });
 
   describe("saved entity as a source (aka the virtual table)", () => {
-    const modelDetails: Parameters<typeof cy.createQuestion>[0] = {
+    const modelDetails: StructuredQuestionDetails = {
       name: "GUI Model",
       query: { "source-table": REVIEWS_ID, limit: 1 },
       display: "table",
