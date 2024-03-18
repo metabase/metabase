@@ -74,39 +74,45 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
     [fetchAndUpdate],
   );
 
-  const cancelFetch = () => {
+  const cancelFetch = useCallback(() => {
     fetchUpdateDebounced.cancel();
     dispatch({ type: "SET_IS_LOADING", payload: { isLoading: false } });
-  };
+  }, [fetchUpdateDebounced]);
 
-  const ownOnSearch = (query: string) => {
-    // Trigger fetch only when search is different from the current value
-    if (shouldFetchOnSearch(state, parameter, query)) {
-      fetchUpdateDebounced.cancel();
-      dispatch({
-        type: "SET_IS_LOADING",
-        payload: { isLoading: true, query },
-      });
-      fetchUpdateDebounced(query);
-    }
-  };
+  const ownOnSearch = useCallback(
+    (query: string) => {
+      // Trigger fetch only when search is different from the current value
+      if (shouldFetchOnSearch(state, parameter, query)) {
+        fetchUpdateDebounced.cancel();
+        dispatch({
+          type: "SET_IS_LOADING",
+          payload: { isLoading: true, query },
+        });
+        fetchUpdateDebounced(query);
+      }
+    },
+    [parameter, state, fetchUpdateDebounced],
+  );
 
-  const ownOnChange = (value: string | null) => {
-    cancelFetch();
-    dispatch({ type: "SET_LAST_CHANGE", payload: { value } });
-    onChange(value);
-  };
+  const ownOnChange = useCallback(
+    (value: string | null) => {
+      cancelFetch();
+      dispatch({ type: "SET_LAST_CHANGE", payload: { value } });
+      onChange(value);
+    },
+    [cancelFetch, onChange],
+  );
 
-  // Reset when parameter changes
-  useEffect(() => {
-    const newResetKey = getResetKey(parameter);
-    if (shouldReset(state, newResetKey)) {
-      dispatch({ type: "RESET", payload: { newResetKey } });
-      ownOnChange(null);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, parameter]);
-
+  useEffect(
+    function resetOnParameterChange() {
+      const newResetKey = getResetKey(parameter);
+      if (shouldReset(state, newResetKey)) {
+        dispatch({ type: "RESET", payload: { newResetKey } });
+        ownOnChange(null);
+      }
+    },
+    [state, parameter, ownOnChange],
+  );
   useUnmount(cancelFetch); // Cleanup
 
   const staticValues = getListParameterStaticValues(parameter);
