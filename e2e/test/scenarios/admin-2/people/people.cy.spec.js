@@ -57,8 +57,7 @@ describe("scenarios > admin > people", () => {
         cy.findByText("Groups").as("groupsTab").click();
         // cy.findByText("Groups").should("have.class", "selected");
       });
-
-      cy.get(".PageTitle").contains("Groups");
+      cy.findByTestId("admin-pane-page-title").contains("Groups");
       assertTableRowsCount(TOTAL_GROUPS);
 
       cy.log(
@@ -66,7 +65,7 @@ describe("scenarios > admin > people", () => {
       );
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("All Users").click();
-      cy.get(".PageTitle").contains("All Users");
+      cy.findByTestId("admin-pane-page-title").contains("All Users");
 
       // The same list as for "People"
       assertTableRowsCount(TOTAL_USERS);
