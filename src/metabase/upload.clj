@@ -44,59 +44,54 @@
 ;;;; | Schema detection |
 ;;;; +------------------+
 
-;; Upload value-types form a DAG (directed acyclic graph) where each type can be coerced into any of
-;; its ancestors types. We parse each value in the CSV file to the most-specific possible type for
-;; each column. The most-specific possible type for a column is the closest common ancestor of the
-;; types for each value in the column, found by walking through the graph in topological order,
-;; following edges from left to right - not that this is not guaranteed to be a least common ancestor!
+;; Upload value-types form a DAG (directed acyclic graph) where each type can be relaxed into any of its ancestors.
+;; We parse each value in the CSV file to the most-specific possible type for each column.
+
+;; The most-specific possible type for a column is the closest common ancestor of the types for each value in the
+;; column, found by walking through the graph in topological order, following edges from left to right.
+;; Note that this type is not guaranteed to be one of the least common ancestors!
 ;;
 ;; See [[metabase.util.ordered-hierarchy/first-common-ancestor]] for more details.
 ;;
 ;; <pre><code>
 ;;
-;;                 text
-;;                  |
-;;                  │
-;;              varchar-255────────┐
-;;               /  |  \           │
-;;              /   │  datetime  offset-datetime
-;;             /    │      \
-;;            /     │      date
-;;           /      │
-;;      boolean   float-──┬──┐
-;;         |        |     |  │
-;;         │        │    int─|───┐
-;;         │        │   /    │   │
-;;         │        │  / *float-or-int*
-;;         │        │ /   /
-;;         │  *explicit-int*
-;;         │     |      |
-;;         │     │      │
+;;              text
+;;               |
+;;               |
+;;          varchar-255──────
+;;        /      /  \        \
+;;      /      /      \       \
+;;  boolean  float   datetime  offset-datetime
+;;     |       │        │
+;;     |       │        │
+;;     │ *float-or-int* │
+;;     │       │        │
+;;     │       │        │
+;;     |      int      date
+;;     |   /       \
+;;     |  /         \
 ;; *boolean-or-int*  auto-incrementing-int-pk
 ;;
 ;; </code></pre>
 ;;
 ;; We have a number of special "abstract" nodes in this graph:
 ;;
-;; - `boolean-or-int` is an ambiguous node, that could either be a boolean or an integer.
-;; - `explicit-int` is an integer without an explicit decimal point.
-;; - `float-or-int` is an integer with an explicit decimal point.
+;; - `*boolean-or-int*` is an ambiguous node, that could either be parsed as a boolean or as an integer.
+;; - `*float-or-int*` is an integer with an explicit decimal point.
 ;;
-;; While a `boolean-or-int` is a genuinely ambiguous value, `explicit-int` and `float-or-int` exist
-;; solely to power the type coercion and promotion behaviour on CSV appending.
+;; While a `*boolean-or-int*` is a genuinely ambiguous value, `*float-or-int*` exist to power our desired value-type
+;; coercion and column-type promotion behaviour.
 ;;
-;; - If we encounter a `float-or-int` inside an `int` column, then we can safely cast it down to an integer.
-;; - If we encounter a `float` (i.e. there is a non-zero fraction component), then we will need to promote
-;;   the column to a `float.`
+;; - If we encounter a `*float-or-int*` inside an `int` column, then we can safely coerce it down to an integer.
+;; - If we encounter a `float` (i.e. a non-zero fraction component), then we need to promote the column to a `float.`
 ;;
 ;; Columns can not have an abstract type, which has no meaning outside of inference and reconciliation.
 ;; If we are left with an abstract type after having processed all the values, we need to traverse
-;; further up the graph until we reach a concrete `column-type`. For ease of reference and explicitness
-;; these corresponding values are given in the `abtract->concrete` map. One can figure out these
-;; mappings without looking away from the graph however by simplify following the first edge up from
-;; each node until you reach a concrete node. Structuring the graph this way not only gives us more
-;; value out of a single graphic, it also makes it simpler to prove that our graph meets some
-;; structural guarantess in our tests. It also saves us from some arbitrary visualization choices.
+;; further up the graph until we reach a concrete `column-type`.
+;;
+;; For ease of reference and explicitness these corresponding values are given in the `abstract->concrete` map.
+;; One can figure out these mappings by simply looking for the first concrete ancestor, which will typically have
+;; the same name as the
 
 (def ^:private h
   "This hierarchy defines a relationship between value types and their specializations.
@@ -105,19 +100,41 @@
   (make-hierarchy
    [::text
     [::varchar-255
-     [::boolean ::boolean-or-int]
+     [::boolean ::*boolean-or-int*]
      [::float
-      [::float-or-int
-       [::explicit-int ::boolean-or-int ::auto-incrementing-int-pk]]
-      [::int ::explicit-int ::float-or-int]]
+      ;; A number value with a decimal separator, but a zero fractional component.
+      [::*float-or-int*
+       [::int
+        ;; A value that could be legally parsed as either a boolean OR an integer
+        ::*boolean-or-int*
+        ::auto-incrementing-int-pk]]]
      [::datetime ::date]
      [::offset-datetime]]]))
 
 (def ^:private abstract->concrete
-  "Not all value types correspond to database types. For those that don't, this maps to their concrete ancestor."
-  {::boolean-or-int ::boolean
-   ::explicit-int   ::int
-   ::float-or-int   ::float})
+  "Not all value types correspond to database types. For those that don't, this maps to their preferred concretion."
+  {::*boolean-or-int* ::boolean
+   ::*float-or-int*   ::float})
+
+(def ^:private allowed-promotions
+  "A mapping of which types a column can be implicitly relaxed to, based on the content of appended values."
+  {::int #{::float}})
+
+;; note that we will throw an error for any other case where the existing type is more specific (i.e. excludes) the
+;; inferred value-type.
+
+(def ^:private coercion-mapping
+  "A mapping of which value types should be coerced to the given existing type, rather than triggering promotion."
+  {::int #{::*float-or-int*}})
+
+;; our tests or types should check that every one of the value-types is a direct parent of the given column-type.
+;; this is stricter than what we really need - that there is an unbroken line of abstract value-types on the shorted
+;; path to this column type, but in practice we don't need that affordance.
+
+(defn- coerce?
+  "Can values of the given type be coerced to the given existing column type, in a lossless fashion?"
+  [column-type value-type]
+  (contains? (coercion-mapping column-type) value-type))
 
 (def ^:private value-types
   "All type tags which values can be inferred as. An ordered set from most to least specialized."
@@ -127,12 +144,22 @@
   "All type tags that correspond to concrete column types."
   (into #{} (remove abstract->concrete) value-types))
 
+(defn- column-type?
+  [value-type]
+  (contains? column-types value-type))
+
 (defn ^:private column-type
   "The most specific column type corresponding to the given value type."
-  [value-type]
-  (or (abstract->concrete value-type value-type)
-      ;; If we know nothing about the value type, treat it as an arbitrary string.
-      ::text))
+  [existing-type value-type]
+  (cond
+    ;; If the type is concrete, there is nothing to do.
+    (column-type? value-type) value-type
+    ;; If we know nothing about the value type, treat it as an arbitrary string.
+    (nil? value-type) ::text
+    ;; If configured, coerce the value to the existing type
+    (coerce? existing-type value-type) existing-type
+    ;; Otherwise, project it to its canonical concretion.
+    :else (abstract->concrete value-type)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; [[value->type]] helpers
@@ -223,19 +250,20 @@
 (mu/defn ^:private settings->type->check :- type->check-schema
   [{:keys [number-separators] :as _settings}]
   (let [explicit-int? (regex-matcher (int-regex number-separators))
-        float-or-int? (regex-matcher (float-or-int-regex number-separators))
-        coerced-int?  #(or (explicit-int? %) (float-or-int? %))]
-    {::boolean-or-int  boolean-or-int-string?
-     ::boolean         boolean-string?
-     ::offset-datetime offset-datetime-string?
-     ::date            date-string?
-     ::datetime        datetime-string?
-     ::explicit-int    explicit-int?
-     ::int             coerced-int?
-     ::float-or-int    float-or-int?
-     ::float           (regex-matcher (float-regex number-separators))
-     ::varchar-255     varchar-255?
-     ::text            (constantly true)}))
+        float-or-int? (regex-matcher (float-or-int-regex number-separators))]
+    {::*boolean-or-int* boolean-or-int-string?
+     ::boolean          boolean-string?
+     ::offset-datetime  offset-datetime-string?
+     ::date             date-string?
+     ::datetime         datetime-string?
+     ;; Note that this violates a desirable property - that the type-check for every ancestor of the value's type
+     ;; will pass the check as well. Unfortunately we have to break this property for the way that type-coercion
+     ;; abused the type hierarchy.
+     ::int              explicit-int?
+     ::*float-or-int*   float-or-int?
+     ::float            (regex-matcher (float-regex number-separators))
+     ::varchar-255      varchar-255?
+     ::text             (constantly true)}))
 
 (defn- value->type
   "Determine the most specific type that is compatible with the given value.
@@ -289,7 +317,8 @@
 (mu/defn column-types-from-rows :- [:sequential (into [:enum] column-types)]
   "Given the types of the existing columns (if there are any), and rows to be added, infer the best supporting types."
   [settings existing-types rows]
-  (map column-type (reduce (type-relaxer settings) existing-types rows)))
+  (->> (reduce (type-relaxer settings) existing-types rows)
+       (u/map-all column-type existing-types)))
 
 (defn- detect-schema
   "Consumes the header and rows from a CSV file.
@@ -635,10 +664,6 @@
          (str/join "\n\n")
          (not-blank))))
 
-(def ^:private allowed-type-upgrades
-  "A mapping of which types a column can be implicitly relaxed to, based on the content of appended values."
-  {::int #{::float}})
-
 (defn- check-schema
   "Throws an exception if:
     - the CSV file contains duplicate column names
@@ -660,7 +685,7 @@
 (defn- matching-or-upgradable? [current-type relaxed-type]
   (or (nil? current-type)
       (= current-type relaxed-type)
-      (when-let [f (allowed-type-upgrades current-type)]
+      (when-let [f (allowed-promotions current-type)]
         (f relaxed-type))))
 
 (defn- field-changes

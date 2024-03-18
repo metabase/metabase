@@ -31,11 +31,10 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private bool-type         ::upload/boolean)
-(def ^:private explicit-int-type ::upload/explicit-int)
 (def ^:private int-type          ::upload/int)
-(def ^:private bool-or-int-type  ::upload/boolean-or-int)
+(def ^:private bool-or-int-type  ::upload/*boolean-or-int*)
 (def ^:private float-type        ::upload/float)
-(def ^:private float-or-int-type ::upload/float-or-int)
+(def ^:private float-or-int-type ::upload/*float-or-int*)
 (def ^:private vchar-type        ::upload/varchar-255)
 (def ^:private date-type         ::upload/date)
 (def ^:private datetime-type     ::upload/datetime)
@@ -119,32 +118,32 @@
            ["0,0"        0              float-or-int-type ",."]
            ["0,0"        0              float-or-int-type ", "]
            ["0.0"        0              float-or-int-type ".’"]
-           ["$2"         2              explicit-int-type]
-           ["$ 3"        3              explicit-int-type]
-           ["-43€"       -43            explicit-int-type]
-           ["(86)"       -86            explicit-int-type]
-           ["($86)"      -86            explicit-int-type]
-           ["£1000"      1000           explicit-int-type]
-           ["£1000"      1000           explicit-int-type "."]
-           ["£1000"      1000           explicit-int-type ".,"]
-           ["£1000"      1000           explicit-int-type ",."]
-           ["£1000"      1000           explicit-int-type ", "]
-           ["£1000"      1000           explicit-int-type ".’"]
-           ["-¥9"        -9             explicit-int-type]
-           ["₹ -13"      -13            explicit-int-type]
-           ["₪13"        13             explicit-int-type]
-           ["₩-13"       -13            explicit-int-type]
-           ["₿42"        42             explicit-int-type]
-           ["-99¢"       -99            explicit-int-type]
-           ["2"          2              explicit-int-type]
-           ["-86"        -86            explicit-int-type]
-           ["9,986,000"  9986000        explicit-int-type]
-           ["9,986,000"  9986000        explicit-int-type "."]
-           ["9,986,000"  9986000        explicit-int-type ".,"]
-           ["9.986.000"  9986000        explicit-int-type ",."]
-           ["9’986’000"  9986000        explicit-int-type ".’"]
-           ["$0"         0              explicit-int-type]
-           ["-1"         -1             explicit-int-type]
+           ["$2"         2              int-type]
+           ["$ 3"        3              int-type]
+           ["-43€"       -43            int-type]
+           ["(86)"       -86            int-type]
+           ["($86)"      -86            int-type]
+           ["£1000"      1000           int-type]
+           ["£1000"      1000           int-type "."]
+           ["£1000"      1000           int-type ".,"]
+           ["£1000"      1000           int-type ",."]
+           ["£1000"      1000           int-type ", "]
+           ["£1000"      1000           int-type ".’"]
+           ["-¥9"        -9             int-type]
+           ["₹ -13"      -13            int-type]
+           ["₪13"        13             int-type]
+           ["₩-13"       -13            int-type]
+           ["₿42"        42             int-type]
+           ["-99¢"       -99            int-type]
+           ["2"          2              int-type]
+           ["-86"        -86            int-type]
+           ["9,986,000"  9986000        int-type]
+           ["9,986,000"  9986000        int-type "."]
+           ["9,986,000"  9986000        int-type ".,"]
+           ["9.986.000"  9986000        int-type ",."]
+           ["9’986’000"  9986000        int-type ".’"]
+           ["$0"         0              int-type]
+           ["-1"         -1             int-type]
            ["0"          false          bool-or-int-type]
            ["1"          true           bool-or-int-type]
            ["9.986.000"  "9.986.000"    vchar-type ".,"]
@@ -232,7 +231,7 @@
     (let [settings    {:number-separators (or seps ".,")}
           type->check (#'upload/settings->type->check settings)
           value-type  (#'upload/value->type type->check string-value)
-          ;; get the type of the column, if it were filled with only that value
+          ;; get the type of the column, if we created it based on only that value
           col-type    (first (upload/column-types-from-rows settings nil [[string-value]]))
           parser      (upload-parsing/upload-type->parser col-type settings)]
       (testing (format "\"%s\" is a %s" string-value value-type)
@@ -1792,7 +1791,7 @@
         ;; inserted rows are rolled back
         (binding [driver/*insert-chunk-rows* 1]
           (doseq [{:keys [upload-type uncoerced coerced fail-msg] :as args}
-                  [{:upload-type ::upload/int,     :uncoerced "2.0",        :coerced 2}
+                  [{:upload-type ::upload/int,     :uncoerced "2.0",        :coerced 2} ;; value is coerced to int
                    {:upload-type ::upload/int,     :uncoerced "2.1",        :coerced 2.1} ;; column is promoted to float
                    {:upload-type ::upload/float,   :uncoerced "2",          :coerced 2.0}
                    {:upload-type ::upload/boolean, :uncoerced "0",          :coerced false}
@@ -1825,8 +1824,10 @@
                           (append!)))))
                 (io/delete-file file)))))))))
 
-(deftest column-type-test
-  (let [column-type #'upload/column-type]
+(def ^:private column-type @#'upload/column-type)
+
+(deftest initial-column-type-test
+  (let [column-type (partial column-type nil)]
     (testing "Unknown value types are treated as text"
       (is (= ::upload/text (column-type nil))))
     (testing "Non-abstract value types resolve to themselves"
@@ -1839,3 +1840,16 @@
         ;; Strictly speaking we only require that there is a route from each abstract node to its column type which only
         ;; traverses through abstract nodes, but it's much simpler to enforce this stronger condition.
         (is (contains? (parents @#'upload/h value-type) expected-column-type))))))
+
+(deftest append-column-type-test
+  (doseq [existing-type @#'upload/value-types
+          value-type    @#'upload/value-types]
+    (case [existing-type value-type]
+      [::upload/int ::upload/*float-or-int*]
+      (testing "We coerce floats with fractional part to plan integers when appending into an existing integer column"
+        (is (= ::upload/int (column-type existing-type value-type))))
+
+      ;; This is unsatisfying, it would good for this interface to also cover promoting columns and rejecting values as well.
+      (testing (format "We append %s values to %s columns as if we were inserting them into new columns" existing-type value-type)
+        (is (= (column-type nil value-type)
+               (column-type existing-type value-type)))))))
