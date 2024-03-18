@@ -37,8 +37,7 @@
 
 (def excluded-models
   "List of models which are not going to be serialized ever."
-  ["Activity"
-   "ApiKey"
+  ["ApiKey"
    "ApplicationPermissionsRevision"
    "AuditLog"
    "BookmarkOrdering"
@@ -69,6 +68,7 @@
    "QueryAction"
    "QueryCache"
    "QueryExecution"
+   "QueryField"
    "RecentViews"
    "Revision"
    "Secret"

@@ -1,5 +1,5 @@
 import { formatValue } from "metabase/lib/formatting";
-import { isDate } from "metabase-lib/types/utils/isa";
+import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { ParameterValueOrArray } from "metabase-types/api";
 import type { DatasetColumn, RowValue } from "metabase-types/api/dataset";
 

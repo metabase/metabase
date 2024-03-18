@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   enterCustomColumnDetails,
   getNotebookStep,
@@ -8,6 +9,7 @@ import {
   openOrdersTable,
   popover,
   restore,
+  visitQuestion,
   visualize,
 } from "e2e/support/helpers";
 
@@ -73,6 +75,96 @@ describe("extract action", () => {
             option,
             value,
           });
+        });
+      });
+    });
+
+    describe("should add a new column after the selected column", () => {
+      it("ad-hoc question", () => {
+        openOrdersTable();
+        extractColumnAndCheck({
+          column: "Created At",
+          option: "Year",
+        });
+        const columnIndex = 7;
+        checkColumnIndex({
+          column: "Created At",
+          columnIndex,
+        });
+        checkColumnIndex({
+          column: "Year",
+          columnIndex: columnIndex + 1,
+        });
+      });
+
+      it("saved question without viz settings", () => {
+        visitQuestion(ORDERS_QUESTION_ID);
+        extractColumnAndCheck({
+          column: "Created At",
+          option: "Year",
+        });
+        const columnIndex = 7;
+        checkColumnIndex({
+          column: "Created At",
+          columnIndex,
+        });
+        checkColumnIndex({
+          column: "Year",
+          columnIndex: columnIndex + 1,
+        });
+      });
+
+      it("saved question with viz settings", () => {
+        cy.createQuestion(
+          {
+            query: {
+              "source-table": ORDERS_ID,
+              fields: [
+                ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+                ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+                ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
+              ],
+            },
+            visualization_settings: {
+              "table.columns": [
+                {
+                  name: "ID",
+                  fieldRef: ["field", ORDERS.ID, null],
+                  enabled: true,
+                },
+                {
+                  name: "CREATED_AT",
+                  fieldRef: [
+                    "field",
+                    ORDERS.CREATED_AT,
+                    {
+                      "temporal-unit": "default",
+                    },
+                  ],
+                  enabled: true,
+                },
+                {
+                  name: "QUANTITY",
+                  fieldRef: ["field", ORDERS.QUANTITY, null],
+                  enabled: true,
+                },
+              ],
+            },
+          },
+          { visitQuestion: true },
+        );
+        extractColumnAndCheck({
+          column: "Created At",
+          option: "Year",
+        });
+        const columnIndex = 1;
+        checkColumnIndex({
+          column: "Created At",
+          columnIndex,
+        });
+        checkColumnIndex({
+          column: "Year",
+          columnIndex: columnIndex + 1,
         });
       });
     });
@@ -150,4 +242,8 @@ function extractColumnAndCheck({ column, option, newColumn = option, value }) {
   if (value) {
     cy.findByRole("gridcell", { name: value }).should("be.visible");
   }
+}
+
+function checkColumnIndex({ column, columnIndex }) {
+  cy.findAllByRole("columnheader").eq(columnIndex).should("have.text", column);
 }

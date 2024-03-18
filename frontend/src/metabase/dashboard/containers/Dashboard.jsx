@@ -4,6 +4,7 @@ import cx from "classnames";
 import { Component } from "react";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
 
 export class Dashboard extends Component {
@@ -21,7 +22,7 @@ export class Dashboard extends Component {
           <DashboardGridConnected
             dashboard={dashboard}
             {...props}
-            className="spread"
+            className={CS.spread}
           />
         )}
       </LoadingAndErrorWrapper>

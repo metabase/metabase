@@ -7,6 +7,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import IconBorder from "metabase/components/IconBorder";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 import { Icon } from "metabase/ui";
@@ -15,7 +16,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { isNumeric } from "metabase-lib/types/utils/isa";
+import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { getValue } from "./utils";
 
@@ -222,7 +223,17 @@ export default class Progress extends Component {
               }}
             />
             {barMessage && (
-              <div className="flex align-center absolute spread text-white text-bold px2">
+              <div
+                className={cx(
+                  CS.flex,
+                  CS.alignCenter,
+                  CS.absolute,
+                  CS.spread,
+                  CS.textWhite,
+                  CS.textBold,
+                  CS.px2,
+                )}
+              >
                 <IconBorder borderWidth={2}>
                   <Icon name="check" />
                 </IconBorder>

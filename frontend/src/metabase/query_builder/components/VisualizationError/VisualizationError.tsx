@@ -10,7 +10,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { isNotNull } from "metabase/lib/types";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 import { VISUALIZATION_SLOW_TIMEOUT } from "../../constants";
 

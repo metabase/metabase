@@ -181,11 +181,11 @@
                             (repeat (dec num-args) filter-value))]
     (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause)))
 
-(defn test-temporal-type-reconciliation
+(defn test-temporal-type-reconciliation!
   [test-case]
   (mt/test-driver :bigquery-cloud-sdk
     (qp.store/with-metadata-provider mock-temporal-fields-metadata-provider
-      (mt/with-report-timezone-id nil
+      (mt/with-report-timezone-id! nil
         (binding [*print-meta* true]
           (when-let [test-case (expand-test-case test-case)]
             (is (= (temporal-type-reconciliation-expected-value test-case)

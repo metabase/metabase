@@ -7,7 +7,7 @@ import Questions from "metabase/entities/questions";
 import { loadMetadataForDependentItems } from "metabase/redux/metadata";
 import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
-import { isSameField } from "metabase-lib/queries/utils/field-ref";
+import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 
 import { getOriginalCard, getQuestion, getResultsMetadata } from "../selectors";
 

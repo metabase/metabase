@@ -15,6 +15,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -255,7 +256,7 @@
 (mu/defn ^:private field->clause :- mbql.s/field
   [driver     :- :keyword
    field      :- lib.metadata/ColumnMetadata
-   param-type :- ::mbql.s/ParameterType
+   param-type :- ::lib.schema.parameter/type
    value]
   ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
   ;; the [[metabase.query-processor.middleware.resolve-fields/resolve-fields]] middleware that would normally fetch all

@@ -93,11 +93,11 @@
     (with-test-driver-db!
       (is (= [[10]]
              (mt/rows
-               (mt/user-http-request :lucky
-                :post 202 "dataset"
-                {:database (mt/id)
-                 :type     "native"
-                 :native   {:query {:sleep 10}}})))))))
+              (mt/user-http-request :lucky
+                                    :post 202 "dataset"
+                                    {:database (mt/id)
+                                     :type     "native"
+                                     :native   {:query {:sleep 10}}})))))))
 
 (deftest truly-async-test
   (testing "StreamingResponses should truly be asynchronous, and not block Jetty threads while waiting for results"

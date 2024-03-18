@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import Fields from "metabase/entities/fields";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
-import type Field from "metabase-lib/metadata/Field";
-import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
+import type Field from "metabase-lib/v1/metadata/Field";
+import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import { StyledSelectButton } from "./MappedFieldPicker.styled";
 

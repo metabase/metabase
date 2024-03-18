@@ -1,7 +1,10 @@
+import cx from "classnames";
 import { getIn } from "icepick";
 import { Component } from "react";
 import { t } from "ttag";
 
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -134,7 +137,7 @@ export class AddSeriesModal extends Component<Props, State> {
       .filter(s => !!s.data);
 
     return (
-      <div className="spread flex">
+      <div className={cx(CS.spread, CS.flex)}>
         <div className="flex flex-column flex-full">
           <div className="flex-no-shrink h3 pl4 pt4 pb2 text-bold">
             Edit data
@@ -142,7 +145,7 @@ export class AddSeriesModal extends Component<Props, State> {
           <div className="flex-full ml2 mr1 relative">
             <Visualization
               canRemoveSeries={CAN_REMOVE_SERIES}
-              className="spread"
+              className={CS.spread}
               errorMessageOverride={
                 series.length > 1
                   ? t`Unable to combine these questions`
@@ -167,12 +170,15 @@ export class AddSeriesModal extends Component<Props, State> {
           </div>
           <div className="flex-no-shrink pl4 pb4 pt1">
             <button
-              className="Button Button--primary"
+              className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
               onClick={this.handleDone}
             >
               {t`Done`}
             </button>
-            <button className="Button ml2" onClick={this.props.onClose}>
+            <button
+              className={cx(ButtonsS.Button, CS.ml2)}
+              onClick={this.props.onClose}
+            >
               {t`Cancel`}
             </button>
           </div>

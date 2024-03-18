@@ -92,7 +92,7 @@
     (u/prog1 (into {}
                    (map (juxt :id (fn [legacy-macro]
                                     (update legacy-macro :definition legacy-macro-definition->pMBQL))))
-                   (lib.metadata/bulk-metadata metadata-providerable metadata-type legacy-macro-ids))
+                   (lib.metadata/bulk-metadata-or-throw metadata-providerable metadata-type legacy-macro-ids))
       ;; make sure all the IDs exist.
       (doseq [id legacy-macro-ids]
         (or (get <> id)

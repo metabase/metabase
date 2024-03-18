@@ -10,10 +10,6 @@
   "Is `unit` a valid datetime bucketing unit?"
   (mr/validator ::lib.schema.temporal-bucketing/unit))
 
-(def ^{:arglists '([ag-clause])} Aggregation?
-  "Is this a valid Aggregation clause?"
-  (mr/validator mbql.s/Aggregation))
-
 (def ^{:arglists '([field-clause])} Field?
   "Is this a valid Field clause?"
   (mr/validator mbql.s/Field))

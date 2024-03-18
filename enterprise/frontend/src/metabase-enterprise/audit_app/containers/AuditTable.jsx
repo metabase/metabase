@@ -10,7 +10,7 @@ import _ from "underscore";
 import PaginationControls from "metabase/components/PaginationControls";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { getMetadata } from "metabase/selectors/metadata";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 
 import { AuditMode } from "../lib/mode";
 

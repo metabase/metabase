@@ -6,7 +6,7 @@ import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaName,
-} from "metabase-lib/metadata/utils/saved-questions";
+} from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   Card,
   Collection,

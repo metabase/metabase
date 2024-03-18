@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
+import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getVisualizationTransformed,
@@ -23,7 +24,7 @@ import {
 import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 
 import {
   SectionContainer,
@@ -395,7 +396,7 @@ class ChartSettings extends Component {
             <SectionWarnings warnings={this.state.warnings} size={20} />
             <ChartSettingsVisualizationContainer>
               <Visualization
-                className="spread"
+                className={CS.spread}
                 rawSeries={rawSeries}
                 showTitle
                 isEditing

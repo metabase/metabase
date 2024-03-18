@@ -4,9 +4,9 @@ import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import type * as Lib from "metabase-lib";
-import type { Suggestion } from "metabase-lib/expressions/suggest";
-import { suggest } from "metabase-lib/expressions/suggest";
 import { createQuery } from "metabase-lib/test-helpers";
+import type { Suggestion } from "metabase-lib/v1/expressions/suggest";
+import { suggest } from "metabase-lib/v1/expressions/suggest";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import ExpressionEditorSuggestions from "./ExpressionEditorSuggestions";

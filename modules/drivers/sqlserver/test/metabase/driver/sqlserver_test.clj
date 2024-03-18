@@ -423,8 +423,8 @@
                               :filter [:= [:field %attempts.datetime {:base-type :type/DateTime}]]
                               :order-by [[:asc $id]]
                               :limit limit})]
-          (doseq [with-tz-setter [#'qp.test-util/do-with-report-timezone-id
-                                  #'test.tz/do-with-system-timezone-id
+          (doseq [with-tz-setter [#'qp.test-util/do-with-report-timezone-id!
+                                  #'test.tz/do-with-system-timezone-id!
                                   #'qp.test-util/do-with-database-timezone-id
                                   #'qp.test-util/do-with-results-timezone-id]
                   timezone ["UTC" "Pacific/Auckland"]]

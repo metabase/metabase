@@ -29,9 +29,9 @@ import {
   canManageSubscriptions,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import type Database from "metabase-lib/metadata/Database";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type { UiParameter } from "metabase-lib/parameters/types";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Dashboard as IDashboard,
   DashboardId,

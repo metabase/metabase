@@ -5,9 +5,10 @@ import { useTimeout } from "react-use";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
-import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
+import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 import RunButtonWithTooltip from "./RunButtonWithTooltip";
 import { VisualizationError } from "./VisualizationError";
@@ -31,28 +32,32 @@ export default function QueryVisualization(props) {
   const [warnings, setWarnings] = useState([]);
 
   return (
-    <div className={cx(className, "relative stacking-context full-height")}>
-      {isRunning ? <VisualizationRunningState className="spread z2" /> : null}
+    <div
+      className={cx(className, CS.relative, CS.stackingContext, CS.fullHeight)}
+    >
+      {isRunning ? (
+        <VisualizationRunningState className={cx(CS.spread, CS.z2)} />
+      ) : null}
       <VisualizationDirtyState
         {...props}
         hidden={!isResultDirty || isRunning || isNativeEditorOpen}
-        className="spread z2"
+        className={cx(CS.spread, CS.z2)}
       />
       {!isObjectDetail && (
         <Warnings
           warnings={warnings}
-          className="absolute top right mt2 mr2 z2"
+          className={cx(CS.absolute, CS.top, CS.right, CS.mt2, CS.mr2, CS.z2)}
           size={18}
         />
       )}
       <div
-        className={cx("spread Visualization z1", {
+        className={cx(CS.spread, "Visualization", CS.z1, {
           "Visualization--loading": isRunning,
         })}
       >
         {result?.error ? (
           <VisualizationError
-            className="spread"
+            className={CS.spread}
             error={result.error}
             via={result.via}
             question={question}
@@ -62,11 +67,11 @@ export default function QueryVisualization(props) {
           <VisualizationResult
             {...props}
             maxTableRows={maxTableRows}
-            className="spread"
+            className={CS.spread}
             onUpdateWarnings={setWarnings}
           />
         ) : !isRunning ? (
-          <VisualizationEmptyState className="spread" />
+          <VisualizationEmptyState className={CS.spread} />
         ) : null}
       </div>
     </div>
@@ -96,9 +101,7 @@ export function VisualizationRunningState({ className = "" }) {
       )}
     >
       <LoadingSpinner />
-      <h2 className="Loading-message text-brand text-uppercase my3">
-        {message}
-      </h2>
+      <h2 className={cx(CS.textBrand, CS.textUppercase, CS.my3)}>{message}</h2>
     </div>
   );
 }

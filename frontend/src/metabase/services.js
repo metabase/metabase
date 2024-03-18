@@ -2,11 +2,11 @@ import _ from "underscore";
 
 import api, { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import Question from "metabase-lib/Question";
-import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
-import { normalizeParameters } from "metabase-lib/parameters/utils/parameter-values";
-import { isNative } from "metabase-lib/queries/utils/card";
-import { getPivotColumnSplit } from "metabase-lib/queries/utils/pivot";
+import Question from "metabase-lib/v1/Question";
+import { injectTableMetadata } from "metabase-lib/v1/metadata/utils/tables";
+import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
+import { isNative } from "metabase-lib/v1/queries/utils/card";
+import { getPivotColumnSplit } from "metabase-lib/v1/queries/utils/pivot";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";

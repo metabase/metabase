@@ -212,7 +212,6 @@
     log-progress-fn :- LogProgressFn]
    (fingerprint-fields-for-db!* database tables log-progress-fn (constantly true)))
 
-  ;; TODO: Maybe the driver should have a function to tell you if it supports fingerprinting?
   ([database        :- i/DatabaseInstance
     tables          :- [:maybe [:sequential i/TableInstance]]
     log-progress-fn :- LogProgressFn
@@ -220,10 +219,7 @@
    (qp.store/with-metadata-provider (u/the-id database)
      (reduce (fn [acc table]
                (log-progress-fn (if *refingerprint?* "refingerprint-fields" "fingerprint-fields") table)
-               (let [results (if (= :googleanalytics (:engine database))
-                               (empty-stats-map 0)
-                               (fingerprint-fields! table))
-                     new-acc (merge-with + acc results)]
+               (let [new-acc (merge-with + acc (fingerprint-fields! table))]
                  (if (continue? new-acc)
                    new-acc
                    (reduced new-acc))))
@@ -235,8 +231,9 @@
   [database        :- i/DatabaseInstance
    tables          :- [:maybe [:sequential i/TableInstance]]
    log-progress-fn :- LogProgressFn]
-  ;; TODO: Maybe the driver should have a function to tell you if it supports fingerprinting?
-  (fingerprint-fields-for-db!* database tables log-progress-fn))
+  (if (driver/database-supports? (:engine database) :fingerprint database)
+    (fingerprint-fields-for-db!* database tables log-progress-fn)
+    (empty-stats-map 0)))
 
 (def ^:private max-refingerprint-field-count
   "Maximum number of fields to refingerprint. Balance updating our fingerprinting values while not spending too much

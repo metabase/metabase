@@ -194,7 +194,7 @@
   rows+column-names
   with-database-timezone-id
   with-mock-fks-for-drivers-without-fk-constraints
-  with-report-timezone-id
+  with-report-timezone-id!
   with-results-timezone-id]
 
  [sql-jdbc.tu
@@ -290,7 +290,7 @@
   test-helpers-set-global-values!]
 
  [test.tz
-  with-system-timezone-id]
+  with-system-timezone-id!]
 
  [tx
   count-with-template-tag-query
