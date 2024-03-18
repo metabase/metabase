@@ -1,11 +1,16 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom/client";
-import {createBrowserRouter, redirect, RouterProvider} from "react-router-dom";
+import {
+  createBrowserRouter,
+  redirect,
+  RouterProvider,
+} from "react-router-dom";
 import "./index.css";
 import { SignIn } from "./SignIn";
 import App from "./App";
 import { Page } from "./Page";
 import { DashboardPage } from "./DashboardPage";
+import { QuestionIFramePage } from "./QuestionIFramePage";
 
 const router = createBrowserRouter([
   {
@@ -27,6 +32,10 @@ const router = createBrowserRouter([
       {
         path: "/app/dashboard",
         element: <DashboardPage />,
+      },
+      {
+        path: "/app/question-iframe",
+        element: <QuestionIFramePage />,
       },
     ],
   },

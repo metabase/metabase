@@ -11,11 +11,11 @@ const config = {
   metabaseInstanceUrl:
     process.env.REACT_APP_METABASE_INSTANCE_URL || "http://localhost:3000",
   font: "Inter",
-  authType: "apiKey",
-  // jwtProviderUri: "http://localhost:8081/sso/metabase",
-  apiKey:
-    process.env.REACT_APP_API_KEY ||
-    "mb_69LT30xYbivFLUHLGRTN/5yK00yrT07zCbz/2smEiCI=",
+  authType: "jwt",
+  jwtProviderUri: "http://localhost:8081/sso/metabase",
+  // apiKey:
+  //   process.env.REACT_APP_API_KEY ||
+  //   "mb_Zhns2vrYNTIAAc/GHBuIoUshpysJ2laLWsZ9MbJavj0=",
 };
 
 const App = () => {

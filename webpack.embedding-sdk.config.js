@@ -140,7 +140,6 @@ module.exports = env => {
         assets: ASSETS_PATH,
         fonts: FONTS_PATH,
         metabase: SRC_PATH,
-        "embedding-sdk": SDK_SRC_PATH,
         "metabase-lib": LIB_SRC_PATH,
         "metabase-enterprise": ENTERPRISE_SRC_PATH,
         "metabase-types": TYPES_SRC_PATH,
