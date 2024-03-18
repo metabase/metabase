@@ -215,7 +215,7 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(methodical/defmethod t2/batched-hydrate [:model/Pulse :channels]
+(methodical/defmethod t2/batched-hydrate [:default :channels]
   [_model k pulses]
   (mi/common-batched-hydration
    k pulses
@@ -249,7 +249,7 @@
   [notification-or-id]
   (cards* notification-or-id))
 
-(methodical/defmethod t2/batched-hydrate [:model/Pulse :cards]
+(methodical/defmethod t2/batched-hydrate [:default :cards]
   [_model k pulses]
   (mi/common-batched-hydration k
                                pulses
