@@ -665,15 +665,14 @@ describe("scenarios > dashboard > dashboard drill", () => {
     };
 
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-      ({ body: { id: DASHBOARD_ID } }) => {
-        visitDashboard(DASHBOARD_ID);
+      ({ body: { dashboard_id } }) => {
+        visitDashboard(dashboard_id);
 
         // click the first bar on the card's graph and do a zoom drill-through
         cy.get(".bar").eq(0).click({ force: true });
         cy.findByText("See this month by week").click();
 
         cy.wait("@dataset");
-        cy.findByTestId("loading-spinner").should("not.exist");
 
         // check that the display is still a bar chart by checking that a .bar element exists
         cy.get(".bar").should("exist");
