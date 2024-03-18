@@ -100,7 +100,7 @@ const SemanticTypeAndTargetPicker = ({
   return (
     <div
       data-testid="semantic-type-target-picker"
-      className={hasSeparator ? cx(CS.flex, CS.alignCenter) : null}
+      className={hasSeparator ? cx(CS.flex, CS.alignCenter) : undefined}
     >
       <Select
         className={cx(AdminS.TableEditorFieldSemanticType, "mt0", className)}
