@@ -24,9 +24,9 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import { isNative } from "metabase-lib/queries/utils/card";
-import { findColumnIndexesForColumnSettings } from "metabase-lib/queries/utils/dataset";
+import Question from "metabase-lib/v1/Question";
+import { isNative } from "metabase-lib/v1/queries/utils/card";
+import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import {
   isMetric,
   isDimension,
@@ -35,7 +35,7 @@ import {
   isEmail,
   isImageURL,
   isAvatarURL,
-} from "metabase-lib/types/utils/isa";
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   DatasetData,

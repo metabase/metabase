@@ -5,7 +5,7 @@ import _ from "underscore";
 import DatabaseCandidates from "metabase/entities/database-candidates";
 import Databases from "metabase/entities/databases";
 import { getSetting } from "metabase/selectors/settings";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseCandidate } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

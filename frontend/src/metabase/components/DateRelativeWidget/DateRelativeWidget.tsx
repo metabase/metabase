@@ -3,7 +3,9 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { DATE_MBQL_FILTER_MAPPING } from "metabase-lib/parameters/constants";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
+import { DATE_MBQL_FILTER_MAPPING } from "metabase-lib/v1/parameters/constants";
 
 type Shortcut = {
   name: string;
@@ -93,8 +95,12 @@ export class PredefinedRelativeDatePicker extends Component<PredefinedRelativeDa
                 key={index}
                 aria-selected={this.isSelectedShortcut(s)}
                 className={cx(
-                  "Button Button-normal Button--medium text-normal text-centered full",
-                  { "Button--purple": this.isSelectedShortcut(s) },
+                  ButtonsS.Button,
+                  ButtonsS.ButtonNormal,
+                  ButtonsS.ButtonMedium,
+                  CS.textNormal,
+                  CS.textCentered,
+                  CS.full,
                 )}
                 onClick={() => this.onSetShortcut(s)}
               >
@@ -132,10 +138,14 @@ export class PredefinedRelativeDatePicker extends Component<PredefinedRelativeDa
                     s.name.toLowerCase()
                   }
                   className={cx(
-                    "Button Button-normal Button--medium flex-full mb1",
+                    ButtonsS.Button,
+                    ButtonsS.ButtonNormal,
+                    ButtonsS.ButtonMedium,
+                    CS.flexFull,
+                    CS.mb1,
                     {
-                      "Button--purple": this.isSelectedShortcut(s),
-                      mr1: index !== RELATIVE_SHORTCUTS[sectionName].length - 1,
+                      [CS.mr1]:
+                        index !== RELATIVE_SHORTCUTS[sectionName].length - 1,
                     },
                   )}
                   onClick={() => this.onSetShortcut(s)}

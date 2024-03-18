@@ -3,8 +3,8 @@ import * as React from "react";
 
 import { Filter as FilterComponent } from "metabase/admin/datamodel/components/Filter";
 import Popover from "metabase/components/Popover";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import type Filter from "metabase-lib/queries/structured/Filter";
+import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
 
 import { FilterPopover } from "../FilterPopover";
 

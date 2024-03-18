@@ -17,7 +17,7 @@
   (fn [query rff]
     (letfn [(rff* [metadata]
               {:pre [(map? metadata)]}
-              (rff (assoc metadata :native_form (:native query))))]
+              (rff (assoc metadata :native_form ((some-fn :native :qp/compiled) query))))]
       (qp query rff*))))
 
 (def ^:private middleware
@@ -36,13 +36,21 @@
 
 (def ^:private execute* nil)
 
+(defn- run [query rff]
+  ;; if the query has a `:qp/compiled` key (i.e., this query was compiled from MBQL), rename it to `:native`, so the
+  ;; driver implementations only need to look for one key. Can't really do this any sooner because it will break schema
+  ;; checks in the middleware
+  (let [query (cond-> query
+                (not (:native query)) (assoc :native (:qp/compiled query)))]
+    (qp.pipeline/*run* query rff)))
+
 (defn- rebuild-execute-fn! []
   (alter-var-root #'execute* (constantly
                               (reduce
                                (fn [qp middleware-fn]
                                  (u/prog1 (middleware-fn qp)
                                    (assert (ifn? <>) (format "%s did not return a valid function" middleware-fn))))
-                               #'qp.pipeline/*run*
+                               run
                                middleware))))
 
 (rebuild-execute-fn!)
@@ -55,9 +63,12 @@
 ;;; TODO -- consider whether this should return an `IReduceInit` that we can reduce as a separate step.
 (mu/defn execute :- some?
   "Execute a compiled query, then reduce the results."
-  [compiled-query :- [:map
-                      [:database ::lib.schema.id/database]
-                      [:native :map]]
+  [compiled-query :- [:and
+                      [:map
+                       [:database ::lib.schema.id/database]]
+                      [:fn
+                       {:error/message "Query must be compiled -- should have either :native or :qp/compiled."}
+                       (some-fn :native :qp/compiled)]]
    rff            :- ::qp.schema/rff]
   (qp.setup/with-qp-setup [compiled-query compiled-query]
     (execute* compiled-query rff)))

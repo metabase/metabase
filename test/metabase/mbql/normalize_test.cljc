@@ -1500,3 +1500,13 @@
       (t/is (=? {:parameters [{:id     "d98c3875-e0f1-9270-d36a-5b729eef938e"
                                :value  nil}]}
                 (mbql.normalize/normalize query))))))
+
+(t/deftest ^:parallel dont-normalize-actions-row-test
+  (doseq [k [:create-row :update-row]]
+    (t/testing k
+      (let [query {:database   1
+                   :type       :query
+                   :query      {:source-table 2}
+                   k {"x" 1, "y" {"z" 2}, "a" nil}}]
+        (t/is (= query
+                 (mbql.normalize/normalize query)))))))

@@ -17,24 +17,15 @@
    [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [Card
-            CardBookmark
-            Collection
-            Dashboard
-            Database
-            ModerationReview
-            Pulse
-            PulseCard
-            PulseChannel
-            PulseChannelRecipient
-            Table
-            Timeline
+    :refer [Card CardBookmark Collection Dashboard Database ModerationReview
+            Pulse PulseCard PulseChannel PulseChannelRecipient Table Timeline
             TimelineEvent]]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
    [metabase.permissions.util :as perms.u]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
@@ -298,6 +289,24 @@
         (is (= [{:name "Card 1"}]
                (for [card (mt/user-http-request :rasta :get 200 "card", :f :bookmarked)]
                  (select-keys card [:name]))))))))
+
+(deftest filter-by-stale-test
+  (testing "Filter by `stale`"
+    ;; *query-analyzer/*parse-queries-in-test?* is not relevant since we're not doing the parsing here
+    (mt/with-temp [:model/Field        {active-field-id :id}    {:active true}
+                   :model/Field        {inactive-field-id :id}  {:active false}
+                   :model/Card         relevant-card            {:name "Card with stale query"}
+                   :model/Card         not-stale-card           {:name "Card whose columns are up to date"}
+                   :model/Card         irrelevant-card          {:name "Card with no QueryFields at all"}
+                   :model/QueryField   _                        {:card_id  (u/the-id relevant-card)
+                                                                 :field_id inactive-field-id}
+                   :model/QueryField   _                        {:card_id  (u/the-id not-stale-card)
+                                                                 :field_id active-field-id}]
+      (with-cards-in-readable-collection [relevant-card not-stale-card irrelevant-card]
+        (is (=? [{:name         "Card with stale query"
+                  :query_fields [{:card_id  (u/the-id relevant-card)
+                                  :field_id inactive-field-id}]}]
+                (mt/user-http-request :rasta :get 200 "card", :f :stale)))))))
 
 (deftest filter-by-using-model-segment-metric
   (mt/with-temp [:model/Database {database-id :id} {}
@@ -3333,15 +3342,16 @@
                  (upload-example-csv-via-api!))))))))
 
 (deftest card-read-event-test
-  (testing "Card reads (views) via the API are recorded in the view_log"
-    (t2.with-temp/with-temp [:model/Card card {:name "My Cool Card" :type :question}]
-      (testing "GET /api/card/:id"
-        (mt/user-http-request :crowberto :get 200 (format "card/%s" (u/id card)))
-        (is (partial=
-             {:user_id  (mt/user->id :crowberto)
-              :model    "card"
-              :model_id (u/id card)}
-             (view-log-test/latest-view (mt/user->id :crowberto) (u/id card))))))))
+  (when (premium-features/log-enabled?)
+    (testing "Card reads (views) via the API are recorded in the view_log"
+      (t2.with-temp/with-temp [:model/Card card {:name "My Cool Card" :type :question}]
+        (testing "GET /api/card/:id"
+          (mt/user-http-request :crowberto :get 200 (format "card/%s" (u/id card)))
+          (is (partial=
+               {:user_id  (mt/user->id :crowberto)
+                :model    "card"
+                :model_id (u/id card)}
+               (view-log-test/latest-view (mt/user->id :crowberto) (u/id card)))))))))
 
 (deftest pivot-from-model-test
   (testing "Pivot options should match fields through models (#35319)"

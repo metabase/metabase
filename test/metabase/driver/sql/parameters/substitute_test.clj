@@ -789,7 +789,7 @@
 
               :else
               "2018-04-18T00:00:00Z")]
-           (mt/with-report-timezone-id "America/Los_Angeles"
+           (mt/with-report-timezone-id! "America/Los_Angeles"
              (mt/first-row
               (process-native
                 :native     {:query (case driver/*driver*

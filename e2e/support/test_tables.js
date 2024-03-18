@@ -148,3 +148,39 @@ export const no_pk_table = async dbClient => {
 
   return null;
 };
+
+export const multi_schema = async dbClient => {
+  const schemas = {
+    Domestic: [
+      "Animals",
+      [
+        { name: "Duck", score: 10 },
+        { name: "Horse", score: 20 },
+        { name: "Cow", score: 30 },
+      ],
+    ],
+    Wild: [
+      "Animals",
+      [
+        { name: "Snake", score: 10 },
+        { name: "Lion", score: 20 },
+        { name: "Elephant", score: 30 },
+      ],
+    ],
+  };
+
+  Object.entries(schemas).forEach(async ([schemaName, details]) => {
+    const [table, rows] = details;
+    await dbClient.schema.createSchemaIfNotExists(schemaName);
+    await dbClient.schema.withSchema(schemaName).dropTableIfExists(table);
+
+    await dbClient.schema.withSchema(schemaName).createTable(table, t => {
+      t.string("name");
+      t.integer("score");
+    });
+
+    await dbClient(`${schemaName}.${table}`).insert(rows);
+  });
+
+  return schemas;
+};

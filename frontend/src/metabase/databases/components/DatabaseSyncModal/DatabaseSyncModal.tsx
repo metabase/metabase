@@ -1,7 +1,9 @@
+import cx from "classnames";
 import { jt, t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import ButtonsS from "metabase/css/components/buttons.module.css";
 
 import {
   ModalMessage,
@@ -37,7 +39,10 @@ const DatabaseSyncModal = ({ sampleUrl, onClose }: DatabaseSyncModalProps) => {
               t`Have a look around your Metabase in the meantime if you want to get a head start.`}
         </ModalMessage>
         {sampleUrl ? (
-          <Link className="Button Button--primary" to={sampleUrl}>
+          <Link
+            className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
+            to={sampleUrl}
+          >
             {t`Explore sample data`}
           </Link>
         ) : (

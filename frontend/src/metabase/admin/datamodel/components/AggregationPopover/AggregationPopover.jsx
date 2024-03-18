@@ -8,8 +8,8 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import { Icon, Box } from "metabase/ui";
-import Aggregation from "metabase-lib/queries/structured/Aggregation";
-import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
+import Aggregation from "metabase-lib/v1/queries/structured/Aggregation";
+import * as AGGREGATION from "metabase-lib/v1/queries/utils/aggregation";
 
 import { QueryDefinitionTooltip } from "../QueryDefinitionTooltip";
 

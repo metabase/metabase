@@ -15,6 +15,8 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import UserAvatar from "metabase/components/UserAvatar";
 import Input from "metabase/core/components/Input";
 import Link from "metabase/core/components/Link";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 import {
@@ -166,8 +168,8 @@ function EditingGroupRow({
           onClick={onCancelClicked}
         >{t`Cancel`}</span>
         <button
-          className={cx("Button ml2", {
-            "Button--primary": textIsValid && textHasChanged,
+          className={cx(ButtonsS.Button, CS.ml2, {
+            [ButtonsS.ButtonPrimary]: textIsValid && textHasChanged,
           })}
           disabled={!textIsValid || !textHasChanged}
           onClick={onDoneClicked}

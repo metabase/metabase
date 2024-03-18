@@ -5,7 +5,7 @@ import IconBorder from "metabase/components/IconBorder";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
 import { Icon } from "metabase/ui";
-import type ForeignKey from "metabase-lib/metadata/ForeignKey";
+import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 
 import {
   ObjectRelationContent,

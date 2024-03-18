@@ -23,17 +23,17 @@ import { Icon } from "metabase/ui";
 import {
   getNumberParameterArity,
   getStringParameterArity,
-} from "metabase-lib/parameters/utils/operators";
-import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
-import { getQueryType } from "metabase-lib/parameters/utils/parameter-source";
+} from "metabase-lib/v1/parameters/utils/operators";
+import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
   isDateParameter,
   isNumberParameter,
-} from "metabase-lib/parameters/utils/parameter-type";
+} from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   areParameterValuesIdentical,
   parameterHasNoDisplayValue,
-} from "metabase-lib/parameters/utils/parameter-values";
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import S from "./ParameterValueWidget.module.css";
 import { ParameterValueWidgetTrigger } from "./ParameterValueWidgetTrigger";

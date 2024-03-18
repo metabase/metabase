@@ -15,6 +15,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli.fn :as mu.fn]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -354,3 +355,19 @@
                clojure.lang.ExceptionInfo
                #"You do not have permissions to run this query"
                (process-query))))))))
+
+(deftest e2e-ignore-user-supplied-compiled-from-mbql-key
+  (testing "Make sure the NATIVE query fails to run if current user doesn't have perms even if you try to include an MBQL :query"
+    (t2.with-temp/with-temp [:model/Database db    {}
+                             :model/Table    table {:db_id (u/the-id db)}]
+      (data-perms/set-database-permission! (perms-group/all-users) (u/the-id db) :perms/native-query-editing :no)
+      (mt/with-test-user :rasta
+        (binding [mu.fn/*enforce* false]
+          (is (thrown-with-msg?
+               ExceptionInfo
+               perms-error-msg
+               (qp/process-query
+                {:database              (u/the-id db)
+                 :type                  :native
+                 :qp/compiled-from-mbql {:source-table (u/the-id table)}
+                 :native                {:query "SELECT * FROM VENUES"}}))))))))

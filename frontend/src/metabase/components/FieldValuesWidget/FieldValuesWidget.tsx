@@ -25,8 +25,8 @@ import {
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { addRemappings } from "metabase/redux/metadata";
-import type Question from "metabase-lib/Question";
-import type Field from "metabase-lib/metadata/Field";
+import type Question from "metabase-lib/v1/Question";
+import type Field from "metabase-lib/v1/metadata/Field";
 import type {
   Dashboard,
   Parameter,
