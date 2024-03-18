@@ -321,7 +321,7 @@ describe("scenarios > models metadata", () => {
       });
     });
 
-    it.only("should allow drills on FK columns", () => {
+    it("should allow drills on FK columns", () => {
       cy.get("@modelId").then(modelId => {
         cy.visit(`/model/${modelId}`);
         cy.wait("@dataset");
