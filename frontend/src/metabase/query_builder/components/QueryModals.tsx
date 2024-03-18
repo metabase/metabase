@@ -11,7 +11,7 @@ import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import Questions from "metabase/entities/questions";
-import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals/AlertModals";
+import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
 import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
