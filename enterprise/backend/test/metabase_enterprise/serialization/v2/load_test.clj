@@ -376,7 +376,7 @@
           (is (= {:source-table ["my-db" nil "orders"]
                   :aggregation [[:sum [:field ["my-db" nil "orders" "subtotal"] nil]]]}
                  (-> @serialized
-                     (by-model "Metric")
+                     (by-model "LegacyMetric")
                      first
                      :definition))))
 
@@ -773,7 +773,7 @@
         (testing "exported form is properly converted"
           (is (= "tom@bost.on"
                  (-> @serialized
-                     (by-model "Metric")
+                     (by-model "LegacyMetric")
                      first
                      :creator_id))))
 

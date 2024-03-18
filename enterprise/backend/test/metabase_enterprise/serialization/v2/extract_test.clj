@@ -713,8 +713,8 @@
                         :definition {:source-table no-schema-id
                                      :aggregation  [[:sum [:field field-id nil]]]}}]
       (testing "metrics"
-        (let [ser (serdes/extract-one "Metric" {} (t2/select-one LegacyMetric :id m1-id))]
-          (is (=? {:serdes/meta [{:model "Metric" :id m1-eid :label "my_metric"}]
+        (let [ser (serdes/extract-one "LegacyMetric" {} (t2/select-one LegacyMetric :id m1-id))]
+          (is (=? {:serdes/meta [{:model "LegacyMetric" :id m1-eid :label "my_metric"}]
                    :table_id    ["My Database" nil "Schemaless Table"]
                    :creator_id  "ann@heart.band"
                    :definition  {:source-table ["My Database" nil "Schemaless Table"]
