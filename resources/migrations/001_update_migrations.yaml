@@ -5908,6 +5908,10 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: topic
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
                   name: timestamp
                   type: DATETIME
                   constraints:

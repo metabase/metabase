@@ -61,8 +61,7 @@
   []
   (when-let [configs (seq (select-ready-to-run :query))]
     (let [fields (m/index-by :id (t2/select :model/Field :id [:in (map #(-> % :config :field_id) configs)]))
-          tables (m/index-by :id (t2/select :model/Table :id [:in (map :table_id (vals fields))]))
-          ]
+          tables (m/index-by :id (t2/select :model/Table :id [:in (map :table_id (vals fields))]))]
       (count
        (for [item configs
              :let [field (get fields (:field_id (:config item)))
