@@ -228,11 +228,11 @@ describe("scenarios > notebook > data source", () => {
   });
 
   describe("saved entity as a source (aka the virtual table)", () => {
-    const modelDetails = {
+    const modelDetails: Parameters<typeof cy.createQuestion>[0] = {
       name: "GUI Model",
       query: { "source-table": REVIEWS_ID, limit: 1 },
       display: "table",
-      type: "model" as const,
+      type: "model",
       collection_id: SECOND_COLLECTION_ID,
     };
 
