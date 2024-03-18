@@ -1367,16 +1367,16 @@
          (mt/db)
          nil
          (fn [conn]
-           (let [do-test (fn [& {:keys [schema-pattern table-pattern schemas tables types]
-                                 :or   {schema-pattern "%"
+           (let [do-test (fn [& {:keys [schema-pattern table-pattern schemas tables]
+                                 :or   {schema-pattern "public%" ;; postgres get-tables exclude system tables by default
                                         schemas        nil
                                         table-pattern  "%"
-                                        tables         nil
-                                        types          nil}
+                                        tables         nil}
                                  :as _opts}]
                            (is (= (into #{} (#'sql-jdbc.describe-database/jdbc-get-tables
-                                             :postgres conn nil schema-pattern table-pattern types))
-                                  (into #{} (#'postgres/get-tables conn schemas tables types)))))]
+                                             :postgres conn nil schema-pattern table-pattern
+                                             ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))
+                                  (into #{} (#'postgres/get-tables conn schemas tables)))))]
              (doseq [stmt ["CREATE TABLE public.table (id INTEGER, type TEXT);"
                            "CREATE UNIQUE INDEX idx_table_type ON public.table(type);"
                            "CREATE TABLE public.partition_table (id INTEGER) PARTITION BY RANGE (id);"
@@ -1385,14 +1385,12 @@
                            "CREATE VIEW public.view AS SELECT * FROM public.table;"
                            "CREATE TYPE public.enum_type AS ENUM ('a', 'b', 'c');"
                            "CREATE MATERIALIZED VIEW public.materialized_view AS SELECT * FROM public.table;"
-                           "CREATE SCHEMA private;"
-                           "CREATE TABLE private.table (id INTEGER);"]]
+                           "CREATE SCHEMA public_2;"
+                           "CREATE TABLE public_2.table (id INTEGER);"]]
                (next.jdbc/execute! conn [stmt]))
              (testing "without any filters"
                (do-test))
              (testing "filter by schema"
                (do-test :schema-pattern "private" :schemas ["private"]))
              (testing "filter by table name"
-               (do-test :table-pattern "table" :tables ["table"]))
-             (testing "filter by type"
-               (do-test :types ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"])))))))))
+               (do-test :table-pattern "table" :tables ["table"])))))))))

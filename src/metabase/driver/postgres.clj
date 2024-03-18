@@ -213,54 +213,18 @@
 
 (def ^:private ^:dynamic *enum-types* nil)
 
-(def ^:private table-type-clauses
-  {"TABLE"              [:raw "c.relkind = 'r' AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'"]
-   "PARTITIONED TABLE"  [:raw "c.relkind = 'p' AND n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'"]
-   "VIEW"               [:raw "c.relkind = 'v' AND n.nspname <> 'pg_catalog' AND n.nspname <> 'information_schema'"]
-   "FOREIGN TABLE"      [:raw "c.relkind = 'f'"]
-   "MATERIALIZED VIEW"  [:raw "c.relkind = 'm'"]})
-
 (defn- get-tables-sql
-  [schemas tables types]
+  [schemas table-names]
   ;; Should track this implementation https://github.com/davecramer/pgjdbc/blob/a714bfd/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L1272
   (sql/format
    (cond-> {:select    [[:n.nspname :schema]
                         [:c.relname :name]
-                        [[:case-expr [:or [(keyword "~") :n.nspname "^pg_"] [:= :n.nspname "information_schema"]]
-                          true ;; system tables
-                          [:case
-                           [:or [:= :n.nspname "pg_catalog"] [:= :n.nspname "information_schema"]]
-                           [:case-expr :c.relkind
-                            [:inline "r"] [:inline "SYSTEM TABLE"]
-                            [:inline "v"] [:inline "SYSTEM VIEW"]
-                            [:inline "i"] [:inline "SYSTEM INDEX"]
-                            :else nil]
-                           [:= :n.nspname [:inline "pg_toast"]]
-                           [:case-expr :c.relkind
-                            [:inline "r"] [:inline "SYSTEM TOAST TABLE"]
-                            [:inline "i"] [:inline "SYSTEM TOAST INDEX"]
-                            :else nil]
-
-                           [:case-expr :c.relkind
-                            [:inline "r"] [:inline "TEMPORARY TABLE"]
-                            [:inline "p"] [:inline "TEMPORARY TABLE"]
-                            [:inline "i"] [:inline "TEMPORARY INDEX"]
-                            [:inline "s"] [:inline "TEMPORARY SEQUENCE"]
-                            [:inline "v"] [:inline "TEMPORARY VIEW"]
-                            :else nil]]
-
-                          false ;; non system tables
-                          [:case-expr :c.relkind
-                           [:inline "r"] [:inline "TABLE"]
-                           [:inline "p"] [:inline "PARTITIONED TABLE"]
-                           [:inline "i"] [:inline "INDEX"]
-                           [:inline "P"] [:inline "PARTITIONED INDEX"]
-                           [:inline "S"] [:inline "SEQUENCE"]
-                           [:inline "v"] [:inline "VIEW"]
-                           [:inline "c"] [:inline "TYPE"]
-                           [:inline "f"] [:inline "FOREIGN TABLE"]
-                           [:inline "m"] [:inline "MATERIALIZED VIEW"]
-                           :else nil]
+                        [[:case-expr :c.relkind
+                          [:inline "r"] [:inline "TABLE"]
+                          [:inline "p"] [:inline "PARTITIONED TABLE"]
+                          [:inline "v"] [:inline "VIEW"]
+                          [:inline "f"] [:inline "FOREIGN TABLE"]
+                          [:inline "m"] [:inline "MATERIALIZED VIEW"]
                           :else nil]
                          :type]
                         [:d.description :description]]
@@ -269,22 +233,23 @@
             :left-join [[:pg_catalog.pg_description :d] [:and [:= :c.oid :d.objoid] [:= :d.objsubid [:inline 0]]]
                         [:pg_catalog.pg_class :dc]      [:and [:= :d.classoid :dc.oid] [:= :dc.relname [:inline "pg_class"]]]
                         [:pg_catalog.pg_namespace :dn]  [:and [:= :dn.oid :dc.relnamespace] [:= :dn.nspname [:inline "pg_catalog"]]]]
-            :where     [:= :c.relnamespace :n.oid]
+            :where     [:and [:= :c.relnamespace :n.oid]
+                        ;; filter out system tables
+                        [(keyword "!~") :n.nspname "^pg_"] [:<> :n.nspname "information_schema"]
+                        ;; only get tables of type: TABLE, PARTITIONED TABLE, VIEW, FOREIGN TABLE, MATERIALIZED VIEW
+                        [:in :c.relkind ["r" "p" "v" "f" "m"]]]
             :order-by  [:type :schema :name]}
-    (seq schemas)
-    (sql.helpers/where [:in :n.nspname schemas])
+     (seq schemas)
+     (sql.helpers/where [:in :n.nspname schemas])
 
-    (seq tables)
-    (sql.helpers/where [:in :c.relname tables])
-
-    (seq types)
-    (sql.helpers/where (into [:or] (map #(get table-type-clauses %) types))))
+     (seq table-names)
+     (sql.helpers/where [:in :c.relname table-names]))
    {:dialect :ansi}))
 
 (defn- get-tables
   ;; have it as its own method for ease of testing
-  [conn schemas tables types]
-  (sql-jdbc.execute/reducible-query :postgres conn (get-tables-sql schemas tables types)))
+  [conn schemas tables]
+  (sql-jdbc.execute/reducible-query :postgres conn (get-tables-sql schemas tables)))
 
 (defmethod driver/describe-database :postgres
   [driver database]
@@ -294,11 +259,10 @@
     database
     nil
     (fn [^Connection conn]
-      (if-let [syncable-schemas (seq (sql-jdbc.describe-database/syncable-schemas-for-db database))]
+      (if-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
         (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn :postgres conn)]
           (into #{} (comp (filter have-select-privilege?) (map #(dissoc % :type)))
-                (get-tables conn syncable-schemas nil
-                            ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"])))
+                (get-tables conn syncable-schemas nil)))
         #{})))})
 
 ;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same

@@ -32,23 +32,6 @@
    (fn [^ResultSet rs]
      #(.getString rs "TABLE_SCHEM"))))
 
-(defn syncable-schemas-for-db
-  "Returns a collection of syncable schemas for a db if exists."
-  [database]
-  (let [driver                 (:engine database)
-        schema-filter-prop     (driver.u/find-schema-filters-prop driver)
-        schema-filter-patterns (when (and (some? schema-filter-prop) (some? database))
-                                 (driver.s/db-details->schema-filter-patterns (:name schema-filter-prop) database))]
-    (when (seq schema-filter-patterns)
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver
-       database
-       nil
-       (fn [^Connection conn]
-         (into [] (sql-jdbc.sync.interface/filtered-syncable-schemas
-                   driver conn (.getMetaData conn)
-                   (first schema-filter-patterns) (second schema-filter-patterns))))))))
-
 (defmethod sql-jdbc.sync.interface/filtered-syncable-schemas :sql-jdbc
   [driver _ metadata schema-inclusion-patterns schema-exclusion-patterns]
   (eduction (remove (set (sql-jdbc.sync.interface/excluded-schemas driver)))
@@ -182,7 +165,8 @@
         have-select-privilege-fn? (have-select-privilege-fn driver conn)]
     (eduction (mapcat (fn [schema]
                         (eduction
-                         (comp (filter have-select-privilege-fn?) (map #(dissoc % :type)))
+                         (comp (filter have-select-privilege-fn?)
+                               (map #(dissoc % :type)))
                          (db-tables driver conn schema db-name-or-nil))))
               syncable-schemas)))
 
@@ -230,6 +214,6 @@
       (let [schema-filter-prop   (driver.u/find-schema-filters-prop driver)
             database             (db-or-id-or-spec->database db-or-id-or-spec)
             [inclusion-patterns
-             exclusion-patterns] (when (and (some? schema-filter-prop) (some? database))
+             exclusion-patterns] (when (some? schema-filter-prop)
                                    (driver.s/db-details->schema-filter-patterns (:name schema-filter-prop) database))]
         (into #{} (sql-jdbc.sync.interface/active-tables driver conn inclusion-patterns exclusion-patterns)))))})
