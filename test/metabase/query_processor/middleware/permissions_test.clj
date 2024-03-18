@@ -245,27 +245,30 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db
         (mt/with-no-data-perms-for-all-users!
-         (let [query  (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})
-               check! (fn [query]
-                        (qp.store/with-metadata-provider (mt/id)
-                          (qp.perms/check-query-action-permissions* query)))]
-           (t2.with-temp/with-temp [Collection collection]
-             (t2.with-temp/with-temp [Card {model-id :id} {:collection_id (u/the-id collection)
-                                                           :dataset_query query}]
-               (testing "are granted by default"
-                 (check! query))
-               (testing "are revoked without access to the model"
-                 (binding [qp.perms/*card-id* model-id]
-                   (is (thrown-with-msg?
-                        ExceptionInfo
-                        #"You do not have permissions to view Card [\d,]+"
-                        (check! query)))))
-               ;; Are revoked with DB access blocked: requires EE, see test in
-               ;; enterprise/backend/test/metabase_enterprise/advanced_permissions/common_test.clj
-               (testing "are granted with access to the model"
-                 (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path (u/the-id collection))})
-                           qp.perms/*card-id* model-id]
-                   (check! query)))))))))))
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+          (let [query  (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})
+                check! (fn [query]
+                         (binding [api/*current-user-id* (mt/user->id :rasta)]
+                           (qp.store/with-metadata-provider (mt/id)
+                             (qp.perms/check-query-action-permissions* query))))]
+            (t2.with-temp/with-temp [Collection collection]
+              (t2.with-temp/with-temp [Card {model-id :id} {:collection_id (u/the-id collection)
+                                                            :dataset_query query}]
+                (testing "are granted by default"
+                  (check! query))
+                (testing "are revoked without access to the model"
+                  (binding [qp.perms/*card-id* model-id]
+                    (is (thrown-with-msg?
+                         ExceptionInfo
+                         #"You do not have permissions to view Card [\d,]+"
+                         (check! query)))))
+                ;; Are revoked with DB access blocked: requires EE, see test in
+                ;; enterprise/backend/test/metabase_enterprise/advanced_permissions/common_test.clj
+                (testing "are granted with access to the model"
+                  (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path (u/the-id collection))})
+                            qp.perms/*card-id* model-id]
+                    (check! query)))))))))))
 
 (deftest e2e-nested-source-card-test
   (testing "Make sure permissions are calculated for Card -> Card -> Source Query (#12354)"
