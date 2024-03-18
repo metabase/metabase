@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import NativeCodePanel from "../NativeCodePanel";
+import { NativeCodePanel } from "../NativeCodePanel";
 
 import {
   ModalBody,
