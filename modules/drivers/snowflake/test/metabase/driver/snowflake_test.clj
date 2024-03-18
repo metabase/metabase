@@ -87,13 +87,29 @@
                  :engine :snowflake
                  :private-key-creator-id 3
                  :user "SNOWFLAKE_DEVELOPER"
-                 :private-key-created-at "2024-01-05T19:10:30.861839Z"}]
-    (testing "Database name is quoted iff quoting is requested (#27856)"
+                 :private-key-created-at "2024-01-05T19:10:30.861839Z"
+                 :host ""}]
+    (testing "Database name is quoted if quoting is requested (#27856)"
       (are [quote? result] (=? {:db result}
                                (let [details (assoc details :quote-db-name quote?)]
                                  (sql-jdbc.conn/connection-details->spec :snowflake details)))
         true "\"v3_sample-dataset\""
-        false "v3_sample-dataset"))))
+        false "v3_sample-dataset"))
+    (testing "Subname is replaced if hostname is provided (#22133)"
+      (are [use-hostname alternative-host expected-subname] (=? expected-subname
+                               (:subname (let [details (-> details
+                                                           (assoc :host alternative-host)
+                                                           (assoc :use-hostname use-hostname))]
+                                 (sql-jdbc.conn/connection-details->spec :snowflake details))))
+        true nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        true "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        true "  " "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        true "snowflake.example.com/" "//snowflake.example.com/"
+        true "snowflake.example.com" "//snowflake.example.com/"
+        false nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        false "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        false "snowflake.example.com/" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/"))))
 
 (deftest ^:parallel ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
