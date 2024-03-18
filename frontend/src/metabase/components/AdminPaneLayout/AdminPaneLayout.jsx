@@ -21,7 +21,11 @@ const AdminPaneTitle = ({
     <Container>
       <HeadingContainer>
         {headingContent && <Fragment>{headingContent}</Fragment>}
-        {title && <h2 className={AdminS.PageTitle}>{title}</h2>}
+        {title && (
+          <h2 data-testid="admin-pane-page-title" className={AdminS.PageTitle}>
+            {title}
+          </h2>
+        )}
         {buttonText && buttonLink && (
           <Link to={buttonLink} className={buttonClassName}>
             <Button primary>{buttonText}</Button>
