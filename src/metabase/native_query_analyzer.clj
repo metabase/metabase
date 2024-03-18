@@ -47,8 +47,12 @@
                                        :join [[(t2/table-name :model/Table) :t] [:= :table_id :t.id]]
                                        :where [:and
                                                [:= :t.db_id db-id]
-                                               [:in :%lower.t/name (map normalize-name tables)]
-                                               [:in :%lower.f/name (map normalize-name columns)]]}))
+                                               (if (seq tables)
+                                                 [:in :%lower.t/name (map normalize-name tables)]
+                                                 true)
+                                               (if (seq columns)
+                                                 [:in :%lower.f/name (map normalize-name columns)]
+                                                 true)]}))
     (catch JSQLParserException e
       (log/error e "Error parsing native query"))))
 

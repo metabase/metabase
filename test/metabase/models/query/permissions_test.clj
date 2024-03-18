@@ -216,18 +216,13 @@
             :throw-exceptions? true)))))
 
 (deftest ^:parallel invalid-queries-test
-  (testing "invalid/legacy queries should remove invalid clauses and calculate permissions based on valid parts of the query"
-    (is (= {:perms/data-access {(mt/id :venues) :unrestricted}}
+  (testing "invalid/legacy queries should return perms for something that doesn't exist so no one gets to see it"
+    (is (= {:perms/data-access {0 :unrestricted}}
            (query-perms/required-perms
             (mt/mbql-query venues
               {:filter [:WOW 100 200]}))))))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                   JOINS 2.0                                                    |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(deftest joins-test
+(deftest ^:parallel joins-test
   (testing "Are permissions calculated correctly for JOINs?"
     (t2.with-temp/with-temp [Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
                                                  (mt/mbql-query checkins
