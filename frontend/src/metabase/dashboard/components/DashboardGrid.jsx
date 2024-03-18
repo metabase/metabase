@@ -446,7 +446,7 @@ class DashboardGrid extends Component {
   render() {
     const { width } = this.props;
     return (
-      <div className="flex layout-centered">
+      <div data-testid="dashboard-grid" className="flex layout-centered">
         {width > 0 ? this.renderGrid() : <div />}
         {this.renderAddSeriesModal()}
       </div>

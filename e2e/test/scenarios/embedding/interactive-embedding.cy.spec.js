@@ -1,4 +1,7 @@
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   adhocQuestionHash,
   popover,
@@ -9,6 +12,9 @@ import {
   createTextCard,
   closeNavigationSidebar,
   updateDashboardCards,
+  dashboardGrid,
+  createDashboardWithTabs,
+  goToTab,
 } from "e2e/support/helpers";
 
 describe("scenarios > embedding > full app", () => {
@@ -270,10 +276,49 @@ describe("scenarios > embedding > full app", () => {
     });
 
     it("should hide the dashboard header by a param", () => {
-      visitDashboardUrl({ url: "/dashboard/1", qs: { header: false } });
+      visitDashboardUrl({
+        url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
+        qs: { header: false },
+      });
+      cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
+        "not.exist",
+      );
+      dashboardGrid().findByText("Rows 1-8 of first 2000").should("be.visible");
+    });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders in a dashboard").should("not.exist");
+    it("should hide the dashboard with multiple tabs header by a param and allow selecting tabs (metabase#38429, metabase#39002)", () => {
+      const FIRST_TAB = { id: 1, name: "Tab 1" };
+      const SECOND_TAB = { id: 2, name: "Tab 2" };
+      createDashboardWithTabs({
+        dashboard: {
+          name: "Dashboard with tabs",
+        },
+        tabs: [FIRST_TAB, SECOND_TAB],
+        dashcards: [
+          {
+            id: -1,
+            dashboard_tab_id: FIRST_TAB.id,
+            card_id: ORDERS_QUESTION_ID,
+            row: 0,
+            col: 0,
+            size_x: 10,
+            size_y: 8,
+          },
+        ],
+      }).then(dashboard => {
+        visitDashboardUrl({
+          url: `/dashboard/${dashboard.id}`,
+          qs: { header: false },
+        });
+      });
+      cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
+        "not.exist",
+      );
+      dashboardGrid().findByText("Rows 1-8 of first 2000").should("be.visible");
+      goToTab(SECOND_TAB.name);
+      cy.findByTestId("dashboard-parameters-and-cards")
+        .findByText("There's nothing here, yet.")
+        .should("be.visible");
     });
 
     it("should hide the dashboard's additional info by a param", () => {

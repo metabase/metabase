@@ -14,8 +14,9 @@ import { t } from "ttag";
 import EditBar from "metabase/components/EditBar";
 import HeaderModal from "metabase/components/HeaderModal";
 import { updateDashboard } from "metabase/dashboard/actions";
+import { getIsHeaderVisible } from "metabase/dashboard/selectors";
 import { getScrollY } from "metabase/lib/dom";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Dashboard } from "metabase-types/api";
 
 import {
@@ -88,6 +89,8 @@ export function DashboardHeaderComponent({
     }
   }, [isModalOpened]);
 
+  const isDashboardHeaderVisible = useSelector(getIsHeaderVisible);
+
   const _headerButtons = useMemo(
     () => (
       <HeaderButtonSection
@@ -139,38 +142,40 @@ export function DashboardHeaderComponent({
         onCancel={onHeaderModalCancel}
       />
       <div>
-        <HeaderRow
-          isNavBarOpen={isNavBarOpen}
-          className={cx("QueryBuilder-section", headerClassName)}
-          data-testid="dashboard-header"
-          ref={header}
-        >
-          <HeaderContent hasSubHeader showSubHeader={showSubHeader}>
-            <HeaderCaptionContainer>
-              <HeaderCaption
-                key={dashboard.name}
-                initialValue={dashboard.name}
-                placeholder={t`Add title`}
-                isDisabled={!dashboard.can_write}
-                data-testid="dashboard-name-heading"
-                onChange={handleUpdateCaption}
-              />
-            </HeaderCaptionContainer>
-            <HeaderBadges>
-              {isLastEditInfoVisible && (
-                <HeaderLastEditInfoLabel
-                  item={dashboard}
-                  onClick={onLastEditInfoClick}
-                  className=""
+        {isDashboardHeaderVisible && (
+          <HeaderRow
+            isNavBarOpen={isNavBarOpen}
+            className={cx("QueryBuilder-section", headerClassName)}
+            data-testid="dashboard-header"
+            ref={header}
+          >
+            <HeaderContent hasSubHeader showSubHeader={showSubHeader}>
+              <HeaderCaptionContainer>
+                <HeaderCaption
+                  key={dashboard.name}
+                  initialValue={dashboard.name}
+                  placeholder={t`Add title`}
+                  isDisabled={!dashboard.can_write}
+                  data-testid="dashboard-name-heading"
+                  onChange={handleUpdateCaption}
                 />
-              )}
-            </HeaderBadges>
-          </HeaderContent>
+              </HeaderCaptionContainer>
+              <HeaderBadges>
+                {isLastEditInfoVisible && (
+                  <HeaderLastEditInfoLabel
+                    item={dashboard}
+                    onClick={onLastEditInfoClick}
+                    className=""
+                  />
+                )}
+              </HeaderBadges>
+            </HeaderContent>
 
-          <HeaderButtonsContainer isNavBarOpen={isNavBarOpen}>
-            {_headerButtons}
-          </HeaderButtonsContainer>
-        </HeaderRow>
+            <HeaderButtonsContainer isNavBarOpen={isNavBarOpen}>
+              {_headerButtons}
+            </HeaderButtonsContainer>
+          </HeaderRow>
+        )}
         <HeaderRow isNavBarOpen={isNavBarOpen}>
           <DashboardTabs location={location} isEditing={isEditing} />
         </HeaderRow>
