@@ -1,16 +1,12 @@
 (ns metabase.public-settings.premium-features
   "Settings related to checking premium token validity and which premium features it allows."
   (:require
-   [buddy.core.keys :as keys]
-   [buddy.sign.jwt :as jwt]
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
-   [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [environ.core :refer [env]]
-   [java-time.api :as t]
    [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.config :as config]
@@ -132,33 +128,13 @@
          :error-details (tru "Token validation timed out.")}))))
 
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
-
-(mu/defn ^:private token-valid-now? [token :- TokenStatus] :- :boolean
-  (t/before? (t/instant) (t/instant (:valid-thru token))))
-
-(defn- airgap-token? [token]
-  (and token (str/starts-with? token "airgap_")))
-
-(mu/defn ^:private decode-airgap-token :- TokenStatus
-  "Given an encrypted airgap token, decrypts it and returns a TokenStatus"
-  [token]
-  (when-not (airgap-token? "airgap_")
-    (throw (ex-info "Malformed airgap token" {:token token})))
-  (let [token     (str/replace token #"^airgap_" "")
-        pub-key   (with-open [rdr (io/reader (io/resource "airgap/pubkey.pem"))]
-                    (keys/public-key rdr))
-        decrypted (jwt/decrypt token pub-key {:alg :rsa-oaep :enc :a128cbc-hs256})]
-    (if (token-valid-now? decrypted)
-      decrypted
-      {:valid         false
-       :status        (tru "Unable to validate token")
-       :error-details (tru "Token validation failed.")})))
+(declare decode-airgap-token)
 
 (mu/defn ^:private max-users-allowed
   "Returns the max users value from an airgapped key, or nil indicating there is no limt."
   [] :- [:or pos-int? :nil]
   (when-let [token (premium-embedding-token)]
-    (when (airgap-token? token)
+    (when (str/starts-with? token "airgap_")
       (let [max-users (:max-users (decode-airgap-token token))]
         (when (pos? max-users) max-users)))))
 
@@ -238,28 +214,23 @@
       (locking lock
         (f token)))))
 
+(declare token-valid-now?)
+
 (mu/defn ^:private valid-token->features* :- [:set ms/NonBlankString]
   [token :- TokenStr]
   (let [{:keys [valid status features error-details] :as token-status} (fetch-token-status token)]
     ;; if token isn't valid throw an Exception with the `:status` message
     (when-not valid
       (throw (ex-info status
-                      {:status-code 400, :error-details error-details})))
-    (when (and (mc/validate [:re AirgapToken] token) (not (token-valid-now? token-status)))
+                      {:status-code 400,
+                       :error-details error-details})))
+    (when (and (mc/validate [:re AirgapToken] token)
+               (not (token-valid-now? token-status)))
       (throw (ex-info status
                       {:status-code 400
                        :error-details (tru "Airgapped token is no longer valid. Please contact Metabase support.")})))
     ;; otherwise return the features this token supports
     (set features)))
-
-(comment
-
-  (def token (premium-embedding-token))
-  (mc/validate [:re AirgapToken] (premium-embedding-token))
-
-  (valid-token->features* (premium-embedding-token))
-
-  )
 
 (def ^:private ^:const valid-token-recheck-interval-ms
   "Amount of time to cache the status of a valid embedding token before forcing a re-check"
@@ -716,3 +687,6 @@
   []
   (or (sandboxed-user?)
       (impersonated-user?)))
+
+(defenterprise decode-airgap-token "In OSS, this returns an empty map." metabase-enterprise.airgap [_] {})
+(defenterprise token-valid-now? "In OSS, this returns false." metabase-enterprise.airgap [_] false)
