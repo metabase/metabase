@@ -59,8 +59,8 @@ export function getListParameterStaticValues(
   return null;
 }
 
-export function getFlatValueList(values: string[][] | string[]) {
-  return values.flat(1);
+export function getFlattenedStrings(values: unknown[][] | unknown[]): string[] {
+  return values.flat(1).map(value => String(value));
 }
 
 export function shouldEnableSearch(
@@ -74,6 +74,6 @@ export function shouldEnableSearch(
   return !staticValues || staticValues.length > maxCount;
 }
 
-export function getSingleValue(value: any) {
-  return Array.isArray(value) ? value[0] : value;
+export function getSingleString(value: unknown) {
+  return String(Array.isArray(value) ? value[0] : value);
 }
