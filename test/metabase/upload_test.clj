@@ -620,7 +620,7 @@
   (testing "Upload a CSV file with a datetime column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
-        (with-redefs [driver/db-default-timezone (constantly "Z")
+        (mt/with-dynamic-redefs [driver/db-default-timezone (constantly "Z")
                       upload/current-database    (constantly (mt/db))]
           (let [table-name (mt/random-name)
                 datetime-pairs [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
@@ -1040,10 +1040,10 @@
           _                    (t2/update! :model/Database db-id {:is_on_demand false
                                                                   :is_full_sync false})]
       (try
-        (with-redefs [ ;; do away with the `future` invocation since we don't want race conditions in a test
-                      future-call (fn [thunk]
-                                    (swap! in-future? (constantly true))
-                                    (thunk))]
+        (mt/with-dynamic-redefs [;; do away with the `future` invocation since we don't want race conditions in a test
+                                 future-call (fn [thunk]
+                                               (swap! in-future? (constantly true))
+                                               (thunk))]
           (testing "Happy path with schema, and without table-prefix"
             ;; make sure the schema exists
             (let [sql (format "CREATE SCHEMA IF NOT EXISTS %s;" (sql.tx/qualify-and-quote driver/*driver* schema-name))]
@@ -1109,27 +1109,29 @@
   ;; Just test with h2 because snowplow should be independent of the driver
   (mt/test-driver :h2
     (snowplow-test/with-fake-snowplow-collector
-      (with-upload-table!
-        [_table (card->table (upload-example-csv!))]
-        (is (=? {:data {"model_id"        pos?
-                        "size_mb"         3.910064697265625E-5
-                        "num_columns"     2
-                        "num_rows"        2
-                        "upload_seconds"  pos?
-                        "event"           "csv_upload_successful"}
-                 :user-id (str (mt/user->id :rasta))}
-                (last (snowplow-test/pop-event-data-and-user-id!))))
-        (with-redefs [upload/load-from-csv! (fn [_ _ _ _]
-                                              (throw (Exception.)))]
-          (try (upload-example-csv!)
-               (catch Throwable _
-                 nil))
-          (is (= {:data {"size_mb"     3.910064697265625E-5
-                         "num_columns" 2
-                         "num_rows"    2
-                         "event"       "csv_upload_failed"}
-                  :user-id (str (mt/user->id :rasta))}
-                 (last (snowplow-test/pop-event-data-and-user-id!)))))))))
+      (with-upload-table! [_table (card->table (upload-example-csv!))]
+        (testing "Successfully creating a CSV Upload publishes statistics to Snowplow"
+          (is (=? {:data    {"model_id"          pos?
+                             "size_mb"           3.910064697265625E-5
+                             "num_columns"       2
+                             "num_rows"          2
+                             "generated_columns" 1
+                             "upload_seconds"    pos?
+                             "event"             "csv_upload_successful"}
+                   :user-id (str (mt/user->id :rasta))}
+                  (last (snowplow-test/pop-event-data-and-user-id!)))))
+
+        (testing "Failures when creating a CSV Upload will publish statistics to Snowplow"
+          (mt/with-dynamic-redefs [upload/load-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+            (try (upload-example-csv!)
+                 (catch Throwable _
+                   nil))
+            (is (= {:data    {"size_mb"     3.910064697265625E-5
+                              "num_columns" 2
+                              "num_rows"    2
+                              "event"       "csv_upload_failed"}
+                    :user-id (str (mt/user->id :rasta))}
+                   (last (snowplow-test/pop-event-data-and-user-id!))))))))))
 
 
 (deftest csv-upload-audit-log-test
@@ -1169,7 +1171,7 @@
               #"^The uploads database does not exist\.$"
               (upload-example-csv! :db-id Integer/MAX_VALUE, :schema-name "public", :table-prefix "uploaded_magic_"))))
       (testing "Uploads must be supported"
-        (with-redefs [driver/database-supports? (constantly false)]
+        (mt/with-dynamic-redefs [driver/database-supports? (constantly false)]
           (is (thrown-with-msg?
                 java.lang.Exception
                 #"^Uploads are not supported on Postgres databases\."
@@ -1314,7 +1316,7 @@
               :data    {:status-code 422}}
              (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
     (testing "Uploads must be supported"
-      (with-redefs [driver/database-supports? (constantly false)]
+      (mt/with-dynamic-redefs [driver/database-supports? (constantly false)]
         (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
                 :data    {:status-code 422}}
                (catch-ex-info (append-csv-with-defaults!))))))))
@@ -1390,8 +1392,8 @@
     (with-mysql-local-infile-on-and-off
       (mt/with-report-timezone-id! "UTC"
         (testing "Append should succeed for all possible CSV column types"
-          (with-redefs [driver/db-default-timezone (constantly "Z")
-                        upload/current-database    (constantly (mt/db))]
+          (mt/with-dynamic-redefs [driver/db-default-timezone (constantly "Z")
+                                   upload/current-database    (constantly (mt/db))]
             (with-upload-table!
               [table (create-upload-table!
                       {:col->upload-type (ordered-map/ordered-map
@@ -1511,6 +1513,44 @@
                    (rows-for-table table))))
           (io/delete-file file))))))
 
+(deftest csv-append-snowplow-test
+  ;; Just test with h2 because snowplow should be independent of the driver
+  (mt/test-driver :h2
+    (snowplow-test/with-fake-snowplow-collector
+
+     (with-upload-table! [table (create-upload-table!)]
+       (testing "Successfully appending to CSV Uploads publishes statistics to Snowplow"
+         (let [csv-rows ["name" "Luke Skywalker"]
+               file     (csv-file-with csv-rows (mt/random-name))]
+           (append-csv! {:file file, :table-id (:id table)})
+
+           (is (=? {:data    {"size_mb"           1.811981201171875E-5
+                              "num_columns"       1
+                              "num_rows"          1
+                              "generated_columns" 0
+                              "upload_seconds"    pos?
+                              "event"             "csv_append_successful"}
+                    :user-id (str (mt/user->id :crowberto))}
+                   (last (snowplow-test/pop-event-data-and-user-id!))))
+
+           (io/delete-file file)))
+
+       (testing "Failures when appending to CSV Uploads will publish statistics to Snowplow"
+         (mt/with-dynamic-redefs [upload/load-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+           (let [csv-rows ["mispelled_name, unexpected_column" "Duke Cakewalker, r2dj"]
+                 file     (csv-file-with csv-rows (mt/random-name))]
+             (try
+               (append-csv! {:file file, :table-id (:id table)})
+               (catch Throwable _)
+               (finally
+                 (io/delete-file file))))
+
+           (is (= {:data    {"size_mb"     5.245208740234375E-5
+                             "num_columns" 2
+                             "num_rows"    1
+                             "event"       "csv_append_failed"}
+                   :user-id (str (mt/user->id :crowberto))}
+                  (last (snowplow-test/pop-event-data-and-user-id!))))))))))
 
 (deftest csv-append-audit-log-test
   ;; Just test with h2 because these events are independent of the driver

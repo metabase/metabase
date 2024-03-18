@@ -9,6 +9,7 @@ import {
 describe("issues 35039 and 37009", () => {
   beforeEach(() => {
     restore();
+    cy.intercept("POST", "/api/dataset").as("dataset");
     cy.signInAsNormalUser();
   });
 
@@ -20,8 +21,10 @@ describe("issues 35039 and 37009", () => {
       .click();
 
     focusNativeEditor().type("select * from products -- where true=false");
+    cy.findByTestId("native-query-editor-container").icon("play").click();
+    cy.wait("@dataset");
 
-    cy.findByTestId("dataset-edit-bar").findByText("Save").click();
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
     modal()
       .last()
       .within(() => {
@@ -35,6 +38,9 @@ describe("issues 35039 and 37009", () => {
     focusNativeEditor().type(
       "{backspace}{backspace}{backspace}{backspace}{backspace}",
     );
+    cy.findByTestId("native-query-editor-container").icon("play").click();
+    cy.wait("@dataset");
+
     cy.findByTestId("dataset-edit-bar").within(() => {
       cy.findByText("Save changes").click();
       cy.findByText("Saving…").should("not.exist");
