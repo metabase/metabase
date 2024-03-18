@@ -4,15 +4,14 @@ import type * as Lib from "metabase-lib";
 export const zoomInTimeseriesDrill: Drill<Lib.ZoomTimeseriesDrillThruInfo> = ({
   drill,
   drillInfo,
-  isDashboard,
+  clicked,
   applyDrill,
 }) => {
-  const { displayName } = drillInfo;
-
+  const isDashboard = clicked?.extraData?.dashboard != null;
   return [
     {
       name: "zoom-in.timeseries",
-      title: displayName,
+      title: drillInfo.displayName,
       section: "zoom",
       icon: "zoom_in",
       buttonType: "horizontal",
