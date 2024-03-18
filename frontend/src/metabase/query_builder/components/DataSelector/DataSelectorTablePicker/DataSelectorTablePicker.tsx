@@ -6,7 +6,7 @@ import { color } from "metabase/lib/colors";
 import MetabaseSettings from "metabase/lib/settings";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { isNotNull } from "metabase/lib/types";
-import { Box, Icon, Flex } from "metabase/ui";
+import { rem, Box, Icon, Flex } from "metabase/ui";
 import type Database from "metabase-lib/metadata/Database";
 import type Schema from "metabase-lib/metadata/Schema";
 import type Table from "metabase-lib/metadata/Table";
@@ -97,7 +97,7 @@ const DataSelectorTablePicker = ({
     const isSearchable = hasFiltering && tables.length >= minTablesToShowSearch;
 
     return (
-      <Box w="18.75rem" style={{ overflowY: "auto" }}>
+      <Box w={rem(300)} style={{ overflowY: "auto" }}>
         <AccordionList
           id="TablePicker"
           key="tablePicker"
