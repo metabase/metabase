@@ -448,7 +448,7 @@ class Question {
     return this.setQuery(query);
   }
 
-  composeQuestionAdHoc(): Question {
+  composeQuestionAdhoc(): Question {
     if (!this.isSaved()) {
       return this;
     }
