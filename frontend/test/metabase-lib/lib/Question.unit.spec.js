@@ -824,24 +824,6 @@ describe("Question", () => {
     });
   });
 
-  describe("Question.prototype.dependentMetadata", () => {
-    it("should return model FK field targets", () => {
-      const question = base_question.setResultsMetadata({
-        columns: [{ semantic_type: SEMANTIC_TYPE.FK, fk_target_field_id: 5 }],
-      });
-
-      expect(question.dependentMetadata()).toEqual([{ type: "field", id: 5 }]);
-    });
-
-    it("should skip FK field targets which are not FKs semantically", () => {
-      const question = base_question.setResultsMetadata({
-        columns: [{ fk_target_field_id: 5 }],
-      });
-
-      expect(question.dependentMetadata()).toEqual([]);
-    });
-  });
-
   describe("Question.prototype.setDashboardProps", () => {
     it("should set a `dashboardId` property and a `dashcardId` property on the question's card", () => {
       const questionWithDashboardId = base_question.setDashboardProps({

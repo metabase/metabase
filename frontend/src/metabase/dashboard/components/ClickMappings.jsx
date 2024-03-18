@@ -9,7 +9,7 @@ import Select from "metabase/core/components/Select";
 import { getParameters } from "metabase/dashboard/selectors";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import MetabaseSettings from "metabase/lib/settings";
-import { loadMetadataForDependentItems } from "metabase/redux/metadata";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { GTAPApi } from "metabase/services";
 import { Icon } from "metabase/ui";
@@ -291,10 +291,9 @@ function loadQuestionMetadata(getQuestion) {
       }
 
       fetch() {
-        const { question, loadMetadataForDependentItems } = this.props;
+        const { question, loadMetadataForCard } = this.props;
         if (question) {
-          const dependentItems = question.dependentMetadata();
-          loadMetadataForDependentItems(dependentItems);
+          loadMetadataForCard(question.card());
         }
       }
 
@@ -308,7 +307,7 @@ function loadQuestionMetadata(getQuestion) {
       (state, props) => ({
         question: getQuestion && getQuestion(state, props),
       }),
-      { loadMetadataForDependentItems },
+      { loadMetadataForCard },
     )(MetadataLoader);
   };
 }

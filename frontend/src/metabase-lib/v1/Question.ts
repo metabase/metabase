@@ -597,14 +597,6 @@ class Question {
     return this.card().result_metadata ?? [];
   }
 
-  dependentMetadata(): Lib.DependentItem[] {
-    const queries =
-      this.type() === "question"
-        ? [this.query()]
-        : [this.query(), this.composeQuery().query()];
-    return queries.flatMap(query => Lib.dependentMetadata(query));
-  }
-
   /**
    * Returns true if the questions are equivalent (including id, card, and parameters)
    */

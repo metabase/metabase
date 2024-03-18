@@ -38,7 +38,7 @@ function ModelUsageDetails({ model, questions, hasNewQuestionLink }: Props) {
           <EmptyStateActionContainer>
             <Button
               as={Link}
-              to={ML_Urls.getUrl(model.composeQueryAdHoc())}
+              to={ML_Urls.getUrl(model.composeQuery())}
               icon="add"
             >{t`Create a new question`}</Button>
           </EmptyStateActionContainer>

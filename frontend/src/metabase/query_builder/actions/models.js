@@ -14,6 +14,7 @@ import { getOriginalCard, getQuestion, getResultsMetadata } from "../selectors";
 import { apiUpdateQuestion, updateQuestion, API_UPDATE_QUESTION } from "./core";
 import { runDirtyQuestionQuery, runQuestionQuery } from "./querying";
 import { setQueryBuilderMode } from "./ui";
+import { loadMetadataForCard } from "metabase/questions/actions";
 
 export const setDatasetEditorTab = datasetEditorTab => dispatch => {
   dispatch(setQueryBuilderMode("dataset", { datasetEditorTab }));
@@ -50,7 +51,7 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
   const dataset = metadata.question(question.id());
 
   const dependentItems = dataset.dependentMetadata();
-  await dispatch(loadMetadataForDependentItems(dependentItems));
+  await dispatch(loadMetadataForCard(dependentItems));
 
   await dispatch({ type: API_UPDATE_QUESTION, payload: dataset.card() });
 

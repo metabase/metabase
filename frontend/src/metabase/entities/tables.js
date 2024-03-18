@@ -118,14 +118,11 @@ const Tables = createEntity({
           const table = Tables.selectors[
             options.selectorName || "getObjectUnfiltered"
           ](getState(), { entityId: id });
-          await Promise.all([
-            ...getTableForeignKeyTableIds(table).map(id =>
+          await Promise.all(
+            getTableForeignKeyTableIds(table).map(id =>
               dispatch(Tables.actions.fetchMetadata({ id }, options)),
             ),
-            ...getTableForeignKeyFieldIds(table).map(id =>
-              dispatch(Fields.actions.fetch({ id }, options)),
-            ),
-          ]);
+          );
         },
     ),
 
@@ -312,16 +309,6 @@ function getTableForeignKeyTableIds(table) {
   return _.chain(table.fields)
     .filter(field => field.target)
     .map(field => field.target.table_id)
-    .uniq()
-    .value();
-}
-
-// if `table` is a model then each overridden FK field won't have `target`
-// we have to fetch referenced fields as standalone fields
-function getTableForeignKeyFieldIds(table) {
-  return _.chain(table.fields)
-    .filter(field => !field.target && field.fk_target_field_id)
-    .map(field => field.fk_target_field_id)
     .uniq()
     .value();
 }

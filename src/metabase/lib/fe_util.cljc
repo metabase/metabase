@@ -3,6 +3,7 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -166,11 +167,15 @@
                         (= dim-tag :field)
                         (integer? id))]
          {:type :field, :id id}))
-     ;; cf. frontend/src/metabase-lib/Question.ts and frontend/src/metabase-lib/queries/StructuredQuery.ts
-     (when-let [card-id (:source-card base-stage)]
-       [{:type :table, :id (str "card__" card-id)}])
-     (when-let [table-id (:source-table base-stage)]
-       [{:type :table, :id table-id}])
+     (when-let [table-id (or (:source-table base-stage)
+                             (some->> (:source-card base-stage) (str "card__")))]
+       (concat
+        [{:type :table, :id table-id}]
+        (for [field (lib.metadata/fields metadata-providerable table-id)]
+          (when-let [target (:target field)]
+            {:type :table, :id (:table-id target)}
+            (when-let [fk-target-field-id (:fk-target-field-id field)]
+              {:type :field, :id fk-target-field-id})))))
      (for [stage (:stages query-or-join)
            join (:joins stage)
            dependent (query-dependents metadata-providerable join)]
