@@ -23,6 +23,7 @@ import {
   visitModel,
   openQuestionActions,
   isOSS,
+  isEE,
 } from "e2e/support/helpers";
 const { REVIEWS_ID } = SAMPLE_DATABASE;
 
@@ -59,6 +60,29 @@ describe("scenarios > notebook > data source", () => {
         });
       },
     );
+
+    it.skip("should display tables from the only existing database by default on an enterprise instance without token activation (metabase#40223)", () => {
+      onlyOn(isEE);
+      cy.visit("/");
+      cy.findByTestId("app-bar").findByText("New").click();
+      popover().findByTextEnsureVisible("Question").click();
+      cy.findByTestId("data-step-cell").should(
+        "have.text",
+        "Pick your starting data",
+      );
+
+      popover().within(() => {
+        cy.findByTestId("source-database").should(
+          "have.text",
+          "Sample Database",
+        );
+        cy.findAllByRole("option")
+          .should("have.length", 8)
+          .each(table => {
+            cy.wrap(table).should("have.attr", "aria-selected", "false");
+          });
+      });
+    });
 
     it("should not show saved questions if only models exist (metabase#25142)", () => {
       cy.createQuestion({
