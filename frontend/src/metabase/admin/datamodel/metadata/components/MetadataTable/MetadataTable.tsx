@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import Radio from "metabase/core/components/Radio/Radio";
 import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -102,7 +103,7 @@ const MetadataTable = ({
   );
 
   return (
-    <div className={cx(AdminS.MetadataTable, "full")}>
+    <div className={cx(AdminS.MetadataTable, CS.full)}>
       <TableTitleSection
         table={table}
         tab={tab}
@@ -162,7 +163,7 @@ const TableTitleSection = ({
   );
 
   return (
-    <div className={cx(AdminS.MetadataTableTitle, "flex flex-column")}>
+    <div className={cx(AdminS.MetadataTableTitle, CS.flex, "flex-column")}>
       {tab === "columns" ? (
         <>
           <TableNameInput

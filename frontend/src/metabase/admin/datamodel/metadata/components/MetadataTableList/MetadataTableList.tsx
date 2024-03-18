@@ -9,6 +9,7 @@ import _ from "underscore";
 
 import Tooltip from "metabase/core/components/Tooltip";
 import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
 import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 import * as Urls from "metabase/lib/urls";
@@ -107,11 +108,8 @@ const MetadataTableList = ({
 
   return (
     <aside
-      data-testid="metadata-table-list"
-      className={cx(
-        "MetadataEditor-table-list flex-no-shrink",
-        AdminS.AdminList,
-      )}
+      data-testid="admin-metadata-table-list"
+      className={cx(CS.flexNoShrink, AdminS.AdminList)}
     >
       <TableSearch searchText={searchText} onChangeSearchText={setSearchText} />
       {canGoBack && (
@@ -120,7 +118,7 @@ const MetadataTableList = ({
           onBack={handleSelectDatabase}
         />
       )}
-      <ul className="AdminList-items">
+      <ul>
         {visibleTables.length > 0 && (
           <TableHeader
             tables={visibleTables}
@@ -178,7 +176,7 @@ const TableSearch = ({ searchText, onChangeSearchText }: TableSearchProps) => {
     <div className={AdminS.AdminListSearch}>
       <Icon className={AdminS.Icon} name="search" size={16} />
       <input
-        className={cx(AdminS.AdminInput, "pl4 border-bottom")}
+        className={cx(AdminS.AdminInput, CS.pl4, CS.borderBottom)}
         type="text"
         placeholder={t`Find a table`}
         value={searchText}
@@ -200,7 +198,7 @@ const TableBreadcrumbs = ({ schemaId, onBack }: TableBreadcrumbsProps) => {
         <Icon name="chevronleft" size={10} />
         {t`Schemas`}
       </BackIconContainer>
-      <span className="mx1">-</span>
+      <span className="mx1">/</span>
       <span>{getSchemaName(schemaId)}</span>
     </h4>
   );
@@ -282,9 +280,12 @@ const TableRow = ({
       <AdminListItem
         disabled={!isSyncCompleted(table)}
         onClick={handleSelect}
-        data-testid="metadata-table-list-item"
+        data-testid="admin-metadata-table-list-item"
         className={cx(
-          "flex align-center no-decoration text-wrap justify-between",
+          "text-wrap justify-between",
+          CS.flex,
+          CS.alignCenter,
+          CS.noDecoration,
           AdminS.AdminListItem,
           { [AdminS.selected]: isSelected },
         )}

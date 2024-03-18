@@ -125,7 +125,7 @@ function ActionsPopover({
       className="block"
       triggerElement={<Icon className="text-light" name="ellipsis" />}
     >
-      <ul className={cx(AdminS.UserActionsSelect, "py1")}>
+      <ul className={cx(AdminS.UserActionsSelect, CS.py1)}>
         <EditGroupButton onClick={onEditGroupClicked.bind(null, group)}>
           {t`Edit Name`}
         </EditGroupButton>
@@ -198,8 +198,7 @@ function GroupRow({
 }) {
   const colors = getGroupRowColors();
   const backgroundColor = colors[index % colors.length];
-  const showActionsButton =
-    true || (!isDefaultGroup(group) && !isAdminGroup(group));
+  const showActionsButton = !isDefaultGroup(group) && !isAdminGroup(group);
   const editing = groupBeingEdited && groupBeingEdited.id === group.id;
 
   return editing ? (

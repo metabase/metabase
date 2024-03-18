@@ -1,6 +1,6 @@
-(ns ordered-hierarchy-test
+(ns metabase.util.ordered-hierarchy-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest ^:parallel is testing]]
    [metabase.util.ordered-hierarchy :as ordered-hierarchy]))
 
 ;;; It would be nice to have property tests, to expose any subtle edge cases.
@@ -19,21 +19,21 @@
       (ordered-hierarchy/derive ::offset-datetime ::varchar-255)
       (ordered-hierarchy/derive ::varchar-255 ::text)))
 
-(deftest parents-test
+(deftest ^:parallel parents-test
   (testing "Parents are listed according to the order that this tag was derived from each of them"
     (is (nil? (parents h ::text)))
     (is (= [::text] (vec (parents h ::varchar-255))))
     (is (= [::float] (vec (parents h ::int))))
     (is (= [::boolean ::int] (vec (parents h ::boolean-or-int))))))
 
-(deftest children-test
+(deftest ^:parallel children-test
   (testing "Children are listed in reverse order to when they were each derived from this tag"
     (is (nil? (ordered-hierarchy/children h ::boolean-or-int)))
     (is (= [::varchar-255] (vec (ordered-hierarchy/children h ::text))))
     (is (= [::int] (vec (ordered-hierarchy/children h ::float))))
     (is (= [::auto-incrementing-int-pk ::boolean-or-int] (vec (ordered-hierarchy/children h ::int))))))
 
-(deftest ancestors-test
+(deftest ^:parallel ancestors-test
   (testing "Linear ancestors are listed in order"
     (is (nil? (ancestors h ::text)))
     (is (= [::text] (vec (ancestors h ::varchar-255))))
@@ -48,7 +48,7 @@
             ::text]
            (vec (ancestors h ::boolean-or-int))))))
 
-(deftest descendants-test
+(deftest ^:parallel descendants-test
   (testing "Linear descendants are listed in order"
     (is (nil? (descendants h ::boolean-or-int)))
     (is (nil? (descendants h ::date)))
@@ -68,7 +68,7 @@
             ::boolean-or-int]
            (vec (descendants h ::text))))))
 
-(deftest tags-test
+(deftest ^:parallel tags-test
   (testing "Tags are returned in a topologically sorted order that also preserves insert order"
     (is (= [::boolean-or-int
             ::boolean
@@ -82,7 +82,7 @@
             ::text]
            (vec (ordered-hierarchy/sorted-tags h))))))
 
-(deftest first-common-ancestor-test
+(deftest ^:parallel first-common-ancestor-test
   (testing "The first-common-ancestor is the first tag in the lineage of tag-a that is also in the lineage of tag-b"
     (is (= ::boolean-or-int (ordered-hierarchy/first-common-ancestor h ::boolean-or-int nil)))
     (is (= ::boolean-or-int (ordered-hierarchy/first-common-ancestor h ::boolean-or-int ::boolean-or-int)))

@@ -16,8 +16,8 @@ export function LeftNavPaneItem({ name, path, index = false }) {
             AdminS.AdminListItem,
             CS.flex,
             CS.alignCenter,
-            CS.justifyBetween,
             CS.noDecoration,
+            "justify-between",
           )}
           activeClassName={AdminS.selected}
         >
@@ -30,8 +30,8 @@ export function LeftNavPaneItem({ name, path, index = false }) {
             AdminS.AdminListItem,
             CS.flex,
             CS.alignCenter,
-            CS.justifyBetween,
             CS.noDecoration,
+            "justify-between",
           )}
           activeClassName={AdminS.selected}
         >
@@ -51,10 +51,9 @@ export function LeftNavPaneItemBack({ path }) {
           AdminS.AdminListItem,
           CS.flex,
           CS.alignCenter,
-          CS.justifyBetween,
           CS.noDecoration,
           CS.textBold,
-          "link",
+          "justify-between link",
         )}
       >
         &lt; {t`Back`}
@@ -69,11 +68,7 @@ export function LeftNavPane({ children }) {
       data-testid="admin-left-nav-pane"
       className={cx(AdminS.AdminList, CS.flexNoShrink)}
     >
-      <ul
-        className="AdminList-items pt1"
-        data-testid="admin-list-items"
-        aria-label="admin-list-items"
-      >
+      <ul className={CS.pt1} aria-label="admin-list-items">
         {children}
       </ul>
     </aside>

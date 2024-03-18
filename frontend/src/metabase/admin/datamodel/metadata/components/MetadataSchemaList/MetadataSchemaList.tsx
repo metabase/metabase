@@ -6,6 +6,7 @@ import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import Schemas from "metabase/entities/schemas";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -77,23 +78,18 @@ const MetadataSchemaList = ({
   }, [selectedDatabaseId, selectedSchemaId, allSchemas, onSelectSchema]);
 
   return (
-    <aside
-      className={cx(
-        "MetadataEditor-table-list flex-no-shrink",
-        AdminS.AdminList,
-      )}
-    >
+    <aside className={cx(AdminS.AdminList, CS.flexNoShrink)}>
       <div className={AdminS.AdminListSearch}>
         <Icon name="search" size={16} />
         <input
-          className={cx("pl4 border-bottom", AdminS.AdminList)}
+          className={cx(AdminS.AdminInput, CS.pl4, CS.borderBottom)}
           type="text"
           placeholder={t`Find a schema`}
           value={searchText}
           onChange={e => setSearchText(e.target.value)}
         />
       </div>
-      <ul className="AdminList-items" data-testid="metadata-schema-list-items">
+      <ul>
         <div className={AdminS.AdminListSection}>
           {ngettext(
             msgid`${schemas.length} schema`,
@@ -129,9 +125,12 @@ const SchemaRow = ({ schema, isSelected, onSelectSchema }: SchemaRowProps) => {
     <li key={schema.id}>
       <a
         className={cx(
-          "flex align-center no-decoration text-wrap",
+          "text-wrap",
           AdminS.AdminListItem,
-          { selected: isSelected },
+          { [AdminS.selected]: isSelected },
+          CS.flex,
+          CS.alignCenter,
+          CS.noDecoration,
         )}
         onClick={handleSelect}
       >

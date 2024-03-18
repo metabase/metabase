@@ -939,9 +939,9 @@
                         :status-code 400
                         :type        actions.error/violate-unique-constraint}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/create (mt/$ids {:create-row {:id      3
-                                                           :column1 "A"
-                                                           :column2 "A"}
+                        :row/create (mt/$ids {:create-row {"id"      3
+                                                           "column1" "A"
+                                                           "column2" "A"}
                                               :database   (:id database)
                                               :query      {:source-table $$mytable}
                                               :type       :query})))))
@@ -952,8 +952,8 @@
                         :status-code 400
                         :type        actions.error/violate-unique-constraint}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/update (mt/$ids {:update-row {:column1 "A"
-                                                           :column2 "A"}
+                        :row/update (mt/$ids {:update-row {"column1" "A"
+                                                           "column2" "A"}
                                               :database   (:id database)
                                               :query      {:source-table $$mytable
                                                            :filter       [:= $mytable.id 2]}

@@ -1,10 +1,8 @@
-import cx from "classnames";
-
 import AdminS from "metabase/css/admin.module.css";
 
 /* eslint-disable react/prop-types */
 const AdminContentTable = ({ columnTitles, children }) => (
-  <table data-testid="admin-content-table" className={cx(AdminS.ContentTable)}>
+  <table data-testid="admin-content-table" className={AdminS.ContentTable}>
     <thead>
       <tr>
         {columnTitles &&

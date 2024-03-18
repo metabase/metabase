@@ -2,6 +2,7 @@
 import cx from "classnames";
 
 import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 
 const SettingText = ({
   setting,
@@ -15,9 +16,11 @@ const SettingText = ({
     className={cx(
       AdminS.AdminInput,
       AdminS.SettingsInput,
-      "bordered rounded h3",
+      CS.bordered,
+      CS.rounded,
+      CS.h3,
       {
-        "border-error bg-error-input": errorMessage,
+        [`${CS.borderError} bg-error-input`]: errorMessage,
       },
     )}
     defaultValue={setting.value || ""}

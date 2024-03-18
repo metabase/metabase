@@ -6,6 +6,7 @@ import { currency } from "cljs/metabase.shared.util.currency";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select, { Option } from "metabase/core/components/Select";
 import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import { trackStructEvent } from "metabase/lib/analytics";
 import * as MetabaseCore from "metabase/lib/core";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
@@ -99,7 +100,7 @@ const SemanticTypeAndTargetPicker = ({
   return (
     <div
       data-testid="semantic-type-target-picker"
-      className={cx(hasSeparator ? "flex align-center" : null)}
+      className={hasSeparator ? cx(CS.flex, CS.alignCenter) : null}
     >
       <Select
         className={cx(AdminS.TableEditorFieldSemanticType, "mt0", className)}
@@ -116,8 +117,8 @@ const SemanticTypeAndTargetPicker = ({
         <Select
           className={cx(
             AdminS.TableEditorFieldTarget,
-            "inline-block",
-            hasSeparator ? "mt0" : "mt1",
+            CS.inlineBlock,
+            hasSeparator ? CS.mt0 : CS.mt1,
             className,
           )}
           value={getFieldCurrency(field)}
@@ -146,7 +147,7 @@ const SemanticTypeAndTargetPicker = ({
           className={cx(
             AdminS.TableEditorFieldTarget,
             "text-wrap",
-            hasSeparator ? "mt0" : "mt1",
+            hasSeparator ? CS.mt0 : CS.mt1,
             className,
           )}
           placeholder={getFkFieldPlaceholder(field, idFields)}

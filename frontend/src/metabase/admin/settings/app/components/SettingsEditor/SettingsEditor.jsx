@@ -14,6 +14,7 @@ import { AdminLayout } from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/components/ErrorPages";
 import SaveStatus from "metabase/components/SaveStatus";
 import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import title from "metabase/hoc/Title";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
@@ -219,10 +220,10 @@ class SettingsEditor extends Component {
 
         const classes = cx(
           AdminS.AdminListItem,
-          "flex",
-          "align-center",
+          CS.flex,
+          CS.alignCenter,
+          CS.noDecoration,
           "justify-between",
-          "no-decoration",
           { [AdminS.selected]: slug === sectionNamePrefix },
         );
 
@@ -252,16 +253,8 @@ class SettingsEditor extends Component {
     );
 
     return (
-      <aside
-        className={cx(
-          AdminS.AdminList,
-          "MetadataEditor-table-list flex-no-shrink",
-        )}
-      >
-        <ul
-          className="AdminList-items pt1"
-          data-testid="admin-list-settings-items"
-        >
+      <aside className={cx(AdminS.AdminList, CS.flexNoShrink)}>
+        <ul className={CS.pt1} data-testid="admin-list-settings-items">
           <ErrorBoundary>{renderedSections}</ErrorBoundary>
         </ul>
       </aside>
