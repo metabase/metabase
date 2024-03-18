@@ -21,17 +21,23 @@ export const LayoutBody = styled.div`
   flex: 1;
 `;
 
-export const LayoutIllustration = styled.div`
+export const LayoutIllustration = styled.div<{
+  backgroundImageSrc: string;
+  isDefault: boolean;
+}>`
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  filter: hue-rotate(${hueRotate("brand")}deg);
-  background-image: url("app/img/bridge.svg");
-  background-size: max(2592px, 100%) auto;
-  background-repeat: no-repeat;
-  background-position: right bottom;
+  background-size: ;
+  filter: ${({ isDefault }) =>
+    isDefault && `hue-rotate(${hueRotate("brand")}deg)`};
+  background-image: ${({ backgroundImageSrc }) =>
+    `url("${backgroundImageSrc}")`};
+  background-size: ${({ isDefault }) =>
+    isDefault ? "max(2592px, 100%) auto" : "cover"};
+  position: right bottom;
 `;
 
 export const LayoutCard = styled.div`
