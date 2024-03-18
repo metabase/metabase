@@ -1,7 +1,7 @@
-import type { Node } from "metabase-lib/expressions/pratt";
-import { lexify, parse } from "metabase-lib/expressions/pratt";
+import type { Node } from "metabase-lib/v1/expressions/pratt";
+import { lexify, parse } from "metabase-lib/v1/expressions/pratt";
 
-describe("metabase-lib/expressions/parser", () => {
+describe("metabase-lib/v1/expressions/parser", () => {
   interface AST {
     token: string;
     children: AST[];

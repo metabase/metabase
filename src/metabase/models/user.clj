@@ -21,6 +21,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.setup :as setup]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
@@ -87,7 +88,7 @@
      {})))
 
 (t2/define-before-insert :model/User
-  [{:keys [email password reset_token locale], :as user}]
+  [{:keys [email password reset_token locale sso_source], :as user}]
   ;; these assertions aren't meant to be user-facing, the API endpoints should be validation these as well.
   (assert (u/email? email))
   (assert ((every-pred string? (complement str/blank?)) password))
@@ -96,6 +97,9 @@
      (contains? allowed-user-types user-type)))
   (when locale
     (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
+  (when (and sso_source (not (setup/has-user-setup)))
+    ;; Only allow SSO users to be provisioned if the setup flow has been completed and an admin has been created
+    (throw (Exception. (trs "Instance has not been initialized"))))
   (merge
    insert-default-values
    user
@@ -263,7 +267,11 @@
                                               [:id (when (premium-features/enable-advanced-permissions?)
                                                      :is_group_manager)]))]
       (for [user users]
-        (assoc user :user_group_memberships (map membership->group (user-id->memberships (u/the-id user))))))))
+        (assoc user :user_group_memberships (->> (user-id->memberships (u/the-id user))
+                                                 (map membership->group)
+                                                 ;; sort these so the id returned is consistent so our tests don't
+                                                 ;; randomly fail
+                                                 (sort-by :id)))))))
 
 (mi/define-batched-hydration-method add-group-ids
   :group_ids
@@ -443,7 +451,27 @@
   (deferred-tru "The last database a user has selected for a native query or a native model.")
   :user-local :only
   :visibility :authenticated
-  :type :integer)
+  :type :integer
+  :getter (fn []
+            (when-let [id (setting/get-value-of-type :integer :last-used-native-database-id)]
+              (when (t2/exists? :model/Database :id id) id))))
+
+(defsetting dismissed-custom-dashboard-toast
+  (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
+  :user-local :only
+  :visibility :authenticated
+  :type       :boolean
+  :default    false
+  :audit      :never)
+
+(defsetting dismissed-browse-models-banner
+  (deferred-tru "Whether the user has dismissed the explanatory banner about models that appears on the Browse Data page")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    false
+  :audit      :never)
 
 ;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
 

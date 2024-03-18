@@ -12,7 +12,7 @@ import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesE
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 
 import {
   OptionsGridItem,
@@ -58,7 +58,7 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
 
   return (
     <OptionsRoot data-testid="new-model-options">
-      <Grid className="justifyCenter">
+      <Grid>
         {hasDataAccess && (
           <OptionsGridItem itemsCount={itemsCount}>
             <NewModelOption

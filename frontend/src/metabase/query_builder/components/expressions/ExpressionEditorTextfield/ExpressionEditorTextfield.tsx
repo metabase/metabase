@@ -12,18 +12,18 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
-import { isExpression } from "metabase-lib/expressions";
-import { diagnose } from "metabase-lib/expressions/diagnostics";
-import { format } from "metabase-lib/expressions/format";
-import { processSource } from "metabase-lib/expressions/process";
-import type { Suggestion } from "metabase-lib/expressions/suggest";
-import { suggest } from "metabase-lib/expressions/suggest";
-import { tokenize } from "metabase-lib/expressions/tokenizer";
+import { isExpression } from "metabase-lib/v1/expressions";
+import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
+import { format } from "metabase-lib/v1/expressions/format";
+import { processSource } from "metabase-lib/v1/expressions/process";
+import type { Suggestion } from "metabase-lib/v1/expressions/suggest";
+import { suggest } from "metabase-lib/v1/expressions/suggest";
+import { tokenize } from "metabase-lib/v1/expressions/tokenizer";
 import type {
   ErrorWithMessage,
   HelpText,
-} from "metabase-lib/expressions/types";
-import type Metadata from "metabase-lib/metadata/Metadata";
+} from "metabase-lib/v1/expressions/types";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Expression } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -58,7 +58,7 @@ interface ExpressionEditorTextfieldProps {
   query: Lib.Query;
   stageIndex: number;
   metadata: Metadata;
-  startRule: string;
+  startRule: "expression" | "aggregation" | "boolean";
   expressionPosition?: number;
   width?: number;
   reportTimezone?: string;
@@ -135,7 +135,7 @@ class ExpressionEditorTextfield extends React.Component<
   static defaultProps = {
     expression: "",
     startRule: "expression",
-  };
+  } as const;
 
   constructor(props: ExpressionEditorTextfieldProps) {
     super(props);
@@ -405,16 +405,22 @@ class ExpressionEditorTextfield extends React.Component<
       name,
       query,
       stageIndex,
+      expressionPosition,
+      metadata,
     } = this.props;
+
     if (!source || source.length === 0) {
       return { message: t`Empty expression` };
     }
+
     return diagnose({
       source,
       startRule,
       name,
       query,
       stageIndex,
+      expressionPosition,
+      metadata,
     });
   }
 
@@ -425,14 +431,18 @@ class ExpressionEditorTextfield extends React.Component<
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       onCommit,
       onError,
+      expressionPosition,
     } = this.props;
     const { source } = this.state;
+
     const errorMessage = diagnose({
       source,
       startRule,
       query,
       stageIndex,
+      expressionPosition,
     });
+
     this.setState({ errorMessage });
 
     if (errorMessage) {
@@ -557,7 +567,7 @@ class ExpressionEditorTextfield extends React.Component<
   ];
 
   render() {
-    const { helpTextTarget, width } = this.props;
+    const { helpTextTarget, width, query, stageIndex } = this.props;
     const {
       source,
       suggestions,
@@ -595,6 +605,8 @@ class ExpressionEditorTextfield extends React.Component<
             width="100%"
           />
           <ExpressionEditorSuggestions
+            query={query}
+            stageIndex={stageIndex}
             target={this.suggestionTarget.current}
             suggestions={suggestions}
             onSuggestionMouseDown={this.onSuggestionSelected}

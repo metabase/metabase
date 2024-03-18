@@ -16,6 +16,7 @@ import {
   setupModelIndexEndpoints,
   setupSearchEndpoints,
   setupTimelinesEndpoints,
+  setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -40,6 +41,7 @@ import {
   createMockNativeDatasetQuery,
   createMockNativeQuery,
   createMockResultsMetadata,
+  createMockSettings,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockUnsavedCard,
@@ -231,6 +233,7 @@ export const setup = async ({
   setupDatabasesEndpoints([TEST_DB]);
   setupCardDataset(dataset);
   setupSearchEndpoints([]);
+  setupPropertiesEndpoints(createMockSettings());
   setupCollectionsEndpoints({ collections: [] });
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);
@@ -246,7 +249,6 @@ export const setup = async ({
     setupModelIndexEndpoints(card.id, []);
   }
 
-  // this workaround can be removed when metabase#34523 is fixed
   if (card === null) {
     fetchMock.get("path:/api/model-index", [createMockModelIndex()]);
   }

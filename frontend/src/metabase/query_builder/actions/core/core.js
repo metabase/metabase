@@ -17,37 +17,38 @@ import { openUrl } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
-import Query from "metabase-lib/queries/Query";
+import Question from "metabase-lib/v1/Question";
+import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
+import Query from "metabase-lib/v1/queries/Query";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
-} from "metabase-lib/queries/utils/card";
+} from "metabase-lib/v1/queries/utils/card";
 
 import { trackNewQuestionSaved } from "../../analytics";
 import {
   getCard,
   getIsResultDirty,
   getOriginalQuestion,
-  getParameters,
   getQuestion,
-  getResultsMetadata,
-  getSubmittableQuestion,
   isBasedOnExistingQuestion,
+  getParameters,
+  getSubmittableQuestion,
+  getQueryResults,
 } from "../../selectors";
 import { updateUrl } from "../navigation";
 import { zoomInRow } from "../object-detail";
 import { clearQueryResult, runQuestionQuery } from "../querying";
 import { onCloseSidebars } from "../ui";
 
+import { SOFT_RELOAD_CARD, API_UPDATE_QUESTION } from "./types";
 import { updateQuestion } from "./updateQuestion";
 
 export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
 
 // refreshes the card without triggering a run of the card's query
-export const SOFT_RELOAD_CARD = "metabase/qb/SOFT_RELOAD_CARD";
+export { SOFT_RELOAD_CARD };
 export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
   return async (dispatch, getState) => {
     const outdatedCard = getCard(getState());
@@ -111,7 +112,10 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
  *     - `navigateToNewCardInsideQB` is being called (see below)
  */
 export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
-export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
+export const setCardAndRun = (
+  nextCard,
+  { shouldUpdateUrl = true, prevQueryResults, settingsSyncOptions } = {},
+) => {
   return async (dispatch, getState) => {
     // clone
     const card = copy(nextCard);
@@ -127,7 +131,13 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
 
     // Update the card and originalCard before running the actual query
     dispatch({ type: SET_CARD_AND_RUN, payload: { card, originalCard } });
-    dispatch(runQuestionQuery({ shouldUpdateUrl }));
+    dispatch(
+      runQuestionQuery({
+        shouldUpdateUrl,
+        prevQueryResults,
+        settingsSyncOptions,
+      }),
+    );
 
     // Load table & database metadata for the current question
     dispatch(loadMetadataForCard(card));
@@ -147,14 +157,16 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
 export const NAVIGATE_TO_NEW_CARD = "metabase/qb/NAVIGATE_TO_NEW_CARD";
 export const navigateToNewCardInsideQB = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
-  ({ nextCard, previousCard, objectId }) => {
+  ({ nextCard, previousCard, objectId, settingsSyncOptions }) => {
     return async (dispatch, getState) => {
       if (previousCard === nextCard) {
         // Do not reload questions with breakouts when clicked on a legend item
       } else if (cardIsEquivalent(previousCard, nextCard)) {
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
         dispatch(
-          setCardAndRun(await loadCard(nextCard.id, { dispatch, getState })),
+          setCardAndRun(await loadCard(nextCard.id, { dispatch, getState }), {
+            settingsSyncOptions,
+          }),
         );
       } else {
         const card = getCardAfterVisualizationClick(nextCard, previousCard);
@@ -163,13 +175,19 @@ export const navigateToNewCardInsideQB = createThunkAction(
           dispatch(openUrl(url));
         } else {
           dispatch(onCloseSidebars());
+          const prevQueryResults = getQueryResults(getState());
           if (!cardQueryIsEquivalent(previousCard, nextCard)) {
             // clear the query result so we don't try to display the new visualization before running the new query
             dispatch(clearQueryResult());
           }
           // When the dataset query changes, we should change the type,
           // to start building a new ad-hoc question based on a dataset
-          dispatch(setCardAndRun({ ...card, type: "question" }));
+          dispatch(
+            setCardAndRun(
+              { ...card, type: "question" },
+              { prevQueryResults, settingsSyncOptions },
+            ),
+          );
         }
         if (objectId !== undefined) {
           dispatch(zoomInRow({ objectId }));
@@ -229,7 +247,7 @@ export const apiCreateQuestion = question => {
   };
 };
 
-export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
+export { API_UPDATE_QUESTION };
 export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
   return async (dispatch, getState) => {
     const originalQuestion = getOriginalQuestion(getState());
@@ -237,17 +255,6 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
 
     const isResultDirty = getIsResultDirty(getState());
     const isModel = question.type() === "model";
-
-    if (isModel) {
-      const resultsMetadata = getResultsMetadata(getState());
-
-      if (!resultsMetadata) {
-        // Running the question will populate results metadata in redux store.
-        // Without it getSubmittableQuestion won't have all the necessary information.
-        await dispatch(runQuestionQuery());
-      }
-    }
-
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
     if (!isNative) {

@@ -1,8 +1,10 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
@@ -14,7 +16,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { TYPE } from "metabase-lib/types/constants";
+import { TYPE } from "metabase-lib/v1/types/constants";
 
 import { ScalarContainer, LabelIcon } from "./Scalar.styled";
 import { TITLE_ICON_SIZE } from "./constants";
@@ -218,7 +220,18 @@ export class Scalar extends Component {
 
     return (
       <ScalarWrapper>
-        <div className="Card-title absolute top right p1 px2">
+        <div
+          className={cx(
+            "Card-title",
+            CS.textDefault,
+            "text-smaller",
+            CS.absolute,
+            CS.top,
+            CS.right,
+            CS.p1,
+            CS.px2,
+          )}
+        >
           {actionButtons}
         </div>
         <ScalarContainer

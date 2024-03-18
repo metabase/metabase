@@ -16,7 +16,7 @@
    [metabase.models.segment :refer [Segment]]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor.util :as qp.util]
-   [schema.core :as s]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (def ^:private ^Long max-best-matches        3)
@@ -25,17 +25,20 @@
                                                 max-serendipity-matches))
 
 (def ^:private ContextBearingForm
-  [(s/one (s/constrained (s/cond-pre s/Str s/Keyword)
-                         (comp #{:field :metric :segment}
-                               qp.util/normalize-token))
-          "head")
-   s/Any])
+  [:cat
+   [:and
+    [:or :string :keyword]
+    [:fn
+     {:error/message "field, metric, or segment"}
+     (comp #{:field :metric :segment}
+           qp.util/normalize-token)]]
+   [:* :any]])
 
 (defn- collect-context-bearing-forms
   [form]
   (let [form (mbql.normalize/normalize-fragment [:query :filter] form)]
     (into #{}
-          (comp (remove (s/checker ContextBearingForm))
+          (comp (filter (mr/validator ContextBearingForm))
                 (map #(update % 0 qp.util/normalize-token)))
           (tree-seq sequential? identity form))))
 

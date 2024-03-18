@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
-import { updateSetting } from "metabase/admin/settings/settings";
 import {
   useDashboardQuery,
   useDatabaseListQuery,
@@ -11,9 +10,10 @@ import {
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
+import { updateUserSetting } from "metabase/redux/settings";
 import { addUndo } from "metabase/redux/undo";
 import { getSettingsLoading } from "metabase/selectors/settings";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { CollectionItem, DashboardId } from "metabase-types/api";
 
 import {
@@ -112,7 +112,7 @@ const useDashboardPage = () => {
             icon: "info",
             timeout: 10000,
             actions: [
-              updateSetting({
+              updateUserSetting({
                 key: "dismissed-custom-dashboard-toast",
                 value: true,
               }),

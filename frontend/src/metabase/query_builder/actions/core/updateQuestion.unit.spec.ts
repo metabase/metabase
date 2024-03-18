@@ -3,8 +3,8 @@ import { checkNotNull } from "metabase/lib/types";
 import * as questionActions from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import registerVisualizations from "metabase/visualizations/register";
-import Question from "metabase-lib/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
+import Question from "metabase-lib/v1/Question";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   Card,
   ConcreteFieldReference,

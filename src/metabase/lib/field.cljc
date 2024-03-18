@@ -12,7 +12,6 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
@@ -32,23 +31,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
-
-(defn- normalize-binning-options [opts]
-  (lib.normalize/normalize-map
-   opts
-   keyword
-   {:strategy keyword}))
-
-(defn- normalize-field-options [opts]
-  (lib.normalize/normalize-map
-   opts
-   keyword
-   {:temporal-unit keyword
-    :binning       normalize-binning-options}))
-
-(defmethod lib.normalize/normalize :field
-  [[tag opts id-or-name]]
-  [(keyword tag) (normalize-field-options opts) id-or-name])
 
 (mu/defn resolve-column-name-in-metadata :- [:maybe ::lib.schema.metadata/column]
   "Find the column with `column-name` in a sequence of `column-metadatas`."
@@ -633,6 +615,11 @@
 (defn- native-query-fields-edit-error []
   (i18n/tru "Fields cannot be adjusted on native queries. Either edit the native query, or save this question and edit the fields in a GUI question based on this one."))
 
+(defn- source-clauses-only-fields-edit-error []
+  (i18n/tru (str "Only source columns (those from a table, model, or saved question) can be adjusted on a query. "
+                 "Aggregations, breakouts and expressions are always returned, and must be removed from the query or "
+                 "hidden in the UI.")))
+
 (mu/defn add-field :- ::lib.schema/query
   "Adds a given field (`ColumnMetadata`, as returned from eg. [[visible-columns]]) to the fields returned by the query.
   Exactly what this means depends on the source of the field:
@@ -714,16 +701,20 @@
   (let [source (:lib/source column)]
     (-> (case source
           (:source/table-defaults
-            :source/fields
-            :source/breakouts
-            :source/aggregations
-            :source/expressions
-            :source/card
-            :source/previous-stage
-            :source/implicitly-joinable) (exclude-field query stage-number column)
+           :source/fields
+           :source/card
+           :source/previous-stage
+           :source/expressions
+           :source/implicitly-joinable) (exclude-field query stage-number column)
           :source/joins                 (remove-field-from-join query stage-number column)
           :source/native                (throw (ex-info (native-query-fields-edit-error)
-                                                        {:query query :stage stage-number}))
+                                                         {:query query :stage stage-number}))
+
+          (:source/breakouts
+           :source/aggregations)        (throw (ex-info (source-clauses-only-fields-edit-error)
+                                                        {:query  query
+                                                         :stage  stage-number
+                                                         :source source}))
           ;; Default case: do nothing and return the query unchaged.
           ;; Generate a warning - we should aim to capture every `:source/*` value above.
           (do

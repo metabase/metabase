@@ -1,37 +1,7 @@
-:global(.Dash-wrapper) {
-  width: 100%;
-}
-
-@media screen and (--breakpoint-min-sm) {
-  :global(.Dash-wrapper) {
-    max-width: var(--sm-width);
-  }
-}
-
-@media screen and (--breakpoint-min-md) {
-  :global(.Dash-wrapper) {
-    max-width: var(--md-width);
-  }
-}
-
-@media screen and (--breakpoint-min-lg) {
-  :global(.Dash-wrapper) {
-    max-width: var(--lg-width);
-  }
-}
-
 /* Fullscreen mode */
 :global(.Dashboard.Dashboard--fullscreen) {
   min-height: 100vh;
   height: auto;
-}
-
-:global(.Dashboard.Dashboard--fullscreen .Header-button) {
-  color: var(--color-text-light);
-}
-
-:global(.Dashboard.Dashboard--fullscreen .Header-title-description) {
-  display: none;
 }
 
 /* Night mode */
@@ -41,10 +11,6 @@
 
 :global(.Dashboard.Dashboard--night .Card) {
   color: var(--color-text-white);
-}
-
-:global(.Dashboard.Dashboard--night .Header-button) {
-  color: var(--color-text-medium);
 }
 
 :global(.Dashboard.Dashboard--fullscreen .fullscreen-normal-text) {
@@ -108,8 +74,8 @@
   margin-top: 0.5rem;
 }
 
-:global(.Dash--editing .DashCard:hover .Card .Card-heading) {
-  z-index: 2;
+:global(.Dash--editing .Card-title) {
+  pointer-events: none;
 }
 
 :global(.Dash--editing .PinMap) {
@@ -126,7 +92,7 @@
   box-shadow: 3px 3px 8px var(--color-shadow);
 }
 
-:global(.BrandColorResizeHandle .react-resizable-handle:after) {
+:global(.BrandColorResizeHandle .react-resizable-handle::after) {
   border-color: var(--color-brand) !important;
 }
 
@@ -146,6 +112,7 @@
   right: -2px;
   top: -2px;
 }
+
 :global(.Dash--editing .DashCard:hover .Visualization-slow-spinner) {
   opacity: 0;
   transition: opacity 0.15s linear;
@@ -168,7 +135,7 @@
   background: none; /* hide default RGL's resize handle */
 }
 
-:global(.Dash--editing .DashCard .react-resizable-handle:after) {
+:global(.Dash--editing .DashCard .react-resizable-handle::after) {
   content: "";
   position: absolute;
   width: 8px;
@@ -182,20 +149,20 @@
   opacity: 0.01;
 }
 
-:global(.Dash--editing .DashCard .react-resizable-handle:hover:after) {
+:global(.Dash--editing .DashCard .react-resizable-handle:hover::after) {
   border-color: var(--color-border);
 }
 
-:global(.Dash--editing .DashCard:hover .react-resizable-handle:after) {
+:global(.Dash--editing .DashCard:hover .react-resizable-handle::after) {
   opacity: 1;
 }
 
 :global(.Dash--editing
     .DashCard.react-draggable-dragging
-    .react-resizable-handle:after),
+    .react-resizable-handle::after),
 :global(.Dash--editing
     .DashCard.react-resizable-resizing
-    .react-resizable-handle:after) {
+    .react-resizable-handle::after) {
   opacity: 0.01;
 }
 
@@ -203,10 +170,6 @@
   z-index: 0;
   background-color: var(--color-bg-light) !important;
   transition: all 0.15s linear;
-}
-
-:global(.Dash--editing .Card-title) {
-  pointer-events: none;
 }
 
 :global(.Modal.AddSeriesModal) {
@@ -222,6 +185,7 @@
   nav {
     display: none;
   }
+
   /* improve label contrast */
   :global(.dc-chart .axis .tick text),
   :global(.dc-chart .x-axis-label),
@@ -258,15 +222,6 @@
 :global(.ScalarValue) {
   font-weight: 700;
   white-space: pre;
-}
-
-:global(.SmartWrapper) {
-  font-size: 1.4em;
-}
-
-:global(.Dashboard .SmartWrapper) {
-  position: relative;
-  font-size: inherit;
 }
 
 /*

@@ -48,7 +48,7 @@ import {
   getLegendClickData,
 } from "metabase/visualizations/visualizations/RowChart/utils/events";
 import { getChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
-import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import {

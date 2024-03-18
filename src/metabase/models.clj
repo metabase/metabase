@@ -1,7 +1,6 @@
 (ns metabase.models
   (:require
    [metabase.models.action :as action]
-   [metabase.models.activity :as activity]
    [metabase.models.application-permissions-revision :as a-perm-revision]
    [metabase.models.bookmark :as bookmark]
    [metabase.models.card :as card]
@@ -35,6 +34,7 @@
    [metabase.models.pulse-channel-recipient :as pulse-channel-recipient]
    [metabase.models.query-cache :as query-cache]
    [metabase.models.query-execution :as query-execution]
+   [metabase.models.query-field :as query-field]
    [metabase.models.revision :as revision]
    [metabase.models.secret :as secret]
    [metabase.models.segment :as segment]
@@ -56,7 +56,6 @@
 
 ;; Fool the linter
 (comment action/keep-me
-         activity/keep-me
          card/keep-me
          bookmark/keep-me
          collection/keep-me
@@ -87,6 +86,7 @@
          pulse/keep-me
          query-cache/keep-me
          query-execution/keep-me
+         query-field/keep-me
          revision/keep-me
          secret/keep-me
          segment/keep-me
@@ -101,7 +101,6 @@
 
 (p/import-vars
  [action Action HTTPAction ImplicitAction QueryAction]
- [activity Activity]
  [bookmark CardBookmark]
  [bookmark DashboardBookmark]
  [bookmark CollectionBookmark]

@@ -4,17 +4,18 @@
   data from an application database to any empty application database for all combinations of supported application
   database types."
   (:require
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
    [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.db :as mdb]
    [metabase.db.setup :as mdb.setup]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
    (java.sql SQLException)))
@@ -64,11 +65,11 @@
     :model/Card
     :model/CardBookmark
     :model/DashboardBookmark
+    :model/DataPermissions
     :model/CollectionBookmark
     :model/BookmarkOrdering
     :model/DashboardCard
     :model/DashboardCardSeries
-    :model/Activity
     :model/Pulse
     :model/PulseCard
     :model/PulseChannel
@@ -109,7 +110,7 @@
   ;; should be ok now that #16344 is resolved -- we might be able to remove this code entirely now. Quoting identifiers
   ;; is still a good idea tho.)
   (let [source-keys (keys (first objs))
-        quote-fn    (partial mdb.setup/quote-for-application-db (mdb.connection/quoting-style target-db-type))
+        quote-fn    (partial mdb.setup/quote-for-application-db (mdb/quoting-style target-db-type))
         dest-keys   (for [k source-keys]
                       (quote-fn (name k)))]
     {:cols dest-keys
@@ -369,12 +370,12 @@
                                         table-name table-name)]]
         (jdbc/execute! target-db-conn sql)))))
 
-(s/defn copy!
+(mu/defn copy!
   "Copy data from a source application database into an empty destination application database."
-  [source-db-type     :- (s/enum :h2 :postgres :mysql)
-   source-data-source :- javax.sql.DataSource
-   target-db-type     :- (s/enum :h2 :postgres :mysql)
-   target-data-source :- javax.sql.DataSource]
+  [source-db-type     :- [:enum :h2 :postgres :mysql]
+   source-data-source :- (ms/InstanceOfClass javax.sql.DataSource)
+   target-db-type     :- [:enum :h2 :postgres :mysql]
+   target-data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   ;; make sure the entire system is loaded before running this test, to make sure we account for all the models.
   (doseq [ns-symb u/metabase-namespace-symbols]
     (classloader/require ns-symb))

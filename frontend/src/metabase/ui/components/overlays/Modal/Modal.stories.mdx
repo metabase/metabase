@@ -41,63 +41,184 @@ Our themed wrapper around [Mantine Modal](https://v6.mantine.dev/core/modal/).
 ## Docs
 
 - [Mantine Modal Docs](https://v6.mantine.dev/core/modal/)
-- [Metabase Modal Guidelines](https://www.notion.so/metabase/Modals-guidelines-fdf132ff081444088bcd37622fd8d023)
 
-## Examples
+## Guidelines
 
-export const SimpleTemplate = args => {
+### Modal headings should be in sentence case.
+
+Sentence-case fits the friendly, casual personality of Metabase. This means it should be `Add to dashboard` instead of `Add To Dashboard` for example.
+
+export const SimpleWithTitle = args => {
   const [isOpen, setOpen] = useState(false);
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
   return (
     <Flex justify="center">
       <Button variant="filled" onClick={handleOpen}>
-        Open modal
-      </Button>
-      <Modal {...args} opened={isOpen} onClose={handleClose}>
-        <Text>This is a simple modal with no interactive content</Text>
-      </Modal>
-    </Flex>
-  );
-};
-
-export const FormTemplate = args => {
-  const [isOpen, setOpen] = useState(false);
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
-  return (
-    <Flex justify="center">
-      <Button variant="filled" onClick={handleOpen}>
-        Open modal
+        Open example
       </Button>
       <Modal
-        title="New thing"
+        title="Add to dashboard?"
         {...args}
-        padding="lg"
         opened={isOpen}
         onClose={handleClose}
       >
-        <form onSubmit={handleClose}>
-          <TextInput label="Name" data-autofocus />
-          <TextInput label="Something else" mt="md" />
-          <Flex direction="row" justify="flex-end" mt="md">
-            <Button onClick={handleClose}>Cancel</Button>
-            <Button type="submit" variant="filled" ml="sm">
-              Create
-            </Button>
-          </Flex>
-        </form>
+        <Flex direction="row" justify="flex-end" mt="md">
+          <Button type="submit" variant="filled" ml="sm">
+            Add
+          </Button>
+        </Flex>
       </Modal>
     </Flex>
   );
 };
 
 <Canvas>
-  <Story name="Default">{SimpleTemplate}</Story>
+  <Story name="Sentence case titles">{SimpleWithTitle}</Story>
 </Canvas>
 
-### Form
+### Headings for confirmation modals should always be a question, and the body text should elaborate on the consequences
+
+E.g.,`Delete this database?` with body copy that contains clarifying information about what will happen if this action is taken, e.g., `This can't be undone, and questions that rely on this data will no longer work.`
+
+export const Confirmation = args => {
+  const [isOpen, setOpen] = useState(false);
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+  return (
+    <Flex justify="center">
+      <Button variant="filled" onClick={handleOpen}>
+        Open example
+      </Button>
+      <Modal
+        title="Delete this database?"
+        {...args}
+        opened={isOpen}
+        onClose={handleClose}
+      >
+        <Text>
+          This can't be undone, and questions that rely on this data will no
+          longer work.
+        </Text>
+        <Flex direction="row" justify="flex-end" mt="md">
+          <Button type="submit" ml="sm">
+            Cancel
+          </Button>
+          <Button type="submit" variant="filled" color="error" ml="sm">
+            Delete
+          </Button>
+        </Flex>
+      </Modal>
+    </Flex>
+  );
+};
 
 <Canvas>
-  <Story name="Form">{FormTemplate}</Story>
+  <Story name="Confirmation">{Confirmation}</Story>
+</Canvas>
+
+### Buttons should be right-aligned, with the primary action on the far right
+
+This is primarily to reinforce the top-left-to-bottom-right eye travel path for left-to-right language readers.
+
+(Research from [NN Group says it really doesn't matter that much](https://www.nngroup.com/articles/ok-cancel-or-cancel-ok/) which side the buttons align to, so this is mostly for consistency and convention.)
+
+### The primary button for create or neutral actions should be blue, and red for destructive actions
+
+- Examples of “create” and neutral actions:
+
+  - Save
+  - Create
+  - Invite
+  - Download
+  - Okay
+  - Done
+
+- Examples of “destructive” actions
+  - Discard
+  - Delete
+  - Deactivate
+  - Revoke
+  - Remove
+
+### The text for primary action buttons should always be a verb
+
+If the title of a modal is e.g., "Add this to a dashboard," the primary action should be `Add` instead of "Yes" for example.
+
+Or if we ask, "Reset this password?" the primary button should say `Reset`. This provides good additional confirmation to the user about what's going to happen if they click the button. Additionally, though we could write, "Yes, reset," that's unnecessarily verbose.
+
+### The secondary action should always say `Cancel` with rare exceptions
+
+This is for the sake of predictability, consistency, and convention.
+
+There are some rare exceptions, like when the modal is a confirmation or a followup from a previous modal. As an example, when you save a question, we ask you in a modal if you want to add it to a dashboard. In this case, saying "cancel" is ambiguous (does this cancel saving the card?), and it makes sense for it to read `Not now`
+
+### There should almost never be more than two buttons in a modal
+
+There are few legitimate cases where a modal should have more than two buttons. E.g., if there were a third action that says "learn more", clicking it might open a new window, but it leaves the modal in an ambiguous state.
+
+It’s okay for a modal to have only a single button. Here’s an example:
+
+export const SingleButton = args => {
+  const [isOpen, setOpen] = useState(false);
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+  return (
+    <Flex justify="center">
+      <Button variant="filled" onClick={handleOpen}>
+        Open example
+      </Button>
+      <Modal
+        title="Single button example"
+        {...args}
+        opened={isOpen}
+        onClose={handleClose}
+      >
+        <Text>Sometimes all you need is one option.</Text>
+        <Flex direction="row" justify="flex-end" mt="md">
+          <Button type="submit" variant="filled" ml="sm">
+            Add
+          </Button>
+        </Flex>
+      </Modal>
+    </Flex>
+  );
+};
+
+<Canvas>
+  <Story name="Single button">{SingleButton}</Story>
+</Canvas>
+
+### It’s okay if a modal doesn’t have body text
+
+Sometimes it’s not necessary. Here's a modal with a heading, but no body text.
+
+export const NoBodyText = args => {
+  const [isOpen, setOpen] = useState(false);
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+  return (
+    <Flex justify="center">
+      <Button variant="filled" onClick={handleOpen}>
+        Open example
+      </Button>
+      <Modal
+        title="Saved! Add this to a dashboard?"
+        {...args}
+        opened={isOpen}
+        onClose={handleClose}
+      >
+        <Flex direction="row" justify="flex-end" mt="md">
+          <Button onClick={handleClose}>Not now</Button>
+          <Button type="submit" variant="filled" ml="sm">
+            Add
+          </Button>
+        </Flex>
+      </Modal>
+    </Flex>
+  );
+};
+
+<Canvas>
+  <Story name="No body text">{NoBodyText}</Story>
 </Canvas>

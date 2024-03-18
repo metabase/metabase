@@ -13,7 +13,7 @@
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
-   [metabase.db.util :as mdb.u]
+   [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.util :as mbql.u]
@@ -37,7 +37,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [schema.core :as s]
    [throttle.core :as throttle]
    [toucan2.core :as t2])
   (:import
@@ -157,7 +156,7 @@
               :run        (process-query-for-card-with-id-run-fn qp export-format)
               options)))
 
-(s/defn ^:private process-query-for-card-with-public-uuid
+(defn ^:private process-query-for-card-with-public-uuid
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception. Returns a
   `StreamingResponse` object that should be returned as the result of an API endpoint."
   [uuid export-format parameters & options]
@@ -408,8 +407,8 @@
        (t2/exists? Dimension :field_id field-id, :human_readable_field_id search-field-id)
        ;; just do a couple small queries to figure this out, we could write a fancy query to join Field against itself
        ;; and do this in one but the extra code complexity isn't worth it IMO
-       (when-let [table-id (t2/select-one-fn :table_id Field :id field-id, :semantic_type (mdb.u/isa :type/PK))]
-         (t2/exists? Field :id search-field-id, :table_id table-id, :semantic_type (mdb.u/isa :type/Name))))))
+       (when-let [table-id (t2/select-one-fn :table_id Field :id field-id, :semantic_type (mdb.query/isa :type/PK))]
+         (t2/exists? Field :id search-field-id, :table_id table-id, :semantic_type (mdb.query/isa :type/Name))))))
 
 (defn- check-field-is-referenced-by-dashboard
   "Check that `field-id` belongs to a Field that is used as a parameter in a Dashboard with `dashboard-id`, or throw a

@@ -20,7 +20,8 @@
 }
 
 :global(.flex-full),
-.flex-full {
+.flex-full,
+.flexFull {
   flex: 1 0 auto;
 }
 
@@ -40,7 +41,8 @@
 }
 
 :global(.flex-no-shrink),
-.flex-no-shrink {
+.flex-no-shrink,
+.flexNoShrink {
   flex-shrink: 0;
 }
 
@@ -73,7 +75,7 @@
 }
 
 :global(.align-center),
-.align-center {
+.alignCenter {
   align-items: center;
 }
 
@@ -83,7 +85,8 @@
 }
 
 :global(.justify-center),
-.justify-center {
+.justify-center,
+.justifyCenter {
   justify-content: center;
 }
 
@@ -130,7 +133,8 @@
 }
 
 :global(.flex-align-right),
-.flex-align-right {
+.flex-align-right,
+.flexAlignRight {
   margin-left: auto;
 }
 
@@ -153,7 +157,8 @@
 }
 
 :global(.layout-centered),
-.layout-centered {
+.layout-centered,
+.layoutCentered {
   align-items: center;
   justify-content: center;
 }

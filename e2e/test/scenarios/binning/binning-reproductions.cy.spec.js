@@ -164,10 +164,12 @@ describe("binning related reproductions", () => {
     popover().findByText("18646").click();
 
     popover().within(() => {
-      cy.findByRole("option", { name: "CREATED_AT" })
+      cy.findByRole("option", { name: /CREATED_AT/ })
         .findByText("by month")
         .should("exist");
-      cy.findByRole("option", { name: "CREATED_AT" }).click();
+      cy.findByRole("option", { name: /CREATED_AT/ }).click({
+        position: "left",
+      });
     });
 
     getNotebookStep("summarize").findByText(
@@ -196,7 +198,8 @@ describe("binning related reproductions", () => {
     summarize();
 
     rightSidebar().within(() => {
-      cy.findByRole("listitem", { name: "Created At" })
+      cy.findAllByRole("listitem", { name: "Created At" })
+        .eq(0)
         .findByLabelText("Temporal bucket")
         .click();
     });

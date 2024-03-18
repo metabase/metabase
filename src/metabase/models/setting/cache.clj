@@ -4,7 +4,7 @@
   (:require
    [clojure.core :as core]
    [clojure.java.jdbc :as jdbc]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
@@ -28,7 +28,7 @@
 ;; Setting cache is unique to the application DB; if it's swapped out for tests or mocking or whatever then use a new
 ;; cache.
 (def ^:private ^{:arglists '([])} cache*
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn []
      (doto (atom nil)
        (add-watch :call-on-change (fn [_key _ref old new]
@@ -73,7 +73,7 @@
   []
   (log/debug (trs "Updating value of settings-last-updated in DB..."))
   ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
-  (let [current-timestamp-as-string-honeysql (h2x/cast (if (= (mdb.connection/db-type) :mysql) :char :text)
+  (let [current-timestamp-as-string-honeysql (h2x/cast (if (= (mdb/db-type) :mysql) :char :text)
                                                        [:raw "current_timestamp"])]
     ;; attempt to UPDATE the existing row. If no row exists, `t2/update!` will return 0...
     (or (pos? (t2/update! :setting  {:key settings-last-updated-key} {:value current-timestamp-as-string-honeysql}))

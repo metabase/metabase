@@ -14,7 +14,6 @@
    [mb.hawk.parallel]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
-   [metabase.db.util :as mdb.u]
    [metabase.models
     :refer [Card
             Dimension
@@ -27,6 +26,7 @@
             Table
             User]]
    [metabase.models.collection :as collection]
+   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
@@ -34,6 +34,7 @@
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.models.timeline-event :as timeline-event]
+   [metabase.permissions.test-util :as perms.test-util]
    [metabase.plugins.classloader :as classloader]
    [metabase.task :as task]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
@@ -41,6 +42,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.log :as tu.log]
+   [metabase.test.util.public-settings]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.random :as u.random]
@@ -231,6 +233,7 @@
               :table_id    (data/id :checkins)}))
 
    ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
+   ;; Tech debt issue: #39329
 
    :model/Table
    (fn [_] (default-timestamped
@@ -276,9 +279,6 @@
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
-    ;; TODO -- we shouldn't need to ignore this, but it's a product of the custom hook defined for Methodical
-    ;; `defmethod`. Fix the hook upstream
-    #_{:clj-kondo/ignore [:redundant-fn-wrapper]}
     (methodical/defmethod t2.with-temp/with-temp-defaults model
       [model]
       (defaults-fn model))))
@@ -519,6 +519,8 @@
           :set    original-column->value
           :where  [:= :id (u/the-id object-or-id)]})))))
 
+;;; TODO -- we can make this parallel test safe pretty easily by doing stuff inside a transaction
+;;; unless [[metabase.test/test-helpers-set-global-values!]] is in effect
 (defmacro with-temp-vals-in-db
   "Temporary set values for an `object-or-id` in the application database, execute `body`, and then restore the
   original values. This is useful for cases when you want to test how something behaves with slightly different values
@@ -686,7 +688,7 @@
  [:not= :id perms/audit-db-id])
 
 (defn do-with-model-cleanup [models f]
-  {:pre [(sequential? models) (every? mdb.u/toucan-model? models)]}
+  {:pre [(sequential? models) (every? #(isa? % :metabase/model) models)]}
   (mb.hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]
@@ -787,7 +789,6 @@
                          :moderated_item_id card-id
                          :moderated_item_type "card"))))))
 
-;; TODO - not 100% sure I understand
 (defn call-with-paused-query
   "This is a function to make testing query cancellation eaiser as it can be complex handling the multiple threads
   needed to orchestrate a query cancellation.
@@ -980,24 +981,21 @@
                                           :object permission-path}]
     (f)))
 
-(defn do-with-all-user-data-perms-graph
+(defn do-with-all-user-data-perms-graph!
   "Implementation for [[with-all-users-data-perms]]"
   [graph f]
-  (let [all-users-group-id  (u/the-id (perms-group/all-users))
-        current-graph       (get-in (perms/data-perms-graph) [:groups all-users-group-id])]
-    (try
-      (with-model-cleanup [Permissions]
-        (u/ignore-exceptions
-         (@#'perms/update-group-permissions! all-users-group-id graph))
-        (f))
-      (finally
-        (u/ignore-exceptions
-         (@#'perms/update-group-permissions! all-users-group-id current-graph))))))
+  (let [all-users-group-id  (u/the-id (perms-group/all-users))]
+    (metabase.test.util.public-settings/with-additional-premium-features #{:advanced-permissions}
+      (perms.test-util/with-no-data-perms-for-all-users!
+        (perms.test-util/with-restored-perms!
+          (perms.test-util/with-restored-data-perms!
+            (data-perms.graph/update-data-perms-graph!* {all-users-group-id graph})
+            (f)))))))
 
-(defmacro with-all-users-data-perms-graph
+(defmacro with-all-users-data-perms-graph!
   "Runs `body` with data perms for the All Users group temporarily set to the values in `graph`."
   [graph & body]
-  `(do-with-all-user-data-perms-graph ~graph (fn [] ~@body)))
+  `(do-with-all-user-data-perms-graph! ~graph (fn [] ~@body)))
 
 (defmacro with-all-users-permission
   "Run `body` with the ''All Users'' group being granted the permission

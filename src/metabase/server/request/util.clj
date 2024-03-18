@@ -149,6 +149,7 @@
     [:timezone    [:maybe (ms/InstanceOfClass ZoneId)]]]])
 
 ;; TODO -- replace with something better, like built-in database once we find one that's GPL compatible
+;; issue: https://github.com/metabase/metabase/issues/39352
 (mu/defn geocode-ip-addresses :- [:maybe IPAddress->Info]
   "Geocode multiple IP addresses, returning a map of IP address -> info, with each info map containing human-friendly
   `:description` of the location and a `java.time.ZoneId` `:timezone`, if that information is available."
@@ -169,3 +170,11 @@
          (catch Throwable e
            (log/error e (trs "Error geocoding IP addresses") {:url url})
            nil))))))
+
+(def response-unauthentic
+  "Generic `401 (Unauthenticated)` Ring response map."
+  {:status 401, :body "Unauthenticated"})
+
+(def response-forbidden
+  "Generic `403 (Forbidden)` Ring response map."
+  {:status 403, :body "Forbidden"})

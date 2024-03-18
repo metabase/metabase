@@ -158,7 +158,7 @@
                                             (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "sum"])]]}]}})))
 
 (deftest ^:parallel apply-quick-filter-on-correct-level-test-2
-  (testing "quick-filter not on an aggregation should NOT introduce an new stage"
+  (testing "quick-filter on a breakout should not introduce a new stage"
     (lib.drill-thru.tu/test-drill-application
      {:click-type     :cell
       :query-type     :aggregated

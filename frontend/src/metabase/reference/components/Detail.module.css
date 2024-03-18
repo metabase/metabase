@@ -4,8 +4,9 @@
 }
 
 .detail {
-  composes: flex align-center from "style";
-  composes: relative from "style";
+  position: relative;
+  align-items: center;
+  display: flex;
 }
 
 .detailBody {
@@ -14,7 +15,8 @@
 }
 
 .detailTitle {
-  composes: text-bold inline-block from "style";
+  composes: text-bold from "style";
+  display: inline-block;
   color: var(--title-color);
 }
 

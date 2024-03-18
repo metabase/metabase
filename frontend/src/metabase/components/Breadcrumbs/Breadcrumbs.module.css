@@ -2,6 +2,7 @@
   --breadcrumbs-color: var(--color-text-light);
   --breadcrumb-page-color: var(--color-text-dark);
   --breadcrumb-divider-spacing: 0.75em;
+
   /* taken from Sidebar.css, should probably factor them out into variables */
   --sidebar-breadcrumbs-color: var(--color-text-medium);
 }
@@ -47,7 +48,7 @@
 }
 
 .sidebarBreadcrumbs {
-  composes: flex from "style";
+  display: flex;
   composes: breadcrumbs;
   color: var(--sidebar-breadcrumbs-color);
   max-width: 100%;

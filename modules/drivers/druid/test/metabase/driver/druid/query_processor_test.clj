@@ -260,7 +260,7 @@
           (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
             (is (= expected
                    (table-rows-sample))))
-          (mt/with-system-timezone-id "America/Chicago"
+          (mt/with-system-timezone-id! "America/Chicago"
             (is (= expected
                    (table-rows-sample)))))))))
 
@@ -531,17 +531,17 @@
                         ["4"  155.0]]
               :columns ["venue_price" "Sum-41"]}
              (mt/rows+column-names
-               (druid-query
-                 {:aggregation [[:aggregation-options [:- [:sum $venue_price] 41] {:name "Sum-41"}]]
-                  :breakout    [$venue_price]})))))))
+              (druid-query
+                {:aggregation [[:aggregation-options [:- [:sum $venue_price] 41] {:name "Sum-41"}]]
+                 :breakout    [$venue_price]})))))))
 
 (deftest distinct-count-of-two-dimensions-test
   (mt/test-driver :druid
-    (is (= {:rows    [[98]]
+    (is (= {:rows    [[979]]
             :columns ["count"]}
            (mt/rows+column-names
-             (druid-query
-               {:aggregation [[:distinct [:+ $checkins.venue_category_name $checkins.venue_name]]]}))))))
+            (druid-query
+              {:aggregation [[:distinct [:+ $id $checkins.venue_price]]]}))))))
 
 (deftest metrics-inside-aggregation-clauses-test
   (mt/test-driver :druid

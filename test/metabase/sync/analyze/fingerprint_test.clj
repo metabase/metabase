@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.db.util :as mdb.u]
+   [metabase.db.query :as mdb.query]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
@@ -35,10 +35,10 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb.u/isa :semantic_type :type/PK)]
+              [:not (mdb.query/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
-             [:not (mdb.u/isa :base_type :type/Structured)]
+             [:not (mdb.query/isa :base_type :type/Structured)]
              [:or
               [:and
                [:< :fingerprint_version 1]
@@ -51,10 +51,10 @@
           [:and
            [:= :active true]
            [:or
-            [:not (mdb.u/isa :semantic_type :type/PK)]
+            [:not (mdb.query/isa :semantic_type :type/PK)]
             [:= :semantic_type nil]]
            [:not-in :visibility_type ["retired" "sensitive"]]
-           [:not (mdb.u/isa :base_type :type/Structured)]
+           [:not (mdb.query/isa :base_type :type/Structured)]
            [:or
             [:and
              [:< :fingerprint_version 2]
@@ -73,10 +73,10 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb.u/isa :semantic_type :type/PK)]
+              [:not (mdb.query/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
-             [:not (mdb.u/isa :base_type :type/Structured)]
+             [:not (mdb.query/isa :base_type :type/Structured)]
              [:or
               [:and
                [:< :fingerprint_version 2]
@@ -96,10 +96,10 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb.u/isa :semantic_type :type/PK)]
+              [:not (mdb.query/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
-             [:not (mdb.u/isa :base_type :type/Structured)]
+             [:not (mdb.query/isa :base_type :type/Structured)]
              [:or
               [:and
                [:< :fingerprint_version 4]
@@ -124,10 +124,10 @@
     (is (= {:where [:and
                     [:= :active true]
                     [:or
-                     [:not (mdb.u/isa :semantic_type :type/PK)]
+                     [:not (mdb.query/isa :semantic_type :type/PK)]
                      [:= :semantic_type nil]]
                     [:not-in :visibility_type ["retired" "sensitive"]]
-                    [:not (mdb.u/isa :base_type :type/Structured)]]}
+                    [:not (mdb.query/isa :base_type :type/Structured)]]}
            (binding [fingerprint/*refingerprint?* true]
              (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
 
@@ -270,14 +270,6 @@
     (with-redefs [fingerprint/fingerprint-table! (fn [_ _] (throw (Exception. "expected")))]
       (is (= (fingerprint/empty-stats-map 0)
              (fingerprint/fingerprint-fields! (t2/select-one Table :id (data/id :venues))))))))
-
-(deftest test-fingerprint-skipped-for-ga
-  (testing "Google Analytics doesn't support fingerprinting fields"
-    (let [fake-db (-> (data/db)
-                      (assoc :engine :googleanalytics))]
-      (with-redefs [fingerprint/fingerprint-table! (fn [_] (throw (Exception. "this should not be called!")))]
-        (is (= (fingerprint/empty-stats-map 0)
-               (fingerprint/fingerprint-fields-for-db! fake-db [(t2/select-one Table :id (data/id :venues))] (fn [_ _]))))))))
 
 (deftest fingerprint-test
   (mt/test-drivers (mt/normal-drivers)

@@ -1,14 +1,11 @@
-import { useEffect, useState } from "react";
-import { useAsyncFn } from "react-use";
-import { jt, t } from "ttag";
+import { useState, useMemo } from "react";
+import { t } from "ttag";
 
-const { fontFamilyMonospace } = getThemeOverrides();
-
+import { useListApiKeyQuery } from "metabase/api";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
-import { ApiKeysApi } from "metabase/services";
 import { Stack, Title, Text, Button, Group, Icon } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import type { ApiKey } from "metabase-types/api";
@@ -18,24 +15,20 @@ import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
 import { EditApiKeyModal } from "./EditApiKeyModal";
 import { formatMaskedKey } from "./utils";
 
+const { fontFamilyMonospace } = getThemeOverrides();
+
 type Modal = null | "create" | "edit" | "delete";
 
 function EmptyTableWarning({ onCreate }: { onCreate: () => void }) {
   return (
     <Stack mt="xl" align="center" justify="center" spacing="sm">
       <Title>{t`No API keys here yet`}</Title>
-      <Text color="text-medium">{t`You can create an API key to make API calls programatically.`}</Text>
-      <Text color="text.1">{jt`You can ${(
-        <Button
-          key="create-key-button"
-          variant="subtle"
-          onClick={onCreate}
-          p="0"
-          m="0"
-        >
-          {t`create an api key`}
-        </Button>
-      )} to make API calls programatically.`}</Text>
+      <Text color="text.1" mb="md">
+        {t`You can create an API key to make API calls programatically.`}
+      </Text>
+      <Button key="create-key-button" variant="filled" onClick={onCreate}>
+        {t`Create API Key`}
+      </Button>
     </Stack>
   );
 }
@@ -51,7 +44,7 @@ function ApiKeysTable({
   setActiveApiKey: (apiKey: ApiKey) => void;
   setModal: (modal: Modal) => void;
   loading: boolean;
-  error?: Error;
+  error?: unknown;
 }) {
   return (
     <Stack data-testid="api-keys-table" pb="lg">
@@ -117,24 +110,23 @@ export const ManageApiKeys = () => {
   const [modal, setModal] = useState<Modal>(null);
   const [activeApiKey, setActiveApiKey] = useState<null | ApiKey>(null);
 
-  const [{ value: apiKeys, loading, error }, refreshList] = useAsyncFn(
-    (): Promise<ApiKey[]> => ApiKeysApi.list(),
-    [],
-  );
+  const { data: apiKeys, error, isLoading } = useListApiKeyQuery();
+
+  const sortedApiKeys = useMemo(() => {
+    if (!apiKeys) {
+      return;
+    }
+    return [...apiKeys].sort((a, b) => a.name.localeCompare(b.name));
+  }, [apiKeys]);
 
   const handleClose = () => setModal(null);
 
-  useEffect(() => {
-    refreshList();
-  }, [refreshList]);
-
-  const tableIsEmpty = !loading && !error && apiKeys?.length === 0;
+  const tableIsEmpty = !isLoading && !error && apiKeys?.length === 0;
 
   return (
     <>
       <ApiKeyModals
         onClose={handleClose}
-        refreshList={refreshList}
         modal={modal}
         activeApiKey={activeApiKey}
       />
@@ -162,9 +154,9 @@ export const ManageApiKeys = () => {
           >{t`Create API Key`}</Button>
         </Group>
         <ApiKeysTable
-          loading={loading}
+          loading={isLoading}
           error={error}
-          apiKeys={apiKeys?.sort((a, b) => a.name.localeCompare(b.name))}
+          apiKeys={sortedApiKeys}
           setActiveApiKey={setActiveApiKey}
           setModal={setModal}
         />
@@ -175,37 +167,23 @@ export const ManageApiKeys = () => {
 
 function ApiKeyModals({
   onClose,
-  refreshList,
   modal,
   activeApiKey,
 }: {
   onClose: () => void;
-  refreshList: () => void;
   modal: Modal;
   activeApiKey: ApiKey | null;
 }) {
   if (modal === "create") {
-    return <CreateApiKeyModal onClose={onClose} refreshList={refreshList} />;
+    return <CreateApiKeyModal onClose={onClose} />;
   }
 
   if (modal === "edit" && activeApiKey) {
-    return (
-      <EditApiKeyModal
-        onClose={onClose}
-        refreshList={refreshList}
-        apiKey={activeApiKey}
-      />
-    );
+    return <EditApiKeyModal onClose={onClose} apiKey={activeApiKey} />;
   }
 
   if (modal === "delete" && activeApiKey) {
-    return (
-      <DeleteApiKeyModal
-        apiKey={activeApiKey}
-        onClose={onClose}
-        refreshList={refreshList}
-      />
-    );
+    return <DeleteApiKeyModal apiKey={activeApiKey} onClose={onClose} />;
   }
 
   return null;

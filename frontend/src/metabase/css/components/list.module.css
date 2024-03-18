@@ -1,7 +1,3 @@
-:global(.List) {
-  padding: var(--padding-1);
-}
-
 :global(.List-section-header .Icon),
 :global(.List-item .List-item-arrow .Icon) {
   color: var(--color-text-dark);
@@ -18,6 +14,7 @@
 :global(.List-section-header) {
   color: var(--color-text-dark);
   border: 2px solid transparent;
+
   /* so that spacing matches .List-item */
 }
 
@@ -25,10 +22,6 @@
   border-radius: 8px;
   outline: 2px solid var(--color-focus);
   outline-offset: -4px;
-}
-
-:global(.List-section--cursor) {
-  background-color: color-mod(var(--color-text-light) alpha(-80%));
 }
 
 /* these crazy rules are needed to get currentColor to propagate to the right elements in the right states */

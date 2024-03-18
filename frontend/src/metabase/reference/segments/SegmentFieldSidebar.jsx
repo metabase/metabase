@@ -11,7 +11,7 @@ import SidebarItem from "metabase/components/SidebarItem";
 const SegmentFieldSidebar = ({ segment, field, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <ul className="mx3">
-      <div className={S.breadcrumbs}>
+      <div>
         <Breadcrumbs
           className="py4"
           crumbs={[

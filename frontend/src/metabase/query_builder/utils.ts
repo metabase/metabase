@@ -4,7 +4,7 @@ import querystring from "querystring";
 import { serializeCardForUrl } from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
@@ -30,7 +30,7 @@ export function getPathNameFromQueryBuilderMode({
 export function getCurrentQueryParams() {
   const search =
     window.location.search.charAt(0) === "?"
-      ? window.location.search.slice(0)
+      ? window.location.search.slice(1)
       : window.location.search;
   return querystring.parse(search);
 }

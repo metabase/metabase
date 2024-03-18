@@ -13,6 +13,7 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
@@ -427,16 +428,12 @@
     (validation/check-embedding-enabled)
     (api/check-superuser)))
 
-;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to
-;; be setting `:archived` to `true` via the `PUT` endpoint instead
 (api/defendpoint DELETE "/:id"
-  "Delete a Dashboard.
+  "Hard delete a Dashboard. To soft delete, use `PUT /api/dashboard/:id`
 
   This will remove also any questions/models/segments/metrics that use this database."
   [id]
   {id ms/PositiveInt}
-  (log/warn (str "DELETE /api/dashboard/:id is deprecated. Instead of deleting a Dashboard, you should change its "
-                 "`archived` value via PUT /api/dashboard/:id."))
   (let [dashboard (api/write-check :model/Dashboard id)]
     (t2/delete! :model/Dashboard :id id)
     (events/publish-event! :event/dashboard-delete {:object dashboard :user-id api/*current-user-id*}))
@@ -922,7 +919,7 @@
     (get-in card [:dataset_query :native :template-tags (u/qualified-name tag)])))
 
 (defn- param-type->op [type]
-  (if (get-in mbql.s/parameter-types [type :operator])
+  (if (get-in lib.schema.parameter/types [type :operator])
     (keyword (name type))
     :=))
 
@@ -1137,10 +1134,10 @@
   [dashboard-id dashcard-id :as {{:keys [parameters], :as _body} :body}]
   {dashboard-id ms/PositiveInt
    dashcard-id  ms/PositiveInt
-   parameters  [:maybe [:map-of :keyword :any]]}
+   parameters  [:maybe [:map-of :string :any]]}
   (api/read-check :model/Dashboard dashboard-id)
   ;; Undo middleware string->keyword coercion
-  (actions.execution/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name)))
+  (actions.execution/execute-dashcard! dashboard-id dashcard-id parameters))
 
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 

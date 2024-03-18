@@ -8,7 +8,7 @@
    [clojure.walk :as walk]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [metabase.db.spec :as mdb.spec]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.postgres.actions :as postgres.actions]
@@ -78,6 +78,12 @@
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))
+
+(defmethod driver/escape-entity-name-for-metadata :postgres [_driver entity-name]
+  (when entity-name
+    ;; these entities names are used as a pattern for LIKE queries in jdbc
+    ;; so we need to double escape it, first for java, then for sql
+    (str/replace entity-name "\\" "\\\\")))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -216,7 +222,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- ->timestamp [honeysql-form]
-  (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
+  (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "timestamp with time zone" "date"} honeysql-form))
 
 (defn- format-interval
   "Generate a Postgres 'INTERVAL' literal.
@@ -341,7 +347,8 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
-        timestamptz? (h2x/is-of-type? expr "timestamptz")
+        timestamptz? (or (h2x/is-of-type? expr "timestamptz")
+                         (h2x/is-of-type? expr "timestamp with time zone"))
         _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
         expr         [:timezone target-timezone (if (not timestamptz?)
                                                   [:timezone source-timezone expr]
@@ -494,7 +501,8 @@
       (pg-conversion identifier :numeric)
 
       (lib.field/json-field? stored-field)
-      (if (::sql.qp/forced-alias opts)
+      (if (or (::sql.qp/forced-alias opts)
+              (= (::add/source-table opts) ::add/source))
         (keyword (::add/source-alias opts))
         (walk/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :postgres % stored-field)
@@ -568,7 +576,8 @@
 (def ^:private default-base-types
   "Map of default Postgres column types -> Field base types.
    Add more mappings here as you come across them."
-  {:bigint        :type/BigInteger
+  {:array         :type/*
+   :bigint        :type/BigInteger
    :bigserial     :type/BigInteger
    :bit           :type/*
    :bool          :type/Boolean
@@ -579,6 +588,8 @@
    :cidr          :type/Structured ; IPv4/IPv6 network address
    :circle        :type/*
    :citext        :type/Text ; case-insensitive text
+   :char          :type/Text
+   :character     :type/Text
    :date          :type/Date
    :decimal       :type/Decimal
    :float4        :type/Float
@@ -588,6 +599,7 @@
    :int           :type/Integer
    :int2          :type/Integer
    :int4          :type/Integer
+   :integer       :type/Integer
    :int8          :type/BigInteger
    :interval      :type/*               ; time span
    :json          :type/JSON
@@ -713,7 +725,7 @@
                 (merge disable-ssl-params props))
         props (as-> props it
                 (set/rename-keys it {:dbname :db})
-                (mdb.spec/spec :postgres it)
+                (mdb/spec :postgres it)
                 (sql-jdbc.common/handle-additional-options it details-map))]
     props))
 
@@ -789,6 +801,15 @@
   [driver]
   (= driver :postgres))
 
+(defmethod sql-jdbc.sync/alter-columns-sql :postgres
+  [driver table-name column-definitions]
+  (first (sql/format {:alter-table  (keyword table-name)
+                      :alter-column (map (fn [[column-name type-and-constraints]]
+                                           (vec (cons column-name (cons :type type-and-constraints))))
+                                         column-definitions)}
+                     :quoted true
+                     :dialect (sql.qp/quote-style driver))))
+
 (defmethod driver/table-name-length-limit :postgres
   [_driver]
   ;; https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
@@ -852,8 +873,8 @@
   ;; KNOWN LIMITATION: this won't return privileges for foreign tables, calling has_table_privilege on a foreign table
   ;; result in a operation not supported error
   (->> (jdbc/query
-         conn-spec
-         (str/join
+        conn-spec
+        (str/join
          "\n"
          ["with table_privileges as ("
           " select"

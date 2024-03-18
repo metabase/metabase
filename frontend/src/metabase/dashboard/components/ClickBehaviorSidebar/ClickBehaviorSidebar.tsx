@@ -5,12 +5,12 @@ import { useMount, usePrevious } from "react-use";
 import { useDashboardQuery } from "metabase/common/hooks";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { isTableDisplay } from "metabase/lib/click-behavior";
-import type { UiParameter } from "metabase-lib/parameters/types";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   canSaveClickBehavior,
   clickBehaviorIsValid,
-} from "metabase-lib/parameters/utils/click-behavior";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+} from "metabase-lib/v1/parameters/utils/click-behavior";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
   Dashboard,
   QuestionDashboardCard,

@@ -204,13 +204,6 @@ describe("scenarios > question > saved", () => {
     cy.findByText(/This is a question/i).should("not.exist");
   });
 
-  it("should show table name in header with a table info popover on hover", () => {
-    visitQuestion(ORDERS_QUESTION_ID);
-    cy.findByTestId("question-table-badges").trigger("mouseenter");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("9 columns");
-  });
-
   it("should show collection breadcrumbs for a saved question in the root collection", () => {
     visitQuestion(ORDERS_QUESTION_ID);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

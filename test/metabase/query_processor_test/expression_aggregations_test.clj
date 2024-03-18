@@ -69,8 +69,11 @@
                    {:aggregation [[:+
                                    [:count $id]
                                    [:sum $price]]]
-                    :breakout    [$price]})))))
+                    :breakout    [$price]}))))))))
 
+(deftest ^:parallel post-aggregation-math-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
+    (testing "post-aggregation math"
       (testing "w/ 3 args: count + sum + count"
         (is (= [[1  66]
                 [2 236]
@@ -79,8 +82,11 @@
                (mt/formatted-rows [int int]
                  (mt/run-mbql-query venues
                    {:aggregation [[:+ [:count $id] [:sum $price] [:count $price]]]
-                    :breakout    [$price]})))))
+                    :breakout    [$price]}))))))))
 
+(deftest ^:parallel post-aggregation-math-test-3
+  (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
+    (testing "post-aggregation math"
       (testing "w/ a constant: count * 10"
         (is (= [[1 220]
                 [2 590]
@@ -89,8 +95,11 @@
                (mt/formatted-rows [int int]
                  (mt/run-mbql-query venues
                    {:aggregation [[:* [:count $id] 10]]
-                    :breakout    [$price]})))))
+                    :breakout    [$price]}))))))))
 
+(deftest ^:parallel post-aggregation-math-test-4
+  (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
+    (testing "post-aggregation math"
       (testing "w/ avg: count + avg"
         (is (= [[1  77]
                 [2 107]
