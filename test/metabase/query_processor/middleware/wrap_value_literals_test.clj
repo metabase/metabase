@@ -64,20 +64,20 @@
                       [:> $id 50]
                       [:< $price 5]]})))))
 
-(defn- parse-with-timezone [datetime-str ^String timezone-id]
+(defn- parse-with-timezone! [datetime-str ^String timezone-id]
   (driver/with-driver ::tz-driver
-    (mt/with-report-timezone-id timezone-id
+    (mt/with-report-timezone-id! timezone-id
       (is (= (qp.timezone/results-timezone-id)
              timezone-id)
           "Make sure `results-timezone-id` is returning the bound value")
       (second (#'qp.wrap-value-literals/add-type-info datetime-str
                                                       {:unit :day})))))
 
-(deftest ^:parallel parse-datetime-literal-strings-test
+(deftest parse-datetime-literal-strings-test
   (doseq [[timezone expected] {"UTC"        (t/zoned-date-time "2018-10-01T00:00:00Z[UTC]")
                                "US/Pacific" (t/zoned-date-time "2018-10-01T00:00:00-07:00[US/Pacific]")}]
     (is (= expected
-           (parse-with-timezone "2018-10-01" timezone))
+           (parse-with-timezone! "2018-10-01" timezone))
         (format "datetime literal string '2018-10-01' parsed with the %s timezone should be %s" timezone expected))))
 
 (deftest ^:parallel wrap-datetime-literal-strings-test
@@ -167,8 +167,8 @@
                          [:< !day.date "2015-06-03"]]}))))
         "should also apply if the Fields are UNIX timestamps or other things with semantic type of :type/Datetime")))
 
-(deftest ^:parallel wrap-datetime-literal-strings-test-6
-  (mt/with-report-timezone-id "US/Pacific"
+(deftest wrap-datetime-literal-strings-test-6
+  (mt/with-report-timezone-id! "US/Pacific"
     (is (= (:query
             (lib.tu.macros/mbql-query checkins
               {:source-query {:source-table $$checkins}

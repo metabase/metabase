@@ -179,6 +179,15 @@
       (str (upper-case-en (subs s 0 1))
            (lower-case-en (subs s 1))))))
 
+(defn regex->str
+  "Returns the contents of a regex as a string.
+
+  This is simply [[str]] in Clojure but needs to remove slashes (`\"/regex contents/\"`) in CLJS."
+  [regex]
+  #?(:clj  (str regex)
+     :cljs (let [s (str regex)]
+             (subs s 1 (dec (count s))))))
+
 ;;; define custom CSK conversion functions so we don't run into problems if the system locale is Turkish
 
 ;; so Kondo doesn't complain

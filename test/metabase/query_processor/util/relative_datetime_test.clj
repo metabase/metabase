@@ -37,8 +37,8 @@
    (testing "Values of getdate() and server side generated timestamp are equal"
      (mt/with-metadata-provider (mt/id)
        (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator :week -1)]
-         (doseq [tz-setter [qp.test-util/do-with-report-timezone-id
-                            test.tz/do-with-system-timezone-id
+         (doseq [tz-setter [qp.test-util/do-with-report-timezone-id!
+                            test.tz/do-with-system-timezone-id!
                             qp.test-util/do-with-database-timezone-id
                             qp.test-util/do-with-results-timezone-id]
                  timezone ["America/Los_Angeles"
@@ -54,8 +54,8 @@
      (testing "Value of server side generated timestamp matches the one from getdate() with multiple timezone settings"
        (mt/with-results-timezone-id "UTC"
          (mt/with-database-timezone-id "America/Los_Angeles"
-           (mt/with-report-timezone-id "America/Los_Angeles"
-             (mt/with-system-timezone-id "Europe/Prague"
+           (mt/with-report-timezone-id! "America/Los_Angeles"
+             (mt/with-system-timezone-id! "Europe/Prague"
                (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator :week -1)]
                  (test-thunk))))))))))
 
@@ -80,8 +80,8 @@
      ;; to match timezone of the session. However that adjustment would come _after the truncation and addition_
      ;; that :relative-datetime does, hence would produce incorrect results. This test verifies the situation
      ;; is correctly handled.
-     (mt/with-report-timezone-id "America/New_York"
-       (mt/with-system-timezone-id "UTC"
+     (mt/with-report-timezone-id! "America/New_York"
+       (mt/with-system-timezone-id! "UTC"
          (mt/with-clock (t/zoned-date-time (t/local-date-time 2014 8 10 0 30 1 0) "UTC")
            (is (= [[13 "Dwight Gresham" "2014-08-01T10:30:00-04:00"]
                    [15 "Rüstem Hebel" "2014-08-01T12:45:00-04:00"]

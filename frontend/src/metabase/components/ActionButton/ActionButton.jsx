@@ -5,6 +5,7 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
+import ButtonsS from "metabase/css/components/buttons.module.css";
 import { cancelable } from "metabase/lib/promise";
 import { Icon } from "metabase/ui";
 
@@ -26,9 +27,9 @@ export default class ActionButton extends Component {
   };
 
   static defaultProps = {
-    className: "Button",
-    successClassName: "Button--success",
-    failedClassName: "Button--danger",
+    className: ButtonsS.Button,
+    successClassName: ButtonsS.ButtonSuccess,
+    failedClassName: ButtonsS.ButtonDanger,
     normalText: t`Save`,
     activeText: t`Saving...`,
     failedText: t`Save failed`,
@@ -102,6 +103,7 @@ export default class ActionButton extends Component {
 
   render() {
     const {
+      innerRef,
       normalText,
       activeText,
       failedText,
@@ -121,12 +123,12 @@ export default class ActionButton extends Component {
 
     return (
       <Button
+        ref={innerRef}
         {...props}
         className={
           forceActiveStyle
-            ? cx("Button", "Button--waiting")
+            ? ButtonsS.Button
             : cx(className, {
-                "Button--waiting": active,
                 [successClassName]: result === "success",
                 [failedClassName]: result === "failed",
                 "pointer-events-none": isActionDisabled,
