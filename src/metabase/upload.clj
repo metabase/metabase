@@ -469,6 +469,16 @@
 ;;; |  public interface for creating CSV table
 ;;; +-----------------------------------------
 
+(defn- fail-stats
+  "If a given upload / append / replace fails, this function is used to create the failure event payload for snowplow.
+  It may involve redundantly reading the file, or even failing again if the file is unreadable."
+  [file]
+  (with-open [reader (bom/bom-reader file)]
+    (let [rows (csv/read-csv reader)]
+      {:size-mb     (file-size-mb file)
+       :num-columns (count (first rows))
+       :num-rows    (count (rest rows))})))
+
 (mu/defn create-csv-upload!
   "Main entry point for CSV uploading.
 
@@ -546,17 +556,11 @@
                                            :model-id    (:id card)
                                            :stats       stats}})
 
-        (snowplow/track-event! ::snowplow/csv-upload-successful
-                               api/*current-user-id*
+        (snowplow/track-event! ::snowplow/csv-upload-successful api/*current-user-id*
                                (assoc stats :model-id (:id card)))
         card)
       (catch Throwable e
-        (let [fail-stats (with-open [reader (bom/bom-reader file)]
-                           (let [rows (csv/read-csv reader)]
-                             {:size-mb     (/ (.length file) 1048576.0)
-                              :num-columns (count (first rows))
-                              :num-rows    (count (rest rows))}))]
-          (snowplow/track-event! ::snowplow/csv-upload-failed api/*current-user-id* fail-stats))
+        (snowplow/track-event! ::snowplow/csv-upload-failed api/*current-user-id* (fail-stats file))
         (throw e)))))
 
 ;;; +-----------------------------
@@ -635,67 +639,74 @@
 
 (defn- append-csv!*
   [database table file]
-  (with-open [reader (bom/bom-reader file)]
-    (let [timer              (start-timer)
-          [header & rows]    (without-auto-pk-columns (csv/read-csv reader))
-          driver             (driver.u/database->driver database)
-          normed-name->field (m/index-by (comp normalize-column-name :name)
-                                         (t2/select :model/Field :table_id (:id table) :active true))
-          normed-header      (map normalize-column-name header)
-          create-auto-pk?    (and
-                              (driver/create-auto-pk-with-append-csv? driver)
-                              (not (contains? normed-name->field auto-pk-column-name)))
-          _                  (check-schema (dissoc normed-name->field auto-pk-column-name) header)
-          settings           (upload-parsing/get-settings)
-          old-column-types   (map (comp base-type->upload-type :base_type normed-name->field) normed-header)
-          ;; in the happy, and most common, case all the values will match the existing types
-          ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
-          ;; we can come back and optimize this to an optimistic-with-fallback approach later.
-          detected-types     (column-types-from-rows settings old-column-types rows)
-          new-column-types   (map #(if (matching-or-upgradable? %1 %2) %2 %1) old-column-types detected-types)
-          _                  (when (and (not= old-column-types new-column-types)
-                                        ;; if we cannot coerce all the columns, don't bother coercing any of them
-                                        ;; we will instead throw an error when we try to parse as the old type
-                                        (= detected-types new-column-types))
-                               (let [fields (map normed-name->field normed-header)]
-                                 (->> (changed-field->new-type fields old-column-types detected-types)
-                                      (alter-columns! driver database table))))
-          ;; this will fail if any of our required relaxations were rejected.
-          parsed-rows        (parse-rows settings new-column-types rows)
-          row-count          (count parsed-rows)]
+  (try
+    (with-open [reader (bom/bom-reader file)]
+      (let [timer              (start-timer)
+            [header & rows]    (without-auto-pk-columns (csv/read-csv reader))
+            driver             (driver.u/database->driver database)
+            normed-name->field (m/index-by (comp normalize-column-name :name)
+                                           (t2/select :model/Field :table_id (:id table) :active true))
+            normed-header      (map normalize-column-name header)
+            create-auto-pk?    (and
+                                (driver/create-auto-pk-with-append-csv? driver)
+                                (not (contains? normed-name->field auto-pk-column-name)))
+            _                  (check-schema (dissoc normed-name->field auto-pk-column-name) header)
+            settings           (upload-parsing/get-settings)
+            old-column-types   (map (comp base-type->upload-type :base_type normed-name->field) normed-header)
+            ;; in the happy, and most common, case all the values will match the existing types
+            ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
+            ;; we can come back and optimize this to an optimistic-with-fallback approach later.
+            detected-types     (column-types-from-rows settings old-column-types rows)
+            new-column-types   (map #(if (matching-or-upgradable? %1 %2) %2 %1) old-column-types detected-types)
+            _                  (when (and (not= old-column-types new-column-types)
+                                          ;; if we cannot coerce all the columns, don't bother coercing any of them
+                                          ;; we will instead throw an error when we try to parse as the old type
+                                          (= detected-types new-column-types))
+                                 (let [fields (map normed-name->field normed-header)]
+                                   (->> (changed-field->new-type fields old-column-types detected-types)
+                                        (alter-columns! driver database table))))
+            ;; this will fail if any of our required relaxations were rejected.
+            parsed-rows        (parse-rows settings new-column-types rows)
+            row-count          (count parsed-rows)
+            stats              {:num-rows          row-count
+                                :num-columns       (count new-column-types)
+                                :generated-columns (if create-auto-pk? 1 0)
+                                :size-mb           (file-size-mb file)
+                                :upload-seconds    (since-ms timer)}]
 
-      (try
-        (driver/insert-into! driver (:id database) (table-identifier table) normed-header parsed-rows)
-        (catch Throwable e
-          (throw (ex-info (ex-message e) {:status-code 422}))))
+        (try
+          (driver/insert-into! driver (:id database) (table-identifier table) normed-header parsed-rows)
+          (catch Throwable e
+            (throw (ex-info (ex-message e) {:status-code 422}))))
 
-      (when create-auto-pk?
-        (driver/add-columns! driver
-                             (:id database)
-                             (table-identifier table)
-                             {auto-pk-column-keyword (driver/upload-type->database-type driver ::auto-incrementing-int-pk)}
-                             :primary-key [auto-pk-column-keyword]))
+        (when create-auto-pk?
+          (driver/add-columns! driver
+                               (:id database)
+                               (table-identifier table)
+                               {auto-pk-column-keyword (driver/upload-type->database-type driver ::auto-incrementing-int-pk)}
+                               :primary-key [auto-pk-column-keyword]))
 
-      (scan-and-sync-table! database table)
+        (scan-and-sync-table! database table)
 
-      (when create-auto-pk?
-        (let [auto-pk-field (table-id->auto-pk-column (:id table))]
-          (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
+        (when create-auto-pk?
+          (let [auto-pk-field (table-id->auto-pk-column (:id table))]
+            (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
 
-      (events/publish-event! :event/upload-append
-                             {:user-id  (:id @api/*current-user*)
-                              :model-id (:id table)
-                              :model    :model/Table
-                              :details  {:db-id       (:id database)
-                                         :schema-name (:schema table)
-                                         :table-name  (:name table)
-                                         :stats       {:num-rows          row-count
-                                                       :num-columns       (count new-column-types)
-                                                       :generated-columns (if create-auto-pk? 1 0)
-                                                       :size-mb           (file-size-mb file)
-                                                       :upload-seconds    (since-ms timer)}}})
+        (events/publish-event! :event/upload-append
+                               {:user-id  (:id @api/*current-user*)
+                                :model-id (:id table)
+                                :model    :model/Table
+                                :details  {:db-id       (:id database)
+                                           :schema-name (:schema table)
+                                           :table-name  (:name table)
+                                           :stats       stats}})
 
-      {:row-count row-count})))
+        (snowplow/track-event! ::snowplow/csv-append-successful api/*current-user-id* stats)
+
+        {:row-count row-count}))
+    (catch Throwable e
+      (snowplow/track-event! ::snowplow/csv-append-failed api/*current-user-id* (fail-stats file))
+      (throw e))))
 
 (defn- can-append-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
