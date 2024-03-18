@@ -7,42 +7,29 @@
 
 (declare derive)
 
-(defn- assert-no-child-repeats [visited-children [parent & children]]
-  (when (contains? @visited-children parent)
-    (assert (empty? children) (format "You must only list the children of %s at its first occurrence." parent))
-    (swap! visited-children conj parent)))
-
 (defn- derive-children
-  ([h root]
-   (derive-children (atom #{}) h root))
-  ([visited-children h [parent & children]]
-   (reduce (fn [h child]
-             (if (keyword? child)
-               (derive h child parent)
-               (do (assert-no-child-repeats visited-children child)
-                   (derive-children visited-children
-                                    (derive h (first child) parent)
-                                    child))))
-           h
-           children)))
-
-(defn- derive-parents [h child->parents]
-  (reduce
-   (fn [h [child parents]]
-     (reduce #(derive %1 child %2) h parents))
-   h
-   child->parents))
+  [h [parent & children]]
+  (reduce (fn [h child]
+            (cond
+              (keyword? child) (derive h child parent)
+              (vector? child) (let [grandchild (first child)]
+                                (assert (not (and (contains? (:parents h) grandchild) (rest child)))
+                                        (format "You may only list a %s's children at its first occurrence"
+                                                grandchild))
+                                (derive-children (derive h grandchild parent)
+                                                 child))))
+          h
+          children))
 
 (defn- derive-basis [h basis]
-  (cond (map? basis) (derive-parents h basis)
-        (coll? basis) (derive-children h basis)
+  (cond (vector? basis) (derive-children h basis)
         :else (throw (ex-info (str "Unsupported type for ordered-hierarchy: " (type basis))
                               {:h h :basis basis}))))
 
 (defn make-hierarchy
-  "Similar to [[clojure.core/make-hierarchy]], but the returned hierarchy will supports ordered derivations.
+  "Similar to [[clojure.core/make-hierarchy]], but the returned hierarchy has well-defined orderings for its sets.
 
-  Can take arguments to be treated as roots, defined using hiccup syntax. NOTE: we do not check that they are roots.
+  Can take arguments to be treated as roots, defined using hiccup syntax.
 
   !! WARNING !!
   Using [[clojure.core/derive]] with this will corrupt the ordering - you must use the implementation from this ns."
