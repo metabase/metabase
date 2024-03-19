@@ -52,7 +52,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
     it("needs a default value to save the query, but allows running it", () => {
       SQLFilter.toggleRequired();
-      SQLFilter.getRunQueryButton().should("not.to.be.disabled");
+      SQLFilter.getRunQueryButton().should("not.be.disabled");
       SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
 
       SQLFilter.getSaveQueryButton().realHover();
