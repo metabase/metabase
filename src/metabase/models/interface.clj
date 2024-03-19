@@ -668,10 +668,19 @@
   [_original-model dest-key _hydrated-key]
   [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])
 
-(methodical/defmethod t2.hydrate/hydrate-with-strategy :before ::t2.hydrate/multimethod-simple
+(methodical/defmethod t2.hydrate/hydrate-with-strategy :around ::t2.hydrate/multimethod-simple
+  "Throws an error if do simple hydrations that make DB call on a sequence."
   [model strategy k instances]
-  (when (and (not config/is-prod?)
-             (> (count instances) 1))
-    (throw (ex-info (format "N+1 hydration detected!!! Model %s, key %s]" (pr-str model) k)
-                    {:model model :strategy strategy :k k})))
-  instances)
+  (if (or config/is-prod? (< (count instances) 2))
+    (next-method model strategy k instances)
+    (t2/with-call-count [call-count]
+      (let [res (next-method model strategy k instances)
+            ;; if it's a lazy-seq then we need to realize it so call-count is counted
+            res (if (instance? clojure.lang.LazySeq res)
+                  (doall res)
+                  res)]
+        ;; only throws an exception if the simple hydration makes a DB call
+        (when (pos-int? (call-count))
+          (throw (ex-info (format "N+1 hydration detected!!! Model %s, key %s]" (pr-str model) k)
+                          {:model model :strategy strategy :k k})))
+        res))))
