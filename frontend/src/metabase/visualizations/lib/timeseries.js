@@ -232,7 +232,12 @@ export function getTimezone(series, warn) {
   }
   // Warn if the query was run in an unexpected timezone.
   const { results_timezone, requested_timezone } = series[0].data;
-  if (requested_timezone && requested_timezone !== results_timezone) {
+
+  if (
+    requested_timezone &&
+    moment().tz(requested_timezone).format() !==
+      moment().tz(results_timezone).format()
+  ) {
     warn(unexpectedTimezoneWarning({ results_timezone, requested_timezone }));
   }
   return results_timezone || DEFAULT_TIMEZONE;
