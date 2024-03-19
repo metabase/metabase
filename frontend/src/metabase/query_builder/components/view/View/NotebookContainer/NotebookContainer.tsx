@@ -1,8 +1,10 @@
 import type { TransitionEventHandler } from "react";
 import { useEffect, useState } from "react";
 
+import { useSelector } from "metabase/lib/redux";
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
 import NativeQueryPreviewSidebar from "metabase/query_builder/components/view/NativeQueryPreviewSidebar";
+import { getUiControls } from "metabase/query_builder/selectors";
 import { Flex } from "metabase/ui";
 
 // There must exist some transition time, no matter how short,
@@ -22,6 +24,14 @@ export const NotebookContainer = ({
   useEffect(() => {
     isOpen && setShouldShowNotebook(isOpen);
   }, [isOpen]);
+
+  const { isNativePreviewSidebarOpen } = useSelector(getUiControls);
+  const [shouldShowNativeQueryPreview, setShouldShowNativeQueryPreview] =
+    useState(isNativePreviewSidebarOpen);
+
+  useEffect(() => {
+    setShouldShowNativeQueryPreview(isNativePreviewSidebarOpen);
+  }, [isNativePreviewSidebarOpen]);
 
   const handleTransitionEnd: TransitionEventHandler<HTMLDivElement> = (
     event,
@@ -48,11 +58,12 @@ export const NotebookContainer = ({
       onTransitionEnd={handleTransitionEnd}
     >
       {shouldShowNotebook && <Notebook {...props} />}
-
-      <NativeQueryPreviewSidebar
-        onUpdateQuestion={() => {}}
-        onSetUIControls={() => {}}
-      />
+      {shouldShowNativeQueryPreview && (
+        <NativeQueryPreviewSidebar
+          onUpdateQuestion={() => {}}
+          onSetUIControls={() => {}}
+        />
+      )}
     </Flex>
   );
 };

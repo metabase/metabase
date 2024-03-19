@@ -1,7 +1,9 @@
-import { useCallback } from "react";
 import { t } from "ttag";
 
 import { getEngineNativeType } from "metabase/lib/engine";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { setUIControls } from "metabase/query_builder/actions";
+import { getUiControls } from "metabase/query_builder/selectors";
 import { Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -20,10 +22,20 @@ interface ToggleNativeQueryPreviewProps {
 export const ToggleNativeQueryPreview = ({
   question,
 }: ToggleNativeQueryPreviewProps): JSX.Element => {
+  const dispatch = useDispatch();
+  const {
+    isNativePreviewSidebarOpen,
+  }: { isNativePreviewSidebarOpen?: boolean } = useSelector(getUiControls);
+
   const engineType = getEngineNativeType(question.database()?.engine);
   const tooltip = BUTTON_TOOLTIP[engineType];
 
-  const handleClick = useCallback(() => {}, []);
+  const handleClick = () =>
+    dispatch(
+      setUIControls({
+        isNativePreviewSidebarOpen: !isNativePreviewSidebarOpen,
+      }),
+    );
 
   return (
     <Tooltip label={tooltip} position="top">
