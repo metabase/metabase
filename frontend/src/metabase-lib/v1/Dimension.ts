@@ -1482,6 +1482,7 @@ export class AggregationDimension extends Dimension {
       });
     } catch (e) {
       console.warn("AggregationDimension.field()", e);
+      return null;
     }
   }
 
