@@ -125,7 +125,7 @@
     (is (= {:table    (mt/id :venues)
             :metrics  [metric-id-b]
             :segments (sort [segment-id-a segment-id-b])}
-           (->> (mt/user-http-request :crowberto :get 200 (format "metric/%s/related" metric-id-a))
+           (->> (mt/user-http-request :crowberto :get 200 (format "legacy-metric/%s/related" metric-id-a))
                 result-mask)))))
 
 (deftest related-segments-test
