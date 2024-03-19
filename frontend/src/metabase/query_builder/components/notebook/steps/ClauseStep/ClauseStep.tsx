@@ -3,8 +3,9 @@ import { PointerSensor, useSensor, DndContext } from "@dnd-kit/core";
 import { restrictToParentElement } from "@dnd-kit/modifiers";
 import { SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { ReactNode } from "react";
-import { useCallback } from "react";
+import { useMergedRef } from "@mantine/hooks";
+import type { ReactNode, Ref } from "react";
+import { forwardRef, useCallback } from "react";
 
 import { Icon } from "metabase/ui";
 
@@ -54,19 +55,21 @@ export const ClauseStep = <T,>({
   ...props
 }: ClauseStepProps<T>): JSX.Element => {
   const renderItem = ({ item, index, onOpen }: RenderItemOpts<T>) => (
-    <NotebookCellItem color={color} readOnly={readOnly} onClick={onOpen}>
-      {renderName(item, index)}
-      {!readOnly && (
-        <Icon
-          className="ml1"
-          name="close"
-          onClick={e => {
-            e.stopPropagation();
-            onRemove(item, index);
-          }}
-        />
-      )}
-    </NotebookCellItem>
+    <ClauseStepDndItem index={index} readOnly={readOnly}>
+      <NotebookCellItem color={color} readOnly={readOnly} onClick={onOpen}>
+        {renderName(item, index)}
+        {!readOnly && (
+          <Icon
+            className="ml1"
+            name="close"
+            onClick={e => {
+              e.stopPropagation();
+              onRemove(item, index);
+            }}
+          />
+        )}
+      </NotebookCellItem>
+    </ClauseStepDndItem>
   );
 
   const renderNewItem = ({ onOpen }: { onOpen?: () => void }) => (
@@ -81,12 +84,11 @@ export const ClauseStep = <T,>({
     <NotebookCell color={color} data-testid={props["data-testid"]}>
       <ClauseStepDndContext items={items} onReorder={onReorder}>
         {items.map((item, index) => (
-          <ClauseStepDndItem key={index} index={index} readOnly={readOnly}>
-            <ClausePopover
-              renderItem={onOpen => renderItem({ item, index, onOpen })}
-              renderPopover={onClose => renderPopover({ item, index, onClose })}
-            />
-          </ClauseStepDndItem>
+          <ClausePopover
+            key={index}
+            renderItem={onOpen => renderItem({ item, index, onOpen })}
+            renderPopover={onClose => renderPopover({ item, index, onClose })}
+          />
         ))}
       </ClauseStepDndContext>
       {!readOnly && (
@@ -147,11 +149,10 @@ type ClauseStepDndItemProps = {
   children: ReactNode;
 };
 
-function ClauseStepDndItem({
-  index,
-  readOnly,
-  children,
-}: ClauseStepDndItemProps) {
+const ClauseStepDndItem = forwardRef(function ClauseStepDndItem(
+  { index, readOnly, children }: ClauseStepDndItemProps,
+  ref: Ref<HTMLDivElement>,
+) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({
       id: getItemIdFromIndex(index),
@@ -160,9 +161,11 @@ function ClauseStepDndItem({
       animateLayoutChanges: () => false,
     });
 
+  const mergedRef = useMergedRef(ref, setNodeRef);
+
   return (
     <div
-      ref={setNodeRef}
+      ref={mergedRef}
       {...attributes}
       {...listeners}
       style={{
@@ -173,7 +176,7 @@ function ClauseStepDndItem({
       {children}
     </div>
   );
-}
+});
 
 // dnd-kit ignores `0` item, so we convert indexes to string `"0"`
 function getItemIdFromIndex(index: number) {

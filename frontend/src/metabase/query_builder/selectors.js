@@ -328,7 +328,6 @@ export const getQuestion = createSelector(
     if (!question) {
       return;
     }
-
     const isEditingModel = queryBuilderMode === "dataset";
     if (isEditingModel) {
       return question.lockDisplay();
@@ -341,8 +340,8 @@ export const getQuestion = createSelector(
     // with a clean, ad-hoc, query.
     // This has to be skipped for users without data permissions.
     // See https://github.com/metabase/metabase/issues/20042
-    return type !== "question" && isEditable && !isEditingModel
-      ? question.composeDataset()
+    return type !== "question" && isEditable
+      ? question.composeQuestion()
       : question;
   },
 );
@@ -355,7 +354,7 @@ function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
   );
 }
 
-// Models or metrics may be composed via the `composeDataset` method.
+// Models or metrics may be composed via the `composeQuestion` method.
 // A composed entity should be treated as the equivalent to its original form.
 // We need to handle scenarios where both the `lastRunQuestion` and the `currentQuestion` are
 // in either form.
@@ -365,15 +364,12 @@ function areComposedEntitiesEquivalent({
   currentQuestion,
   tableMetadata,
 }) {
-  const isModelOrMetric =
-    originalQuestion?.type() === "model" ||
-    originalQuestion?.type() === "metric";
-
-  if (!lastRunQuestion || !currentQuestion || !isModelOrMetric) {
+  const isQuestion = originalQuestion?.type() === "question";
+  if (!lastRunQuestion || !currentQuestion || isQuestion) {
     return false;
   }
 
-  const composedOriginal = originalQuestion.composeDataset();
+  const composedOriginal = originalQuestion.composeQuestion();
 
   const isLastRunComposed = areLegacyQueriesEqual(
     lastRunQuestion.datasetQuery(),

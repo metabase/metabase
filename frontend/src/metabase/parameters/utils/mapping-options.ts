@@ -153,13 +153,12 @@ export function getParameterMappingOptions(
   }
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
-  const isMetricOrModel =
-    question.type() === "model" || question.type() === "metric";
-  if (!isNative || isMetricOrModel) {
+  const isQuestion = question.type() === "question";
+  if (!isNative || !isQuestion) {
     // treat the dataset/model question like it is already composed so that we can apply
     // dataset/model-specific metadata to the underlying dimension options
-    const query = isMetricOrModel
-      ? question.composeDataset().query()
+    const query = !isQuestion
+      ? question.composeQuestion().query()
       : question.query();
     const stageIndex = -1;
     const availableColumns = Lib.filterableColumns(query, stageIndex);
