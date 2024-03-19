@@ -34,8 +34,9 @@
    :perms/manage-database       :details})
 
 (def ^:private ->api-vals
-  {:perms/view-data             {:unrestricted :unrestricted
-                                 :blocked      :blocked}
+  {:perms/view-data             {:unrestricted           :unrestricted
+                                 :legacy-no-self-service :legacy-no-self-service
+                                 :blocked                :blocked}
    :perms/create-queries        {:query-builder-and-native :query-builder-and-native
                                  :query-builder            :query-builder
                                  :no                       :no}

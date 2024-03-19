@@ -53,7 +53,13 @@
          (is (thrown-with-msg?
               ExceptionInfo
               #"Permission type :perms/native-query-editing cannot be set to :invalid-value"
-              (data-perms/set-database-permission! group-id database-id :perms/native-query-editing :invalid-value))))))))
+              (data-perms/set-database-permission! group-id database-id :perms/native-query-editing :invalid-value))))
+
+       (testing "View data permissions cannot be set to legacy-no-self-service"
+          (is (thrown-with-msg?
+               ExceptionInfo
+               #"Permission value :legacy-no-self-service is deprecated and can not be set."
+               (data-perms/set-database-permission! group-id database-id :perms/view-data :legacy-no-self-service))))))))
 
 (deftest set-table-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}
