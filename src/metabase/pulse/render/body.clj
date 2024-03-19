@@ -820,6 +820,7 @@
   (let [rows            (replace-nils rows)
         x-axis-rowfn    (or (ui-logic/mult-x-axis-rowfn card data) #(vector (first %)))
         y-axis-rowfn    (or (ui-logic/mult-y-axis-rowfn card data) #(vector (second %)))
+        rows            (sort-by x-axis-rowfn rows)
         x-rows          (filter some? (map x-axis-rowfn rows))
         y-rows          (filter some? (map y-axis-rowfn rows))
         joined-rows     (mapv vector x-rows y-rows)
