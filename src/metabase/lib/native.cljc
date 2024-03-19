@@ -260,3 +260,10 @@
   [query :- ::lib.schema/query]
   (assert-native-query! (lib.util/query-stage query 0))
   (:engine (lib.metadata/database query)))
+
+(defmethod lib.query/can-save-method :mbql.stage/native
+  [query]
+  (every? (fn [[_k {:keys [required, default]}]]
+            (or (not required)
+                (some? (if (seq? default) (first default) default))))
+          (template-tags query)))
