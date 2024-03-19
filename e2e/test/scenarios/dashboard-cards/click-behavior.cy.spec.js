@@ -2029,7 +2029,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           ["sum", ["field", ORDERS.TOTAL, null]],
           ["sum", ["field", ORDERS.DISCOUNT, null]],
         ],
-        breakout: [["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
         filter: ["=", ["field", ORDERS.USER_ID, null], 1],
       },
       display: "bar",
