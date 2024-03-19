@@ -682,5 +682,5 @@
         ;; only throws an exception if the simple hydration makes a DB call
         (when (pos-int? (call-count))
           (throw (ex-info (format "N+1 hydration detected!!! Model %s, key %s]" (pr-str model) k)
-                          {:model model :strategy strategy :k k})))
+                          {:model model :strategy strategy :k k :items-count (count instances) :db-calls (call-count)})))
         res))))
