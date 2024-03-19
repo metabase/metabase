@@ -95,7 +95,7 @@ You can get a parent driver's implementation for a method by using `get-method`:
 
 ```clj
 (defmethod driver/mbql->native :bigquery [driver query]
-  ((get-method driver/mbql-native :sql) driver query))
+  ((get-method driver/mbql->native :sql) driver query))
 ```
 
 This is the equivalent of calling `super.someMethod()` in object-oriented programming.
