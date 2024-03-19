@@ -1,4 +1,5 @@
 import { useCallback, useRef } from "react";
+import { useUnmount } from "react-use";
 
 import { useDebouncedCallback } from "metabase/hooks/use-debounced-callback";
 import { Select, Loader } from "metabase/ui";
@@ -70,6 +71,12 @@ export function ListPicker(props: ListPickerProps) {
     },
     [onSearchChange, debouncedOnSearch, searchDebounceMs],
   );
+  useUnmount(() => {
+    if (lastSearch.current) {
+      onSearchChange(lastSearch.current);
+    }
+    debouncedOnSearch.cancel();
+  });
 
   return (
     <Select
