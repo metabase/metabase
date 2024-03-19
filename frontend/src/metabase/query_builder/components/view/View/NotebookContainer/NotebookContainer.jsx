@@ -5,7 +5,7 @@ import Notebook from "metabase/query_builder/components/notebook/Notebook";
 import { Flex } from "metabase/ui";
 const delayBeforeNotRenderingNotebook = 10;
 
-const QueryViewNotebook = ({ isNotebookContainerOpen, ...props }) => {
+export const NotebookContainer = ({ isNotebookContainerOpen, ...props }) => {
   const [shouldShowNotebook, setShouldShowNotebook] = useState(
     isNotebookContainerOpen,
   );
@@ -46,8 +46,6 @@ const QueryViewNotebook = ({ isNotebookContainerOpen, ...props }) => {
   );
 };
 
-QueryViewNotebook.propTypes = {
+NotebookContainer.propTypes = {
   isNotebookContainerOpen: PropTypes.bool.isRequired,
 };
-
-export default QueryViewNotebook;

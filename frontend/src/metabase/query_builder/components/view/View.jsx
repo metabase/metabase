@@ -25,7 +25,7 @@ import { TagEditorSidebar } from "../template_tags/TagEditorSidebar";
 
 import NewQuestionHeader from "./NewQuestionHeader";
 import NewQuestionView from "./View/NewQuestionView";
-import QueryViewNotebook from "./View/QueryViewNotebook";
+import { NotebookContainer } from "./View/NotebookContainer";
 import {
   BorderedViewTitleHeader,
   NativeQueryEditorContainer,
@@ -384,7 +384,7 @@ class View extends Component {
           {isHeaderVisible && this.renderHeader()}
           <QueryBuilderContentContainer>
             {!isNative && (
-              <QueryViewNotebook
+              <NotebookContainer
                 isNotebookContainerOpen={isNotebookContainerOpen}
                 {...this.props}
               />
