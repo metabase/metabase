@@ -101,7 +101,7 @@
   net.redhogs.cronparser/cron-parser-core   {:mvn/version "3.5"                 ; describe Cron schedule in human-readable language
                                              :exclusions  [joda-time/joda-time  ; exclude joda time 2.3 which has outdated timezone information
                                                            org.slf4j/slf4j-api]}
-  net.sf.cssbox/cssbox                      {:mvn/version "5.0.0"               ; HTML / CSS rendering
+  net.sf.cssbox/cssbox                      {:mvn/version "5.0.1"               ; HTML / CSS rendering
                                              :exclusions  [org.slf4j/slf4j-api
                                                            junit/junit]}
   net.thisptr/jackson-jq                    {:mvn/version "1.0.0-preview.20220705"} ; Java implementation of the JQ json query language
