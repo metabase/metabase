@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
+import { useWindowEvent } from "@mantine/hooks";
+import { useState, useMemo } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -83,22 +84,16 @@ export function EntityPickerModal<TItem extends TypeWithModel>({
   const hasTabs = tabs.length > 1 || searchQuery;
   const tabModels = useMemo(() => tabs.map(t => t.model), [tabs]);
 
-  useEffect(() => {
-    const handleEscapeModal = (event: KeyboardEvent) => {
+  useWindowEvent(
+    "keydown",
+    event => {
       if (event.key === "Escape") {
         event.stopPropagation();
         onClose();
       }
-    };
-
-    document.addEventListener("keydown", handleEscapeModal, true);
-
-    const cleanup = () => {
-      document.removeEventListener("keydown", handleEscapeModal, true);
-    };
-
-    return cleanup;
-  }, [onClose]);
+    },
+    { capture: true, once: true },
+  );
 
   return (
     <Modal.Root
@@ -106,6 +101,7 @@ export function EntityPickerModal<TItem extends TypeWithModel>({
       onClose={onClose}
       data-testid="entity-picker-modal"
       trapFocus={trapFocus}
+      closeOnEscape={false} // we're doing this manually in useWindowEvent
     >
       <Modal.Overlay />
       <ModalContent h="100%">
