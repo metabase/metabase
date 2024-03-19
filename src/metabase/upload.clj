@@ -109,7 +109,7 @@
         ::*boolean-int*
         ::auto-incrementing-int-pk]]]
      [::datetime ::date]
-     [::offset-datetime]]]))
+     ::offset-datetime]]))
 
 (def ^:private abstract->concrete
   "Not all value types correspond to column types. We refer to these as \"abstract\" types, and give them *ear-muffs*.
