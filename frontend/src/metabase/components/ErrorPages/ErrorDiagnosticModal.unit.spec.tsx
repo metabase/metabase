@@ -68,7 +68,11 @@ const defaultErrorPayload: ErrorPayload = {
 
 const setup = (errorInfo: ErrorPayload) => {
   render(
-    <ErrorDiagnosticModal errorInfo={errorInfo} onClose={() => undefined} />,
+    <ErrorDiagnosticModal
+      errorInfo={errorInfo}
+      onClose={() => undefined}
+      loading={false}
+    />,
   );
 };
 

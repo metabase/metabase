@@ -9,6 +9,18 @@ import { UtilApi, MetabaseApi, SessionApi } from "metabase/services";
 import type { ErrorPayload, ReportableEntityName } from "./types";
 import { getEntityDetails, hasQueryData } from "./utils";
 
+const maybeSerializeError = (key: string, value: any) => {
+  if (value?.constructor.name === "Error") {
+    return {
+      name: value.name,
+      message: value.message,
+      stack: value.stack,
+      cause: value.cause,
+    };
+  }
+  return value;
+};
+
 export const useErrorInfo = (
   { enabled }: { enabled?: boolean } = { enabled: true },
 ) => {
@@ -44,7 +56,11 @@ export const useErrorInfo = (
       : Promise.resolve(null);
 
     // @ts-expect-error non-standard error property
-    const frontendErrors = console?.errorBuffer?.map?.(err => err.join(""));
+    const frontendErrors = console?.errorBuffer?.map?.(errArray =>
+      errArray
+        .map((errLine: any) => JSON.stringify(errLine, maybeSerializeError))
+        .join(""),
+    );
 
     const settledPromises = await Promise.allSettled([
       entityInfoRequest,
