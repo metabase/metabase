@@ -143,7 +143,7 @@
   [value-type]
   (contains? column-types value-type))
 
-(defn ^:private column-type
+(defn ^:private concretize
   "Determine the desired column-type given the existing column-type (nil if it's new) and the value-type of the data.
   If there's a valid coercion to the existing type, we will preserve it, but otherwise we will relax abstract types
   further to a concrete type."
@@ -313,7 +313,7 @@
   "Given the types of the existing columns (if there are any), and rows to be added, infer the best supporting types."
   [settings existing-types rows]
   (->> (reduce (type-relaxer settings) existing-types rows)
-       (u/map-all column-type existing-types)))
+       (u/map-all concretize existing-types)))
 
 (defn- detect-schema
   "Consumes the header and rows from a CSV file.

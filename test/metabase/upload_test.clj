@@ -1824,7 +1824,7 @@
                           (append!)))))
                 (io/delete-file file)))))))))
 
-(def ^:private column-type @#'upload/column-type)
+(def ^:private column-type @#'upload/concretize)
 
 (deftest initial-column-type-test
   (let [column-type (partial column-type nil)]
