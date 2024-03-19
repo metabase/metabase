@@ -225,9 +225,12 @@ export class GuiQueryEditor extends Component {
 
     return (
       <div
-        className={
-          "GuiBuilder-section GuiBuilder-data flex align-center arrow-right"
-        }
+        className={cx(
+          CS.arrowRight,
+          CS.alignCenter,
+          CS.flex,
+          "GuiBuilder-section GuiBuilder-data",
+        )}
       >
         <span className="GuiBuilder-section-label Query-label">{t`Data`}</span>
         {this.props.canChangeTable ? (
