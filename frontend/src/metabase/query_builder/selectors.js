@@ -371,7 +371,7 @@ function areModelsEquivalent({
     return false;
   }
 
-  const composedOriginal = originalQuestion.composeQuestion();
+  const composedOriginal = originalQuestion.composeQuestionAdhoc();
 
   const isLastRunComposed = areLegacyQueriesEqual(
     lastRunQuestion.datasetQuery(),
