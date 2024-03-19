@@ -1,3 +1,5 @@
+import type { EmbeddingParameters } from "metabase/public/lib/types";
+
 import type { Collection } from "./collection";
 import type { DashboardId, DashCardId } from "./dashboard";
 import type { DatabaseId } from "./database";
@@ -30,12 +32,14 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
 
   /* Indicates whether static embedding for this card has been published */
   enable_embedding: boolean;
+  embedding_params: EmbeddingParameters | null;
   can_write: boolean;
   initially_published_at: string | null;
 
   database_id?: DatabaseId;
   collection?: Collection | null;
   collection_id: number | null;
+  collection_position: number | null;
 
   result_metadata: Field[];
   moderation_reviews?: ModerationReview[];
