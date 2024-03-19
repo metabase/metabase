@@ -246,7 +246,7 @@
 
 (mu/defn ^:private settings->type->check :- type->check-schema
   [{:keys [number-separators] :as _settings}]
-  (let [explicit-int? (regex-matcher (int-regex number-separators))
+  (let [int?          (regex-matcher (int-regex number-separators))
         float-or-int? (regex-matcher (float-or-int-regex number-separators))
         float?        (regex-matcher (float-regex number-separators))]
     {::*boolean-int*   boolean-int-string?
@@ -254,7 +254,7 @@
      ::offset-datetime offset-datetime-string?
      ::date            date-string?
      ::datetime        datetime-string?
-     ::int             explicit-int?
+     ::int             int?
      ::*float-or-int*  float-or-int?
      ::float           float?
      ::varchar-255     varchar-255?
