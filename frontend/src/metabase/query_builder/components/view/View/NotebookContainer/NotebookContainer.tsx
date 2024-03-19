@@ -2,7 +2,8 @@ import type { TransitionEventHandler } from "react";
 import { useEffect, useState } from "react";
 
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
-import { Box } from "metabase/ui";
+import NativeQueryPreviewSidebar from "metabase/query_builder/components/view/NativeQueryPreviewSidebar";
+import { Flex } from "metabase/ui";
 
 // There must exist some transition time, no matter how short,
 // because we need to trigger the 'onTransitionEnd' in the component
@@ -33,7 +34,7 @@ export const NotebookContainer = ({
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
 
   return (
-    <Box
+    <Flex
       bg="white"
       pos="absolute"
       inset={0}
@@ -47,6 +48,11 @@ export const NotebookContainer = ({
       onTransitionEnd={handleTransitionEnd}
     >
       {shouldShowNotebook && <Notebook {...props} />}
-    </Box>
+
+      <NativeQueryPreviewSidebar
+        onUpdateQuestion={() => {}}
+        onSetUIControls={() => {}}
+      />
+    </Flex>
   );
 };
