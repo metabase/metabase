@@ -8,6 +8,7 @@ import SegmentItem from "metabase/admin/datamodel/components/SegmentItem";
 import FilteredToUrlTable from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import AdminS from "metabase/css/admin.module.css";
 import Segments from "metabase/entities/segments";
 
 class SegmentListAppInner extends Component {
@@ -22,7 +23,7 @@ class SegmentListAppInner extends Component {
             <Button primary>{t`New segment`}</Button>
           </Link>
         </div>
-        <table className="AdminTable">
+        <table className={AdminS.AdminTable}>
           <thead className="text-bold">
             <tr>
               <th style={{ minWidth: "320px" }}>{t`Name`}</th>
