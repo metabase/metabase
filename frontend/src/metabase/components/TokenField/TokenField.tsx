@@ -8,7 +8,6 @@ import _ from "underscore";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { isObscured } from "metabase/lib/dom";
 import {
-  KEYCODE_ESCAPE,
   KEYCODE_ENTER,
   KEYCODE_TAB,
   KEYCODE_UP,
@@ -301,7 +300,6 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
 
     // enter, tab, comma
     if (
-      keyCode === KEYCODE_ESCAPE ||
       keyCode === KEYCODE_TAB ||
       // We check event.key for comma presses because some keyboard layouts
       // (e.g. Russian) have a letter on that key and require a modifier to type
