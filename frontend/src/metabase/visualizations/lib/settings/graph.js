@@ -325,9 +325,10 @@ export const STACKABLE_SETTINGS = {
 export const TOOLTIP_SETTINGS = {
   "graph.tooltip_type": {
     getDefault: (_series, settings) => {
-      return settings["stackable.stack_display"] != null
-        ? "series_comparison"
-        : "default";
+      const shouldShowComparisonTooltip =
+        settings["stackable.stack_display"] != null &&
+        settings["stackable.stack_type"] != null;
+      return shouldShowComparisonTooltip ? "series_comparison" : "default";
     },
     hidden: true,
     readDependencies: ["stackable.stack_display"],
