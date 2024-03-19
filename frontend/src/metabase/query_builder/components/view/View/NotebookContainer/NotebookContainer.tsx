@@ -1,11 +1,17 @@
-import PropTypes from "prop-types";
 import { useEffect, useState } from "react";
 
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
 import { Flex } from "metabase/ui";
 const delayBeforeNotRenderingNotebook = 10;
 
-export const NotebookContainer = ({ isNotebookContainerOpen, ...props }) => {
+interface NotebookContainerProps {
+  isNotebookContainerOpen: boolean;
+}
+
+export const NotebookContainer = ({
+  isNotebookContainerOpen,
+  ...props
+}: NotebookContainerProps) => {
   const [shouldShowNotebook, setShouldShowNotebook] = useState(
     isNotebookContainerOpen,
   );
@@ -14,7 +20,9 @@ export const NotebookContainer = ({ isNotebookContainerOpen, ...props }) => {
     isNotebookContainerOpen && setShouldShowNotebook(isNotebookContainerOpen);
   }, [isNotebookContainerOpen]);
 
-  const handleTransitionEnd = event => {
+  const handleTransitionEnd: React.TransitionEventHandler<HTMLDivElement> = (
+    event,
+  ): void => {
     if (event.propertyName === "opacity" && !isNotebookContainerOpen) {
       setShouldShowNotebook(false);
     }
@@ -44,8 +52,4 @@ export const NotebookContainer = ({ isNotebookContainerOpen, ...props }) => {
       {shouldShowNotebook && <Notebook {...props} />}
     </Flex>
   );
-};
-
-NotebookContainer.propTypes = {
-  isNotebookContainerOpen: PropTypes.bool.isRequired,
 };
