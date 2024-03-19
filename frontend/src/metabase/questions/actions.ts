@@ -18,7 +18,8 @@ export const loadMetadataForCard =
 
     // metadata for an ad-hoc question based on this question
     if (question.isSaved() && question.type() !== "question") {
-      const adhocQuestion = question.composeQuestionAdhoc();
+      const questionWithMetadata = new Question(card, getMetadata(getState()));
+      const adhocQuestion = questionWithMetadata.composeQuestionAdhoc();
       const adhocDependencies = Lib.dependentMetadata(adhocQuestion.query());
       await dispatch(loadMetadataForDependentItems(adhocDependencies, options));
     }
