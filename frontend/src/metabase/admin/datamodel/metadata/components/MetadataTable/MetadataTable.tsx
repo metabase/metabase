@@ -163,7 +163,7 @@ const TableTitleSection = ({
   );
 
   return (
-    <div className={cx(AdminS.MetadataTableTitle, CS.flex, "flex-column")}>
+    <div className={cx(CS.bgWhite, CS.flex, "flex-column")}>
       {tab === "columns" ? (
         <>
           <TableNameInput

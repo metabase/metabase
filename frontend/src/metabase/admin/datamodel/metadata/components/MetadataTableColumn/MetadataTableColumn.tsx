@@ -121,7 +121,7 @@ const MetadataTableColumn = ({
           </div>
           <div
             className={cx(
-              AdminS.MetadataTableTitle,
+              CS.bgWhite,
               "flex flex-column flex-full mt1 mr1",
             )}
           >

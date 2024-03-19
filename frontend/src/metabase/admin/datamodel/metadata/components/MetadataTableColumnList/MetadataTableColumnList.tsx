@@ -201,12 +201,7 @@ const SortableColumn = ({
   });
 
   const dragHandle = (
-    <Grabber
-      data-testid="grabber"
-      style={{ width: 10 }}
-      {...attributes}
-      {...listeners}
-    />
+    <Grabber style={{ width: 10 }} {...attributes} {...listeners} />
   );
 
   return (

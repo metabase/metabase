@@ -283,10 +283,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow sorting fields in the custom order", () => {
       visitTableMetadata({ tableId: PRODUCTS_ID });
-      cy.wait("@fetchTables");
-      cy.findByTestId("column-ID").within(() => {
-        moveField(0, 200);
-      });
+      moveField(0, 200);
       cy.wait("@updateFieldOrder");
       openProductsTable();
       assertTableHeader([
@@ -662,7 +659,7 @@ const getFieldSection = fieldName => {
 };
 
 const moveField = (fieldIndex, deltaY) => {
-  cy.findByTestId("grabber", { timeout: 10000 })
+  cy.findAllByTestId("grabber")
     .eq(fieldIndex)
     .trigger("pointerdown", 0, 0, { force: true, button: 0, isPrimary: true })
     .wait(200)

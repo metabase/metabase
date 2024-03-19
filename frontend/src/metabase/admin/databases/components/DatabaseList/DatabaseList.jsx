@@ -87,7 +87,7 @@ export default class DatabaseList extends Component {
               )}
             >{t`Add database`}</Link>
           )}
-          <h2 className={AdminS.PageTitle}>{t`Databases`}</h2>
+          <h2 className={CS.m0}>{t`Databases`}</h2>
         </section>
         {error && (
           <section>
