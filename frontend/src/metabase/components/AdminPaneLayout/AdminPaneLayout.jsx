@@ -3,10 +3,9 @@ import { Fragment } from "react";
 
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 
 import { Container, HeadingContainer } from "./AdminPaneLayout.styled";
-import CS from "metabase/css/core/index.css";
 
 const AdminPaneTitle = ({
   title,
