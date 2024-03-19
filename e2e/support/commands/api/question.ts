@@ -5,13 +5,17 @@ declare global {
     interface Chainable {
       /**
        * @deprecated Use function helper instead, i.e.
-       *    import { createQuestion } from "e2e/support/helpers"
+       * ```
+       * import { createQuestion } from "e2e/support/helpers"
+       * ```
        */
       createQuestion: typeof createQuestion;
 
       /**
        * @deprecated Use function helper instead, i.e.
-       *    import { createNativeQuestion } from "e2e/support/helpers"
+       * ```
+       * import { createNativeQuestion } from "e2e/support/helpers"
+       * ```
        */
       createNativeQuestion: typeof createNativeQuestion;
     }
