@@ -155,7 +155,7 @@
                    "The stacktrace:"
                    "%s"])
                  (:name card)
-                 (with-out-str (:visualization_settings card))
+                 (:visualization_settings card)
                  (with-out-str (st/print-stack-trace e)))))
       {(u/slugify (str (:name card) "_error"))
        (-> temp-file .toURI .toURL)})))
