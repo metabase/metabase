@@ -62,7 +62,7 @@
         (next-method model attributes f)))
     (next-method model attributes f)))
 
-(defmacro with-temp-persisted!
+(defmacro with-temp!-persisted
   "Like [[mt/with-temp]], but all the created items are persisted after."
   [& args]
   `(binding [*with-temp-clean-up*           false
