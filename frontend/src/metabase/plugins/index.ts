@@ -1,6 +1,7 @@
 import type { ComponentType, HTMLAttributes, ReactNode } from "react";
 import { t } from "ttag";
 
+import noResultsSource from "assets/img/no_results.svg";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import type {
   DataPermission,
@@ -144,6 +145,9 @@ export const PLUGIN_SELECTORS = {
       src: "app/img/bridge.svg",
       isDefault: true,
     };
+  },
+  getNoQuestionResultsIllustration: (_state: State): string => {
+    return noResultsSource;
   },
 };
 

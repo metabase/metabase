@@ -28,3 +28,7 @@ export function getLoginPageIllustration(state: State) {
 export function getLandingPageIllustration(state: State) {
   return PLUGIN_SELECTORS.getLandingPageIllustration(state);
 }
+
+export function getNoQuestionResultsIllustration(state: State) {
+  return PLUGIN_SELECTORS.getNoQuestionResultsIllustration(state);
+}

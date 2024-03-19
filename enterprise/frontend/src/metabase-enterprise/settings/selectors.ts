@@ -1,3 +1,4 @@
+import noResultsSource from "assets/img/no_results.svg";
 import type { IllustrationValue } from "metabase/plugins";
 import { getSetting, getSettings } from "metabase/selectors/settings";
 
@@ -88,5 +89,28 @@ export function getLandingPageIllustration(
         src: getSetting(state, "landing-page-illustration-custom") as string,
         isDefault: false,
       };
+  }
+}
+
+export function getNoQuestionResultsIllustration(
+  state: EnterpriseState,
+): string | null {
+  const illustrationOption = getSetting(
+    state,
+    "no-question-results-illustration",
+  ) as IllustrationSettingValue;
+
+  switch (illustrationOption) {
+    case "default":
+      return noResultsSource;
+
+    case "no-illustration":
+      return null;
+
+    case "custom":
+      return getSetting(
+        state,
+        "no-question-results-illustration-custom",
+      ) as string;
   }
 }

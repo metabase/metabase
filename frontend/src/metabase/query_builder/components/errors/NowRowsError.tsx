@@ -1,11 +1,18 @@
-import styled from "@emotion/styled";
+import { useSelector } from "metabase/lib/redux";
+import { getNoQuestionResultsIllustration } from "metabase/selectors/whitelabel";
 
-import noResultsSource from "assets/img/no_results.svg";
+import { NoRowsErrorIllustration } from "./NowRowsError.styled";
 
-export const NoRowsError = styled.div`
-  width: 120px;
-  height: 120px;
-  background-image: url(${noResultsSource});
-  background-repeat: no-repeat;
-  margin-bottom: 1rem;
-`;
+export function NoRowsError() {
+  const noQuestionResultsIllustration = useSelector(
+    getNoQuestionResultsIllustration,
+  );
+
+  return (
+    noQuestionResultsIllustration && (
+      <NoRowsErrorIllustration
+        backgroundImageSrc={noQuestionResultsIllustration}
+      />
+    )
+  );
+}
