@@ -1,7 +1,7 @@
 import type { MultiSelectProps, SelectItem } from "@mantine/core";
 import { MultiSelect } from "@mantine/core";
 import { useUncontrolled } from "@mantine/hooks";
-import type { FocusEvent } from "react";
+import type { ClipboardEvent, FocusEvent } from "react";
 import { useMemo, useState } from "react";
 
 export function MultiAutocomplete({
@@ -67,6 +67,20 @@ export function MultiAutocomplete({
     }
   };
 
+  const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    const text = event.clipboardData.getData("Text");
+    const values = text.split(/[\n,]/g);
+    if (values.length > 1) {
+      const validValues = values.filter(value => shouldCreate?.(value, []));
+      if (validValues.length > 0) {
+        event.preventDefault();
+        const newSelectedValues = [...lastSelectedValues, ...validValues];
+        setSelectedValues(newSelectedValues);
+        setLastSelectedValues(newSelectedValues);
+      }
+    }
+  };
+
   return (
     <MultiSelect
       {...props}
@@ -80,6 +94,7 @@ export function MultiAutocomplete({
       onFocus={handleFocus}
       onBlur={handleBlur}
       onSearchChange={handleSearchChange}
+      onPaste={handlePaste}
     />
   );
 }
