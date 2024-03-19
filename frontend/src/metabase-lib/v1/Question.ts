@@ -436,7 +436,7 @@ class Question {
    * of Question interface instead of Query interface makes it more convenient to also change the current visualization
    */
 
-  composeQuestionAdhoc(): Question {
+  composeQuestion(): Question {
     if (!this.isSaved()) {
       return this;
     }
@@ -445,6 +445,15 @@ class Question {
     const tableId = getQuestionVirtualTableId(this.id());
     const table = Lib.tableOrCardMetadata(metadata, tableId);
     const query = Lib.queryFromTableOrCardMetadata(metadata, table);
+    return this.setQuery(query);
+  }
+
+  composeQuestionAdhoc(): Question {
+    if (!this.isSaved()) {
+      return this;
+    }
+
+    const query = this.composeQuestion().query();
     return Question.create({ metadata: this.metadata() }).setQuery(query);
   }
 

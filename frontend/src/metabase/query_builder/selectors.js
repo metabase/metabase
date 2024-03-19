@@ -341,7 +341,7 @@ export const getQuestion = createSelector(
     // This has to be skipped for users without data permissions.
     // See https://github.com/metabase/metabase/issues/20042
     return type !== "question" && isEditable
-      ? question.composeQuestionAdhoc()
+      ? question.composeQuestion()
       : question;
   },
 );
