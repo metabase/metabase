@@ -1025,11 +1025,11 @@
 
     [:or [:not= :state "OR"] [:= :state nil]] ["((\"state\" <> ?) OR (\"state\" IS NULL))" "OR"]))
 
-;; TODO: Consider enabling the test for Duid JDBC.
+;; DONE: Consider enabling the test for Duid JDBC. -- Solved by tx/default-dataset.
 (deftest day-of-week-inline-numbers-test
   (testing "Numbers should be returned inline, even when targeting Honey SQL 2."
     (mt/test-drivers (filter #(isa? driver/hierarchy (driver/the-driver %) :sql)
-                             (disj (tx.env/test-drivers) :druid-jdbc))
+                             (tx.env/test-drivers))
       (mt/with-metadata-provider (mt/id)
         (doseq [day [:sunday
                      :monday

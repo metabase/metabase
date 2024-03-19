@@ -85,9 +85,9 @@
                (testing "the pool has been destroyed"
                  (is @destroyed?))))))))))
 
-;; TODO: Consider enabling the test for Duid JDBC.
+;; DONE: Consider enabling the test for Duid JDBC. -- Implemented sql-jdbc.conn/data-source-name
 (deftest ^:parallel c3p0-datasource-name-test
-  (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
+  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (testing "The dataSourceName c3p0 property is set properly for a database"
       (let [db         (mt/db)
             props      (sql-jdbc.conn/data-warehouse-connection-pool-properties driver/*driver* db)
@@ -97,12 +97,12 @@
         ;; ensure that, for any sql-jdbc driver anyway, we found *some* DB name to use in this String
         (is (not= db-nm "null"))))))
 
-;; TODO: Consider enabling the test for Duid JDBC.
+;; DONE: Consider enabling the test for Duid JDBC.
 (deftest ^:parallel same-connection-details-result-in-equal-specs-test
   (testing "Two JDBC specs created with the same details must be considered equal for the connection pool cache to work correctly"
     ;; this is only really a concern for drivers like Spark SQL that create custom DataSources instead of plain details
     ;; maps -- those DataSources need to be considered equal based on the connection string/properties
-    (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
+    (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
       (let [details (:details (mt/db))
             spec-1  (sql-jdbc.conn/connection-details->spec driver/*driver* details)
             spec-2  (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
@@ -127,9 +127,9 @@
                 :else
                 (assoc :new-config "something"))))))
 
-;; TODO: Consider enabling the test for Duid JDBC.
+;; DONE: Consider enabling the test for Duid JDBC. -- Solved by tx/default-dataset.
 (deftest connection-pool-invalidated-on-details-change
-  (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
+  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (testing "db->pooled-connection-spec marks a connection pool invalid if the db details map changes\n"
       (let [db                       (mt/db)
             hash-change-called-times (atom 0)
@@ -230,7 +230,7 @@
         server (Server/createTcpServer (into-array args))]
     (doto server (.start))))
 
-;; TODO: Consider enabling the test for Duid JDBC.
+;; TODO: Consider enabling the test for Duid JDBC. -- Ssh does not seem to work with Druid JDBC.
 (deftest test-ssh-tunnel-connection
   ;; sqlite cannot be behind a tunnel, h2 is tested below, unsure why others fail
   (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :druid-jdbc :sqlite :h2 :oracle :vertica :presto-jdbc :bigquery-cloud-sdk :redshift :athena)

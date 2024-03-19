@@ -129,9 +129,9 @@
       (is (= 0 (count-active-tables-in-db (mt/id)))
           "We shouldn't sync tables for which we don't have select privilege"))))
 
-;; TODO: Consider enabling the test for Duid JDBC.
+;; DONE: Consider enabling the test for Duid JDBC. -- Solved by tx/desfault-dataset.
 (deftest dont-leak-resultsets-test
-  (mt/test-drivers (disj (sql-jdbc-drivers-with-default-describe-database-impl) :druid-jdbc)
+  (mt/test-drivers (sql-jdbc-drivers-with-default-describe-database-impl)
     (testing (str "make sure that running the sync process doesn't leak cursors because it's not closing the ResultSets. "
                   "See issues #4389, #6028, and #6467 (Oracle) and #7609 (Redshift)")
       (is (= 0
@@ -186,7 +186,7 @@
              (testing (format "schema name = %s" (pr-str schema-name))
                (is (not= \v (first schema-name)))))))))))
 
-;; TODO: Consider enabling the test for Duid JDBC.
+;; DONE: Consider enabling the test for Duid JDBC. -- Changed table to checkins, that's contained in the dataset.
 (deftest have-select-privilege?-test
   (testing "cheking select privilege works with and without auto commit (#36040)"
     (let [default-have-slect-privilege?
@@ -194,8 +194,8 @@
                        (get-method sql-jdbc.sync.interface/have-select-privilege? %))]
       (mt/test-drivers (into #{}
                              (filter default-have-slect-privilege?)
-                             (disj (descendants driver/hierarchy :sql-jdbc) :druid-jdbc))
-        (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :users))]
+                             (descendants driver/hierarchy :sql-jdbc))
+        (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
           (qp.store/with-metadata-provider (mt/id)
             (testing (sql-jdbc.describe-database/simple-select-probe-query driver/*driver* schema table-name)
               (doseq [auto-commit [true false]]
