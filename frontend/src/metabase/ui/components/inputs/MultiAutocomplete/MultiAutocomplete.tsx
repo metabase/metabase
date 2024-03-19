@@ -1,9 +1,10 @@
-import type { MultiSelectProps } from "@mantine/core";
+import type { MultiSelectProps, SelectItem } from "@mantine/core";
 import { MultiSelect } from "@mantine/core";
 import type { FocusEvent } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 export function MultiAutocomplete({
+  data,
   value: selectedValues = [],
   placeholder,
   autoFocus,
@@ -18,6 +19,12 @@ export function MultiAutocomplete({
   const [isFocused, setIsFocused] = useState(false);
   const visibleValues = isFocused ? lastValues : selectedValues;
   const [searchValue, setSearchValue] = useState("");
+  const [elevatedValues, setElevatedValues] = useState<string[]>([]);
+
+  const items = useMemo(
+    () => getAvailableSelectItems(data, lastValues, elevatedValues),
+    [data, lastValues, elevatedValues],
+  );
 
   const handleChange = (newValues: string[]) => {
     setLastValues(newValues);
@@ -34,6 +41,7 @@ export function MultiAutocomplete({
     setIsFocused(false);
     setLastValues(selectedValues);
     setSearchValue("");
+    setElevatedValues([]);
     onBlur?.(event);
   };
 
@@ -44,14 +52,17 @@ export function MultiAutocomplete({
     const isValid = shouldCreate?.(newSearchValue, []);
     if (isValid) {
       onChange?.([...lastValues, newSearchValue]);
+      setElevatedValues([newSearchValue]);
     } else {
       onChange?.(lastValues);
+      setElevatedValues([]);
     }
   };
 
   return (
     <MultiSelect
       {...props}
+      data={items}
       value={visibleValues}
       searchValue={searchValue}
       placeholder={placeholder}
@@ -63,4 +74,35 @@ export function MultiAutocomplete({
       onSearchChange={handleSearchChange}
     />
   );
+}
+
+function getSelectItem(item: string | SelectItem): SelectItem {
+  if (typeof item === "string") {
+    return { value: item, label: item };
+  } else {
+    return item;
+  }
+}
+
+function getAvailableSelectItems(
+  data: ReadonlyArray<string | SelectItem>,
+  selectedValues: string[],
+  elevatedValues: string[],
+) {
+  const items = [
+    ...elevatedValues.map(getSelectItem),
+    ...data.map(getSelectItem),
+    ...selectedValues.map(getSelectItem),
+  ];
+
+  const mapping = items.reduce((map: Map<string, string>, option) => {
+    if (option.label) {
+      map.set(option.value, option.label);
+    } else if (!map.has(option.value)) {
+      map.set(option.value, option.value);
+    }
+    return map;
+  }, new Map<string, string>());
+
+  return [...mapping.entries()].map(([value, label]) => ({ value, label }));
 }
