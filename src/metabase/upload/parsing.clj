@@ -153,7 +153,7 @@
                            :parsed-string  (.substring deparenthesized-s 0 parsed-idx)
                            :ignored-string (.substring deparenthesized-s parsed-idx)}))))
       (if has-parens?
-        (- parsed-number)
+        (- (double parsed-number))
         parsed-number))))
 
 (defn- parse-number
