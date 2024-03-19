@@ -100,7 +100,7 @@
   "Return `query` with only the keys relevant to hashing kept.
   (This is done so irrelevant info or options that don't affect query results doesn't result in the same query
   producing different hashes.)"
-  [query :- :map]
+  [query :- [:maybe :map]]
   (let [{:keys [constraints parameters], :as query} (select-keys query [:database :lib/type :stages :parameters :constraints])]
     (cond-> query
       (empty? constraints) (dissoc :constraints)
