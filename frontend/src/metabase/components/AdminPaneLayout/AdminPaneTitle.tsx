@@ -1,12 +1,10 @@
-/* eslint-disable react/prop-types */
-import { Fragment } from "react";
-
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 
 import { Container, HeadingContainer } from "./AdminPaneLayout.styled";
+import type { AdminPaneProps } from "./types";
 
-const AdminPaneTitle = ({
+export const AdminPaneTitle = ({
   title,
   description,
   buttonText,
@@ -14,12 +12,12 @@ const AdminPaneTitle = ({
   buttonDisabled,
   buttonLink,
   headingContent,
-}) => {
+}: AdminPaneProps) => {
   const buttonClassName = "ml-auto flex-no-shrink";
   return (
     <Container>
       <HeadingContainer>
-        {headingContent && <Fragment>{headingContent}</Fragment>}
+        {headingContent && <>{headingContent}</>}
         {title && <h2 className="PageTitle">{title}</h2>}
         {buttonText && buttonLink && (
           <Link to={buttonLink} className={buttonClassName}>
@@ -41,29 +39,3 @@ const AdminPaneTitle = ({
     </Container>
   );
 };
-
-const AdminPaneLayout = ({
-  title,
-  description,
-  buttonText,
-  buttonAction,
-  buttonDisabled,
-  children,
-  buttonLink,
-  headingContent,
-}) => (
-  <div data-testid="admin-panel">
-    <AdminPaneTitle
-      title={title}
-      description={description}
-      buttonText={buttonText}
-      buttonAction={buttonAction}
-      buttonDisabled={buttonDisabled}
-      buttonLink={buttonLink}
-      headingContent={headingContent}
-    />
-    {children}
-  </div>
-);
-
-export default AdminPaneLayout;

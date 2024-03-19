@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import { useListApiKeyQuery } from "metabase/api";
 import AdminContentTable from "metabase/components/AdminContentTable";
-import AdminPaneLayout from "metabase/components/AdminPaneLayout";
+import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
