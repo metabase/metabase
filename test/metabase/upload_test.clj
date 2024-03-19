@@ -1854,8 +1854,8 @@
         (is (= (column-type nil value-type)
                (column-type existing-type value-type)))))))
 
-(deftest load-from-csv-int-and-float-test
-  (testing "Upload a CSV file with integers and floats in the same column"
+(deftest create-from-csv-int-and-float-test
+  (testing "Creation should handle a mix of int and float-or-int values in any order"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
        (with-upload-table!
@@ -1875,7 +1875,7 @@
 
 (deftest append-from-csv-int-and-float-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (testing "Append should handle the columns in the CSV file being reordered"
+    (testing "Append should handle a mix of int and float-or-int values being appended to an int column"
       (with-upload-table! [table (create-upload-table!
                                   :col->upload-type (ordered-map/ordered-map
                                                      :_mb_row_id ::upload/auto-incrementing-int-pk
@@ -1887,14 +1887,12 @@
                         "1.0, 1"
                         "1  , 1.0"]
               file     (csv-file-with csv-rows (mt/random-name))]
-          (is (some? (append-csv! {:file     file
-                                   :table-id (:id table)})))
+          (is (some? (append-csv! {:file file, :table-id (:id table)})))
+          (is (= [[1 1 1]
+                  [2 1 1]
+                  [3 1 1]]
+                 (rows-for-table table)))
 
-          (testing "The new row is inserted with the values correctly reordered"
-            (is (= [[1 1 1]
-                    [2 1 1]
-                    [3 1 1]]
-                   (rows-for-table table))))
           (io/delete-file file))))))
 
 (deftest coercion-soundness-test
