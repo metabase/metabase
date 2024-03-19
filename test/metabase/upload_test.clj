@@ -113,7 +113,7 @@
 (deftest type-detection-and-parse-test
   (doseq [[string-value expected-value expected-type seps]
           ;; Number-related
-          [["0.0"        0              float-or-int-type"."]
+          [["0.0"        0              float-or-int-type "."]
            ["0.0"        0              float-or-int-type ".,"]
            ["0,0"        0              float-or-int-type ",."]
            ["0,0"        0              float-or-int-type ", "]
