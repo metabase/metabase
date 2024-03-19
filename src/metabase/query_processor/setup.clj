@@ -119,8 +119,8 @@
       (qp.store/initialized?)
       (f (maybe-attach-metadata-provider-to-query query))
 
-      (:lib/metadata query)
-      (qp.store/with-metadata-provider (:lib/metadata query)
+      (lib.metadata.protocols/metadata-providerable? query)
+      (qp.store/with-metadata-provider (lib.metadata/->metadata-provider query)
         (f query))
 
       (= (query-type query) :internal)

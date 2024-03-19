@@ -11,7 +11,7 @@ import { color } from "metabase/lib/colors";
 import MetabaseSettings from "metabase/lib/settings";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { isNotNull } from "metabase/lib/types";
-import { Box, Icon, DelayGroup, Flex } from "metabase/ui";
+import { rem, Box, Icon, DelayGroup, Flex } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type Table from "metabase-lib/v1/metadata/Table";
@@ -110,7 +110,7 @@ const DataSelectorTablePicker = ({
 
     return (
       <DelayGroup>
-        <Box component="span" w="18.75rem" style={{ overflowY: "auto" }}>
+        <Box w={rem(300)} style={{ overflowY: "auto" }}>
           <AccordionList
             id="TablePicker"
             key="tablePicker"

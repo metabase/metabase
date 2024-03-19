@@ -1,6 +1,7 @@
 (ns metabase.lib.schema.literal.jvm
   "JVM-specific literal definitions."
   (:require
+   [clojure.string :as str]
    [metabase.lib.schema.expression :as expression]
    [metabase.util.malli.registry :as mr]))
 
@@ -8,14 +9,17 @@
 
 (defn instance-of
   "Convenience for defining a Malli schema for an instance of a particular Class."
-  [^Class klass]
-  [:fn {:error/message (str "instance of " (.getName klass))}
-   #(instance? klass %)])
+  [& classes]
+  [:fn {:error/message (str "instance of "
+                            (str/join " or "
+                                      (map #(.getName ^Class %) classes)))}
+   (fn [x]
+     (some (fn [klass]
+             (instance? klass x))
+           classes))])
 
 (mr/def ::big-integer
-  [:or
-   (instance-of java.math.BigInteger)
-   (instance-of clojure.lang.BigInt)])
+  (instance-of java.math.BigInteger clojure.lang.BigInt))
 
 (defmethod expression/type-of-method java.math.BigInteger
   [_n]

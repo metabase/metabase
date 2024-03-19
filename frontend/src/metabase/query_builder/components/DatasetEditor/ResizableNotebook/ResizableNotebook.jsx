@@ -6,7 +6,7 @@ import { ResizableBox } from "react-resizable";
 import CS from "metabase/css/core/index.css";
 import { darken } from "metabase/lib/colors";
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
-import { Flex, Box } from "metabase/ui";
+import { rem, Flex, Box } from "metabase/ui";
 
 const propTypes = {
   isResizing: PropTypes.bool.isRequired,
@@ -31,7 +31,7 @@ const Handle = forwardRef(function Handle(props, ref) {
       w="100%"
       h="sm"
       pos="absolute"
-      bottom="-0.25rem"
+      bottom={`-${rem(4)}`}
       style={{
         cursor: "row-resize",
       }}

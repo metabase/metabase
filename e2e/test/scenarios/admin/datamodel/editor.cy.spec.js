@@ -659,7 +659,7 @@ const getFieldSection = fieldName => {
 };
 
 const moveField = (fieldIndex, deltaY) => {
-  cy.get(".Grabber")
+  cy.findAllByTestId("grabber")
     .eq(fieldIndex)
     .trigger("pointerdown", 0, 0, { force: true, button: 0, isPrimary: true })
     .wait(200)
