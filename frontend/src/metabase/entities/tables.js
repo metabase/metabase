@@ -313,7 +313,7 @@ function getTableForeignKeyTableIds(table) {
 function getTableForeignKeyFieldIds(table) {
   return _.chain(table.fields)
     .filter(field => field.target == null && field.fk_target_field_id != null)
-    .map(field => field.target.fk_target_field_id)
+    .map(field => field.fk_target_field_id)
     .uniq()
     .value();
 }
