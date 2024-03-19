@@ -1,12 +1,12 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import { getEngineNativeType } from "metabase/lib/engine";
+import { Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import { SqlButton, SqlIcon } from "./ConvertQueryButton.styled";
+import { SqlButton } from "./ConvertQueryButton.styled";
 
 const BUTTON_TOOLTIP = {
   sql: t`View the SQL`,
@@ -26,9 +26,9 @@ export const ConvertQueryButton = ({
   const handleClick = useCallback(() => {}, []);
 
   return (
-    <Tooltip tooltip={tooltip} placement="top">
+    <Tooltip label={tooltip} position="top">
       <SqlButton onClick={handleClick} aria-label={tooltip}>
-        <SqlIcon name="sql" />
+        <Icon size="1rem" name="sql" />
       </SqlButton>
     </Tooltip>
   );
