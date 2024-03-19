@@ -265,9 +265,9 @@
 
 (defn- copy-db-tables! [old-db-id new-db-id]
   (let [old-tables    (t2/select Table :db_id old-db-id, :active true, {:order-by [[:id :asc]]})
-        new-table-ids (t2/insert-returning-pks! Table
+        new-table-ids (sort (t2/insert-returning-pks! Table
                         (for [table old-tables]
-                          (-> table (dissoc :id) (assoc :db_id new-db-id))))]
+                          (-> table (dissoc :id) (assoc :db_id new-db-id)))))]
     (doseq [[old-table-id new-table-id] (zipmap (map :id old-tables) new-table-ids)]
       (copy-table-fields! old-table-id new-table-id))))
 
