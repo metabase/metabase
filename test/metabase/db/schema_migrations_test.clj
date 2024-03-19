@@ -505,31 +505,31 @@
   (testing "Migrations v48.00-029 - end"
     ;; Use an open-ended migration range so that we can detect if any migrations added after these views broke the view
     ;; queries
-    (impl/test-migrations ["v48.00-029"] [migrate!]
-      (let [new-view-names ["v_audit_log"
-                            "v_content"
-                            "v_dashboardcard"
-                            "v_group_members"
-                            "v_subscriptions"
-                            "v_alerts"
-                            "v_users"
-                            "v_databases"
-                            "v_fields"
-                            "v_query_log"
-                            "v_tables"
-                            "v_view_log"]]
-        (migrate!)
-        (doseq [view-name new-view-names]
-          (testing (str "View " view-name " should be created")
-            ;; Just assert that something was returned by the query and no exception was thrown
-            (is (partial= [] (t2/query (str "SELECT 1 FROM " view-name))))))
-        #_#_ ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37434)
-        (migrate! :down 47)
-        (testing "Views should be removed when downgrading"
+    (mt/with-log-level [liquibase.changelog :trace]
+      (impl/test-migrations ["v48.00-029"] [migrate!]
+        (let [new-view-names ["v_audit_log"
+                              "v_content"
+                              "v_dashboardcard"
+                              "v_group_members"
+                              "v_subscriptions"
+                              "v_alerts"
+                              "v_users"
+                              "v_databases"
+                              "v_fields"
+                              "v_query_log"
+                              "v_tables"
+                              "v_view_log"]]
+          (migrate!)
           (doseq [view-name new-view-names]
-            (is (thrown?
-                 clojure.lang.ExceptionInfo
-                 (t2/query (str "SELECT 1 FROM " view-name))))))))))
+            (testing (str "View " view-name " should be created")
+              ;; Just assert that something was returned by the query and no exception was thrown
+              (is (partial= [] (t2/query (str "SELECT 1 FROM " view-name))))))
+          (migrate! :down 47)
+          (testing "Views should be removed when downgrading"
+            (doseq [view-name new-view-names]
+              (is (thrown?
+                   clojure.lang.ExceptionInfo
+                   (t2/query (str "SELECT 1 FROM " view-name)))))))))))
 
 (deftest activity-data-migration-test
   (testing "Migration v48.00-049"
