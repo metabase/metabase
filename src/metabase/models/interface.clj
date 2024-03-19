@@ -8,6 +8,7 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.error :as me]
+   [metabase.config :as config]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.dispatch :as models.dispatch]
@@ -666,3 +667,11 @@
   "In Metabase the FK key used for automagic hydration should use underscores (work around upstream Toucan 2 issue)."
   [_original-model dest-key _hydrated-key]
   [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])
+
+(methodical/defmethod t2.hydrate/hydrate-with-strategy :before ::t2.hydrate/multimethod-simple
+  [model strategy k instances]
+  (when (and (not config/is-prod?)
+             (> (count instances) 1))
+    (throw (ex-info (format "N+1 hydration detected!!! Model %s, key %s]" (pr-str model) k)
+                    {:model model :strategy strategy :k k})))
+  instances)
