@@ -342,7 +342,7 @@ export const getQuestion = createSelector(
     // as it would be blocked by the backend as an ad-hoc query
     // see https://github.com/metabase/metabase/issues/20042
     const hasDataPermission = !!question.database();
-    return type !== "question" && hasDataPermission && !isEditingModel
+    return type !== "question" && hasDataPermission
       ? question.composeQuestionAdhoc()
       : question;
   },
