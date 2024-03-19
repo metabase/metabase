@@ -1,18 +1,27 @@
 (ns metabase.pulse.render
   (:require
+   [clojure.java.io :as io]
+   [clojure.stacktrace :as st]
+   [clojure.string :as str]
    [hiccup.core :refer [h]]
    [metabase.formatter :as formatter]
    [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.pulse.attachment :as attachment]
    [metabase.pulse.markdown :as markdown]
    [metabase.pulse.render.body :as body]
    [metabase.pulse.render.image-bundle :as image-bundle]
    [metabase.pulse.render.png :as png]
    [metabase.pulse.render.style :as style]
    [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.urls :as urls]))
+   [metabase.util.urls :as urls])
+  (:import
+   (java.io File)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:dynamic *include-buttons*
   "Should the rendered pulse include buttons? (default: `false`)"
@@ -127,6 +136,30 @@
   [card]
   ((some-fn :include_csv :include_xls) card))
 
+(defn- error-file-attachment
+  [card e]
+  (let [filename (u/slugify (str (:name card) "_error"))]
+    (when-let [^File temp-file (attachment/create-temp-file-or-throw filename "txt")]
+      (with-open [os (io/output-stream temp-file)]
+        (attachment/text-file-writer
+         os
+         (format (str/join
+                  "\n"
+                  [(if (:card-error (ex-data e))
+                     "There was a card query error with your card: %s"
+                     "There was a rendering error with your card: %s")
+                   ""
+                   "The visualization settings:"
+                   "%s"
+                   ""
+                   "The stacktrace:"
+                   "%s"])
+                 (:name card)
+                 (with-out-str (:visualization_settings card))
+                 (with-out-str (st/print-stack-trace e)))))
+      {(u/slugify (str (:name card) "_error"))
+       (-> temp-file .toURI .toURL)})))
+
 (mu/defn ^:private render-pulse-card-body :- formatter/RenderedPulseCard
   [render-type
    timezone-id :- [:maybe :string]
@@ -146,11 +179,12 @@
       (if (:card-error (ex-data e))
         (do
           (log/error e (trs "Pulse card query error"))
-          (body/render :card-error nil nil nil nil nil))
+          (assoc (body/render :card-error nil nil nil nil nil)
+                 :attachments (error-file-attachment card e)))
         (do
           (log/error e (trs "Pulse card render error"))
-          (body/render :render-error nil nil nil nil nil))))))
-
+          (assoc (body/render :render-error nil nil nil nil nil)
+                 :attachments (error-file-attachment card e)))))))
 
 (mu/defn render-pulse-card :- formatter/RenderedPulseCard
   "Render a single `card` for a `Pulse` to Hiccup HTML. `result` is the QP results. Returns a map with keys

@@ -5,6 +5,7 @@
    [metabase.email :as email]
    [metabase.email-test :as et]
    [metabase.email.messages :as messages]
+   [metabase.pulse.attachment :as attachment]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util.retry :as retry]
@@ -61,8 +62,8 @@
               (str/includes? "deactivated"))))))
 
 (defmacro ^:private with-create-temp-failure [& body]
-  `(with-redefs [messages/create-temp-file (fn [~'_]
-                                             (throw (IOException. "Failed to write file")))]
+  `(with-redefs [attachment/create-temp-file (fn [~'_ ~'_]
+                                               (throw (IOException. "Failed to write file")))]
      ~@body))
 
 ;; Test that IOException bubbles up
@@ -71,7 +72,7 @@
         IOException
         (re-pattern (format "Unable to create temp file in `%s`" (System/getProperty "java.io.tmpdir")))
         (with-create-temp-failure
-          (#'messages/create-temp-file-or-throw "txt")))))
+          (#'attachment/create-temp-file-or-throw "metabase_attachment" "txt")))))
 
 (deftest alert-schedule-text-test
   (testing "Alert schedules can be described as English strings, with the timezone included"
