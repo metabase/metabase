@@ -6,7 +6,10 @@
             [java-time.api :as t]
             [metabase.public-settings.premium-features :refer [defenterprise]]
             [metabase.util.i18n :refer [tru]]
-            [metabase.util.malli :as mu]))
+            [metabase.util.malli :as mu])
+  (:import [java.io Reader]))
+
+(set! *warn-on-reflection* true)
 
 (mu/defn ^:private valid-now? [token :- :map] :- :boolean
   (t/before? (t/instant) (t/instant (:valid-thru token))))
@@ -14,8 +17,9 @@
 (defn- token? [token]
   (and token (str/starts-with? token "airgap_")))
 
-(defn- pubkey-reader []
-  (io/reader (io/resource "airgap/pubkey.pem")))
+;; need to type hint the return value:
+(defn- pubkey-reader ^Reader []
+  (io/reader  (io/resource "airgap/pubkey.pem")))
 
 (mu/defn ^:private decode-token :- :map
   "Given an encrypted airgap token, decrypts it and returns a TokenStatus"
