@@ -16,7 +16,7 @@ interface Props {
 
 export const TablePickerModal = ({
   options = defaultOptions,
-  title = t`Choose a collection`,
+  title = t`Select a table`,
   value,
   onChange,
   onClose,
