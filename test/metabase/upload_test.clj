@@ -32,7 +32,7 @@
 
 (def ^:private bool-type         ::upload/boolean)
 (def ^:private int-type          ::upload/int)
-(def ^:private bool-or-int-type  ::upload/*boolean-or-int*)
+(def ^:private bool-int-type     ::upload/*boolean-int*)
 (def ^:private float-type        ::upload/float)
 (def ^:private float-or-int-type ::upload/*float-or-int*)
 (def ^:private vchar-type        ::upload/varchar-255)
@@ -144,8 +144,8 @@
            ["9’986’000"  9986000        int-type ".’"]
            ["$0"         0              int-type]
            ["-1"         -1             int-type]
-           ["0"          false          bool-or-int-type]
-           ["1"          true           bool-or-int-type]
+           ["0"          false          bool-int-type]
+           ["1"          true           bool-int-type]
            ["9.986.000"  "9.986.000"    vchar-type ".,"]
            ["3.14"       3.14           float-type]
            ["3.14"       3.14           float-type "."]
@@ -245,7 +245,7 @@
   (doseq [[type-a            type-b           expected]
           [[bool-type        bool-type        bool-type]
            [bool-type        int-type         vchar-type]
-           [bool-type        bool-or-int-type bool-type]
+           [bool-type        bool-int-type    bool-type]
            [bool-type        date-type        vchar-type]
            [bool-type        datetime-type    vchar-type]
            [bool-type        vchar-type       vchar-type]
@@ -256,8 +256,8 @@
            [int-type         datetime-type    vchar-type]
            [int-type         vchar-type       vchar-type]
            [int-type         text-type        text-type]
-           [int-type         bool-or-int-type int-type]
-           [bool-or-int-type bool-or-int-type bool-or-int-type]
+           [int-type         bool-int-type    int-type]
+           [bool-int-type    bool-int-type    bool-int-type]
            [float-type       vchar-type       vchar-type]
            [float-type       text-type        text-type]
            [float-type       date-type        vchar-type]
@@ -1854,6 +1854,25 @@
         (is (= (column-type nil value-type)
                (column-type existing-type value-type)))))))
 
+(deftest load-from-csv-int-and-float-test
+  (testing "Upload a CSV file with integers and floats in the same column"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+       (with-upload-table!
+         [table (let [table-name (mt/random-name)]
+                  (@#'upload/load-from-csv!
+                   driver/*driver*
+                   (mt/id)
+                   table-name
+                   (csv-file-with ["float-1,float-2"
+                                   "1,1.0" ;; <--- these columns just differ in order
+                                   "1.0,1"]))
+                  (sync-upload-test-table! :database (mt/db) :table-name table-name))]
+         (testing "Check the data was uploaded into the table correctly"
+           (is (= [[1 1.0 1.0]
+                   [2 1.0 1.0]]
+                  (rows-for-table table)))))))))
+
 (deftest coercion-soundness-test
   (testing "Every coercion maps to a stricter type that is a direct descendant"
     (is (empty?
@@ -1866,4 +1885,4 @@
                                ;; Strictly speaking we only require that there is a route which only traverses abstract
                                ;; through abstract nodes, but it's much simpler to enforce this stronger condition.
                                (contains? (ordered-hierarchy/children @#'upload/h value-type) column-type))))
-               @#'upload/coercion-mapping)))))
+               @#'upload/column-type->coercible-value-types)))))

@@ -70,24 +70,24 @@
 ;;     |      int      date
 ;;     |   /       \
 ;;     |  /         \
-;; *boolean-or-int*  auto-incrementing-int-pk
+;; *boolean-int*  auto-incrementing-int-pk
 ;;
 ;; </code></pre>
 ;;
 ;; We have a number of special "abstract" nodes in this graph:
 ;;
-;; - `*boolean-or-int*` is an ambiguous node, that could either be parsed as a boolean or as an integer.
-;; - `*float-or-int*` is an integer with an explicit decimal point.
+;; - `*boolean-int*` is an ambiguous node, that could either be parsed as a boolean or as an integer.
+;; - `*float-or-int*` is any integer, whether it has an explicit decimal point or not.
 ;;
-;; While a `*boolean-or-int*` is a genuinely ambiguous value, `*float-or-int*` exist to power our desired value-type
+;; While a `*boolean-int*` is a genuinely ambiguous value, `*float-or-int*` exist to power our desired value-type
 ;; coercion and column-type promotion behaviour.
 ;;
 ;; - If we encounter a `*float-or-int*` inside an `int` column, then we can safely coerce it down to an integer.
 ;; - If we encounter a `float` (i.e. a non-zero fraction component), then we need to promote the column to a `float.`
 ;;
 ;; Columns can not have an abstract type, which has no meaning outside of inference and reconciliation.
-;; If we are left with an abstract type after having processed all the values, we need to traverse
-;; further up the graph until we reach a concrete `column-type`.
+;; If we are left with an abstract type after having processed all the values, we first check whether we can coerce
+;; the type to the existing column type, and otherwise traverse further up the graph until we reach a concrete type.
 ;;
 ;; For ease of reference and explicitness these corresponding values are given in the `abstract->concrete` map.
 ;; One can figure out these mappings by simply looking up through the ancestors. For now, we require that it is always
@@ -100,35 +100,36 @@
   (make-hierarchy
    [::text
     [::varchar-255
-     [::boolean ::*boolean-or-int*]
+     [::boolean ::*boolean-int*]
      [::float
       ;; A number value with a decimal separator, but a zero fractional component.
       [::*float-or-int*
        [::int
         ;; A value that could be legally parsed as either a boolean OR an integer
-        ::*boolean-or-int*
+        ::*boolean-int*
         ::auto-incrementing-int-pk]]]
      [::datetime ::date]
      [::offset-datetime]]]))
 
 (def ^:private abstract->concrete
-  "Not all value types correspond to database types. For those that don't, this maps to their preferred concretion."
-  {::*boolean-or-int* ::boolean
-   ::*float-or-int*   ::float})
+  "Not all value types correspond to column types. We refer to these as \"abstract\" types, and give them *ear-muffs*.
+  This maps implicitly defines the abstract types, by mapping them each to a default concretion."
+  {::*boolean-int*  ::boolean
+   ::*float-or-int* ::float})
 
 (def ^:private allowed-promotions
   "A mapping of which types a column can be implicitly relaxed to, based on the content of appended values.
   If we require a relaxation which is not allow-listed here, we will reject the corresponding file."
   {::int #{::float}})
 
-(def ^:private coercion-mapping
+(def ^:private column-type->coercible-value-types
   "A mapping of which value types should be coerced to the given existing type, rather than triggering promotion."
   {::int #{::*float-or-int*}})
 
 (defn- coerce?
   "Can values of the given type be coerced to the given existing column type, in a lossless fashion?"
   [column-type value-type]
-  (contains? (coercion-mapping column-type) value-type))
+  (contains? (column-type->coercible-value-types column-type) value-type))
 
 (def ^:private value-types
   "All type tags which values can be inferred as. An ordered set from most to least specialized."
@@ -143,7 +144,9 @@
   (contains? column-types value-type))
 
 (defn ^:private column-type
-  "The most specific column type corresponding to the given value type."
+  "Determine the desired column-type given the existing column-type (nil if it's new) and the value-type of the data.
+  If there's a valid coercion to the existing type, we will preserve it, but otherwise we will relax abstract types
+  further to option a concrete type."
   [existing-type value-type]
   (cond
     ;; If the type is concrete, there is nothing to do.
@@ -220,7 +223,7 @@
 (defn- boolean-string? [s]
   (boolean (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" s)))
 
-(defn- boolean-or-int-string? [s]
+(defn- boolean-int-string? [s]
   (contains? #{"0" "1"} s))
 
 (defn- varchar-255? [s]
@@ -245,19 +248,16 @@
   [{:keys [number-separators] :as _settings}]
   (let [explicit-int? (regex-matcher (int-regex number-separators))
         float-or-int? (regex-matcher (float-or-int-regex number-separators))]
-    {::*boolean-or-int* boolean-or-int-string?
-     ::boolean          boolean-string?
-     ::offset-datetime  offset-datetime-string?
-     ::date             date-string?
-     ::datetime         datetime-string?
-     ;; Note that this violates a desirable property - that the type-check for every ancestor of the value's type
-     ;; will pass the check as well. Unfortunately we have to break this property for the way that type-coercion
-     ;; abused the type hierarchy.
-     ::int              explicit-int?
-     ::*float-or-int*   float-or-int?
-     ::float            (regex-matcher (float-regex number-separators))
-     ::varchar-255      varchar-255?
-     ::text             (constantly true)}))
+    {::*boolean-int*   boolean-int-string?
+     ::boolean         boolean-string?
+     ::offset-datetime offset-datetime-string?
+     ::date            date-string?
+     ::datetime        datetime-string?
+     ::int             explicit-int?
+     ::*float-or-int*  #(or (explicit-int? %) (float-or-int? %))
+     ::float           (regex-matcher (float-regex number-separators))
+     ::varchar-255     varchar-255?
+     ::text            (constantly true)}))
 
 (defn- value->type
   "Determine the most specific type that is compatible with the given value.
@@ -676,7 +676,7 @@
     (when-let [error-message (extra-and-missing-error-markdown extra missing)]
       (throw (ex-info error-message {:status-code 422})))))
 
-(defn- matching-or-upgradable? [current-type relaxed-type]
+(defn- matching-or-promotable? [current-type relaxed-type]
   (or (nil? current-type)
       (= current-type relaxed-type)
       (when-let [f (allowed-promotions current-type)]
@@ -733,10 +733,10 @@
             ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
             ;; we can come back and optimize this to an optimistic-with-fallback approach later.
             detected-types     (column-types-from-rows settings old-types rows)
-            new-types          (map #(if (matching-or-upgradable? %1 %2) %2 %1) old-types detected-types)
-            ;; avoid any schema modification unless we are able to fully upgrade to supporting the given file
-            ;; choosing to not upgrade means that we will defer failure until we hit the first value that cannot
-            ;; be parsed as its previous type - there is scope to improve these error messages in the future.
+            new-types          (map #(if (matching-or-promotable? %1 %2) %2 %1) old-types detected-types)
+            ;; avoid any schema modification unless all the promotions required by the file are supported,
+            ;; choosing to not promote means that we will defer failure until we hit the first value that cannot
+            ;; be parsed as its existing type - there is scope to improve these error messages in the future.
             modify-schema?     (and (not= old-types new-types) (= detected-types new-types))
             _                  (when modify-schema?
                                  (let [changes (field-changes normed-header old-types new-types)]

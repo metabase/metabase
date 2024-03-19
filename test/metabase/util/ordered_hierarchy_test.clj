@@ -20,14 +20,14 @@
     (is (nil? (parents h ::text)))
     (is (= [::text] (vec (parents h ::varchar-255))))
     (is (= [::*float-or-int*] (vec (parents h ::int))))
-    (is (= [::boolean ::int] (vec (parents h ::*boolean-or-int*))))))
+    (is (= [::boolean ::int] (vec (parents h ::*boolean-int*))))))
 
 (deftest ^:parallel children-test
   (testing "Children are listed in reverse order to when they were each derived from this tag"
-    (is (nil? (ordered-hierarchy/children h ::*boolean-or-int*)))
+    (is (nil? (ordered-hierarchy/children h ::*boolean-int*)))
     (is (= [::varchar-255] (vec (ordered-hierarchy/children h ::text))))
     (is (= [::*float-or-int*] (vec (ordered-hierarchy/children h ::float))))
-    (is (= [::auto-incrementing-int-pk ::*boolean-or-int*] (vec (ordered-hierarchy/children h ::int))))))
+    (is (= [::auto-incrementing-int-pk ::*boolean-int*] (vec (ordered-hierarchy/children h ::int))))))
 
 (deftest ^:parallel ancestors-test
   (testing "Linear ancestors are listed in order"
@@ -43,20 +43,20 @@
             ::float
             ::varchar-255
             ::text]
-           (vec (ancestors h ::*boolean-or-int*))))))
+           (vec (ancestors h ::*boolean-int*))))))
 
 (deftest ^:parallel descendants-test
   (testing "Linear descendants are listed in order"
-    (is (nil? (descendants h ::*boolean-or-int*)))
+    (is (nil? (descendants h ::*boolean-int*)))
     (is (nil? (descendants h ::date)))
     (is (= [::date] (vec (descendants h ::datetime))))
-    (is (= [::*boolean-or-int*] (vec (descendants h ::boolean)))))
+    (is (= [::*boolean-int*] (vec (descendants h ::boolean)))))
 
   (testing "Non-linear descendants are listed in reverse topological order, following edges in reserve order."
     (is (= [::*float-or-int*
             ::int
             ::auto-incrementing-int-pk
-            ::*boolean-or-int*]
+            ::*boolean-int*]
            (vec (descendants h ::float))))
     (is (= [::varchar-255
             ::offset-datetime
@@ -67,12 +67,12 @@
             ::int
             ::auto-incrementing-int-pk
             ::boolean
-            ::*boolean-or-int*]
+            ::*boolean-int*]
            (vec (descendants h ::text))))))
 
 (deftest ^:parallel sorted-tags-test
   (testing "Tags are returned in a topological ordering that also preserves insertion order of the edges."
-    (is (= [::*boolean-or-int*
+    (is (= [::*boolean-int*
             ::boolean
             ::auto-incrementing-int-pk
             ::int
@@ -87,7 +87,7 @@
 
 (deftest ^:parallel first-common-ancestor-test
   (testing "The first-common-ancestor is the first tag in the lineage of tag-a that is also in the lineage of tag-b"
-    (is (= ::*boolean-or-int* (ordered-hierarchy/first-common-ancestor h ::*boolean-or-int* nil)))
-    (is (= ::*boolean-or-int* (ordered-hierarchy/first-common-ancestor h ::*boolean-or-int* ::*boolean-or-int*)))
-    (is (= ::boolean (ordered-hierarchy/first-common-ancestor h ::*boolean-or-int* ::boolean)))
+    (is (= ::*boolean-int* (ordered-hierarchy/first-common-ancestor h ::*boolean-int* nil)))
+    (is (= ::*boolean-int* (ordered-hierarchy/first-common-ancestor h ::*boolean-int* ::*boolean-int*)))
+    (is (= ::boolean (ordered-hierarchy/first-common-ancestor h ::*boolean-int* ::boolean)))
     (is (= ::varchar-255 (ordered-hierarchy/first-common-ancestor h ::boolean ::int)))))
