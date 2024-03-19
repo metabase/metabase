@@ -42,6 +42,9 @@ export const MobileHide = styled.div`
 export const AdminMobileNavbar = styled.div`
   ${breakpointMaxMedium} {
     display: block;
+    :hover {
+      cursor: pointer;
+    }
   }
   display: none;
 `;
