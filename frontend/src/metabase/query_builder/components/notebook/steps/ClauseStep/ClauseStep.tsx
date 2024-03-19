@@ -3,8 +3,9 @@ import { PointerSensor, useSensor, DndContext } from "@dnd-kit/core";
 import { restrictToParentElement } from "@dnd-kit/modifiers";
 import { SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { ReactNode } from "react";
-import { useCallback } from "react";
+import { useMergedRef } from "@mantine/hooks";
+import type { ReactNode, Ref } from "react";
+import { forwardRef, useCallback } from "react";
 
 import { Icon } from "metabase/ui";
 
@@ -148,11 +149,10 @@ type ClauseStepDndItemProps = {
   children: ReactNode;
 };
 
-function ClauseStepDndItem({
-  index,
-  readOnly,
-  children,
-}: ClauseStepDndItemProps) {
+const ClauseStepDndItem = forwardRef(function ClauseStepDndItem(
+  { index, readOnly, children }: ClauseStepDndItemProps,
+  ref: Ref<HTMLDivElement>,
+) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({
       id: getItemIdFromIndex(index),
@@ -161,9 +161,11 @@ function ClauseStepDndItem({
       animateLayoutChanges: () => false,
     });
 
+  const mergedRef = useMergedRef(ref, setNodeRef);
+
   return (
     <div
-      ref={setNodeRef}
+      ref={mergedRef}
       {...attributes}
       {...listeners}
       style={{
@@ -174,7 +176,7 @@ function ClauseStepDndItem({
       {children}
     </div>
   );
-}
+});
 
 // dnd-kit ignores `0` item, so we convert indexes to string `"0"`
 function getItemIdFromIndex(index: number) {
