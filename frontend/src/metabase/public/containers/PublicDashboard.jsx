@@ -187,7 +187,7 @@ class PublicDashboard extends Component {
           className={cx({
             [DashboardS.DashboardFullscreen]: isFullscreen,
             [DashboardS.DashboardNight]: isNightMode,
-            [ParametersS.DashboardNightOverride]: isNightMode,
+            [ParametersS.DashboardNight]: isNightMode,
           })}
           loading={!dashboard}
         >

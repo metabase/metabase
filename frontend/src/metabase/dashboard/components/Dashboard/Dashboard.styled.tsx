@@ -25,7 +25,7 @@ export const DashboardLoadingAndErrorWrapper = styled(
         className={cx(className, DashboardS.Dashboard, {
           [DashboardS.DashboardFullscreen]: isFullscreen,
           [DashboardS.DashboardNight]: isNightMode,
-          [ParametersS.DashboardNightOverride]: isNightMode,
+          [ParametersS.DashboardNight]: isNightMode,
         })}
         {...props}
       />

@@ -263,7 +263,7 @@ function DashCardInner({
         data-testid="dashcard"
         className={cx(
           DashboardS.Card,
-          EmbedFrameS.CardOverride,
+          EmbedFrameS.Card,
           CS.relative,
           CS.rounded,
           CS.flex,

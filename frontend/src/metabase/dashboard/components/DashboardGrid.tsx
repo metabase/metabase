@@ -571,8 +571,8 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         data-testid="dashcard-container"
         className={cx(
           DashboardS.DashCard,
-          EmbedFrameS.DashCardOverride,
-          LegendS.DashCardOverride,
+          EmbedFrameS.DashCard,
+          LegendS.DashCard,
           {
             BrandColorResizeHandle: shouldChangeResizeHandle,
           },

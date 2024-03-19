@@ -230,11 +230,12 @@ export class GuiQueryEditor extends Component {
       <div
         className={cx(
           QueryBuilderS.GuiBuilderSection,
+          QueryBuilderS.GuiBuilderData,
           CS.flex,
           CS.alignCenter,
           "arrow-right",
-          QueryBuilderS.GuiBuilderData,
         )}
+        data-testid="gui-builder-data"
       >
         <span
           className={cx(

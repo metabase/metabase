@@ -132,7 +132,8 @@ export const VisualizationDirtyState = ({
       className,
       QueryBuilderS.Loading,
       CS.flex,
-      "flex-column layout-centered",
+      CS.flexColumn,
+      CS.layoutCentered,
       { [QueryBuilderS.LoadingHidden]: hidden },
     )}
   >

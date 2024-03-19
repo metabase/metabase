@@ -53,10 +53,10 @@ export default class LegendItem extends Component {
         className={cx(
           className,
           "LegendItem",
-          DashboardS.fullscreenNormalText,
           CS.noDecoration,
           CS.flex,
           CS.alignCenter,
+          DashboardS.fullscreenNormalText,
           DashboardS.fullscreenNightText,
           EmbedFrameS.fullscreenNightText,
           {

@@ -178,11 +178,11 @@ export class DimensionList extends Component {
       <FieldListGroupingTrigger
         className={cx(
           QueryBuilderS.FieldListGroupingTrigger,
+          "text-white-hover",
           CS.flex,
           CS.alignCenter,
           CS.p1,
           CS.cursorPointer,
-          "text-white-hover",
         )}
         data-testid="dimension-list-item-binning"
       >

@@ -281,7 +281,7 @@ describe("scenarios > dashboard card resizing", () => {
           const dashcards = body.dashcards;
           dashcards.forEach(({ card }) => {
             const dashcard = cy.contains(
-              "[data-testid='dashcard-container']",
+              "[data-testid=dashcard-container]",
               card.name,
             );
             resizeDashboardCard({

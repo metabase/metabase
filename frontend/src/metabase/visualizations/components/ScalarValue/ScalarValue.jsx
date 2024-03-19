@@ -54,7 +54,7 @@ const ScalarValue = ({
 
   return (
     <ScalarValueWrapper
-      className={cx(DashboardS.ScalarValue, QueryBuilderS.ScalarValueOverride)}
+      className={cx(DashboardS.ScalarValue, QueryBuilderS.ScalarValue)}
       fontSize={fontSize}
       data-testid="scalar-value"
     >
