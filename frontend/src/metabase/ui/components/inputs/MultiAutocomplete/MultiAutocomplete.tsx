@@ -71,7 +71,8 @@ export function MultiAutocomplete({
     const text = event.clipboardData.getData("Text");
     const values = text.split(/[\n,]/g);
     if (values.length > 1) {
-      const validValues = [...new Set(values)].filter(value =>
+      const uniqueValues = [...new Set(values)];
+      const validValues = uniqueValues.filter(value =>
         shouldCreate?.(value, []),
       );
       if (validValues.length > 0) {
