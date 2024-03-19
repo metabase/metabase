@@ -156,8 +156,8 @@ const checkIfThereAreMultipleDatabases = (database, databases) =>
 const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
   <div
     className={cx(
-      QueryBuilderS.GuiBuilderData,
       QueryBuilderS.GuiBuilderSection,
+      QueryBuilderS.GuiBuilderData,
       CS.flex,
       CS.alignCenter,
       CS.ml2,
@@ -187,8 +187,8 @@ SingleDatabaseName.propTypes = SingleDatabaseNamePropTypes;
 const TableSelector = ({ database, readOnly, selectedTable, setTableId }) => (
   <div
     className={cx(
-      QueryBuilderS.GuiBuilderData,
       QueryBuilderS.GuiBuilderSection,
+      QueryBuilderS.GuiBuilderData,
       CS.flex,
       CS.alignCenter,
       CS.ml2,

@@ -131,6 +131,11 @@
 
 .Loading.LoadingHidden {
   background-color: transparent;
+  pointer-events: none;
+}
+
+.Loading.LoadingHidden * {
+  pointer-events: none;
 }
 
 .QueryError {

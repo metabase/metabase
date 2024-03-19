@@ -133,10 +133,7 @@ export const VisualizationDirtyState = ({
       QueryBuilderS.Loading,
       CS.flex,
       "flex-column layout-centered",
-      {
-        [QueryBuilderS.LoadingHidden]: hidden,
-        "pointer-events-none": hidden,
-      },
+      { [QueryBuilderS.LoadingHidden]: hidden },
     )}
   >
     <RunButtonWithTooltip
