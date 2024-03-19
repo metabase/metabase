@@ -343,7 +343,7 @@ export const getQuestion = createSelector(
     // see https://github.com/metabase/metabase/issues/20042
     const hasDataPermission = !!question.database();
     return type !== "question" && hasDataPermission && !isEditingModel
-      ? question.composeQuestion()
+      ? question.composeQuestionAdhoc()
       : question;
   },
 );
