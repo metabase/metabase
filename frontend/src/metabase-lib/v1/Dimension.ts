@@ -18,7 +18,7 @@ import type {
   Query,
 } from "metabase-lib/v1/metadata/Metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
+import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import type Aggregation from "metabase-lib/v1/queries/structured/Aggregation";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import { DATETIME_UNITS } from "metabase-lib/v1/queries/utils/query-time";
@@ -1217,7 +1217,7 @@ export class ExpressionDimension extends Dimension {
       let semantic_type = null;
 
       if (!baseTypeOption) {
-        if (query) {
+        if (query instanceof StructuredQuery) {
           const datasetQuery = query.legacyQuery({ useStructuredQuery: true });
           const expressions = datasetQuery?.expressions ?? {};
           const expr = expressions[this.name()];
