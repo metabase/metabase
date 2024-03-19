@@ -130,8 +130,8 @@
   [query :- [:maybe :map]]
   (when query
     (when-let [f (case (lib/normalized-query-type query)
-                   :mbql/query        pmbql-query->database-and-table-ids
-                   (:internal :query) legacy-query->database-and-table-ids
+                   :mbql/query      pmbql-query->database-and-table-ids
+                   (:native :query) legacy-query->database-and-table-ids
                    nil)]
       (f (mi/maybe-normalize-query :out query)))))
 
