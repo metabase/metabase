@@ -102,10 +102,8 @@ function getAvailableSelectItems(
   ];
 
   const mapping = items.reduce((map: Map<string, string>, option) => {
-    if (option.label) {
-      map.set(option.value, option.label);
-    } else if (!map.has(option.value)) {
-      map.set(option.value, option.value);
+    if (!map.has(option.value)) {
+      map.set(option.value, option.label ?? option.value);
     }
     return map;
   }, new Map<string, string>());

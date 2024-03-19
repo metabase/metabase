@@ -24,7 +24,7 @@ export function StaticValuePicker({
 }: StaticValuePickerProps) {
   return (
     <MultiAutocomplete
-      data={selectedValues}
+      data={[]}
       value={selectedValues}
       placeholder={placeholder}
       searchable
