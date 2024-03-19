@@ -110,7 +110,7 @@
 
 (mu/defn query-hash :- bytes?
   "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
-  ^bytes [query :- :map]
+  ^bytes [query :- [:maybe :map]]
   ;; convert to pMBQL first if this is a legacy query.
   (let [query (try
                 (cond-> query
