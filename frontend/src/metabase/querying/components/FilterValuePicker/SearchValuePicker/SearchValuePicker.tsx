@@ -16,7 +16,7 @@ interface SearchValuePickerProps {
   fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
-  canAddValue: (query: string) => boolean;
+  shouldCreate: (query: string) => boolean;
   autoFocus?: boolean;
   onChange: (newValues: string[]) => void;
 }
@@ -27,7 +27,7 @@ export function SearchValuePicker({
   fieldValues: initialFieldValues,
   selectedValues,
   placeholder,
-  canAddValue,
+  shouldCreate,
   autoFocus,
   onChange,
 }: SearchValuePickerProps) {
@@ -68,7 +68,7 @@ export function SearchValuePicker({
       searchable
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
-      shouldCreate={canAddValue}
+      shouldCreate={shouldCreate}
       onChange={onChange}
       onSearchChange={handleSearchChange}
     />
