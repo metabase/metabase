@@ -1,5 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { openQuestionActions, popover, restore } from "e2e/support/helpers";
+import {
+  createQuestion,
+  openQuestionActions,
+  popover,
+  restore,
+} from "e2e/support/helpers";
 import type { FieldReference } from "metabase-types/api";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -19,7 +24,7 @@ describe("issue 35711", () => {
   });
 
   it("can edit metadata of a model with a custom column (metabase#35711)", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         type: "model",
         query: {
