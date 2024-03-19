@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";
 import { getEngineNativeType } from "metabase/lib/engine";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -16,19 +15,15 @@ const BUTTON_TOOLTIP = {
 
 interface ConvertQueryButtonProps {
   question: Question;
-  onOpenModal?: (modalType: string) => void;
 }
 
 export const ConvertQueryButton = ({
   question,
-  onOpenModal,
 }: ConvertQueryButtonProps): JSX.Element => {
   const engineType = getEngineNativeType(question.database()?.engine);
   const tooltip = BUTTON_TOOLTIP[engineType];
 
-  const handleClick = useCallback(() => {
-    onOpenModal?.(MODAL_TYPES.CONVERT_QUERY);
-  }, [onOpenModal]);
+  const handleClick = useCallback(() => {}, []);
 
   return (
     <Tooltip tooltip={tooltip} placement="top">
