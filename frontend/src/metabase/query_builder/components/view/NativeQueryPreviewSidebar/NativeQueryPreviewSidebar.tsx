@@ -30,7 +30,7 @@ interface UpdateQuestionOpts {
   shouldUpdateUrl?: boolean;
 }
 
-interface SQLPreviewSidebarProps {
+interface NativeQueryPreviewSidebarProps {
   question: Question;
   onLoadQuery: () => Promise<NativeQueryForm>;
   onUpdateQuestion: (question: Question, opts?: UpdateQuestionOpts) => void;
@@ -38,13 +38,13 @@ interface SQLPreviewSidebarProps {
   onClose?: () => void;
 }
 
-const SQLPreviewSidebar = ({
+const NativeQueryPreviewSidebar = ({
   question,
   onLoadQuery,
   onUpdateQuestion,
   onSetUIControls,
   onClose,
-}: SQLPreviewSidebarProps): JSX.Element => {
+}: NativeQueryPreviewSidebarProps): JSX.Element => {
   const engineType = getEngineNativeType(question.database()?.engine);
   const { query, error, isLoading } = useNativeQuery(question, onLoadQuery);
 
@@ -85,4 +85,4 @@ const mapStateToProps = (state: State) => ({
 });
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps)(SQLPreviewSidebar);
+export default connect(mapStateToProps)(NativeQueryPreviewSidebar);
