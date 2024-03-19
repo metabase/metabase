@@ -477,7 +477,7 @@ class Question {
 
   composeQuestionAdhoc(): Question {
     if (!this.isSaved()) {
-      throw new Error("Unsaved questions cannot be composed");
+      return this;
     }
 
     const query = this.composeQuestion().query();
