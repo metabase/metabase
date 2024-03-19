@@ -1,5 +1,5 @@
 import type { ChangeEvent } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -12,7 +12,7 @@ import {
 } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
 
-import { getEffectiveOptions } from "../utils";
+import { getEffectiveOptions, getFieldOptions } from "../utils";
 
 import { ColumnGrid } from "./ListValuePicker.styled";
 import { LONG_OPTION_LENGTH, MAX_INLINE_OPTIONS } from "./constants";
@@ -125,7 +125,7 @@ export function AutocompletePicker({
   autoFocus,
   onChange,
 }: ListValuePickerProps) {
-  const options = getEffectiveOptions(fieldValues, selectedValues);
+  const options = useMemo(() => getFieldOptions(fieldValues), [fieldValues]);
 
   return (
     <MultiAutocomplete

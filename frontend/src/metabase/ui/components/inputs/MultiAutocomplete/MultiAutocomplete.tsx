@@ -29,14 +29,13 @@ export function MultiAutocomplete({
     finalValue: "",
     onChange: onSearchChange,
   });
-  const [elevatedValues, setElevatedValues] = useState<string[]>([]);
   const [lastSelectedValues, setLastSelectedValues] = useState(selectedValues);
   const [isFocused, setIsFocused] = useState(false);
   const visibleValues = isFocused ? lastSelectedValues : selectedValues;
 
   const items = useMemo(
-    () => getAvailableSelectItems(data, lastSelectedValues, elevatedValues),
-    [data, lastSelectedValues, elevatedValues],
+    () => getAvailableSelectItems(data, lastSelectedValues),
+    [data, lastSelectedValues],
   );
 
   const handleChange = (newValues: string[]) => {
@@ -54,7 +53,6 @@ export function MultiAutocomplete({
     setIsFocused(false);
     setLastSelectedValues(selectedValues);
     setSearchValue("");
-    setElevatedValues([]);
     onBlur?.(event);
   };
 
@@ -64,10 +62,8 @@ export function MultiAutocomplete({
     const isValid = shouldCreate?.(newSearchValue, []);
     if (isValid) {
       setSelectedValues([...lastSelectedValues, newSearchValue]);
-      setElevatedValues([newSearchValue]);
     } else {
       setSelectedValues(lastSelectedValues);
-      setElevatedValues([]);
     }
   };
 
@@ -99,10 +95,8 @@ function getSelectItem(item: string | SelectItem): SelectItem {
 function getAvailableSelectItems(
   data: ReadonlyArray<string | SelectItem>,
   selectedValues: string[],
-  elevatedValues: string[],
 ) {
   const items = [
-    ...elevatedValues.map(getSelectItem),
     ...data.map(getSelectItem),
     ...selectedValues.map(getSelectItem),
   ];

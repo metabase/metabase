@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { MultiAutocomplete } from "metabase/ui";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
-import { getEffectiveOptions } from "../utils";
+import { getFieldOptions } from "../utils";
 
 import { SEARCH_DEBOUNCE } from "./constants";
 import { shouldSearch, getSearchValues } from "./utils";
@@ -39,10 +39,7 @@ export function SearchValuePicker({
     [fieldId, searchFieldId, searchQuery],
   );
 
-  const options = useMemo(
-    () => getEffectiveOptions(fieldValues, selectedValues),
-    [fieldValues, selectedValues],
-  );
+  const options = useMemo(() => getFieldOptions(fieldValues), [fieldValues]);
 
   const handleSearchChange = (newSearchValue: string) => {
     setSearchValue(newSearchValue);
