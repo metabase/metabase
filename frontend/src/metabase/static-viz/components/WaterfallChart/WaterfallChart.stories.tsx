@@ -230,3 +230,10 @@ EnourmousDataset.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const Nulls = Template.bind({});
+Nulls.args = {
+  rawSeries: data.nulls as any,
+  dashcardSettings: {},
+  renderingContext,
+};
