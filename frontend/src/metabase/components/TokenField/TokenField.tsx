@@ -6,7 +6,7 @@ import { findDOMNode } from "react-dom";
 import _ from "underscore";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import CS from "metabase/css/core/index.css"
+import CS from "metabase/css/core/index.css";
 import { isObscured } from "metabase/lib/dom";
 import {
   KEYCODE_ESCAPE,
