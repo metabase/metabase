@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 export function MultiAutocomplete({
   data,
   value: controlledValue,
+  defaultValue,
   searchValue: controlledSearchValue,
   placeholder,
   autoFocus,
@@ -19,6 +20,7 @@ export function MultiAutocomplete({
 }: MultiSelectProps) {
   const [selectedValues, setSelectedValues] = useUncontrolled({
     value: controlledValue,
+    defaultValue,
     finalValue: [],
     onChange,
   });
@@ -88,7 +90,7 @@ export function MultiAutocomplete({
 
 function getSelectItem(item: string | SelectItem): SelectItem {
   if (typeof item === "string") {
-    return { value: item, label: item };
+    return { value: item };
   } else {
     return item;
   }
