@@ -54,19 +54,21 @@ export const ClauseStep = <T,>({
   ...props
 }: ClauseStepProps<T>): JSX.Element => {
   const renderItem = ({ item, index, onOpen }: RenderItemOpts<T>) => (
-    <NotebookCellItem color={color} readOnly={readOnly} onClick={onOpen}>
-      {renderName(item, index)}
-      {!readOnly && (
-        <Icon
-          className="ml1"
-          name="close"
-          onClick={e => {
-            e.stopPropagation();
-            onRemove(item, index);
-          }}
-        />
-      )}
-    </NotebookCellItem>
+    <ClauseStepDndItem index={index} readOnly={readOnly}>
+      <NotebookCellItem color={color} readOnly={readOnly} onClick={onOpen}>
+        {renderName(item, index)}
+        {!readOnly && (
+          <Icon
+            className="ml1"
+            name="close"
+            onClick={e => {
+              e.stopPropagation();
+              onRemove(item, index);
+            }}
+          />
+        )}
+      </NotebookCellItem>
+    </ClauseStepDndItem>
   );
 
   const renderNewItem = ({ onOpen }: { onOpen?: () => void }) => (
@@ -81,12 +83,11 @@ export const ClauseStep = <T,>({
     <NotebookCell color={color} data-testid={props["data-testid"]}>
       <ClauseStepDndContext items={items} onReorder={onReorder}>
         {items.map((item, index) => (
-          <ClauseStepDndItem key={index} index={index} readOnly={readOnly}>
-            <ClausePopover
-              renderItem={onOpen => renderItem({ item, index, onOpen })}
-              renderPopover={onClose => renderPopover({ item, index, onClose })}
-            />
-          </ClauseStepDndItem>
+          <ClausePopover
+            key={index}
+            renderItem={onOpen => renderItem({ item, index, onOpen })}
+            renderPopover={onClose => renderPopover({ item, index, onClose })}
+          />
         ))}
       </ClauseStepDndContext>
       {!readOnly && (
