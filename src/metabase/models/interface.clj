@@ -177,18 +177,20 @@
   "For top-level query maps like `Card.dataset_query`. Normalizes them on the way in & out."
   [in-or-out :- [:enum :in :out]
    query     :- [:maybe :map]]
-  (when (seq query)
-    (let [f (if (= (lib/normalized-query-type query) :mbql/query)
-              ;; MLv2 queries
-              (case in-or-out
-                :in  serialize-mlv2-query
-                :out deserialize-mlv2-query)
-              ;; legacy queries: just normalize them with the legacy normalization code for now... in the near future
-              ;; we'll probably convert to MLv2 before saving so everything in the app DB is MLv2
-              (case in-or-out
-                :in  mbql.normalize/normalize
-                :out mbql.normalize/normalize))]
-      (f query))))
+  (letfn [(normalize [query]
+            (let [f (if (= (lib/normalized-query-type query) :mbql/query)
+                      ;; MLv2 queries
+                      (case in-or-out
+                        :in  serialize-mlv2-query
+                        :out deserialize-mlv2-query)
+                      ;; legacy queries: just normalize them with the legacy normalization code for now... in the near future
+                      ;; we'll probably convert to MLv2 before saving so everything in the app DB is MLv2
+                      (case in-or-out
+                        :in  mbql.normalize/normalize
+                        :out mbql.normalize/normalize))]
+              (f query)))]
+    (cond-> query
+      (seq query) normalize)))
 
 (defn catch-normalization-exceptions
   "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When

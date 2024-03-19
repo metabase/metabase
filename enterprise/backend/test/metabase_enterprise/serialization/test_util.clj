@@ -93,7 +93,7 @@
    data-sources the current application database.
 
    This is particularly useful for load/dump/serialization tests, where you need both a source and application db."
-  {:style/indent 0}
+  {:style/indent [:defn]}
   [bindings & body]
   (let [arity (count bindings)
         bindings (mapv (fn [binding]

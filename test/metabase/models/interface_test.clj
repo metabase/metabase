@@ -38,6 +38,10 @@
            :type     :native
            :native   {:template-tags {100 [:field-id "WOW"]}}})))))
 
+(deftest ^:parallel normalize-empty-query-test
+  (is (= {}
+         ((:out mi/transform-metabase-query) "{}"))))
+
 (deftest ^:parallel normalize-metric-segment-definition-test
   (testing "Legacy Metric/Segment definitions should get normalized"
     (is (= {:filter [:= [:field 1 nil] [:field 2 {:temporal-unit :month}]]}
