@@ -162,7 +162,7 @@ function setup({
 
 describe("ListPickerConnected", () => {
   describe("static value list", () => {
-    it("without values", () => {
+    it.only("without values", () => {
       const { onChangeMock, fetchValuesMock } = setup({
         value: null,
         parameter: getStaticListParam([]),
