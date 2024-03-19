@@ -123,11 +123,11 @@
            ["-0,0"       -0.0           float-or-int-type ",."]
            ["-0,0"       -0.0           float-or-int-type ", "]
            ["-0.0"       -0.0           float-or-int-type ".’"]
-           ["(0.0)"      0              float-or-int-type "."]  ;; These values should also be parsed as -0.0
-           ["(0.0)"      0              float-or-int-type ".,"] ;; TODO: Fix this subtle bug in our parser 🥴
-           ["(0,0)"      0              float-or-int-type ",."]
-           ["(0,0)"      0              float-or-int-type ", "]
-           ["(0.0)"      0              float-or-int-type ".’"]
+           ["(0.0)"      -0.0           float-or-int-type "."]
+           ["(0.0)"      -0.0           float-or-int-type ".,"]
+           ["(0,0)"      -0.0           float-or-int-type ",."]
+           ["(0,0)"      -0.0           float-or-int-type ", "]
+           ["(0.0)"      -0.0           float-or-int-type ".’"]
            ["-4300.00€"  -4300          float-or-int-type ".,"]
            ["£1,000.00"  1000           float-or-int-type]
            ["£1,000.00"  1000           float-or-int-type "."]
