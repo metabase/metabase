@@ -14,7 +14,7 @@ import {
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
 
-import { TablePicker } from "./TablePicker";
+import { NotebookDataPicker } from "./NotebookDataPicker";
 
 type MockCollection = {
   id: CollectionId;
@@ -136,11 +136,14 @@ const setup = ({
   walkForCollectionItems(collectionTree);
 
   return renderWithProviders(
-    <TablePicker onItemSelect={onItemSelect} initialValue={initialValue} />,
+    <NotebookDataPicker
+      onItemSelect={onItemSelect}
+      initialValue={initialValue}
+    />,
   );
 };
 
-describe("TablePicker", () => {
+describe("NotebookDataPicker", () => {
   afterAll(() => {
     jest.restoreAllMocks();
   });

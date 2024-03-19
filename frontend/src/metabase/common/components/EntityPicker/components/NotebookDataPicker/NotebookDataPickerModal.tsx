@@ -4,17 +4,20 @@ import { t } from "ttag";
 import type { CollectionPickerItem, EntityTab } from "../../types";
 import { EntityPickerModal, defaultOptions } from "../EntityPickerModal";
 
-import { TablePicker, type TablePickerOptions } from "./TablePicker";
+import {
+  NotebookDataPicker,
+  type NotebookDataPickerOptions,
+} from "./NotebookDataPicker";
 
 interface Props {
   title?: string;
   onChange: (item: CollectionPickerItem) => void;
   onClose: () => void;
-  options?: TablePickerOptions;
+  options?: NotebookDataPickerOptions;
   value: Pick<CollectionPickerItem, "id" | "model">;
 }
 
-export const TablePickerModal = ({
+export const NotebookDataPickerModal = ({
   options = defaultOptions,
   title = t`Select a table`,
   value,
@@ -52,7 +55,7 @@ export const TablePickerModal = ({
       model: "table",
       icon: "table",
       element: (
-        <TablePicker
+        <NotebookDataPicker
           initialValue={value}
           options={options}
           ref={pickerRef}

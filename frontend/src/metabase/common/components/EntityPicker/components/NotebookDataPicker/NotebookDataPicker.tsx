@@ -16,25 +16,29 @@ import { NestedItemPicker } from "../NestedItemPicker";
 import { TableItemPickerResolver } from "./TableItemPickerResolver";
 import { getStateFromIdPath, getCollectionIdPath, isFolder } from "./utils";
 
-export type TablePickerOptions = EntityPickerModalOptions & {
+export type NotebookDataPickerOptions = EntityPickerModalOptions & {
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;
   namespace?: "snippets";
 };
 
-const defaultOptions: TablePickerOptions = {
+const defaultOptions: NotebookDataPickerOptions = {
   showPersonalCollections: false,
   showRootCollection: false,
 };
 
-interface TablePickerProps {
+interface NotebookDataPickerProps {
   onItemSelect: (item: CollectionPickerItem) => void;
   initialValue?: Partial<CollectionPickerItem>;
-  options?: TablePickerOptions;
+  options?: NotebookDataPickerOptions;
 }
 
-export const TablePicker = forwardRef(function TablePicker(
-  { onItemSelect, initialValue, options = defaultOptions }: TablePickerProps,
+export const NotebookDataPicker = forwardRef(function NotebookDataPicker(
+  {
+    onItemSelect,
+    initialValue,
+    options = defaultOptions,
+  }: NotebookDataPickerProps,
   ref: React.Ref<unknown>,
 ) {
   const [path, setPath] = useState<PickerState<CollectionPickerItem>>(() =>
