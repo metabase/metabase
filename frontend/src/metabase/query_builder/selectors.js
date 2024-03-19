@@ -343,7 +343,7 @@ export const getQuestion = createSelector(
     // see https://github.com/metabase/metabase/issues/20042
     const hasDataPermission = !!question.database();
     return type !== "question" && hasDataPermission && !isEditingModel
-      ? question.composeDataset()
+      ? question.composeQuestion()
       : question;
   },
 );
@@ -356,7 +356,7 @@ function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
   );
 }
 
-// Model questions may be composed via the `composeDataset` method.
+// Model questions may be composed via the `composeQuestion` method.
 // A composed model question should be treated as equivalent to its original form.
 // We need to handle scenarios where both the `lastRunQuestion` and the `currentQuestion` are
 // in either form.
@@ -371,7 +371,7 @@ function areModelsEquivalent({
     return false;
   }
 
-  const composedOriginal = originalQuestion.composeDataset();
+  const composedOriginal = originalQuestion.composeQuestion();
 
   const isLastRunComposed = areLegacyQueriesEqual(
     lastRunQuestion.datasetQuery(),
