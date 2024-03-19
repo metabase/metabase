@@ -11,7 +11,7 @@
    [metabase.util.log :as log]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
-   [ring.adapter.jetty9.common :as common]
+   [ring.util.jakarta.servlet :as servlet]
    [ring.util.response :as response])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
@@ -189,7 +189,7 @@
       (let [gzip?   (should-gzip-response? request-map)
             headers (cond-> (assoc (merge headers (:headers response-map)) "Content-Type" content-type)
                       gzip? (assoc "Content-Encoding" "gzip"))]
-        (#'common/set-headers response headers)
+        (#'servlet/set-headers response headers)
         (let [output-stream-delay (output-stream-delay gzip? response)
               delay-os            (delay-output-stream output-stream-delay)]
           (start-async-cancel-loop! request finished-chan canceled-chan)
