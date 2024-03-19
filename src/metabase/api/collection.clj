@@ -546,6 +546,12 @@
   (let [visible-collection-ids (collection/permissions-set->visible-collection-ids
                                 @api/*current-user-permissions-set*)
 
+        descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-ids->honeysql-filter-clause
+                                                                         :id
+                                                                         visible-collection-ids))
+
+        descendant-collection-ids (map u/the-id descendant-collections)
+
         child-type->coll-id-set
         (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
                   (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
@@ -553,22 +559,22 @@
                  :card    #{}}
                 (mdb.query/reducible-query {:select-distinct [:collection_id :type]
                                             :from            [:report_card]
-                                            :where           [:= :archived false]}))
+                                            :where           [:and
+                                                              [:= :archived false]
+                                                              [:in :collection_id descendant-collection-ids]]}))
 
         collections-containing-dashboards
         (->> (t2/query {:select-distinct [:collection_id]
                         :from :report_dashboard
-                        :where [:= :archived false]})
+                        :where [:and
+                                [:= :archived false]
+                                [:in :collection_id descendant-collection-ids]]})
              (map :collection_id)
              (into #{}))
 
-        descendants (collection/descendants-flat parent-coll (collection/visible-collection-ids->honeysql-filter-clause
-                                                              :id
-                                                              visible-collection-ids))
-
         ;; the set of collections that contain collections (in terms of *effective* location)
         collections-containing-collections
-        (->> descendants
+        (->> descendant-collections
              (reduce (fn [accu {:keys [location] :as _coll}]
                        (let [effective-location (collection/effective-location-path location visible-collection-ids)
                              parent-id (collection/location-path->parent-id effective-location)]
@@ -576,15 +582,16 @@
                      #{}))
 
         child-type->coll-id-set
-        (merge child-type->coll-id-set {:collection collections-containing-collections
-                                        :dashboard collections-containing-dashboards})
+        (merge child-type->coll-id-set
+               {:collection collections-containing-collections
+                :dashboard collections-containing-dashboards})
 
         ;; why are we calling `annotate-collections` on all descendants, when we only need the collections in `colls`
         ;; to be annotated? Because `annotate-collections` works by looping through the collections it's passed and
         ;; using them to figure out the ancestors of a given collection. This could use a refactor - probably the
         ;; caller of `annotate-collections` could be generating both `child-type->parent-ids` and
         ;; `child-type->ancestor-ids`.
-        coll-id->annotated (m/index-by :id (collection/annotate-collections child-type->coll-id-set descendants))]
+        coll-id->annotated (m/index-by :id (collection/annotate-collections child-type->coll-id-set descendant-collections))]
     (for [coll colls]
       (merge coll (select-keys (coll-id->annotated (:id coll)) [:here :below])))))
 
