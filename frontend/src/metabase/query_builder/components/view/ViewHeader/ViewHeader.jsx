@@ -460,12 +460,12 @@ function ViewTitleHeaderRightSide(props) {
     [isRunning],
   );
 
-  const canBeSaved = Lib.canSave(question.query());
-  const isSaveDisabled = !canBeSaved || !isEditable;
+  const canSave = Lib.canSave(question.query());
+  const isSaveDisabled = !canSave || !isEditable;
   const disabledSaveTooltip = getDisabledSaveTooltip(
     isEditable,
     requiredTemplateTags,
-    canBeSaved,
+    canSave,
   );
 
   return (

@@ -119,10 +119,6 @@ export default class NativeQuery extends AtomicQuery {
     );
   }
 
-  canBeSaved(): boolean {
-    return this.canRun() && this._allRequiredTagsHaveDefaults();
-  }
-
   isEmpty() {
     return this._databaseId() == null || this.queryText().length === 0;
   }
@@ -309,18 +305,6 @@ export default class NativeQuery extends AtomicQuery {
   private _allTemplateTagsAreValid() {
     const tagErrors = this._validateTemplateTags();
     return tagErrors.length === 0;
-  }
-
-  private _allRequiredTagsHaveDefaults() {
-    const isEmpty = v => {
-      const value = Array.isArray(v) ? v[0] : v;
-      return value == null || value === "";
-    };
-
-    const requiredNoDefaults = this.templateTags().filter(
-      tag => tag.required && isEmpty(tag.default),
-    );
-    return requiredNoDefaults.length === 0;
   }
 
   setTemplateTag(name: string, tag: TemplateTag): NativeQuery {

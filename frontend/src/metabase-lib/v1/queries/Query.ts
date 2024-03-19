@@ -70,10 +70,6 @@ class Query {
     return false;
   }
 
-  canBeSaved(): boolean {
-    return false;
-  }
-
   /**
    * Dimensions exposed by this query
    * NOTE: Ideally we'd also have `dimensions()` that returns a flat list, but currently StructuredQuery has it's own `dimensions()` for another purpose.
