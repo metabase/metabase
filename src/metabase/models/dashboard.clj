@@ -535,10 +535,9 @@
    [:name ms/NonBlankString]
    [:mappings [:maybe [:set dashboard-card/ParamMapping]]]])
 
-(mu/defn ^:private dashboard->resolved-params* :- [:map-of ms/NonBlankString ParamWithMapping]
+(mu/defn ^:private dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
   [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]
-  (let [dashboard           (t2/hydrate dashboard [:dashcards :card])
-        param-key->mappings (apply
+  (let [param-key->mappings (apply
                              merge-with set/union
                              (for [dashcard (:dashcards dashboard)
                                    param    (:parameter_mappings dashcard)]
@@ -546,29 +545,29 @@
     (into {} (for [{param-key :id, :as param} (:parameters dashboard)]
                [(u/qualified-name param-key) (assoc param :mappings (get param-key->mappings param-key))]))))
 
-(mi/define-simple-hydration-method dashboard->resolved-params
-  :resolved-params
-  "Return map of Dashboard parameter key -> param with resolved `:mappings`.
-    (dashboard->resolved-params (t2/select-one Dashboard :id 62))
-    ;; ->
-    {\"ee876336\" {:name     \"Category Name\"
-                   :slug     \"category_name\"
-                   :id       \"ee876336\"
-                   :type     \"category\"
-                   :mappings #{{:parameter_id \"ee876336\"
-                                :card_id      66
-                                :dashcard     ...
-                                :target       [:dimension [:fk-> [:field-id 263] [:field-id 276]]]}}},
-     \"6f10a41f\" {:name     \"Price\"
-                   :slug     \"price\"
-                   :id       \"6f10a41f\"
-                   :type     \"category\"
-                   :mappings #{{:parameter_id \"6f10a41f\"
-                                :card_id      66
-                                :dashcard     ...
-                                :target       [:dimension [:field-id 264]]}}}}"
-  [dashboard]
-  (dashboard->resolved-params* dashboard))
+(methodical/defmethod t2/batched-hydrate [:model/Dashboard :resolved-params]
+ "Return map of Dashboard parameter key -> param with resolved `:mappings`.
+   (dashboard->resolved-params (t2/select-one Dashboard :id 62))
+   ;; ->
+   {\"ee876336\" {:name     \"Category Name\"
+                  :slug     \"category_name\"
+                  :id       \"ee876336\"
+                  :type     \"category\"
+                  :mappings #{{:parameter_id \"ee876336\"
+                               :card_id      66
+                               :dashcard     ...
+                               :target       [:dimension [:fk-> [:field-id 263] [:field-id 276]]]}}},
+    \"6f10a41f\" {:name     \"Price\"
+                  :slug     \"price\"
+                  :id       \"6f10a41f\"
+                  :type     \"category\"
+                  :mappings #{{:parameter_id \"6f10a41f\"
+                               :card_id      66
+                               :dashcard     ...
+                               :target       [:dimension [:field-id 264]]}}}}"
+  [_model k dashboards]
+  (let [dashboards-with-cards (t2/hydrate dashboards [:dashcards :card])]
+    (map #(assoc %1 k %2) dashboards (map dashboard->resolved-params dashboards-with-cards))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SERIALIZATION                                                    |

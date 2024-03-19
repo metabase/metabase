@@ -32,7 +32,6 @@
             Table
             User]]
    [metabase.models.collection :as collection]
-   [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-test :as dashboard-test]
    [metabase.models.data-permissions :as data-perms]
@@ -1344,7 +1343,11 @@
 (defn- dashcards-by-position
   "Returns dashcards for a dashboard ordered by their position instead of creation like [[dashboard/dashcards]] does."
   [dashboard-or-id]
-  (sort dashboard-card/dashcard-comparator (dashboard/dashcards dashboard-or-id)))
+  (let [dashboard (t2/hydrate (if (map? dashboard-or-id)
+                                dashboard-or-id
+                                (t2/select-one :model/Dashboard dashboard-or-id))
+                              :dashcards)]
+    (sort dashboard-card/dashcard-comparator (:dashcards dashboard))))
 
 (deftest copy-dashboard-with-tab-test
   (testing "POST /api/dashboard/:id/copy"
@@ -1581,6 +1584,13 @@
   (-> (t2/select-one :model/Dashboard dashboard-id)
       (t2/hydrate [:dashcards :series])
       :dashcards))
+
+(defn- tabs
+  "Returns the tabs of a dashboard."
+  [dashboard-id]
+  (-> (t2/select-one :model/Dashboard dashboard-id)
+      (t2/hydrate :tabs)
+      :tabs))
 
 (defn do-with-update-cards-parameter-mapping-permissions-fixtures! [f]
   (do-with-add-card-parameter-mapping-permissions-fixtures!
@@ -1876,7 +1886,7 @@
                                                    :size_y 4
                                                    :col    1
                                                    :row    1})
-                                      :tabs      (dashboard/tabs dashboard-id)})))))))
+                                      :tabs      (tabs dashboard-id)})))))))
 
 (deftest update-tabs-track-snowplow-test
   (t2.with-temp/with-temp
@@ -1911,7 +1921,7 @@
     (testing "send nothing if tabs are unchanged"
       (snowplow-test/with-fake-snowplow-collector
         (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
-                              {:tabs      (dashboard/tabs dashboard-id)
+                              {:tabs      (tabs dashboard-id)
                                :dashcards []})
         (is (= 0 (count (snowplow-test/pop-event-data-and-user-id!))))))))
 
