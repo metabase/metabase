@@ -251,19 +251,25 @@
   [database schemas tables]
   (sql-jdbc.execute/reducible-query database (get-tables-sql schemas tables)))
 
+(defn- describe-syncable-tables
+  [{driver :engine :as database}]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^Connection conn]
+     (when-let [syncable-schemas (seq (driver/syncable-schemas :postgres database))]
+       (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn :postgres conn)]
+         (eduction
+          (comp (filter have-select-privilege?)
+                (map #(dissoc % :type)))
+          (get-tables database syncable-schemas nil)))))))
+
 (defmethod driver/describe-database :postgres
-  [driver database]
-  {:tables
-   (sql-jdbc.execute/do-with-connection-with-options
-    driver
-    database
-    nil
-    (fn [^Connection conn]
-      (if-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
-        (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn :postgres conn)]
-          (into #{} (comp (filter have-select-privilege?) (map #(dissoc % :type)))
-                (get-tables database syncable-schemas nil)))
-        #{})))})
+  [_driver database]
+  ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
+  ;; memrory in a set like this
+  {:tables (into #{} (describe-syncable-tables database))})
 
 ;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
 ;; name, but first fetches database enum types so we have access to them. These are simply binded to the dynamic var

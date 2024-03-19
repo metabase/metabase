@@ -729,14 +729,14 @@
          (fn [^Connection conn]
            (with-open [stmt          (statement-or-prepared-statement driver conn sql params nil)
                        ^ResultSet rs (try
-                                      (let [max-rows 0] ; 0 means no limit
-                                        (execute-statement-or-prepared-statement! driver stmt max-rows params sql))
-                                      (catch Throwable e
-                                        (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                                        {:driver driver
-                                                         :sql    (str/split-lines (driver/prettify-native-form driver sql))
-                                                         :params params}
-                                                        e))))]
+                                       (let [max-rows 0] ; 0 means no limit
+                                          (execute-statement-or-prepared-statement! driver stmt max-rows params sql))
+                                       (catch Throwable e
+                                         (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
+                                                         {:driver driver
+                                                          :sql    (str/split-lines (driver/prettify-native-form driver sql))
+                                                          :params params}
+                                                         e))))]
              ;; TODO - we should probably be using [[reducible-rows]] instead to convert to the correct types
              (reduce rf init (jdbc/reducible-result-set rs {})))))))))
 
