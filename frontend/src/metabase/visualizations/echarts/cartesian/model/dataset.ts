@@ -107,10 +107,12 @@ const aggregateColumnValuesForDatum = (
         ? getDatasetKey(column, cardId)
         : getDatasetKey(column, cardId, row[breakoutIndex]);
 
-    datum[seriesKey] =
-      isMetric(column) && !isDimensionColumn // The dimension values should not be aggregated, only metrics
-        ? sumMetric(datum[seriesKey], rowValue)
-        : rowValue;
+    // The dimension values should not be aggregated, only metrics
+    if (isMetric(column) && !isDimensionColumn) {
+      datum[seriesKey] = sumMetric(datum[seriesKey], rowValue);
+    } else if (!(seriesKey in datum)) {
+      datum[seriesKey] = rowValue;
+    }
   });
 };
 

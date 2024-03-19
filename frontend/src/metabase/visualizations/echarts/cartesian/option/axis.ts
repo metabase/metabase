@@ -341,14 +341,15 @@ export const buildMetricAxis = (
       axisModel.label,
       shouldFlipAxisName ? -90 : undefined,
     ),
-    splitLine: hasSplitLine
-      ? {
-          lineStyle: {
-            type: 5,
-            color: renderingContext.getColor("border"),
-          },
-        }
-      : undefined,
+    splitLine:
+      hasSplitLine && !!settings["graph.y_axis.axis_enabled"]
+        ? {
+            lineStyle: {
+              type: 5,
+              color: renderingContext.getColor("border"),
+            },
+          }
+        : undefined,
     position,
     axisLine: {
       show: false,
