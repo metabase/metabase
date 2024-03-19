@@ -6,20 +6,20 @@ import { Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import { SqlButton } from "./ConvertQueryButton.styled";
+import { SqlButton } from "./ToggleNativeQueryPreview.styled";
 
 const BUTTON_TOOLTIP = {
   sql: t`View the SQL`,
   json: t`View the native query`,
 };
 
-interface ConvertQueryButtonProps {
+interface ToggleNativeQueryPreviewProps {
   question: Question;
 }
 
-export const ConvertQueryButton = ({
+export const ToggleNativeQueryPreview = ({
   question,
-}: ConvertQueryButtonProps): JSX.Element => {
+}: ToggleNativeQueryPreviewProps): JSX.Element => {
   const engineType = getEngineNativeType(question.database()?.engine);
   const tooltip = BUTTON_TOOLTIP[engineType];
 
@@ -34,15 +34,15 @@ export const ConvertQueryButton = ({
   );
 };
 
-interface ConvertQueryButtonOpts {
+interface ToggleNativeQueryPreviewOpts {
   question: Question;
   queryBuilderMode: string;
 }
 
-ConvertQueryButton.shouldRender = ({
+ToggleNativeQueryPreview.shouldRender = ({
   question,
   queryBuilderMode,
-}: ConvertQueryButtonOpts) => {
+}: ToggleNativeQueryPreviewOpts) => {
   const { isNative } = Lib.queryDisplayInfo(question.query());
   return (
     !isNative &&
