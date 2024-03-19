@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
 import { Flex } from "metabase/ui";
+
+// There must exist some transition time, no matter how short,
+// because we need to trigger the 'onTransitionEnd' in the component
 const delayBeforeNotRenderingNotebook = 10;
 
 interface NotebookContainerProps {
