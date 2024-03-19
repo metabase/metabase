@@ -2,13 +2,13 @@ import { useMemo, useState } from "react";
 import { useAsync, useDebounce } from "react-use";
 import { t } from "ttag";
 
-import { MultiSelect } from "metabase/ui";
+import { MultiAutocomplete } from "metabase/ui";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
 import { getEffectiveOptions } from "../utils";
 
 import { SEARCH_DEBOUNCE } from "./constants";
-import { shouldSearch, getSearchValues, getOptimisticOptions } from "./utils";
+import { shouldSearch, getSearchValues } from "./utils";
 
 interface SearchValuePickerProps {
   fieldId: FieldId;
@@ -60,14 +60,15 @@ export function SearchValuePicker({
   useDebounce(handleSearchTimeout, SEARCH_DEBOUNCE, [searchValue]);
 
   return (
-    <MultiSelect
-      data={getOptimisticOptions(options, searchValue, canAddValue)}
+    <MultiAutocomplete
+      data={options}
       value={selectedValues}
       searchValue={searchValue}
       placeholder={placeholder}
       searchable
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
+      shouldCreate={canAddValue}
       onChange={onChange}
       onSearchChange={handleSearchChange}
     />
