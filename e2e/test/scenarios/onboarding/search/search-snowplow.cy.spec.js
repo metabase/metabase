@@ -4,6 +4,7 @@ import {
   enableTracking,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
+  getSearchBar,
   popover,
   resetSnowplow,
   restore,
@@ -309,7 +310,3 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
     });
   });
 });
-
-function getSearchBar() {
-  return cy.findByPlaceholderText("Search…");
-}
