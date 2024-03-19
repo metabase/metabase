@@ -1,8 +1,9 @@
 import { Api } from "metabase/api";
+import type { NativeQueryForm, StructuredQuery } from "metabase-types/api";
 
 export const nativeDatasetApi = Api.injectEndpoints({
   endpoints: builder => ({
-    createNativeDataset: builder.mutation({
+    createNativeDataset: builder.mutation<NativeQueryForm, StructuredQuery>({
       query: input => ({
         method: "POST",
         url: "/api/dataset/native",
