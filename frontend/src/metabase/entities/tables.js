@@ -3,6 +3,7 @@ import { updateIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import Fields from "metabase/entities/fields";
 import Questions from "metabase/entities/questions";
 import Metrics from "metabase/entities/metrics"; // eslint-disable-line import/order -- circular dependencies
 import Segments from "metabase/entities/segments";
@@ -109,11 +110,14 @@ const Tables = createEntity({
           const table = Tables.selectors[
             options.selectorName || "getObjectUnfiltered"
           ](getState(), { entityId: id });
-          await Promise.all(
-            getTableForeignKeyTableIds(table).map(id =>
+          await Promise.all([
+            ...getTableForeignKeyTableIds(table).map(id =>
               dispatch(Tables.actions.fetchMetadata({ id }, options)),
             ),
-          );
+            ...getTableForeignKeyFieldIds(table).map(id =>
+              dispatch(Fields.actions.fetch({ id }, options)),
+            ),
+          ]);
         },
     ),
 
@@ -298,8 +302,18 @@ const Tables = createEntity({
 
 function getTableForeignKeyTableIds(table) {
   return _.chain(table.fields)
-    .filter(field => field.target)
+    .filter(field => field.target != null)
     .map(field => field.target.table_id)
+    .uniq()
+    .value();
+}
+
+// overridden model FK columns have fk_target_field_id but don't have a target
+// in this case we load the field instead of the table
+function getTableForeignKeyFieldIds(table) {
+  return _.chain(table.fields)
+    .filter(field => field.target == null && field.fk_target_field_id != null)
+    .map(field => field.target.fk_target_field_id)
     .uniq()
     .value();
 }

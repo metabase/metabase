@@ -18,7 +18,6 @@ import type BaseQuery from "metabase-lib/v1/queries/Query";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
-import { isFK } from "metabase-lib/v1/types/utils/isa";
 import { sortObject } from "metabase-lib/v1/utils";
 
 import type {
@@ -436,32 +435,6 @@ class Question {
    * Although most of these are essentially a way to modify the current query, having them as a part
    * of Question interface instead of Query interface makes it more convenient to also change the current visualization
    */
-
-  dependentMetadata(): Lib.DependentItem[] {
-    const dependencies: Lib.DependentItem[] = [];
-
-    // we frequently treat dataset/model questions like they are already nested
-    // so we need to fetch the virtual card table representation of the Question
-    // so that we can properly access the table's fields in various scenarios
-    if (this.type() !== "question" && this.isSaved()) {
-      dependencies.push({
-        type: "table",
-        id: getQuestionVirtualTableId(this.id()),
-      });
-    }
-
-    this.getResultMetadata().forEach(field => {
-      if (isFK(field) && field.fk_target_field_id) {
-        dependencies.push({
-          type: "field",
-          id: field.fk_target_field_id,
-        });
-      }
-    });
-
-    dependencies.push(...Lib.dependentMetadata(this.query()));
-    return dependencies;
-  }
 
   composeQuestion(): Question {
     if (!this.isSaved()) {
