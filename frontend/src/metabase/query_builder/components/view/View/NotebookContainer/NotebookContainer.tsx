@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
-import { Flex } from "metabase/ui";
+import { Box } from "metabase/ui";
 
 // There must exist some transition time, no matter how short,
 // because we need to trigger the 'onTransitionEnd' in the component
@@ -36,7 +36,7 @@ export const NotebookContainer = ({
     : "translateY(-100%)";
 
   return (
-    <Flex
+    <Box
       bg="white"
       pos="absolute"
       top={0}
@@ -53,6 +53,6 @@ export const NotebookContainer = ({
       onTransitionEnd={handleTransitionEnd}
     >
       {shouldShowNotebook && <Notebook {...props} />}
-    </Flex>
+    </Box>
   );
 };
