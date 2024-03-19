@@ -211,7 +211,8 @@
                    [:groups (u/the-id group) db-id :data :schemas]
                    :all))
         (is (= {:data {:schemas :all}
-                :view-data :unrestricted}
+                :view-data :unrestricted
+                :create-queries :query-builder}
                (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) db-id])))))))
 
 (deftest update-perms-graph-perms-for-new-db-with-no-tables-test
@@ -225,7 +226,8 @@
                    [:groups (u/the-id group) db-id :data :schemas]
                    :all))
         (is (= {:data {:schemas :all}
-                :view-data :unrestricted}
+                :view-data :unrestricted
+                :create-queries :query-builder}
                (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) db-id])))))))
 
 (deftest update-perms-graph-with-skip-graph-skips-graph-test
