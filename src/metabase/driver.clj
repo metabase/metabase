@@ -1024,6 +1024,8 @@
 
 ;; TODO: Mention in changelog!
 ;; TODO: Consider adding feature instead?
+;; TODO: !!! If we decide that this method stays in its current form, :changelog-test/ignore true should be removed
+;;       and changelog updated accordingly.
 (defmulti field-values-compatible?
   "Checks whether some field is eligible for field values scan.
 
@@ -1031,7 +1033,7 @@
    is unable to handle group by on complex type, which scan attemps.
 
    This method gives driver implementer ability to opt-out from scanning of some fields."
-  {:added "0.50.0" :arglists '([driver field])}
+  {:changelog-test/ignore true :arglists '([driver field])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
