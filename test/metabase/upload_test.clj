@@ -1904,7 +1904,7 @@
                                (for [value-type value-types]
                                  [column-type value-type])))
                      (remove (fn [[column-type value-type]]
-                               ;; Strictly speaking we only require that there is a route which only traverses abstract
+                               ;; Strictly speaking we only require that there is a route which only traverses
                                ;; through abstract nodes, but it's much simpler to enforce this stronger condition:
                                ;; that `column-type` is a child of `value-type`
                                (contains? (ordered-hierarchy/children @#'upload/h value-type) column-type))))
