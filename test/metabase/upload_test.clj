@@ -30,16 +30,17 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private bool-type        ::upload/boolean)
-(def ^:private int-type         ::upload/int)
-(def ^:private bool-or-int-type ::upload/boolean-or-int)
-(def ^:private float-type       ::upload/float)
-(def ^:private vchar-type       ::upload/varchar-255)
-(def ^:private date-type        ::upload/date)
-(def ^:private datetime-type    ::upload/datetime)
-(def ^:private offset-dt-type   ::upload/offset-datetime)
-(def ^:private text-type        ::upload/text)
-(def ^:private auto-pk-type     ::upload/auto-incrementing-int-pk)
+(def ^:private bool-type         ::upload/boolean)
+(def ^:private int-type          ::upload/int)
+(def ^:private bool-int-type     ::upload/*boolean-int*)
+(def ^:private float-type        ::upload/float)
+(def ^:private float-or-int-type ::upload/*float-or-int*)
+(def ^:private vchar-type        ::upload/varchar-255)
+(def ^:private date-type         ::upload/date)
+(def ^:private datetime-type     ::upload/datetime)
+(def ^:private offset-dt-type    ::upload/offset-datetime)
+(def ^:private text-type         ::upload/text)
+(def ^:private auto-pk-type      ::upload/auto-incrementing-int-pk)
 
 (defn- local-infile-on? []
   (= "ON" (-> (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -112,11 +113,28 @@
 (deftest type-detection-and-parse-test
   (doseq [[string-value expected-value expected-type seps]
           ;; Number-related
-          [["0.0"        0              float-type "."]
-           ["0.0"        0              float-type ".,"]
-           ["0,0"        0              float-type ",."]
-           ["0,0"        0              float-type ", "]
-           ["0.0"        0              float-type ".’"]
+          [["0.0"        0              float-or-int-type "."]
+           ["0.0"        0              float-or-int-type ".,"]
+           ["0,0"        0              float-or-int-type ",."]
+           ["0,0"        0              float-or-int-type ", "]
+           ["0.0"        0              float-or-int-type ".’"]
+           ["-0.0"       -0.0           float-or-int-type "."]
+           ["-0.0"       -0.0           float-or-int-type ".,"]
+           ["-0,0"       -0.0           float-or-int-type ",."]
+           ["-0,0"       -0.0           float-or-int-type ", "]
+           ["-0.0"       -0.0           float-or-int-type ".’"]
+           ["(0.0)"      0              float-or-int-type "."]  ;; These values should also be parsed as -0.0
+           ["(0.0)"      0              float-or-int-type ".,"] ;; TODO: Fix this subtle bug in our parser 🥴
+           ["(0,0)"      0              float-or-int-type ",."]
+           ["(0,0)"      0              float-or-int-type ", "]
+           ["(0.0)"      0              float-or-int-type ".’"]
+           ["-4300.00€"  -4300          float-or-int-type ".,"]
+           ["£1,000.00"  1000           float-or-int-type]
+           ["£1,000.00"  1000           float-or-int-type "."]
+           ["£1,000.00"  1000           float-or-int-type ".,"]
+           ["£1.000,00"  1000           float-or-int-type ",."]
+           ["£1 000,00"  1000           float-or-int-type ", "]
+           ["£1’000.00"  1000           float-or-int-type ".’"]
            ["$2"         2              int-type]
            ["$ 3"        3              int-type]
            ["-43€"       -43            int-type]
@@ -143,8 +161,8 @@
            ["9’986’000"  9986000        int-type ".’"]
            ["$0"         0              int-type]
            ["-1"         -1             int-type]
-           ["0"          false          bool-or-int-type]
-           ["1"          true           bool-or-int-type]
+           ["0"          false          bool-int-type]
+           ["1"          true           bool-int-type]
            ["9.986.000"  "9.986.000"    vchar-type ".,"]
            ["3.14"       3.14           float-type]
            ["3.14"       3.14           float-type "."]
@@ -156,7 +174,7 @@
            [".14"        ".14"          vchar-type ".,"] ;; TODO: this should be a float type
            ["0.14"       0.14           float-type ".,"]
            ["-9986.567"  -9986.567      float-type ".,"]
-           ["$2.0"       2              float-type ".,"]
+           ["$2.0"       2              float-or-int-type ".,"]
            ["$ 3.50"     3.50           float-type ".,"]
            ["-4300.23€"  -4300.23       float-type ".,"]
            ["£1,000.23"  1000.23        float-type]
@@ -230,10 +248,10 @@
     (let [settings    {:number-separators (or seps ".,")}
           type->check (#'upload/settings->type->check settings)
           value-type  (#'upload/value->type type->check string-value)
-          ;; get the type of the column, if it were filled with only that value
+          ;; get the type of the column, if we created it based on only that value
           col-type    (first (upload/column-types-from-rows settings nil [[string-value]]))
           parser      (upload-parsing/upload-type->parser col-type settings)]
-      (testing (format "\"%s\" is a %s" string-value type)
+      (testing (format "\"%s\" is a %s" string-value value-type)
         (is (= expected-type
                value-type)))
       (testing (format "\"%s\" is parsed into %s" string-value expected-value)
@@ -244,7 +262,7 @@
   (doseq [[type-a            type-b           expected]
           [[bool-type        bool-type        bool-type]
            [bool-type        int-type         vchar-type]
-           [bool-type        bool-or-int-type bool-type]
+           [bool-type        bool-int-type    bool-type]
            [bool-type        date-type        vchar-type]
            [bool-type        datetime-type    vchar-type]
            [bool-type        vchar-type       vchar-type]
@@ -255,9 +273,12 @@
            [int-type         datetime-type    vchar-type]
            [int-type         vchar-type       vchar-type]
            [int-type         text-type        text-type]
-           [int-type         bool-or-int-type int-type]
-           [bool-or-int-type bool-or-int-type bool-or-int-type]
+           [int-type         bool-int-type    int-type]
+           [bool-int-type    bool-int-type    bool-int-type]
            [float-type       vchar-type       vchar-type]
+           [float-type       text-type        text-type]
+           [float-type       date-type        vchar-type]
+           [float-type       datetime-type    vchar-type]
            [float-type       text-type        text-type]
            [float-type       date-type        vchar-type]
            [float-type       datetime-type    vchar-type]
@@ -1790,7 +1811,7 @@
         ;; inserted rows are rolled back
         (binding [driver/*insert-chunk-rows* 1]
           (doseq [{:keys [upload-type uncoerced coerced fail-msg] :as args}
-                  [{:upload-type ::upload/int,     :uncoerced "2.0",        :coerced 2.0} ;; column is promoted to float
+                  [{:upload-type ::upload/int,     :uncoerced "2.0",        :coerced 2} ;; value is coerced to int
                    {:upload-type ::upload/int,     :uncoerced "2.1",        :coerced 2.1} ;; column is promoted to float
                    {:upload-type ::upload/float,   :uncoerced "2",          :coerced 2.0}
                    {:upload-type ::upload/boolean, :uncoerced "0",          :coerced false}
@@ -1823,16 +1844,10 @@
                           (append!)))))
                 (io/delete-file file)))))))))
 
-(defn- first-non-abstract-first-parent [value-type]
-  (cond (nil? value-type) nil
+(def ^:private concretize @#'upload/concretize)
 
-        (#'upload/abstract->concrete value-type)
-        (recur (first (parents @#'upload/h value-type)))
-
-        :else value-type))
-
-(deftest column-type-test
-  (let [column-type #'upload/column-type]
+(deftest initial-column-type-test
+  (let [column-type (partial concretize nil)]
     (testing "Unknown value types are treated as text"
       (is (= ::upload/text (column-type nil))))
     (testing "Non-abstract value types resolve to themselves"
@@ -1843,6 +1858,74 @@
       (doseq [[value-type expected-column-type] @#'upload/abstract->concrete]
         (is (= expected-column-type (column-type value-type)))
         ;; Strictly speaking we only require that there is a route from each abstract node to its column type which only
-        ;; traverses through abstract nodes, but it's much simpler to enforce this convention. This consistency also
-        ;; keeps the graph easier to reason about and may save us from future foot guns.
-        (is (= expected-column-type (first-non-abstract-first-parent value-type)))))))
+        ;; traverses through abstract nodes, but it's much simpler to enforce this stronger condition.
+        (is (contains? (parents @#'upload/h value-type) expected-column-type))))))
+
+(deftest append-column-type-test
+  (doseq [existing-type @#'upload/value-types
+          value-type    @#'upload/value-types]
+    (case [existing-type value-type]
+      [::upload/int ::upload/*float-or-int*]
+      (testing "We coerce floats with fractional part to plan integers when appending into an existing integer column"
+        (is (= ::upload/int (concretize existing-type value-type))))
+
+      ;; This is unsatisfying, would be good if this interface also covered promoting columns and rejecting values.
+      (testing (format "We append %s values to %s columns as if we were inserting them into new columns" existing-type value-type)
+        (is (= (concretize nil value-type)
+               (concretize existing-type value-type)))))))
+
+(deftest create-from-csv-int-and-float-test
+  (testing "Creation should handle a mix of int and float-or-int values in any order"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+       (with-upload-table!
+         [table (let [table-name (mt/random-name)]
+                  (@#'upload/load-from-csv!
+                   driver/*driver*
+                   (mt/id)
+                   table-name
+                   (csv-file-with ["float-1,float-2"
+                                   "1,   1.0"
+                                   "1.0, 1"]))
+                  (sync-upload-test-table! :database (mt/db) :table-name table-name))]
+         (testing "Check the data was uploaded into the table correctly"
+           (is (= [[1 1.0 1.0]
+                   [2 1.0 1.0]]
+                  (rows-for-table table)))))))))
+
+(deftest append-from-csv-int-and-float-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "Append should handle a mix of int and float-or-int values being appended to an int column"
+      (with-upload-table! [table (create-upload-table!
+                                  :col->upload-type (ordered-map/ordered-map
+                                                     :_mb_row_id ::upload/auto-incrementing-int-pk
+                                                     :number_1 ::upload/int
+                                                     :number_2 ::upload/int)
+                                  :rows [[1, 1]])]
+
+        (let [csv-rows ["number-1, number-2"
+                        "1.0, 1"
+                        "1  , 1.0"]
+              file     (csv-file-with csv-rows (mt/random-name))]
+          (is (some? (append-csv! {:file file, :table-id (:id table)})))
+          (is (= [[1 1 1]
+                  [2 1 1]
+                  [3 1 1]]
+                 (rows-for-table table)))
+
+          (io/delete-file file))))))
+
+(deftest coercion-soundness-test
+  (testing "Every coercion maps to a stricter type that is a direct descendant"
+    (is (empty?
+         ;; Build a set of all type-pairs that violate this constraint
+         (into (sorted-set)
+               (comp (mapcat (fn [[column-type value-types]]
+                               (for [value-type value-types]
+                                 [column-type value-type])))
+                     (remove (fn [[column-type value-type]]
+                               ;; Strictly speaking we only require that there is a route which only traverses
+                               ;; through abstract nodes, but it's much simpler to enforce this stronger condition:
+                               ;; that `column-type` is a child of `value-type`
+                               (contains? (ordered-hierarchy/children @#'upload/h value-type) column-type))))
+               @#'upload/column-type->coercible-value-types)))))
