@@ -6,6 +6,7 @@ import {
   saveDashboard,
   editDashboard,
   visitDashboard,
+  openColumnOptions,
 } from "e2e/support/helpers";
 
 import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
@@ -149,10 +150,15 @@ describe("issue 17514", () => {
       cy.findByText("Products").click();
 
       cy.button("Visualize").click();
+
+      // wait until view results are done rendering
       cy.wait("@dataset");
+      cy.findByTestId("query-builder-main").within(() => {
+        cy.findByText("Doing science...").should("not.exist");
+      });
 
       // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
-      cy.findByTextEnsureVisible("Subtotal").click();
+      openColumnOptions("Subtotal");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Filter by this column");
     });
