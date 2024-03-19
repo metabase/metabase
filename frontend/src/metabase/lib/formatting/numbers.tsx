@@ -154,7 +154,10 @@ export function numberFormatterForOptions(options: FormatNumberOptionsType) {
   return new Intl.NumberFormat("en", {
     style: options.number_style,
     currency: options.currency,
-    currencyDisplay: options.currency_style,
+    currencyDisplay:
+      options.currency_style === "symbol_native"
+        ? "narrowSymbol"
+        : options.currency_style,
     // always use grouping separators, but we may replace/remove them depending on number_separators option
     useGrouping: true,
     minimumIntegerDigits: options.minimumIntegerDigits,
