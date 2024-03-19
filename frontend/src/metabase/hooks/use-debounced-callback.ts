@@ -6,7 +6,6 @@ export function useDebouncedCallback<T>(
   delay: number,
   deps: any[],
 ) {
-  return useMemo(() => {
-    return _.debounce(callback, delay);
-  }, [...deps, delay]); // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => _.debounce(callback, delay), [...deps, delay]);
 }
