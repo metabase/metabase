@@ -93,7 +93,7 @@ export const ErrorDiagnosticModal = ({
           backendErrors: true,
           userLogs: true,
           logs: true,
-          instanceInfo: true,
+          bugReportDetails: true,
         }}
         onSubmit={handleSubmit}
       >
@@ -131,9 +131,9 @@ export const ErrorDiagnosticModal = ({
               </>
             )}
             <FormCheckbox
-              name="instanceInfo"
+              name="bugReportDetails"
               // eslint-disable-next-line no-literal-metabase-strings -- we're mucking around in the software here
-              label={t`Metabase instance version and settings`}
+              label={t`Metabase instance version information`}
             />
           </Stack>
           <Alert variant="warning">
