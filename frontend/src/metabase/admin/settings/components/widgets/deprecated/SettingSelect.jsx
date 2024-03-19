@@ -2,6 +2,7 @@
 import cx from "classnames";
 
 import Select, { Option } from "metabase/core/components/Select";
+import AdminS from "metabase/css/admin.module.css";
 
 /**
  * @deprecated use Select from "metabase/admin/settings/components/widgets/SettingSelect" instead
@@ -14,7 +15,7 @@ const SettingSelect = ({
   disabled = false,
 }) => (
   <Select
-    className={cx("SettingsInput", className)}
+    className={cx(AdminS.SettingsInput, className)}
     placeholder={placeholder}
     value={value}
     defaultValue={defaultValue}
