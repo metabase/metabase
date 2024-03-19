@@ -1824,10 +1824,10 @@
                           (append!)))))
                 (io/delete-file file)))))))))
 
-(def ^:private column-type @#'upload/concretize)
+(def ^:private concretize @#'upload/concretize)
 
 (deftest initial-column-type-test
-  (let [column-type (partial column-type nil)]
+  (let [column-type (partial concretize nil)]
     (testing "Unknown value types are treated as text"
       (is (= ::upload/text (column-type nil))))
     (testing "Non-abstract value types resolve to themselves"
@@ -1847,12 +1847,12 @@
     (case [existing-type value-type]
       [::upload/int ::upload/*float-or-int*]
       (testing "We coerce floats with fractional part to plan integers when appending into an existing integer column"
-        (is (= ::upload/int (column-type existing-type value-type))))
+        (is (= ::upload/int (concretize existing-type value-type))))
 
       ;; This is unsatisfying, would be good if this interface also covered promoting columns and rejecting values.
       (testing (format "We append %s values to %s columns as if we were inserting them into new columns" existing-type value-type)
-        (is (= (column-type nil value-type)
-               (column-type existing-type value-type)))))))
+        (is (= (concretize nil value-type)
+               (concretize existing-type value-type)))))))
 
 (deftest create-from-csv-int-and-float-test
   (testing "Creation should handle a mix of int and float-or-int values in any order"
