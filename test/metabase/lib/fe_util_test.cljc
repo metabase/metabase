@@ -153,8 +153,7 @@
   (testing "simple query"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
-                      {:type :table,    :id (meta/id :venues)}
-                      {:type :table,    :id (meta/id :categories)}]
+                      {:type :table,    :id (meta/id :venues)}]
                      (lib/dependent-metadata query))
       lib.tu/venues-query
       (lib/append-stage lib.tu/venues-query)))

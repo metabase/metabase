@@ -3,7 +3,6 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -12,7 +11,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util :as mbql.u]
    [metabase.shared.formatting.date :as fmt.date]
@@ -153,15 +151,6 @@
       _
       (lib.metadata.calculation/display-name query stage-number filter-clause))))
 
-(defn- query-dependents-foreign-keys
-  [metadata-providerable columns]
-  (for [column columns
-        :let [fk-target-field-id (:fk-target-field-id column)]
-        :when (and fk-target-field-id (lib.types.isa/foreign-key? column))]
-    (if-let [fk-target-field (lib.metadata/field metadata-providerable fk-target-field-id)]
-      {:type :table, :id (:table-id fk-target-field)}
-      {:type :field, :id fk-target-field-id})))
-
 (defn- query-dependents
   [metadata-providerable query-or-join]
   (let [base-stage (first (:stages query-or-join))
@@ -177,17 +166,11 @@
                         (= dim-tag :field)
                         (integer? id))]
          {:type :field, :id id}))
-     (when-let [table-id (:source-table base-stage)]
-       (concat
-         [{:type :table, :id table-id}]
-         (query-dependents-foreign-keys metadata-providerable
-                                        (lib.metadata/fields metadata-providerable table-id))))
+     ;; cf. frontend/src/metabase-lib/Question.ts and frontend/src/metabase-lib/queries/StructuredQuery.ts
      (when-let [card-id (:source-card base-stage)]
-       (concat
-        [{:type :table, :id (str "card__" card-id)}]
-        (let [card-metadata (lib.metadata/card metadata-providerable card-id)]
-          (query-dependents-foreign-keys metadata-providerable
-                                         (:result-metadata card-metadata)))))
+       [{:type :table, :id (str "card__" card-id)}])
+     (when-let [table-id (:source-table base-stage)]
+       [{:type :table, :id table-id}])
      (for [stage (:stages query-or-join)
            join (:joins stage)
            dependent (query-dependents metadata-providerable join)]
