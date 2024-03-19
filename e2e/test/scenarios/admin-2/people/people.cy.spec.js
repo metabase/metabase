@@ -43,7 +43,7 @@ describe("scenarios > admin > people", () => {
   });
 
   describe("user management", () => {
-    it.only("should be possible to switch beteween 'People' and 'Groups' tabs and to add/remove users to groups (metabase-enterprise#210, metabase#12693, metabase#21521)", () => {
+    it("should be possible to switch beteween 'People' and 'Groups' tabs and to add/remove users to groups (metabase-enterprise#210, metabase#12693, metabase#21521)", () => {
       cy.visit("/admin/people");
 
       assertTableRowsCount(TOTAL_USERS);
@@ -52,18 +52,14 @@ describe("scenarios > admin > people", () => {
 
       // A small sidebar selector
       cy.findByTestId("admin-layout-sidebar").within(() => {
-        cy.findAllByTestId("left-nav-pane-item").contains("People").should(
-          "have.attr",
-          "data-selected",
-          "true",
-        );
+        cy.findAllByTestId("left-nav-pane-item")
+          .contains("People")
+          .should("have.attr", "data-selected", "true");
         cy.log("Switch to 'Groups' and make sure it renders properly");
         cy.findByText("Groups").as("groupsTab").click();
-        cy.findAllByTestId("left-nav-pane-item").contains("Groups").should(
-            "have.attr",
-            "data-selected",
-            "true",
-        );
+        cy.findAllByTestId("left-nav-pane-item")
+          .contains("Groups")
+          .should("have.attr", "data-selected", "true");
       });
       cy.findByTestId("admin-pane-page-title").contains("Groups");
       assertTableRowsCount(TOTAL_GROUPS);
