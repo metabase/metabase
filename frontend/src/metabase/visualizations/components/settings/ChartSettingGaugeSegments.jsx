@@ -8,7 +8,6 @@ import NumericInput from "metabase/components/NumericInput";
 import Button from "metabase/core/components/Button";
 import ColorSelector from "metabase/core/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
-import InputS from "metabase/css/core/inputs.module.css";
 import { color } from "metabase/lib/colors";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import { Icon } from "metabase/ui";
@@ -76,7 +75,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                 <td colSpan={3} className="pb2">
                   <input
                     type="text"
-                    className={cx(CS.full, InputS.input)}
+                    className={cx(CS.full, CS.input)}
                     value={segment.label}
                     onChange={e =>
                       onChangeProperty(index, "label", e.target.value)

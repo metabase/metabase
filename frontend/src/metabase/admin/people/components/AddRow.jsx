@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import InputS from "metabase/css/core/inputs.module.css";
 
 export const AddRow = forwardRef(function AddRow(
   {
@@ -27,7 +26,7 @@ export const AddRow = forwardRef(function AddRow(
     >
       {children}
       <input
-        className={cx(InputS.InputBorderless, "h3 ml1 flex-full")}
+        className={cx(CS.inputBorderless, CS.h3, CS.ml1, CS.flexFull)}
         type="text"
         value={value}
         placeholder={placeholder}

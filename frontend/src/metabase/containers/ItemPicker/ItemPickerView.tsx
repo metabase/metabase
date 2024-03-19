@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import InputS from "metabase/css/core/inputs.module.css";
+import CS from "metabase/css/core/index.css";
 import Search from "metabase/entities/search";
 import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
@@ -98,7 +98,7 @@ function ItemPickerView<TId>({
         <ItemPickerHeader data-testid="item-picker-header">
           <SearchInput
             type="search"
-            className={InputS.input}
+            className={CS.input}
             placeholder={t`Search`}
             autoFocus
             onKeyPress={handleSearchInputKeyPress}

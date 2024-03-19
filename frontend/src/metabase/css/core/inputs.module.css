@@ -26,8 +26,8 @@
   color: var(--color-text-dark);
 }
 
-.InputBorderless,
-.InputBorderless:focus {
+.inputBorderless,
+.inputBorderless:focus {
   box-shadow: none;
   outline: 0;
   border: none !important;

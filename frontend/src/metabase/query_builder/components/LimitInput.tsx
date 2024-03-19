@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import type * as React from "react";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
-import InputS from "metabase/css/core/inputs.module.css";
+import CS from "metabase/css/core/index.css";
 
 const DEFAULT_STYLE = {
   borderWidth: 2,
@@ -29,7 +29,7 @@ const LimitInput = ({
   ...props
 }: LimitInputProps) => (
   <input
-    className={cx(InputS.input, className, {
+    className={cx(CS.input, className, {
       // HACK: reuse Button styles
       [ButtonsS.ButtonSmall]: small,
       [ButtonsS.ButtonMedium]: medium,

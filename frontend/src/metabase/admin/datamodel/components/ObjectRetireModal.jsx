@@ -7,7 +7,6 @@ import ActionButton from "metabase/components/ActionButton";
 import ModalContent from "metabase/components/ModalContent";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import InputS from "metabase/css/core/inputs.module.css";
 
 export default class ObjectRetireModal extends Component {
   constructor(props, context) {
@@ -42,7 +41,7 @@ export default class ObjectRetireModal extends Component {
             <p className="text-paragraph">{t`If you're sure you want to retire this ${objectType}, please write a quick explanation of why it's being retired:`}</p>
             <textarea
               ref={this.revisionMessage}
-              className={cx(InputS.input, CS.full)}
+              className={cx(CS.input, CS.full)}
               placeholder={t`This will show up in the activity feed and in an email that will be sent to anyone on your team who created something that uses this ${objectType}.`}
               onChange={e => this.setState({ valid: !!e.target.value })}
             />
