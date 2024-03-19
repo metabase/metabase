@@ -10,7 +10,7 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 
-describeWithSnowplow("scenarios > search", () => {
+describeWithSnowplow("scenarios > search > snowplow", () => {
   const SEARCH_RESULTS_FILTERED_NAME = "search_results_filtered";
   const NEW_SEARCH_QUERY_EVENT_NAME = "new_search_query";
 

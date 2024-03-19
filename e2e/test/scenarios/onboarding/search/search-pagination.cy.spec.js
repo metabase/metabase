@@ -8,7 +8,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 const PAGE_SIZE = 50;
 const TOTAL_ITEMS = PAGE_SIZE + 1;
 
-describe("scenarios > search", () => {
+describe("scenarios > search > pagination", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
