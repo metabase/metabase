@@ -106,3 +106,11 @@
 (defmethod sql.qp/add-interval-honeysql-form :druid-jdbc
   [_ hsql-form amount unit]
   [:TIMESTAMPADD (h2x/identifier :type-name unit) (h2x/->integer amount) hsql-form])
+
+(defmethod driver/field-values-compatible? :druid-jdbc
+  [_driver {:keys [database_type] :as _field}]
+  (not (re-find #"COMPLEX<" (str database_type))))
+
+(defmethod sql-jdbc.conn/data-source-name :druid-jdbc
+  [_driver {:keys [host port] :as _details}]
+  (format "druid-%s-%s" host port))

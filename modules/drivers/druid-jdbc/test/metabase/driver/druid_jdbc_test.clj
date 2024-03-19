@@ -2,11 +2,13 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]))
 
 ;; TODO: There are sync differences between jdbc and non-jdbc implementation. Verify it's ok!
-(deftest ^:parallel sync-test
+;; TODO: This should probably not be parallel.
+(deftest ^:synchronized sync-test
   (mt/test-driver
    :druid-jdbc
    (tqpt/with-flattened-dbdef
@@ -101,7 +103,15 @@
                            :base-type :type/BigInteger,
                            :database-position 9,
                            :json-unfolding false}}}
-               (driver/describe-table :druid-jdbc (mt/db) {:schema "druid" :name "checkins"})))))))
+               (driver/describe-table :druid-jdbc (mt/db) {:schema "druid" :name "checkins"}))))
+               ;; TODO: What's idiomatic way of expressing that we also want to print the exception on failure?
+               (testing "Full sync does not throw an exception"
+                 (is (=? [::success some?]
+                         (try (let [result (sync/sync-database! (mt/db))]
+                                #_(throw (ex-info "hello" {:wrong 1}))
+                                [::success result])
+                              (catch Throwable t
+                                [::failure t]))))))))
 
 ;; TODO: Find a way how to get database version using jdbc driver.
 (deftest dbms-version-test
