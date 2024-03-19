@@ -1849,7 +1849,21 @@
       (testing "We coerce floats with fractional part to plan integers when appending into an existing integer column"
         (is (= ::upload/int (column-type existing-type value-type))))
 
-      ;; This is unsatisfying, it would good for this interface to also cover promoting columns and rejecting values as well.
+      ;; This is unsatisfying, would be good if this interface also covered promoting columns and rejecting values.
       (testing (format "We append %s values to %s columns as if we were inserting them into new columns" existing-type value-type)
         (is (= (column-type nil value-type)
                (column-type existing-type value-type)))))))
+
+(deftest coercion-soundness-test
+  (testing "Every coercion maps to a stricter type that is a direct descendant"
+    (is (empty?
+         ;; Build a set of all type-pairs that violate this constraint
+         (into (sorted-set)
+               (comp (mapcat (fn [[column-type value-types]]
+                               (for [value-type value-types]
+                                 [column-type value-type])))
+                     (remove (fn [[column-type value-type]]
+                               ;; Strictly speaking we only require that there is a route which only traverses abstract
+                               ;; through abstract nodes, but it's much simpler to enforce this stronger condition.
+                               (contains? (ordered-hierarchy/children @#'upload/h value-type) column-type))))
+               @#'upload/coercion-mapping)))))

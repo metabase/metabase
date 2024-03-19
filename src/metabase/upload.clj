@@ -90,8 +90,8 @@
 ;; further up the graph until we reach a concrete `column-type`.
 ;;
 ;; For ease of reference and explicitness these corresponding values are given in the `abstract->concrete` map.
-;; One can figure out these mappings by simply looking for the first concrete ancestor, which will typically have
-;; the same name as the
+;; One can figure out these mappings by simply looking up through the ancestors. For now, we require that it is always
+;; a direct ancestor, and lay out or graph so that it is the left-most one.
 
 (def ^:private h
   "This hierarchy defines a relationship between value types and their specializations.
@@ -117,19 +117,13 @@
    ::*float-or-int*   ::float})
 
 (def ^:private allowed-promotions
-  "A mapping of which types a column can be implicitly relaxed to, based on the content of appended values."
+  "A mapping of which types a column can be implicitly relaxed to, based on the content of appended values.
+  If we require a relaxation which is not allow-listed here, we will reject the corresponding file."
   {::int #{::float}})
-
-;; note that we will throw an error for any other case where the existing type is more specific (i.e. excludes) the
-;; inferred value-type.
 
 (def ^:private coercion-mapping
   "A mapping of which value types should be coerced to the given existing type, rather than triggering promotion."
   {::int #{::*float-or-int*}})
-
-;; our tests or types should check that every one of the value-types is a direct parent of the given column-type.
-;; this is stricter than what we really need - that there is an unbroken line of abstract value-types on the shorted
-;; path to this column type, but in practice we don't need that affordance.
 
 (defn- coerce?
   "Can values of the given type be coerced to the given existing column type, in a lossless fashion?"
