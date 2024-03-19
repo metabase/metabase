@@ -1,8 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
-import type { SearchResult } from "metabase-types/api";
-
 import type { CollectionPickerItem, EntityTab } from "../../types";
 import { EntityPickerModal, defaultOptions } from "../EntityPickerModal";
 
@@ -31,12 +29,6 @@ export const TablePickerModal = ({
     onFolderSelect: (item: { folder: CollectionPickerItem }) => void;
   }>();
 
-  const searchFilter = useCallback(
-    searchResults =>
-      searchResults.filter((result: SearchResult) => result.can_write),
-    [],
-  );
-
   const handleItemSelect = useCallback(
     (item: CollectionPickerItem) => {
       if (options.hasConfirmButtons) {
@@ -58,7 +50,7 @@ export const TablePickerModal = ({
     {
       displayName: t`Tables`,
       model: "table",
-      icon: "beaker",
+      icon: "table",
       element: (
         <TablePicker
           initialValue={value}
@@ -75,7 +67,6 @@ export const TablePickerModal = ({
       <EntityPickerModal
         canSelectItem
         options={options}
-        searchResultFilter={searchFilter}
         selectedItem={selectedItem}
         tabs={tabs}
         title={title}
