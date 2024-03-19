@@ -102,7 +102,7 @@ function searchFieldType(type) {
 
 function getFKTargetField(targetField) {
   return cy
-    .get(".TableEditor-field-target")
+    .findByTestId("fk-target-select")
     .as("targetField")
     .invoke("text")
     .should("eq", targetField);

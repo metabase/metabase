@@ -9,6 +9,7 @@
    [metabase.util.malli :as mu]))
 
 (defn- compile* [{query-type :type, :as query}]
+    (assert (not (:qp/compiled query)) "This query has already been compiled!")
   (if (= query-type :native)
     (:native query)
     (driver/mbql->native driver/*driver* query)))
@@ -30,6 +31,16 @@
   [query :- :map]
   (qp.setup/with-qp-setup [query query]
     (compile-preprocessed (qp.preprocess/preprocess query))))
+
+(mu/defn attach-compiled-query :- :map
+  "If this is an MBQL query, compile it and attach it to the query under the `:qp/compiled` key. Previously, we attached
+  this under `:native`, but that causes the MBQL schema to blow up. We can't just change this to a regular native
+  query outright and remove the MBQL `:query`, because that would break perms checks."
+  [preprocessed :- :map]
+  (let [preprocessed (dissoc preprocessed :qp/compiled)]
+    (case (:type preprocessed)
+      :native preprocessed
+      :query  (assoc preprocessed :qp/compiled (compile-preprocessed preprocessed)))))
 
 (mu/defn compile-and-splice-parameters :- :map
   "Return the native form for a `query`, with any prepared statement (or equivalent) parameters spliced into the query

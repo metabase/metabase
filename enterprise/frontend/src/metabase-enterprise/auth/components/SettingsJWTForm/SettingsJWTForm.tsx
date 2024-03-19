@@ -18,7 +18,7 @@ import {
   FormSwitch,
   FormTextInput,
 } from "metabase/forms";
-import { Flex, Stack } from "metabase/ui";
+import { rem, Flex, Stack } from "metabase/ui";
 import type { SettingValue } from "metabase-types/api";
 
 type SettingValues = { [key: string]: SettingValue };
@@ -80,7 +80,7 @@ export const SettingsJWTForm = ({
       enableReinitialize
     >
       {({ dirty }) => (
-        <Form m={"0 1rem"} maw={"32.5rem"}>
+        <Form m={"0 1rem"} maw={rem(520)}>
           <Breadcrumbs
             className="mb3"
             crumbs={[
@@ -88,7 +88,7 @@ export const SettingsJWTForm = ({
               [t`JWT`],
             ]}
           />
-          <Stack spacing="0.75rem" m="2.5rem 0">
+          <Stack spacing={rem(12)} m={`${rem(40)} 0`}>
             <SettingHeader
               id="jwt-user-provisioning-enabled?"
               setting={settings["jwt-user-provisioning-enabled?"]}

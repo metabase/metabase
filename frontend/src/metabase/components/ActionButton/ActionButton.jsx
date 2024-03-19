@@ -103,6 +103,7 @@ export default class ActionButton extends Component {
 
   render() {
     const {
+      innerRef,
       normalText,
       activeText,
       failedText,
@@ -122,6 +123,7 @@ export default class ActionButton extends Component {
 
     return (
       <Button
+        ref={innerRef}
         {...props}
         className={
           forceActiveStyle

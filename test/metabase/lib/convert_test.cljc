@@ -734,3 +734,34 @@
                             :source-table 12}}]
       (is (= query
              (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL))))))
+
+(deftest ^:parallel parameters-dimension-clause-test
+  (testing "Don't convert :template-tag clauses... YET"
+    (let [pmbql (lib.convert/->pMBQL {:database 1
+                                      :type     :native
+                                      :native   {:parameters [{:target [:dimension [:template-tag "x"]]}]}})]
+      (is (=? {:stages [{:parameters [{:target [:dimension [:template-tag "x"]]}]}]}
+              pmbql))
+      (is (=? {:native {:parameters [{:target [:dimension [:template-tag "x"]]}]}}
+              (lib.convert/->legacy-MBQL pmbql))))))
+
+(deftest ^:parallel parameters-field-target-test
+  (testing "Don't convert :field clauses inside :parameters... YET"
+    (let [pmbql (lib.convert/->pMBQL {:database 1
+                                      :type     :native
+                                      :native   {:parameters [{:target [:field 1 nil]}]}})]
+      (is (=? {:stages [{:parameters [{:target [:field 1 nil]}]}]}
+              pmbql))
+      (is (=? {:native {:parameters [{:target [:field 1 nil]}]}}
+              (lib.convert/->legacy-MBQL pmbql))))))
+
+(deftest ^:parallel time-interval-nil-options-test
+  (testing "We should convert :time-interval clauses with nil options correctly"
+    (are [x] (=? [:time-interval
+                  {:lib/uuid string?}
+                  [:field {:lib/uuid string?} 1]
+                  -5
+                  :year]
+                 (lib/->pMBQL x))
+      [:time-interval [:field 1 nil] -5 :year nil]
+      [:time-interval [:field 1 nil] -5 :year {}])))

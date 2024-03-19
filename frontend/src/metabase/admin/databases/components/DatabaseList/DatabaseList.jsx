@@ -8,6 +8,7 @@ import { t } from "ttag";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
 import FormMessage from "metabase/components/form/FormMessage";
+import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import DatabaseSyncModal from "metabase/databases/containers/DatabaseSyncModal";
@@ -75,7 +76,7 @@ export default class DatabaseList extends Component {
 
     return (
       <div className={CS.wrapper} data-testid="database-list">
-        <section className="PageHeader px2 clearfix">
+        <section className={cx(AdminS.PageHeader, CS.px2, "clearfix")}>
           {isAdmin && (
             <Link
               to="/admin/databases/create"
@@ -86,7 +87,7 @@ export default class DatabaseList extends Component {
               )}
             >{t`Add database`}</Link>
           )}
-          <h2 className="PageTitle">{t`Databases`}</h2>
+          <h2 className={CS.m0}>{t`Databases`}</h2>
         </section>
         {error && (
           <section>
@@ -94,7 +95,7 @@ export default class DatabaseList extends Component {
           </section>
         )}
         <section>
-          <table className="ContentTable">
+          <table className={AdminS.ContentTable}>
             <thead>
               <tr>
                 <th>{t`Name`}</th>

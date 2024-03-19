@@ -6,10 +6,14 @@ import EmptyState from "metabase/components/EmptyState";
 import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
 import type { ErrorDetailsProps } from "metabase/components/ErrorDetails/types";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
+import { useToggle } from "metabase/hooks/use-toggle";
 import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
+import { Button, Icon, Tooltip } from "metabase/ui";
 
-import { ErrorDiagnosticModalTrigger } from "./ErrorDiagnosticModal";
+import {
+  ErrorDiagnosticModalTrigger,
+  ErrorExplanationModal,
+} from "./ErrorDiagnosticModal";
 import { ErrorPageRoot } from "./ErrorPages.styled";
 
 export const GenericError = ({
@@ -81,17 +85,26 @@ export const Archived = ({
 );
 
 export const SmallGenericError = ({
-  message = t`Something's gone wrong`,
+  message = t`Something's gone wrong, click for more information`,
 }: {
   message?: string;
-}) => (
-  <ErrorPageRoot>
-    <Icon
-      name="warning"
-      size={32}
-      color={color("text-light")}
-      tooltip={message}
-    />
-    <ErrorDiagnosticModalTrigger />
-  </ErrorPageRoot>
-);
+}) => {
+  const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] =
+    useToggle(false);
+
+  return (
+    <ErrorPageRoot bordered>
+      <Tooltip label={message}>
+        <Button
+          leftIcon={
+            <Icon name="warning" size={32} color={color("text-light")} />
+          }
+          color="text-light"
+          onClick={openModal}
+          variant="unstyled"
+        />
+      </Tooltip>
+      <ErrorExplanationModal isModalOpen={isModalOpen} onClose={closeModal} />
+    </ErrorPageRoot>
+  );
+};

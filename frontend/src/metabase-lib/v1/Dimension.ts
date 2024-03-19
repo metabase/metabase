@@ -18,7 +18,7 @@ import type {
   Query,
 } from "metabase-lib/v1/metadata/Metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
+import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import type Aggregation from "metabase-lib/v1/queries/structured/Aggregation";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import { DATETIME_UNITS } from "metabase-lib/v1/queries/utils/query-time";
@@ -813,33 +813,38 @@ export class FieldDimension extends Dimension {
   }
 
   field(): Field {
-    // If a Field is cached on the FieldDimension instance, we can shortwire this method and
-    // return the cached Field.
-    const locallyCachedField = this._getTrustedFieldCachedOnInstance();
-    if (locallyCachedField) {
-      return locallyCachedField;
-    }
+    try {
+      // If a Field is cached on the FieldDimension instance, we can shortwire this method and
+      // return the cached Field.
+      const locallyCachedField = this._getTrustedFieldCachedOnInstance();
+      if (locallyCachedField) {
+        return locallyCachedField;
+      }
 
-    // Prioritize pulling a `field` from the Dimenion's associated query (if one exists)
-    // because it might have locally overriding metadata on it.
-    const fieldFromQuery = this._findMatchingQueryField();
-    if (fieldFromQuery) {
-      return fieldFromQuery;
-    }
+      // Prioritize pulling a `field` from the Dimenion's associated query (if one exists)
+      // because it might have locally overriding metadata on it.
+      const fieldFromQuery = this._findMatchingQueryField();
+      if (fieldFromQuery) {
+        return fieldFromQuery;
+      }
 
-    const maybeTableId = this._query?.table()?.id;
-    const fieldFromGlobalState =
-      this._metadata?.field(this.fieldIdOrName(), maybeTableId) ||
-      this._metadata?.field(this.fieldIdOrName());
-    if (fieldFromGlobalState) {
-      return fieldFromGlobalState;
-    }
+      const maybeTableId = this._query?.table()?.id;
+      const fieldFromGlobalState =
+        this._metadata?.field(this.fieldIdOrName(), maybeTableId) ||
+        this._metadata?.field(this.fieldIdOrName());
+      if (fieldFromGlobalState) {
+        return fieldFromGlobalState;
+      }
 
-    // Hitting this return statement means that there is a bug.
-    // This primarily serves as a way to guarantee that this function returns a Field to avoid errors in dependent code.
-    // Despite being unable to find a field, we _might_ still have enough data to know a few things about it.
-    // For example, if we have an mbql field reference, it might contain a `base-type`
-    return this._createFallbackField();
+      // Hitting this return statement means that there is a bug.
+      // This primarily serves as a way to guarantee that this function returns a Field to avoid errors in dependent code.
+      // Despite being unable to find a field, we _might_ still have enough data to know a few things about it.
+      // For example, if we have an mbql field reference, it might contain a `base-type`
+      return this._createFallbackField();
+    } catch (e) {
+      console.warn("FieldDimension.field()", this.mbql(), e);
+      return null;
+    }
   }
 
   getMLv1CompatibleDimension() {
@@ -1202,95 +1207,100 @@ export class ExpressionDimension extends Dimension {
   }
 
   field() {
-    const query = this._query;
-    const table = query ? query.table() : null;
+    try {
+      const query = this._query;
+      const table = query ? query.table() : null;
 
-    // fallback
-    const baseTypeOption = this.getOption("base-type");
-    let type = baseTypeOption || MONOTYPE.Number;
-    let semantic_type = null;
+      // fallback
+      const baseTypeOption = this.getOption("base-type");
+      let type = baseTypeOption || MONOTYPE.Number;
+      let semantic_type = null;
 
-    if (!baseTypeOption) {
-      if (query) {
-        const datasetQuery = query.legacyQuery({ useStructuredQuery: true });
-        const expressions = datasetQuery?.expressions ?? {};
-        const expr = expressions[this.name()];
+      if (!baseTypeOption) {
+        if (query instanceof StructuredQuery) {
+          const datasetQuery = query.legacyQuery({ useStructuredQuery: true });
+          const expressions = datasetQuery?.expressions ?? {};
+          const expr = expressions[this.name()];
 
-        const field = mbql => {
-          const dimension = Dimension.parseMBQL(
-            mbql,
-            this._metadata,
-            this._query,
-          );
-          return dimension?.field();
-        };
+          const field = mbql => {
+            const dimension = Dimension.parseMBQL(
+              mbql,
+              this._metadata,
+              this._query,
+            );
+            return dimension?.field();
+          };
 
-        type = infer(expr, mbql => field(mbql)?.base_type) ?? type;
-        semantic_type =
-          infer(expr, mbql => field(mbql)?.semantic_type) ?? semantic_type;
-      } else {
-        type = infer(this._expressionName);
+          type = infer(expr, mbql => field(mbql)?.base_type) ?? type;
+          semantic_type =
+            infer(expr, mbql => field(mbql)?.semantic_type) ?? semantic_type;
+        } else {
+          type = infer(this._expressionName);
+        }
       }
-    }
 
-    let base_type = type;
-    if (!type.startsWith("type/")) {
-      switch (type) {
-        case MONOTYPE.String:
-          base_type = "type/Text";
-          break;
+      let base_type = type;
+      if (!type.startsWith("type/")) {
+        switch (type) {
+          case MONOTYPE.String:
+            base_type = "type/Text";
+            break;
 
-        case MONOTYPE.Boolean:
-          base_type = "type/Boolean";
-          break;
+          case MONOTYPE.Boolean:
+            base_type = "type/Boolean";
+            break;
 
-        case MONOTYPE.DateTime:
-          base_type = "type/DateTime";
-          break;
+          case MONOTYPE.DateTime:
+            base_type = "type/DateTime";
+            break;
 
-        // fallback
-        default:
-          base_type = "type/Float";
-          break;
+          // fallback
+          default:
+            base_type = "type/Float";
+            break;
+        }
+        semantic_type = base_type;
       }
-      semantic_type = base_type;
-    }
 
-    // if a dimension has access to a question with result metadata,
-    // we try to find the field using the metadata directly,
-    // so that we don't have to try to infer field metadata from the expression
-    const resultMetadata = query?.question()?.getResultMetadata?.();
-    if (resultMetadata) {
-      const fieldMetadata = _.findWhere(resultMetadata, {
+      // if a dimension has access to a question with result metadata,
+      // we try to find the field using the metadata directly,
+      // so that we don't have to try to infer field metadata from the expression
+      const resultMetadata = query?.question()?.getResultMetadata?.();
+      if (resultMetadata) {
+        const fieldMetadata = _.findWhere(resultMetadata, {
+          name: this.name(),
+        });
+        if (fieldMetadata) {
+          return this._createField(fieldMetadata);
+        }
+      }
+
+      const subsOptions = getOptions(semantic_type ? semantic_type : base_type);
+      const dimension_options =
+        subsOptions && Array.isArray(subsOptions)
+          ? subsOptions.map(({ name, options }) => {
+              return {
+                name,
+                type: base_type,
+                mbql: ["expression", null, options],
+              };
+            })
+          : null;
+
+      return new Field({
+        id: this.mbql(),
         name: this.name(),
+        display_name: this.displayName(),
+        base_type,
+        semantic_type,
+        query,
+        table,
+        dimension_options,
       });
-      if (fieldMetadata) {
-        return this._createField(fieldMetadata);
-      }
+    } catch (e) {
+      console.warn("ExpressionDimension.field()", this.mbql(), e);
+      return null;
     }
-
-    const subsOptions = getOptions(semantic_type ? semantic_type : base_type);
-    const dimension_options =
-      subsOptions && Array.isArray(subsOptions)
-        ? subsOptions.map(({ name, options }) => {
-            return {
-              name,
-              type: base_type,
-              mbql: ["expression", null, options],
-            };
-          })
-        : null;
-
-    return new Field({
-      id: this.mbql(),
-      name: this.name(),
-      display_name: this.displayName(),
-      base_type,
-      semantic_type,
-      query,
-      table,
-      dimension_options,
-    });
   }
 
   getMLv1CompatibleDimension() {
@@ -1449,26 +1459,31 @@ export class AggregationDimension extends Dimension {
   }
 
   field() {
-    const aggregation = this.aggregation();
+    try {
+      const aggregation = this.aggregation();
 
-    if (!aggregation) {
-      return super.field();
+      if (!aggregation) {
+        return super.field();
+      }
+
+      const dimension = aggregation.dimension();
+      const field = dimension && dimension.field();
+      const { semantic_type } = field || {};
+      return new Field({
+        name: aggregation.columnName(),
+        display_name: aggregation.displayName(),
+        base_type: aggregation.baseType(),
+        // don't pass through `semantic_type` when aggregating these types
+        ...(!UNAGGREGATED_SEMANTIC_TYPES.has(semantic_type) && {
+          semantic_type,
+        }),
+        query: this._query,
+        metadata: this._metadata,
+      });
+    } catch (e) {
+      console.warn("AggregationDimension.field()", this.mbql(), e);
+      return null;
     }
-
-    const dimension = aggregation.dimension();
-    const field = dimension && dimension.field();
-    const { semantic_type } = field || {};
-    return new Field({
-      name: aggregation.columnName(),
-      display_name: aggregation.displayName(),
-      base_type: aggregation.baseType(),
-      // don't pass through `semantic_type` when aggregating these types
-      ...(!UNAGGREGATED_SEMANTIC_TYPES.has(semantic_type) && {
-        semantic_type,
-      }),
-      query: this._query,
-      metadata: this._metadata,
-    });
   }
 
   getMLv1CompatibleDimension() {
@@ -1613,11 +1628,15 @@ export class TemplateTagDimension extends FieldDimension {
   }
 
   field() {
-    if (this.isValidDimensionType()) {
-      return this.dimension().field();
+    try {
+      if (this.isValidDimensionType()) {
+        return this.dimension().field();
+      }
+      return null;
+    } catch (e) {
+      console.warn("TemplateTagDimension.field()", this.mbql(), e);
+      return null;
     }
-
-    return null;
   }
 
   name() {

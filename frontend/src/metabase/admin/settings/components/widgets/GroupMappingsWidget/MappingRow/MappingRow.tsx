@@ -10,6 +10,7 @@ import type {
 } from "metabase/admin/types";
 import Confirm from "metabase/components/Confirm";
 import Tooltip from "metabase/core/components/Tooltip";
+import AdminS from "metabase/css/admin.module.css";
 import { isAdminGroup } from "metabase/lib/groups";
 import { Icon } from "metabase/ui";
 
@@ -139,7 +140,7 @@ const MappingRow = ({
             onGroupChange={onChange}
           />
         </td>
-        <td className="Table-actions">
+        <td className={AdminS.TableActions}>
           <div className="float-right mr1">
             {shouldUseDeleteMappingModal ? (
               <DeleteButton onDelete={onDelete} />
