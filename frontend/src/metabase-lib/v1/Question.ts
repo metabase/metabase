@@ -356,6 +356,11 @@ class Question {
     return isNative ? this.legacyQuery().canRun() : Lib.canRun(this.query());
   }
 
+  canBeSaved(): boolean {
+    const { isNative } = Lib.queryDisplayInfo(this.query());
+    return isNative ? this.legacyQuery().canBeSaved() : true;
+  }
+
   canWrite(): boolean {
     return this._card && this._card.can_write;
   }
