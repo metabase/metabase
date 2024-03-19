@@ -1,5 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { openQuestionActions, popover, restore } from "e2e/support/helpers";
+import {
+  createQuestion,
+  openQuestionActions,
+  popover,
+  restore,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -13,7 +18,7 @@ describe("issues 25884 and 34349", () => {
   });
 
   it("should show empty description input for columns without description in metadata (metabase#25884, metabase#34349)", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         type: "model",
         query: {

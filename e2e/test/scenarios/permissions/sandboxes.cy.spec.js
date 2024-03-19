@@ -146,9 +146,7 @@ describeEE("formatting > sandboxes", () => {
     describe("question with joins", () => {
       it("should show permissions error after applying a filter to the question", () => {
         cy.log("Open saved question with joins");
-        cy.get("@questionId").then(id => {
-          visitQuestion(id);
-        });
+        visitQuestion("@questionId");
 
         cy.log("Make sure user is initially sandboxed");
         cy.get(".TableInteractive-cellWrapper--firstColumn").should(

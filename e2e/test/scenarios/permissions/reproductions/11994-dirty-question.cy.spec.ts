@@ -1,8 +1,7 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, visitQuestion } from "e2e/support/helpers";
+import { createQuestion, restore, visitQuestion } from "e2e/support/helpers";
 import type {
-  CardId,
   ConcreteFieldReference,
   StructuredQuery,
 } from "metabase-types/api";
@@ -36,7 +35,7 @@ describe("issue 11994", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.createQuestion(
+    createQuestion(
       {
         database: SAMPLE_DB_ID,
         query: QUERY,
@@ -62,7 +61,7 @@ describe("issue 11994", () => {
       },
       { wrapId: true, idAlias: "pivotQuestionId" },
     );
-    cy.createQuestion(
+    createQuestion(
       {
         database: SAMPLE_DB_ID,
         query: QUERY,
@@ -74,17 +73,13 @@ describe("issue 11994", () => {
   });
 
   it("does not show raw data toggle for pivot questions (metabase#11994)", () => {
-    cy.get<CardId>("@pivotQuestionId").then(questionId => {
-      visitQuestion(questionId);
-    });
+    visitQuestion("@pivotQuestionId");
     cy.icon("table2").should("not.exist");
     cy.findByTestId("qb-header").findByText(/Save/).should("not.exist");
   });
 
   it("does not offer to save combo question viewed in raw mode (metabase#11994)", () => {
-    cy.get<CardId>("@comboQuestionId").then(questionId => {
-      visitQuestion(questionId);
-    });
+    visitQuestion("@comboQuestionId");
     cy.location().then(questionLocation => {
       cy.icon("table2").click();
       cy.location("href").should("eq", questionLocation.href);
