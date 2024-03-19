@@ -146,7 +146,7 @@
 (defn ^:private column-type
   "Determine the desired column-type given the existing column-type (nil if it's new) and the value-type of the data.
   If there's a valid coercion to the existing type, we will preserve it, but otherwise we will relax abstract types
-  further to option a concrete type."
+  further to a concrete type."
   [existing-type value-type]
   (cond
     ;; If the type is concrete, there is nothing to do.
