@@ -13,6 +13,7 @@ const PATTERN = "{enterprise/,}frontend/src/**/*.{js,jsx,ts,tsx}";
 // after webpack.config.js
 const ALIAS = {
   metabase: "frontend/src/metabase",
+  "embedding-sdk": "frontend/src/embedding-sdk",
   "metabase-lib": "frontend/src/metabase-lib",
   "metabase-enterprise": "enterprise/frontend/src/metabase-enterprise",
   "metabase-types": "frontend/src/metabase-types",

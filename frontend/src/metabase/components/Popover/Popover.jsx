@@ -108,6 +108,7 @@ export default class Popover extends Component {
         }
       }, resizeTimer);
     }
+    console.log({ _popoverElement: this._popoverElement })
     return this._popoverElement;
   }
 
@@ -278,6 +279,8 @@ export default class Popover extends Component {
         targetOffset: `${o.offsetY}px ${o.offsetX}px`,
       };
     }
+
+    console.log(tetherOptions);
     if (this._tether) {
       this._tether.setOptions(tetherOptions);
     } else {
@@ -379,6 +382,8 @@ export default class Popover extends Component {
     if (target == null) {
       target = this._popoverElement;
     }
+
+    console.log({ target });
 
     return target;
   }

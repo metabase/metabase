@@ -210,6 +210,7 @@ class PublicQuestionInner extends Component {
 
     return (
       <EmbedFrame
+        location={this.props.location}
         name={card && card.name}
         description={card && card.description}
         actionButtons={actionButtons}

@@ -1,0 +1,7 @@
+.ViewToggle--button {
+  @apply tw-bg-gray-800 tw-border tw-border-gray-800 tw-font-bold tw-text-white tw-px-2 tw-py-1 tw-text-center tw-rounded;
+}
+
+.ViewToggle--button--active {
+  @apply tw-bg-gray-600 tw-border-white;
+}

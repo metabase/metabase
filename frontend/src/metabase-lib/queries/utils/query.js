@@ -85,7 +85,10 @@ export { getFilterClause } from "./filter";
 
 // JOIN
 
-export const getJoins = query => J.getJoins(query.joins);
+export const getJoins = query => {
+  console.log("getJoins", query)
+  return J.getJoins(query.joins);
+};
 export const addJoin = (query, join) =>
   setJoinClause(query, J.addJoin(query.joins, join));
 export const updateJoin = (query, index, join) =>

@@ -10,6 +10,31 @@ import {
   RefreshWidgetButton,
 } from "./DashboardActions.styled";
 
+/**
+ * Generates dashboard action buttons based on the provided conditions and states.
+ *
+ * @param {Object} self - The context `this` refers to, not used in the function body.
+ * @param {Object} options - An object containing all parameters and flags for action generation.
+ * @param {Object} options.dashboard - The dashboard object to determine loaded state and card content.
+ * @param {boolean} [options.isAdmin] - Flag indicating if the user has admin privileges.
+ * @param {boolean} [options.canManageSubscriptions] - Flag indicating if the user can manage subscriptions.
+ * @param {Object} [options.formInput] - Object containing form input data, used to check if channels are configured.
+ * @param {boolean} [options.isEditing=false] - Flag indicating if the dashboard is currently being edited.
+ * @param {boolean} [options.isEmpty=false] - Flag indicating if the dashboard is empty.
+ * @param {boolean} [options.isFullscreen] - Flag indicating if the dashboard is in fullscreen mode.
+ * @param {boolean} [options.isNightMode] - Flag indicating if the dashboard is in night mode.
+ * @param {boolean} [options.isPublic=false] - Flag indicating if the dashboard is public.
+ * @param {Function} [options.onNightModeChange] - Function to call when night mode is toggled.
+ * @param {number} [options.refreshPeriod] - The current refresh period for the dashboard.
+ * @param {Function} [options.setRefreshElapsedHook] - Function to set the hook for refresh elapsed time.
+ * @param {Function} [options.onRefreshPeriodChange] - Function to call when the refresh period is changed.
+ * @param {Function} [options.onSharingClick] - Function to call when the sharing button is clicked.
+ * @param {Function} [options.onFullscreenChange] - Function to call when fullscreen mode is toggled.
+ * @param {boolean} [options.hasNightModeToggle] - Flag indicating if the night mode toggle is available.
+ *
+ * @returns {Array<JSX.Element>} An array of JSX elements representing the action buttons for the dashboard.
+ *
+ */
 export const getDashboardActions = (
   self,
   {

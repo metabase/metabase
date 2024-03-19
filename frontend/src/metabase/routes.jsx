@@ -71,7 +71,7 @@ import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 
 import { PublicQuestion } from "metabase/public/containers/PublicQuestion";
-import PublicDashboard from "metabase/public/containers/PublicDashboard";
+import { PublicDashboard } from "metabase/public/containers/PublicDashboard";
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
 import { DashboardMoveModalConnected } from "metabase/dashboard/components/DashboardMoveModal";
 import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";

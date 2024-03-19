@@ -299,7 +299,10 @@ export const loadMetadataForQuery = (query, extraDependencies) =>
 export const loadMetadataForQueries =
   (queries, extraDependencies, options) => dispatch => {
     const dependencies = _.chain(queries)
-      .map(q => q.dependentMetadata())
+      .map(q => {
+        console.log("loadMetadataForQueries", q)
+        return q.dependentMetadata();
+      })
       .push(...(extraDependencies ?? []))
       .flatten()
       .uniq(false, dep => dep.type + dep.id)

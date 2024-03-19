@@ -265,6 +265,7 @@ class StructuredQuery extends AtomicQuery {
    * @deprecated use metabase-lib v2 to manage joins
    */
   joins = _.once((): JoinWrapper[] => {
+    console.log(this.legacyQuery({ useStructuredQuery: true }))
     return Q.getJoins(this.legacyQuery({ useStructuredQuery: true })).map(
       (join, index) => new JoinWrapper(join, index, this),
     );
@@ -1123,6 +1124,7 @@ class StructuredQuery extends AtomicQuery {
       }
     }
 
+    console.log(this.joins())
     // any explicitly joined tables
     for (const join of this.joins()) {
       join.dependentMetadata().forEach(addDependency);
