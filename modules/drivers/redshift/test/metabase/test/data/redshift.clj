@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -208,3 +209,18 @@
   (if *use-original-filtered-syncable-schemas-impl?*
     (original-filtered-syncable-schemas driver conn metadata schema-inclusion-filters schema-exclusion-filters)
     #{(unique-session-schema) "spectrum"}))
+
+(defonce ^:private ^{:arglists '([driver database])}
+  original-describe-database
+  (get-method driver/describe-database :redshift))
+
+;; For test databases, only sync the tables that are qualified by the db name
+(defmethod driver/describe-database :redshift
+  [driver database]
+  (if *use-original-filtered-syncable-schemas-impl?*
+    (original-describe-database driver database)
+    (let [r (original-describe-database driver database)]
+      (update r :tables (fn [tables]
+                          (into #{}
+                                (filter #(tx/qualified-by-db-name? (:name database) (:name %)))
+                                tables))))))
