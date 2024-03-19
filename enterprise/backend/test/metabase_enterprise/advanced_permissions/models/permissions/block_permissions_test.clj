@@ -191,7 +191,7 @@
                 (is (= true (check-block-perms))))
               ;; 'grant' the block permissions.
               (testing "the highest permission level from any group wins (block doesn't override other groups anymore)"
-                (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :block)
+                (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
                 (testing "if EE token does not have the `:advanced-permissions` feature: should not do check"
                   (mt/with-premium-features #{}
                     (is (nil? (check-block-perms)))))
@@ -204,7 +204,7 @@
                   (is (run-saved-question))
                   (is (= true (check-block-perms)))))
               (testing "once blocked in all groups, now access is truly blocked"
-                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :block)
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
                 (testing "disallow running the query"
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo

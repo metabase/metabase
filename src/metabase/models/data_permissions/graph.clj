@@ -378,7 +378,7 @@
           (do
             (when-not (premium-features/has-feature? :advanced-permissions)
               (throw (ee-permissions-exception :block)))
-            (data-perms/set-database-permission! group-id db-id :perms/view-data :block)
+            (data-perms/set-database-permission! group-id db-id :perms/view-data :blocked)
             (data-perms/set-database-permission! group-id db-id :perms/data-access :block)
             (data-perms/set-database-permission! group-id db-id :perms/create-queries :no)))))))
 

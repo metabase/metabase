@@ -169,10 +169,10 @@
   [perm-type perm-values]
   (let [perm-values (set perm-values)
         ordered-values (-> Permissions perm-type :values)]
-    (if (and (perm-values :block)
+    (if (and (perm-values :blocked)
              (not (perm-values :unrestricted)))
       ;; Block in one group overrides `legacy-no-self-service` in another, but not unrestricted
-      :block
+      :blocked
       (first (filter perm-values ordered-values)))))
 
 (defmethod coalesce :perms/data-access
