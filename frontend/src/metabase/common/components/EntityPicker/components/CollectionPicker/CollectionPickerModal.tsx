@@ -24,6 +24,10 @@ const canSelectItem = (item: CollectionPickerItem | null): boolean => {
   return !!item && item?.can_write !== false;
 };
 
+const searchFilter = (searchResults: SearchResult[]): SearchResult[] => {
+  return searchResults.filter((result: SearchResult) => result.can_write);
+};
+
 export const CollectionPickerModal = ({
   title = t`Choose a collection`,
   onChange,
@@ -43,12 +47,6 @@ export const CollectionPickerModal = ({
   const pickerRef = useRef<{
     onFolderSelect: (item: { folder: CollectionPickerItem }) => void;
   }>();
-
-  const searchFilter = useCallback(
-    searchResults =>
-      searchResults.filter((result: SearchResult) => result.can_write),
-    [],
-  );
 
   const handleItemSelect = useCallback(
     (item: CollectionPickerItem) => {
