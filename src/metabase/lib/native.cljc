@@ -261,9 +261,15 @@
   (assert-native-query! (lib.util/query-stage query 0))
   (:engine (lib.metadata/database query)))
 
+(defn- has-default?
+  "Whether the template tag has a non-empty default value.
+
+  Empty values are nil, '', [], and ['']. Everything else is not empty."
+  [{:keys [required, default]}]
+  (not-empty (if (vector? default) (first default) default)))
+
 (defmethod lib.query/can-save-method :mbql.stage/native
   [query]
-  (every? (fn [[_k {:keys [required, default]}]]
-            (or (not required)
-                (not-empty (if (vector? default) (first default) default))))
-          (template-tags query)))
+  (every? (fn [{:keys [required] :as tag}]
+            (or (not required) (has-default? tag)))
+          (vals (template-tags query))))
