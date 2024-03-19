@@ -871,32 +871,7 @@ describe("Question", () => {
     });
 
     it("should return the template tags of a native question", () => {
-      const nativeQuestionWithTemplateTags = {
-        ...native_orders_count_card,
-        dataset_query: {
-          ...native_orders_count_card.dataset_query,
-          native: {
-            ...native_orders_count_card.dataset_query.native,
-            "template-tags": {
-              foo: {
-                name: "foo",
-                "display-name": "Foo",
-                id: "bbb",
-                type: "dimension",
-                "widget-type": "category",
-                dimension: ["field", PRODUCTS.CATEGORY, null],
-              },
-              bar: {
-                name: "bar",
-                "display-name": "Bar",
-                id: "aaa",
-                type: "text",
-                value: null,
-              },
-            },
-          },
-        },
-      };
+      const nativeQuestionWithTemplateTags = getNativeWithTTags();
 
       const question = new Question(nativeQuestionWithTemplateTags, metadata);
       expect(question.parameters()).toEqual([
@@ -1433,6 +1408,48 @@ describe("Question", () => {
       expect(question.generateQueryDescription()).toEqual("Orders, Revenue");
     });
   });
+
+  describe("Question.canBeSaved", () => {
+    it("should always be true for all structured questions", () => {
+      expect(base_question.canBeSaved()).toBe(true);
+      expect(orders_raw_question.canBeSaved()).toBe(true);
+    });
+
+    it("should be true for native queries without template tags", () => {
+      expect(native_orders_count_question.canBeSaved()).toBe(true);
+    });
+
+    it("should be true for native queries with not-required template tags", () => {
+      const withTemplateTags = getNativeWithTTags();
+      const nativeQuestion = new Question(withTemplateTags, metadata);
+      expect(nativeQuestion.canBeSaved()).toBe(true);
+    });
+
+    it("should be true for native queries with required & default template tags", () => {
+      const withTemplateTags = getNativeWithTTags({
+        foo: {
+          required: true,
+          default: ["value"],
+        },
+        bar: {
+          required: true,
+          default: "someone",
+        },
+      });
+      const nativeQuestion = new Question(withTemplateTags, metadata);
+      expect(nativeQuestion.canBeSaved()).toBe(true);
+    });
+
+    it("should be false for native queries with required template tags missing defaults", () => {
+      const withTemplateTags = getNativeWithTTags({
+        bar: {
+          required: true,
+        },
+      });
+      const nativeQuestion = new Question(withTemplateTags, metadata);
+      expect(nativeQuestion.canBeSaved()).toBe(false);
+    });
+  });
 });
 
 function parseUrl(url) {
@@ -1441,5 +1458,36 @@ function parseUrl(url) {
     card: parsed.hash && deserializeCardFromUrl(parsed.hash),
     query: parsed.query,
     pathname: parsed.pathname,
+  };
+}
+
+function getNativeWithTTags(overrides = {}) {
+  return {
+    ...native_orders_count_card,
+    dataset_query: {
+      ...native_orders_count_card.dataset_query,
+      native: {
+        ...native_orders_count_card.dataset_query.native,
+        "template-tags": {
+          foo: {
+            name: "foo",
+            "display-name": "Foo",
+            id: "bbb",
+            type: "dimension",
+            "widget-type": "category",
+            dimension: ["field", PRODUCTS.CATEGORY, null],
+            ...(overrides["foo"] || {}),
+          },
+          bar: {
+            name: "bar",
+            "display-name": "Bar",
+            id: "aaa",
+            type: "text",
+            value: null,
+            ...(overrides["bar"] || {}),
+          },
+        },
+      },
+    },
   };
 }
