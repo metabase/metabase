@@ -74,16 +74,45 @@ export const getBarLabelLayout =
 
 export function getDataLabelFormatter(
   seriesModel: SeriesModel,
+  dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   labelDataKey: DataKey,
   renderingContext: RenderingContext,
   formattingOptions: OptionsType = {},
 ) {
+  const shouldRenderCompact = (() => {
+    if (settings["graph.label_value_formatting"] === "compact") {
+      return true;
+    }
+    if (settings["graph.label_value_formatting"] === "full") {
+      return false;
+    }
+    // for "auto" we use compact if it shortens avg label length by >3 chars
+    const getAvgLength = (compact: boolean) => {
+      const lengths = dataset.map(datum => {
+        const value = datum[labelDataKey];
+        return renderingContext.formatValue(value, {
+          ...(settings.column?.(seriesModel.column) ?? {}),
+          jsx: false,
+          compact: compact,
+          ...formattingOptions,
+        }).length;
+      });
+
+      return (
+        lengths.reduce((sum: number, length: number) => sum + length, 0) /
+        lengths.length
+      );
+    };
+
+    return getAvgLength(true) + 3 < getAvgLength(false);
+  })();
+
   const valueFormatter = (value: unknown) =>
     renderingContext.formatValue(value, {
       ...(settings.column?.(seriesModel.column) ?? {}),
       jsx: false,
-      compact: settings["graph.label_value_formatting"] === "compact",
+      compact: shouldRenderCompact,
       ...formattingOptions,
     });
 
@@ -101,6 +130,7 @@ export function getDataLabelFormatter(
 
 export const buildEChartsLabelOptions = (
   seriesModel: SeriesModel,
+  dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
   show?: boolean,
@@ -119,6 +149,7 @@ export const buildEChartsLabelOptions = (
     textBorderWidth: 3,
     formatter: getDataLabelFormatter(
       seriesModel,
+      dataset,
       settings,
       seriesModel.dataKey,
       renderingContext,
@@ -228,6 +259,7 @@ const buildEChartsBarSeries = (
     },
     label: buildEChartsLabelOptions(
       seriesModel,
+      dataset,
       settings,
       renderingContext,
       settings["graph.show_values"] && settings["stackable.stack_type"] == null,
@@ -327,6 +359,7 @@ const buildEChartsLineAreaSeries = (
     },
     label: buildEChartsLabelOptions(
       seriesModel,
+      dataset,
       settings,
       renderingContext,
       settings["graph.show_values"] && stackName == null,
