@@ -681,10 +681,10 @@
            {:id 2 :tables [...tables-from-db-2]}]
 
   - key->hydrated-items-fn: is a function that returns a map with key is `instance-key` and value is the hydrated data of that instance."
-  [instances                      :- [:sequence :any]
-   hydration-key                  :- keyword
+  [instances                      :- [:sequential :any]
+   hydration-key                  :- :keyword
    instance-key->hydrated-data-fn :- fn?
-   instance-key                   :- keyword
+   instance-key                   :- :keyword
    & [{:keys [default] :as _options}]]
   (when (seq instances)
     (let [key->hydrated-items (instance-key->hydrated-data-fn)]

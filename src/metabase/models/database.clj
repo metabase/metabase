@@ -317,8 +317,7 @@
   "Batch hydrate `Tables` for the given `Database`."
   [_model k databases]
   (mi/instances-with-hydrated-data
-   databases
-   k
+   databases k
    #(group-by :db_id
               ;; TODO - do we want to include tables that should be `:hidden`?
               (t2/select :model/Table
