@@ -207,7 +207,7 @@
   (deferred-tru "Enable the collection of anonymous usage data in order to help {0} improve."
                 (application-name-for-setting-descriptions))
   :type       :boolean
-  :default    false
+  :default    true
   :visibility :public
   :audit      :getter)
 

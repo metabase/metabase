@@ -146,6 +146,16 @@
                                               :vs {"Cam's Metabase" "Cam's Metabase"
                                                    "Dan's Metabase" "Dan's Metabase"}}
 
+                                             :anon-tracking-enabled
+                                             {:k  "allow_tracking"
+                                              :vs {"TRUE"  true
+                                                   "true"  true
+                                                   true    true
+                                                   nil     true
+                                                   "FALSE" true
+                                                   "false" true
+                                                   false   true}}
+
                                              :site-locale
                                              {:k  "site_locale"
                                               :vs {nil     "en" ;; `en` is the default
