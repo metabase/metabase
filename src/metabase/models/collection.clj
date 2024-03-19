@@ -446,25 +446,25 @@
                             [:children [:set [:ref ::children]]]]]}}
    [:ref ::children]])
 
-(mu/defn descendants-flat :- [:set CollectionWithLocationAndIDOrRoot]
+(mu/defn descendants-flat :- [:sequential CollectionWithLocationAndIDOrRoot]
   "Return all descendant collections of a `collection`, including children, grandchildren, and so forth."
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
   (or
-   (t2/select-fn-set identity [:model/Collection :name :id :location :description]
-                     {:where (apply
-                              vector
-                              :and
-                              [:like :location (str (children-location collection) "%")]
-                              ;; Only return the Personal Collection belonging to the Current
-                              ;; User, regardless of whether we should actually be allowed to see
-                              ;; it (e.g., admins have perms for all Collections). This is done
-                              ;; to keep the Root Collection View for admins from getting crazily
-                              ;; cluttered with Personal Collections belonging to other users
-                              [:or
-                               [:= :personal_owner_id nil]
-                               [:= :personal_owner_id *current-user-id*]]
-                              additional-honeysql-where-clauses)})
-   #{}))
+   (t2/select [:model/Collection :name :id :location :description]
+              {:where (apply
+                       vector
+                       :and
+                       [:like :location (str (children-location collection) "%")]
+                       ;; Only return the Personal Collection belonging to the Current
+                       ;; User, regardless of whether we should actually be allowed to see
+                       ;; it (e.g., admins have perms for all Collections). This is done
+                       ;; to keep the Root Collection View for admins from getting crazily
+                       ;; cluttered with Personal Collections belonging to other users
+                       [:or
+                        [:= :personal_owner_id nil]
+                        [:= :personal_owner_id *current-user-id*]]
+                       additional-honeysql-where-clauses)})
+   []))
 
 (mu/defn descendants :- [:set Children]
   "Return all descendant Collections of a `collection`, including children, grandchildren, and so forth. This is done
@@ -1251,9 +1251,9 @@
                 collections)]
     (map (fn [{:keys [id] :as collection}]
            (let [below (apply set/union
-                              (for [[type coll-id-set] child-type->ancestor-ids]
+                              (for [[child-type coll-id-set] child-type->ancestor-ids]
                                 (when (contains? coll-id-set id)
-                                  #{type})))
+                                  #{child-type})))
                  here (into #{} (for [[child-type coll-id-set] child-type->parent-ids
                                       :when (contains? coll-id-set id)]
                                   child-type))]
@@ -1280,7 +1280,7 @@
                               :here     #{:card}
                               :children [{:name \"G\"}]}]}]}
      {:name \"H\"}]"
-  [coll-type-ids collections]
+  [child-type->parent-ids collections]
   (let [;; instead of attempting to re-sort like the database does, keep things consistent by just keeping things in
         ;; the same order they're already in.
         original-position (into {} (map-indexed (fn [i {id :id}]
@@ -1322,4 +1322,4 @@
                         ;; coll-type is `nil` or "instance-analytics"
                         ;; nil sorts first, so we get instance-analytics at the end, which is what we want
                         (original-position coll-id))))))
-     (annotate-collections coll-type-ids collections))))
+     (annotate-collections child-type->parent-ids collections))))
