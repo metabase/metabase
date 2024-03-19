@@ -142,7 +142,7 @@
   [[tyype identifier]]
   [tyype identifier])
 
-(def field-options-for-identification
+(def ^:private field-options-for-identification
   "Set of FieldOptions that only mattered for identification purposes." ;; base-type is required for field that use name instead of id
   #{:source-field :join-alias :base-type})
 
