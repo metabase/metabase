@@ -459,7 +459,7 @@
                               ;; User, regardless of whether we should actually be allowed to see
                               ;; it (e.g., admins have perms for all Collections). This is done
                               ;; to keep the Root Collection View for admins from getting crazily
-                              ;; cluttered with Personal Collections belonging to randos
+                              ;; cluttered with Personal Collections belonging to other users
                               [:or
                                [:= :personal_owner_id nil]
                                [:= :personal_owner_id *current-user-id*]]
@@ -1237,8 +1237,7 @@
 
   The first argument to this function could use a bit of explanation: `child-type->parent-ids` is a map. Keys are
   object types (e.g. `:collection`), values are sets of collection IDs that are the (direct) parents of one or more
-  objects of that type.
-  "
+  objects of that type."
   [child-type->parent-ids collections]
   (let [child-type->ancestor-ids
         (reduce (fn [m {:keys [location id] :as _collection}]

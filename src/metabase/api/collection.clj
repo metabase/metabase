@@ -575,8 +575,6 @@
                          (conj accu parent-id)))
                      #{}))
 
-
-
         child-type->coll-id-set
         (merge child-type->coll-id-set {:collection collections-containing-collections
                                         :dashboard collections-containing-dashboards})
