@@ -752,3 +752,35 @@
                                   (name driver)
                                   (u/upper-case-en (str/replace (name driver) #"-" "_"))
                                   (to-system-env-var-str env-var)))))))
+
+;; TODO: Remove if there's a way of creating _more similar_ test-data for Druid.
+(defmulti default-dataset
+  "Enable drivers to define default dataset in tests (when not specified by [[metabase.test/dataset]]).
+
+   Problem is that lot of tests that we have do not specify the dataset. `test-data` is used as default.
+   But some dbs (Druid) can not contain that, even though lot of tests could work with those, if there is a way
+   to swap `test-data` for custom dataset.
+
+   At the time of writing eg. [[metabase.driver.sql-jdbc.sync.describe-database-test/dont-leak-resultsets-test]].
+
+   Implementing this method enables code as follows to work, hence tests as mentioned before could pass without further
+   changes.
+
+   ``` clj
+   (mt/test-driver :druid-jdbc
+     (mt/id))
+   ```
+
+   This method will probably be removed when there's a way of creating test data for Druid."
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+;; TODO: Resolve to resolve definition face palm. Requiring [metabase.test.data.impl :as data.impl] makes cyclic
+;;       dependency.
+(defmethod default-dataset ::test-extensions
+  [_]
+  ((requiring-resolve 'metabase.test.data.impl/resolve-dataset-definition)
+   'metabase.test.data.dataset-definitions 'test-data)
+  #_(data.impl/resolve-dataset-definition 'metabase.test.data.dataset-definitions 'test-data)
+  #_@(requiring-resolve 'metabase.test.data.dataset-definitions/test-data))

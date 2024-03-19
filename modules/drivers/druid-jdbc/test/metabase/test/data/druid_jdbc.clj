@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]
+   [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.interface :as tx]))
 
 (tx/add-test-extensions! :druid-jdbc)
@@ -27,3 +28,7 @@
 (defmethod tx/destroy-db! :druid-jdbc
   [& _]
   nil)
+
+(defmethod tx/default-dataset :druid-jdbc
+  [_]
+  (tx/flattened-dataset-definition defs/test-data "checkins"))
