@@ -6,7 +6,8 @@ import { useMemo, useState } from "react";
 
 export function MultiAutocomplete({
   data,
-  value: selectedValues = [],
+  value: controlledValue,
+  searchValue: controlledSearchValue,
   placeholder,
   autoFocus,
   shouldCreate,
@@ -16,35 +17,40 @@ export function MultiAutocomplete({
   onBlur,
   ...props
 }: MultiSelectProps) {
-  const [lastValues, setLastValues] = useState(selectedValues);
-  const [isFocused, setIsFocused] = useState(false);
-  const visibleValues = isFocused ? lastValues : selectedValues;
+  const [selectedValues, setSelectedValues] = useUncontrolled({
+    value: controlledValue,
+    finalValue: [],
+    onChange,
+  });
   const [searchValue, setSearchValue] = useUncontrolled({
-    value: props.searchValue,
+    value: controlledSearchValue,
     finalValue: "",
     onChange: onSearchChange,
   });
   const [elevatedValues, setElevatedValues] = useState<string[]>([]);
+  const [lastSelectedValues, setLastSelectedValues] = useState(selectedValues);
+  const [isFocused, setIsFocused] = useState(false);
+  const visibleValues = isFocused ? lastSelectedValues : selectedValues;
 
   const items = useMemo(
-    () => getAvailableSelectItems(data, lastValues, elevatedValues),
-    [data, lastValues, elevatedValues],
+    () => getAvailableSelectItems(data, lastSelectedValues, elevatedValues),
+    [data, lastSelectedValues, elevatedValues],
   );
 
   const handleChange = (newValues: string[]) => {
-    setLastValues(newValues);
-    onChange?.(newValues);
+    setSelectedValues(newValues);
+    setLastSelectedValues(newValues);
   };
 
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
     setIsFocused(true);
-    setLastValues(selectedValues);
+    setLastSelectedValues(selectedValues);
     onFocus?.(event);
   };
 
   const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
     setIsFocused(false);
-    setLastValues(selectedValues);
+    setLastSelectedValues(selectedValues);
     setSearchValue("");
     setElevatedValues([]);
     onBlur?.(event);
@@ -55,10 +61,10 @@ export function MultiAutocomplete({
 
     const isValid = shouldCreate?.(newSearchValue, []);
     if (isValid) {
-      onChange?.([...lastValues, newSearchValue]);
+      setSelectedValues([...lastSelectedValues, newSearchValue]);
       setElevatedValues([newSearchValue]);
     } else {
-      onChange?.(lastValues);
+      setSelectedValues(lastSelectedValues);
       setElevatedValues([]);
     }
   };
