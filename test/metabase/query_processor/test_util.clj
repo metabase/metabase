@@ -580,19 +580,19 @@
 
 ;;; ------------------------------------------------- Timezone Stuff -------------------------------------------------
 
-(defn do-with-report-timezone-id
-  "Impl for `with-report-timezone-id`."
+(defn do-with-report-timezone-id!
+  "Impl for `with-report-timezone-id!`."
   [timezone-id thunk]
   {:pre [((some-fn nil? string?) timezone-id)]}
-  (driver.tu/wrap-notify-all-databases-updated
+  (driver.tu/wrap-notify-all-databases-updated!
     (binding [qp.timezone/*report-timezone-id-override* (or timezone-id ::nil)]
       (testing (format "\nreport timezone id = %s" (pr-str timezone-id))
         (thunk)))))
 
-(defmacro with-report-timezone-id
+(defmacro with-report-timezone-id!
   "Override the `report-timezone` Setting and execute `body`. Intended primarily for REPL and test usage."
   [timezone-id & body]
-  `(do-with-report-timezone-id ~timezone-id (fn [] ~@body)))
+  `(do-with-report-timezone-id! ~timezone-id (fn [] ~@body)))
 
 (defn do-with-database-timezone-id
   "Impl for `with-database-timezone-id`."

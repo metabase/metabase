@@ -264,8 +264,7 @@
           pg-field-3-id :type/Text
           mysql-field-1-id :type/JSON
           mysql-field-2-id :type/Text)
-        ;; TODO: this is commented out temporarily because it flakes for MySQL
-        #_(testing "Rollback restores the original state"
+        (testing "Rollback restores the original state"
            (migrate! :down 46)
            (let [new-base-types (t2/select-pk->fn :base_type Field)]
              (are [field-id expected] (= expected (get new-base-types field-id))
@@ -523,7 +522,6 @@
           (testing (str "View " view-name " should be created")
             ;; Just assert that something was returned by the query and no exception was thrown
             (is (partial= [] (t2/query (str "SELECT 1 FROM " view-name))))))
-        #_#_ ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37434)
         (migrate! :down 47)
         (testing "Views should be removed when downgrading"
           (doseq [view-name new-view-names]
@@ -536,7 +534,8 @@
     (mt/test-drivers [:postgres :mysql]
      (impl/test-migrations "v48.00-049" [migrate!]
        (create-raw-user! "noah@metabase.com")
-       (let [_activity-1 (t2/insert-returning-pks! (t2/table-name :model/Activity)
+       ;; Use raw :activity keyword as table name since the model has since been removed
+       (let [_activity-1 (t2/insert-returning-pks! :activity
                                                    {:topic       "card-create"
                                                     :user_id     1
                                                     :timestamp   :%now
@@ -547,10 +546,10 @@
                                                     :details     "{\"arbitrary_key\": \"arbitrary_value\"}"})]
          (testing "activity rows are copied into audit_log"
            (is (= 0 (t2/count :model/AuditLog)))
-           (is (= 1 (t2/count :model/Activity)))
+           (is (= 1 (t2/count :activity)))
            (migrate!)
            (is (= 1 (t2/count :model/AuditLog)))
-           (is (= 1 (t2/count :model/Activity))))
+           (is (= 1 (t2/count :activity))))
 
          (testing "`database_id` and `table_id` are merged into `details`"
            (is (partial=
@@ -567,7 +566,7 @@
     (mt/test-drivers [:h2]
      (impl/test-migrations "v48.00-049" [migrate!]
        (create-raw-user! "noah@metabase.com")
-       (let [_activity-1 (t2/insert-returning-pks! (t2/table-name :model/Activity)
+       (let [_activity-1 (t2/insert-returning-pks! "activity"
                                                    {:topic       "card-create"
                                                     :user_id     1
                                                     :timestamp   :%now
@@ -578,10 +577,10 @@
                                                     :details     "{\"arbitrary_key\": \"arbitrary_value\"}"})]
          (testing "activity rows are copied into audit_log"
            (is (= 0 (t2/count :model/AuditLog)))
-           (is (= 1 (t2/count :model/Activity)))
+           (is (= 1 (t2/count :activity)))
            (migrate!)
            (is (= 1 (t2/count :model/AuditLog)))
-           (is (= 1 (t2/count :model/Activity))))
+           (is (= 1 (t2/count :activity))))
 
          (testing "`database_id` and `table_id` are inserted into `details`, but not merged with the previous value
                    (H2 limitation)"

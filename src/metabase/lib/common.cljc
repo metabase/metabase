@@ -5,6 +5,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema.common :as schema.common]
+   [metabase.util :as u]
    [metabase.util.malli :as mu])
   #?(:cljs (:require-macros [metabase.lib.common])))
 
@@ -39,6 +40,10 @@
 (defmethod ->op-arg :dispatch-type/sequential
   [xs]
   (mapv ->op-arg xs))
+
+(defmethod ->op-arg :dispatch-type/regex
+  [regex]
+  (u/regex->str regex))
 
 (defmethod ->op-arg :metadata/column
   [field-metadata]

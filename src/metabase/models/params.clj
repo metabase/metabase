@@ -279,7 +279,7 @@
   (field-ids->param-field-values (dashcards->param-field-ids (:dashcards dashboard))))
 
 (defmethod param-values :model/Dashboard [dashboard]
-  (dashboard->param-field-values dashboard))
+  (not-empty (dashboard->param-field-values dashboard)))
 
 (defmethod param-fields :model/Dashboard [dashboard]
   (-> (t2/hydrate dashboard [:dashcards :card])

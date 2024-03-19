@@ -305,8 +305,10 @@
 
 (defn select-action
   "Selects an Action and fills in the subtype data and implicit parameters.
-   `options` is passed to `t2/select-one` `& options` arg."
+   `options` is [[apply]]ed to [[t2/select]]."
   [& options]
+  ;; TODO -- it's dumb that we're calling `t2/select` rather than `t2/select-one` above, limiting like this should never
+  ;; be done server-side. I don't have time to fix this right now. -- Cam
   (first (apply select-actions nil options)))
 
 (defn- map-assoc-database-enable-actions

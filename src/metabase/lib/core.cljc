@@ -303,4 +303,5 @@
   temporal-bucket
   with-temporal-bucket]
  [lib.util
+  normalized-query-type
   source-table-id])

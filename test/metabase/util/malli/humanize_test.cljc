@@ -174,22 +174,12 @@
                          (f error))
       ;; not sure why these errors are repeated.
       me/humanize
-      {:stages [{:joins       [{:stages [{:lib/type ["missing required key"
-                                                     "invalid dispatch value"
-                                                     "missing required key"
-                                                     "invalid dispatch value"
-                                                     "missing required key"
-                                                     "invalid dispatch value"]}]
-                                :alias  ["missing required key"
-                                         "missing required key"
-                                         "missing required key"]}]
-
-                 :sources ["missing required key"]
-                 :source-card ["missing required key"]}]}
+      {:stages [{:joins [{:stages [{:lib/type    ["missing required key"]
+                                    :malli/error ["Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"
+                                                  "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"]}]
+                          :alias  ["missing required key"]}]}]}
 
       mu.humanize/humanize
-      {:stages [{:joins       [{:stages [{:lib/type ["missing required key"
-                                                     "invalid dispatch value"]}]
-                                :alias  "missing required key"}]
-                 :sources "missing required key"
-                 :source-card "missing required key"}]})))
+      {:stages [{:joins [{:stages
+                          [[{:lib/type "missing required key"} "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"]],
+                          :alias "missing required key"}]}]})))

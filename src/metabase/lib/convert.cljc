@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -217,6 +218,7 @@
     (-> (lib.util/pipeline m)
         (update :stages (fn [stages]
                           (mapv ->pMBQL stages)))
+        lib.normalize/normalize
         (assoc :lib.convert/converted? true)
         clean)
     (update-vals m ->pMBQL)))
@@ -275,6 +277,10 @@
   [[_tag aggregation options]]
   (let [[tag opts & args] (->pMBQL aggregation)]
     (into [tag (merge opts options)] args)))
+
+(defmethod ->pMBQL :time-interval
+  [[_tag field n unit options]]
+  (lib.options/ensure-uuid [:time-interval (or options {}) (->pMBQL field) n unit]))
 
 (defn legacy-query-from-inner-query
   "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff
