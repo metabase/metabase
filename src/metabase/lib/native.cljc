@@ -265,5 +265,5 @@
   [query]
   (every? (fn [[_k {:keys [required, default]}]]
             (or (not required)
-                (some? (if (seq? default) (first default) default))))
+                (not-empty (if (seq? default) (first default) default))))
           (template-tags query)))
