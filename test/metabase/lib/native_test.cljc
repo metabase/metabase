@@ -361,7 +361,9 @@
                                   :name "foo"
                                   :display-name "foo"
                                   :required true
-                                  :default []}})))))
+                                  :default []}}))))
+  (mu/disable-enforcement
+    (is (not (lib/can-save (lib/native-query meta/metadata-provider ""))))))
 
 (deftest ^:parallel engine-test
   (is (= :h2 (lib/engine lib.tu/native-query))))
