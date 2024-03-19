@@ -842,7 +842,7 @@ export class FieldDimension extends Dimension {
       // For example, if we have an mbql field reference, it might contain a `base-type`
       return this._createFallbackField();
     } catch (e) {
-      console.warn("FieldDimension.field()", e);
+      console.warn("FieldDimension.field()", this.mbql(), e);
       return null;
     }
   }
@@ -1298,7 +1298,7 @@ export class ExpressionDimension extends Dimension {
         dimension_options,
       });
     } catch (e) {
-      console.warn("ExpressionDimension.field()", e);
+      console.warn("ExpressionDimension.field()", this.mbql(), e);
       return null;
     }
   }
@@ -1481,7 +1481,7 @@ export class AggregationDimension extends Dimension {
         metadata: this._metadata,
       });
     } catch (e) {
-      console.warn("AggregationDimension.field()", e);
+      console.warn("AggregationDimension.field()", this.mbql(), e);
       return null;
     }
   }
@@ -1634,7 +1634,7 @@ export class TemplateTagDimension extends FieldDimension {
       }
       return null;
     } catch (e) {
-      console.warn("TemplateTagDimension.field()", e);
+      console.warn("TemplateTagDimension.field()", this.mbql(), e);
       return null;
     }
   }
