@@ -83,6 +83,21 @@ describe("ListPicker", () => {
     expect(onSearchChange).toHaveBeenCalledWith("Hello");
   });
 
+  it("onSearchChange is called on unmount", async () => {
+    const { onSearchChange, unmount } = setup("", VALUES.slice(), 100);
+    const select = screen.getByPlaceholderText("Pick values");
+
+    userEvent.click(select);
+    userEvent.type(select, "B");
+    userEvent.type(select, "y");
+    userEvent.type(select, "e");
+    unmount();
+
+    // Careful, this won't catch calling it after the component was unmounted
+    await waitFor(() => expect(onSearchChange).toHaveBeenCalledTimes(1));
+    expect(onSearchChange).toHaveBeenCalledWith("Bye");
+  });
+
   it.todo("onChange");
   it.todo("onClear");
 });
