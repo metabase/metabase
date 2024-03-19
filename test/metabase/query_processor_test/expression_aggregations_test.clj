@@ -153,6 +153,17 @@
                  {:aggregation [[:+ [:max $price] [:min [:- $price $id]]]]
                   :breakout    [$price]})))))))
 
+(deftest ^:parallel more-math-inside-aggregations-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
+    (testing "post aggregation math, including more than the basic 4 arithmetic ops: round(30 * (count / day(now)))"
+      (is (= [[35175]] ;; 18760 orders total. 18760/16 = 1172.5 per day, which extrapolates to 35175.0 a month.
+             (mt/formatted-rows [int]
+               (mt/run-mbql-query orders
+                 {:aggregation [[:round [:* 30 [:/ [:count]
+                                                ;; Want to divide by the day of the month, but that's unstable in tests.
+                                                ;; So it's the 16th of the month forever.
+                                                16 #_[:get-day [:now]]]]]]})))))))
+
 (deftest ^:parallel integer-aggregation-division-test
   (testing "division of two sum aggregations (#30262)"
     (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
