@@ -70,9 +70,8 @@ export function MultiAutocomplete({
   const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
     const text = event.clipboardData.getData("Text");
     const values = text.split(/[\n,]/g);
-    const uniqueValues = [...new Set(values)];
-    if (uniqueValues.length > 1) {
-      const validValues = uniqueValues.filter(value =>
+    if (values.length > 1) {
+      const validValues = [...new Set(values)].filter(value =>
         shouldCreate?.(value, []),
       );
       if (validValues.length > 0) {
