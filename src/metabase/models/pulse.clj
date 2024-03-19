@@ -217,10 +217,11 @@
 
 (methodical/defmethod t2/batched-hydrate [:default :channels]
   [_model k pulses]
-  (mi/common-batched-hydration
-   k pulses
+  (mi/instances-with-hydrated-data
+   pulses k
    #(group-by :pulse_id (t2/select :model/PulseChannel :pulse_id [:in (map :id pulses)]))
-   :id))
+   :id
+   {:default []}))
 
 (def ^:dynamic *allow-hydrate-archived-cards*
   "By default the :cards hydration method only return active cards,
@@ -245,13 +246,13 @@
 
 (methodical/defmethod t2/batched-hydrate [:model/Pulse :cards]
   [_model k pulses]
-  (mi/common-batched-hydration
-   k
-   pulses
+  (mi/instances-with-hydrated-data
+   pulses k
    #(update-vals (group-by :pulse_id (cards* (map :id pulses)))
                  (fn [cards] (map (fn [card] (dissoc card :pulse_id)) cards)))
 
-   :id))=
+   :id
+   {:default []}))
 
 ;;; ---------------------------------------- Notification Fetching Helper Fns ----------------------------------------
 

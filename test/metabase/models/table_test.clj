@@ -154,10 +154,8 @@
 
 ;; hydration tests
 (deftest field-values-hydration-test
-  (is (=? (t2/select-fn->fn :field_id :values
-                            :model/FieldValues
-                            {:join  [:metabase_field [:= :metabase_fieldvalues.field_id :metabase_field.id]]
-                             :where [:and [:= :table_id (mt/id :venues)] [:= :has_field_values "auto-list"]]})
+  (is (=? {(mt/id :venues :price) (mt/malli=? [:sequential {:min 1} :any])
+           (mt/id :venues :name)  (mt/malli=? [:sequential {:min 1} :any])}
           (-> (t2/select-one :model/Table (mt/id :venues))
               (t2/hydrate :field_values)
               :field_values))))

@@ -18,6 +18,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -667,10 +668,25 @@
   [_original-model dest-key _hydrated-key]
   [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])
 
-(defn common-batched-hydration
-  [hydration-key items key->hydrated-items-fn getter-key]
-  (assert (fn? key->hydrated-items-fn))
-  (when (seq items)
-    (let [key->hydrated-items (key->hydrated-items-fn)]
-      (for [item items]
-        (assoc item hydration-key (get key->hydrated-items (get item getter-key)))))))
+(mu/defn instances-with-hydrated-data
+  "Helper function to write batched hydrations.
+  Assoc to each `instances` a key `hydration-key` with data from calling `instance-key->hydrated-data-fn` by `instance-key`.
+
+    (instances-with-hydrated-data
+      (t2/select :model/Database)
+      :tables
+      #(t2/select-fn->fn :db_id identity :model/Table)
+      :id)
+    ;; => [{:id 1 :tables [...tables-from-db-1]}
+           {:id 2 :tables [...tables-from-db-2]}]
+
+  - key->hydrated-items-fn: is a function that returns a map with key is `instance-key` and value is the hydrated data of that instance."
+  [instances                      :- [:sequence :any]
+   hydration-key                  :- keyword
+   instance-key->hydrated-data-fn :- fn?
+   instance-key                   :- keyword
+   & [{:keys [default] :as _options}]]
+  (when (seq instances)
+    (let [key->hydrated-items (instance-key->hydrated-data-fn)]
+      (for [item instances]
+        (assoc item hydration-key (get key->hydrated-items (get item instance-key) default))))))

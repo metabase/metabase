@@ -169,8 +169,8 @@
 (methodical/defmethod t2/batched-hydrate [:model/Table :field_values]
   "Return the FieldValues for all Fields belonging to a single `table`."
   [_model k tables]
-  (mi/common-batched-hydration
-   k tables
+  (mi/instances-with-hydrated-data
+   tables k
    #(-> (group-by :table_id (t2/select [:model/FieldValues :field_id :values :field.table_id]
                                        {:join  [[:metabase_field :field] [:= :metabase_fieldvalues.field_id :field.id]]
                                         :where [:and
@@ -182,8 +182,8 @@
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :pk_field]
   [_model k tables]
-  (mi/common-batched-hydration
-   k tables
+  (mi/instances-with-hydrated-data
+   tables k
    #(t2/select-fn->fn :table_id :id
                       :model/Field
                       :table_id        [:in (map :id tables)]

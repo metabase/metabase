@@ -73,9 +73,8 @@
 
 (methodical/defmethod t2/batched-hydrate [:model/Action :model]
   [_model k actions]
-  (mi/common-batched-hydration
-   k
-   actions
+  (mi/instances-with-hydrated-data
+   actions k
    #(t2/select-pk->fn identity :model/Card :id [:in (map :model_id actions)])
    :model_id))
 

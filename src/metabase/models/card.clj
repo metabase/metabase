@@ -128,37 +128,36 @@
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :dashboard_count]
   [_model k cards]
-  (mi/common-batched-hydration
-   k
-   cards
+  (mi/instances-with-hydrated-data
+   cards k
    #(->> (t2/query {:select    [[:%count.* :count] :card.id]
                     :from      [[:report_dashboardcard :dashcard]]
                     :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]]
                     :where     [:in :card.id (map :id cards)]
                     :group-by  [:card.id]})
          (map (juxt :id :count))
-         (into (zipmap (map :id cards) (repeat 0))))
-   :id))
+         (into {}))
+   :id
+   {:default 0}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
   [_model k cards]
-  (mi/common-batched-hydration
-   k
-   cards
+  (mi/instances-with-hydrated-data
+   cards k
    #(->> (t2/query {:select    [[:%count.* :count] :card.id]
                     :from      [[:parameter_card :pc]]
                     :left-join [[:report_card :card] [:= :pc.card_id :card.id]]
                     :where     [:in :card.id (map :id cards)]
                     :group-by  [:card.id]})
          (map (juxt :id :count))
-         (into (zipmap (map :id cards) (repeat 0))))
-   :id))
+         (into {}))
+   :id
+   {:default 0}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :average_query_time]
   [_model k cards]
-  (mi/common-batched-hydration
-   k
-   cards
+  (mi/instances-with-hydrated-data
+   cards k
    #(->> (t2/query {:select [[:%avg.running_time :running_time] :card_id]
                     :from   [:query_execution]
                     :where  [:and
@@ -167,14 +166,13 @@
                              [:in :card_id (map :id cards)]]
                     :group-by [:card_id]})
          (map (juxt :card_id :running_time))
-         (into (zipmap (map :id cards) (repeat 0))))
+         (into {}))
    :id))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :last_query_start]
   [_model k cards]
-  (mi/common-batched-hydration
-   k
-   cards
+  (mi/instances-with-hydrated-data
+   cards k
    #(->> (t2/query {:select [[:%max.started_at :started_at] :card_id]
                     :from   [:query_execution]
                     :where  [:and
@@ -183,7 +181,7 @@
                              [:in :card_id (map :id cards)]]
                     :group-by [:card_id]})
          (map (juxt :card_id :started_at))
-         (into (zipmap (map :id cards) (repeat 0))))
+         (into {}))
    :id))
 
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
