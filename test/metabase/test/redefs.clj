@@ -66,7 +66,7 @@
   "Like [[mt/with-temp]], but all the created items are persisted after."
   [& args]
   `(binding [*with-temp-clean-up*           false
-             tu.thread-local/*thread-local* true]
+             tu.thread-local/*thread-local* false]
      (t2.with-temp/with-temp ~@args)))
 
 ;;; wrap `with-redefs-fn` (used by `with-redefs`) so it calls `assert-test-is-not-parallel`
