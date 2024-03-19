@@ -34,7 +34,7 @@
 
 ;; TODO: Consider enabling the test for Duid JDBC. -- There are data differences. Probaably requires rewrite.
 (deftest table-rows-sample-test
-  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+  (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
     (let [expected [["20th Century Cafe"]
                     ["25°"]
                     ["33 Taps"]

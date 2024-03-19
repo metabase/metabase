@@ -648,10 +648,10 @@
        (testing "topN query"
          (let [{:keys [columns rows]} (mt/formatted-rows+column-names
                                        format-fns
-                                       @(def xy (mt/run-mbql-query checkins
-                                                                   {:aggregation [[:count]]
-                                                                    :breakout    [[:field %timestamp {:temporal-unit unit}]]
-                                                                    :limit       5})))]
+                                       (mt/run-mbql-query checkins
+                                                          {:aggregation [[:count]]
+                                                           :breakout    [[:field %timestamp {:temporal-unit unit}]]
+                                                           :limit       5}))]
            (is (= ["timestamp" "count"]
                   columns))
            (is (= expected-rows
