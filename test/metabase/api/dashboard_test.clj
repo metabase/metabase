@@ -278,54 +278,55 @@
 
 (deftest get-dashboards-test
   (mt/with-temp
-    [:model/Dashboard {rasta-dash     :id} {:creator_id    (mt/user->id :rasta)}
-     :model/Dashboard {crowberto-dash :id} {:creator_id    (mt/user->id :crowberto)
-                                            :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}
-     :model/Dashboard {archived-dash  :id} {:archived      true
-                                            :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
-                                            :creator_id    (mt/user->id :crowberto)}]
+    [:model/Dashboard {rasta-dash-id     :id} {:creator_id    (mt/user->id :rasta)}
+     :model/Dashboard {crowberto-dash-id :id
+                       :as crowberto-dash}    {:creator_id    (mt/user->id :crowberto)
+                                               :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}
+     :model/Dashboard {archived-dash-id  :id} {:archived      true
+                                               :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
+                                               :creator_id    (mt/user->id :crowberto)}]
     (testing "should include creator info and last edited info"
       (revision/push-revision!
        {:entity       :model/Dashboard
-        :id           crowberto-dash
+        :id           crowberto-dash-id
         :user-id      (mt/user->id :crowberto)
         :is-creation? true
-        :object       {:id crowberto-dash}})
-      (is (=? (merge (t2/select-one :model/Dashboard crowberto-dash)
-                     {:creator        {:id          (mt/user->id :crowberto)
-                                       :email       "crowberto@metabase.com"
-                                       :first_name  "Crowberto"
-                                       :last_name   "Corv"
-                                       :common_name "Crowberto Corv"}}
-                     {:last-edit-info {:id         (mt/user->id :crowberto)
-                                       :first_name "Crowberto"
-                                       :last_name  "Corv"
-                                       :email      "crowberto@metabase.com"
-                                       :timestamp  true}})
-              (-> (m/find-first #(= (:id %) crowberto-dash)
-                                (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine"))
-                  (update-in [:last-edit-info :timestamp] boolean)))))
+        :object       crowberto-dash})
+      (is (=? (merge crowberto-dash
+               {:creator        {:id          (mt/user->id :crowberto)
+                                 :email       "crowberto@metabase.com"
+                                 :first_name  "Crowberto"
+                                 :last_name   "Corv"
+                                 :common_name "Crowberto Corv"}}
+               {:last-edit-info {:id         (mt/user->id :crowberto)
+                                 :first_name "Crowberto"
+                                 :last_name  "Corv"
+                                 :email      "crowberto@metabase.com"
+                                 :timestamp  true}})
+           (-> (m/find-first #(= (:id %) crowberto-dash-id)
+                             (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine"))
+               (update-in [:last-edit-info :timestamp] boolean)))))
 
     (testing "f=all shouldn't return archived dashboards"
       (is (set/subset?
-           #{rasta-dash crowberto-dash}
+           #{rasta-dash-id crowberto-dash-id}
            (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "all")))))
 
       (is (not (set/subset?
-                #{archived-dash}
+                #{archived-dash-id}
                 (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "all"))))))
 
       (testing "and should respect read perms"
         (is (set/subset?
-             #{rasta-dash}
+             #{rasta-dash-id}
              (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "all")))))
 
         (is (not (set/subset?
-                  #{crowberto-dash archived-dash}
+                  #{crowberto-dash-id archived-dash-id}
                   (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "all"))))))))
 
     (testing "f=archvied return archived dashboards"
-      (is (= #{archived-dash}
+      (is (= #{archived-dash-id}
              (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "archived")))))
 
       (testing "and should return read perms"
@@ -334,9 +335,9 @@
 
     (testing "f=mine return dashboards created by caller but do not include archived"
       (let [ids (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine")))]
-        (is (contains? ids crowberto-dash)      "Should contain Crowberto's dashboard")
-        (is (not (contains? ids rasta-dash))    "Should not contain Rasta's dashboard")
-        (is (not (contains? ids archived-dash)) "Should not contain archied dashboard")))))
+        (is (contains? ids crowberto-dash-id)      "Should contain Crowberto's dashboard")
+        (is (not (contains? ids rasta-dash-id))    "Should not contain Rasta's dashboard")
+        (is (not (contains? ids archived-dash-id)) "Should not contain archied dashboard")))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             GET /api/dashboard/:id                                             |
@@ -725,20 +726,20 @@
             (is (=? {:id dashboard-id}
                     (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
                                           {:cards [(select-keys dashcard [:id :card_id :row_col :size_x :size_y])]})))))))
-    (testing "auto_apply_filters test"
-      (doseq [enabled? [true false]]
-        (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:name               "Test Dashboard"
-                                                               :auto_apply_filters enabled?}]
-          (testing "Can set it"
-            (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                  {:auto_apply_filters (not enabled?)})
-            (is (= (not enabled?)
-                   (t2/select-one-fn :auto_apply_filters Dashboard :id dashboard-id))))
-          (testing "If not in put it is not changed"
-            (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                  {:description "foo"})
-            (is (= (not enabled?)
-                   (t2/select-one-fn :auto_apply_filters Dashboard :id dashboard-id)))))))))
+   (testing "auto_apply_filters test"
+     (doseq [enabled? [true false]]
+       (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:name               "Test Dashboard"
+                                                              :auto_apply_filters enabled?}]
+         (testing "Can set it"
+           (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                 {:auto_apply_filters (not enabled?)})
+           (is (= (not enabled?)
+                  (t2/select-one-fn :auto_apply_filters Dashboard :id dashboard-id))))
+         (testing "If not in put it is not changed"
+           (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                 {:description "foo"})
+           (is (= (not enabled?)
+                  (t2/select-one-fn :auto_apply_filters Dashboard :id dashboard-id)))))))))
 
 
 (deftest update-dashboard-guide-columns-test

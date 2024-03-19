@@ -20,7 +20,7 @@
                      :moderated_item_type moderated_item_type
                      :moderator_id        api/*current-user-id*
                      :status              status}]
-    (api/check-404 (t2/exists? (get moderation/moderated-item-types moderated_item_type) moderated_item_id))
+    (api/check-404 (t2/exists? (get moderation/moderated-item-type->model moderated_item_type) moderated_item_id))
     (moderation-review/create-review! review-data)))
 
 (api/define-routes)

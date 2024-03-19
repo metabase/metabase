@@ -248,8 +248,9 @@
   (mi/common-batched-hydration
    k
    pulses
-   #(->> (cards* (map :id pulses))
-         (group-by :pulse_id))
+   #(update-vals (group-by :pulse_id (cards* (map :id pulses)))
+                 (fn [cards] (map (fn [card] (dissoc card :pulse_id)) cards)))
+
    :id))=
 
 ;;; ---------------------------------------- Notification Fetching Helper Fns ----------------------------------------
