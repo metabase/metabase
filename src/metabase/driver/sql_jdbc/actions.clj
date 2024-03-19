@@ -293,7 +293,10 @@
     (log/tracef ":row/create SQL + args:\n\n%s" (u/pprint-to-str sql-args))
     (with-jdbc-transaction [conn database-id]
       (let [result (with-auto-parse-sql-exception driver database action
-                     (jdbc/execute! {:connection conn} sql-args {:return-keys true, :identifiers identity, :transaction? false}))
+                     (jdbc/execute! {:connection conn} sql-args {:return-keys  true
+                                                                 :identifiers  identity
+                                                                 :transaction? false
+                                                                 :keywordize?  false}))
             _      (log/tracef ":row/create INSERT returned\n\n%s" (u/pprint-to-str result))
             row    (select-created-row driver create-hsql conn result)]
         (log/tracef ":row/create returned row %s" (pr-str row))

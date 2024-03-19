@@ -1,6 +1,5 @@
 (ns metabase.query-processor.preprocess
   (:require
-   [metabase.config :as config]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.query :as lib.query]
@@ -69,13 +68,6 @@
                   (not (:lib/type query)) (lib.query/query (qp.store/metadata-provider)))]
       (middleware-fn query))))
 
-(def ^:private ^{:arglists '([query])} test-mlv2-normalization
-  "Test/dev only: make sure the [[metabase.lib.normalize]] code handles all known clauses."
-  (if-not config/tests-available?
-    identity
-    (fn [query]
-      ((requiring-resolve 'metabase.query-processor-test.mlv2-test/test-mlv2-normalization) query))))
-
 (def ^:private middleware
   "Pre-processing middleware. Has the form
 
@@ -83,7 +75,6 @@
   ;; ↓↓↓ PRE-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
   #_{:clj-kondo/ignore [:deprecated-var]}
   [#'normalize/normalize-preprocessing-middleware
-   #'test-mlv2-normalization
    (ensure-pmbql #'qp.perms/remove-permissions-key)
    (ensure-pmbql #'qp.constraints/maybe-add-default-userland-constraints)
    (ensure-pmbql #'validate/validate-query)

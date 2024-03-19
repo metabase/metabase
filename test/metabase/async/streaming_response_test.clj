@@ -8,7 +8,6 @@
    [metabase.driver :as driver]
    [metabase.http-client :as client]
    [metabase.models :refer [Database]]
-   [metabase.query-processor-test.mlv2-test :as qp-test.mlv2-test]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.server.protocols :as server.protocols]
    [metabase.test :as mt]
@@ -91,18 +90,14 @@
 
 (deftest basic-test
   (testing "Make sure our ::test-driver is working as expected"
-    ;; this really messes everything up because normalization is not supposed to touch stuff inside `[:native :query]`,
-    ;; because it's supposed to be SQL or whatever, and it comes back from the REST API keywordized and comes back from
-    ;; the app DB unkeywordized
-    (binding [qp-test.mlv2-test/*enable-mlv2-normalization-tests* false]
-      (with-test-driver-db!
-        (is (= [[10]]
-               (mt/rows
-                (mt/user-http-request :lucky
-                                      :post 202 "dataset"
-                                      {:database (mt/id)
-                                       :type     "native"
-                                       :native   {:query {:sleep 10}}}))))))))
+    (with-test-driver-db!
+      (is (= [[10]]
+             (mt/rows
+              (mt/user-http-request :lucky
+                                    :post 202 "dataset"
+                                    {:database (mt/id)
+                                     :type     "native"
+                                     :native   {:query {:sleep 10}}})))))))
 
 (deftest truly-async-test
   (testing "StreamingResponses should truly be asynchronous, and not block Jetty threads while waiting for results"

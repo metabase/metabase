@@ -38,7 +38,7 @@
   (testing "[[sql.qp/sql-source-query]] should throw Exceptions if you pass in invalid nonsense"
     (doseq [params [nil [1000]]]
       (testing (format "Params = %s" (pr-str params))
-        (is (= [::sql.qp/sql-source-query "SELECT *" params]
+        (is (= {::sql.qp/sql-source-query ["SELECT *" params]}
                (sql.qp/sql-source-query "SELECT *" params)))))
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo

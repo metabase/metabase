@@ -4,7 +4,7 @@
    [clojure.test.check.generators :as gen]
    [java-time.api :as t]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.models :refer [Action Activity Card Collection Dashboard
+   [metabase.models :refer [Action Card Collection Dashboard
                             DashboardCard DashboardCardSeries Database Dimension Field
                             HTTPAction ImplicitAction Metric NativeQuerySnippet PermissionsGroup
                             PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient QueryAction
@@ -214,10 +214,6 @@
                                   :spec      ::http-action
                                   :insert!   {:model HTTPAction}
                                   :relations {:action_id   [:action :id]}}
-   :activity                     {:prefix    :ac
-                                  :spec      ::activity
-                                  :relations {:user_id [:core-user :id]}
-                                  :insert!   {:model Activity}}
    :database                     {:prefix  :db
                                   :spec    ::database
                                   :insert! {:model Database}}

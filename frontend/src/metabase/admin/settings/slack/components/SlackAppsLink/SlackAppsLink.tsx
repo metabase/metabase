@@ -1,4 +1,7 @@
+import cx from "classnames";
 import { t } from "ttag";
+
+import ButtonsS from "metabase/css/components/buttons.module.css";
 
 import { LinkIcon, LinkRoot, LinkText } from "./SlackAppsLink.styled";
 
@@ -13,7 +16,7 @@ const SlackAppsLink = ({ manifest }: SlackAppsLinkProps): JSX.Element => {
 
   return (
     <LinkRoot
-      className="Button Button--primary"
+      className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
       href={`https://api.slack.com${link}`}
     >
       <LinkText>{t`Create Slack App`}</LinkText>

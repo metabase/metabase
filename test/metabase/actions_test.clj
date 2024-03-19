@@ -243,7 +243,7 @@
               (is (= 75
                      (categories-row-count))))))))))
 
-(defmacro is-ex-data [expected-schema actual-call]
+(defmacro ^:private is-ex-data [expected-schema actual-call]
   `(try
      ~actual-call
      (is (= true false))

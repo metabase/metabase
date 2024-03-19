@@ -4,6 +4,7 @@ import { t, jt, ngettext, msgid } from "ttag";
 
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 
 function getConfirmItems(pulse) {
@@ -46,7 +47,8 @@ function DeleteSubscriptionAction({ pulse, handleArchive }) {
     <div className={cx(CS.borderTop, CS.pt1, CS.pb3, CS.flex, "justify-end")}>
       <ModalWithTrigger
         triggerClasses={cx(
-          "Button Button--borderless",
+          ButtonsS.Button,
+          ButtonsS.ButtonBorderless,
           CS.textLight,
           "text-error-hover",
           CS.flexAlignRight,
