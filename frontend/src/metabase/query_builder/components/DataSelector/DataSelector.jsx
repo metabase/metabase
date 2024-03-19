@@ -422,6 +422,12 @@ export class UnconnectedDataSelector extends Component {
     return loaded && search?.length > 0;
   };
 
+  hasMetrics = () => {
+    // HACK that we're using for PoC, until backend implementation for metrics is in place.
+    // TODO: Fixme!
+    return true;
+  };
+
   hasUsableDatasets = () => {
     // As datasets are actually saved questions, nested queries must be enabled
     return this.hasDatasets() && this.props.hasNestedQueriesEnabled;
@@ -826,6 +832,7 @@ export class UnconnectedDataSelector extends Component {
           <DataBucketPicker
             dataTypes={getDataTypes({
               hasModels: this.hasDatasets(),
+              hasMetrics: this.hasMetrics(),
               hasNestedQueriesEnabled,
               hasSavedQuestions: this.hasSavedQuestions(),
             })}
@@ -917,6 +924,9 @@ export class UnconnectedDataSelector extends Component {
     if (selectedDataBucketId === DATA_BUCKET.MODELS) {
       return t`Search for a model…`;
     }
+    if (selectedDataBucketId === DATA_BUCKET.METRICS) {
+      return t`Search for a metric…`;
+    }
     return isSavedEntityPickerShown
       ? t`Search for a question…`
       : t`Search for a table…`;
@@ -935,6 +945,7 @@ export class UnconnectedDataSelector extends Component {
     }
     return {
       [DATA_BUCKET.MODELS]: ["dataset"],
+      [DATA_BUCKET.METRICS]: ["metric"],
       [DATA_BUCKET.RAW_DATA]: ["table"],
       [DATA_BUCKET.SAVED_QUESTIONS]: ["card"],
     }[selectedDataBucketId];
@@ -1002,6 +1013,7 @@ export class UnconnectedDataSelector extends Component {
                   getSchemaName(selectedTable.schema.id)
                 }
                 isDatasets={isDatasets}
+                isMetrics={selectedDataBucketId === DATA_BUCKET.METRICS}
                 tableId={selectedTable?.id}
                 databaseId={currentDatabaseId}
                 onSelect={this.handleSavedEntitySelect}
