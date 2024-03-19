@@ -71,7 +71,8 @@ export const UndoButton = styled(Link)`
 
 export const DismissIcon = styled(Icon)`
   margin-left: ${space(2)};
-  color: ${color("bg-dark")};
+  color: ${props =>
+    props.color === "success" ? color("bg-white") : color("bg-dark")};
   cursor: pointer;
 
   :hover {
