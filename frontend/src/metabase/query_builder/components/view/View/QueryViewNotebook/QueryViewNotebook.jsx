@@ -2,9 +2,7 @@ import PropTypes from "prop-types";
 import { useEffect, useState } from "react";
 
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
-
-import { NotebookContainer } from "./QueryViewNotebook.styled";
-
+import { Flex } from "metabase/ui";
 const delayBeforeNotRenderingNotebook = 10;
 
 const QueryViewNotebook = ({ isNotebookContainerOpen, ...props }) => {
@@ -22,14 +20,29 @@ const QueryViewNotebook = ({ isNotebookContainerOpen, ...props }) => {
     }
   };
 
+  const transformStyle = isNotebookContainerOpen
+    ? "translateY(0)"
+    : "translateY(-100%)";
+
   return (
-    <NotebookContainer
-      isOpen={isNotebookContainerOpen}
-      transitionTime={delayBeforeNotRenderingNotebook}
+    <Flex
+      bg="white"
+      pos="absolute"
+      top={0}
+      bottom={0}
+      left={0}
+      right={0}
+      opacity={isNotebookContainerOpen ? 1 : 0}
+      style={{
+        zIndex: 2,
+        overflowY: "auto",
+        transform: transformStyle,
+        transition: `transform ${delayBeforeNotRenderingNotebook}ms, opacity ${delayBeforeNotRenderingNotebook}ms`,
+      }}
       onTransitionEnd={handleTransitionEnd}
     >
       {shouldShowNotebook && <Notebook {...props} />}
-    </NotebookContainer>
+    </Flex>
   );
 };
 
