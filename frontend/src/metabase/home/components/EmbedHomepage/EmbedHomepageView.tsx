@@ -1,7 +1,8 @@
+import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { Card, Group, Stack, Tabs, Text, Title } from "metabase/ui";
+import { Anchor, Card, Group, Stack, Tabs, Text, Title } from "metabase/ui";
 
 import { InteractiveTabContent } from "./InteractiveTabContent";
 import { StaticTabContent } from "./StaticTabContent";
@@ -61,7 +62,16 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
             {/*// TODO: add link */}
 
             {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
-            {jt`Because you expressed interest in embedding Metabase, we took this step for you so that you can more easily try it out. You can turn it off anytime in admin/settings/embedding-in-other-applications.`}
+            {jt`Because you expressed interest in embedding Metabase, we took this step for you so that you can more easily try it out. You can turn it off anytime in ${(
+              <Link
+                to="admin/settings/embedding-in-other-applications"
+                key="link"
+              >
+                <Anchor size="sm">
+                  admin/settings/embedding-in-other-applications
+                </Anchor>
+              </Link>
+            )}.`}
           </Text>
         </Card>
       )}
@@ -72,12 +82,12 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
           {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
           {jt`Explore the ${(
             <ExternalLink
-              key="embeddingDocs"
+              key="embedding-docs"
               href={embeddingDocsUrl}
             >{t`embedding documentation`}</ExternalLink>
           )} and ${(
             <ExternalLink
-              key="customerFacingAnalyticsDoc"
+              key="customer-facing-analytics-docs"
               href={customerFacingAnalyticsDocsUrl}
             >{t`customer-facing analytics articles`}</ExternalLink>
           )} to learn more about what Metabase offers.`}
