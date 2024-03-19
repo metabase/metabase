@@ -6,6 +6,7 @@ import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 
 import { Container, HeadingContainer } from "./AdminPaneLayout.styled";
+import CS from "metabase/css/core/index.css";
 
 const AdminPaneTitle = ({
   title,
@@ -22,7 +23,7 @@ const AdminPaneTitle = ({
       <HeadingContainer>
         {headingContent && <Fragment>{headingContent}</Fragment>}
         {title && (
-          <h2 data-testid="admin-pane-page-title" className={AdminS.PageTitle}>
+          <h2 data-testid="admin-pane-page-title" className={CS.m0}>
             {title}
           </h2>
         )}

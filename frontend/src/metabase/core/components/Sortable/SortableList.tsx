@@ -9,6 +9,7 @@ import { SortableContext, arrayMove } from "@dnd-kit/sortable";
 import { useState, useMemo, useEffect } from "react";
 import _ from "underscore";
 
+import GrabberS from "metabase/css/components/grabber.module.css";
 import { isNotNull } from "metabase/lib/types";
 
 type ItemId = number | string;
@@ -77,7 +78,7 @@ export const SortableList = <T,>({
   };
 
   const handleDragStart = (event: DragStartEvent) => {
-    document.body.classList.add("grabbing");
+    document.body.classList.add(GrabberS.grabbing);
 
     onSortStart?.(event);
 
@@ -88,7 +89,7 @@ export const SortableList = <T,>({
   };
 
   const handleDragEnd = () => {
-    document.body.classList.remove("grabbing");
+    document.body.classList.remove(GrabberS.grabbing);
     if (activeItem && onSortEnd) {
       onSortEnd({
         id: getId(activeItem),

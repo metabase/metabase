@@ -7,8 +7,9 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 
 export function LeftNavPaneItem({ name, path, index = false }) {
+  const isSelected = path === window.location.pathname;
   return (
-    <li>
+    <li data-testid="left-nav-pane-item">
       {index ? (
         <IndexLink
           to={path}
@@ -20,6 +21,7 @@ export function LeftNavPaneItem({ name, path, index = false }) {
             "justify-between",
           )}
           activeClassName={AdminS.selected}
+          data-selected={isSelected}
         >
           {name}
         </IndexLink>
@@ -34,6 +36,7 @@ export function LeftNavPaneItem({ name, path, index = false }) {
             "justify-between",
           )}
           activeClassName={AdminS.selected}
+          data-selected={isSelected}
         >
           {name}
         </Link>

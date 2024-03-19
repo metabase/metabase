@@ -52,10 +52,14 @@ describe("scenarios > admin > people", () => {
 
       // A small sidebar selector
       cy.findByTestId("admin-layout-sidebar").within(() => {
-        // cy.findByText("People").should("have.class", "selected");
+        cy.findAllByTestId("left-nav-pane-item")
+          .contains("People")
+          .should("have.attr", "data-selected", "true");
         cy.log("Switch to 'Groups' and make sure it renders properly");
         cy.findByText("Groups").as("groupsTab").click();
-        // cy.findByText("Groups").should("have.class", "selected");
+        cy.findAllByTestId("left-nav-pane-item")
+          .contains("Groups")
+          .should("have.attr", "data-selected", "true");
       });
       cy.findByTestId("admin-pane-page-title").contains("Groups");
       assertTableRowsCount(TOTAL_GROUPS);
@@ -613,9 +617,9 @@ function clickButton(button_name) {
 }
 
 function assertTableRowsCount(length) {
-  cy.findByTestId("admin-layout-content").within(() => {
-    cy.get("table tbody tr").should("have.length", length);
-  });
+  cy.findByTestId("admin-layout-content")
+    .get("table tbody tr")
+    .should("have.length", length);
 }
 
 function generateUsers(count, groupIds) {

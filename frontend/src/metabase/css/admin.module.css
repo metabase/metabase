@@ -18,10 +18,6 @@
   padding-bottom: var(--page-header-padding);
 }
 
-.PageTitle {
-  margin: 0;
-}
-
 .TableActions {
   text-align: right;
 }
@@ -128,7 +124,6 @@
   outline: 0;
 }
 
-:global(.AdminSelect),
 .AdminSelect {
   display: inline-block;
   padding: 0.6em 0.9em;
@@ -139,16 +134,12 @@
   min-width: 104px;
 }
 
-:global(.AdminSelect:hover) {
+.AdminSelect:hover {
   border-color: color-mod(var(--color-border) blackness(10%));
 }
 
 .MetadataTable {
   min-width: 800px;
-}
-
-.MetadataTableTitle {
-  background-color: var(--color-bg-white);
 }
 
 .TableEditorFieldDescription {
