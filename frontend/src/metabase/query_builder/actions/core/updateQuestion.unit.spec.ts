@@ -507,16 +507,6 @@ describe("QB Actions > updateQuestion", () => {
       const { getCard, questionType } = testCase;
 
       describe(questionType, () => {
-        it("loads metadata for the model", async () => {
-          const loadMetadataSpy = jest.spyOn(
-            questionActions,
-            "loadMetadataForCard",
-          );
-
-          await setup({ card: getCard() });
-          expect(loadMetadataSpy).toHaveBeenCalledTimes(1);
-        });
-
         it("refreshes question metadata if there's difference in dependent metadata", async () => {
           const loadMetadataSpy = jest.spyOn(
             questionActions,

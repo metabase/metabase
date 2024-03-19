@@ -11,15 +11,16 @@ export interface LoadMetadataOptions {
 
 export const loadMetadataForCard =
   (card: Card, options?: LoadMetadataOptions) =>
-  (dispatch: Dispatch, getState: GetState) => {
+  async (dispatch: Dispatch, getState: GetState) => {
     const question = new Question(card, getMetadata(getState()));
-    const queries =
-      question.type() === "question"
-        ? [question.query()]
-        : [question.query(), question.composeDataset().query()];
-    const dependencies = [
-      ...question.dependentMetadata(),
-      ...queries.flatMap(query => Lib.dependentMetadata(query)),
-    ];
-    return dispatch(loadMetadataForDependentItems(dependencies, options));
+    const dependencies = Lib.dependentMetadata(question.query());
+    await dispatch(loadMetadataForDependentItems(dependencies, options));
+
+    // metadata for an ad-hoc question based on this question
+    if (question.isSaved() && question.type() !== "question") {
+      const questionWithMetadata = new Question(card, getMetadata(getState()));
+      const adhocQuestion = questionWithMetadata.composeQuestionAdhoc();
+      const adhocDependencies = Lib.dependentMetadata(adhocQuestion.query());
+      await dispatch(loadMetadataForDependentItems(adhocDependencies, options));
+    }
   };
