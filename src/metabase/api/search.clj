@@ -27,7 +27,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.realize :as t2.realize]
+   #_[metabase.search.semantic :as semantic]))
 
 (set! *warn-on-reflection* true)
 
@@ -596,7 +597,7 @@
                      (nil? models)    search.config/all-models
                      (string? models) #{models}
                      :else            (set models))
-        results    (search (search-context
+        ctx (search-context
                             {:search-string       q
                              :archived            archived
                              :created-at          created_at
@@ -609,7 +610,9 @@
                              :limit               mw.offset-paging/*limit*
                              :offset              mw.offset-paging/*offset*
                              :search-native-query search_native_query
-                             :verified            verified}))
+                             :verified            verified})
+        results    (search ctx)
+        ;;results    (semantic/api-search ctx)
         duration   (- (System/currentTimeMillis) start-time)
         has-advanced-filters (some some?
                                    [models created_by created_at last_edited_by

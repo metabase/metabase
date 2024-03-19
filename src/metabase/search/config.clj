@@ -158,6 +158,7 @@
    :table_schema        :text
    :table_name          :text
    :table_description   :text
+   :type                :text
    ;; returned for Metric, Segment, and Action
    :database_id         :integer
    ;; returned for Database and Table
@@ -266,7 +267,7 @@
 
 (defmethod columns-for-model "card"
   [_]
-  (conj default-columns :collection_id :collection_position :dataset_query :display :creator_id
+  (conj default-columns :collection_id :collection_position :dataset_query :display :creator_id :type
         [:collection.name :collection_name]
         [:collection.authority_level :collection_authority_level]
         bookmark-col dashboardcard-count-col))
