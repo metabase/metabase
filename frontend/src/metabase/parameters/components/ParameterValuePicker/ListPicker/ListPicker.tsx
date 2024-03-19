@@ -1,3 +1,6 @@
+import { useCallback, useRef } from "react";
+
+import { useDebouncedCallback } from "metabase/hooks/use-debounced-callback";
 import { Select, Loader } from "metabase/ui";
 
 import { PickerIcon } from "../ParameterValuePicker.styled";
@@ -11,6 +14,8 @@ interface ListPickerProps {
   onChange: (value: string) => void;
   onClear: () => void;
   onSearchChange?: (query: string) => void;
+  /** Omit the prop or pass -1 if you want to disable it */
+  searchDebounceMs?: number;
   onDropdownOpen?: () => void;
   enableSearch: boolean;
   isLoading: boolean;
@@ -26,7 +31,8 @@ export function ListPicker(props: ListPickerProps) {
     values,
     onChange,
     onClear,
-    onSearchChange,
+    onSearchChange = noop,
+    searchDebounceMs = -1,
     onDropdownOpen,
     enableSearch,
     placeholder,
@@ -43,6 +49,28 @@ export function ListPicker(props: ListPickerProps) {
     <PickerIcon name="close" onClick={onClear} />
   ) : null;
 
+  const debouncedOnSearch = useDebouncedCallback(
+    onSearchChange,
+    searchDebounceMs,
+    [onSearchChange],
+  );
+
+  // For some reason Select is firing multiple events, which isn't needed.
+  const lastSearch = useRef<string>();
+  const singleOnSearch = useCallback(
+    (search: string) => {
+      if (search !== lastSearch.current) {
+        lastSearch.current = search;
+        if (searchDebounceMs === -1) {
+          onSearchChange(search);
+        } else {
+          debouncedOnSearch(search);
+        }
+      }
+    },
+    [onSearchChange, debouncedOnSearch, searchDebounceMs],
+  );
+
   return (
     <Select
       // This is required until we fix the Select to support maxDropdownHeight
@@ -56,9 +84,11 @@ export function ListPicker(props: ListPickerProps) {
       searchable={enableSearch}
       onKeyUp={blurOnCommitKey}
       nothingFound={noResultsText}
-      onSearchChange={onSearchChange}
+      onSearchChange={singleOnSearch}
       onDropdownOpen={onDropdownOpen}
       inputWrapperOrder={["label", "input", "error", "description"]}
     />
   );
 }
+
+function noop() {}
