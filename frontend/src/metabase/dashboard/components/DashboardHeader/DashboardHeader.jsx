@@ -38,7 +38,7 @@ import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getSetting } from "metabase/selectors/settings";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 
-import { SIDEBAR_NAME } from "../../constants";
+import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
 
 import {
   DashboardHeaderButton,
@@ -536,7 +536,7 @@ class DashboardHeaderContainer extends Component {
 
   saveAsPDF = async () => {
     const { dashboard } = this.props;
-    const cardNodeSelector = "#Dashboard-Cards-Container";
+    const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
     await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
       trackExportDashboardToPDF(dashboard.id);
     });

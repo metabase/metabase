@@ -41,3 +41,6 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
 };
 
 export const DASHBOARD_SLOW_TIMEOUT = 15 * 1000;
+
+export const DASHBOARD_PDF_EXPORT_ROOT_ID =
+  "Dashboard-Parameters-And-Cards-Container";
