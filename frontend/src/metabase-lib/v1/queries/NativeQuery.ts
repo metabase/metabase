@@ -86,7 +86,6 @@ export function updateCardTemplateTagNames(
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class NativeQuery extends AtomicQuery {
-  // For Flow type completion
   _nativeDatasetQuery: NativeDatasetQuery;
 
   constructor(
@@ -118,6 +117,10 @@ export default class NativeQuery extends AtomicQuery {
         this.queryText().length > 0 &&
         this._allTemplateTagsAreValid(),
     );
+  }
+
+  canBeSaved(): boolean {
+    return this.canRun() && this._allRequiredTagsHaveDefaults();
   }
 
   isEmpty() {
@@ -295,11 +298,6 @@ export default class NativeQuery extends AtomicQuery {
         if (!dimension) {
           return new ValidationError(t`Invalid template tag: ${tag.name}`);
         }
-        if (tag.required && !tag.default) {
-          return new ValidationError(
-            t`Missing default value for a required template tag: ${tag.name}`,
-          );
-        }
 
         return dimension.validateTemplateTag();
       })
@@ -311,6 +309,18 @@ export default class NativeQuery extends AtomicQuery {
   private _allTemplateTagsAreValid() {
     const tagErrors = this._validateTemplateTags();
     return tagErrors.length === 0;
+  }
+
+  private _allRequiredTagsHaveDefaults() {
+    const isEmpty = v => {
+      const value = Array.isArray(v) ? v[0] : v;
+      return value == null || value === "";
+    };
+
+    const requiredNoDefaults = this.templateTags().filter(
+      tag => tag.required && isEmpty(tag.default),
+    );
+    return requiredNoDefaults.length === 0;
   }
 
   setTemplateTag(name: string, tag: TemplateTag): NativeQuery {
