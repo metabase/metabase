@@ -23,19 +23,13 @@ import {
 import { TabsView } from "./TabsView";
 
 export type EntityPickerModalOptions = {
-  showPersonalCollection?: boolean;
-  showRootCollection?: boolean;
   showSearch?: boolean;
   hasConfirmButtons?: boolean;
-  allowCreateNew?: boolean;
 };
 
 export const defaultOptions: EntityPickerModalOptions = {
-  showPersonalCollection: true,
-  showRootCollection: true,
   showSearch: true,
   hasConfirmButtons: true,
-  allowCreateNew: true,
 };
 
 export interface EntityPickerModalProps<TItem> {

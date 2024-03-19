@@ -17,12 +17,14 @@ import { CollectionItemPickerResolver } from "./CollectionItemPickerResolver";
 import { getStateFromIdPath, getCollectionIdPath, isFolder } from "./utils";
 
 export type CollectionPickerOptions = EntityPickerModalOptions & {
+  allowCreateNew?: boolean;
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;
   namespace?: "snippets";
 };
 
 const defaultOptions: CollectionPickerOptions = {
+  allowCreateNew: true,
   showPersonalCollections: true,
   showRootCollection: true,
 };
