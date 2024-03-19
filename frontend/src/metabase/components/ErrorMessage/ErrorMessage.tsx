@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
+import { NoRowsError } from "metabase/query_builder/components/errors/NowRowsError";
 
 interface ErrorMessageProps {
   title: string;
@@ -29,13 +30,16 @@ export const ErrorMessage = ({
         CS.alignCenter,
       )}
     >
-      <div
-        className={cx(QueryBuilderS.QueryErrorImage, {
-          [QueryBuilderS.QueryErrorImageNoRows]: type === "noRows",
-          [QueryBuilderS.QueryErrorImageServerError]: type === "serverError",
-          [QueryBuilderS.QueryErrorImageTimeout]: type === "timeout",
-        })}
-      />
+      {type === "noRows" ? (
+        <NoRowsError />
+      ) : (
+        <div
+          className={cx(QueryBuilderS.QueryErrorImage, {
+            [QueryBuilderS.QueryErrorImageServerError]: type === "serverError",
+            [QueryBuilderS.QueryErrorImageTimeout]: type === "timeout",
+          })}
+        />
+      )}
       <div className="text-centered">
         {title && <h1 className="text-bold">{title}</h1>}
         <p className={QueryBuilderS.QueryErrorMessageText}>{message}</p>
