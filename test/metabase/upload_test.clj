@@ -1865,13 +1865,37 @@
                    (mt/id)
                    table-name
                    (csv-file-with ["float-1,float-2"
-                                   "1,1.0" ;; <--- these columns just differ in order
-                                   "1.0,1"]))
+                                   "1,   1.0"
+                                   "1.0, 1"]))
                   (sync-upload-test-table! :database (mt/db) :table-name table-name))]
          (testing "Check the data was uploaded into the table correctly"
            (is (= [[1 1.0 1.0]
                    [2 1.0 1.0]]
                   (rows-for-table table)))))))))
+
+(deftest append-from-csv-int-and-float-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "Append should handle the columns in the CSV file being reordered"
+      (with-upload-table! [table (create-upload-table!
+                                  :col->upload-type (ordered-map/ordered-map
+                                                     :_mb_row_id ::upload/auto-incrementing-int-pk
+                                                     :number_1 ::upload/int
+                                                     :number_2 ::upload/int)
+                                  :rows [[1, 1]])]
+
+        (let [csv-rows ["number-1, number-2"
+                        "1.0, 1"
+                        "1  , 1.0"]
+              file     (csv-file-with csv-rows (mt/random-name))]
+          (is (some? (append-csv! {:file     file
+                                   :table-id (:id table)})))
+
+          (testing "The new row is inserted with the values correctly reordered"
+            (is (= [[1 1 1]
+                    [2 1 1]
+                    [3 1 1]]
+                   (rows-for-table table))))
+          (io/delete-file file))))))
 
 (deftest coercion-soundness-test
   (testing "Every coercion maps to a stricter type that is a direct descendant"
