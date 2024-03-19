@@ -15,6 +15,11 @@ const BUTTON_TOOLTIP = {
   json: t`View the native query`,
 };
 
+const BUTTON_TOOLTIP_CLOSE = {
+  sql: t`Hide the SQL`,
+  json: t`Hide the native query`,
+};
+
 interface ToggleNativeQueryPreviewProps {
   question: Question;
 }
@@ -28,7 +33,9 @@ export const ToggleNativeQueryPreview = ({
   }: { isNativePreviewSidebarOpen?: boolean } = useSelector(getUiControls);
 
   const engineType = getEngineNativeType(question.database()?.engine);
-  const tooltip = BUTTON_TOOLTIP[engineType];
+  const tooltip = isNativePreviewSidebarOpen
+    ? BUTTON_TOOLTIP_CLOSE[engineType]
+    : BUTTON_TOOLTIP[engineType];
 
   const handleClick = () =>
     dispatch(
