@@ -362,6 +362,14 @@
                                   :display-name "foo"
                                   :required true
                                   :default []}}))))
+  (is (not (lib/can-save (lib/with-template-tags
+                          (lib/native-query meta/metadata-provider "select * {{foo}}")
+                          {"foo" {:type :text
+                                  :id "1"
+                                  :name "foo"
+                                  :display-name "foo"
+                                  :required true
+                                  :default [""]}}))))
   (mu/disable-enforcement
     (is (not (lib/can-save (lib/native-query meta/metadata-provider ""))))))
 
