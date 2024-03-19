@@ -526,16 +526,17 @@ describe("StringFilterValuePicker", () => {
         column,
         values: ["a@b.com"],
         searchValues: {
-          "a@b.com": createMockFieldValues({
+          "a@b": createMockFieldValues({
             field_id: PEOPLE.EMAIL,
             values: [["a@b.com"]],
           }),
         },
       });
 
-      userEvent.type(screen.getByLabelText("Filter value"), "a@b.com");
+      userEvent.type(screen.getByLabelText("Filter value"), "a@b");
       act(() => jest.advanceTimersByTime(1000));
       expect(screen.getByText("a@b.com")).toBeInTheDocument();
+      expect(screen.queryByText("a@b")).not.toBeInTheDocument();
     });
   });
 
