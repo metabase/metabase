@@ -20,6 +20,7 @@ import {
   ColumnInput,
   FieldSettingsLink,
 } from "./MetadataTableColumn.styled";
+
 interface OwnProps {
   field: Field;
   idFields: Field[];
@@ -119,12 +120,7 @@ const MetadataTableColumn = ({
               </div>
             </div>
           </div>
-          <div
-            className={cx(
-              CS.bgWhite,
-              "flex flex-column flex-full mt1 mr1",
-            )}
-          >
+          <div className={cx(CS.bgWhite, "flex flex-column flex-full mt1 mr1")}>
             <ColumnInput
               className={cx(AdminS.TableEditorFieldDescription, CS.rounded)}
               type="text"
