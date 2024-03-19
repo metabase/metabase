@@ -188,10 +188,10 @@
   (with-parens
    (with-currency
     (case number-separators
-      ("." ".,") #"\d[\d,]*\.0+"
-      ",." #"\d[\d.]*\,[0]+"
-      ", " #"\d[\d \u00A0]*\,[0.]+"
-      ".’" #"\d[\d’]*\.[0.]+"))))
+      ("." ".,") #"\d[\d,]*(\.0+)?"
+      ",." #"\d[\d.]*(\,[0]+)?"
+      ", " #"\d[\d \u00A0]*(\,[0.]+)?"
+      ".’" #"\d[\d’]*(\.[0.]+)?"))))
 
 (defn- float-regex [number-separators]
   (with-parens
@@ -247,15 +247,16 @@
 (mu/defn ^:private settings->type->check :- type->check-schema
   [{:keys [number-separators] :as _settings}]
   (let [explicit-int? (regex-matcher (int-regex number-separators))
-        float-or-int? (regex-matcher (float-or-int-regex number-separators))]
+        float-or-int? (regex-matcher (float-or-int-regex number-separators))
+        float?        (regex-matcher (float-regex number-separators))]
     {::*boolean-int*   boolean-int-string?
      ::boolean         boolean-string?
      ::offset-datetime offset-datetime-string?
      ::date            date-string?
      ::datetime        datetime-string?
      ::int             explicit-int?
-     ::*float-or-int*  #(or (explicit-int? %) (float-or-int? %))
-     ::float           (regex-matcher (float-regex number-separators))
+     ::*float-or-int*  float-or-int?
+     ::float           float?
      ::varchar-255     varchar-255?
      ::text            (constantly true)}))
 
