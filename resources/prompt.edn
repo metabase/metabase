@@ -9,9 +9,21 @@
 
 [
  {:role    "system"
-  :content "You are a helpful assistant that fills in the missing \"friendly_title\" and
-            \"friendly_summary\" keys in a json fragment. You like to occasionally use emojis to express
-            yourself but are otherwise very serious and professional. You also like to end everything you say with \"I am Metabot, I have spoken!!\". You should include that at the end of your titles and summaries."}
+  :content
+  "You are a helpful assistant that fills in the missing \"friendly_title\" and
+  \"friendly_summary\" keys in a json fragment.
+
+  Your summary and title should be:
+   - concise
+   - informative
+   - include caveats and limitations from filters (the query clauses) if applicable.
+   - Caveats should be stated not as fact but as suggestions
+   - easy to understand by a non-technical audience from a variety of backgrounds
+   - discoverable by search engines
+   - not explicitly talk about the visualization type
+   - not provide any conclusions about the data
+
+  You like to occasionally use emojis to express yourself but are otherwise very serious and professional."}
  ;; the autodescribe code will insert a message regarding :display and :visualization_settings here IF they are set
  :display-message
 
@@ -26,3 +38,75 @@
  :summary-message
  ;; please feel free to add more message maps
 ]
+
+;; Better describing what we want as a result
+
+
+
+
+
+;; Ideas:
+
+;;  - move all of the above into the system prompt?
+
+;;  - pull out additional keys (like we do with the display key)
+
+;;  - try pull out filters -> which are often proxies for caveats
+
+;;  - add table or model descriptions
+
+;;  - add some good 'best practices' eg. what do we expect from descriptions.
+
+
+
+;;    - 'write description in a way that you don't need to be an expert to be able to understand what the question is showing...'
+;;    - what do we want users to be able to do with descriptions, for instance
+;;    - future: perhaps allow a 'tone' setting that users could provide
+;;    - let user put in a description of their own -> feed this into the prompt for additional context.
+;;  - use title as context to send into the prompt
+;;  - see about putting keys in different order so that as the chat continues the built up context can improve the title
+
+
+
+;;  - random examples that nudge it into using a desired structure -> perhaps more useful for 'backend concerns'? Could be useful to eg. make it putout bullet points  look up: 'few shot learning'
+
+
+
+
+
+;; a prompt change we tried:
+  ;; Your summary and title should be:
+  ;;  - concise
+  ;;  - informative
+  ;;  - include caveats and limitations from filters (the query clauses) if applicable.
+  ;;  - Caveats should be stated not as fact but as suggestions
+  ;;  - easy to understand by a non-technical audience from a variety of backgrounds
+  ;;  - discoverable by search engines
+
+;; example output:
+;; Displays the sum of monthly sales over the past 12 months. Sales data is filtered to show sums between $10 and $20,000, providing a focused view on mid-range transactions. Presented as a line chart for easy trend analysis.
+
+
+
+
+;; NOTE: the focus on the viz type (eg, 'presented as line chart...') could maybe be dialed down??
+;; *** Missing context about the company that's using Metabase.
+;; Provide some information about your company. (it will be appended to LLM prompts)
+;; Alternatively, we should find ways to infer the date about the company better.
+;; for example, we can pull existing descriptions from the instances's tables, models, column descriptions
+
+
+
+
+
+;; maybe some next steps.
+
+;; snowplow accept/ok/reject
+
+;; feedback mechanism: I liked that, I didn't like that.
+
+;; create a separate 'summarize context about our company' -> inject that summary into questions
+
+;; use semantic search to 'pre-fetch' some useful context for the summary
+
+;; standardize on a few useful qeustions with sample data and run a 'standard question suite'
