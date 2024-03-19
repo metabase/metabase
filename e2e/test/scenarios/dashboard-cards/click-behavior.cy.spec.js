@@ -2018,6 +2018,84 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
     });
   });
+
+  it("should not pass through null values to filters in custom url click behavior (metabase#25203)", () => {
+    const DASHBOARD_NAME = "Click Behavior Custom URL Dashboard";
+    const questionDetails = {
+      name: "Orders",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [
+          ["sum", ["field", ORDERS.TOTAL, null]],
+          ["sum", ["field", ORDERS.DISCOUNT, null]],
+        ],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+        filter: ["=", ["field", ORDERS.USER_ID, null], 1],
+      },
+      display: "bar",
+    };
+
+    cy.createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails: {
+        name: DASHBOARD_NAME,
+      },
+      cardDetails: {
+        size_x: 16,
+        size_y: 8,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      cy.wrap(dashboard_id).as("targetDashboardId");
+      visitDashboard(dashboard_id);
+    });
+
+    editDashboard();
+
+    getDashboardCard().realHover().icon("click").click();
+    addUrlDestination();
+
+    modal().within(() => {
+      const urlInput = cy.findAllByRole("textbox").eq(0);
+
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        urlInput.type(
+          `http://localhost:4000/dashboard/${targetDashboardId}?discount={{sum_2}}&total={{sum}}`,
+          {
+            parseSpecialCharSequences: false,
+          },
+        );
+      });
+      cy.button("Done").click();
+    });
+
+    cy.get("aside").button("Done").click();
+
+    saveDashboard();
+
+    // test that normal values still work properly
+    getDashboardCard().within(() => {
+      cy.get(".bar").eq(2).click();
+    });
+    cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.location().should(({ pathname, search }) => {
+        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+        expect(search).to.equal(
+          "?discount=15.070632139056723&total=298.9195210424866",
+        );
+      });
+    });
+
+    // test that null and "empty"s do not get passed through
+    getDashboardCard().within(() => {
+      cy.get(".bar").eq(1).click();
+    });
+    cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.location().should(({ pathname, search }) => {
+        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+        expect(search).to.equal("?discount=&total=420.3189231596888");
+      });
+    });
+  });
 });
 
 /**
