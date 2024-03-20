@@ -5,6 +5,7 @@ import { Component } from "react";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
 
 export class Dashboard extends Component {
@@ -13,7 +14,7 @@ export class Dashboard extends Component {
 
     return (
       <LoadingAndErrorWrapper
-        className={cx("Dashboard p1 flex-full", className)}
+        className={cx(DashboardS.Dashboard, CS.p1, CS.flexFull, className)}
         style={style}
         loading={!dashboard}
         noBackground

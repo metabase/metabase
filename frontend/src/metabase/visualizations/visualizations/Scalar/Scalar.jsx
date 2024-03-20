@@ -5,6 +5,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
@@ -235,7 +237,11 @@ export class Scalar extends Component {
           {actionButtons}
         </div>
         <ScalarContainer
-          className="fullscreen-normal-text fullscreen-night-text"
+          className={cx(
+            DashboardS.fullscreenNormalText,
+            DashboardS.fullscreenNightText,
+            EmbedFrameS.fullscreenNightText,
+          )}
           data-testid="scalar-container"
           tooltip={fullScalarValue}
           alwaysShowTooltip={fullScalarValue !== displayValue}

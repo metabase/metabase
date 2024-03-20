@@ -505,7 +505,7 @@ class Visualization extends PureComponent {
             >
               <CardVisualization
                 {...this.props}
-                // NOTE: CardVisualization class used to target ExplicitSize HOC
+                // NOTE: CardVisualization class used as a selector for tests
                 className="CardVisualization flex-full flex-basis-none"
                 isPlaceholder={isPlaceholder}
                 isMobile={isMobile}
