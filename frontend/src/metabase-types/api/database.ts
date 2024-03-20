@@ -60,6 +60,7 @@ export interface Database extends DatabaseData {
 export interface DatabaseData {
   id?: DatabaseId;
   name: string;
+  description: string;
   engine: string | undefined;
   details: Record<string, unknown>;
   schedules: DatabaseSchedules;

@@ -19,7 +19,7 @@ interface Database extends Omit<NormalizedDatabase, "tables" | "schemas"> {
   metadata?: Metadata;
 }
 
-class Database {
+class Database implements NormalizedDatabase {
   private readonly _plainObject: NormalizedDatabase;
 
   constructor(database: NormalizedDatabase) {
