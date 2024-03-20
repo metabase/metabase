@@ -260,14 +260,15 @@
        database
        nil
        (fn [^Connection conn]
-         (when-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
-           (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn driver conn)]
-             (reduce
-              ((comp (filter have-select-privilege?)
+         (reduce
+          rf
+          init
+          (when-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
+            (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn driver conn)]
+              (eduction
+               (comp (filter have-select-privilege?)
                      (map #(dissoc % :type)))
-               rf)
-              init
-              (get-tables database syncable-schemas nil)))))))))
+               (get-tables database syncable-schemas nil))))))))))
 
 (defmethod driver/describe-database :postgres
   [_driver database]
