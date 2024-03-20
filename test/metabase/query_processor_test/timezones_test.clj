@@ -9,7 +9,8 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]))
 
 ;; TIMEZONE FIXME
 (def broken-drivers
@@ -96,10 +97,10 @@
                    "same as specifying UTC for a report timezone")))))))
 
 (defn- table-identifier [table-key]
-  [:raw (sql.tx/qualify-and-quote driver/*driver* (:name (mt/db)) (name table-key))])
+  (apply h2x/identifier :table (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) (name table-key))))
 
 (defn- field-identifier [table-key field-key]
-  [:raw (sql.tx/qualify-and-quote driver/*driver* (:name (mt/db)) (name table-key) (name field-key))])
+  (apply h2x/identifier :field (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) (name table-key) (name field-key))))
 
 (defn- honeysql->sql [honeysql]
   (first (sql.qp/format-honeysql driver/*driver* honeysql)))
