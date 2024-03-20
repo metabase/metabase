@@ -520,7 +520,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should not show free-form input in search results", async () => {
-      await setupStringPicker({
+      const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -537,6 +537,7 @@ describe("StringFilterValuePicker", () => {
       act(() => jest.advanceTimersByTime(1000));
       expect(screen.getByText("a@b.com")).toBeInTheDocument();
       expect(screen.queryByText("a@b")).not.toBeInTheDocument();
+      expect(onChange).toHaveBeenLastCalledWith(["a@b.com", "a@b"]);
     });
   });
 
