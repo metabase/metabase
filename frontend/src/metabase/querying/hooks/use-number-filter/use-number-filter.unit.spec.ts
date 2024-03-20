@@ -1,8 +1,18 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 
+import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import {
+  createOrdersIdField,
+  createOrdersProductIdField,
+  createOrdersQuantityField,
+  createOrdersTable,
+  createOrdersTotalField,
+  createProductsTable,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { useNumberFilter } from "./use-number-filter";
 
@@ -36,8 +46,28 @@ interface DefaultOperatorCase {
   expectedOperator: Lib.NumberFilterOperatorName;
 }
 
+const METADATA = createMockMetadata({
+  databases: [
+    createSampleDatabase({
+      tables: [
+        createOrdersTable({
+          fields: [
+            createOrdersIdField(),
+            createOrdersProductIdField(),
+            createOrdersTotalField(),
+            createOrdersQuantityField({
+              semantic_type: "type/Category",
+            }),
+          ],
+        }),
+        createProductsTable(),
+      ],
+    }),
+  ],
+});
+
 describe("useNumberFilter", () => {
-  const defaultQuery = createQuery();
+  const defaultQuery = createQuery({ metadata: METADATA });
   const stageIndex = 0;
   const availableColumns = Lib.filterableColumns(defaultQuery, stageIndex);
   const findColumn = columnFinder(defaultQuery, availableColumns);
@@ -236,6 +266,11 @@ describe("useNumberFilter", () => {
     {
       title: "FK column",
       column: findColumn("ORDERS", "PRODUCT_ID"),
+      expectedOperator: "=",
+    },
+    {
+      title: "category column",
+      column: findColumn("ORDERS", "QUANTITY"),
       expectedOperator: "=",
     },
     {
