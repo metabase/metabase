@@ -304,8 +304,9 @@ describe("scenarios > filters > filter sources", () => {
     it("column from a nested aggregation without column", () => {
       visitQuestionAdhoc(tableWithAggregations, { mode: "notebook" });
       addNewFilter();
+      popover().findByText("Count").click();
+      selectOperator("Equal to");
       popover().within(() => {
-        cy.findByText("Count").click();
         cy.findByPlaceholderText("Enter a number").type("90");
         cy.button("Add filter").click();
       });
@@ -437,8 +438,9 @@ describe("scenarios > filters > filter sources", () => {
         });
       });
       addNewFilter();
+      popover().findByText("Count").click();
+      selectOperator("Equal to");
       popover().within(() => {
-        cy.findByText("Count").click();
         cy.findByPlaceholderText("Enter a number").type("90");
         cy.button("Add filter").click();
       });
@@ -578,8 +580,9 @@ describe("scenarios > filters > filter sources", () => {
         });
       });
       addNewFilter();
+      popover().findByText("Count").click();
+      selectOperator("Equal to");
       popover().within(() => {
-        cy.findByText("Count").click();
         cy.findByPlaceholderText("Enter a number").type("90");
         cy.button("Add filter").click();
       });
