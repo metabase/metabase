@@ -310,13 +310,14 @@ describe("scenarios > question > native", () => {
 
     cy.button("View the SQL").click();
     cy.wait("@datasetNative");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/FROM "PUBLIC"."ORDERS"/).should("be.visible");
+    cy.get("code")
+      .contains(/FROM "PUBLIC"."ORDERS"/)
+      .should("be.visible");
 
     cy.button("Convert this question to SQL").click();
-    runQuery();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 1 row").should("be.visible");
+    cy.findByTestId("question-row-count")
+      .contains("Showing 1 row")
+      .should("be.visible");
   });
 
   describe("prompts", () => {
