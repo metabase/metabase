@@ -49,11 +49,37 @@ export const NotebookDataPickerModal = ({
     }
   };
 
-  const tabs: [EntityTab] = [
+  const tabs: [EntityTab, ...EntityTab[]] = [
+    {
+      displayName: t`Models`,
+      model: "model",
+      icon: "model",
+      element: (
+        <NotebookDataPicker
+          initialValue={value}
+          options={options}
+          ref={pickerRef}
+          onItemSelect={handleItemSelect}
+        />
+      ),
+    },
     {
       displayName: t`Tables`,
       model: "table",
       icon: "table",
+      element: (
+        <NotebookDataPicker
+          initialValue={value}
+          options={options}
+          ref={pickerRef}
+          onItemSelect={handleItemSelect}
+        />
+      ),
+    },
+    {
+      displayName: t`Saved questions`,
+      model: "question",
+      icon: "folder",
       element: (
         <NotebookDataPicker
           initialValue={value}

@@ -1,5 +1,5 @@
-import type React from "react";
-import { useState, forwardRef, useImperativeHandle, useCallback } from "react";
+import type { Ref } from "react";
+import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
@@ -8,13 +8,13 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 
-import type { PickerState, CollectionPickerItem } from "../../types";
+import type { CollectionPickerItem, PickerState } from "../../types";
 import type { EntityPickerModalOptions } from "../EntityPickerModal";
 import { LoadingSpinner } from "../LoadingSpinner";
 import { NestedItemPicker } from "../NestedItemPicker";
 
 import { TableItemPickerResolver } from "./TableItemPickerResolver";
-import { getStateFromIdPath, getCollectionIdPath, isFolder } from "./utils";
+import { getCollectionIdPath, getStateFromIdPath, isFolder } from "./utils";
 
 export type NotebookDataPickerOptions = EntityPickerModalOptions & {
   showPersonalCollections?: boolean;
@@ -27,19 +27,15 @@ const defaultOptions: NotebookDataPickerOptions = {
   showRootCollection: false,
 };
 
-interface NotebookDataPickerProps {
+interface Props {
   onItemSelect: (item: CollectionPickerItem) => void;
   initialValue?: Partial<CollectionPickerItem>;
   options?: NotebookDataPickerOptions;
 }
 
 export const NotebookDataPicker = forwardRef(function NotebookDataPicker(
-  {
-    onItemSelect,
-    initialValue,
-    options = defaultOptions,
-  }: NotebookDataPickerProps,
-  ref: React.Ref<unknown>,
+  { onItemSelect, initialValue, options = defaultOptions }: Props,
+  ref: Ref<unknown>,
 ) {
   const [path, setPath] = useState<PickerState<CollectionPickerItem>>(() =>
     getStateFromIdPath({
