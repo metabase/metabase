@@ -130,12 +130,11 @@
   [_model k cards]
   (mi/instances-with-hydrated-data
    cards k
-   #(->> (t2/query {:select    [[:%count.* :count] :card.id]
-                    :from      [[:report_dashboardcard :dashcard]]
-                    :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]]
-                    :where     [:in :card.id (map :id cards)]
-                    :group-by  [:card.id]})
-         (map (juxt :id :count))
+   #(->> (t2/query {:select    [[:%count.* :count] :card_id]
+                    :from      [:report_dashboardcard]
+                    :where     [:in :card_id (map :id cards)]
+                    :group-by  [:card_id]})
+         (map (juxt :card_id :count))
          (into {}))
    :id
    {:default 0}))
@@ -144,12 +143,11 @@
   [_model k cards]
   (mi/instances-with-hydrated-data
    cards k
-   #(->> (t2/query {:select    [[:%count.* :count] :card.id]
-                    :from      [[:parameter_card :pc]]
-                    :left-join [[:report_card :card] [:= :pc.card_id :card.id]]
-                    :where     [:in :card.id (map :id cards)]
-                    :group-by  [:card.id]})
-         (map (juxt :id :count))
+   #(->> (t2/query {:select    [[:%count.* :count] :card_id]
+                    :from      [:parameter_card]
+                    :where     [:in :card_id (map :id cards)]
+                    :group-by  [:card_id]})
+         (map (juxt :card_id :count))
          (into {}))
    :id
    {:default 0}))

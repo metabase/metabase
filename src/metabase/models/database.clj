@@ -323,7 +323,7 @@
               (t2/select :model/Table
                          :db_id  [:in (map :id databases)]
                          :active true
-                         {:order-by [[:db_id :asc][:%lower.display_name :asc]]}))
+                         {:order-by [[:db_id :asc] [:%lower.display_name :asc]]}))
    :id
    {:default []}))
 
