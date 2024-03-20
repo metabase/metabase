@@ -3,23 +3,19 @@
                [clojure.string :as str]
                [clojure.test :refer :all]
                [metabase-enterprise.airgap :as airgap]
-               [metabase.public-settings.premium-features :as premium-features]
-               [metabase.test.util :as mt]))
+               [metabase.public-settings.premium-features :as premium-features]))
 
 (defn- test-fake-features [& {:keys [token-fn pubk-fn]}]
-  (mt/with-temporary-setting-values
-    [premium-features/premium-embedding-token
-     (-> (io/resource "fake_ag_token.txt") slurp str/trim ((or token-fn identity)))]
-    (with-redefs
-      [airgap/pubkey-reader (fn [] (-> (io/reader (io/resource "fake_pubkey.pem"))
-                                       ((or pubk-fn identity))))]
-      (#'airgap/decode-token (premium-features/premium-embedding-token)))))
-
-(comment
-
-  (test-fake-features)
-
-  )
+  (with-redefs
+    ;; due to the way premium embedding token is implemented, we need to provide a token and a public key,
+    ;; so we cannot set this with `mt/with-temporary-setting-values`.
+    [premium-features/premium-embedding-token (constantly (-> (io/resource "fake_ag_token.txt")
+                                                              slurp
+                                                              str/trim
+                                                              ((or token-fn identity))))
+     airgap/pubkey-reader (fn [] (-> (io/reader (io/resource "fake_pubkey.pem"))
+                                     ((or pubk-fn identity))))]
+    (#'airgap/decode-token (premium-features/premium-embedding-token))))
 
 (deftest ag-token-decryption-test
   ;; Checks for a specific feature encoded into the fake token:
