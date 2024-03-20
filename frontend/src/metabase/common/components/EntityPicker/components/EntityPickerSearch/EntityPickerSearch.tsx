@@ -9,7 +9,7 @@ import { defer } from "metabase/lib/promise";
 import { useDispatch } from "metabase/lib/redux";
 import { SearchLoadingSpinner } from "metabase/nav/components/search/SearchResults";
 import type { WrappedResult } from "metabase/search/types";
-import { Stack, Tabs, TextInput, Icon, Box, Flex } from "metabase/ui";
+import { Box, Flex, Icon, Stack, Tabs, TextInput } from "metabase/ui";
 import type {
   SearchResult as SearchResultType,
   SearchResults as SearchResultsType,
@@ -84,14 +84,18 @@ export function EntityPickerSearchInput({
   );
 }
 
-export const EntityPickerSearchResults = <TItem extends TypeWithModel>({
+export const EntityPickerSearchResults = <
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>({
   searchResults,
   onItemSelect,
   selectedItem,
 }: {
   searchResults: SearchResultType[] | null;
-  onItemSelect: (item: TItem) => void;
-  selectedItem: TItem | null;
+  onItemSelect: (item: Item) => void;
+  selectedItem: Item | null;
 }) => {
   const dispatch = useDispatch();
 
@@ -109,7 +113,7 @@ export const EntityPickerSearchResults = <TItem extends TypeWithModel>({
                 key={item.model + item.id}
                 result={Search.wrapEntity(item, dispatch)}
                 onClick={(item: WrappedResult) => {
-                  onItemSelect(item as unknown as TItem);
+                  onItemSelect(item as unknown as Item); // TODO
                 }}
                 isSelected={
                   selectedItem?.id === item.id &&

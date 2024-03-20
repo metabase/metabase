@@ -7,18 +7,22 @@ import {
   EntityPickerSearchResults,
 } from "../EntityPickerSearch";
 
-export const TabsView = <TItem extends TypeWithModel>({
+export const TabsView = <
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>({
   tabs,
   onItemSelect,
   searchQuery,
   searchResults,
   selectedItem,
 }: {
-  tabs: [EntityTab, ...EntityTab[]];
-  onItemSelect: (item: TItem) => void;
+  tabs: [EntityTab<Model>, ...EntityTab<Model>[]];
+  onItemSelect: (item: Item) => void;
   searchQuery: string;
   searchResults: SearchResult[] | null;
-  selectedItem: TItem | null;
+  selectedItem: Item | null;
 }) => {
   const hasSearchTab = !!searchQuery;
   const defaultTab = hasSearchTab ? { model: "search" } : tabs[0];
