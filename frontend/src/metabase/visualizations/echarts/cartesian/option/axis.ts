@@ -2,7 +2,6 @@ import type {
   AxisBaseOption,
   AxisBaseOptionCommon,
   CategoryAxisBaseOption,
-  LogAxisBaseOption,
   TimeAxisBaseOption,
   ValueAxisBaseOption,
 } from "echarts/types/src/coord/axisCommonTypes";
@@ -14,6 +13,7 @@ import type {
 import type {
   BaseCartesianChartModel,
   Extent,
+  NumericAxisScaleTransforms,
   NumericXAxisModel,
   TimeSeriesXAxisModel,
   YAxisModel,
@@ -211,7 +211,7 @@ export const buildNumericDimensionAxis = (
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
-): ValueAxisBaseOption | LogAxisBaseOption => {
+): ValueAxisBaseOption => {
   const {
     fromEChartsAxisValue: fromAxisValue,
     isPadded,
@@ -320,6 +320,7 @@ export const buildCategoricalDimensionAxis = (
 
 export const buildMetricAxis = (
   axisModel: YAxisModel,
+  yAxisScaleTransforms: NumericAxisScaleTransforms,
   ticksWidth: number,
   settings: ComputedVisualizationSettings,
   position: "left" | "right",
@@ -330,6 +331,7 @@ export const buildMetricAxis = (
   const nameGap = getAxisNameGap(ticksWidth);
 
   const range = getYAxisRange(axisModel, settings);
+  // TODO remove this line once we migrate log scale to axisModel transforms
   const axisType = settings["graph.y_axis.scale"] === "log" ? "log" : "value";
 
   return {
@@ -362,7 +364,10 @@ export const buildMetricAxis = (
       show: !!settings["graph.y_axis.axis_enabled"],
       ...getTicksDefaultOption(renderingContext),
       // @ts-expect-error TODO: figure out EChart types
-      formatter: value => axisModel.formatter(value),
+      formatter: rawValue =>
+        axisModel.formatter(
+          yAxisScaleTransforms.fromEChartsAxisValue(rawValue),
+        ),
     },
   };
 };
@@ -379,6 +384,7 @@ const buildMetricsAxes = (
     axes.push(
       buildMetricAxis(
         chartModel.leftAxisModel,
+        chartModel.yAxisScaleTransforms,
         chartMeasurements.ticksDimensions.yTicksWidthLeft,
         settings,
         "left",
@@ -393,6 +399,7 @@ const buildMetricsAxes = (
     axes.push(
       buildMetricAxis(
         chartModel.rightAxisModel,
+        chartModel.yAxisScaleTransforms,
         chartMeasurements.ticksDimensions.yTicksWidthRight,
         settings,
         "right",
