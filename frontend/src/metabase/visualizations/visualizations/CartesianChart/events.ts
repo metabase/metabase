@@ -139,6 +139,7 @@ export const getEventColumnsData = (
   const isBreakoutSeries =
     seriesModel != null && "breakoutColumn" in seriesModel;
 
+  const seriesModelsByDataKey = _.indexBy(chartModel.seriesModels, "dataKey");
   return getSameCardDataKeys(datum, seriesModel)
     .map(dataKey => {
       const value = datum[dataKey];
@@ -153,9 +154,10 @@ export const getEventColumnsData = (
       }
 
       const col = chartModel.columnByDataKey[dataKey];
+      const columnSeriesModel = seriesModelsByDataKey[dataKey];
 
       return {
-        key: col.display_name, // TODO: use the title from the viz settings
+        key: columnSeriesModel?.name ?? col.display_name,
         value: value ?? NULL_DISPLAY_VALUE,
         col,
       };
