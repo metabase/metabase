@@ -285,7 +285,9 @@
     "unset-value": "2.0.1",
     "nth-check": "2.0.1",
     "jsdom": "^22.1.0",
-    "json5": "2.2.2"
+    "json5": "2.2.2",
+    "semver": "~6.3.1",
+    "@babel/traverse": "~7.23.2"
   },
   "scripts": {
     "build": "yarn build:cljs && yarn build:js",
