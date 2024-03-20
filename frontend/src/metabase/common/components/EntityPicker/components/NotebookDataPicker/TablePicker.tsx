@@ -12,7 +12,7 @@ import type { EntityPickerModalOptions } from "../EntityPickerModal";
 import { LoadingSpinner } from "../LoadingSpinner";
 import { NestedItemPicker } from "../NestedItemPicker";
 
-import { TableItemPickerResolver } from "./TableItemPickerResolver";
+import { NotebookDataItemPickerResolver } from "./NotebookDataItemPickerResolver";
 import type { DatabasePickerItem, NotebookDataPickerItem } from "./types";
 import { getCollectionIdPath, isFolder } from "./utils";
 
@@ -39,7 +39,7 @@ const getStateFromIdPath = (
   const { id, model } = folder;
   const path: PickerState<NotebookDataPickerItem> = [
     {
-      selectedItem: { id: 'root', model: ''}
+      selectedItem: { id: "root", model: "" },
     },
     {
       selectedItem: { id, model },
@@ -113,7 +113,7 @@ export const TablePicker = forwardRef(function TablePicker(
     <NestedItemPicker
       isFolder={isFolder}
       itemName={t`table`}
-      listResolver={TableItemPickerResolver}
+      listResolver={NotebookDataItemPickerResolver}
       options={options}
       path={path}
       onFolderSelect={onFolderSelect}

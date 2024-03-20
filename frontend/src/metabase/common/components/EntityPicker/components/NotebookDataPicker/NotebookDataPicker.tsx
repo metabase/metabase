@@ -13,7 +13,7 @@ import type { EntityPickerModalOptions } from "../EntityPickerModal";
 import { LoadingSpinner } from "../LoadingSpinner";
 import { NestedItemPicker } from "../NestedItemPicker";
 
-import { TableItemPickerResolver } from "./TableItemPickerResolver";
+import { NotebookDataItemPickerResolver } from "./NotebookDataItemPickerResolver";
 import type { NotebookDataPickerItem } from "./types";
 import { getCollectionIdPath, getStateFromIdPath, isFolder } from "./utils";
 
@@ -122,7 +122,7 @@ export const NotebookDataPicker = forwardRef(function NotebookDataPicker(
       onFolderSelect={onFolderSelect}
       onItemSelect={onItemSelect}
       path={path}
-      listResolver={TableItemPickerResolver}
+      listResolver={NotebookDataItemPickerResolver}
     />
   );
 });

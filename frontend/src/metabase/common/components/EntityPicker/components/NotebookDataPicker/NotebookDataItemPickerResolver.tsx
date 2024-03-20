@@ -10,7 +10,7 @@ import {
 import { DatabaseList } from "./DatabaseList";
 import type { NotebookDataPickerItem } from "./types";
 
-export const TableItemPickerResolver = ({
+export const NotebookDataItemPickerResolver = ({
   isCurrentLevel,
   isFolder,
   options,
