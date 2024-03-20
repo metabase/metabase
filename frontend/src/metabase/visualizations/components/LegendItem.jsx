@@ -54,11 +54,11 @@ export default class LegendItem extends Component {
           className,
           "LegendItem",
           CS.noDecoration,
-          CS.flex,
-          CS.alignCenter,
           DashboardS.fullscreenNormalText,
           DashboardS.fullscreenNightText,
           EmbedFrameS.fullscreenNightText,
+          CS.flex,
+          CS.alignCenter,
           {
             [CS.mr1]: showTitle,
             [CS.cursorPointer]: onClick,
