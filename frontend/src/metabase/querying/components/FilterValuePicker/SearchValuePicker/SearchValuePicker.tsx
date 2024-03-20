@@ -2,13 +2,13 @@ import { useMemo, useState } from "react";
 import { useAsync, useDebounce } from "react-use";
 import { t } from "ttag";
 
-import { MultiSelect } from "metabase/ui";
+import { MultiAutocomplete } from "metabase/ui";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
-import { getEffectiveOptions } from "../utils";
+import { getFieldOptions } from "../utils";
 
 import { SEARCH_DEBOUNCE } from "./constants";
-import { shouldSearch, getSearchValues, getOptimisticOptions } from "./utils";
+import { shouldSearch, getSearchValues } from "./utils";
 
 interface SearchValuePickerProps {
   fieldId: FieldId;
@@ -16,7 +16,7 @@ interface SearchValuePickerProps {
   fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
-  canAddValue: (query: string) => boolean;
+  shouldCreate: (query: string) => boolean;
   autoFocus?: boolean;
   onChange: (newValues: string[]) => void;
 }
@@ -27,7 +27,7 @@ export function SearchValuePicker({
   fieldValues: initialFieldValues,
   selectedValues,
   placeholder,
-  canAddValue,
+  shouldCreate,
   autoFocus,
   onChange,
 }: SearchValuePickerProps) {
@@ -39,10 +39,7 @@ export function SearchValuePicker({
     [fieldId, searchFieldId, searchQuery],
   );
 
-  const options = useMemo(
-    () => getEffectiveOptions(fieldValues, selectedValues),
-    [fieldValues, selectedValues],
-  );
+  const options = useMemo(() => getFieldOptions(fieldValues), [fieldValues]);
 
   const handleSearchChange = (newSearchValue: string) => {
     setSearchValue(newSearchValue);
@@ -60,14 +57,15 @@ export function SearchValuePicker({
   useDebounce(handleSearchTimeout, SEARCH_DEBOUNCE, [searchValue]);
 
   return (
-    <MultiSelect
-      data={getOptimisticOptions(options, searchValue, canAddValue)}
+    <MultiAutocomplete
+      data={options}
       value={selectedValues}
       searchValue={searchValue}
       placeholder={placeholder}
       searchable
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
+      shouldCreate={shouldCreate}
       onChange={onChange}
       onSearchChange={handleSearchChange}
     />
