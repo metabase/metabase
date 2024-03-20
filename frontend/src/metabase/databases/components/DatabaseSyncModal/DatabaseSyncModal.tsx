@@ -1,9 +1,13 @@
 import cx from "classnames";
 import { jt, t } from "ttag";
 
+import { useListDatabaseCandidatesQuery } from "metabase/api";
+import { useDatabaseListQuery } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks/use-setting";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import ButtonsS from "metabase/css/components/buttons.module.css";
+import type { DatabaseCandidate, TableCandidate } from "metabase-types/api";
 
 import {
   ModalMessage,
@@ -14,12 +18,39 @@ import {
   ModalCloseIcon,
 } from "./DatabaseSyncModal.styled";
 
+const getSampleUrl = (candidates: DatabaseCandidate[]) => {
+  const tables = candidates.flatMap(d => d.tables);
+  const table =
+    tables.find((t: TableCandidate) => t.title.includes("Orders")) ?? tables[0];
+  return table?.url;
+};
+
+const useSampleDatabaseLink = () => {
+  const { data: databases } = useDatabaseListQuery();
+  const xraysEnabled = useSetting("enable-xrays");
+  const sampleDatabase = databases?.find(d => d.is_sample);
+
+  const { data: databaseCandidates } = useListDatabaseCandidatesQuery(
+    { id: sampleDatabase?.id },
+    { skip: !sampleDatabase || !xraysEnabled },
+  );
+
+  const sampleUrl = databaseCandidates
+    ? getSampleUrl(databaseCandidates)
+    : undefined;
+
+  return sampleUrl;
+};
+
 export interface DatabaseSyncModalProps {
   sampleUrl?: string;
   onClose?: () => void;
 }
 
-const DatabaseSyncModal = ({ sampleUrl, onClose }: DatabaseSyncModalProps) => {
+export const DatabaseSyncModalView = ({
+  sampleUrl,
+  onClose,
+}: DatabaseSyncModalProps) => {
   return (
     <ModalRoot>
       <ModalBody>
@@ -56,5 +87,8 @@ const DatabaseSyncModal = ({ sampleUrl, onClose }: DatabaseSyncModalProps) => {
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatabaseSyncModal;
+export const DatabaseSyncModal = ({ onClose }: { onClose: () => void }) => {
+  const sampleUrl = useSampleDatabaseLink();
+
+  return <DatabaseSyncModalView sampleUrl={sampleUrl} onClose={onClose} />;
+};
