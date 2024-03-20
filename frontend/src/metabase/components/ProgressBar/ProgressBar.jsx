@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import PropTypes from "prop-types";
 import { Component } from "react";
 
-import AnimationS from "metabase/css/core/animation.module.css";
+import CS from "metabase/css/core/index.css";
 import { color as c } from "metabase/lib/colors";
 
 const propTypes = {
@@ -63,22 +63,13 @@ export default class ProgressBar extends Component {
     const width = percentage * 100;
 
     return (
-      <ProgressWrapper
-        style={{
-          width: "200px",
-        }}
-        color={color}
-        height={height}
-        className={className}
-      >
+      <ProgressWrapper color={color} height={height} className={className}>
         <Progress
           width={width}
           animated={animated}
           color={color}
           className={
-            animated
-              ? AnimationS.ProgressBarAnimation
-              : AnimationS.ProgressBarNoAnimation
+            animated ? CS.ProgressBarAnimation : CS.ProgressBarNoAnimation
           }
         />
       </ProgressWrapper>
