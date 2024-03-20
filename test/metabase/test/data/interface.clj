@@ -213,10 +213,10 @@
   Currently, this only affects `db-qualified-table-name`."
   nil)
 
-(defn normalize-qualified-name [n]
+(defn- normalize-qualified-name [n]
   (-> n u/lower-case-en (str/replace #"-" "_")))
 
-(defn db-qualified-table-name-prefix [db-name]
+(defn- db-qualified-table-name-prefix [db-name]
   (str (normalize-qualified-name (or *database-name-override* db-name))
        \_))
 
