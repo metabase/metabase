@@ -929,7 +929,7 @@ Since: v44.1
 
 Matching style for native query editor's autocomplete. Larger instances can have performance issues matching using `substring`, so can use `prefix` matching, or turn autocompletions `off`.
 
-### `MB_NO_SURVEY`
+### `MB_NO_SURVEYS`
 
 Type: boolean<br>
 Default: `false`<br>
@@ -944,7 +944,7 @@ Metabase will only send these emails to people who have in the past 2 months:
 
 If you're whitelabeling Metabase, these survey emails will only be sent to admins for that instance.
 
-If you don't want Metabase to send these emails, set `MB_NO_SURVEY=true`.
+If you don't want Metabase to send these emails, set `MB_NO_SURVEYS=true`.
 
 ### `MB_NOTIFICATION_LINK_BASE_URL`
 
