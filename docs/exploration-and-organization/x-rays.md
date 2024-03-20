@@ -19,7 +19,11 @@ Metabase will give you some options:
 - **X-ray**
 - **Compare to the rest**
 
-In both options, Metabase will create a bunch of new questions that look at the selected data in different ways.
+In both cases, Metabase will take a look at the fields in that table or model, and automatically generate charts that summarize the data based on the data types it finds.
+
+Here's a example X-ray:
+
+![Example X-ray of the products table](./images/x-ray-example.png)
 
 ## X-raying models and tables
 
@@ -29,10 +33,6 @@ Another great way to get to know your data is by X-raying your models and tables
 
 - **Table X-rays**: From the left nav, click on **Browse Data**, pick a database, hover over a table card, and click the lightning bolt icon table to view an X-ray of the table.
 - **Model X-rays**: Click on the ellipses for a model and select **X-ray this**.
-
-When you X-ray a model or table, Metabase will take a look at the fields in that table or model, and automatically generate charts that summarize the data based on the data types it finds.
-
-![Example X-ray of the products table](./images/x-ray-example.png)
 
 ## X-rays in the data reference
 
