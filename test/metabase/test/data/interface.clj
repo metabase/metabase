@@ -231,15 +231,15 @@
   where this is disallowed on RDS. (Since Oracle can't create seperate DBs, we just create various tables in the same
   DB; thus their names must be qualified to differentiate them effectively.)
 
-  Take up to last 30 characters because databases like Oracle have limits on the lengths of identifiers"
+  Asserts that the resulting name has fewer than 30 characters, because databases like Oracle have limits on the
+  lengths of identifiers."
   ^String [^String database-name, ^String table-name]
   {:pre [(string? database-name)
          (string? table-name)]
-   :post [(qualified-by-db-name? database-name %)]}
-  (->> (str (db-qualified-table-name-prefix database-name)
-            (normalize-qualified-name table-name))
-       (take-last 30)
-       (apply str)))
+   :post [(qualified-by-db-name? database-name %)
+          (<= (count %) 30)]}
+  (str (db-qualified-table-name-prefix database-name)
+       (normalize-qualified-name table-name)))
 
 (defn single-db-qualified-name-components
   "Implementation of `qualified-name-components` for drivers like Oracle and Redshift that must use a single existing
