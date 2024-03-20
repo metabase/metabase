@@ -2,7 +2,6 @@ import { useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch } from "metabase/lib/redux";
 import { updateQuestion, setUIControls } from "metabase/query_builder/actions";
@@ -10,6 +9,7 @@ import {
   getNativeQueryFn,
   getQuestion,
 } from "metabase/query_builder/selectors";
+import { Button } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { NativeQueryForm } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -66,7 +66,7 @@ const NativeQueryPreviewSidebar = ({
       onClose={onClose}
     >
       {query && (
-        <Button primary onClick={handleConvertClick}>
+        <Button variant="subtle" onClick={handleConvertClick}>
           {BUTTON_TITLE[engineType]}
         </Button>
       )}
