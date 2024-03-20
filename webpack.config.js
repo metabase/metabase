@@ -279,7 +279,9 @@ if (WEBPACK_BUNDLE === "hot") {
 
   config.module.rules.unshift({
     test: /\.(tsx?|jsx?)$/,
-    exclude: /node_modules|cljs/,
+    exclude: modulePath => {
+      return /node_modules/.test(modulePath) && !/cljs/.test(modulePath);
+    },
     use: [
       {
         loader: "babel-loader",
