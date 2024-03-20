@@ -164,3 +164,6 @@
           false (assoc editable :database 999999999)    ; database unknown - no permissions
           false (mock-db-native-perms :none)            ; native-permissions explicitly set to :none
           false (mock-db-native-perms nil))))))         ; native-permissions not found on the database
+
+(deftest ^:parallel can-save-mbql-test
+  (is (lib.query/can-save lib.tu/venues-query)))
