@@ -309,14 +309,64 @@ const getStackedAreasInterpolateTransform = (
   };
 };
 
+function signedSquareRoot(value: number) {
+  const sign = value >= 0 ? 1 : -1;
+  return sign * Math.sqrt(Math.abs(value));
+}
+
 export const applySquareRootScaling = (value: RowValue): RowValue => {
-  if (typeof value === "number") {
-    const sign = value >= 0 ? 1 : -1;
-    return sign * Math.sqrt(Math.abs(value));
+  if (typeof value !== "number") {
+    return value;
   }
 
-  return value;
+  return signedSquareRoot(value);
 };
+
+function getStackedPowerTransform(seriesDataKeys: DataKey[]): TransformFn {
+  return (datum: Datum) => {
+    const transformedSeriesValues: Record<DataKey, number> = {};
+
+    function getStackedTransformedValue(
+      seriesDataKey: DataKey,
+      sign: "+" | "-",
+    ) {
+      // 1. Get the untransformed total of the already stacked values and the
+      //    value we are currently stacking
+      const belowSeriesKeys = Object.keys(transformedSeriesValues);
+      const rawBelowTotal = belowSeriesKeys
+        .map(belowSeriesKey => datum[belowSeriesKey])
+        .reduce((total: number, rowValue) => {
+          const value = getNumberOrZero(rowValue);
+
+          if (sign === "+" && value >= 0) {
+            return total + value;
+          }
+          if (sign === "-" && value < 0) {
+            return total + value;
+          }
+          return total;
+        }, 0);
+      const rawTotal = rawBelowTotal + getNumberOrZero(datum[seriesDataKey]);
+
+      // 2. Transform this total
+      const transformedTotal = signedSquareRoot(rawTotal);
+
+      // 3. Subtract the transformed total of the already stacked values (not
+      //    including the value we are currently stacking)
+      transformedSeriesValues[seriesDataKey] =
+        transformedTotal - signedSquareRoot(rawBelowTotal);
+    }
+
+    seriesDataKeys.forEach(seriesDataKey => {
+      getStackedTransformedValue(
+        seriesDataKey,
+        getNumberOrZero(datum[seriesDataKey]) >= 0 ? "+" : "-",
+      );
+    });
+
+    return { ...datum, ...transformedSeriesValues };
+  };
+}
 
 function filterNullDimensionValues(dataset: ChartDataset) {
   // TODO show warning message
@@ -366,8 +416,6 @@ export const applyVisualizationSettingsDataTransformations = (
   seriesModels: SeriesModel[],
   settings: ComputedVisualizationSettings,
 ) => {
-  const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
-
   if (
     xAxisModel.axisType === "value" ||
     xAxisModel.axisType === "time" ||
@@ -380,6 +428,8 @@ export const applyVisualizationSettingsDataTransformations = (
     dataset = getHistogramDataset(dataset, xAxisModel.histogramInterval);
   }
 
+  const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
+
   return transformDataset(dataset, [
     getNullReplacerTransform(settings, seriesModels),
     {
@@ -387,8 +437,16 @@ export const applyVisualizationSettingsDataTransformations = (
       fn: getNormalizedDatasetTransform(seriesDataKeys),
     },
     {
-      condition: settings["graph.y_axis.scale"] === "pow",
+      condition:
+        settings["graph.y_axis.scale"] === "pow" &&
+        settings["stackable.stack_type"] == null,
       fn: getKeyBasedDatasetTransform(seriesDataKeys, applySquareRootScaling),
+    },
+    {
+      condition:
+        settings["graph.y_axis.scale"] === "pow" &&
+        settings["stackable.stack_type"] != null,
+      fn: getStackedPowerTransform(seriesDataKeys),
     },
     {
       condition: isCategoryAxis(xAxisModel),
