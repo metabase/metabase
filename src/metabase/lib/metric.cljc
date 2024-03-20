@@ -25,12 +25,10 @@
     (if (:mbql/type definition)
       definition
       ;; legacy; needs conversion
-      (->
-        ;; database-id cannot be nil, but gets thrown out
-        (lib.convert/legacy-query-from-inner-query #?(:clj Integer/MAX_VALUE :cljs js/Number.MAX_SAFE_INTEGER) definition)
-        mbql.normalize/normalize
-        lib.convert/->pMBQL
-        (lib.util/query-stage -1)))))
+      (-> definition
+          mbql.normalize/normalize
+          lib.convert/->pMBQL
+          (lib.util/query-stage -1)))))
 
 (defmethod lib.ref/ref-method :metadata/metric
   [{:keys [id], :as metric-metadata}]

@@ -382,11 +382,11 @@
     (lib.util/update-query-stage pMBQL-query -1 assoc :fields (frequencies fields))))
 
 (defn- prep-query-for-equals [a-query field-ids]
-  (if (and a-query (aget a-query "lib/type"))
+  (if (and a-query (gobject/get a-query "lib/type"))
     (prep-query-for-equals-pMBQL a-query field-ids)
     (prep-query-for-equals-legacy a-query field-ids)))
 
-(defn- compare-legacy-field-refs
+(defn- compare-field-refs
   [[key1 id1 opts1]
    [key2 id2 opts2]]
   ;; A mismatch of `:base-type` or `:effective-type` when both x and y have values for it is a failure.
@@ -396,7 +396,7 @@
              (cond-> o1
                (not (:base-type o2))      (dissoc :base-type)
                (not (:effective-type o2)) (dissoc :effective-type))))]
-    (if (map id1)
+    (if (map? id1)
       (= [key1 (clean-opts id1 id2) opts1]
          [key2 (clean-opts id2 id1) opts2])
       (= [key1 id1 (clean-opts opts1 opts2)]
@@ -407,7 +407,7 @@
     (and (vector? x)
          (vector? y)
          (= (first x) (first y) :field))
-    (compare-legacy-field-refs x y)
+    (compare-field-refs x y)
 
     ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid values don't
     ;; have to match.
@@ -439,9 +439,11 @@
   For now it pulls logic that touches query internals into `metabase.lib`."
   ([query1 query2] (query= query1 query2 nil))
   ([query1 query2 field-ids]
-   (let [n1 (prep-query-for-equals query1 field-ids)
-         n2 (prep-query-for-equals query2 field-ids)]
-     (query=* n1 n2))))
+   (and (= (some-> query1 (gobject/get "mbql/query"))
+           (some-> query2 (gobject/get "mbql/query")))
+        (let [n1 (prep-query-for-equals query1 field-ids)
+              n2 (prep-query-for-equals query2 field-ids)]
+          (query=* n1 n2)))))
 
 (defn ^:export group-columns
   "Given a group of columns returned by a function like [[metabase.lib.js/orderable-columns]], group the columns
