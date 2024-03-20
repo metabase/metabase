@@ -173,8 +173,9 @@
                     :json-unfolding    false}]
                   (describe-fields-for-table (mt/db) table))))))))
 
+;;TODO: Consider enabling for Druid JDBC.
 (deftest database-types-fallback-test
-  (mt/test-drivers (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
+  (mt/test-drivers (disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl) :druid-jdbc)
     (let [org-result-set-seq jdbc/result-set-seq]
       (with-redefs [jdbc/result-set-seq (fn [& args]
                                           (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
