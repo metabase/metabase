@@ -10,11 +10,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { SearchLoadingSpinner } from "metabase/nav/components/search/SearchResults";
 import type { WrappedResult } from "metabase/search/types";
 import { Box, Flex, Icon, Stack, Tabs, TextInput } from "metabase/ui";
-import type {
-  SearchResult,
-  SearchResult as SearchResultType,
-  SearchResults as SearchResultsType,
-} from "metabase-types/api";
+import type { SearchResult, SearchResults } from "metabase-types/api";
 
 import type { TypeWithModel } from "../../types";
 
@@ -23,7 +19,7 @@ import { getSearchTabText } from "./utils";
 
 type Item = TypeWithModel<SearchResult["id"], SearchResult["model"]>;
 
-const defaultSearchFilter = (results: SearchResultType[]) => results;
+const defaultSearchFilter = (results: SearchResult[]) => results;
 
 export function EntityPickerSearchInput({
   searchQuery,
@@ -34,9 +30,9 @@ export function EntityPickerSearchInput({
 }: {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  setSearchResults: (results: SearchResultType[] | null) => void;
+  setSearchResults: (results: SearchResult[] | null) => void;
   models: string[];
-  searchFilter?: (results: SearchResultType[]) => SearchResultType[];
+  searchFilter?: (results: SearchResult[]) => SearchResult[];
 }) {
   useDebouncedEffectWithCleanup(
     () => {
@@ -51,7 +47,7 @@ export function EntityPickerSearchInput({
         if (searchQuery) {
           Search.api
             .list({ models, q: searchQuery }, { cancelled: cancelled.promise })
-            .then((results: SearchResultsType) => {
+            .then((results: SearchResults) => {
               if (results.data) {
                 const filteredResults = searchFilter(results.data);
                 setSearchResults(filteredResults);
@@ -92,7 +88,7 @@ export const EntityPickerSearchResults = ({
   onItemSelect,
   selectedItem,
 }: {
-  searchResults: SearchResultType[] | null;
+  searchResults: SearchResult[] | null;
   onItemSelect: (item: Item) => void;
   selectedItem: Item | null;
 }) => {
@@ -147,7 +143,7 @@ export const EntityPickerSearchTab = ({
   searchResults,
   searchQuery,
 }: {
-  searchResults: SearchResultType[] | null;
+  searchResults: SearchResult[] | null;
   searchQuery: string;
 }) => (
   <Tabs.Tab key="search" value="search" icon={<Icon name="search" />}>
