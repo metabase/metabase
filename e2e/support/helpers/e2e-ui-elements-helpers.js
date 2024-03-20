@@ -46,7 +46,7 @@ export function sidebar() {
 }
 
 export function rightSidebar() {
-  return cy.findAllByTestId("sidebar-right");
+  return cy.findByTestId("sidebar-right");
 }
 
 export function leftSidebar() {
