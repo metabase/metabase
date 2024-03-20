@@ -108,11 +108,7 @@ export const EntityPickerSearchResults = ({
                 key={item.model + item.id}
                 result={Search.wrapEntity(item, dispatch)}
                 onClick={(item: WrappedResult) => {
-                  onItemSelect({
-                    id: item.id,
-                    model: item.model,
-                    name: item.name,
-                  });
+                  onItemSelect(item);
                 }}
                 isSelected={
                   selectedItem?.id === item.id &&
