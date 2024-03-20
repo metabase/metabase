@@ -580,3 +580,11 @@
   [_driver]
   ;; http://www.h2database.com/html/advanced.html#limits_limitations
   256)
+
+(defmethod driver/add-columns! :h2
+  [driver db-id table-name column-definitions & {:as settings}]
+  ;; Workaround for the fact that H2 uses different syntax for adding multiple columns, which is difficult to
+  ;; produce with HoneySQL. As a simpler workaround we instead break it up into single column statements.
+  (let [f (get-method driver/add-columns! :sql-jdbc)]
+    (doseq [[k v] column-definitions]
+      (f driver db-id table-name {k v} settings))))

@@ -71,12 +71,20 @@ describe("scenarios > dashboard", () => {
       appBar().findByText("New").click();
       popover().findByText("Dashboard").should("be.visible").click();
 
+      cy.log(
+        "pressing escape should only close the entity picker modal, not the new dashboard modal",
+      );
+      modal().findByTestId("collection-picker-button").click();
+      entityPickerModal().findByText("Select a collection");
+      cy.realPress("Escape");
+      modal().findByText("New dashboard").should("be.visible");
+
       cy.log("Create a new dashboard");
       modal().within(() => {
         // Without waiting for this, the test was constantly flaking locally.
         cy.findByText("Our analytics");
 
-        cy.findByLabelText("Name").type(dashboardName);
+        cy.findByPlaceholderText(/name of your dashboard/i).type(dashboardName);
         cy.findByLabelText("Description").type(dashboardDescription, {
           delay: 0,
         });

@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -5,6 +6,8 @@ import _ from "underscore";
 
 import ActionButton from "metabase/components/ActionButton";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
 import Tables from "metabase/entities/tables";
@@ -79,7 +82,7 @@ const MetadataTableSettings = ({
 
   return (
     <div className="relative">
-      <div className="wrapper wrapper--trim">
+      <div className={cx(CS.wrapper, CS.wrapperTrim)}>
         <div className="flex align-center my2">
           <MetadataBackButton
             selectedDatabaseId={database.id}
@@ -108,7 +111,7 @@ const MetadataTableSettings = ({
             description={t`Metabase can scan the values in this table to enable checkbox filters in dashboards and questions.`}
           />
           <ActionButton
-            className="Button mr2"
+            className={cx(ButtonsS.Button, CS.mr2)}
             actionFn={handleRescanTableFieldValues}
             normalText={t`Re-scan this table`}
             activeText={t`Starting…`}
@@ -116,7 +119,7 @@ const MetadataTableSettings = ({
             successText={t`Scan triggered!`}
           />
           <ActionButton
-            className="Button Button--danger"
+            className={cx(ButtonsS.Button, ButtonsS.ButtonDanger)}
             actionFn={handleDiscardTableFieldValues}
             normalText={t`Discard cached field values`}
             activeText={t`Starting…`}

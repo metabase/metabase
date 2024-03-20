@@ -7,6 +7,7 @@ import { t } from "ttag";
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import * as metadataActions from "metabase/redux/metadata";
 import Detail from "metabase/reference/components/Detail";
 import EditHeader from "metabase/reference/components/EditHeader";
@@ -178,7 +179,7 @@ const SegmentDetail = props => {
         error={loadingError}
       >
         {() => (
-          <div className="wrapper">
+          <div className={CS.wrapper}>
             <div className="pl4 pr3 pt4 mb4 mb1 bg-white rounded bordered">
               <List>
                 <li>

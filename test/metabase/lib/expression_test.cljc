@@ -441,7 +441,10 @@
                             #?(:clj nil :cljs js/undefined)))
       :expression  [:/ [:field 1 nil] 100]
       :aggregation [:sum [:field 1 {:base-type :type/Integer}]]
-      :filter      [:= [:field 1 {:base-type :type/Integer}] 3])
+      :filter      [:= [:field 1 {:base-type :type/Integer}] 3])))
+
+(deftest ^:parallel diagnose-expression-test-2
+  (testing "correct expression are accepted silently"
     (testing "type errors are reported"
       (are [mode expr] (=? {:message #"Type error: .*"}
                            (lib.expression/diagnose-expression
@@ -454,7 +457,10 @@
         ;; because it makes expressions and aggregations mutually recursive
         ;; or requires a large amount of duplication.
         #_#_:aggregation [:sum [:is-empty [:field 1 {:base-type :type/Boolean}]]]
-        :filter      [:sum [:field 1 {:base-type :type/Integer}]]))
+        :filter      [:sum [:field 1 {:base-type :type/Integer}]]))))
+
+(deftest ^:parallel diagnose-expression-test-3
+  (testing "correct expression are accepted silently"
     (testing "editing expressions"
       (let [exprs (update-vals {"a" 1
                                 "c" [:+ 0 1]
@@ -479,7 +485,8 @@
           (are [mode expr]
                (nil? (lib.expression/diagnose-expression query 0 mode expr c-pos))
             :expression  (get exprs "non-circular-c")
-            :aggregation (get exprs "circular-c")
+            :aggregation (-> (get exprs "circular-c")
+                             (assoc 3 (lib/count)))
             :filter      (assoc (get exprs "circular-c") 0 :=)))
         (testing "circular definition"
           (is (= {:message "Cycle detected: c → x → b → c"}

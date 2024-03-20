@@ -146,7 +146,7 @@ describe("scenarios > question > filter", () => {
             aggregation: [
               [
                 "aggregation-options",
-                ["+", 1, 1],
+                ["+", ["count"], 1],
                 { name: CE_NAME, "display-name": CE_NAME },
               ],
             ],
@@ -694,9 +694,10 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
     cy.get(".ace_text-input").type("[Tax] > 0");
 
-    // Tab switches the focus to the "Done" button
+    // Tab switches the focus to the "Cancel" button
     cy.realPress("Tab");
-    cy.focused().should("have.attr", "class").and("contains", "Button");
+
+    cy.focused().should("match", "button").and("have.text", "Cancel");
   });
 
   it("should allow choosing a suggestion with Tab", () => {
@@ -717,9 +718,10 @@ describe("scenarios > question > filter", () => {
     // Finish to complete a valid expression, i.e. [Tax] > 42
     cy.get(".ace_text-input").type("> 42");
 
-    // Tab switches the focus to the "Done" button
+    // Tab switches the focus to the "Cancel" button
     cy.realPress("Tab");
-    cy.focused().should("have.attr", "class").and("contains", "Button");
+
+    cy.focused().should("match", "button").and("have.text", "Cancel");
   });
 
   it("should allow hiding the suggestion list with Escape", () => {

@@ -3,6 +3,7 @@ import type { ChangeEvent } from "react";
 import { CopyButton } from "metabase/components/CopyButton";
 import AceEditor from "metabase/components/TextEditor";
 import Select, { Option } from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
 import type { CodeSampleOption } from "metabase/public/lib/types";
 
 import { CopyButtonContainer } from "./CodeSample.styled";
@@ -61,7 +62,7 @@ export const CodeSample = ({
       )}
       <div className="bordered rounded shadowed relative mt2">
         <AceEditor
-          className="z1"
+          className={CS.z1}
           value={source}
           mode={textHighlightMode}
           theme="ace/theme/metabase"
