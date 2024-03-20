@@ -83,7 +83,7 @@ describe("ListPicker", () => {
     expect(onSearchChange).toHaveBeenCalledWith("Hello");
   });
 
-  it("onSearchChange is called on unmount", async () => {
+  it("onSearchChange is called immediately after unmount", async () => {
     const { onSearchChange, unmount } = setup("", VALUES.slice(), 100);
     const select = screen.getByPlaceholderText("Pick values");
 
@@ -94,8 +94,24 @@ describe("ListPicker", () => {
     unmount();
 
     // Careful, this won't catch calling it after the component was unmounted
-    await waitFor(() => expect(onSearchChange).toHaveBeenCalledTimes(1));
+    expect(onSearchChange).toHaveBeenCalledTimes(1);
     expect(onSearchChange).toHaveBeenCalledWith("Bye");
+  });
+
+  it("onSearchChange is called only once after unmount", async () => {
+    const { onSearchChange, unmount } = setup("", VALUES.slice(), 100);
+    const select = screen.getByPlaceholderText("Pick values");
+
+    userEvent.click(select);
+    userEvent.type(select, "A");
+    userEvent.type(select, "B");
+    userEvent.type(select, "C");
+
+    await waitFor(() => expect(onSearchChange).toHaveBeenCalledTimes(1));
+    expect(onSearchChange).toHaveBeenCalledWith("ABC");
+
+    unmount();
+    expect(onSearchChange).toHaveBeenCalledTimes(1);
   });
 
   it.todo("onChange");

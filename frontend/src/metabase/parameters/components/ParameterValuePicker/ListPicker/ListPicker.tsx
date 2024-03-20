@@ -51,29 +51,37 @@ export function ListPicker(props: ListPickerProps) {
   ) : null;
 
   const debouncedOnSearch = useDebouncedCallback(
-    onSearchChange,
+    (query: string) => {
+      searches.current.pending = null;
+      onSearchChange(query);
+    },
     searchDebounceMs,
     [onSearchChange],
   );
 
-  // For some reason Select is firing multiple events, which isn't needed.
-  const lastSearch = useRef<string>();
+  // For some reason Select is firing multiple onSearchChange events, which isn't needed.
+  const searches = useRef<{ last: string | null; pending: string | null }>({
+    last: null,
+    pending: null,
+  });
   const singleOnSearch = useCallback(
     (search: string) => {
-      if (search !== lastSearch.current) {
-        lastSearch.current = search;
+      if (search !== searches.current.last) {
+        searches.current.last = search;
         if (searchDebounceMs === -1) {
           onSearchChange(search);
         } else {
+          searches.current.pending = search;
           debouncedOnSearch(search);
         }
       }
     },
     [onSearchChange, debouncedOnSearch, searchDebounceMs],
   );
+
   useUnmount(() => {
-    if (lastSearch.current) {
-      onSearchChange(lastSearch.current);
+    if (searches.current.pending) {
+      onSearchChange(searches.current.pending);
     }
     debouncedOnSearch.cancel();
   });

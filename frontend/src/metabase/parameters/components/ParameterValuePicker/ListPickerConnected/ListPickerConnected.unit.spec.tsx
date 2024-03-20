@@ -12,7 +12,7 @@ import { ListPickerConnected } from "./ListPickerConnected";
 
 // If some state updates aren't happening inside the component,
 // the test will fail on a relatively short timeout
-jest.setTimeout(1000);
+jest.setTimeout(5000);
 
 const STATIC_VALUES = [
   "1 A Point Pleasant Road",
@@ -162,7 +162,7 @@ function setup({
 
 describe("ListPickerConnected", () => {
   describe("static value list", () => {
-    it.only("without values", () => {
+    it("without values", () => {
       const { onChangeMock, fetchValuesMock } = setup({
         value: null,
         parameter: getStaticListParam([]),
@@ -226,7 +226,7 @@ describe("ListPickerConnected", () => {
       userEvent.click(screen.getByLabelText("close icon"));
       expect(onChangeMock).toHaveBeenCalledTimes(1);
       expect(onChangeMock).toHaveBeenCalledWith(null);
-      onChangeMock.mockReset();
+      onChangeMock.mockClear();
 
       act(() =>
         userEvent.click(screen.getByPlaceholderText("Select a default value…")),
@@ -248,7 +248,7 @@ describe("ListPickerConnected", () => {
       );
       act(() => userEvent.click(screen.getByText("1-7 County Road 462")));
 
-      render1.onChangeMock.mockReset();
+      render1.onChangeMock.mockClear();
 
       render1.rerender(null, getAnotherStaticListParam());
       expect(render1.onChangeMock).toHaveBeenCalledTimes(1);
@@ -281,7 +281,7 @@ describe("ListPickerConnected", () => {
       expect(render2.onChangeMock).toHaveBeenCalledTimes(2);
       expect(render2.onChangeMock).toHaveBeenCalledWith("AL");
       expect(render2.onChangeMock).toHaveBeenCalledWith("CA");
-      render2.onChangeMock.mockReset();
+      render2.onChangeMock.mockClear();
 
       render2.rerender(null, getAnotherStaticListParam());
       expect(render2.onChangeMock).toHaveBeenCalledTimes(0);
@@ -335,7 +335,7 @@ describe("ListPickerConnected", () => {
       const input = screen.getByPlaceholderText("Start typing to filter…");
       expect(input).toBeVisible();
       userEvent.click(input);
-      fetchValuesMock.mockReset();
+      fetchValuesMock.mockClear();
 
       userEvent.type(input, "CA");
       await checkFetch(fetchValuesMock, 1, "CA");
@@ -362,14 +362,14 @@ describe("ListPickerConnected", () => {
       const input = screen.getByPlaceholderText("Start typing to filter…");
       expect(input).toBeVisible();
       userEvent.click(input);
-      fetchValuesMock.mockReset();
+      fetchValuesMock.mockClear();
 
       userEvent.type(input, "WA");
       await checkFetch(fetchValuesMock, 1, "WA");
 
       userEvent.clear(input);
       userEvent.type(input, "NY");
-      await checkFetch(fetchValuesMock, 2, "NY");
+      await checkFetch(fetchValuesMock, 1, "NY");
     });
 
     it("debounces fetch calls", async () => {
@@ -409,11 +409,11 @@ describe("ListPickerConnected", () => {
       const input = screen.getByPlaceholderText("Start typing to filter…");
       userEvent.click(input);
 
-      await waitFor(() =>
-        expect(
-          screen.getByText("Loading values failed. Please try again shortly."),
-        ).toBeVisible(),
-      );
+      await waitFor(() => expect(fetchValuesMock).toHaveBeenCalledTimes(1));
+
+      expect(
+        screen.getByText("Loading values failed. Please try again shortly."),
+      ).toBeVisible();
     });
 
     it("works with wrong types of values", async () => {

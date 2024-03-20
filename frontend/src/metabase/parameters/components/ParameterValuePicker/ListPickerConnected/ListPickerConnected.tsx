@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { useAsync, useUnmount } from "react-use";
+import { useCallback, useEffect, useRef } from "react";
+import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
 import type { Parameter, ParameterValues } from "metabase-types/api";
@@ -8,6 +8,7 @@ import { ListPicker } from "../ListPicker";
 import {
   getFlattenedStrings,
   getListParameterStaticValues,
+  isStaticListParam,
   shouldEnableSearch,
 } from "../core";
 
@@ -30,29 +31,24 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
     fetchValues,
   } = props;
 
+  const hasFetched = useRef(false);
   const lastValue = useRef(value);
+  const lastSearch = useRef("");
   const hasMoreValues = useRef(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const resetKey = useRef<string | null>(getResetKey(parameter));
 
-  const {
-    loading,
-    value: loadedValues,
-    error,
-  } = useAsync(async () => {
-    const res = await fetchValues(searchQuery);
-    hasMoreValues.current = res.has_more_values;
-    return getFlattenedStrings(res.values);
-  }, [fetchValues, searchQuery]);
-
-  console.log(
-    `hasMore=${hasMoreValues.current} query=${searchQuery}, loading=${loading}, values.length=${loadedValues?.length}`,
+  const [
+    { loading: isFetching, value: fetchedValues, ...fetchState },
+    fetchData,
+  ] = useAsyncFn(
+    async (query: string) => {
+      const res = await fetchValues(query);
+      hasFetched.current = true;
+      hasMoreValues.current = res.has_more_values;
+      return getFlattenedStrings(res.values);
+    },
+    [fetchValues],
   );
-
-  const searchWhenNeeded = useCallback((query: string) => {
-    if (hasMoreValues.current && lastValue.current !== query) {
-      setSearchQuery(query);
-    }
-  }, []);
 
   const setValue = useCallback(
     (value: string | null) => {
@@ -62,61 +58,67 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
     [onChange],
   );
 
-  // const ownOnSearch = useCallback(
-  //   (query: string) => {
-  //     // Trigger fetch only when search is different from the current value
-  //     if (shouldFetchOnSearch(state, parameter, query)) {
-  //       setSearchQuery(query);
-  //       // dispatch({
-  //       //   type: "SET_IS_LOADING",
-  //       //   payload: { isLoading: true, query },
-  //       // });
-  //       // fetchAndUpdate(query);
-  //     }
-  //   },
-  //   [parameter, state],
-  // );
+  const ownOnSearch = useCallback(
+    (query: string) => {
+      // Trigger fetch only when search is different from the current value
+      const shouldFetch =
+        !isStaticListParam(parameter) &&
+        hasMoreValues.current &&
+        lastSearch.current !== query;
 
-  // useEffect(
-  //   function resetOnParameterChange() {
-  //     const newResetKey = getResetKey(parameter);
-  //     if (resetKey !== newResetKey) {
-  //       dispatch({ type: "RESET", payload: { newResetKey } });
-  //       onChange(null);
-  //     }
-  //   },
-  //   [resetKey, parameter, onChange],
-  // );
-  // useUnmount(() =>
-  //   dispatch({ type: "SET_IS_LOADING", payload: { isLoading: false } }),
-  // ); // Cleanup
+      // const err = new Error();
+      // console.log(
+      //   `onSearch: query=${query}, lastSearch=${lastSearch.current}, hasMoreValues=${hasMoreValues.current}`,
+      // );
+      // console.log(err.stack);
+
+      if (shouldFetch) {
+        lastSearch.current = query;
+        fetchData(query);
+      }
+    },
+    [parameter, fetchData],
+  );
+
+  useEffect(
+    function resetOnParameterChange() {
+      const newResetKey = getResetKey(parameter);
+      if (resetKey.current !== newResetKey) {
+        // console.log("yea", lastValue.current);
+        resetKey.current = newResetKey;
+        if (lastValue.current !== null) {
+          onChange(null);
+          lastValue.current = null;
+        }
+      }
+    },
+    [resetKey, parameter, onChange],
+  );
 
   const staticValues = getListParameterStaticValues(parameter);
   const enableSearch = shouldEnableSearch(parameter, forceSearchItemCount);
 
-  // const fetchValuesInit = useCallback(() => {
-  //   if (shouldFetchInitially(state, parameter)) {
-  //     dispatch({
-  //       type: "SET_IS_LOADING",
-  //       payload: { isLoading: true, query: "" },
-  //     });
-  //     fetchAndUpdate("");
-  //   }
-  // }, [parameter, state, fetchAndUpdate]);
+  const fetchValuesInit = useCallback(() => {
+    const shouldFetch = !isStaticListParam(parameter) && !hasFetched.current;
+    if (shouldFetch) {
+      lastSearch.current = "";
+      fetchData("");
+    }
+  }, [parameter, fetchData]);
 
-  const isLoading = !staticValues && loading;
+  const isLoading = !staticValues && isFetching;
+  // useAsyncFn might return {error: undefined}
+  const hasFetchError = "error" in fetchState;
 
   return (
     <ListPicker
       value={value ?? ""} // Can't be null for the underlying Select
-      // value={""} // Can't be null for the underlying Select
-      values={staticValues ?? loadedValues ?? []}
-      // values={[]}
+      values={staticValues ?? fetchedValues ?? []}
       onClear={() => setValue(null)}
       onChange={setValue}
-      onSearchChange={searchWhenNeeded}
+      onSearchChange={ownOnSearch}
       searchDebounceMs={searchDebounceMs}
-      // onDropdownOpen={staticValues ? undefined : fetchValuesInit}
+      onDropdownOpen={staticValues ? undefined : fetchValuesInit}
       enableSearch={enableSearch}
       placeholder={
         enableSearch ? t`Start typing to filter…` : t`Select a default value…`
@@ -124,7 +126,9 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
       isLoading={isLoading}
       noResultsText={isLoading ? t`Loading…` : t`No matching result`}
       errorMessage={
-        error ? t`Loading values failed. Please try again shortly.` : undefined
+        hasFetchError
+          ? t`Loading values failed. Please try again shortly.`
+          : undefined
       }
     />
   );
