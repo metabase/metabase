@@ -10,24 +10,17 @@ import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { SearchListQuery } from "metabase-types/api";
 
 import type { PickerState } from "../../types";
-import type { EntityPickerModalOptions } from "../EntityPickerModal";
 import { LoadingSpinner } from "../LoadingSpinner";
 import { NestedItemPicker } from "../NestedItemPicker";
 
 import { CollectionItemPickerResolver } from "./CollectionItemPickerResolver";
-import type { CollectionPickerItem } from "./types";
+import type { CollectionPickerItem, CollectionPickerOptions } from "./types";
 import {
   generateKey,
   getCollectionIdPath,
   getStateFromIdPath,
   isFolder,
 } from "./utils";
-
-export type CollectionPickerOptions = EntityPickerModalOptions & {
-  showPersonalCollections?: boolean;
-  showRootCollection?: boolean;
-  namespace?: "snippets";
-};
 
 const defaultOptions: CollectionPickerOptions = {
   showPersonalCollections: true,

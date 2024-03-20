@@ -1,12 +1,5 @@
 import type { IconName } from "metabase/ui";
-import type {
-  SearchResult,
-  SearchListQuery,
-  SearchModelType,
-  CollectionId,
-} from "metabase-types/api";
 
-import type { CollectionPickerOptions } from "./components/CollectionPicker";
 import type { EntityPickerModalOptions } from "./components/EntityPickerModal";
 
 export type TypeWithModel<Id, Model extends string> = {
@@ -30,12 +23,26 @@ type EntityPickerStateItem<Item, Query> = {
   selectedItem: Item | null;
 };
 
-export type EntityPickerOptions = EntityPickerModalOptions &
-  CollectionPickerOptions;
+export type EntityPickerOptions = EntityPickerModalOptions;
 
 export type EntityTab<Model extends string> = {
   displayName: string;
   element: JSX.Element;
   icon: IconName;
   model: Model;
+};
+
+export type ListProps<
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+  Query,
+  Options extends EntityPickerOptions,
+> = {
+  query?: Query;
+  onClick: (val: any) => void;
+  selectedItem: Item | null;
+  isFolder: TisFolder<Id, Model, Item>;
+  isCurrentLevel: boolean;
+  options: Options;
 };

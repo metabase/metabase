@@ -1,16 +1,15 @@
-import type React from "react";
+import type { ComponentType } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Flex } from "metabase/ui";
 
 import type {
-  EntityPickerOptions,
+  ListProps,
   PickerState,
   TisFolder,
   TypeWithModel,
 } from "../../types";
 import { AutoScrollBox } from "../AutoScrollBox";
-import type { EntityItemListProps } from "../ItemList";
 
 import { ListBox } from "./NestedItemPicker.styled";
 
@@ -19,19 +18,16 @@ export interface NestedItemPickerProps<
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
   Query,
+  Options,
 > {
   onFolderSelect: ({ folder }: { folder: Item }) => void;
   onItemSelect: (item: Item) => void;
   generateKey: (query?: Query) => string;
   itemName: string;
-  options: EntityPickerOptions;
+  options: Options;
   path: PickerState<Item, Query>;
   isFolder: TisFolder<Id, Model, Item>;
-  listResolver: React.FC<
-    EntityItemListProps<Item> & {
-      options: EntityPickerOptions;
-    }
-  >;
+  listResolver: ComponentType<ListProps<Id, Model, Item, Query, Options>>;
 }
 
 export function NestedItemPicker<
@@ -39,6 +35,7 @@ export function NestedItemPicker<
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
   Query,
+  Options,
 >({
   onFolderSelect,
   onItemSelect,
@@ -47,7 +44,7 @@ export function NestedItemPicker<
   path,
   isFolder,
   listResolver: ListResolver,
-}: NestedItemPickerProps<Id, Model, Item, Query>) {
+}: NestedItemPickerProps<Id, Model, Item, Query, Options>) {
   const handleClick = (item: Item) => {
     if (isFolder(item)) {
       onFolderSelect({ folder: item });

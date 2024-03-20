@@ -5,26 +5,26 @@ import type {
   SearchModelType,
 } from "metabase-types/api";
 
-import type { TisFolder } from "../../types";
-import type { CollectionPickerItem } from "../CollectionPicker/types";
+import type { ListProps } from "../../types";
+import { ItemList } from "../ItemList";
 
-import { ItemList } from "./ItemList";
+import type { CollectionPickerItem, CollectionPickerOptions } from "./types";
 
-export interface EntityItemListProps {
-  query: SearchListQuery;
-  onClick: (val: any) => void;
-  selectedItem: CollectionPickerItem | null;
-  isFolder: TisFolder<CollectionId, SearchModelType, CollectionPickerItem>;
-  isCurrentLevel: boolean;
-}
+export type SearchItemListProps = ListProps<
+  CollectionId,
+  SearchModelType,
+  CollectionPickerItem,
+  SearchListQuery,
+  CollectionPickerOptions
+>;
 
-export const EntityItemList = ({
+export const SearchItemList = ({
   query,
   onClick,
   selectedItem,
   isFolder,
   isCurrentLevel,
-}: EntityItemListProps) => {
+}: SearchItemListProps) => {
   const { data, error, isLoading } = useSearchListQuery<CollectionPickerItem>({
     query,
   });
