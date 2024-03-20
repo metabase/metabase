@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import {
+  QuestionPickerModal,
+  type QuestionPickerItem,
+} from "metabase/common/components/EntityPicker";
 import { replaceCard } from "metabase/dashboard/actions";
-import { QuestionPickerModal } from "metabase/dashboard/components/QuestionPickerModal";
 import { useDispatch } from "metabase/lib/redux";
 import { Flex, Button } from "metabase/ui";
-import type { CardId, VirtualDashboardCard } from "metabase-types/api";
+import type { VirtualDashboardCard } from "metabase-types/api";
 
 import type { VisualizationProps } from "../types";
 
@@ -23,8 +26,9 @@ function DashCardPlaceholderInner({
   const [isQuestionPickerOpen, setQuestionPickerOpen] = useState(false);
   const dispatch = useDispatch();
 
-  const handleSelectQuestion = (nextCardId: CardId) => {
-    dispatch(replaceCard({ dashcardId: dashcard.id, nextCardId }));
+  const handleSelectQuestion = (nextCard: QuestionPickerItem) => {
+    dispatch(replaceCard({ dashcardId: dashcard.id, nextCardId: nextCard.id }));
+    setQuestionPickerOpen(false);
   };
 
   if (!isDashboard) {
@@ -50,11 +54,17 @@ function DashCardPlaceholderInner({
           >{t`Select question`}</Button>
         )}
       </Flex>
-      <QuestionPickerModal
-        opened={isQuestionPickerOpen}
-        onSelect={handleSelectQuestion}
-        onClose={() => setQuestionPickerOpen(false)}
-      />
+      {isQuestionPickerOpen && (
+        <QuestionPickerModal
+          opened={isQuestionPickerOpen}
+          value={{
+            id: dashcard.card.id,
+            model: "card",
+          }}
+          onChange={handleSelectQuestion}
+          onClose={() => setQuestionPickerOpen(false)}
+        />
+      )}
     </>
   );
 }
