@@ -30,8 +30,8 @@ For an introduction to expressions, check out the [overview of custom expression
     - [between](#between)
     - [case](./expressions/case.md)
     - [coalesce](./expressions/coalesce.md)
-    - [isempty](./expressions/isempty.md)
     - [isnull](./expressions/isnull.md)
+    - [nonnull](#nonnull)
 
   - [Math functions](#math-functions)
     - [abs](#abs)
@@ -46,14 +46,17 @@ For an introduction to expressions, check out the [overview of custom expression
   - [String functions](#string-functions)
     - [concat](./expressions/concat.md)
     - [contains](#contains)
-    - [endswith](#endswith)
-    - [lefttrim](#lefttrim)
+    - [doesNotContain](#doesnotcontain)
+    - [endsWith](#endswith)
+    - [isempty](./expressions/isempty.md)
+    - [ltrim](#ltrim)
     - [length](#length)
     - [lower](#lower)
+    - [nonempty](#nonempty)
     - [regexextract](./expressions/regexextract.md)
     - [replace](#replace)
-    - [righttrim](#righttrim)
-    - [startswith](#startswith)
+    - [rtrim](#rtrim)
+    - [startsWith](#startswith)
     - [substring](./expressions/substring.md)
     - [trim](#trim)
     - [upper](#upper)
@@ -70,6 +73,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [month](#month)
     - [now](./expressions/now.md)
     - [quarter](#quarter)
+    - [relativeDateTime](#relativedatetime)
     - [second](#second)
     - [week](#week)
     - [weekday](#weekday)
@@ -78,7 +82,7 @@ For an introduction to expressions, check out the [overview of custom expression
 
 ## Aggregations
 
-Aggregation expressions take into account all values in a field. They can only be used in the **Summarize** section of the notebook editor.
+Aggregation expressions take into account all values in a field. They can only be used in the **Summarize** section of the query builder.
 
 ### Average
 
@@ -247,14 +251,6 @@ Syntax: `coalesce(value1, value2, …)`
 
 Example: `coalesce([Comments], [Notes], "No comments")`. If both the `Comments` and `Notes` columns are null for that row, the expression will return the string "No comments".
 
-### [isempty](./expressions/isempty.md)
-
-Returns true if the column is empty.
-
-Syntax: `isempty(column)`
-
-Example: `isempty([Discount])` would return true if there were no value in the discount field.
-
 ### [isnull](./expressions/isnull.md)
 
 Returns true if the column is null.
@@ -262,6 +258,17 @@ Returns true if the column is null.
 Syntax: `isnull(column)`
 
 Example: `isnull([Tax])` would return true if no value were present in the column for that row.
+
+Related: [nonnull](#nonnull), [isempty](#isempty)
+
+### [nonnull](./expressions/isnull.md)
+
+Returns true if the column contains a value.
+
+Syntax: `nonnull(column)`
+
+Example: `nonnull([Tax])` would return true if there is a value present in the column for that row.
+
 
 ## Math functions
 Math functions implement common mathematical operations.
@@ -359,33 +366,60 @@ Example: `concat([Last Name], ", ", [First Name])` would produce a string of the
 
 ### contains
 
-Checks to see if string1 contains string2 within it.
+Checks to see if `string1` contains `string2` within it. Performs case-sensitive match by default.
+You can pass an optional parameter `"case-insensitive"` to perform a case-insensitive match.
 
-Syntax: `contains(string1, string2)`
+Syntax: `contains(string1, string2)` for case-sensitive match.
+`contains(string1, string2, "case-insensitive") for case-insensitive match.
 
-Example: `contains([Status], "Class")`. If `Status` were "Classified", the expression would return `true`.
+Example: `contains([Status], "Class")`. If `Status` were "Classified", the expression would return `true`. If the `Status` were "**c**lassified", the expression would return `false`, because the case
 
-Related: [regexextract](#regexextract).
+Related: [doesNotContain](#doesnotcontain), [regexextract](#regexextract).
 
-### endswith
+### doesNotContain
 
-Returns true if the end of the text matches the comparison text.
+Checks to see if `string1` contains `string2` within it. Performs case-sensitive match by default.
+You can pass an optional parameter `"case-insensitive"` to perform a case-insensitive match.
 
-Syntax: `endsWith(text, comparison)`
+Syntax: `doesNotContain(string1, string2)` for case-sensitive match.
+`doesNotContain(string1, string2, "case-insensitive")` for case-insensitive match.
 
-`endsWith([Appetite], "hungry")`
+Example: `doesNotContain([Status], "Class")`. If `Status` were "Classified", the expression would return `false`.
 
-Related: [contains](#contains) and [startswith](#startswith).
+Related: (contains)[#contains],  [regexextract](#regexextract).
 
-### lefttrim
+### endsWith
+
+Returns true if the end of the text matches the comparison text. Performs case-sensitive match by default.
+You can pass an optional parameter `"case-insensitive"` to perform a case-insensitive match.
+
+Syntax: `endsWith(text, comparison)` for case-sensitive match.
+ `endsWith(text, comparison, "case-insensitive")` for case-insensitive match.
+
+Example: `endsWith([Appetite], "hungry")`
+
+Related: [startsWith](#startswith), [contains](#contains), [doesNotContain](#doesnotcontain).
+
+
+### [isempty](./expressions/isempty.md)
+
+Returns true if a _string column_ contains an empty string or is null. Calling this function on a non-string column will cause an error.
+
+Syntax: `isempty(column)`
+
+Example: `isempty([Feedback])` would return true if `Feedback` was an empty string (`''`) or did not contain a value.
+
+Related: [nonempty](#nonempty), [isnull](#isnull)
+
+### ltrim
 
 Removes leading whitespace from a string of text.
 
 Syntax: `ltrim(text)`
 
-Example: `ltrim([Comment])`. If the comment were " I'd prefer not to", `ltrim` would return "I'd prefer not to".
+Example: `ltrim([Comment])`. If the comment were `" I'd prefer not to"`, `ltrim` would return `"I'd prefer not to"`.
 
-Related: [trim](#trim) and [righttrim](#righttrim).
+Related: [trim](#trim) and [rtrim](#rtrim).
 
 ### length
 
@@ -393,7 +427,7 @@ Returns the number of characters in text.
 
 Syntax: `length(text)`
 
-Example: `length([Comment])` If the `comment` were "wizard", `length` would return 6 ("wizard" has six characters).
+Example: `length([Comment])`. If the `comment` were "wizard", `length` would return 6 ("wizard" has six characters).
 
 ### lower
 
@@ -405,6 +439,17 @@ Example: `lower([Status])`. If the `Status` were "QUIET", the expression would r
 
 Related: [upper](#upper).
 
+### [nonempty](./expressions/isempty.md)
+
+Returns true if the string column contains a value that isn't the empty string (`''`).
+
+Syntax: `nonempty(column)`
+
+Example: `nonempty([Feedback])` would return true if `Feedback` contains a value that isn't the empty string (`''`). . [Learn more](./expressions/isempty.md) about how Metabase handles empty strings and nulls.
+
+Related: [isempty](#isempty), [nonnull](#nonnull)
+
+
 ### [regexextract](./expressions/regexextract.md)
 
 Extracts matching substrings according to a regular expression.
@@ -415,7 +460,7 @@ Example: `regexextract([Address], "[0-9]+")`.
 
 Databases that don't support `regexextract`: H2, SQL Server, SQLite.
 
-Related: [contains](#contains), [substring](#substring).
+Related: [contains](#contains), [doesNotContain](#doesnotcontain), [substring](#substring).
 
 ### replace
 
@@ -425,7 +470,7 @@ Syntax: `replace(text, find, replace)`.
 
 Example: `replace([Title], "Enormous", "Gigantic")`.
 
-### righttrim
+### rtrim
 
 Removes trailing whitespace from a string of text.
 
@@ -433,17 +478,22 @@ Syntax: `rtrim(text)`
 
 Example: `rtrim([Comment])`. If the comment were "Fear is the mindkiller. ", the expression would return "Fear is the mindkiller."
 
-Related: [trim](#trim) and [lefttrim](#lefttrim).
+Related: [trim](#trim) and [ltrim](#ltrim).
 
-### startswith
+### startsWith
 
-Returns true if the beginning of the text matches the comparison text.
+Returns true if the beginning of the text matches the comparison text. Performs case-sensitive match by default.
+You can pass an optional parameter `"case-insensitive"` to perform a case-insensitive match.
 
-Syntax: `startsWith(text, comparison)`.
+Syntax: `startsWith(text, comparison)` for case-sensitive match.
+ `startsWith(text, comparison, "case-insensitive")` for case-insensitive match.
 
-Example: `startsWith([Course Name], "Computer Science")` would return true for course names that began with "Computer Science", like "Computer Science 101: An introduction".
+Example: `startsWith([Course Name], "Computer Science")` would return true for course names that began with "Computer Science", like "Computer Science 101: An introduction". It would return false for "Computer **s**cience 201: Data structures" because the case of "science" does not match the case in the comparison text.
 
-Related: [endswith](#endswith), [contains](#contains).
+`startsWith([Course Name], "Computer Science", "case-insensitive")`would return true for both "Computer Science 101: An introduction" and "Computer science 201: Data structures".
+
+
+Related: [endsWith](#endsWith), [contains](#contains), [doesNotContain](#doesnotcontain).
 
 ### [substring](./expressions/substring.md)
 
@@ -481,6 +531,8 @@ Shifts a date or timestamp value into a specified time zone.
 Syntax: `convertTimezone(column, target, source)`.
 
 Example: `convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")` would return the value `2022-12-28T09:00:00`, displayed as `December 28, 2022, 9:00 AM`.
+
+See the [database limitations](./expressions/converttimezone.md#limitations) for `convertTimezone`.
 
 ### [datetimeAdd](./expressions/datetimeadd.md)
 
@@ -566,6 +618,21 @@ Syntax: `quarter([datetime column])`.
 
 Example: `quarter("2021-03-25T12:52:37")` would return `1` for the first quarter.
 
+### relativeDateTime
+
+Gets a timestamp relative to the current time.
+
+Syntax: `relativeDateTime(number, text)`
+
+`number`: Period of interval, where negative values are back in time.
+`text`: Type of interval like `"day"`, `"month"`, `"year"`
+
+`relativeDateTime` can only be used as part of a conditional expression.
+
+Example: `[Orders → Created At] < relativeDateTime(-30, "day")` will filter for orders created over 30 days ago from current date.
+
+Related: [dateTimeAdd](#datetimeadd), [dateTimeSubtract](#datetimesubtract).
+
 ### second
 
 Takes a datetime and returns the number of seconds in the minute (0-59) as an integer.
@@ -573,6 +640,18 @@ Takes a datetime and returns the number of seconds in the minute (0-59) as an in
 Syntax: `second([datetime column)`.
 
 Example: `second("2021-03-25T12:52:37")` would return the integer `37`.
+
+### timeSpan
+
+Gets a time interval of specified length.
+
+Syntax: `timeSpan(number, text)`.
+`number`: Period of interval, where negative values are back in time.
+`text`: Type of interval like `"day"`, `"month"`, `"year"`
+
+Example: `[Orders → Created At] + timeSpan(7, "day")` will return the date 7 days after the `Created At` date.
+
+
 
 ### week
 
@@ -617,11 +696,20 @@ Syntax: `year([datetime column])`.
 
 Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer, `2,021`.
 
-## Database limitations
+## Limitations
+
+- [Aggregation expressions](#aggregations)  can only be used in the **Summarize** section of the query builder.
+- Functions that return a boolean value, like [isempty](#isempty) or [contains](#contains), cannot be used to create a custom column. To create a custom column based on one of these functions, you must combine them with another function, like `case`.
+For example, to create a new custom column that contains `true` if `[Title]` contain `'Wallet'`, you can use the custom expression
+```
+case(contains([Title], 'Wallet'), true, false)
+``
+
+### Database limitations
 
 Limitations are noted for each aggregation and function above, and here there are in summary:
 
-**H2**: `Median`, `Percentile` and `regexextract`
+**H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone` and `regexextract`
 
 **MySQL/MariaDB**: `Median`, `Percentile`.
 
