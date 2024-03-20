@@ -160,7 +160,7 @@ describe("scenarios > question > joined questions", () => {
     cy.findByTestId("qb-filters-panel")
       .findByText("question b - PRODUCT_ID → Category is Gadget")
       .should("be.visible");
-    cy.get(".ScalarValue").contains("Gadget").should("be.visible");
+    cy.findByTestId("scalar-value").contains("Gadget").should("be.visible");
   });
 
   it("should join structured questions (metabase#13000, metabase#13649, metabase#13744)", () => {
@@ -315,7 +315,7 @@ describe("scenarios > question > joined questions", () => {
 
     visualize();
 
-    cy.get(".ScalarValue").contains("2,087");
+    cy.findByTestId("scalar-value").contains("2,087");
   });
 
   it("should remove a join when changing the source table", () => {

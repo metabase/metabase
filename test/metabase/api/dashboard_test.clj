@@ -3359,10 +3359,9 @@
                       %categories.name (sort [%venues.price %categories.name])}
                      {:filtered [%venues.price %categories.name], :filtering [%categories.name %venues.price]}))
           (testing "filtered-ids cannot be nil"
-            (is (= {:errors {:filtered
-                             "value must be an integer greater than zero., or one or more value must be an integer greater than zero."}
+            (is (= {:errors {:filtered "vector of value must be an integer greater than zero."}
                     :specific-errors
-                    {:filtered ["value must be an integer greater than zero., received: nil" "invalid type, received: nil"]}}
+                    {:filtered ["invalid type, received: nil"]}}
                    (mt/user-http-request :rasta :get 400 "dashboard/params/valid-filter-fields" :filtering [%categories.name]))))))
       (testing "should check perms for the Fields in question"
         (mt/with-temp-copy-of-db

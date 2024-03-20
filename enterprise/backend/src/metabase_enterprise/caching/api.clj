@@ -77,6 +77,7 @@
              (audit-caching-change! <> current data))})))
 
 (api/defendpoint DELETE "/"
+  "Delete cache configuration."
   [:as {{:keys [model model_id]} :body}]
   {model    CachingModel
    model_id (ms/QueryVectorOf ms/PositiveInt)}
