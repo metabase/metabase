@@ -19,7 +19,7 @@ Fetch a single `Setting`.
 
 ### PARAMS:
 
-*  **`key`** keyword
+-  **`key`** keyword.
 
 ## `PUT /api/setting/`
 
@@ -27,7 +27,7 @@ Update multiple `Settings` values. If called by a non-superuser, only user-local
 
 ### PARAMS:
 
-*  **`settings`** map from <keyword> to <anything>
+-  **`settings`** map from <keyword> to <anything>.
 
 ## `PUT /api/setting/:key`
 
@@ -36,9 +36,9 @@ Create/update a `Setting`. If called by a non-admin, only user-local settings ca
 
 ### PARAMS:
 
-*  **`key`** keyword
+-  **`key`** keyword.
 
-*  **`value`**
+-  **`value`**
 
 ---
 

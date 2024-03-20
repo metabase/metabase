@@ -14,7 +14,7 @@ Delete a [[TimelineEvent]].
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/timeline-event/:id`
 
@@ -22,7 +22,7 @@ Fetch the [[TimelineEvent]] with `id`.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `POST /api/timeline-event/`
 
@@ -30,25 +30,25 @@ Create a new [[TimelineEvent]].
 
 ### PARAMS:
 
-*  **`timestamp`** value must be a valid date string
+-  **`timestamp`** value must be a valid date string.
 
-*  **`question_id`** nullable value must be an integer greater than zero.
+-  **`question_id`** nullable value must be an integer greater than zero.
 
-*  **`description`** nullable string
+-  **`description`** nullable string.
 
-*  **`archived`** nullable boolean
+-  **`archived`** nullable boolean.
 
-*  **`timezone`** string
+-  **`timezone`** string.
 
-*  **`time_matters`** nullable boolean
+-  **`time_matters`** nullable boolean.
 
-*  **`name`** value must be a non-blank string.
+-  **`name`** value must be a non-blank string.
 
-*  **`timeline_id`** value must be an integer greater than zero.
+-  **`timeline_id`** value must be an integer greater than zero.
 
-*  **`source`** nullable enum of collections, question
+-  **`source`** nullable enum of collections, question.
 
-*  **`icon`** nullable enum of star, cake, mail, warning, bell, cloud
+-  **`icon`** nullable enum of star, cake, mail, warning, bell, cloud.
 
 ## `PUT /api/timeline-event/:id`
 
@@ -56,25 +56,25 @@ Update a [[TimelineEvent]].
 
 ### PARAMS:
 
-*  **`timestamp`** nullable value must be a valid date string
+-  **`timestamp`** nullable value must be a valid date string.
 
-*  **`description`** nullable string
+-  **`description`** nullable string.
 
-*  **`archived`** nullable boolean
+-  **`archived`** nullable boolean.
 
-*  **`timezone`** nullable string
+-  **`timezone`** nullable string.
 
-*  **`time_matters`** nullable boolean
+-  **`time_matters`** nullable boolean.
 
-*  **`name`** nullable value must be a non-blank string.
+-  **`name`** nullable value must be a non-blank string.
 
-*  **`timeline_id`** nullable value must be an integer greater than zero.
+-  **`timeline_id`** nullable value must be an integer greater than zero.
 
-*  **`icon`** nullable enum of star, cake, mail, warning, bell, cloud
+-  **`icon`** nullable enum of star, cake, mail, warning, bell, cloud.
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`timeline-event-updates`**
+-  **`timeline-event-updates`**
 
 ---
 

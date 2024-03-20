@@ -28,19 +28,19 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`all_collections`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`all_collections`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`collection`** nullable vector of value must be an integer greater than zero.
+-  **`collection`** nullable vector of value must be an integer greater than zero.
 
-*  **`settings`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`settings`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`data_model`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`data_model`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`field_values`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`field_values`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`database_secrets`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`database_secrets`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`dirname`**
+-  **`dirname`**
 
 ## `POST /api/ee/serialization/import`
 
@@ -55,7 +55,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`raw-params`**
+-  **`raw-params`**
 
 ---
 

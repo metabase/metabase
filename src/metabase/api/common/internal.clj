@@ -27,6 +27,27 @@
 ;;; |                                              DOCSTRING GENERATION                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn handle-nonstandard-namespaces
+  "HACK to make sure some enterprise endpoints are consistent with the code.
+  The right way to fix this is to move them -- see #22687"
+  [name]
+  (-> name
+      (str/replace #"^metabase\.api\." "/api/")
+      ;; HACK to make sure some enterprise endpoints are consistent with the code.
+      ;; The right way to fix this is to move them -- see #22687
+      ;; /api/ee/sandbox/table -> /api/table, this is an override route for /api/table if sandbox is available
+      (str/replace #"^metabase-enterprise\.sandbox\.api\.table" "/api/table")
+      ;; /api/ee/sandbox -> /api/mt
+      (str/replace #"^metabase-enterprise\.sandbox\.api\." "/api/mt/")
+      ;; /api/ee/content-verification -> /api/moderation-review
+      (str/replace #"^metabase-enterprise\.content-verification\.api\." "/api/moderation-review/")
+      ;; /api/ee/sso/sso/ -> /auth/sso
+      (str/replace #"^metabase-enterprise\.sso\.api\." "/auth/")
+      ;; this should be only the replace for enterprise once we resolved #22687
+      (str/replace #"^metabase-enterprise\.serialization\.api" "/api/ee/serialization")
+      (str/replace #"^metabase-enterprise\.advanced-config\.api\.logs" "/api/ee/logs")
+      (str/replace #"^metabase-enterprise\.([^\.]+)\.api\." "/api/ee/$1/")))
+
 (defn- endpoint-name
   "Generate a string like `GET /api/meta/db/:id` for a defendpoint route."
   ([method route]
@@ -36,20 +57,7 @@
    (format "%s %s%s"
            (name method)
            (-> (.getName (the-ns endpoint-namespace))
-               (str/replace #"^metabase\.api\." "/api/")
-               ;; HACK to make sure some enterprise endpoints are consistent with the code.
-               ;; The right way to fix this is to move them -- see #22687
-               ;; /api/ee/sandbox/table -> /api/table, this is an override route for /api/table if sandbox is available
-               (str/replace #"^metabase-enterprise\.sandbox\.api\.table" "/api/table")
-               ;; /api/ee/sandbox -> /api/mt
-               (str/replace #"^metabase-enterprise\.sandbox\.api\." "/api/mt/")
-               ;; /api/ee/content-verification -> /api/moderation-review
-               (str/replace #"^metabase-enterprise\.content-verification\.api\." "/api/moderation-review/")
-               ;; /api/ee/sso/sso/ -> /auth/sso
-               (str/replace #"^metabase-enterprise\.sso\.api\." "/auth/")
-               ;; this should be only the replace for enterprise once we resolved #22687
-               (str/replace #"^metabase-enterprise\.serialization\.api" "/api/ee/serialization")
-               (str/replace #"^metabase-enterprise\.([^\.]+)\.api\." "/api/ee/$1/"))
+               handle-nonstandard-namespaces)
            (if (vector? route)
              (first route)
              route))))

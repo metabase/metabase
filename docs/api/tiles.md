@@ -17,17 +17,17 @@ This endpoints provides an image with the appropriate pins rendered given a MBQL
 
 ### PARAMS:
 
-*  **`zoom`** value must be an integer.
+-  **`zoom`** value must be an integer.
 
-*  **`x`** value must be an integer.
+-  **`x`** value must be an integer.
 
-*  **`y`** value must be an integer.
+-  **`y`** value must be an integer.
 
-*  **`lat-field`** string
+-  **`lat-field`** string.
 
-*  **`lon-field`** string
+-  **`lon-field`** string.
 
-*  **`query`** value must be a valid JSON string.
+-  **`query`** value must be a valid JSON string.
 
 ---
 

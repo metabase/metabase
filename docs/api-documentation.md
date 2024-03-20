@@ -50,6 +50,7 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [GeoJSON](api/geojson.md)
 - [Google](api/google.md)
 - [LDAP](api/ldap.md)
+- [LLM](api/llm.md)
 - [Login history](api/login-history.md)
 - [Metabot](api/metabot.md)
 - [Metric](api/metric.md)

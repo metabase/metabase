@@ -16,11 +16,11 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`google-auth-client-id`** nullable string
+-  **`google-auth-client-id`** nullable string.
 
-*  **`google-auth-enabled`** nullable boolean
+-  **`google-auth-enabled`** nullable boolean.
 
-*  **`google-auth-auto-create-accounts-domain`** nullable string
+-  **`google-auth-auto-create-accounts-domain`** nullable string.
 
 ---
 

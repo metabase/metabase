@@ -38,7 +38,7 @@ Endpoint that checks if the supplied password meets the currently configured pas
 
 ### PARAMS:
 
-*  **`password`** password is too common.
+-  **`password`** password is too common.
 
 ---
 
