@@ -536,7 +536,7 @@ export const buildTableColumnSettings = ({
 
       function isValid(columnSettings) {
         const columnIndexes = findColumnIndexesForColumnSettings(
-          data.cols,
+          cols,
           columnSettings.filter(({ enabled }) => enabled),
         );
         return columnIndexes.every(columnIndex => columnIndex >= 0);
@@ -553,7 +553,7 @@ export const buildTableColumnSettings = ({
             ...setting,
             key: getColumnSettingKey(setting),
           })),
-          ...data.cols
+          ...cols
             .filter((_, columnIndex) => settingIndexes[columnIndex] < 0)
             .map(column => ({
               name: column.name,
