@@ -9,9 +9,9 @@ import type {
   TisFolder,
   TypeWithModel,
 } from "../../types";
+import { AutoScrollBox } from "../AutoScrollBox";
 import type { EntityItemListProps } from "../ItemList";
 
-import { AutoScrollBox } from "./AutoScrollBox";
 import { ListBox } from "./NestedItemPicker.styled";
 
 export interface NestedItemPickerProps<
