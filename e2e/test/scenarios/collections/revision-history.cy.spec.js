@@ -74,6 +74,9 @@ describe("revision history", () => {
             });
 
             it("shouldn't create a rearrange revision when adding a card (metabase#6884)", () => {
+              cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+              cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
               cy.createDashboard().then(({ body }) => {
                 visitDashboard(body.id);
                 editDashboard();
@@ -81,7 +84,9 @@ describe("revision history", () => {
 
               openQuestionsSidebar();
               sidebar().findByText("Orders, Count").click();
+              cy.wait("@cardQuery");
               saveDashboard();
+              cy.wait("@updateDashboard");
 
               openRevisionHistory();
               rightSidebar().within(() => {
