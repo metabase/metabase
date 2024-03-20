@@ -43,7 +43,7 @@
 
 ;; TODO - we should also do similar tests for timezone-unaware columns
 (deftest result-rows-test
-  (mt/dataset timezone-test-data
+  (mt/dataset tz-test-data
     (mt/test-drivers (timezone-aware-column-drivers)
       (is (= [[12 "2014-07-03T01:30:00Z"]
               [10 "2014-07-03T19:30:00Z"]]
@@ -67,7 +67,7 @@
               (format "There should be %d checkins on July 3rd in the %s timezone" (count expected-rows) timezone)))))))
 
 (deftest filter-test
-  (mt/dataset timezone-test-data
+  (mt/dataset tz-test-data
     (mt/test-drivers (set-timezone-drivers)
       (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (is (= [[6 "Shad Ferdynand" "2014-08-02T05:30:00-07:00"]]
@@ -175,7 +175,7 @@
                      #(isa? driver/hierarchy % :sql)
                      (set/intersection (set-timezone-drivers)
                                        (mt/normal-drivers-with-feature :native-parameters)))
-    (mt/dataset timezone-test-data
+    (mt/dataset tz-test-data
       (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (testing "Native dates should be parsed with the report timezone"
           (doseq [[params-description query] (native-params-queries)]
@@ -350,7 +350,7 @@
 (deftest filter-datetime-by-date-in-timezone-fixed-date-test
   (mt/test-drivers (set-timezone-drivers)
     (testing "Fixed date"
-      (mt/dataset timezone-test-data
+      (mt/dataset tz-test-data
         (let [expected-datetime #t "2014-07-03T01:30:00Z"]
           (doseq [[timezone date-filter] [["US/Pacific" "2014-07-02"]
                                           ["US/Eastern" "2014-07-02"]
