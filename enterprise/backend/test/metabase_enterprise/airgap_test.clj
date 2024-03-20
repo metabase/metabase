@@ -3,17 +3,23 @@
                [clojure.string :as str]
                [clojure.test :refer :all]
                [metabase-enterprise.airgap :as airgap]
-               [metabase.public-settings.premium-features :as premium-features]))
+               [metabase.public-settings.premium-features :as premium-features]
+               [metabase.test.util :as mt]))
 
 (defn- test-fake-features [& {:keys [token-fn pubk-fn]}]
-  (with-redefs
-    [premium-features/premium-embedding-token (constantly (-> (io/resource "fake_ag_token.txt")
-                                                              slurp
-                                                              str/trim
-                                                              ((or token-fn identity))))
-     airgap/pubkey-reader (fn [] (-> (io/reader (io/resource "fake_pubkey.pem"))
-                                     ((or pubk-fn identity))))]
-    (#'airgap/decode-token (premium-features/premium-embedding-token))))
+  (mt/with-temporary-setting-values
+    [premium-features/premium-embedding-token
+     (-> (io/resource "fake_ag_token.txt") slurp str/trim ((or token-fn identity)))]
+    (with-redefs
+      [airgap/pubkey-reader (fn [] (-> (io/reader (io/resource "fake_pubkey.pem"))
+                                       ((or pubk-fn identity))))]
+      (#'airgap/decode-token (premium-features/premium-embedding-token)))))
+
+(comment
+
+  (test-fake-features)
+
+  )
 
 (deftest ag-token-decryption-test
   ;; Checks for a specific feature encoded into the fake token:
@@ -34,3 +40,9 @@
          #"unable to convert key pair: encoded key spec not recognized: invalid info structure in RSA public key"
          (test-fake-features
           :pubk-fn (fn [_] (io/reader (io/resource "broken_pubkey.pem"))))))))
+
+(deftest ag-missing-pubkey-test
+  (testing "Missing public key"
+    (is (thrown-with-msg? Exception
+         #"No public key available for airgap token"
+         (test-fake-features :pubk-fn (fn [_] nil))))))
