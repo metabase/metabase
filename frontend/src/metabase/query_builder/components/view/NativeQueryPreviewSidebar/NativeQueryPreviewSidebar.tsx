@@ -4,13 +4,15 @@ import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import { getEngineNativeType } from "metabase/lib/engine";
+import { useDispatch } from "metabase/lib/redux";
+import { updateQuestion, setUIControls } from "metabase/query_builder/actions";
 import {
   getNativeQueryFn,
   getQuestion,
 } from "metabase/query_builder/selectors";
 import type Question from "metabase-lib/v1/Question";
 import type { NativeQueryForm } from "metabase-types/api";
-import type { QueryBuilderUIControls, State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 
 import { NativeQueryPreview, useNativeQuery } from "../NativeQueryPreview";
 
@@ -26,27 +28,20 @@ const BUTTON_TITLE = {
   json: t`Convert this question to a native query`,
 };
 
-interface UpdateQuestionOpts {
-  shouldUpdateUrl?: boolean;
-}
-
 interface NativeQueryPreviewSidebarProps {
   question: Question;
   onLoadQuery: () => Promise<NativeQueryForm>;
-  onUpdateQuestion: (question: Question, opts?: UpdateQuestionOpts) => void;
-  onSetUIControls: (changes: Partial<QueryBuilderUIControls>) => void;
   onClose?: () => void;
 }
 
 const NativeQueryPreviewSidebar = ({
   question,
   onLoadQuery,
-  onUpdateQuestion,
-  onSetUIControls,
   onClose,
 }: NativeQueryPreviewSidebarProps): JSX.Element => {
   const engineType = getEngineNativeType(question.database()?.engine);
   const { query, error, isLoading } = useNativeQuery(question, onLoadQuery);
+  const dispatch = useDispatch();
 
   const handleConvertClick = useCallback(() => {
     if (!query) {
@@ -56,10 +51,11 @@ const NativeQueryPreviewSidebar = ({
     const newDatasetQuery = createDatasetQuery(query, question);
     const newQuestion = question.setDatasetQuery(newDatasetQuery);
 
-    onUpdateQuestion?.(newQuestion, { shouldUpdateUrl: true });
-    onSetUIControls({ isNativeEditorOpen: true });
+    dispatch(updateQuestion(newQuestion, { shouldUpdateUrl: true, run: true }));
+    dispatch(setUIControls({ isNativeEditorOpen: true }));
+
     onClose?.();
-  }, [question, query, onUpdateQuestion, onSetUIControls, onClose]);
+  }, [question, query, onClose, dispatch]);
 
   return (
     <NativeQueryPreview
