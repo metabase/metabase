@@ -17,6 +17,8 @@ import { AggregationWidget } from "../AggregationWidget";
 import { FilterPopover } from "../FilterPopover";
 import { FilterWidgetList } from "../FilterWidgetList";
 
+import GuiQueryEditorS from "./GuiQueryEditor.module.css";
+
 /**
  * @deprecated use MLv2
  */
@@ -226,10 +228,10 @@ export class GuiQueryEditor extends Component {
     return (
       <div
         className={cx(
-          CS.arrowRight,
-          CS.alignCenter,
-          CS.flex,
           "GuiBuilder-section GuiBuilder-data",
+          CS.flex,
+          CS.alignCenter,
+          GuiQueryEditorS.arrowRight,
         )}
       >
         <span className="GuiBuilder-section-label Query-label">{t`Data`}</span>
