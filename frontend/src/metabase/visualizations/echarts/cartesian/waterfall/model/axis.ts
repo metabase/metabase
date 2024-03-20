@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import type { RawSeries, RowValue } from "metabase-types/api";
 import type {
@@ -8,11 +7,11 @@ import type {
 } from "metabase/visualizations/types";
 import type {
   ChartDataset,
+  DateRange,
   DimensionModel,
   Extent,
   TimeSeriesXAxisModel,
   WaterfallXAxisModel,
-  XAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 
 import { getXAxisModel } from "../../model/axis";
@@ -44,68 +43,58 @@ export const getWaterfallXAxisModel = (
   );
 
   const hasTotal = !!settings["waterfall.show_total"];
-  let totalXValue: RowValue | undefined = hasTotal ? t`Total` : undefined;
-  let extent: Extent | undefined = isNumericAxis(xAxisModel)
-    ? xAxisModel.extent
-    : undefined;
-
-  let tickRenderPredicate: XAxisModel["tickRenderPredicate"];
-
-  if (hasTotal) {
-    if (isTimeSeriesAxis(xAxisModel)) {
-      const timeSeriesTotalXValue = getTotalTimeSeriesXValue(xAxisModel);
-
-      totalXValue = timeSeriesTotalXValue;
-      tickRenderPredicate = (tickValue: Dayjs) => {
-        if (
-          tickValue.isSame(
-            tryGetDate(timeSeriesTotalXValue),
-            xAxisModel.effectiveTickUnit,
-          )
-        ) {
-          return true;
-        }
-
-        return xAxisModel.tickRenderPredicate?.(tickValue) ?? true;
-      };
-    } else if (isNumericAxis(xAxisModel)) {
-      totalXValue = xAxisModel.extent[1] + xAxisModel.interval;
-      extent = [xAxisModel.extent[0], totalXValue];
-    }
+  if (!hasTotal) {
+    return xAxisModel;
   }
 
-  const waterfallFormatter = (valueRaw: RowValue) => {
-    if (typeof totalXValue === "undefined" || typeof valueRaw === "boolean") {
+  if (isTimeSeriesAxis(xAxisModel)) {
+    const totalXValue = getTotalTimeSeriesXValue(xAxisModel);
+    const range: DateRange = [xAxisModel.range[0], dayjs(totalXValue)];
+    const intervalsCount = xAxisModel.intervalsCount;
+    const formatter = (valueRaw: RowValue) => {
+      const dateValue = tryGetDate(valueRaw);
+      if (dateValue == null) {
+        return "";
+      }
+
+      if (dateValue.isSame(dayjs(totalXValue), xAxisModel.interval.unit)) {
+        return t`Total`;
+      }
+
       return xAxisModel.formatter(valueRaw);
-    }
+    };
 
-    if (isNumericAxis(xAxisModel)) {
-      if (valueRaw === totalXValue) {
-        return t`Total`;
-      }
-    } else if (isTimeSeriesAxis(xAxisModel)) {
-      const dateValue = dayjs(valueRaw);
-
-      if (dateValue.isSame(tryGetDate(totalXValue), xAxisModel.interval.unit)) {
-        return t`Total`;
-      }
-    }
-    return xAxisModel.formatter(valueRaw);
-  };
-
-  const waterfallAxisModel = {
-    ...xAxisModel,
-    formatter: waterfallFormatter,
-    totalXValue,
-    tickRenderPredicate,
-  };
-
-  if (extent && isNumericAxis(waterfallAxisModel)) {
     return {
-      ...waterfallAxisModel,
-      extent,
+      ...xAxisModel,
+      range,
+      intervalsCount,
+      totalXValue,
+      formatter,
     };
   }
 
-  return waterfallAxisModel;
+  if (isNumericAxis(xAxisModel)) {
+    const totalXValue = xAxisModel.extent[1] + xAxisModel.interval;
+    const extent: Extent = [xAxisModel.extent[0], totalXValue];
+    const formatter = (valueRaw: RowValue) => {
+      if (valueRaw === totalXValue) {
+        return t`Total`;
+      }
+
+      return xAxisModel.formatter(valueRaw);
+    };
+
+    return {
+      ...xAxisModel,
+      totalXValue,
+      extent,
+      formatter,
+    };
+  }
+
+  const totalXValue = t`Total`;
+  return {
+    ...xAxisModel,
+    totalXValue,
+  };
 };
