@@ -32,3 +32,7 @@ export function getLandingPageIllustration(state: State) {
 export function getNoQuestionResultsIllustration(state: State) {
   return PLUGIN_SELECTORS.getNoQuestionResultsIllustration(state);
 }
+
+export function getNoSearchResultsIllustration(state: State) {
+  return PLUGIN_SELECTORS.getNoSearchResultsIllustration(state);
+}

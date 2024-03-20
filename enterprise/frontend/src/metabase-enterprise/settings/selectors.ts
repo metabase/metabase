@@ -114,3 +114,26 @@ export function getNoQuestionResultsIllustration(
       ) as string;
   }
 }
+
+export function getNoSearchResultsIllustration(
+  state: EnterpriseState,
+): string | null {
+  const illustrationOption = getSetting(
+    state,
+    "no-search-results-illustration",
+  ) as IllustrationSettingValue;
+
+  switch (illustrationOption) {
+    case "default":
+      return noResultsSource;
+
+    case "no-illustration":
+      return null;
+
+    case "custom":
+      return getSetting(
+        state,
+        "no-search-results-illustration-custom",
+      ) as string;
+  }
+}

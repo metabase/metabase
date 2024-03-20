@@ -22,6 +22,7 @@ import {
   getLandingPageIllustration,
   getShowMetabaseLinks,
   getNoQuestionResultsIllustration,
+  getNoSearchResultsIllustration,
 } from "metabase-enterprise/settings/selectors";
 
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
@@ -323,4 +324,6 @@ if (hasPremiumFeature("whitelabel")) {
   PLUGIN_SELECTORS.getLandingPageIllustration = getLandingPageIllustration;
   PLUGIN_SELECTORS.getNoQuestionResultsIllustration =
     getNoQuestionResultsIllustration;
+  PLUGIN_SELECTORS.getNoSearchResultsIllustration =
+    getNoSearchResultsIllustration;
 }

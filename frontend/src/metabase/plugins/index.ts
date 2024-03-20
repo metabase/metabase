@@ -149,6 +149,9 @@ export const PLUGIN_SELECTORS = {
   getNoQuestionResultsIllustration: (_state: State): string => {
     return noResultsSource;
   },
+  getNoSearchResultsIllustration: (_state: State): string => {
+    return noResultsSource;
+  },
 };
 
 export type IllustrationValue = {

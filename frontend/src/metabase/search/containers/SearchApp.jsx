@@ -4,12 +4,11 @@ import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
 import PaginationControls from "metabase/components/PaginationControls";
 import Search from "metabase/entities/search";
 import { usePagination } from "metabase/hooks/use-pagination";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import {
   SearchContextTypes,
@@ -27,6 +26,7 @@ import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
 } from "metabase/search/utils";
+import { getNoSearchResultsIllustration } from "metabase/selectors/whitelabel";
 import { Box, Text, Group, Paper } from "metabase/ui";
 
 function SearchApp({ location }) {
@@ -68,6 +68,10 @@ function SearchApp({ location }) {
     [onChangeLocation, searchText],
   );
 
+  const noSearchResultsIllustration = useSelector(
+    getNoSearchResultsIllustration,
+  );
+
   return (
     <SearchMain
       direction="column"
@@ -92,9 +96,18 @@ function SearchApp({ location }) {
                     title={t`Didn't find anything`}
                     message={t`There weren't any results for your search.`}
                     illustrationElement={
-                      <Box mb={"-2.5rem"}>
-                        <img src={NoResults} />
-                      </Box>
+                      noSearchResultsIllustration && (
+                        <Box mb={"-2.5rem"}>
+                          <img
+                            src={noSearchResultsIllustration}
+                            style={{
+                              width: 120,
+                              height: 120,
+                              objectFit: "contain",
+                            }}
+                          />
+                        </Box>
+                      )
                     }
                   />
                 </Paper>
