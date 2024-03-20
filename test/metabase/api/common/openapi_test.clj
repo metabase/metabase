@@ -10,11 +10,13 @@
 ;;; definitions
 
 (api/defendpoint GET "/:id"
+  "docstring"
   [id]
   {id ms/PositiveInt}
   {:id (str id)})
 
 (api/defendpoint POST "/:id"
+  "docstring"
   [id value]
   {id    ms/PositiveInt
    value ms/NonBlankString}
@@ -22,6 +24,7 @@
    :value value})
 
 (api/defendpoint ^:multipart POST "/:id/upload"
+  "docstring"
   [id :as {raw-params :params}]
   {id ms/PositiveInt}
   {:data (get-in raw-params ["file" :tempfile])})
@@ -52,7 +55,7 @@
                           :description some?
                           :schema      {:type    "integer"
                                         :minimum 1}}]}}
-          (#'openapi/defendpoint->openapi nil "/{id}" #'GET_:id)))
+          (#'openapi/defendpoint->path-item nil "/{id}" #'GET_:id)))
   (is (=? {:post
            {:parameters  [{:in          :path
                            :name        :id
@@ -67,7 +70,7 @@
                              :properties {:value {:description some?
                                                   :$ref        "#/components/schemas/metabase.lib.schema.common~1non-blank-string"}},
                              :required   [:value]}}}}}}
-          (#'openapi/defendpoint->openapi nil "/{id}" #'POST_:id)))
+          (#'openapi/defendpoint->path-item nil "/{id}" #'POST_:id)))
   (is (=? {:post
            {:parameters  [{:in          :path
                            :name        :id
@@ -79,7 +82,7 @@
             :requestBody {:content
                           {"multipart/form-data"
                            {:schema {:type "object", :properties {}}}}}}}
-          (#'openapi/defendpoint->openapi nil "/{id}" #'POST_:id_upload))))
+          (#'openapi/defendpoint->path-item nil "/{id}" #'POST_:id_upload))))
 
 (deftest ^:parallel openapi-object-test
   (is (=? {:paths      {"/{id}"        {:get  {}
