@@ -45,6 +45,7 @@ export const CollectionItemPickerResolver = ({
       selectedItem={selectedItem}
       isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
+      options={options}
     />
   );
 };

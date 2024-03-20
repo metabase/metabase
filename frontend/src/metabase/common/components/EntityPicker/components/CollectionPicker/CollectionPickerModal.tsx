@@ -1,18 +1,16 @@
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
+import type { SearchModelType, SearchResult } from "metabase-types/api";
 
-import type { CollectionPickerItem, EntityTab } from "../../types";
+import type { EntityTab } from "../../types";
 import { EntityPickerModal, defaultOptions } from "../EntityPickerModal";
 
-import {
-  CollectionPicker,
-  type CollectionPickerOptions,
-} from "./CollectionPicker";
+import { CollectionPicker } from "./CollectionPicker";
 import { NewCollectionDialog } from "./NewCollectionDialog";
+import type { CollectionPickerItem, CollectionPickerOptions } from "./types";
 
 interface CollectionPickerModalProps {
   title?: string;
@@ -81,7 +79,7 @@ export const CollectionPickerModal = ({
     </Button>,
   ];
 
-  const tabs: [EntityTab] = [
+  const tabs: [EntityTab<SearchModelType>] = [
     {
       displayName: t`Collections`,
       model: "collection",
