@@ -1,9 +1,19 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 
+import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
-import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
+import {
+  createOrdersIdField,
+  createOrdersProductIdField,
+  createOrdersTable,
+  createProductsCategoryField,
+  createProductsEanField,
+  createProductsIdField,
+  createProductsTable,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { useStringFilter } from "./use-string-filter";
 
@@ -31,8 +41,39 @@ interface DefaultOperatorCase {
   expectedOperator: Lib.StringFilterOperatorName;
 }
 
+const METADATA = createMockMetadata({
+  databases: [
+    createSampleDatabase({
+      tables: [
+        createOrdersTable({
+          fields: [
+            createOrdersIdField({
+              base_type: "type/Text",
+              effective_type: "type/Text",
+            }),
+            createOrdersProductIdField({
+              base_type: "type/Text",
+              effective_type: "type/Text",
+            }),
+          ],
+        }),
+        createProductsTable({
+          fields: [
+            createProductsIdField({
+              base_type: "type/Text",
+              effective_type: "type/Text",
+            }),
+            createProductsCategoryField(),
+            createProductsEanField(),
+          ],
+        }),
+      ],
+    }),
+  ],
+});
+
 describe("useStringFilter", () => {
-  const defaultQuery = Lib.withDifferentTable(createQuery(), PRODUCTS_ID);
+  const defaultQuery = createQuery({ metadata: METADATA });
   const stageIndex = 0;
   const availableColumns = Lib.filterableColumns(defaultQuery, stageIndex);
   const findColumn = columnFinder(defaultQuery, availableColumns);
@@ -217,6 +258,16 @@ describe("useStringFilter", () => {
   });
 
   it.each<DefaultOperatorCase>([
+    {
+      title: "PK column",
+      column: findColumn("ORDERS", "ID"),
+      expectedOperator: "=",
+    },
+    {
+      title: "FK column",
+      column: findColumn("ORDERS", "PRODUCT_ID"),
+      expectedOperator: "=",
+    },
     {
       title: "category column",
       column: findColumn("PRODUCTS", "CATEGORY"),
