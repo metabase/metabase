@@ -149,8 +149,8 @@ export default class Calendar extends Component<CalendarProps, State> {
     return (
       <div
         className={cx(
-          CalendarS.CalendarWeek,
           CalendarS.CalendarDayNames,
+          CalendarS.CalendarWeek,
           CS.py1,
         )}
       >
@@ -327,7 +327,7 @@ class Week extends Component<WeekProps> {
     }
 
     return (
-      <div className={cx(CalendarS.CalendarWeek)} key={days[0].toString()}>
+      <div className={CalendarS.CalendarWeek} key={days[0].toString()}>
         {days}
       </div>
     );
