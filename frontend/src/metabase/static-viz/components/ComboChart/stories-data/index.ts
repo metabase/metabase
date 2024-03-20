@@ -57,6 +57,7 @@ import nullCategoryValueFormatting from "./null-category-value-formatting.json";
 import areaStackInterpolateMissingValues from "./area-stack-interpolate-missing-values.json";
 import barStackDisplayOverridesSeriesDisplays from "./bar-stack-display-overrides-series-displays.json";
 import areaStackAllSeriesWithoutInterpolation from "./area-stack-all-series-without-interpolation.json";
+import areaOverBar from "./area-over-bar-40209.json";
 
 export const data = {
   lineLinearXScale,
@@ -118,4 +119,5 @@ export const data = {
   areaStackInterpolateMissingValues,
   barStackDisplayOverridesSeriesDisplays,
   areaStackAllSeriesWithoutInterpolation,
+  areaOverBar,
 };
