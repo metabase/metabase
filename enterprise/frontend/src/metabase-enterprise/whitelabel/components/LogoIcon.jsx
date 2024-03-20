@@ -112,6 +112,9 @@ class LogoIcon extends Component {
     } else {
       element.removeAttribute("height");
     }
+    element.style.maxWidth = "100%";
+    element.style.maxHeight = "32px";
+    element.style.height = "auto";
   }
 
   render() {
