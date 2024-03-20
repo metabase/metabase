@@ -536,9 +536,10 @@
   [file]
   (with-open [reader (bom/bom-reader file)]
     (let [rows (csv/read-csv reader)]
-      {:size-mb     (file-size-mb file)
-       :num-columns (count (first rows))
-       :num-rows    (count (rest rows))})))
+      {:size-mb           (file-size-mb file)
+       :num-columns       (count (first rows))
+       :num-rows          (count (rest rows))
+       :generated-columns 0})))
 
 (mu/defn create-csv-upload!
   "Main entry point for CSV uploading.

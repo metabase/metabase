@@ -56,7 +56,10 @@
     },
     "generated_columns": {
       "description": "Number of new columns we added to the CSV (e.g., a PK)",
-      "type": "integer",
+      "type": [
+        "integer",
+        "null"
+      ],
       "minimum": 0,
       "maximum": 2147483647
     }
