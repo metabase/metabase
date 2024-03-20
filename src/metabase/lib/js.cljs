@@ -393,11 +393,14 @@
   ;; If either ref does not have the `:base-type` or `:effective-type` set, that key is ignored.
   (letfn [(clean-opts [o1 o2]
             (not-empty
-              (cond-> o1
-                (not (:base-type o2))      (dissoc :base-type)
-                (not (:effective-type o2)) (dissoc :effective-type))))]
-    (= [key1 id1 (clean-opts opts1 opts2)]
-       [key2 id2 (clean-opts opts2 opts1)])))
+             (cond-> o1
+               (not (:base-type o2))      (dissoc :base-type)
+               (not (:effective-type o2)) (dissoc :effective-type))))]
+    (if (map id1)
+      (= [key1 (clean-opts id1 id2) opts1]
+         [key2 (clean-opts id2 id1) opts2])
+      (= [key1 id1 (clean-opts opts1 opts2)]
+         [key2 id2 (clean-opts opts2 opts1)]))))
 
 (defn- query=* [x y]
   (cond
