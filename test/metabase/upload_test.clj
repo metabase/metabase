@@ -570,7 +570,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/create-from-csv!
+                   (@#'upload/load-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -619,7 +619,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/create-from-csv!
+                   (@#'upload/load-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -654,7 +654,7 @@
                                 ["2022-01-01T12:00:00+07:30" "2022-01-01T04:30:00Z"]]]
             (testing "Fields exists after sync"
               (with-upload-table!
-                [table (do (@#'upload/create-from-csv!
+                [table (do (@#'upload/load-from-csv!
                             driver/*driver*
                             (mt/id)
                             table-name
@@ -674,7 +674,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/create-from-csv!
+                   (@#'upload/load-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -719,7 +719,7 @@
         (is (pos? length-limit) "driver/table-name-length-limit has been set")
         (with-mysql-local-infile-on-and-off
           (with-upload-table!
-            [table (do (@#'upload/create-from-csv!
+            [table (do (@#'upload/load-from-csv!
                         driver/*driver*
                         (mt/id)
                         table-name
@@ -742,7 +742,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-upload-table!
         [table (let [table-name (mt/random-name)]
-                 (@#'upload/create-from-csv!
+                 (@#'upload/load-from-csv!
                   driver/*driver*
                   (mt/id)
                   table-name
@@ -760,7 +760,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/create-from-csv!
+                   (@#'upload/load-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -779,7 +779,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/create-from-csv!
+                   (@#'upload/load-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -802,7 +802,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/create-from-csv!
+                   (@#'upload/load-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -827,7 +827,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/create-from-csv!
+                   (@#'upload/load-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -851,7 +851,7 @@
         (with-mysql-local-infile-on-and-off
           (with-upload-table!
             [table (let [table-name (mt/random-name)]
-                     (@#'upload/create-from-csv!
+                     (@#'upload/load-from-csv!
                       driver/*driver*
                       (mt/id)
                       table-name
@@ -870,7 +870,7 @@
         (with-mysql-local-infile-on-and-off
           (with-upload-table!
             [table (let [table-name (mt/random-name)]
-                     (@#'upload/create-from-csv!
+                     (@#'upload/load-from-csv!
                       driver/*driver*
                       (mt/id)
                       table-name
@@ -889,7 +889,7 @@
         (with-mysql-local-infile-on-and-off
           (with-upload-table!
             [table (let [table-name (mt/random-name)]
-                     (@#'upload/create-from-csv!
+                     (@#'upload/load-from-csv!
                       driver/*driver*
                       (mt/id)
                       table-name
@@ -910,7 +910,7 @@
       (testing "Can upload a CSV with missing values"
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/create-from-csv!
+                   (@#'upload/load-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -931,7 +931,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/create-from-csv!
+                   (@#'upload/load-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -952,7 +952,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/create-from-csv!
+                   (@#'upload/load-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -973,7 +973,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/create-from-csv!
+                   (@#'upload/load-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -993,7 +993,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/create-from-csv!
+                   (@#'upload/load-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -1014,7 +1014,7 @@
     (mt/test-drivers [:postgres]
       (with-upload-table!
         [table (let [table-name (mt/random-name)]
-                 (@#'upload/create-from-csv!
+                 (@#'upload/load-from-csv!
                   driver/*driver*
                   (mt/id)
                   table-name
@@ -1045,11 +1045,21 @@
                           first
                           :value))))))))
 
-(defn append-csv!
-  "Wraps [[upload/append-csv!]] setting [[upload/*sync-synchronously?*]] to `true` for test purposes."
-  [& args]
+(defn- update-csv-synchronously!
+  "Wraps [[upload/upload-csv!]] setting [[upload/*sync-synchronously?*]] to `true` for test purposes."
+  [options]
   (binding [upload/*sync-synchronously?* true]
-    (apply upload/append-csv! args)))
+    (upload/update-csv! options)))
+
+(defn- append-csv!
+  "Shorthand for synchronously appending to a CSV"
+  [options]
+  (update-csv-synchronously! (assoc options :action ::upload/append)))
+
+(defn- replace-csv!
+  "Shorthand for synchronously replacing a CSV"
+  [options]
+  (update-csv-synchronously! (assoc options :action ::upload/replace)))
 
 (deftest create-csv-upload!-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
@@ -1143,7 +1153,7 @@
                   (last (snowplow-test/pop-event-data-and-user-id!)))))
 
         (testing "Failures when creating a CSV Upload will publish statistics to Snowplow"
-          (mt/with-dynamic-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+          (mt/with-dynamic-redefs [upload/load-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
             (try (upload-example-csv!)
                  (catch Throwable _
                    nil))
@@ -1570,7 +1580,7 @@
            (io/delete-file file)))
 
        (testing "Failures when appending to CSV Uploads will publish statistics to Snowplow"
-         (mt/with-dynamic-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+         (mt/with-dynamic-redefs [upload/load-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
            (let [csv-rows ["mispelled_name, unexpected_column" "Duke Cakewalker, r2dj"]
                  file     (csv-file-with csv-rows (mt/random-name))]
              (try
@@ -1882,7 +1892,7 @@
       (with-mysql-local-infile-on-and-off
        (with-upload-table!
          [table (let [table-name (mt/random-name)]
-                  (@#'upload/create-from-csv!
+                  (@#'upload/load-from-csv!
                    driver/*driver*
                    (mt/id)
                    table-name
@@ -1914,6 +1924,29 @@
                   [2 1 1]
                   [3 1 1]]
                  (rows-for-table table)))
+
+          (io/delete-file file))))))
+
+(deftest replace-from-csv-int-and-float-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "Append should handle a mix of int and float-or-int values being appended to an int column"
+      (with-upload-table! [table (create-upload-table!
+                                  :col->upload-type (ordered-map/ordered-map
+                                                     :_mb_row_id ::upload/auto-incrementing-int-pk
+                                                     :number_1 ::upload/int
+                                                     :number_2 ::upload/int)
+                                  :rows [[1, 1]])]
+
+        (let [csv-rows ["number-1, number-2"
+                        "1.0, 1"
+                        "1  , 1.0"]
+              file     (csv-file-with csv-rows (mt/random-name))]
+          (is (some? (replace-csv! {:file file, :table-id (:id table)})))
+          ;; For MySQL the primary key incrementer will be reset, but for Postgres and H2 it will not.
+          (let [pk-offset (case driver/*driver* :mysql -1 0)]
+            (is (= [[(+ pk-offset 2) 1 1]
+                    [(+ pk-offset 3) 1 1]]
+                   (rows-for-table table))))
 
           (io/delete-file file))))))
 
