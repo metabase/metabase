@@ -1,45 +1,21 @@
-(ns metabase-enterprise.advanced-config.caching-test
+(ns metabase-enterprise.caching.config-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.models :refer [Card Dashboard Database PersistedInfo TaskHistory]]
-   [metabase.public-settings :as public-settings]
-   [metabase.query-processor.card :as qp.card]
+   [metabase-enterprise.caching.config :as caching.config]
+   [metabase.models :refer [Card Database PersistedInfo TaskHistory]]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
-(deftest query-cache-ttl-hierarchy-test
-  (mt/with-premium-features #{:cache-granular-controls}
-    (mt/discard-setting-changes [enable-query-caching]
-      (public-settings/enable-query-caching! true)
-      ;; corresponding OSS tests in metabase.query-processor.card-test
-      (testing "database TTL takes effect when no dashboard or card TTLs are set"
-        (mt/with-temp [Database db {:cache_ttl 1337}
-                       Dashboard dash {}
-                       Card card {:database_id (u/the-id db)}]
-          (is (= (* 3600 1337)
-                 (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
-      (testing "card ttl only"
-        (mt/with-temp [Card card {:cache_ttl 1337}]
-          (is (= (* 3600 1337) (:cache-ttl (#'qp.card/query-for-card card {} {} {}))))))
-      (testing "multiple ttl, card wins if dash and database TTLs are set"
-        (mt/with-temp [Database db {:cache_ttl 1337}
-                       Dashboard dash {:cache_ttl 1338}
-                       Card card {:database_id (u/the-id db) :cache_ttl 1339}]
-          (is (= (* 3600 1339) (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
-      (testing "multiple ttl, dash wins when no card TTLs are set"
-        (mt/with-temp [Database db {:cache_ttl 1337}
-                       Dashboard dash {:cache_ttl 1338}
-                       Card card {:database_id (u/the-id db)}]
-          (is (= (* 3600 1338) (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)})))))))))
+(comment
+  caching.config/keep-me)
 
 (defn do-with-persist-models [f]
   (let [two-hours-ago (t/minus (t/local-date-time) (t/hours 2))]
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [Database db {:settings {:persist-models-enabled true}}
        Card     creating  {:type :model, :database_id (u/the-id db)}
        Card     deletable {:type :model, :database_id (u/the-id db)}
