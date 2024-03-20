@@ -211,6 +211,7 @@
     (let [r (original-describe-database driver database)]
       (update r :tables (fn [tables]
                           (into #{}
-                                (filter #(tx/qualified-by-db-name? (:name database) (:name %)))
+                                (filter #(or (tx/qualified-by-db-name? (:name database) (:name %))
+                                             ;; the `extsales` table is used for testing external tables
+                                             (= (:name %) "extsales")))
                                 tables))))))
-
