@@ -85,6 +85,7 @@
                (testing "the pool has been destroyed"
                  (is @destroyed?))))))))))
 
+;; DONE: Consider enabling the test for Duid JDBC. -- Implemented sql-jdbc.conn/data-source-name
 (deftest ^:parallel c3p0-datasource-name-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (testing "The dataSourceName c3p0 property is set properly for a database"
@@ -96,6 +97,7 @@
         ;; ensure that, for any sql-jdbc driver anyway, we found *some* DB name to use in this String
         (is (not= db-nm "null"))))))
 
+;; DONE: Consider enabling the test for Duid JDBC.
 (deftest ^:parallel same-connection-details-result-in-equal-specs-test
   (testing "Two JDBC specs created with the same details must be considered equal for the connection pool cache to work correctly"
     ;; this is only really a concern for drivers like Spark SQL that create custom DataSources instead of plain details
@@ -125,6 +127,7 @@
                 :else
                 (assoc :new-config "something"))))))
 
+;; DONE: Consider enabling the test for Duid JDBC. -- Solved by tx/default-dataset.
 (deftest connection-pool-invalidated-on-details-change
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (testing "db->pooled-connection-spec marks a connection pool invalid if the db details map changes\n"
@@ -227,9 +230,10 @@
         server (Server/createTcpServer (into-array args))]
     (doto server (.start))))
 
+;; TODO: Consider enabling the test for Duid JDBC. -- Ssh does not seem to work with Druid JDBC.
 (deftest test-ssh-tunnel-connection
   ;; sqlite cannot be behind a tunnel, h2 is tested below, unsure why others fail
-  (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :sqlite :h2 :oracle :vertica :presto-jdbc :bigquery-cloud-sdk :redshift :athena)
+  (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :druid-jdbc :sqlite :h2 :oracle :vertica :presto-jdbc :bigquery-cloud-sdk :redshift :athena)
     (testing "ssh tunnel is established"
       (let [tunnel-db-details (assoc (:details (mt/db))
                                      :tunnel-enabled true

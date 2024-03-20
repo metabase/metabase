@@ -193,10 +193,11 @@
      ["bar" "2008-10-19 10:23:54" "2008-10-19" "10:23:54"]
      ["baz" "2012-10-19 10:23:54" "2012-10-19" "10:23:54"]]]])
 
+;; TODO: Consider enabling the test for Duid JDBC.
 (deftest ^:parallel iso-8601-text-fields
   (testing "text fields with semantic_type :type/ISO8601DateTimeString"
     (testing "return as dates"
-      (mt/test-drivers (-> (sql-jdbc.tu/sql-jdbc-drivers)
+      (mt/test-drivers (-> (sql-jdbc.tu/normal-sql-jdbc-drivers)
                            (conj :bigquery-cloud-sdk)
                            (disj :sqlite :oracle :sparksql))
         (is (= [[1 "foo" #t "2004-10-19T10:23:54" #t "2004-10-19" #t "10:23:54"]
@@ -264,7 +265,7 @@
       (mt/dataset string-times
        (testing "a datetime field"
          ;; TODO: why does this fail on oracle? gives a NPE
-         (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
+         (mt/test-drivers (disj (sql-jdbc.tu/normal-sql-jdbc-drivers) :oracle :sparksql)
            (is (= 1
                   (->> (mt/run-mbql-query times
                          {:filter [:= !day.ts "2008-10-19"]})
@@ -280,7 +281,7 @@
                        count)))))
 
        (testing "a date field"
-         (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
+         (mt/test-drivers (disj (sql-jdbc.tu/normal-sql-jdbc-drivers) :oracle :sparksql)
            (is (= 1
                   (->> (mt/run-mbql-query times
                          {:filter [:= !day.d "2008-10-19"]})

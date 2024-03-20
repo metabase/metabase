@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.database :refer [Database]]
    [metabase.models.dimension :refer [Dimension]]
@@ -22,80 +23,83 @@
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import (clojure.lang ExceptionInfo)))
 
-(deftest ^:parallel field-should-have-field-values?-test
-  (doseq [[group input->expected] {"Text and Category Fields"
-                                   {{:has_field_values :list
-                                     :visibility_type  :normal
-                                     :base_type        :type/Text}
-                                    true
+;; TODO: Find proper solution instead of with-redefs use here. Hand in hand with refactoring db round trips in
+;;       [[metabase.models.field-values/field-should-have-field-values?]]
+(deftest ^:synchronized field-should-have-field-values?-test
+  (with-redefs [driver/field-values-compatible? (fn [& _] true)]
+    (doseq [[group input->expected] {"Text and Category Fields"
+                                     {{:has_field_values :list
+                                       :visibility_type  :normal
+                                       :base_type        :type/Text}
+                                      true
 
-                                    {:has_field_values nil
-                                     :visibility_type  :normal
-                                     :base_type        :type/Text}
-                                    false
+                                      {:has_field_values nil
+                                       :visibility_type  :normal
+                                       :base_type        :type/Text}
+                                      false
 
-                                    {:has_field_values :list
-                                     :semantic_type    :type/Category
-                                     :visibility_type  :normal
-                                     :base_type        "type/Boolean"}
-                                    true}
+                                      {:has_field_values :list
+                                       :semantic_type    :type/Category
+                                       :visibility_type  :normal
+                                       :base_type        "type/Boolean"}
+                                      true}
 
-                                   "retired/sensitive/hidden/details-only fields should always be excluded"
-                                   {{:base_type        :type/Boolean
-                                     :has_field_values :list
-                                     :visibility_type  :retired}
-                                    false
+                                     "retired/sensitive/hidden/details-only fields should always be excluded"
+                                     {{:base_type        :type/Boolean
+                                       :has_field_values :list
+                                       :visibility_type  :retired}
+                                      false
 
-                                    {:base_type        :type/Boolean
-                                     :has_field_values :list
-                                     :visibility_type  :sensitive}
-                                    false
+                                      {:base_type        :type/Boolean
+                                       :has_field_values :list
+                                       :visibility_type  :sensitive}
+                                      false
 
-                                    {:has_field_values :list
-                                     :visibility_type  :sensitive
-                                     :base_type        :type/Text}
-                                    false
+                                      {:has_field_values :list
+                                       :visibility_type  :sensitive
+                                       :base_type        :type/Text}
+                                      false
 
-                                    {:base_type        :type/Boolean
-                                     :has_field_values :list
-                                     :visibility_type  :hidden}
-                                    false
+                                      {:base_type        :type/Boolean
+                                       :has_field_values :list
+                                       :visibility_type  :hidden}
+                                      false
 
-                                    {:has_field_values :list
-                                     :visibility_type  :hidden
-                                     :base_type        :type/Text}
-                                    false
+                                      {:has_field_values :list
+                                       :visibility_type  :hidden
+                                       :base_type        :type/Text}
+                                      false
 
-                                    {:base_type        :type/Boolean
-                                     :has_field_values :list
-                                     :visibility_type  :details-only}
-                                    false
+                                      {:base_type        :type/Boolean
+                                       :has_field_values :list
+                                       :visibility_type  :details-only}
+                                      false
 
-                                    {:has_field_values :list
-                                     :visibility_type  :details-only
-                                     :base_type        :type/Text}
-                                    false}
+                                      {:has_field_values :list
+                                       :visibility_type  :details-only
+                                       :base_type        :type/Text}
+                                      false}
 
-                                   "date/time based fields should always be excluded"
-                                   {{:base_type        :type/Date
-                                     :has_field_values :list
-                                     :visibility_type  :normal}
-                                    false
+                                     "date/time based fields should always be excluded"
+                                     {{:base_type        :type/Date
+                                       :has_field_values :list
+                                       :visibility_type  :normal}
+                                      false
 
-                                    {:base_type        :type/DateTime
-                                     :has_field_values :list
-                                     :visibility_type  :normal}
-                                    false
+                                      {:base_type        :type/DateTime
+                                       :has_field_values :list
+                                       :visibility_type  :normal}
+                                      false
 
-                                    {:base_type        :type/Time
-                                     :has_field_values :list
-                                     :visibility_type  :normal}
-                                    false}}
-          [input expected] input->expected]
-    (testing (str group "\n")
-      (testing (pr-str (list 'field-should-have-field-values? input))
-        (is (= expected
-               (#'field-values/field-should-have-field-values? input)))))))
+                                      {:base_type        :type/Time
+                                       :has_field_values :list
+                                       :visibility_type  :normal}
+                                      false}}
+            [input expected] input->expected]
+      (testing (str group "\n")
+        (testing (pr-str (list 'field-should-have-field-values? input))
+          (is (= expected
+                 (#'field-values/field-should-have-field-values? input))))))))
 
 (deftest distinct-values-test
   (with-redefs [metadata-queries/field-distinct-values (constantly [[1] [2] [3] [4]])]

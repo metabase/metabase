@@ -22,6 +22,7 @@
 (defn- str->absolute-dt [s]
   [:absolute-datetime (u.date/parse s "UTC") :default])
 
+;; TODO: Consider porting. -- Checks driver internals absent in jdbc driver.
 (deftest filter-intervals-test
   (let [dt-field                 [:field 1 {:temporal-unit :default}]
         filter-clause->intervals (comp @#'druid.qp/compile-intervals @#'druid.qp/filter-clause->intervals)]
@@ -101,6 +102,7 @@
     (mt/mbql-query ~'checkins
       ~query)))
 
+;; DONE: Not porting. Tests functionality that is not relevant for JDBC driver.
 (deftest compile-topN-test
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
@@ -130,6 +132,7 @@
               {:aggregation [[:* [:count $id] 10]]
                :breakout    [$venue_price]}))))))
 
+;; DONE: Not porting. Tests functionality that is not relevant for JDBC driver.
 (deftest compile-topN-with-order-by-test
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
@@ -155,6 +158,7 @@
                :breakout    [$venue_category_name]
                :order-by    [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]}))))))
 
+;; DONE: Not porting. Tests functionality that is not relevant for JDBC driver.
 (deftest compile-groupBy-test
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
@@ -182,6 +186,7 @@
                :breakout    [$venue_category_name $user_name]
                :order-by    [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]}))))))
 
+;; DONE: Not porting. Tests functionality that is not relevant for JDBC driver.
 (deftest compile-groupBy-with-limit-test
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
@@ -210,6 +215,7 @@
                :order-by    [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]
                :limit       5}))))))
 
+;; DONE: Not porting. Tests functionality that is not relevant for JDBC driver.
 (deftest finalizing-field-access-test
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
@@ -236,6 +242,7 @@
                (query->native
                 {:aggregation [[:+ 1 [:aggregation-options [:distinct $checkins.venue_name] {:name "__distinct_0"}]]]})))))))
 
+;; TODO: Port this and table-rows-sample tests!
 (defn- table-rows-sample []
   (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :checkins))
          [(t2/select-one Field :id (mt/id :checkins :id))
@@ -285,6 +292,7 @@
                              :database (mt/id)})
           (m/dissoc-in [:data :results_metadata])))))
 
+;; TODO: Consider porting to JDBC.
 (deftest native-query-test
   (mt/test-driver :druid
     (is (partial=
@@ -327,6 +335,7 @@
          (-> (process-native-query native-query-1)
              (m/dissoc-in [:data :insights]))))))
 
+;; TODO: Consider porting to JDBC.
 (def ^:private native-query-2
   (json/generate-string
    {:intervals    ["1900-01-01/2100-01-01"]
@@ -338,6 +347,7 @@
     :aggregations [{:type :count
                     :name :count}]}))
 
+;; TODO: Consider porting to JDBC.
 (deftest native-query-test-2
   (testing "make sure we can run a native :timeseries query. This was throwing an Exception -- see #3409"
     (mt/test-driver :druid
@@ -362,6 +372,7 @@
                 :aggregation [[:count $id]]
                 :breakout    [!week.timestamp]}))))))
 
+;; DONE: Port.
 (deftest sum-aggregation-test
   (mt/test-driver :druid
     (testing "sum, *"
@@ -373,6 +384,7 @@
                {:aggregation [[:sum [:* $id $venue_price]]]
                 :breakout    [$venue_price]}))))))
 
+;; DONE: Port.
 (deftest min-aggregation-test
   (mt/test-driver :druid
     (testing "min, +"
@@ -384,6 +396,7 @@
                {:aggregation [[:min [:+ $id $venue_price]]]
                 :breakout    [$venue_price]}))))))
 
+;; DONE: Port.
 (deftest max-aggregation-test
   (mt/test-driver :druid
     (testing "max, /"
@@ -395,6 +408,7 @@
                {:aggregation [[:max [:/ $id $venue_price]]]
                 :breakout    [$venue_price]}))))))
 
+;; DONE: Port.
 (deftest avg-aggregation-test
   (mt/test-driver :druid
     (testing "avg, -"
@@ -406,6 +420,7 @@
                {:aggregation [[:avg [:* $id $venue_price]]]
                 :breakout    [$venue_price]}))))))
 
+;; DONE: Port.
 (deftest share-aggregation-test
   (mt/test-driver :druid
     (testing "share"
@@ -413,6 +428,7 @@
              (druid-query-returning-rows
                {:aggregation [[:share [:< $venue_price 4]]]}))))))
 
+;; DONE: Port.
 (deftest count-where-aggregation-test
   (mt/test-driver :druid
     (testing "count-where"
@@ -420,6 +436,7 @@
              (druid-query-returning-rows
                {:aggregation [[:count-where [:< $venue_price 4]]]}))))))
 
+;; DONE: Port.
 (deftest sum-where-aggregation-test
   (mt/test-driver :druid
     (testing "sum-where"
@@ -427,6 +444,7 @@
              (druid-query-returning-rows
                {:aggregation [[:sum-where $venue_price [:< $venue_price 4]]]}))))))
 
+;; DONE: Port.
 (deftest count-aggregation-test
   (mt/test-driver :druid
     (testing "aggregation w/o field"
@@ -438,6 +456,7 @@
                {:aggregation [[:+ 1 [:count]]]
                 :breakout    [$venue_price]}))))))
 
+;; DONE: Port.
 (deftest expression-aggregations-test
   (mt/test-driver :druid
     (testing "post-aggregation math w/ 2 args: count + sum"
@@ -510,6 +529,7 @@
                                [:min [:- $venue_price $id]]]]
                 :breakout    [$venue_price]}))))))
 
+;; DONE: Port.
 (deftest named-top-level-aggregation-test
   (mt/test-driver :druid
     (testing "check that we can name an expression aggregation w/ aggregation at top-level"
@@ -522,6 +542,7 @@
                  {:aggregation [[:aggregation-options [:sum [:+ $venue_price 1]] {:name "New Price"}]]
                   :breakout    [$venue_price]})))))))
 
+;; DONE: Port.
 (deftest named-expression-aggregations-test
   (mt/test-driver :druid
     (testing "check that we can name an expression aggregation w/ expression at top-level"
@@ -535,6 +556,7 @@
                 {:aggregation [[:aggregation-options [:- [:sum $venue_price] 41] {:name "Sum-41"}]]
                  :breakout    [$venue_price]})))))))
 
+;; WIP: Port.
 (deftest distinct-count-of-two-dimensions-test
   (mt/test-driver :druid
     (is (= {:rows    [[979]]
@@ -543,6 +565,7 @@
             (druid-query
               {:aggregation [[:distinct [:+ $id $checkins.venue_price]]]}))))))
 
+;; DONE: Port.
 (deftest metrics-inside-aggregation-clauses-test
   (mt/test-driver :druid
     (testing "check that we can handle METRICS inside expression aggregation clauses"
@@ -559,6 +582,7 @@
                     {:aggregation [:+ [:metric (u/the-id metric)] 1]
                      :breakout    [$venue_price]})))))))))
 
+;; DONE: Port.
 (deftest order-by-aggregation-test
   (mt/test-driver :druid
     (doseq [[direction expected-rows] {:desc [["Bar" "Felipinho Asklepios"      8]
@@ -579,6 +603,7 @@
                   :order-by    [[direction [:aggregation 0]] [:asc $checkins.venue_category_name]]
                   :limit       5})))))))
 
+;; DONE: Port.
 (deftest hll-count-test
   (mt/test-driver :druid
     (testing "Do we generate the correct count clause for HLL fields?"
@@ -593,6 +618,7 @@
                 :order-by   [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]
                 :limit      5}))))))
 
+;; TODO: Consider porting.
 (deftest numeric-filter-test
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
@@ -652,6 +678,7 @@
                          :venue_price [221])
                        (mt/first-row (qp/process-query query))))))))))))
 
+;; TODO: Consider porting.
 (deftest parse-filter-test
   (mt/test-driver :druid
     (testing "parse-filter should generate the correct filter clauses"
@@ -672,6 +699,7 @@
 
                        [:< !default.timestamp [:absolute-datetime #t "2015-10-01T00:00Z[UTC]" :default]]]))))))))))
 
+;; DONE: Port.
 (deftest multiple-filters-test
   (mt/test-driver :druid
     (testing "Should be able to filter by both a temporal and a non-temporal filter (#15903)"
@@ -684,6 +712,7 @@
                                  [:= $venue_category_name "Mexican"]
                                  [:= !month.timestamp "2015-09"]]}))))))))
 
+;; DONE: Port.
 (deftest open-ended-temporal-filter-test
   (mt/test-driver :druid
     (testing "Should be able to filter by an open-ended absolute temporal moment (#15902)"

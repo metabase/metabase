@@ -183,6 +183,7 @@
   col
   cols
   first-row
+  formatted-rows+column-names
   format-rows-by
   formatted-rows
   nest-query
