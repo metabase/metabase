@@ -1,6 +1,9 @@
 import cx from "classnames";
 import type * as React from "react";
 
+import PopoverS from "metabase/components/Popover/Popover.module.css";
+import FormS from "metabase/css/components/form.module.css";
+
 import {
   Root,
   Title,
@@ -52,7 +55,11 @@ const ChartSettingsWidget = ({
       hidden={hidden}
       noPadding={noPadding}
       disabled={disabled}
-      className={cx({ "Form-field": isFormField })}
+      className={cx({
+        [FormS.FormField]: isFormField,
+        [PopoverS.FormFieldOverride]: isFormField,
+      })}
+      // TODO: this should have data-testid="form-field" if isFormField === true
       inline={inline}
       marginBottom={marginBottom}
       data-testid={dataTestId}
@@ -61,7 +68,7 @@ const ChartSettingsWidget = ({
       {title && (
         <Title
           variant={variant}
-          className={cx({ "Form-label": isFormField })}
+          className={cx({ [FormS.FormLabel]: isFormField })}
           htmlFor={extraWidgetProps.id}
         >
           {title}

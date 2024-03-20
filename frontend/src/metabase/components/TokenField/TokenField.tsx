@@ -6,6 +6,7 @@ import { findDOMNode } from "react-dom";
 import _ from "underscore";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import FormS from "metabase/css/components/form.module.css";
 import CS from "metabase/css/core/index.css";
 import { isObscured } from "metabase/lib/dom";
 import {
@@ -608,7 +609,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
             <input
               ref={this.inputRef}
               style={{ ...defaultStyleValue, ...valueStyle }}
-              className={cx(CS.noFocus, "full borderless px1")}
+              className={cx(CS.full, FormS.noFocus, CS.borderless, CS.px1)}
               // set size to be small enough that it fits in a parameter.
               size={10}
               placeholder={placeholder}
