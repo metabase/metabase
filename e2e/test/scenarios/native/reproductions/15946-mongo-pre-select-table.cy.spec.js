@@ -25,6 +25,6 @@ describe("issue 15946", { tags: "@mongo" }, () => {
 
     cy.findByTestId("gui-builder-data").contains(MONGO_DB_NAME);
     cy.findByTestId("gui-builder-data").contains("Orders");
-    cy.get("aside").findByTestId("run-button").should("not.be.disabled");
+    cy.findAllByTestId("run-button").should("not.be.disabled");
   });
 });
