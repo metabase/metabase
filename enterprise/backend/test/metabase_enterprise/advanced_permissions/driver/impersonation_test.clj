@@ -130,7 +130,9 @@
                                           mt/process-query
                                           mt/rows)))))
             (finally
-             (doseq [statement [(format "DROP TABLE IF EXISTS %s.table_with_access;" schema)
+             ;; comment out since it's causing flake
+             ;; can uncomment after we tackle #40058
+             #_(doseq [statement [(format "DROP TABLE IF EXISTS %s.table_with_access;" schema)
                                   (format "DROP TABLE IF EXISTS %s.table_without_access;" schema)
                                   (format "DROP SCHEMA IF EXISTS %s;" schema)
                                   (format "DROP USER IF EXISTS %s;" user)]]
