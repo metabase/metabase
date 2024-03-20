@@ -80,39 +80,18 @@ export function getDataLabelFormatter(
   renderingContext: RenderingContext,
   formattingOptions: OptionsType = {},
 ) {
-  const shouldRenderCompact = (() => {
-    if (settings["graph.label_value_formatting"] === "compact") {
-      return true;
-    }
-    if (settings["graph.label_value_formatting"] === "full") {
-      return false;
-    }
-    // for "auto" we use compact if it shortens avg label length by >3 chars
-    const getAvgLength = (compact: boolean) => {
-      const lengths = dataset.map(datum => {
-        const value = datum[labelDataKey];
-        return renderingContext.formatValue(value, {
-          ...(settings.column?.(seriesModel.column) ?? {}),
-          jsx: false,
-          compact: compact,
-          ...formattingOptions,
-        }).length;
-      });
-
-      return (
-        lengths.reduce((sum: number, length: number) => sum + length, 0) /
-        lengths.length
-      );
-    };
-
-    return getAvgLength(true) + 3 < getAvgLength(false);
-  })();
-
   const valueFormatter = (value: unknown) =>
     renderingContext.formatValue(value, {
       ...(settings.column?.(seriesModel.column) ?? {}),
       jsx: false,
-      compact: shouldRenderCompact,
+      compact: shouldRenderCompact({
+        dataset,
+        formattingOptions,
+        labelDataKey,
+        renderingContext,
+        seriesModel,
+        settings,
+      }),
       ...formattingOptions,
     });
 
@@ -126,6 +105,48 @@ export function getDataLabelFormatter(
     }
     return valueFormatter(valueGetter(value));
   };
+}
+
+function shouldRenderCompact({
+  dataset,
+  formattingOptions = {},
+  labelDataKey,
+  renderingContext,
+  seriesModel,
+  settings,
+}: {
+  dataset: ChartDataset;
+  formattingOptions: OptionsType;
+  labelDataKey: DataKey;
+  renderingContext: RenderingContext;
+  seriesModel: SeriesModel;
+  settings: ComputedVisualizationSettings;
+}) {
+  if (settings["graph.label_value_formatting"] === "compact") {
+    return true;
+  }
+  if (settings["graph.label_value_formatting"] === "full") {
+    return false;
+  }
+  // for "auto" we use compact if it shortens avg label length by >3 chars
+  const getAvgLength = (compact: boolean) => {
+    const lengths = dataset.map(datum => {
+      const value = datum[labelDataKey];
+      return renderingContext.formatValue(value, {
+        ...(settings.column?.(seriesModel.column) ?? {}),
+        jsx: false,
+        compact: compact,
+        ...formattingOptions,
+      }).length;
+    });
+
+    return (
+      lengths.reduce((sum: number, length: number) => sum + length, 0) /
+      lengths.length
+    );
+  };
+
+  return getAvgLength(true) + 3 < getAvgLength(false);
 }
 
 export const buildEChartsLabelOptions = (
