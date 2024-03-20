@@ -1,142 +1,95 @@
-import { useCallback, useEffect, useRef } from "react";
-import { useAsyncFn } from "react-use";
+import { useState } from "react";
+import { useAsync, useDebounce } from "react-use";
 import { t } from "ttag";
 
 import type { Parameter, ParameterValues } from "metabase-types/api";
 
 import { ListPicker } from "../ListPicker";
-import {
-  getFlattenedStrings,
-  getListParameterStaticValues,
-  isStaticListParam,
-  shouldEnableSearch,
-} from "../core";
 
 interface ListPickerConnectedProps {
   value: string | null;
   parameter: Parameter;
-  onChange: (value: string | null) => void;
   fetchValues: (query: string) => Promise<ParameterValues>;
-  forceSearchItemCount: number;
-  searchDebounceMs?: number;
+  onChange: (value: string | null) => void;
 }
 
-export function ListPickerConnected(props: ListPickerConnectedProps) {
+export function ListPickerConnected({
+  value,
+  parameter,
+  fetchValues,
+  onChange,
+}: ListPickerConnectedProps) {
+  const [isOpened, setIsOpened] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
   const {
-    value,
-    parameter,
-    onChange,
-    forceSearchItemCount,
-    searchDebounceMs = 150,
-    fetchValues,
-  } = props;
-
-  const hasFetched = useRef(false);
-  const lastValue = useRef(value);
-  const lastSearch = useRef("");
-  const hasMoreValues = useRef(true);
-  const resetKey = useRef<string | null>(getResetKey(parameter));
-
-  const [
-    { loading: isFetching, value: fetchedValues, ...fetchState },
-    fetchData,
-  ] = useAsyncFn(
-    async (query: string) => {
-      const res = await fetchValues(query);
-      hasFetched.current = true;
-      hasMoreValues.current = res.has_more_values;
-      return getFlattenedStrings(res.values);
-    },
-    [fetchValues],
+    value: fetchedValues,
+    loading: isLoading,
+    error,
+  } = useAsync(
+    async () => (isOpened ? fetchValues(searchQuery) : undefined),
+    [
+      isOpened,
+      searchQuery,
+      parameter.values_source_type,
+      parameter.values_source_config,
+      fetchValues,
+    ],
   );
 
-  const setValue = useCallback(
-    (value: string | null) => {
-      lastValue.current = value;
-      onChange(value);
-    },
-    [onChange],
-  );
+  const items = getDropdownItems(value, fetchedValues);
 
-  const ownOnSearch = useCallback(
-    (query: string) => {
-      // Trigger fetch only when search is different from the current value
-      const shouldFetch =
-        !isStaticListParam(parameter) &&
-        hasMoreValues.current &&
-        lastSearch.current !== query;
-
-      // const err = new Error();
-      // console.log(
-      //   `onSearch: query=${query}, lastSearch=${lastSearch.current}, hasMoreValues=${hasMoreValues.current}`,
-      // );
-      // console.log(err.stack);
-
-      if (shouldFetch) {
-        lastSearch.current = query;
-        fetchData(query);
-      }
-    },
-    [parameter, fetchData],
-  );
-
-  useEffect(
-    function resetOnParameterChange() {
-      const newResetKey = getResetKey(parameter);
-      if (resetKey.current !== newResetKey) {
-        // console.log("yea", lastValue.current);
-        resetKey.current = newResetKey;
-        if (lastValue.current !== null) {
-          onChange(null);
-          lastValue.current = null;
-        }
-      }
-    },
-    [resetKey, parameter, onChange],
-  );
-
-  const staticValues = getListParameterStaticValues(parameter);
-  const enableSearch = shouldEnableSearch(parameter, forceSearchItemCount);
-
-  const fetchValuesInit = useCallback(() => {
-    const shouldFetch = !isStaticListParam(parameter) && !hasFetched.current;
-    if (shouldFetch) {
-      lastSearch.current = "";
-      fetchData("");
+  const handleSearchChange = () => {
+    if (parameter.values_query_type === "search") {
+      setSearchQuery(searchValue);
     }
-  }, [parameter, fetchData]);
+  };
 
-  const isLoading = !staticValues && isFetching;
-  // useAsyncFn might return {error: undefined}
-  const hasFetchError = "error" in fetchState;
+  useDebounce(handleSearchChange, 100, [searchValue]);
 
   return (
     <ListPicker
-      value={value ?? ""} // Can't be null for the underlying Select
-      values={staticValues ?? fetchedValues ?? []}
-      onClear={() => setValue(null)}
-      onChange={setValue}
-      onSearchChange={ownOnSearch}
-      searchDebounceMs={searchDebounceMs}
-      onDropdownOpen={staticValues ? undefined : fetchValuesInit}
-      enableSearch={enableSearch}
-      placeholder={
-        enableSearch ? t`Start typing to filter…` : t`Select a default value…`
-      }
+      data={items}
+      value={value}
+      searchValue={searchValue}
+      placeholder={t`Select a default value…`}
+      notFoundMessage={getNotFoundMessage(items, isLoading, error)}
+      errorMessage={getErrorMessage(error)}
       isLoading={isLoading}
-      noResultsText={isLoading ? t`Loading…` : t`No matching result`}
-      errorMessage={
-        hasFetchError
-          ? t`Loading values failed. Please try again shortly.`
-          : undefined
-      }
+      onChange={onChange}
+      onSearchChange={setSearchValue}
+      onDropdownOpen={() => setIsOpened(true)}
+      onDropdownClose={() => setIsOpened(false)}
     />
   );
 }
 
-function getResetKey(parameter: Parameter): string {
-  return JSON.stringify([
-    parameter.values_source_config,
-    parameter.values_source_type,
-  ]);
+function getDropdownItems(
+  selectedValue: string | null,
+  fetchedValues: ParameterValues | undefined,
+) {
+  const items = [
+    ...(fetchedValues?.values.map(([value]) => String(value)) ?? []),
+    ...(selectedValue ? [selectedValue] : []),
+  ];
+  return [...new Set(items)];
+}
+
+function getNotFoundMessage(
+  items: string[],
+  isLoading: boolean,
+  error: unknown,
+) {
+  if (isLoading) {
+    return t`Loading…`;
+  } else if (error) {
+    return null;
+  } else {
+    return t`No matching result`;
+  }
+}
+
+function getErrorMessage(error: unknown) {
+  return error ? t`Loading values failed. Please try again shortly.` : null;
 }
