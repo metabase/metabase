@@ -69,7 +69,7 @@ const MultiDatePicker = ({
         />
       </div>
     </div>
-    <div className="Calendar--noContext">
+    <div>
       <Calendar
         initial={startValue ? moment(startValue) : moment()}
         selected={startValue && moment(startValue)}
@@ -77,6 +77,7 @@ const MultiDatePicker = ({
         onChange={(startValue, endValue) =>
           onFilterChange([op, field, startValue, endValue])
         }
+        noContext={true}
       />
     </div>
   </div>

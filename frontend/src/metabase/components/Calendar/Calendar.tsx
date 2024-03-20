@@ -3,13 +3,14 @@ import type { Moment } from "moment-timezone"; // eslint-disable-line no-restric
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { Component } from "react";
 
+import CS from "metabase/css/core/index.css";
 import {
   getDayOfWeekOptions,
   getFirstDayOfWeekIndex,
 } from "metabase/lib/date-time";
 import { Icon } from "metabase/ui";
 
-import "./Calendar.module.css";
+import CalendarS from "./Calendar.module.css";
 import { CalendarDay, CalendarIconContainer } from "./Calendar.styled";
 
 export type SelectAll = "after" | "before";
@@ -28,6 +29,7 @@ export type CalendarProps = {
   onChangeDate?: (date: string, dateMoment: Moment) => void;
   isRangePicker?: boolean;
   primaryColor?: string;
+  noContext?: boolean;
 };
 
 type State = {
@@ -45,6 +47,7 @@ export default class Calendar extends Component<CalendarProps, State> {
 
   static defaultProps = {
     isRangePicker: true,
+    noContext: false,
   };
 
   UNSAFE_componentWillReceiveProps(nextProps: CalendarProps) {
@@ -115,7 +118,14 @@ export default class Calendar extends Component<CalendarProps, State> {
   renderMonthHeader(current?: Moment, side?: "left" | "right") {
     current = current || moment();
     return (
-      <div className="Calendar-header flex align-center border-bottom">
+      <div
+        className={cx(
+          CalendarS.CalendarHeader,
+          CS.flex,
+          CS.alignCenter,
+          CS.borderBottom,
+        )}
+      >
         {side !== "right" && (
           <CalendarIconContainer onClick={this.previous}>
             <Icon name="chevronleft" size={10} />
@@ -137,11 +147,17 @@ export default class Calendar extends Component<CalendarProps, State> {
     const days = getDayOfWeekOptions();
 
     return (
-      <div className="Calendar-day-names Calendar-week py1">
+      <div
+        className={cx(
+          CalendarS.CalendarWeek,
+          CalendarS.CalendarDayNames,
+          CS.py1,
+        )}
+      >
         {days.map(({ shortName }) => (
           <span
             key={shortName}
-            className="Calendar-day-name text-centered"
+            className={cx(CalendarS.CalendarDayName, CS.textCentered)}
             data-testid="calendar-day-name"
           >
             {shortName}
@@ -178,6 +194,7 @@ export default class Calendar extends Component<CalendarProps, State> {
           primaryColor={this.props.primaryColor}
           selectedEnd={this.props.selectedEnd}
           selectAll={this.props.selectAll}
+          noContext={this.props.noContext}
         />,
       );
       date.add(1, "w");
@@ -186,7 +203,10 @@ export default class Calendar extends Component<CalendarProps, State> {
     }
 
     return (
-      <div className="Calendar-weeks relative" data-testid="calendar-weeks">
+      <div
+        className={cx(CalendarS.CalendarWeeks, CS.relative)}
+        data-testid="calendar-weeks"
+      >
         {weeks}
       </div>
     );
@@ -197,7 +217,7 @@ export default class Calendar extends Component<CalendarProps, State> {
       <div
         data-testid="calendar"
         className={cx("Calendar", {
-          "Calendar--range":
+          [CalendarS.CalendarRange]:
             (this.props.isRangePicker &&
               this.props.selected &&
               this.props.selectedEnd) ||
@@ -226,13 +246,21 @@ type WeekProps = {
   isRangePicker?: boolean;
   primaryColor?: string;
   onClickDay: (date: Moment) => void;
+  noContext?: boolean;
 };
 
 class Week extends Component<WeekProps> {
   render() {
     const days = [];
-    let { date, month, selected, selectedEnd, selectAll, isRangePicker } =
-      this.props;
+    let {
+      date,
+      month,
+      selected,
+      selectedEnd,
+      selectAll,
+      isRangePicker,
+      noContext,
+    } = this.props;
 
     for (let i = 0; i < 7; i++) {
       const isSelected =
@@ -258,21 +286,29 @@ class Week extends Component<WeekProps> {
         !isEnd && selected && date.isSame(selected, "day");
       const isSelectedEnd =
         isEnd || (selectedEnd && date.isSame(selectedEnd, "day"));
-      const classes = cx("Calendar-day cursor-pointer text-centered", {
-        "Calendar-day--this-month": date.month() === month.month(),
-        "Calendar-day--selected": isSelectedStart,
-        "Calendar-day--selected-end": isSelectedEnd,
-        "Calendar-day--week-start": i === 0,
-        "Calendar-day--week-end": i === 6,
-        "Calendar-day--in-range":
-          (selectAll && isInRange) ||
-          (!(date.isSame(selected, "day") || date.isSame(selectedEnd, "day")) &&
-            (date.isSame(selected, "day") ||
-              date.isSame(selectedEnd, "day") ||
-              (selectedEnd &&
-                selectedEnd.isAfter(date, "day") &&
-                date.isAfter(selected, "day")))),
-      });
+      const classes = cx(
+        { [CalendarS.CalendarNoContext]: noContext },
+        CalendarS.CalendarDay,
+        CS.cursorPointer,
+        CS.textCentered,
+        {
+          [CalendarS.CalendarDayThisMonth]: date.month() === month.month(),
+          [CalendarS.CalendarDaySelected]: isSelectedStart,
+          [CalendarS.CalendarDaySelectedEnd]: isSelectedEnd,
+          "Calendar-day--week-start": i === 0,
+          "Calendar-day--week-end": i === 6,
+          [CalendarS.CalendarDayInRange]:
+            (selectAll && isInRange) ||
+            (!(
+              date.isSame(selected, "day") || date.isSame(selectedEnd, "day")
+            ) &&
+              (date.isSame(selected, "day") ||
+                date.isSame(selectedEnd, "day") ||
+                (selectedEnd &&
+                  selectedEnd.isAfter(date, "day") &&
+                  date.isAfter(selected, "day")))),
+        },
+      );
       days.push(
         <CalendarDay
           key={date.toString()}
@@ -291,7 +327,7 @@ class Week extends Component<WeekProps> {
     }
 
     return (
-      <div className="Calendar-week" key={days[0].toString()}>
+      <div className={cx(CalendarS.CalendarWeek)} key={days[0].toString()}>
         {days}
       </div>
     );
