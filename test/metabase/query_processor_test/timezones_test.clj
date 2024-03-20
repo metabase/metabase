@@ -183,8 +183,6 @@
                                              :type     :native}
                                             query))))))))))))
 
-; "SELECT \"users\".\"id\", \"users\".\"name\", \"users\".\"last_login\" FROM \"users\" WHERE \"users\".\"last_login\" BETWEEN {{date1}} AND {{date2}} ORDER BY \"users\".\"id\" ASC"
-; "SELECT" "  '\"users\".\"id\"'," "  '\"users\".\"name\"'," "  '\"users\".\"last_login\"'" "FROM" "  '\"users\"'" "WHERE" "  CAST(\"public\".\"users\".\"last_login\" AS date) = ?" "ORDER BY" "  '\"users\".\"id\"' ASC"], :params [#t "2014-08-02T00:00-07:00[America/Los_Angeles]"], :type :invalid-query}
 ;; Make sure TIME values are handled consistently (#10366)
 (defn- attempts []
   (zipmap
