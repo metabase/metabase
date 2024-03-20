@@ -94,3 +94,6 @@ export const isFolder: TisFolder<
 > = <Item extends TypeWithModel<CollectionId, SearchModelType>>(item: Item) => {
   return item.model === "collection";
 };
+
+export const generateKey = (query?: SearchListQuery) =>
+  JSON.stringify(query ?? "root");

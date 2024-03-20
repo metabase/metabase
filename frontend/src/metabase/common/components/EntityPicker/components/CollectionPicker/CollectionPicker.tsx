@@ -16,7 +16,12 @@ import { NestedItemPicker } from "../NestedItemPicker";
 
 import { CollectionItemPickerResolver } from "./CollectionItemPickerResolver";
 import type { CollectionPickerItem } from "./types";
-import { getCollectionIdPath, getStateFromIdPath, isFolder } from "./utils";
+import {
+  generateKey,
+  getCollectionIdPath,
+  getStateFromIdPath,
+  isFolder,
+} from "./utils";
 
 export type CollectionPickerOptions = EntityPickerModalOptions & {
   showPersonalCollections?: boolean;
@@ -126,6 +131,7 @@ export const CollectionPickerInner = (
       itemName={t`collection`}
       isFolder={isFolder}
       options={options}
+      generateKey={generateKey}
       onFolderSelect={onFolderSelect}
       onItemSelect={onItemSelect}
       path={path}
