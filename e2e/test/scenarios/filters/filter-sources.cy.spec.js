@@ -235,8 +235,9 @@ describe("scenarios > filters > filter sources", () => {
     it("column from a table", () => {
       visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
       filter({ mode: "notebook" });
+      popover().findByText("Tax").click();
+      selectOperator("Equal to");
       popover().within(() => {
-        cy.findByText("Tax").click();
         cy.findByPlaceholderText("Enter a number").type("6.1");
         cy.button("Add filter").click();
       });
@@ -279,6 +280,9 @@ describe("scenarios > filters > filter sources", () => {
       popover().within(() => {
         cy.findByText("Product").click();
         cy.findByText("Rating").click();
+      });
+      selectOperator("Equal to");
+      popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("3.7");
         cy.button("Add filter").click();
       });
@@ -293,6 +297,9 @@ describe("scenarios > filters > filter sources", () => {
       popover().within(() => {
         cy.findByText("Product").click();
         cy.findByText("Ean").click();
+      });
+      selectOperator("Is");
+      popover().within(() => {
         cy.findByText("0001664425970").click();
         cy.button("Add filter").click();
       });
@@ -349,8 +356,9 @@ describe("scenarios > filters > filter sources", () => {
         visitQuestionAdhoc(nestedQuestion(card), { mode: "notebook" });
       });
       filter({ mode: "notebook" });
+      popover().findByText("Tax").click();
+      selectOperator("Equal to");
       popover().within(() => {
-        cy.findByText("Tax").click();
         cy.findByPlaceholderText("Enter a number").type("6.1");
         cy.button("Add filter").click();
       });
@@ -405,6 +413,9 @@ describe("scenarios > filters > filter sources", () => {
       popover().within(() => {
         cy.findByText("Product").click();
         cy.findByText("Rating").click();
+      });
+      selectOperator("Equal to");
+      popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("3.7");
         cy.button("Add filter").click();
       });
@@ -423,6 +434,9 @@ describe("scenarios > filters > filter sources", () => {
       popover().within(() => {
         cy.findByText("Product").click();
         cy.findByText("Ean").click();
+      });
+      selectOperator("Is");
+      popover().within(() => {
         cy.findByText("0001664425970").click();
         cy.button("Add filter").click();
       });
@@ -491,8 +505,9 @@ describe("scenarios > filters > filter sources", () => {
         visitQuestionAdhoc(nestedQuestion(card), { mode: "notebook" });
       });
       filter({ mode: "notebook" });
+      popover().findByText("TAX").click();
+      selectOperator("Equal to");
       popover().within(() => {
-        cy.findByText("TAX").click();
         cy.findByPlaceholderText("Enter a number").type("6.1");
         cy.button("Add filter").click();
       });
@@ -547,6 +562,9 @@ describe("scenarios > filters > filter sources", () => {
       popover().within(() => {
         cy.findByText("Product").click();
         cy.findByText("Rating").click();
+      });
+      selectOperator("Equal to");
+      popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("3.7");
         cy.button("Add filter").click();
       });
@@ -565,6 +583,9 @@ describe("scenarios > filters > filter sources", () => {
       popover().within(() => {
         cy.findByText("Product").click();
         cy.findByText("Ean").click();
+      });
+      selectOperator("Is");
+      popover().within(() => {
         cy.findByText("0001664425970").click();
         cy.button("Add filter").click();
       });
@@ -616,8 +637,9 @@ describe("scenarios > filters > filter sources", () => {
         });
       });
       addNewFilter();
+      popover().findByText("PRODUCT_ID").click();
+      selectOperator("Equal to");
       popover().within(() => {
-        cy.findByText("PRODUCT_ID").click();
         cy.findByPlaceholderText("Enter a number").type("10");
         cy.button("Add filter").click();
       });
