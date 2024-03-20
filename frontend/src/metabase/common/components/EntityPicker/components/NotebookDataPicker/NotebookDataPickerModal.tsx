@@ -8,6 +8,7 @@ import {
   NotebookDataPicker,
   type NotebookDataPickerOptions,
 } from "./NotebookDataPicker";
+import { TablePicker } from "./TablePicker";
 
 interface Props {
   title?: string;
@@ -68,7 +69,7 @@ export const NotebookDataPickerModal = ({
       model: "table",
       icon: "table",
       element: (
-        <NotebookDataPicker
+        <TablePicker
           initialValue={value}
           options={options}
           ref={pickerRef}
