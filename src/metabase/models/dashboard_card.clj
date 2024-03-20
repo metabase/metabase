@@ -90,19 +90,20 @@
   :series
   "Return the `Cards` associated as additional series on this DashboardCard."
   [dashcards]
-  (let [dashcard-ids        (map :id dashcards)
-        dashcard-id->series (when (seq dashcard-ids)
-                              (as-> (t2/select
-                                     [:model/Card :id :name :description :display :dataset_query
-                                      :visualization_settings :collection_id :series.dashboardcard_id]
-                                     {:left-join [[:dashboardcard_series :series] [:= :report_card.id :series.card_id]]
-                                      :where     [:in :series.dashboardcard_id dashcard-ids]
-                                      :order-by  [[:series.position :asc]]}) series
-                               (group-by :dashboardcard_id series)
-                               (update-vals series #(map (fn [card] (dissoc card :dashboardcard_id)) %))))]
-    (map (fn [dashcard]
-           (assoc dashcard :series (get dashcard-id->series (:id dashcard) [])))
-         dashcards)))
+  (when (seq dashcards)
+    (let [dashcard-ids        (map :id dashcards)
+          dashcard-id->series (when (seq dashcard-ids)
+                                (as-> (t2/select
+                                       [:model/Card :id :name :description :display :dataset_query
+                                        :visualization_settings :collection_id :series.dashboardcard_id]
+                                       {:left-join [[:dashboardcard_series :series] [:= :report_card.id :series.card_id]]
+                                        :where     [:in :series.dashboardcard_id dashcard-ids]
+                                        :order-by  [[:series.position :asc]]}) series
+                                  (group-by :dashboardcard_id series)
+                                  (update-vals series #(map (fn [card] (dissoc card :dashboardcard_id)) %))))]
+      (map (fn [dashcard]
+             (assoc dashcard :series (get dashcard-id->series (:id dashcard) [])))
+           dashcards))))
 
 ;;; ---------------------------------------------------- CRUD FNS ----------------------------------------------------
 

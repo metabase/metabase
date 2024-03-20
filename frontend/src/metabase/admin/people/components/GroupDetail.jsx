@@ -3,7 +3,7 @@ import { Fragment, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { t, ngettext, msgid } from "ttag";
 
-import AdminPaneLayout from "metabase/components/AdminPaneLayout";
+import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import {

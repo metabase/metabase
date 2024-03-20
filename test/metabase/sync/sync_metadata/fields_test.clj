@@ -247,8 +247,7 @@
           ;; 3. add back the FK relationship but targeting continent_2
           (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_2(id);")
           (sync/sync-database! db {:scan :schema})
-          ;; FIXME: The following test fails. This was fixed (metabase#39679) but regressed to solve a flakey test (metabase#39861)
-          #_(testing "initially country's continent_id is targeting continent_2"
+          (testing "initially country's continent_id is targeting continent_2"
             (is (=? {:fk_target_field_id (mt/id :continent_2 :id)
                      :semantic_type      :type/FK}
                     (get-fk)))))))))

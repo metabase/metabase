@@ -108,21 +108,23 @@
              :sum-where
              :var
              ;; legacy metric ref
-             :metric
-             ;; arithmetic TODO -- these are only allowed if they have an aggregation as an arg
-             :+
-             :-
-             :/
-             :*]]
+             :metric]]
   (lib.hierarchy/derive tag ::aggregation-clause-tag))
+
+(defn- aggregation-expression?
+  "A clause is a valid aggregation if it is an aggregation clause, or it is an expression that transitively contains
+  a single aggregation clause."
+  [x]
+  (when-let [[tag _opts & args] (and (vector? x) x)]
+    (or (lib.hierarchy/isa? tag ::aggregation-clause-tag)
+        (some aggregation-expression? args))))
 
 (mr/def ::aggregation
   [:and
    [:ref :metabase.lib.schema.mbql-clause/clause]
    [:fn
     {:error/message "Valid aggregation clause"}
-    (fn [[tag :as _clause]]
-      (lib.hierarchy/isa? tag ::aggregation-clause-tag))]])
+    aggregation-expression?]])
 
 (mr/def ::aggregations
   [:sequential {:min 1} [:ref ::aggregation]])

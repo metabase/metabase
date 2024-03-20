@@ -5,7 +5,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -40,19 +39,21 @@
   [_ _]
   (throw (UnsupportedOperationException. "Redshift does not have a TIME data type.")))
 
+(defn unique-session-schema []
+  (str (sql.tu.unique-prefix/unique-prefix) "schema"))
+
 (def db-connection-details
-  (delay {:host     (tx/db-test-env-var-or-throw :redshift :host)
-          :port     (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
-          :db       (tx/db-test-env-var-or-throw :redshift :db)
-          :user     (tx/db-test-env-var-or-throw :redshift :user)
-          :password (tx/db-test-env-var-or-throw :redshift :password)}))
+  (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
+          :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
+          :db                      (tx/db-test-env-var-or-throw :redshift :db)
+          :user                    (tx/db-test-env-var-or-throw :redshift :user)
+          :password                (tx/db-test-env-var-or-throw :redshift :password)
+          :schema-filters-type     "inclusion"
+          :schema-filters-patterns (str "spectrum," (unique-session-schema))}))
 
 (defmethod tx/dbdef->connection-details :redshift
   [& _]
   @db-connection-details)
-
-(defn unique-session-schema []
-  (str (sql.tu.unique-prefix/unique-prefix) "schema"))
 
 (defmethod sql.tx/create-db-sql         :redshift [& _] nil)
 (defmethod sql.tx/drop-db-if-exists-sql :redshift [& _] nil)
@@ -193,22 +194,10 @@
    {:write? true}
    delete-session-schema!))
 
-(defonce ^:private ^{:arglists '([driver connection metadata _ _])}
-  original-filtered-syncable-schemas
-  (get-method sql-jdbc.sync/filtered-syncable-schemas :redshift))
-
-(def ^:dynamic *use-original-filtered-syncable-schemas-impl?*
-  "Whether to use the actual prod impl for `filtered-syncable-schemas` rather than the special test one that only syncs
-  the test schema."
+(def ^:dynamic *use-original-describe-database-impl?*
+  "Whether to use the actual prod impl for `describe-database` rather than the special test one that only syncs
+  the tables qualified by the database name."
   false)
-
-;; replace the impl the `metabase.driver.redshift`. Only sync the current test schema and the external "spectrum"
-;; schema used for a specific test.
-(defmethod sql-jdbc.sync/filtered-syncable-schemas :redshift
-  [driver conn metadata schema-inclusion-filters schema-exclusion-filters]
-  (if *use-original-filtered-syncable-schemas-impl?*
-    (original-filtered-syncable-schemas driver conn metadata schema-inclusion-filters schema-exclusion-filters)
-    #{(unique-session-schema) "spectrum"}))
 
 (defonce ^:private ^{:arglists '([driver database])}
   original-describe-database
@@ -217,10 +206,11 @@
 ;; For test databases, only sync the tables that are qualified by the db name
 (defmethod driver/describe-database :redshift
   [driver database]
-  (if *use-original-filtered-syncable-schemas-impl?*
+  (if *use-original-describe-database-impl?*
     (original-describe-database driver database)
     (let [r (original-describe-database driver database)]
       (update r :tables (fn [tables]
                           (into #{}
                                 (filter #(tx/qualified-by-db-name? (:name database) (:name %)))
                                 tables))))))
+
