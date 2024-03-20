@@ -264,9 +264,11 @@
 (defn- has-default?
   "Whether the template tag has a non-empty default value.
 
-  Empty values are nil, '', [], and ['']. Everything else is not empty."
-  [{:keys [default]}]
-  (not-empty (if (vector? default) (first default) default)))
+  Empty values are nil, '', []. Everything else is not empty."
+  [{value :default}]
+  (if (or (string? value) (vector? value))
+    (not-empty value)
+    (some? value)))
 
 (defmethod lib.query/can-save-method :mbql.stage/native
   [query]
