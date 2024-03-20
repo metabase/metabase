@@ -21,7 +21,7 @@ Metabase will give you some options:
 
 In both cases, Metabase will take a look at the fields in that table or model, and automatically generate charts that summarize the data based on the data types it finds.
 
-Here's a example X-ray:
+Here's an example X-ray:
 
 ![Example X-ray of the products table](./images/x-ray-example.png)
 
