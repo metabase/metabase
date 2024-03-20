@@ -40,10 +40,7 @@ export const NotebookContainer = ({
     <Box
       bg="white"
       pos="absolute"
-      top={0}
-      bottom={0}
-      left={0}
-      right={0}
+      inset={0}
       opacity={isNotebookContainerOpen ? 1 : 0}
       style={{
         zIndex: 2,
