@@ -73,7 +73,7 @@
      false
      (mi/current-user-has-full-permissions? :write instance)))
   ([_model pk]
-   (mi/can-write? (t2/select :model/Collection pk))))
+   (mi/can-write? (t2/select-one :model/Collection pk))))
 
 (defmethod mi/can-read? Collection
   ([instance]
