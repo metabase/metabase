@@ -9,6 +9,7 @@
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.dispatch :as models.dispatch]
@@ -169,8 +170,13 @@
   "Reading MLv2 queries​: normalize them, then attach a MetadataProvider based on their Database."
   [query]
   (let [{database-id :database, :as normalized} (lib/normalize query)
-        metadata-provider                       ((requiring-resolve 'metabase.lib.metadata.jvm/application-database-metadata-provider)
-                                                 (u/the-id database-id))]
+        metadata-provider                       (if (lib.metadata.protocols/metadata-provider? (:lib/metadata normalized))
+                                                  ;; in case someone passes in an already-normalized query
+                                                  ;; to [[maybe-normalize-query]] below, preserve the existing metadata
+                                                  ;; provider.
+                                                  (:lib/metadata normalized)
+                                                  ((requiring-resolve 'metabase.lib.metadata.jvm/application-database-metadata-provider)
+                                                   (u/the-id database-id)))]
     (lib/query metadata-provider normalized)))
 
 (mu/defn maybe-normalize-query

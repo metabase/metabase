@@ -106,7 +106,7 @@
       (if-let [source-card-id (qp.util/query->source-card-id query)]
         {:paths (source-card-read-perms source-card-id)}
         ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
-        (let [{:keys [query]}     (cond-> query
+        (let [query               (cond-> query
                                     (not already-preprocessed?) preprocess-query)
               table-ids-or-native (vec (query->source-table-ids query))
               table-ids           (filter integer? table-ids-or-native)
@@ -133,7 +133,7 @@
   (let [query        (lib/normalize query)
         ;; convert it to legacy by running it thru the QP preprocessor.
         legacy-query (preprocess-query query)]
-    (assert (= (:type legacy-query) :query)
+    (assert (#{:query :native} (:type legacy-query))
             (format "Expected QP preprocessing to return legacy MBQL query, got: %s" (pr-str legacy-query)))
     (legacy-mbql-required-perms legacy-query perms-opts)))
 
