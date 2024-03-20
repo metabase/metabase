@@ -1,0 +1,58 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Box, Grid, List } from "metabase/ui";
+
+export const args = {
+  size: "md",
+  type: "ordered",
+  withPadding: false,
+};
+
+export const sampleArgs = {
+  size: "md",
+  type: "ordered",
+  withPadding: false,
+};
+
+export const argTypes = {
+  size: {
+    options: ["xs", "sm", "md", "lg"],
+    control: { type: "inline-radio" },
+  },
+  type: {
+    options: ["ordered", "unordered"],
+    control: { type: "inline-radio" },
+  },
+  withPadding: {
+    control: { type: "boolean" },
+  },
+};
+
+<Meta
+  title="Typography/List"
+  component={Text}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# Text
+
+Our themed wrapper around [Mantine List](https://v6.mantine.dev/core/List/).
+
+export const DefaultTemplate = args => (
+  <List {...args}>
+    <List.Item>Clone or download repository from GitHub</List.Item>
+    <List.Item>Install dependencies with yarn</List.Item>
+    <List.Item>To start development server run npm start command</List.Item>
+    <List.Item>
+      Run tests to make sure your changes do not break the build
+    </List.Item>
+    <List.Item>Submit a pull request once you are done</List.Item>
+  </List>
+);
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
