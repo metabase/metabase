@@ -42,7 +42,7 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
     });
   });
 
-  it.only("when set as the default value for a required filter", () => {
+  it("when set as the default value for a required filter", () => {
     SQLFilter.toggleRequired();
 
     numericFilters.forEach(

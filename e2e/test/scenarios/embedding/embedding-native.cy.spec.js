@@ -139,7 +139,7 @@ describe("scenarios > embedding > native questions", () => {
       );
     });
 
-    it.only("should handle required parameters", () => {
+    it("should handle required parameters", () => {
       createAndVisitQuestion({ requiredTagName: "total", defaultValue: [100] });
 
       assertEmbeddingParameter("Total", "Editable");
