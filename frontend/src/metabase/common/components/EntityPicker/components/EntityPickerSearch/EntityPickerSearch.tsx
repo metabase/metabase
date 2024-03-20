@@ -11,6 +11,7 @@ import { SearchLoadingSpinner } from "metabase/nav/components/search/SearchResul
 import type { WrappedResult } from "metabase/search/types";
 import { Box, Flex, Icon, Stack, Tabs, TextInput } from "metabase/ui";
 import type {
+  SearchResult,
   SearchResult as SearchResultType,
   SearchResults as SearchResultsType,
 } from "metabase-types/api";
@@ -19,6 +20,8 @@ import type { TypeWithModel } from "../../types";
 
 import { EntityPickerSearchResult } from "./EntityPickerSearch.styled";
 import { getSearchTabText } from "./utils";
+
+type Item = TypeWithModel<SearchResult["id"], SearchResult["model"]>;
 
 const defaultSearchFilter = (results: SearchResultType[]) => results;
 
@@ -84,11 +87,7 @@ export function EntityPickerSearchInput({
   );
 }
 
-export const EntityPickerSearchResults = <
-  Id,
-  Model extends string,
-  Item extends TypeWithModel<Id, Model>,
->({
+export const EntityPickerSearchResults = ({
   searchResults,
   onItemSelect,
   selectedItem,
@@ -113,7 +112,11 @@ export const EntityPickerSearchResults = <
                 key={item.model + item.id}
                 result={Search.wrapEntity(item, dispatch)}
                 onClick={(item: WrappedResult) => {
-                  onItemSelect(item as unknown as Item); // TODO
+                  onItemSelect({
+                    id: item.id,
+                    model: item.model,
+                    name: item.name,
+                  });
                 }}
                 isSelected={
                   selectedItem?.id === item.id &&
