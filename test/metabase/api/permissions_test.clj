@@ -208,10 +208,10 @@
         (mt/user-http-request
          :crowberto :put 200 "permissions/graph"
          (assoc-in (data-perms.graph/api-graph)
-                   [:groups (u/the-id group) db-id :data :schemas]
-                   :all))
-        (is (= {:data {:schemas :all}
-                :view-data :unrestricted
+                   [:groups (u/the-id group) db-id]
+                   {:view-data :unrestricted
+                    :create-queries :query-builder}))
+        (is (= {:view-data :unrestricted
                 :create-queries :query-builder}
                (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) db-id])))))))
 
@@ -223,10 +223,10 @@
         (mt/user-http-request
          :crowberto :put 200 "permissions/graph"
          (assoc-in (data-perms.graph/api-graph)
-                   [:groups (u/the-id group) db-id :data :schemas]
-                   :all))
-        (is (= {:data {:schemas :all}
-                :view-data :unrestricted
+                   [:groups (u/the-id group) db-id]
+                   {:view-data :unrestricted
+                    :create-queries :query-builder}))
+        (is (= {:view-data :unrestricted
                 :create-queries :query-builder}
                (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) db-id])))))))
 

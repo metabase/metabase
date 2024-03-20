@@ -196,8 +196,6 @@
             {database-id-1
              {:perms/native-query-editing :no
               :perms/data-access :block
-              :perms/view-data :blocked
-              :perms/create-queries :no
               :perms/download-results :no}}})))))
 
 (deftest update-db-level-download-permissions!-test
