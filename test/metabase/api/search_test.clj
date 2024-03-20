@@ -1082,7 +1082,7 @@
 
         (testing "error if creator_id is not an integer"
           (let [resp (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_by "not-a-valid-user-id")]
-            (is (= {:created_by "nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero."}
+            (is (= {:created_by "nullable vector of value must be an integer greater than zero."}
                    (:errors resp)))))))))
 
 (deftest filter-by-last-edited-by-test
@@ -1147,7 +1147,7 @@
 
         (testing "error if last_edited_by is not an integer"
           (let [resp (mt/user-http-request :crowberto :get 400 "search" :q search-term :last_edited_by "not-a-valid-user-id")]
-            (is (= {:last_edited_by "nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero."}
+            (is (= {:last_edited_by "nullable vector of value must be an integer greater than zero."}
                    (:errors resp)))))))))
 
 (deftest verified-filter-test
