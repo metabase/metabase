@@ -19,7 +19,7 @@ interface ItemListProps<
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
 > {
-  items?: Item[];
+  items?: Item[] | null;
   isLoading?: boolean;
   error?: unknown;
   onClick: (val: Item) => void;

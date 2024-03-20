@@ -22,10 +22,7 @@ export const PersonalCollectionsItemList = ({
   });
 
   const topLevelPersonalCollections = useMemo(
-    () =>
-      getSortedTopLevelPersonalCollections(
-        collections,
-      ) as unknown as CollectionPickerItem[], // TODO
+    () => getSortedTopLevelPersonalCollections(collections),
     [collections],
   );
 
