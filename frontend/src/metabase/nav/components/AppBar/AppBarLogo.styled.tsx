@@ -11,7 +11,6 @@ export const LogoLink = styled(Link)<{ isSmallAppBar: boolean }>`
   height: 3.25rem;
   min-width: 2.25rem;
   max-width: 14rem;
-  overflow-x: hidden;
   line-height: 0;
   opacity: 1;
 `;
