@@ -10,6 +10,9 @@ export const LogoLink = styled(Link)<{ isSmallAppBar: boolean }>`
   justify-content: center;
   border-radius: 0.375rem;
   height: 3.25rem;
+  max-width: 12rem;
+  overflow-x: hidden;
+  line-height: 0;
   opacity: 1;
   ${props =>
     !props.isSmallAppBar &&
