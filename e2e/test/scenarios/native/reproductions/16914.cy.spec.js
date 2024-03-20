@@ -31,7 +31,7 @@ describe("issue 16914", () => {
     );
     runNativeQuery();
 
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("Every field is hidden right now").should("not.exist");
       cy.findByText("VISIBLE");
       cy.findByText("HIDDEN").should("not.exist");

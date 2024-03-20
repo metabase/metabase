@@ -50,7 +50,7 @@ describe("issue 15876", { tags: "@external" }, () => {
   it("should correctly cast to `TIME` (metabase#15876)", () => {
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
 
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("query-visualization-root").within(() => {
       correctValues.forEach(({ value, rows }) => {
         const count = rows * castColumns;
 
