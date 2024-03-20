@@ -375,3 +375,8 @@
   [:fn
    {:error/message (format "Collection of %s" item-schema)}
    #(and (coll? %) (every? (partial mc/validate item-schema) %))])
+
+(defn QueryVectorOf
+  "Helper for creating a schema that coerces single-value to a vector. Useful for coercing query parameters."
+  [schema]
+  [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} schema])

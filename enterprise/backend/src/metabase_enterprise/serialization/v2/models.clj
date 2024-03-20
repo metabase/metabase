@@ -41,6 +41,7 @@
    "ApplicationPermissionsRevision"
    "AuditLog"
    "BookmarkOrdering"
+   "CacheConfig"
    "CardBookmark"
    "CollectionBookmark"
    "CollectionPermissionGraphRevision"

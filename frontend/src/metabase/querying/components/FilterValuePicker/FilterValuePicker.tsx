@@ -31,7 +31,7 @@ interface FilterValuePickerProps<T> {
 
 interface FilterValuePickerOwnProps extends FilterValuePickerProps<string> {
   placeholder: string;
-  canAddValue: (query: string) => boolean;
+  shouldCreate: (query: string) => boolean;
 }
 
 function FilterValuePicker({
@@ -42,7 +42,7 @@ function FilterValuePicker({
   placeholder,
   autoFocus = false,
   compact = false,
-  canAddValue,
+  shouldCreate,
   onChange,
   onFocus,
   onBlur,
@@ -71,6 +71,7 @@ function FilterValuePicker({
         fieldValues={fieldData.values}
         selectedValues={selectedValues}
         placeholder={t`Search the list`}
+        shouldCreate={shouldCreate}
         autoFocus={autoFocus}
         compact={compact}
         onChange={onChange}
@@ -88,7 +89,7 @@ function FilterValuePicker({
         fieldValues={fieldData?.values ?? []}
         selectedValues={selectedValues}
         placeholder={t`Search by ${columnInfo.displayName}`}
-        canAddValue={canAddValue}
+        shouldCreate={shouldCreate}
         autoFocus={autoFocus}
         onChange={onChange}
       />
@@ -99,7 +100,7 @@ function FilterValuePicker({
     <StaticValuePicker
       selectedValues={selectedValues}
       placeholder={placeholder}
-      canAddValue={canAddValue}
+      shouldCreate={shouldCreate}
       autoFocus={autoFocus}
       onChange={onChange}
       onFocus={onFocus}
@@ -113,7 +114,7 @@ export function StringFilterValuePicker({
   values,
   ...props
 }: FilterValuePickerProps<string>) {
-  const canAddValue = (query: string) => {
+  const shouldCreate = (query: string) => {
     return query.trim().length > 0 && !values.includes(query);
   };
 
@@ -123,7 +124,7 @@ export function StringFilterValuePicker({
       column={column}
       values={values}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter some text`}
-      canAddValue={canAddValue}
+      shouldCreate={shouldCreate}
     />
   );
 }
@@ -134,7 +135,7 @@ export function NumberFilterValuePicker({
   onChange,
   ...props
 }: FilterValuePickerProps<number>) {
-  const canAddValue = (query: string) => {
+  const shouldCreate = (query: string) => {
     const number = parseFloat(query);
     return isFinite(number) && !values.includes(number);
   };
@@ -145,7 +146,7 @@ export function NumberFilterValuePicker({
       column={column}
       values={values.map(value => String(value))}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter a number`}
-      canAddValue={canAddValue}
+      shouldCreate={shouldCreate}
       onChange={newValue => onChange(newValue.map(value => parseFloat(value)))}
     />
   );

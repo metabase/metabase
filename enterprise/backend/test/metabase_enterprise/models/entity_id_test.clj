@@ -39,6 +39,7 @@
     :model/ApplicationPermissionsRevision
     :model/AuditLog
     :model/BookmarkOrdering
+    :model/CacheConfig
     :model/CardBookmark
     :model/CollectionBookmark
     :model/DashboardBookmark
