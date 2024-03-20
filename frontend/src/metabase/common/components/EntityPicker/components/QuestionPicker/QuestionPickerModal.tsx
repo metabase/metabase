@@ -8,10 +8,7 @@ import type { QuestionPickerItem, EntityTab } from "../../types";
 import { NewCollectionDialog } from "../CollectionPicker/NewCollectionDialog";
 import { EntityPickerModal, defaultOptions } from "../EntityPickerModal";
 
-import {
-  QuestionPicker,
-  type QuestionPickerOptions,
-} from "./QuestionPicker";
+import { QuestionPicker, type QuestionPickerOptions } from "./QuestionPicker";
 
 interface QuestionPickerModalProps {
   title?: string;
@@ -32,6 +29,7 @@ export const QuestionPickerModal = ({
   value,
   options = defaultOptions,
 }: QuestionPickerModalProps) => {
+  options = { ...defaultOptions, ...options };
   const [selectedItem, setSelectedItem] = useState<QuestionPickerItem | null>(
     null,
   );
@@ -68,7 +66,10 @@ export const QuestionPickerModal = ({
       miw="21rem"
       onClick={openCreateDialog}
       leftIcon={<Icon name="add" />}
-      disabled={['card', 'dataset'].includes(selectedItem?.model ?? 'collection') === false}
+      disabled={
+        ["card", "dataset"].includes(selectedItem?.model ?? "collection") ===
+        false
+      }
     >
       {t`Create a new collection`}
     </Button>,

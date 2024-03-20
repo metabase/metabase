@@ -5,6 +5,8 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { QuestionPickerItem } from "metabase/common/components/EntityPicker";
+import { QuestionPickerModal } from "metabase/common/components/EntityPicker";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
@@ -57,7 +59,6 @@ import {
   DashboardCardContainer,
   DashboardGridContainer,
 } from "./DashboardGrid.styled";
-import { QuestionPickerModal } from "./QuestionPickerModal";
 import { GridLayout } from "./grid/GridLayout";
 import { generateMobileLayout } from "./grid/utils";
 
@@ -402,12 +403,15 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       !!replaceCardModalDashCard &&
       isQuestionDashCard(replaceCardModalDashCard);
 
-    const handleSelect = (nextCardId: CardId) => {
+    const handleSelect = (nextCard: QuestionPickerItem) => {
       if (!hasValidDashCard) {
         return;
       }
 
-      replaceCard({ dashcardId: replaceCardModalDashCard.id, nextCardId });
+      replaceCard({
+        dashcardId: replaceCardModalDashCard.id,
+        nextCardId: nextCard.id,
+      });
 
       addUndo({
         message: getUndoReplaceCardMessage(replaceCardModalDashCard.card),
@@ -418,17 +422,28 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
             attributes: replaceCardModalDashCard,
           }),
       });
+      handleClose();
     };
 
     const handleClose = () => {
       this.setState({ replaceCardModalDashCard: null });
     };
 
+    if (!hasValidDashCard) {
+      return null;
+    }
+
     return (
       <QuestionPickerModal
-        opened={hasValidDashCard}
-        onSelect={handleSelect}
+        onChange={handleSelect}
+        value={{
+          id: replaceCardModalDashCard.card.id,
+          model: "card",
+        }}
         onClose={handleClose}
+        options={{
+          allowCreateNew: false,
+        }}
       />
     );
   }
