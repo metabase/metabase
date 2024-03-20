@@ -7,6 +7,7 @@ export const args = {
   width: 120,
   height: 120,
   fit: "cover",
+  position: "center",
   src: noResultsSource,
   alt: "No search results",
 };
@@ -16,6 +17,12 @@ export const argTypes = {
     control: {
       type: "inline-radio",
       options: ["cover", "contain", "fill", "none", "scale-down"],
+    },
+  },
+  position: {
+    control: {
+      type: "inline-radio",
+      options: ["top left", "top", "center", "bottom", "bottom right"],
     },
   },
   src: {
@@ -50,4 +57,16 @@ export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Image position
+
+export const BackgroundPosition = DefaultTemplate.bind({});
+BackgroundPosition.args = {
+  width: 80,
+  position: "top left",
+};
+
+<Canvas>
+  <Story name="BackgroundPosition">{BackgroundPosition}</Story>
 </Canvas>
