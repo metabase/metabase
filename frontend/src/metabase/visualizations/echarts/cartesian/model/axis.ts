@@ -399,6 +399,10 @@ export const getYAxisLabel = (
     return undefined;
   }
 
+  if (settings.series_settings?.[axisColumn.name]?.title) {
+    return settings.series_settings[axisColumn.name].title;
+  }
+
   return axisColumn.display_name;
 };
 
