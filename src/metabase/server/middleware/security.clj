@@ -126,6 +126,14 @@
           "Content-Security-Policy"
           #(format "%s frame-ancestors %s;" % (if allow-iframes? "*" (or (embedding-app-origin) "'none'")))))
 
+(defn- access-control-headers
+  []
+  (when (embedding-app-origin)
+    {
+      "Access-Control-Allow-Origin"     (embedding-app-origin)
+      "Access-Control-Allow-Headers"    "*"
+      "Access-Control-Expose-Headers"   "X-Metabase-Anti-CSRF-Token"}))
+
 (defn- first-embedding-app-origin
   "Return only the first embedding app origin."
   []
@@ -153,7 +161,8 @@
     ;; Prevent Flash / PDF files from including content from site.
     "X-Permitted-Cross-Domain-Policies" "none"
     ;; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
-    "X-Content-Type-Options"            "nosniff"}))
+    "X-Content-Type-Options"            "nosniff"}
+    (access-control-headers)))
 
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
