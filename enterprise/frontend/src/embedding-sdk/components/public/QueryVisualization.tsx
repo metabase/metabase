@@ -8,6 +8,7 @@ import {
   onOpenChartSettings,
   setUIControls,
 } from "metabase/query_builder/actions";
+import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import ChartTypeSidebar from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Group, Text } from "metabase/ui";
@@ -15,9 +16,7 @@ import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMo
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, Dataset } from "metabase-types/api";
 
-import { useEmbeddingContext } from "../../../hooks";
-
-import { QueryVisualizationSdkWrapper } from "./QueryVisualization.styled";
+import { useEmbeddingContext } from "../../hooks";
 
 interface QueryVisualizationProps {
   questionId: CardId;
@@ -137,8 +136,8 @@ export const QueryVisualizationSdk = (
                 />
               </Box>
             )}
-            <QueryVisualizationSdkWrapper
-              className="full-width"
+            <QueryVisualization
+              className="flex full-width"
               question={question}
               rawSeries={[{ card, data: result && result.data }]}
               isRunning={state.loading}

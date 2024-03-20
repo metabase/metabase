@@ -8,7 +8,7 @@ const path = require("path");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
-const SDK_SRC_PATH = __dirname + "/frontend/src/embedding-sdk";
+const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const ENTERPRISE_SRC_PATH =
