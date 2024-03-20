@@ -154,6 +154,20 @@ BarStackedTotalFormattedValues.args = {
   renderingContext,
 };
 
+export const BarStackedPowYAxis = Template.bind({});
+BarStackedPowYAxis.args = {
+  rawSeries: data.barStackedPowYAxis as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarStackedPowYAxisNegatives = Template.bind({});
+BarStackedPowYAxisNegatives.args = {
+  rawSeries: data.barStackedPowYAxisNegatives as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const BarStackedNormalizedEmptySpace37880 = Template.bind({});
 BarStackedNormalizedEmptySpace37880.args = {
   rawSeries: data.barStackedNormalizedEmptySpace37880 as any,
