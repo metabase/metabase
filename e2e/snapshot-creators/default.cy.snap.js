@@ -132,19 +132,39 @@ describe("snapshots", () => {
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+        [SAMPLE_DB_ID]: {
+          data: { schemas: "none", native: "none" },
+          "view-data": "unrestricted",
+          "create-queries": "no",
+        },
       },
       [DATA_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "all", native: "write" } },
+        [SAMPLE_DB_ID]: {
+          data: { schemas: "all", native: "write" },
+          "view-data": "unrestricted",
+          "create-queries": "query-builder-and-native",
+        },
       },
       [NOSQL_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "all", native: "none" } },
+        [SAMPLE_DB_ID]: {
+          data: { schemas: "all", native: "none" },
+          "view-data": "unrestricted",
+          "create-queries": "query-builder",
+        },
       },
       [COLLECTION_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+        [SAMPLE_DB_ID]: {
+          data: { schemas: "none", native: "none" },
+          "view-data": "unrestricted",
+          "create-queries": "no",
+        },
       },
       [READONLY_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+        [SAMPLE_DB_ID]: {
+          data: { schemas: "none", native: "none" },
+          "view-data": "unrestricted",
+          "create-queries": "no",
+        },
       },
     });
 

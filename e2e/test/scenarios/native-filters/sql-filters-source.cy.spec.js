@@ -361,7 +361,11 @@ describeEE("scenarios > filters > sql filters > values source", () => {
   it("should sandbox parameter values in questions", () => {
     cy.updatePermissionsGraph({
       [COLLECTION_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "all" } },
+        [SAMPLE_DB_ID]: {
+          data: { schemas: "all" },
+          "view-data": "unrestricted",
+          "create-queries": "query-builder",
+        },
       },
     });
 

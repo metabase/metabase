@@ -301,10 +301,18 @@ describeEE("impersonated permission", () => {
       cy.updatePermissionsGraph(
         {
           [ALL_USERS_GROUP]: {
-            1: { data: { schemas: "all", native: "write" } },
-            [PG_DB_ID]: {
-              data: { schemas: "impersonated", native: "write" },
+            1: {
+              "view-data": "unrestricted",
+              "create-queries": "query-builder-and-native",
             },
+            [PG_DB_ID]: {
+              "view-data": "impersonated",
+              "create-queries": "query-builder-and-native",
+            },
+          },
+          [COLLECTION_GROUP]: {
+            1: { "view-data": "blocked" },
+            [PG_DB_ID]: { "view-data": "blocked" },
           },
         },
         [

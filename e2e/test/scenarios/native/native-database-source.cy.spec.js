@@ -182,7 +182,11 @@ describe(
       cy.signInAsAdmin();
       cy.updatePermissionsGraph({
         [DATA_GROUP]: {
-          [SAMPLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+          [SAMPLE_DB_ID]: {
+            data: { schemas: "none", native: "none" },
+            "view-data": "blocked",
+            "create-queries": "no",
+          },
         },
       });
 
