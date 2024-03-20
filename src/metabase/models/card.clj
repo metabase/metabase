@@ -202,7 +202,8 @@
    ;; YAML file and break tests like [[metabase-enterprise.serialization.v2.e2e.yaml-test/e2e-storage-ingestion-test]].
    ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from
    ;; what's actually in their query -- we need to fix [[metabase.test.generate]], but I'm not sure how to do that
-   (when-not mi/*deserializing?*
+   (when (and (map? query)
+              (not mi/*deserializing?*))
      (when-let [{:keys [database-id table-id]} (query/query->database-and-table-ids query)]
        ;; TODO -- not sure `query_type` is actually used for anything important anyway
        (let [query-type (if (query/query-is-native? query)
@@ -838,7 +839,11 @@ saved later when it is ready."
 
 (methodical/defmethod mi/to-json :model/Card
   [card json-generator]
-  (next-method (m/dissoc-in card [:dataset_query :lib/metadata]) json-generator))
+  ;; we're doing update + dissoc instead of [[medley.core/dissoc-in]] because we don't want it to remove the
+  ;; `:dataset_query` key entirely if it is empty, as it is in a lot of tests.
+  (let [card (cond-> card
+               (map? (:dataset_query card)) (update :dataset_query dissoc :lib/metadata))]
+    (next-method card json-generator)))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
