@@ -6,7 +6,7 @@ import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
 import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
-import { Box, NavLink, Center, Icon, Flex } from "metabase/ui";
+import { Box, Center, Flex, Icon, NavLink } from "metabase/ui";
 
 import type { TypeWithModel } from "../../types";
 import { getIcon, isSelectedItem } from "../../utils";
@@ -14,17 +14,25 @@ import { DelayedLoadingSpinner } from "../LoadingSpinner";
 
 import { PickerColumn } from "./ItemList.styled";
 
-interface ItemListProps<TItem extends TypeWithModel> {
-  items?: TItem[];
+interface ItemListProps<
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+> {
+  items?: Item[];
   isLoading?: boolean;
   error?: unknown;
-  onClick: (val: TItem) => void;
-  selectedItem: TItem | null;
-  isFolder: (item: TItem) => boolean;
+  onClick: (val: Item) => void;
+  selectedItem: Item | null;
+  isFolder: (item: Item) => boolean;
   isCurrentLevel: boolean;
 }
 
-export const ItemList = <TItem extends TypeWithModel>({
+export const ItemList = <
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>({
   items,
   isLoading = false,
   error,
@@ -32,7 +40,7 @@ export const ItemList = <TItem extends TypeWithModel>({
   selectedItem,
   isFolder,
   isCurrentLevel,
-}: ItemListProps<TItem>) => {
+}: ItemListProps<Id, Model, Item>) => {
   const activeItemIndex = useMemo(() => {
     if (!items) {
       return -1;
@@ -76,7 +84,7 @@ export const ItemList = <TItem extends TypeWithModel>({
 
   return (
     <VirtualizedList Wrapper={PickerColumn} scrollTo={activeItemIndex}>
-      {items.map((item: TItem) => (
+      {items.map((item: Item) => (
         <div key={`${item.model ?? "collection"}-${item.id}`}>
           <NavLink
             rightSection={
