@@ -1,9 +1,13 @@
 /* eslint-disable react/prop-types */
-import { useSensor, PointerSensor } from "@dnd-kit/core";
+import { useSensor } from "@dnd-kit/core";
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 
-import { SortableList, Sortable } from "metabase/core/components/Sortable";
+import {
+  SortableList,
+  Sortable,
+  PointerChildSensor,
+} from "metabase/core/components/Sortable";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { Icon } from "metabase/ui";
 
@@ -32,9 +36,10 @@ function ParametersList({
   setEditingParameter,
   enableParameterRequiredBehavior,
 }) {
-  const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 0 },
+  const pointerSensor = useSensor(PointerChildSensor, {
+    activationConstraint: { distance: 5 },
   });
+
   const visibleValuePopulatedParameters = useMemo(
     () => getVisibleParameters(parameters, hideParameters),
     [parameters, hideParameters],

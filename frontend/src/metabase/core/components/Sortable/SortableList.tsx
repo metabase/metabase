@@ -2,10 +2,12 @@ import type {
   DragOverEvent,
   DragStartEvent,
   Modifier,
+  PointerSensorOptions,
   SensorDescriptor,
 } from "@dnd-kit/core";
-import { DndContext, DragOverlay } from "@dnd-kit/core";
+import { DndContext, DragOverlay, PointerSensor } from "@dnd-kit/core";
 import { SortableContext, arrayMove } from "@dnd-kit/sortable";
+import type { PointerEvent } from "react";
 import { useState, useMemo, useEffect } from "react";
 import _ from "underscore";
 
@@ -123,3 +125,30 @@ export const SortableList = <T,>({
     </DndContext>
   );
 };
+
+// Custom sensor to limit the pointer sensor to start dragging only when the target
+// is a child of the current target in the dom. This avoids dragging when dealing with
+// sortable elements that contain popovers etc.
+export class PointerChildSensor extends PointerSensor {
+  static activators = [
+    {
+      eventName: "onPointerDown" as const,
+      handler: (
+        { nativeEvent: event, target, currentTarget }: PointerEvent,
+        { onActivation }: PointerSensorOptions,
+      ) => {
+        if (!event.isPrimary || event.button !== 0) {
+          return false;
+        }
+
+        if (!(target instanceof Element) || !currentTarget.contains(target)) {
+          return false;
+        }
+
+        onActivation?.({ event });
+
+        return true;
+      },
+    },
+  ];
+}
