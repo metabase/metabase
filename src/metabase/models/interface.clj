@@ -703,3 +703,26 @@
   "In Metabase the FK key used for automagic hydration should use underscores (work around upstream Toucan 2 issue)."
   [_original-model dest-key _hydrated-key]
   [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])
+
+(mu/defn instances-with-hydrated-data
+  "Helper function to write batched hydrations.
+  Assoc to each `instances` a key `hydration-key` with data from calling `instance-key->hydrated-data-fn` by `instance-key`.
+
+    (instances-with-hydrated-data
+      (t2/select :model/Database)
+      :tables
+      #(t2/select-fn->fn :db_id identity :model/Table)
+      :id)
+    ;; => [{:id 1 :tables [...tables-from-db-1]}
+           {:id 2 :tables [...tables-from-db-2]}]
+
+  - key->hydrated-items-fn: is a function that returns a map with key is `instance-key` and value is the hydrated data of that instance."
+  [instances                      :- [:sequential :any]
+   hydration-key                  :- :keyword
+   instance-key->hydrated-data-fn :- fn?
+   instance-key                   :- :keyword
+   & [{:keys [default] :as _options}]]
+  (when (seq instances)
+    (let [key->hydrated-items (instance-key->hydrated-data-fn)]
+      (for [item instances]
+        (assoc item hydration-key (get key->hydrated-items (get item instance-key) default))))))

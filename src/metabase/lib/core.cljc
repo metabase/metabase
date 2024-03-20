@@ -273,6 +273,7 @@
   normalize]
  [lib.query
   can-run
+  can-save
   query
   stage-count
   uses-metric?

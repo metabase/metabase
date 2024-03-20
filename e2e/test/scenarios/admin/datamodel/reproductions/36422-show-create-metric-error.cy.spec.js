@@ -13,7 +13,7 @@ describe("issue 36422", () => {
     cy.findByLabelText("Name Your Metric").type("x");
     cy.findByLabelText("Describe Your Metric").type("x");
 
-    cy.intercept("POST", "/api/metric", req => req.reply(400));
+    cy.intercept("POST", "/api/legacy-metric", req => req.reply(400));
     cy.button("Save changes").click();
     cy.findByRole("alert", { name: "An error occurred" }).should("be.visible");
   });

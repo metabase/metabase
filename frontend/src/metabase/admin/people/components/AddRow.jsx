@@ -26,7 +26,7 @@ export const AddRow = forwardRef(function AddRow(
     >
       {children}
       <input
-        className="input--borderless h3 ml1 flex-full"
+        className={cx(CS.inputBorderless, CS.h3, CS.ml1, CS.flexFull)}
         type="text"
         value={value}
         placeholder={placeholder}

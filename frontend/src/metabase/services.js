@@ -426,11 +426,11 @@ export const SegmentApi = {
 };
 
 export const MetricApi = {
-  list: GET("/api/metric"),
-  create: POST("/api/metric"),
-  get: GET("/api/metric/:metricId"),
-  update: PUT("/api/metric/:id"),
-  delete: DELETE("/api/metric/:metricId"),
+  list: GET("/api/legacy-metric"),
+  create: POST("/api/legacy-metric"),
+  get: GET("/api/legacy-metric/:metricId"),
+  update: PUT("/api/legacy-metric/:id"),
+  delete: DELETE("/api/legacy-metric/:metricId"),
 };
 
 export const RevisionApi = {

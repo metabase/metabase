@@ -87,7 +87,7 @@
   (context "/login-history"        [] (+auth api.login-history/routes))
   (context "/premium-features"     [] (+auth api.premium-features/routes))
   (context "/metabot"              [] (+auth api.metabot/routes))
-  (context "/metric"               [] (+auth api.metric/routes))
+  (context "/legacy-metric"        [] (+auth api.metric/routes))
   (context "/model-index"          [] (+auth api.model-index/routes))
   (context "/native-query-snippet" [] (+auth api.native-query-snippet/routes))
   (context "/notify"               [] (+static-apikey api.notify/routes))

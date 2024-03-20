@@ -417,11 +417,10 @@
   [{:keys [location]} :- CollectionWithLocationOrRoot]
   (some-> location location-path->parent-id))
 
-(mi/define-simple-hydration-method parent-id
-  :parent_id
+(methodical/defmethod t2/simple-hydrate [:default :parent_id]
   "Get the immediate parent `collection` id, if set."
-  [collection]
-  (parent-id* collection))
+  [_model k collection]
+  (assoc collection k (parent-id* collection)))
 
 (mu/defn children-location :- LocationPath
   "Given a `collection` return a location path that should match the `:location` value of all the children of the

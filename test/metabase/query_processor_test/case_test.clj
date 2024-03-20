@@ -1,7 +1,7 @@
 (ns metabase.query-processor-test.case-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [Metric Segment]]
+   [metabase.models :refer [LegacyMetric Segment]]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -55,7 +55,7 @@
 (deftest ^:parallel test-case-aggregations-in-metric
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Can we use case in metric"
-      (t2.with-temp/with-temp [Metric {metric-id :id} {:table_id   (mt/id :venues)
+      (t2.with-temp/with-temp [LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
                                                        :definition {:source-table (mt/id :venues)
                                                                     :aggregation  [:sum
                                                                                    [:case [[[:< [:field (mt/id :venues :price) nil] 4]

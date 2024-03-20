@@ -7,7 +7,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 const Metrics = createEntity({
   name: "metrics",
   nameOne: "metric",
-  path: "/api/metric",
+  path: "/api/legacy-metric",
   schema: MetricSchema,
 
   objectActions: {

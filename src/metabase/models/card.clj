@@ -126,43 +126,61 @@
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
-(mi/define-simple-hydration-method dashboard-count
-  :dashboard_count
-  "Return the number of Dashboards this Card is in."
-  [{:keys [id]}]
-  (t2/count :model/DashboardCard, :card_id id))
+(methodical/defmethod t2/batched-hydrate [:model/Card :dashboard_count]
+  [_model k cards]
+  (mi/instances-with-hydrated-data
+   cards k
+   #(->> (t2/query {:select    [[:%count.* :count] :card_id]
+                    :from      [:report_dashboardcard]
+                    :where     [:in :card_id (map :id cards)]
+                    :group-by  [:card_id]})
+         (map (juxt :card_id :count))
+         (into {}))
+   :id
+   {:default 0}))
 
-(mi/define-simple-hydration-method parameter-usage-count
-  :parameter_usage_count
-  "Return the number of dashboard/card filters and other widgets that use this card to populate their available
-  values (via ParameterCards)"
-  [{:keys [id]}]
-  (t2/count ParameterCard, :card_id id))
+(methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
+  [_model k cards]
+  (mi/instances-with-hydrated-data
+   cards k
+   #(->> (t2/query {:select    [[:%count.* :count] :card_id]
+                    :from      [:parameter_card]
+                    :where     [:in :card_id (map :id cards)]
+                    :group-by  [:card_id]})
+         (map (juxt :card_id :count))
+         (into {}))
+   :id
+   {:default 0}))
 
-(mi/define-simple-hydration-method average-query-time
-  :average_query_time
-  "Average query time of card, taken by query executions which didn't hit cache. If it's nil we don't have any query
-  executions on file."
-  [{:keys [id]}]
-  (-> (mdb.query/query {:select [:%avg.running_time]
-                        :from [:query_execution]
-                        :where [:and
-                                [:not= :running_time nil]
-                                [:not= :cache_hit true]
-                                [:= :card_id id]]})
-      first vals first))
+(methodical/defmethod t2/batched-hydrate [:model/Card :average_query_time]
+  [_model k cards]
+  (mi/instances-with-hydrated-data
+   cards k
+   #(->> (t2/query {:select [[:%avg.running_time :running_time] :card_id]
+                    :from   [:query_execution]
+                    :where  [:and
+                             [:not= :running_time nil]
+                             [:not= :cache_hit true]
+                             [:in :card_id (map :id cards)]]
+                    :group-by [:card_id]})
+         (map (juxt :card_id :running_time))
+         (into {}))
+   :id))
 
-(mi/define-simple-hydration-method last-query-start
-  :last_query_start
-  "Timestamp for start of last query of this card."
-  [{:keys [id]}]
-  (-> (mdb.query/query {:select [:%max.started_at]
-                        :from [:query_execution]
-                        :where [:and
-                                [:not= :running_time nil]
-                                [:not= :cache_hit true]
-                                [:= :card_id id]]})
-      first vals first))
+(methodical/defmethod t2/batched-hydrate [:model/Card :last_query_start]
+  [_model k cards]
+  (mi/instances-with-hydrated-data
+   cards k
+   #(->> (t2/query {:select [[:%max.started_at :started_at] :card_id]
+                    :from   [:query_execution]
+                    :where  [:and
+                             [:not= :running_time nil]
+                             [:not= :cache_hit true]
+                             [:in :card_id (map :id cards)]]
+                    :group-by [:card_id]})
+         (map (juxt :card_id :started_at))
+         (into {}))
+   :id))
 
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
 (comment moderation/keep-me)

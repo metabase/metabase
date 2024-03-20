@@ -1,7 +1,7 @@
 (ns metabase.query-processor-test.count-where-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.metric :refer [Metric]]
+   [metabase.models.metric :refer [LegacyMetric]]
    [metabase.models.segment :refer [Segment]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -91,7 +91,7 @@
 
 (deftest ^:parallel metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
-    (t2.with-temp/with-temp [Metric {metric-id :id} {:table_id   (mt/id :venues)
+    (t2.with-temp/with-temp [LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
                                                      :definition {:source-table (mt/id :venues)
                                                                   :aggregation  [:count-where
                                                                                  [:< [:field (mt/id :venues :price) nil] 4]]}}]
