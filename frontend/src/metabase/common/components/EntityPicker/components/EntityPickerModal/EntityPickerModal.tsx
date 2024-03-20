@@ -1,11 +1,10 @@
 import { useWindowEvent } from "@mantine/hooks";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
 
 import type {
   EntityPickerOptions,
@@ -17,8 +16,8 @@ import { EntityPickerSearchInput } from "../EntityPickerSearch/EntityPickerSearc
 import { ButtonBar } from "./ButtonBar";
 import {
   GrowFlex,
-  ModalContent,
   ModalBody,
+  ModalContent,
   SinglePickerView,
 } from "./EntityPickerModal.styled";
 import { TabsView } from "./TabsView";
@@ -48,7 +47,7 @@ export interface EntityPickerModalProps<Model extends string, Item> {
   onClose: () => void;
   tabs: [EntityTab<Model>, ...EntityTab<Model>[]]; // Enforces that the array is not empty
   options?: Partial<EntityPickerOptions>;
-  searchResultFilter?: (results: SearchResult[]) => SearchResult[];
+  searchResultFilter?: (results: Item[]) => Item[];
   actionButtons?: JSX.Element[];
   trapFocus?: boolean;
 }
@@ -71,9 +70,7 @@ export function EntityPickerModal<
   trapFocus = true,
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
-    null,
-  );
+  const [searchResults, setSearchResults] = useState<Item[] | null>(null);
 
   const hydratedOptions = useMemo(
     () => ({

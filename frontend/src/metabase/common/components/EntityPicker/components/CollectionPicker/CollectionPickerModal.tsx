@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
-import type { SearchModelType, SearchResult } from "metabase-types/api";
+import type { SearchModelType } from "metabase-types/api";
 
 import type { EntityTab } from "../../types";
 import { EntityPickerModal, defaultOptions } from "../EntityPickerModal";
@@ -24,8 +24,10 @@ const canSelectItem = (item: CollectionPickerItem | null): boolean => {
   return !!item && item?.can_write !== false;
 };
 
-const searchFilter = (searchResults: SearchResult[]): SearchResult[] => {
-  return searchResults.filter((result: SearchResult) => result.can_write);
+const searchFilter = (
+  searchResults: CollectionPickerItem[],
+): CollectionPickerItem[] => {
+  return searchResults.filter(result => result.can_write);
 };
 
 export const CollectionPickerModal = ({
