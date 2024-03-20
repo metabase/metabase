@@ -28,6 +28,7 @@
   #"^[0-9a-f]{64}$")
 
 (def ^:private AirgapToken
+  "Similar to RemoteCheckedToken, but starts with 'airgap_'."
   #"airgap_[0-9a-f]*")
 
 (def ^:private TokenStr
@@ -142,8 +143,7 @@
   "Checks that, when in an airgap context, the allowed user count is acceptable."
   []
   (when-let [max-users (max-users-allowed)]
-    ;; If you add a new usery thing that is not a user, this must be updated
-    (when (>= (t2/count :model/User :is_active true, :type :personal) max-users)
+    (when (> (t2/count :model/User :is_active true, :type :personal) max-users)
       (throw (Exception. (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users." max-users))))))
 
 (mu/defn ^:private fetch-token-status* :- TokenStatus
