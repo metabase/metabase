@@ -16,9 +16,7 @@ export type TisFolder<
 
 export type PickerState<Item, Query> = PickerStateItem<Item, Query>[];
 
-export type PickerStateItem<Item, Query> = EntityPickerStateItem<Item, Query>;
-
-type EntityPickerStateItem<Item, Query> = {
+export type PickerStateItem<Item, Query> = {
   query?: Query;
   selectedItem: Item | null;
 };
