@@ -3489,3 +3489,24 @@
           (is (=? {:data {:rows [["1" "Red Medicine" "4" 10.0646 -165.374 3]
                                  ["2" "Stout Burgers & Beers" "11" 34.0996 -118.329 2]]}}
                   (mt/user-http-request :crowberto :post 202 (format "card/%d/query" card-id)))))))))
+
+(deftest ^:parallel validate-template-tags-test
+  (testing "POST /api/card"
+    (testing "Disallow saving a Card with native query Field filter template tags referencing a different Database (#14145)"
+      (let [bird-counts-db-id (mt/dataset daily-bird-counts (mt/id))
+            card-data         {:database_id            bird-counts-db-id
+                               :dataset_query          {:database bird-counts-db-id
+                                                        :type     :native
+                                                        :native   {:query         "SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}"
+                                                                   :template-tags {"FILTER" {:id           "_FILTER_"
+                                                                                             :name         "FILTER"
+                                                                                             :display-name "Filter"
+                                                                                             :type         :dimension
+                                                                                             :dimension    [:field (mt/id :venues :name) nil]
+                                                                                             :widget-type  :string/=
+                                                                                             :default      nil}}}}
+                               :name                   "Bad Card"
+                               :display                "table"
+                               :visualization_settings {}}]
+        (is (=? {:message #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"daily-bird-counts\""}
+                (mt/user-http-request :crowberto :post 400 "card" card-data)))))))

@@ -53,7 +53,7 @@
           (is (= 2
                  (get-dashboard-count))))))))
 
-(deftest dropdown-widget-values-usage-count-test
+(deftest ^:parallel dropdown-widget-values-usage-count-test
   (let [hydrated-count (fn [card] (-> card
                                       (t2/hydrate :parameter_usage_count)
                                       :parameter_usage_count))
@@ -465,7 +465,7 @@
         (is (pos? (t2/update! :model/Card id {:parameters [{:id   "new-valid-id"
                                                             :type "id"}]})))))))
 
-(deftest normalize-parameters-test
+(deftest ^:parallel normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
                                [:field-id 1000]              [:field 1000 nil]}]
@@ -477,7 +477,7 @@
                    :target expected}]
                  (t2/select-one-fn :parameter_mappings :model/Card :id card-id))))))))
 
-(deftest validate-parameter-mappings-test
+(deftest ^:parallel validate-parameter-mappings-test
   (testing "Should validate Card :parameter_mappings when"
     (testing "creating"
       (is (thrown-with-msg?
@@ -499,7 +499,7 @@
         (is (pos? (t2/update! :model/Card id {:parameter_mappings [{:parameter_id "new-valid-id"
                                                                     :target       [:field 1000 nil]}]})))))))
 
-(deftest normalize-parameter-mappings-test
+(deftest ^:parallel normalize-parameter-mappings-test
   (testing ":parameter_mappings should get normalized when coming out of the DB"
     (t2.with-temp/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
                                                                               :card_id      1
@@ -509,7 +509,7 @@
                :target       [:dimension [:field 1 nil]]}]
              (t2/select-one-fn :parameter_mappings :model/Card :id card-id))))))
 
-(deftest identity-hash-test
+(deftest ^:parallel identity-hash-test
   (testing "Card hashes are composed of the name and the collection's hash"
     (let [now #t "2022-09-01T12:34:56"]
       (mt/with-temp [Collection  coll {:name "field-db" :location "/" :created_at now}

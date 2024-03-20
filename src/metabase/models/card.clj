@@ -281,6 +281,10 @@
                                    {:status-code 404})))
                (conj ids-already-seen source-card-id))))))
 
+(defn- maybe-normalize-query [card]
+  (cond-> card
+    (seq (:dataset_query card)) (update :dataset_query #(mi/maybe-normalize-query :in %))))
+
 ;; TODO: move this to [[metabase.query-processor.card]] or MLv2 so the logic can be shared between the backend and frontend
 ;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase-lib/parameters/utils/template-tags.ts
 ;; If this function moves you should update the comment that links to this one (#40013)
@@ -491,6 +495,7 @@
   [card]
   (-> card
       (assoc :metabase_version config/mb-version-string)
+      maybe-normalize-query
       populate-result-metadata
       pre-insert
       populate-query-fields))
@@ -513,6 +518,7 @@
   ;; https://github.com/camsaul/toucan2/issues/145 .
   ;; TODO: ^ that's been fixed, this could be refactored
   (-> (into {:id (:id card)} (t2/changes (dissoc card :verified-result-metadata?)))
+      maybe-normalize-query
       ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
       ;; change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
       ;; verified-result-metadata? flag (see #37009).
