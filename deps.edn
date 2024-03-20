@@ -152,7 +152,10 @@
   org.clojure/tools.namespace               {:mvn/version "1.5.0"}
   org.clojure/tools.reader                  {:mvn/version "1.4.1"}
   org.clojure/tools.trace                   {:mvn/version "0.8.0"}              ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "12.0.7"}             ; web server
+  ;; v. 12 of jetty-server triggers "a org/eclipse/jetty/io/EofException has been compiled by a more recent version of
+  ;; the Java Runtime (class file version 61.0), this version of the Java Runtime only recognizes class file versions
+  ;; up to 55.0"
+  org.eclipse.jetty/jetty-server            {:mvn/version "11.0.20" #_"must be 11"} ; web server
   org.eclipse.jetty.websocket/websocket-jetty-server {:mvn/version "11.0.20"}   ; ring-jetty-adapter needs that
   org.flatland/ordered                      {:mvn/version "1.15.11"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.3.5"}             ; JavaScript engine
