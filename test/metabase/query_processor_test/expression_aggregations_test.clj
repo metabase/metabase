@@ -2,7 +2,7 @@
   "Tests for expression aggregations and for named aggregations."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.metric :refer [Metric]]
+   [metabase.models.metric :refer [LegacyMetric]]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -246,7 +246,7 @@
 (deftest metrics-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "check that we can handle Metrics inside expression aggregation clauses"
-      (t2.with-temp/with-temp [Metric metric {:table_id   (mt/id :venues)
+      (t2.with-temp/with-temp [LegacyMetric metric {:table_id   (mt/id :venues)
                                               :definition {:aggregation [:sum [:field (mt/id :venues :price) nil]]
                                                            :filter      [:> [:field (mt/id :venues :price) nil] 1]}}]
         (is (= [[2 119]
@@ -258,7 +258,7 @@
                     :breakout    [$price]}))))))
 
     (testing "check that we can handle Metrics inside an `:aggregation-options` clause"
-      (t2.with-temp/with-temp [Metric metric {:table_id   (mt/id :venues)
+      (t2.with-temp/with-temp [LegacyMetric metric {:table_id   (mt/id :venues)
                                               :definition {:aggregation [:sum [:field (mt/id :venues :price) nil]]
                                                            :filter      [:> [:field (mt/id :venues :price) nil] 1]}}]
         (is (= {:rows    [[2 118]
@@ -273,7 +273,7 @@
                      :breakout    [$price]})))))))
 
     (testing "check that Metrics with a nested aggregation still work inside an `:aggregation-options` clause"
-      (t2.with-temp/with-temp [Metric metric (mt/$ids venues
+      (t2.with-temp/with-temp [LegacyMetric metric (mt/$ids venues
                                                {:table_id   $$venues
                                                 :definition {:aggregation [[:sum $price]]
                                                              :filter      [:> $price 1]}})]

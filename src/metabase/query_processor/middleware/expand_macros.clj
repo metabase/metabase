@@ -25,7 +25,7 @@
 ;;; "legacy macro" as used below means EITHER a legacy Metric or a legacy Segment.
 (mr/def ::legacy-macro
   [:or
-   ::lib.schema.metadata/metric
+   ::lib.schema.metadata/legacy-metric
    ::lib.schema.metadata/segment])
 
 (mr/def ::macro-type
@@ -62,7 +62,7 @@
 
 (mu/defn ^:private legacy-metric-aggregation :- ::lib.schema.aggregation/aggregation
   "Get the aggregation associated with a legacy Metric."
-  [legacy-metric :- ::lib.schema.metadata/metric]
+  [legacy-metric :- ::lib.schema.metadata/legacy-metric]
   (-> (or (first (get-in legacy-metric [:definition :aggregation]))
           (throw (ex-info (tru "Invalid legacy Metric: missing aggregation")
                           {:type qp.error-type/invalid-query, :legacy-metric legacy-metric})))
