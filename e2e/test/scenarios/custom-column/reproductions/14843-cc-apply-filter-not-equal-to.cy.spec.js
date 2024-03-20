@@ -38,7 +38,7 @@ describe("issue 14843", () => {
 
     filter({ mode: "notebook" });
     popover().findByText(CC_NAME).click();
-    popover().findByDisplayValue("Equal to").click();
+    popover().findByDisplayValue("Between").click();
     cy.findByRole("listbox").findByText("Not equal to").click();
     popover().within(() => {
       cy.findByPlaceholderText("Enter a number").type("3");
