@@ -91,7 +91,7 @@
         (log/debugf e "Not caching results: results are larger than %s KB" (public-settings/query-caching-max-kb))
         (log/errorf e "Error saving query results to cache: %s" (ex-message e))))))
 
-(defn- save-results-xform [start-time metadata query-hash strategy rf]
+(defn- save-results-xform [start-time-ns metadata query-hash strategy rf]
   (let [has-rows? (volatile! false)]
     (add-object-to-cache! (assoc metadata
                                  :cache-version cache-version
@@ -103,7 +103,7 @@
        (add-object-to-cache! (if (map? result)
                                (m/dissoc-in result [:data :rows])
                                {}))
-       (let [duration-ms  (- (System/currentTimeMillis) start-time)
+       (let [duration-ms  (/ (- (System/nanoTime) start-time-ns) 1e6)
              min-duration (:min-duration strategy 0)
              eligible?    (and @has-rows?
                                (> duration-ms min-duration))]
@@ -203,7 +203,7 @@
       ::canceled
 
       ::miss
-      (let [start-time-ms (System/currentTimeMillis)
+      (let [start-time-ns (System/nanoTime)
             orig-reduce   qp.pipeline/*reduce*]
         (log/trace "Running query and saving cached results (if eligible)...")
         (binding [qp.pipeline/*reduce* (fn reduce'
@@ -216,7 +216,7 @@
                                               (orig-reduce rff metadata rows)))))]
           (qp query
               (fn [metadata]
-                (save-results-xform start-time-ms metadata query-hash cache-strategy (rff metadata)))))))))
+                (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))))
 
 (defn- is-cacheable? {:arglists '([query])} [{:keys [cache-strategy]}]
   (and (public-settings/enable-query-caching)

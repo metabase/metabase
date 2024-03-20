@@ -16,8 +16,8 @@
         (let [query            (assoc (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})
                                       :cache-strategy {:type             :ttl
                                                        :multiplier       60
-                                                       :avg-execution-ms 10
-                                                       :min-duration     0})
+                                                       :avg-execution-ms 100
+                                                       :min-duration-ms  0})
               run-query        (fn []
                                  (let [results (qp/process-query query)]
                                    {:cached?  (boolean (:cached (:cache/details results)))

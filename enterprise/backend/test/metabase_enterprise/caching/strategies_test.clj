@@ -28,13 +28,13 @@
           (is (= {:type     :duration
                   :duration 1337
                   :unit     "hours"}
-                 (:cache-strategy (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
+                 (:cache-strategy (#'qp.card/query-for-card card [] {} {} {:dashboard-id (u/the-id dash)}))))))
       (testing "card ttl only"
         (mt/with-temp [Card card {:cache_ttl 1337}]
           (is (= {:type     :duration
                   :duration 1337
                   :unit     "hours"}
-                 (:cache-strategy (#'qp.card/query-for-card card {} {} {}))))))
+                 (:cache-strategy (#'qp.card/query-for-card card [] {} {}))))))
       (testing "multiple ttl, card wins if dash and database TTLs are set"
         (mt/with-temp [Database db {:cache_ttl 1337}
                        Dashboard dash {:cache_ttl 1338}
@@ -42,7 +42,7 @@
           (is (= {:type     :duration
                   :duration 1339
                   :unit     "hours"}
-                 (:cache-strategy (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
+                 (:cache-strategy (#'qp.card/query-for-card card [] {} {} {:dashboard-id (u/the-id dash)}))))))
       (testing "multiple ttl, dash wins when no card TTLs are set"
         (mt/with-temp [Database db {:cache_ttl 1337}
                        Dashboard dash {:cache_ttl 1338}
@@ -50,7 +50,7 @@
           (is (= {:type     :duration
                   :duration 1338
                   :unit     "hours"}
-                 (:cache-strategy (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)})))))))))
+                 (:cache-strategy (#'qp.card/query-for-card card [] {} {} {:dashboard-id (u/the-id dash)})))))))))
 
 (deftest caching-strategies
   (mt/discard-setting-changes [enable-query-caching]
@@ -166,7 +166,7 @@
                                                :model_id (:id card1)
                                                :strategy :ttl
                                                :config   {:multiplier   100
-                                                          :min_duration 1}}
+                                                          :min_duration 0}}
                        :model/CacheConfig _c2 {:model    "question"
                                                :model_id (:id card2)
                                                :strategy :duration
@@ -194,7 +194,7 @@
               (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
                 (mt/with-clock (t 0)
                   (let [q (with-redefs [query/average-execution-time-ms (constantly 1000)]
-                            (#'qp.card/query-for-card card1 {} {} {} {}))]
+                            (#'qp.card/query-for-card card1 [] {} {} {}))]
                     (is (=? {:type :ttl}
                             (:cache-strategy q)))
                     (is (=? (mkres nil)
@@ -210,7 +210,7 @@
             (testing "strategy = duration"
               (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
                 (mt/with-clock (t 0)
-                  (let [q (#'qp.card/query-for-card card2 {} {} {} {})]
+                  (let [q (#'qp.card/query-for-card card2 [] {} {} {})]
                     (is (=? {:type :duration}
                             (:cache-strategy q)))
                     (is (=? (mkres nil)
@@ -227,7 +227,7 @@
               (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
                 (mt/with-clock (t 0)
                   (is (pos? (#'task.caching/refresh-schedule-configs!)))
-                  (let [q (#'qp.card/query-for-card card3 {} {} {} {})]
+                  (let [q (#'qp.card/query-for-card card3 [] {} {} {})]
                     (is (=? {:type :schedule}
                             (:cache-strategy q)))
                     (is (=? (mkres nil)
@@ -246,7 +246,7 @@
               (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
                 (mt/with-clock (t 0)
                   (is (pos? (#'task.caching/refresh-query-configs!)))
-                  (let [q (#'qp.card/query-for-card card4 {} {} {} {})]
+                  (let [q (#'qp.card/query-for-card card4 [] {} {} {})]
                     (is (=? {:type :query}
                             (:cache-strategy q)))
                     (is (=? (mkres nil)
@@ -279,6 +279,6 @@
                               (-> (qp/process-query q) (dissoc :data)))))))))
 
             (testing "default strategy = ttl"
-              (let [q (#'qp.card/query-for-card card5 {} {} {} {})]
+              (let [q (#'qp.card/query-for-card card5 [] {} {} {})]
                 (is (=? {:type :ttl}
                         (:cache-strategy q)))))))))))
