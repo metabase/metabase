@@ -1,29 +1,30 @@
 import { useMemo } from "react";
 
 import { useCollectionListQuery } from "metabase/common/hooks";
-import type { Collection } from "metabase-types/api";
-
 import type {
-  TypeWithModel,
-  TisFolder,
-  CollectionPickerItem,
-} from "../../types";
+  Collection,
+  CollectionId,
+  SearchModelType,
+} from "metabase-types/api";
 
-import { ItemList } from "./ItemList";
+import type { TisFolder } from "../../types";
+import { ItemList } from "../ItemList";
 
-interface PersonalCollectionsItemListProps<TItem extends TypeWithModel> {
-  onClick: (val: TItem) => void;
-  selectedItem: TItem | null;
-  isFolder: TisFolder<TItem>;
+import type { CollectionPickerItem } from "./types";
+
+interface PersonalCollectionsItemListProps {
+  onClick: (value: CollectionPickerItem) => void;
+  selectedItem: CollectionPickerItem | null;
+  isFolder: TisFolder<CollectionId, SearchModelType, CollectionPickerItem>;
   isCurrentLevel: boolean;
 }
 
-export const PersonalCollectionsItemList = <TItem extends TypeWithModel>({
+export const PersonalCollectionsItemList = ({
   onClick,
   selectedItem,
   isFolder,
   isCurrentLevel,
-}: PersonalCollectionsItemListProps<TItem>) => {
+}: PersonalCollectionsItemListProps) => {
   const {
     data: collections,
     error,
@@ -34,7 +35,9 @@ export const PersonalCollectionsItemList = <TItem extends TypeWithModel>({
 
   const topLevelPersonalCollections = useMemo(
     () =>
-      getSortedTopLevelPersonalCollections(collections) as unknown as TItem[],
+      getSortedTopLevelPersonalCollections(
+        collections,
+      ) as unknown as CollectionPickerItem[], // TODO
     [collections],
   );
 
