@@ -118,9 +118,9 @@ function App({
               <UndoListing />
               <StatusListing />
               <NewModals />
-              <Palette />
             </AppContentContainer>
           </AppContainer>
+          <Palette />
         </KBarProvider>
       </ScrollToTop>
     </ErrorBoundary>

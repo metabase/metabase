@@ -93,7 +93,7 @@ export const RecentsList = ({ onClick, className }: RecentsListProps) => {
           }}
         >{`${metaKey} + K `}</Text>
         <Text size="sm" c={color("text-light")} fw={700} tt="uppercase">
-          for command palette
+          Open command palette
         </Text>
       </Flex>
     </Paper>

@@ -127,6 +127,7 @@ export const useCommandPalette = ({
           name: t`No results for “${query}”`,
           keywords: query,
           section: "search",
+          perform: () => {}, // will simply close the command palette. It's possible we can remove this item
         });
       }
     }
