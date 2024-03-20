@@ -13,7 +13,7 @@ import { LoadingSpinner } from "../LoadingSpinner";
 import { NestedItemPicker } from "../NestedItemPicker";
 
 import { NotebookDataItemPickerResolver } from "./NotebookDataItemPickerResolver";
-import type { DatabasePickerItem, NotebookDataPickerItem } from "./types";
+import type { DatabaseItem, NotebookDataPickerItem } from "./types";
 import { getCollectionIdPath, isFolder } from "./utils";
 
 export type TablePickerOptions = EntityPickerModalOptions & {
@@ -34,7 +34,7 @@ interface Props {
 }
 
 const getStateFromIdPath = (
-  folder: DatabasePickerItem,
+  folder: DatabaseItem,
 ): PickerState<NotebookDataPickerItem> => {
   const { id, model } = folder;
   const path: PickerState<NotebookDataPickerItem> = [

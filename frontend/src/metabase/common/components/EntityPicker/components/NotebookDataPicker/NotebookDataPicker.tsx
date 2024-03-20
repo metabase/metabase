@@ -14,7 +14,7 @@ import { LoadingSpinner } from "../LoadingSpinner";
 import { NestedItemPicker } from "../NestedItemPicker";
 
 import { NotebookDataItemPickerResolver } from "./NotebookDataItemPickerResolver";
-import type { NotebookDataPickerItem } from "./types";
+import type { NotebookDataPickerItem, Value } from "./types";
 import { getCollectionIdPath, getStateFromIdPath, isFolder } from "./utils";
 
 export type NotebookDataPickerOptions = EntityPickerModalOptions & {
@@ -30,7 +30,7 @@ const defaultOptions: NotebookDataPickerOptions = {
 
 interface Props {
   onItemSelect: (item: NotebookDataPickerItem) => void;
-  initialValue?: Partial<NotebookDataPickerItem>;
+  initialValue?: Value;
   options?: NotebookDataPickerOptions;
 }
 

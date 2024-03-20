@@ -9,14 +9,14 @@ import {
   type NotebookDataPickerOptions,
 } from "./NotebookDataPicker";
 import { TablePicker } from "./TablePicker";
-import type { NotebookDataPickerItem } from "./types";
+import type { NotebookDataPickerItem, Value } from "./types";
 
 interface Props {
   title?: string;
   onChange: (item: NotebookDataPickerItem) => void;
   onClose: () => void;
   options?: NotebookDataPickerOptions;
-  value: Pick<NotebookDataPickerItem, "id" | "model">;
+  value: Value;
 }
 
 export const NotebookDataPickerModal = ({
@@ -69,7 +69,7 @@ export const NotebookDataPickerModal = ({
       model: "table",
       icon: "table",
       element: (
-        <TablePicker
+        <NotebookDataPicker
           initialValue={value}
           options={options}
           ref={pickerRef}
@@ -93,17 +93,15 @@ export const NotebookDataPickerModal = ({
   ];
 
   return (
-    <>
-      <EntityPickerModal
-        canSelectItem
-        options={options}
-        selectedItem={selectedItem}
-        tabs={tabs}
-        title={title}
-        onClose={onClose}
-        onConfirm={handleConfirm}
-        onItemSelect={handleItemSelect}
-      />
-    </>
+    <EntityPickerModal
+      canSelectItem
+      options={options}
+      selectedItem={selectedItem}
+      tabs={tabs}
+      title={title}
+      onClose={onClose}
+      onConfirm={handleConfirm}
+      onItemSelect={handleItemSelect}
+    />
   );
 };

@@ -1,19 +1,14 @@
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
-
 import type { EntityPickerOptions } from "../../types";
-import {
-  EntityItemList,
-  PersonalCollectionsItemList,
-  type EntityItemListProps,
-} from "../ItemList";
+import type { EntityItemListProps } from "../ItemList";
 
 import { DatabaseList } from "./DatabaseList";
+import { SchemaList } from "./SchemaList";
+import { TableList } from "./TableList";
 import type { NotebookDataPickerItem } from "./types";
 
 export const NotebookDataItemPickerResolver = ({
   isCurrentLevel,
   isFolder,
-  options,
   query,
   selectedItem,
   onClick,
@@ -31,9 +26,10 @@ export const NotebookDataItemPickerResolver = ({
     );
   }
 
-  if (query.collection === PERSONAL_COLLECTIONS.id) {
+  if (query.model === "schema") {
     return (
-      <PersonalCollectionsItemList
+      <SchemaList
+        query={query}
         onClick={onClick}
         selectedItem={selectedItem}
         isFolder={isFolder}
@@ -43,7 +39,7 @@ export const NotebookDataItemPickerResolver = ({
   }
 
   return (
-    <EntityItemList
+    <TableList
       query={query}
       onClick={onClick}
       selectedItem={selectedItem}
