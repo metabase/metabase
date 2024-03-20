@@ -114,11 +114,13 @@ class LogoIcon extends Component {
     }
     element.style.maxWidth = "100%";
     element.style.maxHeight = "32px";
+    element.style.minHeight = "100%";
     element.style.height = "auto";
   }
 
   render() {
-    const { dark, style, className } = this.props;
+    const { dark, style = {}, className } = this.props;
+    style.height ||= "32px";
     return (
       <span
         ref={c => (this._container = c)}
