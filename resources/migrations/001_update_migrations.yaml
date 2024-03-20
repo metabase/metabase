@@ -3718,7 +3718,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
       rollback:
         - sql:
-            sql: drop view if exists v_audit_log;
+            sql: drop view v_audit_log;
 
   - changeSet:
       id: v48.00-030
@@ -3739,7 +3739,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
       rollback:
         - sql:
-            sql: drop view if exists v_content;
+            sql: drop view v_content;
 
   - changeSet:
       id: v48.00-031
@@ -3751,7 +3751,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
       rollback:
         - sql:
-            sql: drop view if exists v_dashboardcard;
+            sql: drop view v_dashboardcard;
 
   - changeSet:
       id: v48.00-032
@@ -3763,7 +3763,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
       rollback:
         - sql:
-            sql: drop view if exists v_group_members;
+            sql: drop view v_group_members;
 
   - changeSet:
       id: v48.00-033
@@ -3784,7 +3784,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
       rollback:
         - sql:
-            sql: drop view if exists v_subscriptions;
+            sql: drop view v_subscriptions;
 
   - changeSet:
       id: v48.00-034
@@ -3805,7 +3805,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
       rollback:
         - sql:
-            sql: drop view if exists v_users;
+            sql: drop view v_users;
 
   - changeSet:
       id: v48.00-035
@@ -3826,7 +3826,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
       rollback:
         - sql:
-            sql: drop view if exists v_alerts;
+            sql: drop view v_alerts;
 
   - changeSet:
       id: v48.00-036
@@ -3838,7 +3838,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
       rollback:
         - sql:
-            sql: drop view if exists v_databases;
+            sql: drop view v_databases;
 
   - changeSet:
       id: v48.00-037
@@ -3859,7 +3859,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
       rollback:
         - sql:
-            sql: drop view if exists v_fields;
+            sql: drop view v_fields;
 
   - changeSet:
       id: v48.00-038
@@ -3880,7 +3880,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
       rollback:
         - sql:
-            sql: drop view if exists v_query_log;
+            sql: drop view v_query_log;
 
   - changeSet:
       id: v48.00-039
@@ -3901,7 +3901,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
       rollback:
         - sql:
-            sql: drop view if exists v_tables;
+            sql: drop view v_tables;
 
   - changeSet:
       id: v48.00-040
@@ -3922,7 +3922,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
       rollback:
         - sql:
-            sql: drop view if exists v_view_log;
+            sql: drop view v_view_log;
 
   - changeSet:
       id: v48.00-045
@@ -4127,7 +4127,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
       rollback:
         - sql:
-            sql: drop view if exists v_tasks;
+            sql: drop view v_tasks;
 
   - changeSet:
       id: v48.00-056
