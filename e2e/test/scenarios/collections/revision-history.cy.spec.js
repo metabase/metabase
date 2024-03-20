@@ -86,6 +86,10 @@ describe("revision history", () => {
               sidebar().findByText("Orders, Count").click();
               cy.wait("@cardQuery");
               saveDashboard();
+
+              // this is dirty, but seems like the only reliable way
+              // to wait until SET_DASHBOARD_EDITING is dispatched,
+              // so it doesn't close the revisions sidebar
               cy.wait("@fetchDashboard");
               cy.wait(100);
 
