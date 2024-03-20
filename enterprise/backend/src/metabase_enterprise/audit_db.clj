@@ -83,13 +83,12 @@
   "Default Dashboard Overview (this is a dashboard) entity id."
   "bJEYb0o5CXlfWFcIztDwJ")
 
-(defn entity-id->object
+(def entity-id->object
   "Returns the object from entity id and model. Memoizes from entity id.
   Should only be used for audit/pre-loaded objects."
-  [model entity-id]
-  ((mdb/memoize-for-application-db
-    (fn [entity-id]
-      (t2/select-one model :entity_id entity-id))) entity-id))
+  (mdb/memoize-for-application-db
+   (fn [model entity-id]
+     (t2/select-one model :entity_id entity-id))))
 
 (defenterprise default-custom-reports-collection
   "Default custom reports collection."
