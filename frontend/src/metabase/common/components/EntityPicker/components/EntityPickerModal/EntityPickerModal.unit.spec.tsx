@@ -14,19 +14,21 @@ import {
   createMockSearchResults,
 } from "metabase-types/api/mocks";
 
-import type { CollectionPickerItem, EntityTab } from "../../types";
+import type { EntityTab, TypeWithModel } from "../../types";
 
 import type { EntityPickerModalOptions } from "./EntityPickerModal";
 import { EntityPickerModal } from "./EntityPickerModal";
+
+type SampleModelType = "test1" | "test2";
 
 interface setupProps {
   title?: string;
   onItemSelect?: () => void;
   onClose?: () => void;
   onConfirm?: () => void;
-  tabs?: [EntityTab, ...EntityTab[]];
+  tabs?: [EntityTab<SampleModelType>, ...EntityTab<SampleModelType>[]];
   options?: EntityPickerModalOptions;
-  selectedItem?: null | CollectionPickerItem;
+  selectedItem?: null | TypeWithModel<number, SampleModelType>;
   actionButtons?: JSX.Element[];
 }
 
@@ -34,7 +36,7 @@ const TestPicker = ({ name }: { name: string }) => (
   <p>{`Test picker ${name}`}</p>
 );
 
-const TEST_TAB: EntityTab = {
+const TEST_TAB: EntityTab<SampleModelType> = {
   icon: "audit",
   displayName: "All the foo",
   model: "test1",
@@ -94,15 +96,16 @@ describe("EntityPickerModal", () => {
   });
 
   it("should show a tab list when more than 1 tab is supplied", async () => {
-    const tabs: [EntityTab, ...EntityTab[]] = [
-      TEST_TAB,
-      {
-        icon: "folder",
-        displayName: "All the bar",
-        model: "test2",
-        element: <TestPicker name="bar" />,
-      },
-    ];
+    const tabs: [EntityTab<SampleModelType>, ...EntityTab<SampleModelType>[]] =
+      [
+        TEST_TAB,
+        {
+          icon: "folder",
+          displayName: "All the bar",
+          model: "test2",
+          element: <TestPicker name="bar" />,
+        },
+      ];
     setup({
       tabs,
     });
