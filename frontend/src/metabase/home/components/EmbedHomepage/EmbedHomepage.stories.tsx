@@ -41,7 +41,7 @@ export const Default: Story = {
       "https://www.metabase.com/docs/latest/embedding/interactive-embedding-quick-start-guide.html",
     embeddingDocsUrl:
       "https://www.metabase.com/docs/latest/embedding/start.html",
-    customerFacingAnalyticsDocsUrl:
+    analyticsDocsUrl:
       "https://www.metabase.com/learn/customer-facing-analytics/",
   },
 };

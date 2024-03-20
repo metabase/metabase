@@ -15,18 +15,14 @@ export type EmbedHomepageViewProps = {
   // links
   interactiveEmbeddingQuickstartUrl: string;
   embeddingDocsUrl: string;
-  customerFacingAnalyticsDocsUrl: string;
+  analyticsDocsUrl: string;
   learnMoreStaticEmbedUrl: string;
   learnMoreInteractiveEmbedUrl: string;
 };
 
 export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
-  const {
-    embeddingAutoEnabled,
-    plan,
-    embeddingDocsUrl,
-    customerFacingAnalyticsDocsUrl,
-  } = props;
+  const { embeddingAutoEnabled, plan, embeddingDocsUrl, analyticsDocsUrl } =
+    props;
   return (
     <Stack maw={550}>
       <Group>
@@ -86,7 +82,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
           )} and ${(
             <ExternalLink
               key="customer-facing-analytics-docs"
-              href={customerFacingAnalyticsDocsUrl}
+              href={analyticsDocsUrl}
             >{t`customer-facing analytics articles`}</ExternalLink>
           )} to learn more about what Metabase offers.`}
         </Text>

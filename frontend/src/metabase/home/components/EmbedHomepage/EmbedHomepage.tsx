@@ -34,7 +34,7 @@ export const EmbedHomepage = () => {
       interactiveEmbeddingQuickstartUrl={interactiveEmbeddingQuickStartUrl}
       embeddingDocsUrl={embeddingDocsUrl}
       // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
-      customerFacingAnalyticsDocsUrl="https://www.metabase.com/learn/customer-facing-analytics/"
+      analyticsDocsUrl="https://www.metabase.com/learn/customer-facing-analytics/"
       learnMoreInteractiveEmbedUrl={learnMoreInteractiveEmbedding}
       learnMoreStaticEmbedUrl={learnMoreStaticEmbedding}
     />
