@@ -26,11 +26,12 @@ export const NotebookContainer = ({
   }, [isOpen]);
 
   const { isNativePreviewSidebarOpen } = useSelector(getUiControls);
-  const [shouldShowNativeQueryPreview, setShouldShowNativeQueryPreview] =
-    useState(isNativePreviewSidebarOpen);
+  const [shouldShowCodePreview, setShouldShowCodePreview] = useState(
+    isNativePreviewSidebarOpen,
+  );
 
   useEffect(() => {
-    setShouldShowNativeQueryPreview(isNativePreviewSidebarOpen);
+    setShouldShowCodePreview(isNativePreviewSidebarOpen);
   }, [isNativePreviewSidebarOpen]);
 
   const handleTransitionEnd: TransitionEventHandler<HTMLDivElement> = (
@@ -58,7 +59,7 @@ export const NotebookContainer = ({
       onTransitionEnd={handleTransitionEnd}
     >
       {shouldShowNotebook && <Notebook {...props} />}
-      {shouldShowNativeQueryPreview && (
+      {shouldShowCodePreview && (
         <NativeQueryPreviewSidebar
           onUpdateQuestion={() => {}}
           onSetUIControls={() => {}}
