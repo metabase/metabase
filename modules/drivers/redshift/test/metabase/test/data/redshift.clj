@@ -1,4 +1,14 @@
 (ns metabase.test.data.redshift
+  "We use a single redshift database for all test runs in CI, so to isolate test runs and test databases we:
+   1. Use a unique session schema for the test run (unique-session-schema), and only sync tables in that schema.
+   2. Prefix table names with the database name, and for each database we only sync tables with the matching prefix.
+
+   e.g.
+   H2 Tests                                          | Redshift Tests
+   --------------------------------------------------+------------------------------------------------
+   `test-data`            PUBLIC.VENUES.ID           | <unique-session-schema>.test_data_venues.id
+   `test-data`            PUBLIC.CHECKINS.USER_ID    | <unique-session-schema>.test_data_checkins.user_id
+   `sad-toucan-incidents` PUBLIC.INCIDENTS.TIMESTAMP | <unique-session-schema>.sad_toucan_incidents.timestamp"
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
