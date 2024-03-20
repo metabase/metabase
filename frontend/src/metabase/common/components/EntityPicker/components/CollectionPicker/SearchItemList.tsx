@@ -1,22 +1,8 @@
 import { useSearchListQuery } from "metabase/common/hooks";
-import type {
-  CollectionId,
-  SearchListQuery,
-  SearchModelType,
-} from "metabase-types/api";
 
-import type { ListProps } from "../../types";
 import { ItemList } from "../ItemList";
 
-import type { CollectionPickerItem, CollectionPickerOptions } from "./types";
-
-export type SearchItemListProps = ListProps<
-  CollectionId,
-  SearchModelType,
-  CollectionPickerItem,
-  SearchListQuery,
-  CollectionPickerOptions
->;
+import type { CollectionItemListProps, CollectionPickerItem } from "./types";
 
 export const SearchItemList = ({
   query,
@@ -24,7 +10,7 @@ export const SearchItemList = ({
   selectedItem,
   isFolder,
   isCurrentLevel,
-}: SearchItemListProps) => {
+}: CollectionItemListProps) => {
   const { data, error, isLoading } = useSearchListQuery<CollectionPickerItem>({
     query,
   });

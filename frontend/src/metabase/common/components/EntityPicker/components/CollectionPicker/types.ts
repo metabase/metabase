@@ -1,10 +1,11 @@
 import type {
   CollectionId,
+  SearchListQuery,
   SearchModelType,
   SearchResult,
 } from "metabase-types/api";
 
-import type { TypeWithModel } from "../../types";
+import type { ListProps, TypeWithModel } from "../../types";
 import type { EntityPickerModalOptions } from "../EntityPickerModal";
 
 export type CollectionPickerItem = TypeWithModel<
@@ -22,3 +23,11 @@ export type CollectionPickerOptions = EntityPickerModalOptions & {
   showRootCollection?: boolean;
   namespace?: "snippets";
 };
+
+export type CollectionItemListProps = ListProps<
+  CollectionId,
+  SearchModelType,
+  CollectionPickerItem,
+  SearchListQuery,
+  CollectionPickerOptions
+>;

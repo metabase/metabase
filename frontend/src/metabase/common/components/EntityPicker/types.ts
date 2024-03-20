@@ -40,7 +40,7 @@ export type ListProps<
   Options extends EntityPickerOptions,
 > = {
   query?: Query;
-  onClick: (val: any) => void;
+  onClick: (val: Item) => void;
   selectedItem: Item | null;
   isFolder: TisFolder<Id, Model, Item>;
   isCurrentLevel: boolean;

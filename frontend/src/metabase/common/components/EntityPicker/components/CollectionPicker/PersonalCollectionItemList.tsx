@@ -1,30 +1,18 @@
 import { useMemo } from "react";
 
 import { useCollectionListQuery } from "metabase/common/hooks";
-import type {
-  Collection,
-  CollectionId,
-  SearchModelType,
-} from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 
-import type { TisFolder } from "../../types";
 import { ItemList } from "../ItemList";
 
-import type { CollectionPickerItem } from "./types";
-
-interface PersonalCollectionsItemListProps {
-  onClick: (value: CollectionPickerItem) => void;
-  selectedItem: CollectionPickerItem | null;
-  isFolder: TisFolder<CollectionId, SearchModelType, CollectionPickerItem>;
-  isCurrentLevel: boolean;
-}
+import type { CollectionItemListProps, CollectionPickerItem } from "./types";
 
 export const PersonalCollectionsItemList = ({
   onClick,
   selectedItem,
   isFolder,
   isCurrentLevel,
-}: PersonalCollectionsItemListProps) => {
+}: CollectionItemListProps) => {
   const {
     data: collections,
     error,

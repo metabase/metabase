@@ -1,9 +1,9 @@
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 
 import type { EntityPickerOptions } from "../../types";
-import { RootItemList } from "../ItemList";
 
 import { PersonalCollectionsItemList } from "./PersonalCollectionItemList";
+import { RootItemList } from "./RootItemList";
 import { SearchItemList, type SearchItemListProps } from "./SearchItemList";
 
 export const CollectionItemPickerResolver = ({
