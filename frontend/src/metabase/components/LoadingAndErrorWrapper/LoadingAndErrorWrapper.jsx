@@ -127,7 +127,13 @@ export default class LoadingAndErrorWrapper extends Component {
 
     const contentClassName = cx(
       CS.wrapper,
-      "py4 text-brand text-centered flex-full flex flex-column layout-centered",
+      CS.py4,
+      CS.textBrand,
+      CS.textCentered,
+      CS.flexFull,
+      CS.flex,
+      CS.flexColumn,
+      CS.layoutCentered,
       { "bg-white": !noBackground },
     );
 

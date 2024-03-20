@@ -7,6 +7,7 @@ import { useSetting } from "metabase/common/hooks";
 import AdminHeader from "metabase/components/AdminHeader";
 import Code from "metabase/components/Code";
 import { CopyButton } from "metabase/components/CopyButton";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { UtilApi } from "metabase/services";
@@ -70,7 +71,7 @@ const HelpLink = ({ title, description, link }: HelpLinkProps) => (
   <li className="mb2">
     <HelpExternalLink href={link} target="_blank">
       <div>
-        <h3 className="text-brand">{title}</h3>
+        <h3 className={CS.textBrand}>{title}</h3>
         <p className="m0 mt1">{description}</p>
       </div>
     </HelpExternalLink>

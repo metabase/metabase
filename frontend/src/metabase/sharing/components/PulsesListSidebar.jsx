@@ -9,6 +9,7 @@ import _ from "underscore";
 import Label from "metabase/components/type/Label";
 import Subhead from "metabase/components/type/Subhead";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { getParameters } from "metabase/dashboard/selectors";
 import {
@@ -46,7 +47,13 @@ function _PulsesListSidebar({
           <Tooltip tooltip={t`Set up a new schedule`}>
             <Icon
               name="add"
-              className="text-brand bg-light-hover rounded p1 cursor-pointer mr1"
+              className={cx(
+                CS.textBrand,
+                "bg-light-hover",
+                CS.rounded,
+                CS.p1,
+                CS.cursorPointer,
+              )}
               size={18}
               onClick={createSubscription}
             />

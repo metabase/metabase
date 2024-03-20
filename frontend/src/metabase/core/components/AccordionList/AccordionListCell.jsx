@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import ListSearchField from "metabase/components/ListSearchField";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { Icon, Box } from "metabase/ui";
 
@@ -65,7 +66,7 @@ export const AccordionListCell = ({
             {
               "List-section-header--cursor": hasCursor,
               "cursor-pointer": canToggleSections,
-              "text-brand": sectionIsExpanded(sectionIndex),
+              [CS.textBrand]: sectionIsExpanded(sectionIndex),
             },
           )}
           onClick={
@@ -151,7 +152,14 @@ export const AccordionListCell = ({
           onClick={isClickable ? () => onChange(item) : undefined}
         >
           {icon && (
-            <span className="List-item-icon text-default flex align-center">
+            <span
+              className={cx(
+                "List-item-icon",
+                CS.textDefault,
+                CS.flex,
+                CS.alignCenter,
+              )}
+            >
               {icon}
             </span>
           )}

@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import { connect } from "react-redux";
 
+import CS from "metabase/css/core/index.css";
 import { removeAllChildren, parseDataUri } from "metabase/lib/dom";
 import { getLogoUrl } from "metabase-enterprise/settings/selectors";
 
@@ -121,7 +122,7 @@ class LogoIcon extends Component {
         ref={c => (this._container = c)}
         className={cx(
           "Icon text-centered",
-          { "text-brand": !dark },
+          { [CS.textBrand]: !dark },
           { "text-white": dark },
           className,
         )}

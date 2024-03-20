@@ -1,4 +1,5 @@
 .queryButton {
+  /* TODO: DON'T MERGE UNTIL THIS IS SORTED */
   composes: text-brand py1 from "style";
   text-decoration: none;
   align-items: center;

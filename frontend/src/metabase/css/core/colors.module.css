@@ -28,10 +28,6 @@
   color: var(--color-text-dark);
 }
 
-:global(.text-default-hover:hover) {
-  color: var(--color-text-dark);
-}
-
 /* brand */
 :global(.text-brand),
 .text-brand,
@@ -41,7 +37,7 @@
 
 /* success */
 
-:global(.text-success) {
+.textSuccess {
   color: var(--color-success);
 }
 

@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import MetabaseSettings from "metabase/lib/settings";
@@ -70,7 +71,7 @@ const Task = ({ title, description, completed, link }) => (
     <div>
       <TaskTitle
         title={title}
-        titleClassName={completed ? "text-success" : "text-brand"}
+        titleClassName={completed ? CS.textSuccess : CS.textBrand}
       />
       {!completed ? <TaskDescription description={description} /> : null}
     </div>

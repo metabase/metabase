@@ -7,6 +7,7 @@ import {
 } from "metabase/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import AccordionList from "metabase/core/components/AccordionList";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import MetabaseSettings from "metabase/lib/settings";
 import { isSyncCompleted } from "metabase/lib/syncing";
@@ -114,7 +115,7 @@ const DataSelectorTablePicker = ({
           <AccordionList
             id="TablePicker"
             key="tablePicker"
-            className="text-brand"
+            className={CS.textBrand}
             hasInitialFocus={hasInitialFocus}
             sections={sections}
             maxHeight={Infinity}

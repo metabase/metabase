@@ -97,7 +97,11 @@ export function VisualizationRunningState({ className = "" }) {
     <div
       className={cx(
         className,
-        "Loading flex flex-column layout-centered text-brand",
+        "Loading",
+        CS.flex,
+        CS.flexColumn,
+        CS.layoutCentered,
+        CS.textBrand,
       )}
     >
       <LoadingSpinner />

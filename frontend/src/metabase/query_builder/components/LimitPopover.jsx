@@ -3,6 +3,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import Radio from "metabase/core/components/Radio";
+import CS from "metabase/css/core/index.css";
 import { formatNumber } from "metabase/lib/formatting";
 import LimitInput from "metabase/query_builder/components/LimitInput";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
@@ -12,7 +13,7 @@ const CustomRowLimit = ({ limit, onChangeLimit, onClose }) => {
     <LimitInput
       small
       defaultValue={limit}
-      className={cx({ "text-brand border-brand": limit != null })}
+      className={limit != null ? cx(CS.textBrand, CS.borderBrand) : null}
       placeholder={t`Pick a limit`}
       onKeyPress={e => {
         if (e.key === "Enter") {

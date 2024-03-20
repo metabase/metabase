@@ -3,6 +3,7 @@ import { t, jt } from "ttag";
 
 import Text from "metabase/components/type/Text";
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -46,7 +47,8 @@ export function NewPulseSidebar({
                 className={cx(
                   "mr1",
                   {
-                    "text-brand hover-child hover--inherit": emailConfigured,
+                    [cx(CS.textBrand, "hover-child hover--inherit")]:
+                      emailConfigured,
                   },
                   { "text-light": !emailConfigured },
                 )}

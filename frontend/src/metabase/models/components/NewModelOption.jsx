@@ -3,6 +3,7 @@ import cx from "classnames";
 import { Component } from "react";
 import { Link } from "react-router";
 
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 
 import S from "./NewModelOption.module.css";
@@ -44,7 +45,9 @@ export default class NewModelOption extends Component {
           className="text-normal mt2 mb2 text-paragraph"
           style={{ lineHeight: "1.25em" }}
         >
-          <h2 className={cx(S.modelTitle, { "text-brand": hover })}>{title}</h2>
+          <h2 className={cx(S.modelTitle, { [CS.textBrand]: hover })}>
+            {title}
+          </h2>
           <p className="text-medium text-small" style={{ maxWidth: "360px" }}>
             {description}
           </p>

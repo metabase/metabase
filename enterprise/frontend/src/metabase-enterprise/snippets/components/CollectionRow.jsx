@@ -2,6 +2,7 @@
 import cx from "classnames";
 import { Component } from "react";
 
+import CS from "metabase/css/core/index.css";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import { Icon } from "metabase/ui";
 
@@ -19,7 +20,12 @@ class CollectionRow extends Component {
       <div
         className={cx(
           { "bg-light-hover cursor-pointer": !collection.archived },
-          "hover-parent hover--visibility flex align-center py2 px3 text-brand",
+          "hover-parent hover--visibility",
+          CS.flex,
+          CS.alignCenter,
+          CS.py2,
+          CS.px3,
+          CS.textBrand,
         )}
         {...(collection.archived ? undefined : { onClick: onSelectCollection })}
       >

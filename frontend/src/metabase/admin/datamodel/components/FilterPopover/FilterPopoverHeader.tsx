@@ -1,5 +1,6 @@
 import cx from "classnames";
 
+import CS from "metabase/css/core/index.css";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import type Filter from "metabase-lib/v1/queries/structured/Filter";
 
@@ -49,7 +50,7 @@ export function FilterPopoverHeader({
     >
       {showFieldPicker && (
         <SidebarHeader
-          className={cx("text-default py1", {
+          className={cx(CS.textDefault, CS.py1, {
             pr2: !showOperatorSelectorOnOwnRow,
           })}
           title={field.displayName({ includeTable: true })}

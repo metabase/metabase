@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { createRef, Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -7,6 +8,7 @@ import _ from "underscore";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Select from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
@@ -447,7 +449,7 @@ class FieldValueMapping extends Component {
 
 const RemappingNamingTip = () => (
   <div className="bordered rounded p1 mt1 mb2 border-brand">
-    <span className="text-brand text-bold">{t`Tip: `}</span>
+    <span className={cx(CS.textBrand, CS.textBold)}>{t`Tip: `}</span>
     {t`You might want to update the field name to make sure it still makes sense based on your remapping choices.`}
   </div>
 );
