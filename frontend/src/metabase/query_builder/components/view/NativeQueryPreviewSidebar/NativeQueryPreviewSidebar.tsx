@@ -18,7 +18,7 @@ import { NativeQueryPreview, useNativeQuery } from "../NativeQueryPreview";
 
 import { createDatasetQuery } from "./utils";
 
-const MODAL_TITLE = {
+const TITLE = {
   sql: t`SQL for this question`,
   json: t`Native query for this question`,
 };
@@ -31,13 +31,11 @@ const BUTTON_TITLE = {
 interface NativeQueryPreviewSidebarProps {
   question: Question;
   onLoadQuery: () => Promise<NativeQueryForm>;
-  onClose?: () => void;
 }
 
 const NativeQueryPreviewSidebar = ({
   question,
   onLoadQuery,
-  onClose,
 }: NativeQueryPreviewSidebarProps): JSX.Element => {
   const engineType = getEngineNativeType(question.database()?.engine);
   const { query, error, isLoading } = useNativeQuery(question, onLoadQuery);
@@ -53,17 +51,14 @@ const NativeQueryPreviewSidebar = ({
 
     dispatch(updateQuestion(newQuestion, { shouldUpdateUrl: true, run: true }));
     dispatch(setUIControls({ isNativeEditorOpen: true }));
-
-    onClose?.();
-  }, [question, query, onClose, dispatch]);
+  }, [question, query, dispatch]);
 
   return (
     <NativeQueryPreview
-      title={MODAL_TITLE[engineType]}
+      title={TITLE[engineType]}
       query={query}
       error={error}
       isLoading={isLoading}
-      onClose={onClose}
     >
       {query && (
         <Button variant="subtle" onClick={handleConvertClick}>
