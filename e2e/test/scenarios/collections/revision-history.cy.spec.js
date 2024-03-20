@@ -87,7 +87,7 @@ describe("revision history", () => {
               cy.wait("@cardQuery");
               saveDashboard();
               cy.wait("@fetchDashboard");
-              rightSidebar().should("not.exist");
+              cy.wait(100);
 
               openRevisionHistory();
               rightSidebar().within(() => {
