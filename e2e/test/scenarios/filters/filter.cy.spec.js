@@ -146,7 +146,7 @@ describe("scenarios > question > filter", () => {
             aggregation: [
               [
                 "aggregation-options",
-                ["+", 1, 1],
+                ["+", ["count"], 1],
                 { name: CE_NAME, "display-name": CE_NAME },
               ],
             ],

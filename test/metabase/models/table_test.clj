@@ -151,3 +151,17 @@
     (t2/delete! :model/Table table-id-1)
     (testing "Table-level permissions are deleted when we delete the table"
       (is (false? (t2/exists? :model/DataPermissions :table_id table-id-1))))))
+
+;; hydration tests
+(deftest field-values-hydration-test
+  (is (=? {(mt/id :venues :price) (mt/malli=? [:sequential {:min 1} :any])
+           (mt/id :venues :name)  (mt/malli=? [:sequential {:min 1} :any])}
+          (-> (t2/select-one :model/Table (mt/id :venues))
+              (t2/hydrate :field_values)
+              :field_values))))
+
+(deftest pk-field-hydration-test
+  (is (= (mt/id :venues :id)
+         (-> (t2/select-one :model/Table (mt/id :venues))
+             (t2/hydrate :pk_field)
+             :pk_field))))

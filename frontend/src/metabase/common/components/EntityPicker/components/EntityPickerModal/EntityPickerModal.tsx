@@ -1,3 +1,4 @@
+import { useWindowEvent } from "@mantine/hooks";
 import { useState, useMemo } from "react";
 import { t } from "ttag";
 
@@ -77,12 +78,24 @@ export function EntityPickerModal<TItem extends TypeWithModel>({
   const hasTabs = tabs.length > 1 || searchQuery;
   const tabModels = useMemo(() => tabs.map(t => t.model), [tabs]);
 
+  useWindowEvent(
+    "keydown",
+    event => {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        onClose();
+      }
+    },
+    { capture: true, once: true },
+  );
+
   return (
     <Modal.Root
       opened={open}
       onClose={onClose}
       data-testid="entity-picker-modal"
       trapFocus={trapFocus}
+      closeOnEscape={false} // we're doing this manually in useWindowEvent
     >
       <Modal.Overlay />
       <ModalContent h="100%">

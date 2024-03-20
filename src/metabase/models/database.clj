@@ -306,12 +306,26 @@
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
-(mi/define-simple-hydration-method tables
-  :tables
+;; only used in tests
+(defn tables
   "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
   ;; TODO - do we want to include tables that should be `:hidden`?
-  (t2/select 'Table, :db_id id, :active true, {:order-by [[:%lower.display_name :asc]]}))
+  (t2/select :model/Table :db_id id :active true {:order-by [[:%lower.display_name :asc]]}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :tables]
+  "Batch hydrate `Tables` for the given `Database`."
+  [_model k databases]
+  (mi/instances-with-hydrated-data
+   databases k
+   #(group-by :db_id
+              ;; TODO - do we want to include tables that should be `:hidden`?
+              (t2/select :model/Table
+                         :db_id  [:in (map :id databases)]
+                         :active true
+                         {:order-by [[:db_id :asc] [:%lower.display_name :asc]]}))
+   :id
+   {:default []}))
 
 (defn pk-fields
   "Return all the primary key `Fields` associated with this `database`."
