@@ -115,7 +115,12 @@ export interface ErrorEmbedDataset {
   status: string;
 }
 
+/**
+ * This is the type of the `POST /api/dataset/native` response.
+ * We're mostly ignoring the `params` on the FE. It's added to the type only for completeness.
+ */
 export interface NativeQueryForm {
+  params: unknown;
   query: string;
 }
 

@@ -49,9 +49,9 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     });
 
     describe("required tag", () => {
-      it("needs a default value to run or save the query", () => {
+      it("needs a default value to save the query, but allows running it", () => {
         SQLFilter.toggleRequired();
-        SQLFilter.getRunQueryButton().should("be.disabled");
+        SQLFilter.getRunQueryButton().should("not.be.disabled");
         SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
 
         SQLFilter.getSaveQueryButton().realHover();
@@ -128,9 +128,9 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     });
 
     describe("required tag", () => {
-      it("needs a default value to run or save the query", () => {
+      it("needs a default value to save the query, but allows running it", () => {
         SQLFilter.toggleRequired();
-        SQLFilter.getRunQueryButton().should("be.disabled");
+        SQLFilter.getRunQueryButton().should("not.be.disabled");
         SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
 
         SQLFilter.getSaveQueryButton().realHover();
@@ -230,9 +230,9 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     }
 
     describe("required tag", () => {
-      it("needs a default value for to run or save query", () => {
+      it("needs a default value to save the query, but allows running it", () => {
         SQLFilter.toggleRequired();
-        SQLFilter.getRunQueryButton().should("be.disabled");
+        SQLFilter.getRunQueryButton().should("not.be.disabled");
         SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
 
         SQLFilter.getSaveQueryButton().realHover();

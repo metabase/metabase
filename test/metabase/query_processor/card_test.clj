@@ -6,7 +6,6 @@
    [metabase.api.common :as api]
    [metabase.models :refer [Card Dashboard Database]]
    [metabase.models.query :as query]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.test :as mt]
@@ -24,36 +23,49 @@
      :run (fn [query info]
             (qp/process-query (assoc query :info info))))))
 
-(deftest query-cache-ttl-hierarchy-test
-  (mt/discard-setting-changes [enable-query-caching]
-    (public-settings/enable-query-caching! true)
+(deftest query-cache-strategy-hierarchy-test
+  (mt/with-temporary-setting-values [enable-query-caching true
+                                     query-caching-ttl-ratio 10]
     (testing "query-magic-ttl converts to seconds correctly"
-      (mt/with-temporary-setting-values [query-caching-ttl-ratio 2]
-        ;; fake average execution time (in millis)
-        (with-redefs [query/average-execution-time-ms (constantly 4000)]
-          (t2.with-temp/with-temp [Card card]
-            ;; the magic multiplier should be ttl-ratio times avg execution time
-            (is (= (* 2 4) (:cache-ttl (#'qp.card/query-for-card card {} {} {}))))))))
-    ;; corresponding EE tests in metabase-enterprise.advanced-config.caching-test
-    (testing "card ttl only, does not take effect on OSS so nil result"
+      ;; fake average execution time (in millis)
+      (with-redefs [query/average-execution-time-ms (constantly 4000)]
+        (mt/with-temp [Card card {}]
+          (is (=? {:type             :ttl
+                   :multiplier       10
+                   :avg-execution-ms 4000}
+                  (:cache-strategy (#'qp.card/query-for-card card {} {} {})))))))
+    ;; corresponding EE tests in metabase-enterprise.caching.strategies-test
+    (testing "card ttl only, does not take effect on OSS"
       (mt/with-temp [Card card {:cache_ttl 1337}]
-        (is (nil? (:cache-ttl (#'qp.card/query-for-card card {} {} {}))))))
-    (testing "dash ttl only, does not take effect on OSS so nil result"
+        (is (=? {:type             :ttl
+                 :multiplier       10
+                 :avg-execution-ms int?}
+                (:cache-strategy (#'qp.card/query-for-card card {} {} {}))))))
+    (testing "dash ttl only, does not take effect on OSS"
       (mt/with-temp [Database db {}
                      Dashboard dash {:cache_ttl 1338}
                      Card card {:database_id (u/the-id db)}]
-        (is (nil? (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
-    (testing "multiple ttl, db ttl does not take effect on OSS so nil result"
-      ;; corresponding EE test in metabase-enterprise.advanced-config.caching-test
+        (is (=? {:type             :ttl
+                 :multiplier       10
+                 :avg-execution-ms int?}
+                (:cache-strategy (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
+    (testing "multiple ttl, db ttl does not take effect on OSS"
+      ;; corresponding EE test in metabase-enterprise.caching.strategies-test
       (mt/with-temp [Database db {:cache_ttl 1337}
                      Dashboard dash {}
                      Card card {:database_id (u/the-id db)}]
-        (is (= nil (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
+        (is (=? {:type             :ttl
+                 :multiplier       10
+                 :avg-execution-ms int?}
+                (:cache-strategy (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
     (testing "no ttl, nil result"
       (mt/with-temp [Database db {}
                      Dashboard dash {}
                      Card card {:database_id (u/the-id db)}]
-        (is (= nil (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))))
+        (is (=? {:type             :ttl
+                 :multiplier       10
+                 :avg-execution-ms int?}
+                (:cache-strategy (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))))
 
 (defn field-filter-query
   "A query with a Field Filter parameter"

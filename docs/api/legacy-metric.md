@@ -1,14 +1,14 @@
 ---
 title: "Metric"
 summary: |
-  /api/metric endpoints.
+  /api/legacy-metric endpoints.
 ---
 
 # Metric
 
-/api/metric endpoints.
+/api/legacy-metric endpoints.
 
-## `DELETE /api/metric/:id`
+## `DELETE /api/legacy-metric/:id`
 
 Archive a Metric. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.).
 
@@ -18,11 +18,11 @@ Archive a Metric. (DEPRECATED -- Just pass updated value of `:archived` to the `
 
 *  **`revision_message`** value must be a non-blank string.
 
-## `GET /api/metric/`
+## `GET /api/legacy-metric/`
 
 Fetch *all* `Metrics`.
 
-## `GET /api/metric/:id`
+## `GET /api/legacy-metric/:id`
 
 Fetch `Metric` with ID.
 
@@ -30,7 +30,7 @@ Fetch `Metric` with ID.
 
 *  **`id`** value must be an integer greater than zero.
 
-## `GET /api/metric/:id/related`
+## `GET /api/legacy-metric/:id/related`
 
 Return related entities.
 
@@ -38,7 +38,7 @@ Return related entities.
 
 *  **`id`** value must be an integer greater than zero.
 
-## `GET /api/metric/:id/revisions`
+## `GET /api/legacy-metric/:id/revisions`
 
 Fetch `Revisions` for `Metric` with ID.
 
@@ -46,7 +46,7 @@ Fetch `Revisions` for `Metric` with ID.
 
 *  **`id`** value must be an integer greater than zero.
 
-## `POST /api/metric/`
+## `POST /api/legacy-metric/`
 
 Create a new `Metric`.
 
@@ -60,7 +60,7 @@ Create a new `Metric`.
 
 *  **`definition`** map
 
-## `POST /api/metric/:id/revert`
+## `POST /api/legacy-metric/:id/revert`
 
 Revert a `Metric` to a prior `Revision`.
 
@@ -70,7 +70,7 @@ Revert a `Metric` to a prior `Revision`.
 
 *  **`revision_id`** value must be an integer greater than zero.
 
-## `PUT /api/metric/:id`
+## `PUT /api/legacy-metric/:id`
 
 Update a `Metric` with ID.
 
@@ -96,7 +96,7 @@ Update a `Metric` with ID.
 
 *  **`how_is_this_calculated`** nullable string
 
-## `PUT /api/metric/:id/important_fields`
+## `PUT /api/legacy-metric/:id/important_fields`
 
 Update the important `Fields` for a `Metric` with ID.
    (This is used for the Getting Started guide).

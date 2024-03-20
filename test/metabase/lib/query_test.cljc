@@ -187,3 +187,6 @@
             :lib.convert/converted? true}
            (lib.query/query meta/metadata-provider
              {:database 74001, :type :query, :query {:source-table 74040}})))))
+
+(deftest ^:parallel can-save-mbql-test
+  (is (lib.query/can-save lib.tu/venues-query)))

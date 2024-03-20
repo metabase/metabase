@@ -228,9 +228,7 @@
 
 (def ^:private Models
   "This is basically a union type. [[api/defendpoint]] splits the string if it only gets one."
-  [:or
-   [:sequential ModelString]
-   ModelString])
+  [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} ModelString])
 
 (def ^:private valid-pinned-state-values
   "Valid values for the `?pinned_state` param accepted by endpoints in this namespace."
