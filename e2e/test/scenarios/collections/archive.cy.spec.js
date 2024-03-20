@@ -3,7 +3,7 @@ import {
   FIRST_COLLECTION_ID,
   READ_ONLY_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { restore } from "e2e/support/helpers";
+import { archiveQuestion, restore } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -47,7 +47,7 @@ describe("scenarios > collections > archive", () => {
         ],
       },
     }).then(({ body: { id } }) => {
-      cy.archiveQuestion(id);
+      archiveQuestion(id);
     });
 
     cy.visit("/archive");
