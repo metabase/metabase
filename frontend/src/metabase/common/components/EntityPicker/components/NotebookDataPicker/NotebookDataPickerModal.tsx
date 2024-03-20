@@ -53,7 +53,7 @@ export const NotebookDataPickerModal = ({
   const tabs: [EntityTab, ...EntityTab[]] = [
     {
       displayName: t`Models`,
-      model: "model",
+      model: "dataset",
       icon: "model",
       element: (
         <NotebookDataPicker
@@ -79,7 +79,7 @@ export const NotebookDataPickerModal = ({
     },
     {
       displayName: t`Saved questions`,
-      model: "question",
+      model: "card",
       icon: "folder",
       element: (
         <NotebookDataPicker
