@@ -32,7 +32,7 @@ export const InteractiveTabContent = (props: EmbedHomepageViewProps) => {
         // TODO: fix this in a better way
         style={{ listStyleType: "decimal" }}
       >
-        {licenseActiveAtSetup === false && (
+        {!licenseActiveAtSetup && (
           <>
             <List.Item>
               <Link to="/admin/settings/license">
