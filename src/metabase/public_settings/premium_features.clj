@@ -96,14 +96,15 @@
 
 (def ^:private ^:const fetch-token-status-timeout-ms (u/seconds->ms 10))
 
-(def ^:private TokenStatus
+(def TokenStatus
+  "Schema for a response from the token status API."
   [:map
    [:valid                          :boolean]
    [:status                         [:string {:min 1}]]
    [:error-details {:optional true} [:maybe [:string {:min 1}]]]
    [:features      {:optional true} [:sequential [:string {:min 1}]]]
    [:trial         {:optional true} :boolean]
-   [:valid-thru    {:optional true} [:string {:min 1}]] ;; ISO 8601 timestamp
+   [:valid-thru    {:optional true} [:string {:min 1}]]
    [:max-users     {:optional true} pos-int?]
    [:company       {:optional true} [:string {:min 1}]]])
 
