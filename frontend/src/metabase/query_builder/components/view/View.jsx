@@ -385,7 +385,7 @@ class View extends Component {
           <QueryBuilderContentContainer>
             {!isNative && (
               <NotebookContainer
-                isNotebookContainerOpen={isNotebookContainerOpen}
+                isOpen={isNotebookContainerOpen}
                 {...this.props}
               />
             )}

@@ -9,39 +9,35 @@ import { Box } from "metabase/ui";
 const delayBeforeNotRenderingNotebook = 10;
 
 interface NotebookContainerProps {
-  isNotebookContainerOpen: boolean;
+  isOpen: boolean;
 }
 
 export const NotebookContainer = ({
-  isNotebookContainerOpen,
+  isOpen,
   ...props
 }: NotebookContainerProps) => {
-  const [shouldShowNotebook, setShouldShowNotebook] = useState(
-    isNotebookContainerOpen,
-  );
+  const [shouldShowNotebook, setShouldShowNotebook] = useState(isOpen);
 
   useEffect(() => {
-    isNotebookContainerOpen && setShouldShowNotebook(isNotebookContainerOpen);
-  }, [isNotebookContainerOpen]);
+    isOpen && setShouldShowNotebook(isOpen);
+  }, [isOpen]);
 
   const handleTransitionEnd: TransitionEventHandler<HTMLDivElement> = (
     event,
   ): void => {
-    if (event.propertyName === "opacity" && !isNotebookContainerOpen) {
+    if (event.propertyName === "opacity" && !isOpen) {
       setShouldShowNotebook(false);
     }
   };
 
-  const transformStyle = isNotebookContainerOpen
-    ? "translateY(0)"
-    : "translateY(-100%)";
+  const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
 
   return (
     <Box
       bg="white"
       pos="absolute"
       inset={0}
-      opacity={isNotebookContainerOpen ? 1 : 0}
+      opacity={isOpen ? 1 : 0}
       style={{
         zIndex: 2,
         overflowY: "auto",
