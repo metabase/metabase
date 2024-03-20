@@ -13,7 +13,10 @@ describe("scenarios > admin > databases > table", () => {
 
   it("should see 8 tables in sample database", () => {
     cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
-    cy.get(".AdminList-item").should("have.length", 8);
+    cy.findAllByTestId("admin-metadata-table-list-item").should(
+      "have.length",
+      8,
+    );
   });
 
   it("should be able to see details of each table", () => {
@@ -37,7 +40,10 @@ describe("scenarios > admin > databases > table", () => {
 
   it("should show 404 if database does not exist (metabase#14652)", () => {
     cy.visit("/admin/datamodel/database/54321");
-    cy.get(".AdminList-item").should("have.length", 0);
+    cy.findAllByTestId("admin-metadata-table-list-item").should(
+      "have.length",
+      0,
+    );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not found.");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

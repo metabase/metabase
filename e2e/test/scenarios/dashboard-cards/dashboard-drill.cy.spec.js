@@ -644,6 +644,42 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
   });
 
+  it("should keep card's display when doing zoom drill-through from dashboard (metabase#38307)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+
+    const questionDetails = {
+      name: "38307",
+      query: {
+        "source-table": REVIEWS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", REVIEWS.CREATED_AT, { "temporal-unit": "month" }]],
+      },
+      display: "bar",
+    };
+
+    const dashboardDetails = {
+      name: "38307",
+    };
+
+    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: { dashboard_id } }) => {
+        visitDashboard(dashboard_id);
+
+        // click the first bar on the card's graph and do a zoom drill-through
+        cy.get(".bar").eq(0).click({ force: true });
+        cy.findByText("See this month by week").click();
+
+        cy.wait("@dataset");
+
+        // check that the display is still a bar chart by checking that a .bar element exists
+        cy.get(".bar").should("exist");
+      },
+    );
+  });
+
   it("should not hide custom formatting when click behavior is enabled (metabase#14597)", () => {
     const columnKey = JSON.stringify(["name", "MY_NUMBER"]);
     const questionSettings = {

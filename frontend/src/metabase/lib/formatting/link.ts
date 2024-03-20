@@ -3,6 +3,8 @@ import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { ParameterValueOrArray } from "metabase-types/api";
 import type { DatasetColumn, RowValue } from "metabase-types/api/dataset";
 
+import { NULL_DISPLAY_VALUE } from "../constants";
+
 import { formatDateTimeForParameter } from "./date";
 
 type Value = ParameterValueOrArray | RowValue | undefined;
@@ -48,6 +50,11 @@ export function renderLinkURLForClick(
     data,
     ({ value, column }: TemplateForClickFormatFunctionParamsType) => {
       const valueForLinkTemplate = formatValueForLinkTemplate(value, column);
+
+      if ([null, NULL_DISPLAY_VALUE].includes(valueForLinkTemplate)) {
+        return "";
+      }
+
       return encodeURIComponent(valueForLinkTemplate);
     },
   );
