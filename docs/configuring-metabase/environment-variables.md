@@ -934,7 +934,7 @@ Matching style for native query editor's autocomplete. Larger instances can have
 Type: boolean<br>
 Default: `false`<br>
 
-Metabase will send a sentiment survey to people who create lots of questions and dashboards to gauge how well the product is doing with respect to making things easy for creators.
+Metabase will send a sentiment survey to people who create a number of questions and dashboards to gauge how well the product is doing with respect to making things easy for creators.
 
 Metabase will only send these emails to people who have in the past 2 months:
 
@@ -942,7 +942,7 @@ Metabase will only send these emails to people who have in the past 2 months:
 - Created at least 2 SQL questions
 - Created at least 1 dashboard
 
-If you're whitelabeling Metabase, these survey emails will only be sent to admins for that instance.
+If you're whitelabeling Metabase, these survey emails will only be sent to admins for that instance who meet that criteria.
 
 If you don't want Metabase to send these emails, set `MB_NO_SURVEYS=true`.
 
