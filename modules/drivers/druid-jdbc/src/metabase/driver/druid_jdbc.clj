@@ -7,10 +7,11 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.util.honey-sql-2 :as h2x])
   (:import
    (java.sql ResultSet Types)
-   (java.sql Types)))
+   (java.time ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -114,3 +115,11 @@
 (defmethod sql-jdbc.conn/data-source-name :druid-jdbc
   [_driver {:keys [host port] :as _details}]
   (format "druid-%s-%s" host port))
+
+(defmethod sql-jdbc.execute/set-parameter [:druid-jdbc ZonedDateTime]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (t/format "yyyy-MM-dd HH:mm:ss" t)))
+
+(defmethod unprepare/unprepare-value [:druid-jdbc ZonedDateTime]
+  [_ t]
+  (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss" t)))
