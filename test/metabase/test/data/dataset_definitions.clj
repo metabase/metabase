@@ -131,8 +131,8 @@
           [date nil user-id venue-id])))))
 
 (defonce ^{:doc "The main `test-data` dataset, but `last_login` has a base type of `:type/DateTimeWithTZ`."}
-  timezone-test-data
-  (tx/transformed-dataset-definition "timezone-test-data" test-data
+  tz-test-data
+  (tx/transformed-dataset-definition "tz-test-data" test-data
     (tx/transform-dataset-update-table "users"
       :table
       (fn [tabledef]
