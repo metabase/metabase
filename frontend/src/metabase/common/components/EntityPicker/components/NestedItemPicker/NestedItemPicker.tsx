@@ -4,6 +4,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { Flex } from "metabase/ui";
 
 import type {
+  EntityPickerOptions,
   ListProps,
   PickerState,
   TisFolder,
@@ -18,7 +19,7 @@ export interface NestedItemPickerProps<
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
   Query,
-  Options,
+  Options extends EntityPickerOptions,
 > {
   onFolderSelect: ({ folder }: { folder: Item }) => void;
   onItemSelect: (item: Item) => void;
@@ -35,7 +36,7 @@ export function NestedItemPicker<
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
   Query,
-  Options,
+  Options extends EntityPickerOptions,
 >({
   onFolderSelect,
   onItemSelect,
