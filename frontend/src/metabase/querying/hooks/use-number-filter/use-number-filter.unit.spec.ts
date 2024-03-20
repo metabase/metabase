@@ -229,12 +229,12 @@ describe("useNumberFilter", () => {
 
   it.each<DefaultOperatorCase>([
     {
-      title: "PK",
+      title: "PK column",
       column: findColumn("ORDERS", "ID"),
       expectedOperator: "=",
     },
     {
-      title: "FK",
+      title: "FK column",
       column: findColumn("ORDERS", "PRODUCT_ID"),
       expectedOperator: "=",
     },
