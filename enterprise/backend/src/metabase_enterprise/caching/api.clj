@@ -16,8 +16,8 @@
 
 (defn- assert-valid-models [model ids]
   (if (= model "root")
-    (when-not (= [0] ids)
-      (throw (ex-info (tru "Root configuration is only valid with model_id = 0") {:status-code 400
+    (when-not (= ids [0])
+      (throw (ex-info (tru "Root configuration is only valid with model_id = 0") {:status-code 404
                                                                                   :model_id    (first ids)})))
     (api/check-404 (t2/select-one (case model
                                     "database"  :model/Database
@@ -82,7 +82,7 @@
    model_id (ms/QueryVectorOf ms/PositiveInt)}
   (validation/check-has-application-permission :setting)
   (assert-valid-models model model_id)
-  (when-let [current (t2/select :model/CacheConfig :model model :model_id [:in model_id])]
+  (when-let [current (seq (t2/select :model/CacheConfig :model model :model_id [:in model_id]))]
     (t2/delete! :model/CacheConfig :model model :model_id [:in model_id])
     (doseq [item current]
       (audit-caching-change! (:id item)

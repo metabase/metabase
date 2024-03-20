@@ -59,15 +59,15 @@
       (cached-results [this query-hash strategy respond]
         (assert (= :ttl (:type strategy)))
         (assert (contains? strategy :avg-execution-ms))
-        (let [hex-hash (codecs/bytes->hex query-hash)
-              max-age-seconds (* (:multiplier strategy)
-                                 (:avg-execution-ms strategy))]
+        (let [hex-hash   (codecs/bytes->hex query-hash)
+              max-age-ms (* (:multiplier strategy)
+                            (:avg-execution-ms strategy))]
           (log/tracef "Fetch results for %s store: %s" hex-hash (pretty/pretty this))
           (if-let [^bytes results (when-let [{:keys [created results]} (some (fn [[hash entry]]
                                                                                (when (= hash hex-hash)
                                                                                  entry))
                                                                              @store)]
-                                    (when (t/after? created (t/minus (t/instant) (t/seconds max-age-seconds)))
+                                    (when (t/after? created (t/minus (t/instant) (t/millis max-age-ms)))
                                       results))]
             (with-open [is (java.io.ByteArrayInputStream. results)]
               (respond is))
@@ -115,10 +115,10 @@
 (def ^:private ^:dynamic ^Long *query-execution-delay-ms* 10)
 
 (defn ^:private ttl-strategy []
-  {:type           :ttl
-   :multiplier     60
-   :avg-execution-ms 1
-   :min-duration   (public-settings/query-caching-min-ttl)})
+  {:type             :ttl
+   :multiplier       60
+   :avg-execution-ms 1000
+   :min-duration     (public-settings/query-caching-min-ttl)})
 
 (defn- test-query [query-kvs]
   (merge {:cache-strategy (ttl-strategy), :lib/type :mbql/query, :stages [{:abc :def}]} query-kvs))

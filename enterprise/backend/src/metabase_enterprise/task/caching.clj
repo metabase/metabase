@@ -4,7 +4,6 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
-   [medley.core :as m]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.task :as task]
@@ -60,8 +59,8 @@
   where `(:marker state)` is not equal to the result of the query."
   []
   (when-let [configs (seq (select-ready-to-run :query))]
-    (let [fields (m/index-by :id (t2/select :model/Field :id [:in (map #(-> % :config :field_id) configs)]))
-          tables (m/index-by :id (t2/select :model/Table :id [:in (map :table_id (vals fields))]))]
+    (let [fields (t2/select-pk->fn identity :model/Field :id [:in (map #(-> % :config :field_id) configs)])
+          tables (t2/select-pk->fn identity :model/Table :id [:in (map :table_id (vals fields))])]
       (count
        (for [item configs
              :let [field (get fields (:field_id (:config item)))

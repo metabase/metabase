@@ -22,7 +22,6 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
@@ -52,7 +51,7 @@
     (log/trace "Successfully purged old cache entries.")
     :done
     (catch Throwable e
-      (log/error e (trs "Error purging old cache entries: {0}" (ex-message e))))))
+      (log/errorf e "Error purging old cache entries: %s" (ex-message e)))))
 
 (def ^:private ^:dynamic *in-fn*
   "The `in-fn` provided by [[impl/do-with-serialization]]."
@@ -75,8 +74,8 @@
 (defn- cache-results!
   "Save the final results of a query."
   [query-hash]
-  (log/info (trs "Caching results for next time for query with hash {0}."
-                 (pr-str (i/short-hex-hash query-hash))) (u/emoji "💾"))
+  (log/infof "Caching results for next time for query with hash %s. %s"
+             (pr-str (i/short-hex-hash query-hash)) (u/emoji "💾"))
   (try
     (let [bytez (serialized-bytes)]
       (if-not (instance? (Class/forName "[B") bytez)
@@ -89,8 +88,8 @@
     :done
     (catch Throwable e
       (if (= (:type (ex-data e)) ::impl/max-bytes)
-        (log/debug e (trs "Not caching results: results are larger than {0} KB" (public-settings/query-caching-max-kb)))
-        (log/error e (trs "Error saving query results to cache: {0}" (ex-message e)))))))
+        (log/debugf e "Not caching results: results are larger than %s KB" (public-settings/query-caching-max-kb))
+        (log/errorf e "Error saving query results to cache: %s" (ex-message e))))))
 
 (defn- save-results-xform [start-time metadata query-hash strategy rf]
   (let [has-rows? (volatile! false)]
@@ -177,11 +176,12 @@
               (log/debugf "Not found cached results for hash '%s'" (i/short-hex-hash query-hash)))))
         [::miss nil])
     (catch EofException _
-      (log/debug (trs "Request is closed; no one to return cached results to"))
+      (log/debug "Request is closed; no one to return cached results to")
       [::canceled nil])
     (catch Throwable e
-      (log/error e (trs "Error attempting to fetch cached results for query with hash {0}: {1}"
-                        (i/short-hex-hash query-hash) (ex-message e)))
+      (log/errorf e "Error attempting to fetch cached results for query with hash %s: %s"
+                  (i/short-hex-hash query-hash)
+                  (ex-message e))
       [::miss nil])))
 
 
