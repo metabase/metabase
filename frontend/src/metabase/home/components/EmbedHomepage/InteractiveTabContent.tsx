@@ -8,14 +8,13 @@ import { Anchor, Button, Icon, Text } from "metabase/ui";
 
 import type { EmbedHomepageViewProps } from "./EmbedHomepageView";
 
-export const InteractiveTabContent = (props: EmbedHomepageViewProps) => {
-  const {
-    embeddingAutoEnabled,
-    interactiveEmbeddingQuickstartUrl,
-    exampleDashboardId,
-    licenseActiveAtSetup,
-    learnMoreInteractiveEmbedUrl,
-  } = props;
+export const InteractiveTabContent = ({
+  embeddingAutoEnabled,
+  interactiveEmbeddingQuickstartUrl,
+  exampleDashboardId,
+  licenseActiveAtSetup,
+  learnMoreInteractiveEmbedUrl,
+}: EmbedHomepageViewProps) => {
   return (
     <>
       <Text

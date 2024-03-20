@@ -8,9 +8,11 @@ import { Anchor, Button, Icon, Text } from "metabase/ui";
 
 import type { EmbedHomepageViewProps } from "./EmbedHomepageView";
 
-export const StaticTabContent = (props: EmbedHomepageViewProps) => {
-  const { embeddingAutoEnabled, exampleDashboardId, learnMoreStaticEmbedUrl } =
-    props;
+export const StaticTabContent = ({
+  embeddingAutoEnabled,
+  exampleDashboardId,
+  learnMoreStaticEmbedUrl,
+}: EmbedHomepageViewProps) => {
   return (
     <>
       <Text
