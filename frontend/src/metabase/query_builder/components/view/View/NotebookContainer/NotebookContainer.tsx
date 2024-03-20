@@ -1,3 +1,4 @@
+import type { TransitionEventHandler } from "react";
 import { useEffect, useState } from "react";
 
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
@@ -23,7 +24,7 @@ export const NotebookContainer = ({
     isNotebookContainerOpen && setShouldShowNotebook(isNotebookContainerOpen);
   }, [isNotebookContainerOpen]);
 
-  const handleTransitionEnd: React.TransitionEventHandler<HTMLDivElement> = (
+  const handleTransitionEnd: TransitionEventHandler<HTMLDivElement> = (
     event,
   ): void => {
     if (event.propertyName === "opacity" && !isNotebookContainerOpen) {
