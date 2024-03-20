@@ -253,17 +253,21 @@
 
 (defn- describe-syncable-tables
   [{driver :engine :as database}]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   database
-   nil
-   (fn [^Connection conn]
-     (when-let [syncable-schemas (seq (driver/syncable-schemas :postgres database))]
-       (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn :postgres conn)]
-         (eduction
-          (comp (filter have-select-privilege?)
-                (map #(dissoc % :type)))
-          (get-tables database syncable-schemas nil)))))))
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       database
+       nil
+       (fn [^Connection conn]
+         (when-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
+           (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn driver conn)]
+             (reduce
+              ((comp (filter have-select-privilege?)
+                     (map #(dissoc % :type)))
+               rf)
+              init
+              (get-tables database syncable-schemas nil)))))))))
 
 (defmethod driver/describe-database :postgres
   [_driver database]
