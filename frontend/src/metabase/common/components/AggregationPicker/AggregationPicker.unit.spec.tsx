@@ -400,10 +400,10 @@ describe("AggregationPicker", () => {
   });
 
   describe("custom expressions", () => {
-    it("should allow to enter a custom expression", async () => {
+    it("should allow to enter a custom expression containing an aggregation", async () => {
       const { getRecentClauseInfo } = setup();
 
-      const expression = "1 + 1";
+      const expression = "count + 1";
       const expressionName = "My expression";
 
       userEvent.click(screen.getByText("Custom Expression"));

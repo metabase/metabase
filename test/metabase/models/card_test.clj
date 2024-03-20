@@ -3,6 +3,7 @@
    [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [java-time :as t]
    [metabase.config :as config]
    [metabase.models
     :refer [Collection
@@ -38,7 +39,9 @@
                              :size_x       4
                              :size_y       4}))
               (get-dashboard-count []
-                (card/dashboard-count (t2/select-one :model/Card :id card-id)))]
+                (-> (t2/select-one :model/Card :id card-id)
+                    (t2/hydrate :dashboard_count)
+                    :dashboard_count))]
         (is (= 0
                (get-dashboard-count)))
         (testing "add to a Dashboard"
@@ -901,3 +904,51 @@
                               {:collection_id 1})))
         (is (true? (changed? {:dataset_query {} :collection_id 1}
                              {:dataset_query nil :collection_id 1})))))))
+
+(deftest hydrate-dashboard-count-test
+  (mt/with-temp
+    [:model/Card          card1 {}
+     :model/Card          card2 {}
+     :model/Card          card3 {}
+     :model/Dashboard     dash  {}
+     :model/DashboardCard _dc1  {:card_id (:id card1) :dashboard_id (:id dash)}
+     :model/DashboardCard _dc2  {:card_id (:id card1) :dashboard_id (:id dash)}
+     :model/DashboardCard _dc3  {:card_id (:id card2) :dashboard_id (:id dash)}]
+    (is (= [2 1 0]
+           (map :dashboard_count (t2/hydrate [card1 card2 card3] :dashboard_count))))))
+
+(deftest hydrate-parameter-usage-count-test
+  (mt/with-temp
+    [:model/Card          card1 {}
+     :model/Card          card2 {}
+     :model/Card          card3 {}
+     :model/ParameterCard _pc1  {:card_id (:id card1)
+                                 :parameter_id              "param_1"
+                                 :parameterized_object_type "card"
+                                 :parameterized_object_id (:id card1)}
+     :model/ParameterCard _pc2  {:card_id (:id card1)
+                                 :parameter_id              "param_2"
+                                 :parameterized_object_type "card"
+                                 :parameterized_object_id (:id card2)}
+     :model/ParameterCard _pc3  {:card_id (:id card2)
+                                 :parameter_id              "param_3"
+                                 :parameterized_object_type "card"
+                                 :parameterized_object_id (:id card3)}]
+   (is (= [2 1 0]
+          (map :parameter_usage_count (t2/hydrate [card1 card2 card3] :parameter_usage_count))))))
+
+(deftest average-query-time-and-last-query-started-test
+  (let [now       (t/offset-date-time)
+        yesterday (t/minus now (t/days 1))]
+    (mt/with-temp
+      [:model/Card           card {}
+       :model/QueryExecution _qe1 {:card_id      (:id card)
+                                   :started_at   now
+                                   :cache_hit    false
+                                   :running_time 50}
+       :model/QueryExecution _qe2 {:card_id      (:id card)
+                                   :started_at   yesterday
+                                   :cache_hit    false
+                                   :running_time 100}]
+      (is (= 75 (-> card (t2/hydrate :average_query_time) :average_query_time int)))
+      (is (= now (-> card (t2/hydrate :last_query_start) :last_query_start))))))

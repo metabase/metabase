@@ -721,6 +721,26 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         .should("have.text", name);
     }
 
+    function verifyPopoverDoesNotMoveElement({
+      type,
+      name,
+      index,
+      horizontal,
+      vertical,
+    }) {
+      getNotebookStep(type).findByText(name).click();
+      popover().within(() => {
+        moveDnDKitElement(cy.findByDisplayValue("Is"), {
+          horizontal,
+          vertical,
+        });
+      });
+      getNotebookStep(type)
+        .findAllByTestId("notebook-cell-item")
+        .eq(index)
+        .should("have.text", name);
+    }
+
     const questionDetails = {
       query: {
         "source-table": ORDERS_ID,
@@ -769,6 +789,12 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
     getNotebookStep("sort").within(() => {
       moveElement({ name: "Average of Total", horizontal: -100, index: 0 });
+    });
+    verifyPopoverDoesNotMoveElement({
+      type: "filter",
+      name: "ID is 1",
+      index: 1,
+      horizontal: -100,
     });
   });
 });

@@ -30,16 +30,17 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private bool-type        ::upload/boolean)
-(def ^:private int-type         ::upload/int)
-(def ^:private bool-or-int-type ::upload/boolean-or-int)
-(def ^:private float-type       ::upload/float)
-(def ^:private vchar-type       ::upload/varchar-255)
-(def ^:private date-type        ::upload/date)
-(def ^:private datetime-type    ::upload/datetime)
-(def ^:private offset-dt-type   ::upload/offset-datetime)
-(def ^:private text-type        ::upload/text)
-(def ^:private auto-pk-type     ::upload/auto-incrementing-int-pk)
+(def ^:private bool-type         ::upload/boolean)
+(def ^:private int-type          ::upload/int)
+(def ^:private bool-int-type     ::upload/*boolean-int*)
+(def ^:private float-type        ::upload/float)
+(def ^:private float-or-int-type ::upload/*float-or-int*)
+(def ^:private vchar-type        ::upload/varchar-255)
+(def ^:private date-type         ::upload/date)
+(def ^:private datetime-type     ::upload/datetime)
+(def ^:private offset-dt-type    ::upload/offset-datetime)
+(def ^:private text-type         ::upload/text)
+(def ^:private auto-pk-type      ::upload/auto-incrementing-int-pk)
 
 (defn- local-infile-on? []
   (= "ON" (-> (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -112,11 +113,28 @@
 (deftest type-detection-and-parse-test
   (doseq [[string-value expected-value expected-type seps]
           ;; Number-related
-          [["0.0"        0              float-type "."]
-           ["0.0"        0              float-type ".,"]
-           ["0,0"        0              float-type ",."]
-           ["0,0"        0              float-type ", "]
-           ["0.0"        0              float-type ".’"]
+          [["0.0"        0              float-or-int-type "."]
+           ["0.0"        0              float-or-int-type ".,"]
+           ["0,0"        0              float-or-int-type ",."]
+           ["0,0"        0              float-or-int-type ", "]
+           ["0.0"        0              float-or-int-type ".’"]
+           ["-0.0"       -0.0           float-or-int-type "."]
+           ["-0.0"       -0.0           float-or-int-type ".,"]
+           ["-0,0"       -0.0           float-or-int-type ",."]
+           ["-0,0"       -0.0           float-or-int-type ", "]
+           ["-0.0"       -0.0           float-or-int-type ".’"]
+           ["(0.0)"      -0.0           float-or-int-type "."]
+           ["(0.0)"      -0.0           float-or-int-type ".,"]
+           ["(0,0)"      -0.0           float-or-int-type ",."]
+           ["(0,0)"      -0.0           float-or-int-type ", "]
+           ["(0.0)"      -0.0           float-or-int-type ".’"]
+           ["-4300.00€"  -4300          float-or-int-type ".,"]
+           ["£1,000.00"  1000           float-or-int-type]
+           ["£1,000.00"  1000           float-or-int-type "."]
+           ["£1,000.00"  1000           float-or-int-type ".,"]
+           ["£1.000,00"  1000           float-or-int-type ",."]
+           ["£1 000,00"  1000           float-or-int-type ", "]
+           ["£1’000.00"  1000           float-or-int-type ".’"]
            ["$2"         2              int-type]
            ["$ 3"        3              int-type]
            ["-43€"       -43            int-type]
@@ -143,8 +161,8 @@
            ["9’986’000"  9986000        int-type ".’"]
            ["$0"         0              int-type]
            ["-1"         -1             int-type]
-           ["0"          false          bool-or-int-type]
-           ["1"          true           bool-or-int-type]
+           ["0"          false          bool-int-type]
+           ["1"          true           bool-int-type]
            ["9.986.000"  "9.986.000"    vchar-type ".,"]
            ["3.14"       3.14           float-type]
            ["3.14"       3.14           float-type "."]
@@ -156,7 +174,7 @@
            [".14"        ".14"          vchar-type ".,"] ;; TODO: this should be a float type
            ["0.14"       0.14           float-type ".,"]
            ["-9986.567"  -9986.567      float-type ".,"]
-           ["$2.0"       2              float-type ".,"]
+           ["$2.0"       2              float-or-int-type ".,"]
            ["$ 3.50"     3.50           float-type ".,"]
            ["-4300.23€"  -4300.23       float-type ".,"]
            ["£1,000.23"  1000.23        float-type]
@@ -230,10 +248,10 @@
     (let [settings    {:number-separators (or seps ".,")}
           type->check (#'upload/settings->type->check settings)
           value-type  (#'upload/value->type type->check string-value)
-          ;; get the type of the column, if it were filled with only that value
+          ;; get the type of the column, if we created it based on only that value
           col-type    (first (upload/column-types-from-rows settings nil [[string-value]]))
           parser      (upload-parsing/upload-type->parser col-type settings)]
-      (testing (format "\"%s\" is a %s" string-value type)
+      (testing (format "\"%s\" is a %s" string-value value-type)
         (is (= expected-type
                value-type)))
       (testing (format "\"%s\" is parsed into %s" string-value expected-value)
@@ -244,7 +262,7 @@
   (doseq [[type-a            type-b           expected]
           [[bool-type        bool-type        bool-type]
            [bool-type        int-type         vchar-type]
-           [bool-type        bool-or-int-type bool-type]
+           [bool-type        bool-int-type    bool-type]
            [bool-type        date-type        vchar-type]
            [bool-type        datetime-type    vchar-type]
            [bool-type        vchar-type       vchar-type]
@@ -255,9 +273,12 @@
            [int-type         datetime-type    vchar-type]
            [int-type         vchar-type       vchar-type]
            [int-type         text-type        text-type]
-           [int-type         bool-or-int-type int-type]
-           [bool-or-int-type bool-or-int-type bool-or-int-type]
+           [int-type         bool-int-type    int-type]
+           [bool-int-type    bool-int-type    bool-int-type]
            [float-type       vchar-type       vchar-type]
+           [float-type       text-type        text-type]
+           [float-type       date-type        vchar-type]
+           [float-type       datetime-type    vchar-type]
            [float-type       text-type        text-type]
            [float-type       date-type        vchar-type]
            [float-type       datetime-type    vchar-type]
@@ -617,10 +638,10 @@
             (is (some? table))))))))
 
 (deftest load-from-csv-offset-datetime-test
-  (testing "Upload a CSV file with a datetime column"
+  (testing "Upload a CSV file with an offset datetime column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
-        (with-redefs [driver/db-default-timezone (constantly "Z")
+        (mt/with-dynamic-redefs [driver/db-default-timezone (constantly "Z")
                       upload/current-database    (constantly (mt/db))]
           (let [table-name (mt/random-name)
                 datetime-pairs [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
@@ -1040,10 +1061,10 @@
           _                    (t2/update! :model/Database db-id {:is_on_demand false
                                                                   :is_full_sync false})]
       (try
-        (with-redefs [ ;; do away with the `future` invocation since we don't want race conditions in a test
-                      future-call (fn [thunk]
-                                    (swap! in-future? (constantly true))
-                                    (thunk))]
+        (mt/with-dynamic-redefs [;; do away with the `future` invocation since we don't want race conditions in a test
+                                 future-call (fn [thunk]
+                                               (swap! in-future? (constantly true))
+                                               (thunk))]
           (testing "Happy path with schema, and without table-prefix"
             ;; make sure the schema exists
             (let [sql (format "CREATE SCHEMA IF NOT EXISTS %s;" (sql.tx/qualify-and-quote driver/*driver* schema-name))]
@@ -1109,28 +1130,29 @@
   ;; Just test with h2 because snowplow should be independent of the driver
   (mt/test-driver :h2
     (snowplow-test/with-fake-snowplow-collector
-      (with-upload-table!
-        [_table (card->table (upload-example-csv!))]
-        (is (=? {:data {"model_id"        pos?
-                        "size_mb"         3.910064697265625E-5
-                        "num_columns"     2
-                        "num_rows"        2
-                        "upload_seconds"  pos?
-                        "event"           "csv_upload_successful"}
-                 :user-id (str (mt/user->id :rasta))}
-                (last (snowplow-test/pop-event-data-and-user-id!))))
-        (with-redefs [upload/load-from-csv! (fn [_ _ _ _]
-                                              (throw (Exception.)))]
-          (try (upload-example-csv!)
-               (catch Throwable _
-                 nil))
-          (is (= {:data {"size_mb"     3.910064697265625E-5
-                         "num_columns" 2
-                         "num_rows"    2
-                         "event"       "csv_upload_failed"}
-                  :user-id (str (mt/user->id :rasta))}
-                 (last (snowplow-test/pop-event-data-and-user-id!)))))))))
+      (with-upload-table! [_table (card->table (upload-example-csv!))]
+        (testing "Successfully creating a CSV Upload publishes statistics to Snowplow"
+          (is (=? {:data    {"model_id"          pos?
+                             "size_mb"           3.910064697265625E-5
+                             "num_columns"       2
+                             "num_rows"          2
+                             "generated_columns" 1
+                             "upload_seconds"    pos?
+                             "event"             "csv_upload_successful"}
+                   :user-id (str (mt/user->id :rasta))}
+                  (last (snowplow-test/pop-event-data-and-user-id!)))))
 
+        (testing "Failures when creating a CSV Upload will publish statistics to Snowplow"
+          (mt/with-dynamic-redefs [upload/load-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+            (try (upload-example-csv!)
+                 (catch Throwable _
+                   nil))
+            (is (= {:data    {"size_mb"     3.910064697265625E-5
+                              "num_columns" 2
+                              "num_rows"    2
+                              "event"       "csv_upload_failed"}
+                    :user-id (str (mt/user->id :rasta))}
+                   (last (snowplow-test/pop-event-data-and-user-id!))))))))))
 
 (deftest csv-upload-audit-log-test
   ;; Just test with h2 because these events are independent of the driver
@@ -1169,7 +1191,7 @@
               #"^The uploads database does not exist\.$"
               (upload-example-csv! :db-id Integer/MAX_VALUE, :schema-name "public", :table-prefix "uploaded_magic_"))))
       (testing "Uploads must be supported"
-        (with-redefs [driver/database-supports? (constantly false)]
+        (mt/with-dynamic-redefs [driver/database-supports? (constantly false)]
           (is (thrown-with-msg?
                 java.lang.Exception
                 #"^Uploads are not supported on Postgres databases\."
@@ -1314,7 +1336,7 @@
               :data    {:status-code 422}}
              (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
     (testing "Uploads must be supported"
-      (with-redefs [driver/database-supports? (constantly false)]
+      (mt/with-dynamic-redefs [driver/database-supports? (constantly false)]
         (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
                 :data    {:status-code 422}}
                (catch-ex-info (append-csv-with-defaults!))))))))
@@ -1349,40 +1371,53 @@
 (deftest append-column-mismatch-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
-      (testing "Append should fail if there are extra or missing columns in the CSV file"
+      (testing "Append should fail only if there are missing columns in the CSV file"
         (doseq [[csv-rows error-message]
-                {["_mb_row_id,id,name,extra column one,EXTRA COLUMN TWO"]
-                 (trim-lines "The CSV file contains extra columns that are not in the table:
-                              - extra_column_two
-                              - extra_column_one")
-
-                 [""]
+                {[""]
                  (trim-lines "The CSV file is missing columns that are in the table:
                               - id
                               - name")
 
-                 ["_mb_row_id,extra 1, extra 2"]
-                 (trim-lines "The CSV file contains extra columns that are not in the table:
-                              - extra_2
-                              - extra_1
+                 ;; Extra columns are fine, as long as none are missing.
+                 ["_mb_row_id,id,extra 1, extra 2,name"]
+                 nil
 
-                              The CSV file is missing columns that are in the table:
+                 ["_mb_row_id,extra 1, extra 2"]
+                 (trim-lines "The CSV file is missing columns that are in the table:
                               - id
-                              - name")}]
+                              - name
+
+                              There are new columns in the CSV file that are not in the table:
+                              - extra_2
+                              - extra_1")
+
+                 ["_mb_row_id,id, extra 2"]
+                 (trim-lines "The CSV file is missing columns that are in the table:
+                              - name
+
+                              There are new columns in the CSV file that are not in the table:
+                              - extra_2")}]
           (with-upload-table!
             [table (create-upload-table!
                     {:col->upload-type (ordered-map/ordered-map
                                         :id         ::upload/int
                                         :name       ::upload/varchar-255)
                      :rows [[1,"some_text"]]})]
-            (let [file  (csv-file-with csv-rows (mt/random-name))]
-              (is (= {:message error-message
-                      :data {:status-code 422}}
-                     (catch-ex-info (append-csv! {:file     file
-                                                  :table-id (:id table)}))))
-              (testing "Check the data was not uploaded into the table"
-                (is (= [[1 "some_text"]]
-                       (rows-for-table table))))
+
+            (let [file (csv-file-with csv-rows (mt/random-name))]
+              (when error-message
+                (is (= {:message error-message
+                        :data    {:status-code 422}}
+                       (catch-ex-info (append-csv! {:file file :table-id (:id table)}))))
+                (testing "Check the data was not uploaded into the table"
+                  (is (= [[1 "some_text"]]
+                         (rows-for-table table)))))
+
+              (when-not error-message
+                (testing "Check the data was uploaded into the table"
+                  ;; No exception is thrown - but there were also no rows in the table to check
+                  (append-csv! {:file file :table-id (:id table)})))
+
               (io/delete-file file))))))))
 
 (deftest append-all-types-test
@@ -1390,8 +1425,8 @@
     (with-mysql-local-infile-on-and-off
       (mt/with-report-timezone-id! "UTC"
         (testing "Append should succeed for all possible CSV column types"
-          (with-redefs [driver/db-default-timezone (constantly "Z")
-                        upload/current-database    (constantly (mt/db))]
+          (mt/with-dynamic-redefs [driver/db-default-timezone (constantly "Z")
+                                   upload/current-database    (constantly (mt/db))]
             (with-upload-table!
               [table (create-upload-table!
                       {:col->upload-type (ordered-map/ordered-map
@@ -1511,6 +1546,44 @@
                    (rows-for-table table))))
           (io/delete-file file))))))
 
+(deftest csv-append-snowplow-test
+  ;; Just test with h2 because snowplow should be independent of the driver
+  (mt/test-driver :h2
+    (snowplow-test/with-fake-snowplow-collector
+
+     (with-upload-table! [table (create-upload-table!)]
+       (testing "Successfully appending to CSV Uploads publishes statistics to Snowplow"
+         (let [csv-rows ["name" "Luke Skywalker"]
+               file     (csv-file-with csv-rows (mt/random-name))]
+           (append-csv! {:file file, :table-id (:id table)})
+
+           (is (=? {:data    {"size_mb"           1.811981201171875E-5
+                              "num_columns"       1
+                              "num_rows"          1
+                              "generated_columns" 0
+                              "upload_seconds"    pos?
+                              "event"             "csv_append_successful"}
+                    :user-id (str (mt/user->id :crowberto))}
+                   (last (snowplow-test/pop-event-data-and-user-id!))))
+
+           (io/delete-file file)))
+
+       (testing "Failures when appending to CSV Uploads will publish statistics to Snowplow"
+         (mt/with-dynamic-redefs [upload/load-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+           (let [csv-rows ["mispelled_name, unexpected_column" "Duke Cakewalker, r2dj"]
+                 file     (csv-file-with csv-rows (mt/random-name))]
+             (try
+               (append-csv! {:file file, :table-id (:id table)})
+               (catch Throwable _)
+               (finally
+                 (io/delete-file file))))
+
+           (is (= {:data    {"size_mb"     5.245208740234375E-5
+                             "num_columns" 2
+                             "num_rows"    1
+                             "event"       "csv_append_failed"}
+                   :user-id (str (mt/user->id :crowberto))}
+                  (last (snowplow-test/pop-event-data-and-user-id!))))))))))
 
 (deftest csv-append-audit-log-test
   ;; Just test with h2 because these events are independent of the driver
@@ -1598,6 +1671,21 @@
                     [2 "Puke Nightstalker" "Nothing - you can't prove it"]]
                    (rows-for-table table))))
           (io/delete-file file))))))
+
+(deftest append-new-column-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (with-uploads-allowed
+     (testing "Append should handle new columns being added in the latest CSV"
+       (with-upload-table! [table (create-upload-table!)]
+         ;; Reorder as well for good measure
+         (let [csv-rows ["game,name" "Witticisms,Fluke Skytalker"]
+               file     (csv-file-with csv-rows (mt/random-name))]
+           (testing "The new row is inserted with the values correctly reordered"
+             (is (= {:row-count 1} (append-csv! {:file file, :table-id (:id table)})))
+             (is (= [[1 "Obi-Wan Kenobi" nil]
+                     [2 "Fluke Skytalker" "Witticisms"]]
+                    (rows-for-table table))))
+           (io/delete-file file)))))))
 
 (deftest append-type-mismatch-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -1723,7 +1811,7 @@
         ;; inserted rows are rolled back
         (binding [driver/*insert-chunk-rows* 1]
           (doseq [{:keys [upload-type uncoerced coerced fail-msg] :as args}
-                  [{:upload-type ::upload/int,     :uncoerced "2.0",        :coerced 2.0} ;; column is promoted to float
+                  [{:upload-type ::upload/int,     :uncoerced "2.0",        :coerced 2} ;; value is coerced to int
                    {:upload-type ::upload/int,     :uncoerced "2.1",        :coerced 2.1} ;; column is promoted to float
                    {:upload-type ::upload/float,   :uncoerced "2",          :coerced 2.0}
                    {:upload-type ::upload/boolean, :uncoerced "0",          :coerced false}
@@ -1756,16 +1844,10 @@
                           (append!)))))
                 (io/delete-file file)))))))))
 
-(defn- first-non-abstract-first-parent [value-type]
-  (cond (nil? value-type) nil
+(def ^:private concretize @#'upload/concretize)
 
-        (#'upload/abstract->concrete value-type)
-        (recur (first (parents @#'upload/h value-type)))
-
-        :else value-type))
-
-(deftest column-type-test
-  (let [column-type #'upload/column-type]
+(deftest initial-column-type-test
+  (let [column-type (partial concretize nil)]
     (testing "Unknown value types are treated as text"
       (is (= ::upload/text (column-type nil))))
     (testing "Non-abstract value types resolve to themselves"
@@ -1776,6 +1858,74 @@
       (doseq [[value-type expected-column-type] @#'upload/abstract->concrete]
         (is (= expected-column-type (column-type value-type)))
         ;; Strictly speaking we only require that there is a route from each abstract node to its column type which only
-        ;; traverses through abstract nodes, but it's much simpler to enforce this convention. This consistency also
-        ;; keeps the graph easier to reason about and may save us from future foot guns.
-        (is (= expected-column-type (first-non-abstract-first-parent value-type)))))))
+        ;; traverses through abstract nodes, but it's much simpler to enforce this stronger condition.
+        (is (contains? (parents @#'upload/h value-type) expected-column-type))))))
+
+(deftest append-column-type-test
+  (doseq [existing-type @#'upload/value-types
+          value-type    @#'upload/value-types]
+    (case [existing-type value-type]
+      [::upload/int ::upload/*float-or-int*]
+      (testing "We coerce floats with fractional part to plan integers when appending into an existing integer column"
+        (is (= ::upload/int (concretize existing-type value-type))))
+
+      ;; This is unsatisfying, would be good if this interface also covered promoting columns and rejecting values.
+      (testing (format "We append %s values to %s columns as if we were inserting them into new columns" existing-type value-type)
+        (is (= (concretize nil value-type)
+               (concretize existing-type value-type)))))))
+
+(deftest create-from-csv-int-and-float-test
+  (testing "Creation should handle a mix of int and float-or-int values in any order"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+       (with-upload-table!
+         [table (let [table-name (mt/random-name)]
+                  (@#'upload/load-from-csv!
+                   driver/*driver*
+                   (mt/id)
+                   table-name
+                   (csv-file-with ["float-1,float-2"
+                                   "1,   1.0"
+                                   "1.0, 1"]))
+                  (sync-upload-test-table! :database (mt/db) :table-name table-name))]
+         (testing "Check the data was uploaded into the table correctly"
+           (is (= [[1 1.0 1.0]
+                   [2 1.0 1.0]]
+                  (rows-for-table table)))))))))
+
+(deftest append-from-csv-int-and-float-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "Append should handle a mix of int and float-or-int values being appended to an int column"
+      (with-upload-table! [table (create-upload-table!
+                                  :col->upload-type (ordered-map/ordered-map
+                                                     :_mb_row_id ::upload/auto-incrementing-int-pk
+                                                     :number_1 ::upload/int
+                                                     :number_2 ::upload/int)
+                                  :rows [[1, 1]])]
+
+        (let [csv-rows ["number-1, number-2"
+                        "1.0, 1"
+                        "1  , 1.0"]
+              file     (csv-file-with csv-rows (mt/random-name))]
+          (is (some? (append-csv! {:file file, :table-id (:id table)})))
+          (is (= [[1 1 1]
+                  [2 1 1]
+                  [3 1 1]]
+                 (rows-for-table table)))
+
+          (io/delete-file file))))))
+
+(deftest coercion-soundness-test
+  (testing "Every coercion maps to a stricter type that is a direct descendant"
+    (is (empty?
+         ;; Build a set of all type-pairs that violate this constraint
+         (into (sorted-set)
+               (comp (mapcat (fn [[column-type value-types]]
+                               (for [value-type value-types]
+                                 [column-type value-type])))
+                     (remove (fn [[column-type value-type]]
+                               ;; Strictly speaking we only require that there is a route which only traverses
+                               ;; through abstract nodes, but it's much simpler to enforce this stronger condition:
+                               ;; that `column-type` is a child of `value-type`
+                               (contains? (ordered-hierarchy/children @#'upload/h value-type) column-type))))
+               @#'upload/column-type->coercible-value-types)))))
