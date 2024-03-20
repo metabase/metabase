@@ -3,6 +3,7 @@ import type { ClickObject } from "metabase/visualizations/types";
 import type Query from "metabase-lib/queries/Query";
 import type {
   Card,
+  DashboardCard,
   DatasetData,
   RawSeries,
   Series,
@@ -28,6 +29,7 @@ export type ComputedVisualizationSettings = VisualizationSettings & {
 };
 
 export interface VisualizationProps {
+  dashcard: DashboardCard & { justAdded?: boolean };
   series: Series;
   card: Card;
   data: DatasetData;

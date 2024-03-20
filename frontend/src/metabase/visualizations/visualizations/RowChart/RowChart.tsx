@@ -10,6 +10,7 @@ import {
   getChartColumns,
   hasValidColumnsSelected,
 } from "metabase/visualizations/lib/graph/columns";
+import { getChartExtras } from "metabase/visualizations/lib/lighthouse_utils";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
 import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
@@ -82,6 +83,7 @@ const RowChartRenderer = ExplicitSize({
 ));
 
 const RowChartVisualization = ({
+  dashcard,
   card,
   className,
   settings,
@@ -256,6 +258,10 @@ const RowChartVisualization = ({
   const hasBreakout =
     settings["graph.dimensions"] && settings["graph.dimensions"]?.length > 1;
   const hasLegend = series.length > 1 || hasBreakout;
+  const chartExtras =
+    dashcard && rawMultipleSeries && rawMultipleSeries[0]["data"]
+      ? getChartExtras(dashcard, rawMultipleSeries, settings)
+      : undefined;
 
   return (
     <RowVisualizationRoot className={className} isQueryBuilder={isQueryBuilder}>
@@ -267,6 +273,7 @@ const RowChartVisualization = ({
           actionButtons={actionButtons}
           onSelectTitle={canSelectTitle ? openQuestion : undefined}
           width={width}
+          chartExtras={chartExtras}
         />
       )}
       <RowChartLegendLayout

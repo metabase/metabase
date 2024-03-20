@@ -11,6 +11,7 @@ import { getAccentColors } from "metabase/lib/colors/groups";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import { isEmpty } from "metabase/lib/validate";
+import { getChartExtras } from "metabase/visualizations/lib/lighthouse_utils";
 import { getOrderedSeries } from "metabase/visualizations/lib/series";
 import {
   validateChartDataSettings,
@@ -261,6 +262,8 @@ export default class LineAreaBarChart extends Component {
       settings,
       canRemoveSeries,
       width,
+      dashcard,
+      rawSeries,
     } = this.props;
 
     // Note (EmmadUsmani): Stacked charts should be reversed so series are stacked
@@ -279,6 +282,11 @@ export default class LineAreaBarChart extends Component {
       canSelectTitle,
     } = this.getLegendSettings(orderedSeries);
 
+    const chartExtras =
+      dashcard && rawSeries && rawSeries[0]["data"]
+        ? getChartExtras(dashcard, rawSeries, settings)
+        : undefined;
+
     return (
       <LineAreaBarChartRoot
         className={cx(
@@ -296,6 +304,7 @@ export default class LineAreaBarChart extends Component {
             actionButtons={actionButtons}
             onSelectTitle={canSelectTitle ? this.handleSelectTitle : undefined}
             width={width}
+            chartExtras={chartExtras}
           />
         )}
         <LegendLayout

@@ -4,7 +4,7 @@ import _ from "underscore";
 import { isFitViewportMode } from "metabase/hoc/FitViewPort";
 import { parseSearchOptions, parseHashOptions } from "metabase/lib/browser";
 import { isWithinIframe, IFRAMED_IN_SELF } from "metabase/lib/dom";
-import { setOptions } from "metabase/redux/embed";
+import { setOptions, toggleChartExplainer } from "metabase/redux/embed";
 
 // detect if this page is embedded in itself, i.e. it's a embed preview
 // will need to do something different if we ever embed metabase in itself for another reason
@@ -40,6 +40,15 @@ export function initializeEmbedding(store) {
         if (e.data.metabase.type === "location") {
           store.dispatch(push(e.data.metabase.location));
         }
+      } else if (e.data.lighthouse) {
+        if (
+          e.data.lighthouse?.type === "FeatureToggles" &&
+          e.data.lighthouse?.payload
+        ) {
+          const { enableChartExplainer: enable_chart_explainer } =
+            e.data.lighthouse.payload;
+          store.dispatch(toggleChartExplainer({ enable_chart_explainer }));
+        }
       }
     });
     store.dispatch(
@@ -48,6 +57,7 @@ export function initializeEmbedding(store) {
         ...parseHashOptions(window.location.hash),
       }),
     );
+    window.parent.postMessage({ lighthouse: { type: "FeatureToggles" } }, "*");
   }
 }
 

@@ -216,7 +216,7 @@
 /* create a slightly larger arrow on the bottom for border purposes */
 .tether-element-attached-bottom .PopoverBody--withArrow:before {
   bottom: -20px;
-  border-top-color: var(--color-border);
+  border-top-color: var(--background-dark, #023d67);
 }
 .tether-element-attached-bottom .PopoverBody--tooltip:before {
   border-top: none;
@@ -225,7 +225,7 @@
 /* create a smaller inset arrow on the bottom */
 .tether-element-attached-bottom .PopoverBody--withArrow:after {
   bottom: -18px;
-  border-top-color: var(--color-bg-white);
+  border-top-color: var(--background-dark, #023d67);
 }
 .tether-element-attached-bottom .PopoverBody--tooltip:after {
   border-top-color: var(--color-bg-black);

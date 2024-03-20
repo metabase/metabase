@@ -1,8 +1,18 @@
 import PropTypes from "prop-types";
+import React, { useCallback, useEffect, useState } from "react";
 
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
+import { useSelector } from "metabase/lib/redux";
+
+import {
+  ChartExplanationPopover,
+  defaultExplanation,
+  getMessageHandler,
+  getPopoverHandler,
+} from "../ChartExplanationPopover";
 
 import LegendActions from "./LegendActions";
 import {
@@ -21,6 +31,7 @@ const propTypes = {
   actionButtons: PropTypes.node,
   onSelectTitle: PropTypes.func,
   width: PropTypes.number,
+  chartExtras: PropTypes.object,
 };
 
 function shouldHideDescription(width) {
@@ -36,7 +47,42 @@ const LegendCaption = ({
   actionButtons,
   onSelectTitle,
   width,
+  chartExtras,
 }) => {
+  const enableChartExplainer = useSelector(
+    state => state.embed.options.enable_chart_explainer,
+  );
+  const [explanation, setExplanation] = useState(defaultExplanation);
+  const [isExplanationOpen, setIsExplanationOpen] = useState(false);
+
+  const explanationIconRef = React.createRef();
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const handlePopover = useCallback(
+    getPopoverHandler(
+      explanation,
+      isExplanationOpen,
+      setIsExplanationOpen,
+      title,
+      chartExtras,
+    ),
+    [explanation, isExplanationOpen, setIsExplanationOpen, title, chartExtras],
+  );
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const handleMessage = useCallback(
+    getMessageHandler(setExplanation, chartExtras),
+    [setExplanation, chartExtras],
+  );
+
+  useEffect(() => {
+    window.addEventListener("message", handleMessage);
+
+    return () => {
+      window.removeEventListener("message", handleMessage);
+    };
+  }, [handleMessage]);
+
   return (
     <LegendCaptionRoot className={className} data-testid="legend-caption">
       {icon && <LegendLabelIcon {...icon} />}
@@ -47,6 +93,32 @@ const LegendCaption = ({
         <Ellipsified data-testid="legend-caption-title">{title}</Ellipsified>
       </LegendLabel>
       <LegendRightContent>
+        {enableChartExplainer && (
+          <PopoverWithTrigger
+            isOpen={isExplanationOpen}
+            triggerElement={
+              <LegendDescriptionIcon
+                name="faros"
+                className="hover-child hover-child--smooth"
+                onClick={handlePopover}
+                ref={explanationIconRef}
+                style={{ verticalAlign: "bottom", paddingBottom: "0.5px" }}
+              />
+            }
+            pinInitialAttachment
+            verticalAttachments={["bottom"]}
+            alignVerticalEdge
+            alignHorizontalEdge={false}
+            targetOffsetX={20}
+            targetOffsetY={30}
+            hasArrow
+          >
+            <ChartExplanationPopover
+              explanation={explanation}
+              handlePopover={handlePopover}
+            />
+          </PopoverWithTrigger>
+        )}
         {description && !shouldHideDescription(width) && (
           <Tooltip
             tooltip={

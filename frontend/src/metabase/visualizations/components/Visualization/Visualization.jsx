@@ -26,6 +26,7 @@ import {
   MinRowsError,
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
+import { getChartExtras } from "metabase/visualizations/lib/lighthouse_utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { isSameSeries, getCardKey } from "metabase/visualizations/lib/utils";
 import { isRegularClickAction } from "metabase/visualizations/types";
@@ -341,6 +342,7 @@ class Visualization extends PureComponent {
       replacementContent,
       onOpenChartSettings,
       onUpdateVisualizationSettings,
+      rawSeries,
     } = this.props;
     const { visualization } = this.state;
     const small = width < 330;
@@ -366,6 +368,7 @@ class Visualization extends PureComponent {
 
     if (!loading && !error) {
       settings = this.props.settings || this.state.computedSettings;
+
       if (!visualization) {
         error = t`Could not find visualization`;
       } else {
@@ -459,6 +462,11 @@ class Visualization extends PureComponent {
         (loading || error || noResults || isHeaderEnabled)) ||
       (replacementContent && (dashcard.size_y !== 1 || isMobile));
 
+    const chartExtras =
+      dashcard && rawSeries && rawSeries[0]["data"]
+        ? getChartExtras(dashcard, rawSeries, settings)
+        : undefined;
+
     return (
       <ErrorBoundary>
         <VisualizationRoot
@@ -479,6 +487,7 @@ class Visualization extends PureComponent {
                     ? this.handleOnChangeCardAndRun
                     : null
                 }
+                chartExtras={chartExtras}
               />
             </VisualizationHeader>
           )}

@@ -129,6 +129,8 @@ import eye_crossed_out_component from "./eye_crossed_out.svg?component";
 import eye_crossed_out_source from "./eye_crossed_out.svg?source";
 import eye_outline_component from "./eye_outline.svg?component";
 import eye_outline_source from "./eye_outline.svg?source";
+import faros_component from "./faros.svg?component";
+import faros_source from "./faros.svg?source";
 import field_component from "./field.svg?component";
 import field_source from "./field.svg?source";
 import fields_component from "./fields.svg?component";
@@ -608,6 +610,10 @@ export const Icons = {
   eye_outline: {
     component: eye_outline_component,
     source: eye_outline_source,
+  },
+  faros: {
+    component: faros_component,
+    source: faros_source,
   },
   field: {
     component: field_component,

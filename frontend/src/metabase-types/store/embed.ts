@@ -9,6 +9,7 @@ export interface EmbedOptions {
   header?: boolean;
   additional_info?: boolean;
   action_buttons?: boolean;
+  enable_chart_explainer?: boolean;
 }
 
 export interface EmbedState {

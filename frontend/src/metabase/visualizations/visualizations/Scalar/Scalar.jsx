@@ -7,6 +7,7 @@ import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
+import { getChartExtras } from "metabase/visualizations/lib/lighthouse_utils";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
@@ -173,6 +174,8 @@ export class Scalar extends Component {
       gridSize,
       totalNumGridCols,
       fontFamily,
+      dashcard,
+      rawSeries,
     } = this.props;
 
     const columnIndex = this._getColumnIndex(cols, settings);
@@ -216,6 +219,11 @@ export class Scalar extends Component {
       }
     };
 
+    const chartExtras =
+      dashcard && rawSeries && rawSeries[0]["data"]
+        ? getChartExtras(dashcard, rawSeries, settings)
+        : undefined;
+
     return (
       <ScalarWrapper>
         <div className="Card-title absolute top right p1 px2">
@@ -258,6 +266,7 @@ export class Scalar extends Component {
                   ? () => onChangeCardAndRun({ nextCard: card })
                   : undefined
               }
+              chartExtras={chartExtras}
             />
           ))}
       </ScalarWrapper>
