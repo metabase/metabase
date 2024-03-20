@@ -9,20 +9,20 @@ import { useNumberFilter } from "./use-number-filter";
 interface CreateFilterCase {
   operator: Lib.NumberFilterOperatorName;
   values: number[];
-  displayName: string;
+  expectedDisplayName: string;
 }
 
 interface UpdateFilterCase {
   operator: Lib.NumberFilterOperatorName;
   expression: Lib.ExpressionClause;
   values: number[];
-  displayName: string;
+  expectedDisplayName: string;
 }
 
 interface CoerceFilterCase {
   operator: Lib.NumberFilterOperatorName;
   values: (number | "")[];
-  displayName: string;
+  expectedDisplayName: string;
 }
 
 interface ValidateFilterCase {
@@ -30,34 +30,38 @@ interface ValidateFilterCase {
   values: (number | "")[];
 }
 
+interface DefaultOperatorCase {
+  title: string;
+  column: Lib.ColumnMetadata;
+  expectedOperator: Lib.NumberFilterOperatorName;
+}
+
 describe("useNumberFilter", () => {
   const defaultQuery = createQuery();
   const stageIndex = 0;
   const availableColumns = Lib.filterableColumns(defaultQuery, stageIndex);
-  const column = columnFinder(defaultQuery, availableColumns)(
-    "ORDERS",
-    "TOTAL",
-  );
+  const findColumn = columnFinder(defaultQuery, availableColumns);
+  const column = findColumn("ORDERS", "TOTAL");
 
   it.each<CreateFilterCase>([
     {
       operator: "=",
       values: [10, 20],
-      displayName: "Total is equal to 2 selections",
+      expectedDisplayName: "Total is equal to 2 selections",
     },
     {
       operator: "!=",
       values: [10],
-      displayName: "Total is not equal to 10",
+      expectedDisplayName: "Total is not equal to 10",
     },
     {
       operator: ">",
       values: [10],
-      displayName: "Total is greater than 10",
+      expectedDisplayName: "Total is greater than 10",
     },
   ])(
     'should allow to create a filter for "$operator" operator',
-    ({ operator: newOperator, values: newValues, displayName }) => {
+    ({ operator: newOperator, values: newValues, expectedDisplayName }) => {
       const { result } = renderHook(() =>
         useNumberFilter({
           query: defaultQuery,
@@ -77,7 +81,7 @@ describe("useNumberFilter", () => {
       expect(
         Lib.displayInfo(defaultQuery, stageIndex, newFilter),
       ).toMatchObject({
-        displayName,
+        displayName: expectedDisplayName,
       });
     },
   );
@@ -91,11 +95,11 @@ describe("useNumberFilter", () => {
         values: [10],
       }),
       values: [20],
-      displayName: "Total is equal to 20",
+      expectedDisplayName: "Total is equal to 20",
     },
   ])(
     'should allow to update a filter for "$operator" operator',
-    ({ expression, values: newValues, displayName }) => {
+    ({ expression, values: newValues, expectedDisplayName }) => {
       const query = Lib.filter(defaultQuery, stageIndex, expression);
       const [filter] = Lib.filters(query, stageIndex);
 
@@ -116,7 +120,7 @@ describe("useNumberFilter", () => {
       const { operator, values, getFilterClause } = result.current;
       const newFilter = checkNotNull(getFilterClause(operator, values));
       expect(Lib.displayInfo(query, stageIndex, newFilter)).toMatchObject({
-        displayName,
+        displayName: expectedDisplayName,
       });
     },
   );
@@ -125,21 +129,21 @@ describe("useNumberFilter", () => {
     {
       operator: "between",
       values: [20, 10],
-      displayName: "Total is between 10 and 20",
+      expectedDisplayName: "Total is between 10 and 20",
     },
     {
       operator: "between",
       values: [10, ""],
-      displayName: "Total is greater than or equal to 10",
+      expectedDisplayName: "Total is greater than or equal to 10",
     },
     {
       operator: "between",
       values: ["", 10],
-      displayName: "Total is less than or equal to 10",
+      expectedDisplayName: "Total is less than or equal to 10",
     },
   ])(
     'should allow to coerce a filter for "$operator" operator',
-    ({ operator, values, displayName }) => {
+    ({ operator, values, expectedDisplayName }) => {
       const { result } = renderHook(() =>
         useNumberFilter({
           query: defaultQuery,
@@ -153,7 +157,7 @@ describe("useNumberFilter", () => {
       expect(
         Lib.displayInfo(defaultQuery, stageIndex, newFilter),
       ).toMatchObject({
-        displayName,
+        displayName: expectedDisplayName,
       });
     },
   );
@@ -222,4 +226,36 @@ describe("useNumberFilter", () => {
       displayName: "Total is not equal to 10",
     });
   });
+
+  it.each<DefaultOperatorCase>([
+    {
+      title: "PK",
+      column: findColumn("ORDERS", "ID"),
+      expectedOperator: "=",
+    },
+    {
+      title: "FK",
+      column: findColumn("ORDERS", "PRODUCT_ID"),
+      expectedOperator: "=",
+    },
+    {
+      title: "regular column",
+      column: findColumn("ORDERS", "TOTAL"),
+      expectedOperator: "between",
+    },
+  ])(
+    'should use "$expectedOperator" operator for $title',
+    ({ column, expectedOperator }) => {
+      const { result } = renderHook(() =>
+        useNumberFilter({
+          query: defaultQuery,
+          stageIndex,
+          column,
+        }),
+      );
+
+      const { operator } = result.current;
+      expect(operator).toBe(expectedOperator);
+    },
+  );
 });
