@@ -137,7 +137,7 @@
 
   ### Using `core.match` patterns
 
-  See [`core.match` documentation](`https://github.com/clojure/core.clojure.core.match/wiki/Overview`) for more details.
+  See [`core.match` documentation](`https://github.com/clojure/core.match/wiki`) for more details.
 
   Pattern-matching works almost exactly the way it does when using `core.match**` directly, with a few
   differences:
