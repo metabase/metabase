@@ -194,10 +194,11 @@
    {:write? true}
    delete-session-schema!))
 
-(def ^:dynamic *use-original-describe-database-impl?*
-  "Whether to use the actual prod impl for `describe-database` rather than the special test one that only syncs
-  the tables qualified by the database name."
-  false)
+(def ^:dynamic *override-describe-database-to-filter-by-db-name?*
+  "Whether to override the production implementation for `describe-database` with a special one that only syncs
+  the tables qualified by the database name. This is `true` by default during tests to fake database isolation.
+  See (metabase#40310)"
+  true)
 
 (defonce ^:private ^{:arglists '([driver database])}
   original-describe-database
@@ -206,12 +207,12 @@
 ;; For test databases, only sync the tables that are qualified by the db name
 (defmethod driver/describe-database :redshift
   [driver database]
-  (if *use-original-describe-database-impl?*
-    (original-describe-database driver database)
+  (if *override-describe-database-to-filter-by-db-name?*
     (let [r (original-describe-database driver database)]
       (update r :tables (fn [tables]
                           (into #{}
                                 (filter #(or (tx/qualified-by-db-name? (:name database) (:name %))
                                              ;; the `extsales` table is used for testing external tables
                                              (= (:name %) "extsales")))
-                                tables))))))
+                                tables))))
+    (original-describe-database driver database)))
