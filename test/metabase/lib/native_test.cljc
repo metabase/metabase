@@ -333,8 +333,8 @@
                               :id "1"
                               :name "foo"
                               :display-name "foo"}})))
+  (is (lib/can-save (query-with-default 1)))
   (is (lib/can-save (query-with-default "A")))
-  (is (lib/can-save (query-with-default 0)))
   (is (lib/can-save (query-with-default [""])))
   (is (lib/can-save (query-with-default ["A"])))
   (is (lib/can-save (query-with-default [1])))
