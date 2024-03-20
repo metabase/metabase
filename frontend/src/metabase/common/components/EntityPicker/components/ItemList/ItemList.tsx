@@ -85,7 +85,7 @@ export const ItemList = <
   return (
     <VirtualizedList Wrapper={PickerColumn} scrollTo={activeItemIndex}>
       {items.map((item: Item) => (
-        <div key={`${item.model ?? "collection"}-${item.id}`}>
+        <div key={`${item.model}-${item.id}`}>
           <NavLink
             rightSection={
               isFolder(item) ? <Icon name="chevronright" size={10} /> : null
