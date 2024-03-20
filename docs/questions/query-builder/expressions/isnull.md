@@ -27,7 +27,7 @@ The table below shows you examples of the output of `isnull`.
 |               | `"   "` (whitespace)| `false`           |
 |     kitten    |`"kitten"`           | `false`           |
 
-\*In Oracle and Vertica databases, empty strings are treated as nulls.
+\*In Oracle and Vertica databases, empty strings are treated as nulls instead.
 
 ## Creating a boolean custom column
 

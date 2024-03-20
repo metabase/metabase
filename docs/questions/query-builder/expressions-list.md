@@ -269,6 +269,7 @@ Syntax: `nonnull(column)`
 
 Example: `nonnull([Tax])` would return true if there is a value present in the column for that row.
 
+Related: [isnull](#nonnull), [nonempty](#nonempty)
 
 ## Math functions
 Math functions implement common mathematical operations.
@@ -366,34 +367,45 @@ Example: `concat([Last Name], ", ", [First Name])` would produce a string of the
 
 ### contains
 
-Checks to see if `string1` contains `string2` within it. Performs case-sensitive match by default.
+Checks to see if `string1` contains `string2` within it.
+
+Performs case-sensitive match by default.
 You can pass an optional parameter `"case-insensitive"` to perform a case-insensitive match.
 
 Syntax: `contains(string1, string2)` for case-sensitive match.
-`contains(string1, string2, "case-insensitive") for case-insensitive match.
 
-Example: `contains([Status], "Class")`. If `Status` were "Classified", the expression would return `true`. If the `Status` were "**c**lassified", the expression would return `false`, because the case
+`contains(string1, string2, "case-insensitive")` for case-insensitive match.
+
+Example: `contains([Status], "Class")`.
+
+If `Status` were "Classified", the expression would return `true`. If the `Status` were "**c**lassified", the expression would return `false`, because the case does not match.
 
 Related: [doesNotContain](#doesnotcontain), [regexextract](#regexextract).
 
 ### doesNotContain
 
-Checks to see if `string1` contains `string2` within it. Performs case-sensitive match by default.
+Checks to see if `string1` contains `string2` within it.
+
+Performs case-sensitive match by default.
 You can pass an optional parameter `"case-insensitive"` to perform a case-insensitive match.
 
 Syntax: `doesNotContain(string1, string2)` for case-sensitive match.
+
 `doesNotContain(string1, string2, "case-insensitive")` for case-insensitive match.
 
 Example: `doesNotContain([Status], "Class")`. If `Status` were "Classified", the expression would return `false`.
 
-Related: (contains)[#contains],  [regexextract](#regexextract).
+Related: [contains](#contains),  [regexextract](#regexextract).
 
 ### endsWith
 
-Returns true if the end of the text matches the comparison text. Performs case-sensitive match by default.
+Returns true if the end of the text matches the comparison text.
+
+ Performs case-sensitive match by default.
 You can pass an optional parameter `"case-insensitive"` to perform a case-insensitive match.
 
 Syntax: `endsWith(text, comparison)` for case-sensitive match.
+
  `endsWith(text, comparison, "case-insensitive")` for case-insensitive match.
 
 Example: `endsWith([Appetite], "hungry")`
@@ -441,11 +453,13 @@ Related: [upper](#upper).
 
 ### [nonempty](./expressions/isempty.md)
 
-Returns true if the string column contains a value that isn't the empty string (`''`).
+Returns true if a _string column_ contains a value that is not the empty string. Calling this function on a non-string column will cause an error.
 
 Syntax: `nonempty(column)`
 
-Example: `nonempty([Feedback])` would return true if `Feedback` contains a value that isn't the empty string (`''`). . [Learn more](./expressions/isempty.md) about how Metabase handles empty strings and nulls.
+Example: `nonempty([Feedback])` would return true if `Feedback` contains a value that isn't the empty string (`''`).
+
+[Learn more](./expressions/isempty.md) about how Metabase handles empty strings and nulls.
 
 Related: [isempty](#isempty), [nonnull](#nonnull)
 
@@ -486,14 +500,17 @@ Returns true if the beginning of the text matches the comparison text. Performs 
 You can pass an optional parameter `"case-insensitive"` to perform a case-insensitive match.
 
 Syntax: `startsWith(text, comparison)` for case-sensitive match.
+
  `startsWith(text, comparison, "case-insensitive")` for case-insensitive match.
 
-Example: `startsWith([Course Name], "Computer Science")` would return true for course names that began with "Computer Science", like "Computer Science 101: An introduction". It would return false for "Computer **s**cience 201: Data structures" because the case of "science" does not match the case in the comparison text.
+Example: `startsWith([Course Name], "Computer Science")` would return true for course names that began with "Computer Science", like "Computer Science 101: An introduction".
 
-`startsWith([Course Name], "Computer Science", "case-insensitive")`would return true for both "Computer Science 101: An introduction" and "Computer science 201: Data structures".
+ It would return false for "Computer **s**cience 201: Data structures" because the case of "science" does not match the case in the comparison text.
+
+`startsWith([Course Name], "Computer Science", "case-insensitive")` would return true for both "Computer Science 101: An introduction" and "Computer science 201: Data structures".
 
 
-Related: [endsWith](#endsWith), [contains](#contains), [doesNotContain](#doesnotcontain).
+Related: [endsWith](#endswith), [contains](#contains), [doesNotContain](#doesnotcontain).
 
 ### [substring](./expressions/substring.md)
 
@@ -625,19 +642,20 @@ Gets a timestamp relative to the current time.
 Syntax: `relativeDateTime(number, text)`
 
 `number`: Period of interval, where negative values are back in time.
+
 `text`: Type of interval like `"day"`, `"month"`, `"year"`
 
 `relativeDateTime` can only be used as part of a conditional expression.
 
 Example: `[Orders → Created At] < relativeDateTime(-30, "day")` will filter for orders created over 30 days ago from current date.
 
-Related: [dateTimeAdd](#datetimeadd), [dateTimeSubtract](#datetimesubtract).
+Related: [datetimeAdd](#datetimeadd), [datetimeSubtract](#datetimesubtract).
 
 ### second
 
 Takes a datetime and returns the number of seconds in the minute (0-59) as an integer.
 
-Syntax: `second([datetime column)`.
+Syntax: `second([datetime column])`.
 
 Example: `second("2021-03-25T12:52:37")` would return the integer `37`.
 
@@ -646,7 +664,9 @@ Example: `second("2021-03-25T12:52:37")` would return the integer `37`.
 Gets a time interval of specified length.
 
 Syntax: `timeSpan(number, text)`.
+
 `number`: Period of interval, where negative values are back in time.
+
 `text`: Type of interval like `"day"`, `"month"`, `"year"`
 
 Example: `[Orders → Created At] + timeSpan(7, "day")` will return the date 7 days after the `Created At` date.
@@ -700,10 +720,11 @@ Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer,
 
 - [Aggregation expressions](#aggregations)  can only be used in the **Summarize** section of the query builder.
 - Functions that return a boolean value, like [isempty](#isempty) or [contains](#contains), cannot be used to create a custom column. To create a custom column based on one of these functions, you must combine them with another function, like `case`.
+
 For example, to create a new custom column that contains `true` if `[Title]` contain `'Wallet'`, you can use the custom expression
 ```
 case(contains([Title], 'Wallet'), true, false)
-``
+```
 
 ### Database limitations
 
