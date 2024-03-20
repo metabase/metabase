@@ -103,13 +103,13 @@
        (add-object-to-cache! (if (map? result)
                                (m/dissoc-in result [:data :rows])
                                {}))
-       (let [duration-ms  (/ (- (System/nanoTime) start-time-ns) 1e6)
-             min-duration (:min-duration strategy 0)
-             eligible?    (and @has-rows?
-                               (> duration-ms min-duration))]
+       (let [duration-ms     (/ (- (System/nanoTime) start-time-ns) 1e6)
+             min-duration-ms (:min-duration-ms strategy 0)
+             eligible?       (and @has-rows?
+                                  (> duration-ms min-duration-ms))]
          (log/infof "Query took %s to run; minimum for cache eligibility is %s; %s"
                     (u/format-milliseconds duration-ms)
-                    (u/format-milliseconds min-duration)
+                    (u/format-milliseconds min-duration-ms)
                     (if eligible? "eligible" "not eligible"))
          (when eligible?
            (cache-results! query-hash))

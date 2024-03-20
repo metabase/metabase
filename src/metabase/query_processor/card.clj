@@ -42,9 +42,9 @@
   [card dashboard-id]
   (when (public-settings/enable-query-caching)
     (or (granular-cache-strategy card dashboard-id)
-        {:type         :ttl
-         :multiplier   (public-settings/query-caching-ttl-ratio)
-         :min_duration (long (* (public-settings/query-caching-min-ttl) 1000))})))
+        {:type            :ttl
+         :multiplier      (public-settings/query-caching-ttl-ratio)
+         :min_duration_ms (long (* (public-settings/query-caching-min-ttl) 1000))})))
 
 (defn- enrich-strategy [strategy query]
   (case (:type strategy)
