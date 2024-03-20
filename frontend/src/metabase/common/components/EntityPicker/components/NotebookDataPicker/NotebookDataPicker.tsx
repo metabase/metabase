@@ -8,12 +8,13 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 
-import type { CollectionPickerItem, PickerState } from "../../types";
+import type { PickerState } from "../../types";
 import type { EntityPickerModalOptions } from "../EntityPickerModal";
 import { LoadingSpinner } from "../LoadingSpinner";
 import { NestedItemPicker } from "../NestedItemPicker";
 
 import { TableItemPickerResolver } from "./TableItemPickerResolver";
+import type { NotebookDataPickerItem } from "./types";
 import { getCollectionIdPath, getStateFromIdPath, isFolder } from "./utils";
 
 export type NotebookDataPickerOptions = EntityPickerModalOptions & {
@@ -28,8 +29,8 @@ const defaultOptions: NotebookDataPickerOptions = {
 };
 
 interface Props {
-  onItemSelect: (item: CollectionPickerItem) => void;
-  initialValue?: Partial<CollectionPickerItem>;
+  onItemSelect: (item: NotebookDataPickerItem) => void;
+  initialValue?: Partial<NotebookDataPickerItem>;
   options?: NotebookDataPickerOptions;
 }
 
@@ -37,7 +38,7 @@ export const NotebookDataPicker = forwardRef(function NotebookDataPicker(
   { onItemSelect, initialValue, options = defaultOptions }: Props,
   ref: Ref<unknown>,
 ) {
-  const [path, setPath] = useState<PickerState<CollectionPickerItem>>(() =>
+  const [path, setPath] = useState<PickerState<NotebookDataPickerItem>>(() =>
     getStateFromIdPath({
       idPath: ["root"],
       namespace: options.namespace,
@@ -56,7 +57,7 @@ export const NotebookDataPicker = forwardRef(function NotebookDataPicker(
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
 
   const onFolderSelect = useCallback(
-    ({ folder }: { folder: CollectionPickerItem }) => {
+    ({ folder }: { folder: NotebookDataPickerItem }) => {
       const newPath = getStateFromIdPath({
         idPath: getCollectionIdPath(folder, userPersonalCollectionId),
         namespace: options.namespace,

@@ -1,21 +1,14 @@
 import { isRootCollection } from "metabase/collections/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
-import type { CollectionId } from "metabase-types/api";
 
-import type {
-  PickerState,
-  CollectionPickerItem,
-  TypeWithModel,
-  TisFolder,
-} from "../../types";
+import type { PickerState, TisFolder, TypeWithModel } from "../../types";
+
+import type { NotebookDataPickerItem } from "./types";
 
 export const getCollectionIdPath = (
-  collection: Pick<
-    CollectionPickerItem,
-    "id" | "location" | "is_personal" | "effective_location"
-  >,
-  userPersonalCollectionId?: CollectionId,
-): CollectionId[] => {
+  collection: NotebookDataPickerItem,
+  userPersonalCollectionId?: NotebookDataPickerItem["id"],
+): NotebookDataPickerItem["id"][] => {
   if (isRootCollection(collection)) {
     return ["root"];
   }
@@ -30,7 +23,7 @@ export const getCollectionIdPath = (
   }
 
   const location = collection?.effective_location ?? collection?.location;
-  const pathFromRoot: CollectionId[] =
+  const pathFromRoot: NotebookDataPickerItem["id"][] =
     location?.split("/").filter(Boolean).map(Number) ?? [];
 
   const isInUserPersonalCollection =
@@ -51,10 +44,10 @@ export const getStateFromIdPath = ({
   idPath,
   namespace,
 }: {
-  idPath: CollectionId[];
+  idPath: NotebookDataPickerItem["id"][];
   namespace?: "snippets";
-}): PickerState<CollectionPickerItem> => {
-  const statePath: PickerState<CollectionPickerItem> = [
+}): PickerState<NotebookDataPickerItem> => {
+  const statePath: PickerState<NotebookDataPickerItem> = [
     {
       selectedItem: {
         model: "collection",
@@ -81,8 +74,8 @@ export const getStateFromIdPath = ({
   return statePath;
 };
 
-export const isFolder: TisFolder<CollectionPickerItem> = <
+export const isFolder: TisFolder<NotebookDataPickerItem> = <
   TItem extends TypeWithModel,
 >(
   item: TItem,
-) => item.model === "collection";
+) => item.model === "database";

@@ -1,20 +1,20 @@
 import type { Ref } from "react";
 import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
-import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
-import { useCollectionQuery } from "metabase/common/hooks";
+import { useDatabaseListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 
-import type { CollectionPickerItem, PickerState } from "../../types";
+import type { PickerState } from "../../types";
 import type { EntityPickerModalOptions } from "../EntityPickerModal";
 import { LoadingSpinner } from "../LoadingSpinner";
 import { NestedItemPicker } from "../NestedItemPicker";
 
 import { TableItemPickerResolver } from "./TableItemPickerResolver";
-import { getCollectionIdPath, getStateFromIdPath, isFolder } from "./utils";
+import type { DatabasePickerItem, NotebookDataPickerItem } from "./types";
+import { getCollectionIdPath, isFolder } from "./utils";
 
 export type TablePickerOptions = EntityPickerModalOptions & {
   showPersonalCollections?: boolean;
@@ -28,43 +28,39 @@ const defaultOptions: TablePickerOptions = {
 };
 
 interface Props {
-  onItemSelect: (item: CollectionPickerItem) => void;
-  initialValue?: Partial<CollectionPickerItem>;
+  onItemSelect: (item: NotebookDataPickerItem) => void;
+  initialValue?: Partial<NotebookDataPickerItem>;
   options?: TablePickerOptions;
 }
+
+const getStateFromIdPath = (
+  folder: DatabasePickerItem,
+): PickerState<NotebookDataPickerItem> => {
+  const { id, model } = folder;
+  const path: PickerState<NotebookDataPickerItem> = [
+    {
+      selectedItem: { id: 'root', model: ''}
+    },
+    {
+      selectedItem: { id, model },
+    },
+  ];
+  return path;
+};
 
 export const TablePicker = forwardRef(function TablePicker(
   { onItemSelect, initialValue, options = defaultOptions }: Props,
   ref: Ref<unknown>,
 ) {
-  const [path, setPath] = useState<PickerState<CollectionPickerItem>>(() =>
-    getStateFromIdPath({
-      idPath: ["root"],
-      namespace: options.namespace,
-    }),
-  );
-
-  const {
-    data: currentCollection,
-    error,
-    isLoading: loadingCurrentCollection,
-  } = useCollectionQuery({
-    id: initialValue?.id ?? "root",
-    enabled: !!initialValue?.id,
-  });
-
-  const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
+  const [path, setPath] = useState<PickerState<NotebookDataPickerItem>>([]);
 
   const onFolderSelect = useCallback(
-    ({ folder }: { folder: CollectionPickerItem }) => {
-      const newPath = getStateFromIdPath({
-        idPath: getCollectionIdPath(folder, userPersonalCollectionId),
-        namespace: options.namespace,
-      });
+    ({ folder }: { folder: NotebookDataPickerItem }) => {
+      const newPath = getStateFromIdPath(folder);
       setPath(newPath);
       onItemSelect(folder);
     },
-    [setPath, onItemSelect, options.namespace, userPersonalCollectionId],
+    [setPath, onItemSelect],
   );
 
   // Exposing onFolderSelect so that parent can select newly created
@@ -77,51 +73,51 @@ export const TablePicker = forwardRef(function TablePicker(
     [onFolderSelect],
   );
 
-  useDeepCompareEffect(
-    function setInitialPath() {
-      if (currentCollection?.id) {
-        const newPath = getStateFromIdPath({
-          idPath: getCollectionIdPath(
-            {
-              id: currentCollection.id,
-              location: currentCollection.location,
-              is_personal: currentCollection.is_personal,
-            },
-            userPersonalCollectionId,
-          ),
-          namespace: options.namespace,
-        });
-        setPath(newPath);
+  // useDeepCompareEffect(
+  //   function setInitialPath() {
+  //     if (currentCollection?.id) {
+  //       const newPath = getStateFromIdPath({
+  //         idPath: getCollectionIdPath(
+  //           {
+  //             id: currentCollection.id,
+  //             location: currentCollection.location,
+  //             is_personal: currentCollection.is_personal,
+  //           },
+  //           userPersonalCollectionId,
+  //         ),
+  //         namespace: options.namespace,
+  //       });
+  //       setPath(newPath);
 
-        if (currentCollection.can_write) {
-          // start with the current item selected if we can
-          onItemSelect({
-            ...currentCollection,
-            model: "collection",
-          });
-        }
-      }
-    },
-    [currentCollection, options.namespace, userPersonalCollectionId],
-  );
+  //       if (currentCollection.can_write) {
+  //         // start with the current item selected if we can
+  //         onItemSelect({
+  //           ...currentCollection,
+  //           model: "collection",
+  //         });
+  //       }
+  //     }
+  //   },
+  //   [currentCollection, options.namespace, userPersonalCollectionId],
+  // );
 
-  if (error) {
-    <LoadingAndErrorWrapper error={error} />;
-  }
+  // if (error) {
+  //   <LoadingAndErrorWrapper error={error} />;
+  // }
 
-  if (loadingCurrentCollection) {
-    return <LoadingSpinner />;
-  }
+  // if (isLoading) {
+  //   return <LoadingSpinner />;
+  // }
 
   return (
     <NestedItemPicker
-      itemName={t`table`}
       isFolder={isFolder}
+      itemName={t`table`}
+      listResolver={TableItemPickerResolver}
       options={options}
+      path={path}
       onFolderSelect={onFolderSelect}
       onItemSelect={onItemSelect}
-      path={path}
-      listResolver={TableItemPickerResolver}
     />
   );
 });

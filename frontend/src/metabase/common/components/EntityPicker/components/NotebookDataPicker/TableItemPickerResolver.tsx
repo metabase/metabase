@@ -1,31 +1,34 @@
+import { useDatabaseListQuery } from "metabase/common/hooks";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 
-import type { CollectionPickerItem, EntityPickerOptions } from "../../types";
+import type { EntityPickerOptions, TisFolder } from "../../types";
 import {
-  RootItemList,
-  PersonalCollectionsItemList,
   EntityItemList,
+  ItemList,
+  PersonalCollectionsItemList,
   type EntityItemListProps,
 } from "../ItemList";
 
+import type { NotebookDataPickerItem } from "./types";
+
 export const TableItemPickerResolver = ({
-  onClick,
-  selectedItem,
+  isCurrentLevel,
+  isFolder,
   options,
   query,
-  isFolder,
-  isCurrentLevel,
-}: EntityItemListProps<CollectionPickerItem> & {
+  selectedItem,
+  onClick,
+}: EntityItemListProps<NotebookDataPickerItem> & {
   options: EntityPickerOptions;
 }) => {
   if (!query) {
     return (
       <RootItemList
-        options={options}
+        isCurrentLevel={isCurrentLevel}
+        isFolder={isFolder}
         selectedItem={selectedItem}
         onClick={onClick}
-        isFolder={isFolder}
-        isCurrentLevel={isCurrentLevel}
       />
     );
   }
@@ -48,6 +51,52 @@ export const TableItemPickerResolver = ({
       selectedItem={selectedItem}
       isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
+    />
+  );
+};
+
+interface RootItemListProps {
+  selectedItem: NotebookDataPickerItem | null;
+  isFolder: TisFolder<NotebookDataPickerItem>;
+  isCurrentLevel: boolean;
+  onClick: (val: NotebookDataPickerItem) => void;
+}
+
+const RootItemList = ({
+  isCurrentLevel,
+  isFolder,
+  selectedItem,
+  onClick,
+}: RootItemListProps) => {
+  const {
+    data: databases = [],
+    error,
+    isLoading,
+  } = useDatabaseListQuery({
+    query: { saved: false }, // saved questions are fetched in a separate tab
+  });
+
+  const items = databases.map((database): NotebookDataPickerItem => {
+    return {
+      description: database.description,
+      id: database.id,
+      model: "database",
+      name: database.displayName(),
+    };
+  });
+
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  return (
+    <ItemList
+      isCurrentLevel={isCurrentLevel}
+      isFolder={isFolder}
+      isLoading={isLoading}
+      items={items}
+      selectedItem={selectedItem}
+      onClick={onClick}
     />
   );
 };

@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
-import type { CollectionPickerItem, EntityTab } from "../../types";
+import type { EntityTab } from "../../types";
 import { EntityPickerModal, defaultOptions } from "../EntityPickerModal";
 
 import {
@@ -9,13 +9,14 @@ import {
   type NotebookDataPickerOptions,
 } from "./NotebookDataPicker";
 import { TablePicker } from "./TablePicker";
+import type { NotebookDataPickerItem } from "./types";
 
 interface Props {
   title?: string;
-  onChange: (item: CollectionPickerItem) => void;
+  onChange: (item: NotebookDataPickerItem) => void;
   onClose: () => void;
   options?: NotebookDataPickerOptions;
-  value: Pick<CollectionPickerItem, "id" | "model">;
+  value: Pick<NotebookDataPickerItem, "id" | "model">;
 }
 
 export const NotebookDataPickerModal = ({
@@ -25,16 +26,15 @@ export const NotebookDataPickerModal = ({
   onChange,
   onClose,
 }: Props) => {
-  const [selectedItem, setSelectedItem] = useState<CollectionPickerItem | null>(
-    null,
-  );
+  const [selectedItem, setSelectedItem] =
+    useState<NotebookDataPickerItem | null>(null);
 
   const pickerRef = useRef<{
-    onFolderSelect: (item: { folder: CollectionPickerItem }) => void;
+    onFolderSelect: (item: { folder: NotebookDataPickerItem }) => void;
   }>();
 
   const handleItemSelect = useCallback(
-    (item: CollectionPickerItem) => {
+    (item: NotebookDataPickerItem) => {
       if (options.hasConfirmButtons) {
         setSelectedItem(item);
       } else {
