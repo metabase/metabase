@@ -220,8 +220,10 @@
   (str (normalize-qualified-name (or *database-name-override* db-name))
        \_))
 
-(defn qualified-by-db-name? [db-name n]
-  (str/starts-with? n (db-qualified-table-name-prefix db-name)))
+(defn qualified-by-db-name?
+  "Is `table-name` qualified by the name of its database? See [[db-qualified-table-name]] for more details."
+  [db-name table-name]
+  (str/starts-with? table-name (db-qualified-table-name-prefix db-name)))
 
 (defn db-qualified-table-name
   "Return a combined table name qualified with the name of its database, suitable for use as an identifier.

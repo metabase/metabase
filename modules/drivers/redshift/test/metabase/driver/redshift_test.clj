@@ -369,15 +369,15 @@
            (finally
             (execute! "DROP TABLE IF EXISTS %s CASCADE;" qual-tbl-nm))))))))
 
-(mt/defdataset numeric-unix-timestamps
+(mt/defdataset unix-timestamps
   [["timestamps"
     [{:field-name "timestamp", :base-type {:native "numeric"}}]
     [[1642704550656]]]])
 
-(deftest numeric-unix-timestamp-test
+(deftest unix-timestamp-test
   (mt/test-driver :redshift
     (testing "NUMERIC columns should work with UNIX timestamp conversion (#7487)"
-      (mt/dataset numeric-unix-timestamps
+      (mt/dataset unix-timestamps
         (testing "without coercion strategy"
           (let [query (mt/mbql-query timestamps)]
             (mt/with-native-query-testing-context query
