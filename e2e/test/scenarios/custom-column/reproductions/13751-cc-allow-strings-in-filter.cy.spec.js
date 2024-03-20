@@ -38,7 +38,10 @@ describe("issue 13751", { tags: "@external" }, () => {
       .click();
     popover().within(() => {
       cy.findByText(CC_NAME).click();
-      cy.findByDisplayValue("Is").click();
+      cy.findByDisplayValue("Contains").click();
+    });
+    popover().last().findByText("Is").click();
+    popover().within(() => {
       cy.findByPlaceholderText("Enter some text").type("CO");
       cy.button("Add filter").click();
     });
