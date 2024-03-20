@@ -403,7 +403,6 @@ describe("FilterPicker", () => {
 
       // The expression editor applies changes on blur,
       // but for some reason it doesn't work without `act`.
-      // eslint-disable-next-line testing-library/no-unnecessary-act
       await act(async () => {
         await userEvent.type(input, text, { delay });
         await userEvent.tab();

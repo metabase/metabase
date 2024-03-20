@@ -3447,7 +3447,7 @@
                   (is (nil? (:based_on_upload (request card'))))))
               (testing "\nIf the card is a native query, based_on_upload should be nil"
                 (mt/with-temp [:model/Card card' (assoc card-defaults
-                                                        :dataset_query (mt/native-query {:native "select 1"}))]
+                                                        :dataset_query (mt/native-query {:query "select 1"}))]
                   (is (nil? (:based_on_upload (request card')))))))))))))
 
 (deftest based-on-upload-test
