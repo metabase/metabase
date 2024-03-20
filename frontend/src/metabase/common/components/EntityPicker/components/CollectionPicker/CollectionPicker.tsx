@@ -1,4 +1,4 @@
-import type React from "react";
+import type { Ref } from "react";
 import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
@@ -39,7 +39,7 @@ export const CollectionPickerInner = (
     initialValue,
     options = defaultOptions,
   }: CollectionPickerProps,
-  ref: React.Ref<unknown>,
+  ref: Ref<unknown>,
 ) => {
   const [path, setPath] = useState<
     PickerState<CollectionPickerItem, SearchListQuery>
