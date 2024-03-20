@@ -24,36 +24,40 @@ import {
 import { TabsView } from "./TabsView";
 
 export type EntityPickerModalOptions = {
-  showPersonalCollection?: boolean;
-  showRootCollection?: boolean;
+  // showPersonalCollection?: boolean;
+  // showRootCollection?: boolean;
   showSearch?: boolean;
   hasConfirmButtons?: boolean;
   allowCreateNew?: boolean;
 };
 
 export const defaultOptions: EntityPickerModalOptions = {
-  showPersonalCollection: true,
-  showRootCollection: true,
+  // showPersonalCollection: true,
+  // showRootCollection: true,
   showSearch: true,
   hasConfirmButtons: true,
   allowCreateNew: true,
 };
 
-export interface EntityPickerModalProps<TItem> {
+export interface EntityPickerModalProps<Model extends string, Item> {
   title?: string;
-  selectedItem: TItem | null;
+  selectedItem: Item | null;
   onConfirm: () => void;
-  onItemSelect: (item: TItem) => void;
+  onItemSelect: (item: Item) => void;
   canSelectItem: boolean;
   onClose: () => void;
-  tabs: [EntityTab, ...EntityTab[]]; // Enforces that the array is not empty
+  tabs: [EntityTab<Model>, ...EntityTab<Model>[]]; // Enforces that the array is not empty
   options?: Partial<EntityPickerOptions>;
   searchResultFilter?: (results: SearchResult[]) => SearchResult[];
   actionButtons?: JSX.Element[];
   trapFocus?: boolean;
 }
 
-export function EntityPickerModal<TItem extends TypeWithModel>({
+export function EntityPickerModal<
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>({
   title = t`Choose an item`,
   onItemSelect,
   canSelectItem,
@@ -65,7 +69,7 @@ export function EntityPickerModal<TItem extends TypeWithModel>({
   actionButtons = [],
   searchResultFilter,
   trapFocus = true,
-}: EntityPickerModalProps<TItem>) {
+}: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
     null,

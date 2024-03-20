@@ -1,13 +1,14 @@
 import { isRootCollection } from "metabase/collections/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
-import type { CollectionId } from "metabase-types/api";
-
 import type {
-  PickerState,
-  CollectionPickerItem,
-  TypeWithModel,
-  TisFolder,
-} from "../../types";
+  CollectionId,
+  SearchListQuery,
+  SearchModelType,
+} from "metabase-types/api";
+
+import type { PickerState, TisFolder, TypeWithModel } from "../../types";
+
+import type { CollectionPickerItem } from "./types";
 
 export const getCollectionIdPath = (
   collection: Pick<
@@ -53,10 +54,11 @@ export const getStateFromIdPath = ({
 }: {
   idPath: CollectionId[];
   namespace?: "snippets";
-}): PickerState<CollectionPickerItem> => {
-  const statePath: PickerState<CollectionPickerItem> = [
+}): PickerState<CollectionPickerItem, SearchListQuery> => {
+  const statePath: PickerState<CollectionPickerItem, SearchListQuery> = [
     {
       selectedItem: {
+        name: "", // TODO?
         model: "collection",
         id: idPath[0],
       },
@@ -73,7 +75,11 @@ export const getStateFromIdPath = ({
         namespace,
       },
       selectedItem: nextLevelId
-        ? { model: "collection", id: nextLevelId }
+        ? {
+            name: "", // TODO?
+            model: "collection",
+            id: nextLevelId,
+          }
         : null,
     });
   });
@@ -81,8 +87,10 @@ export const getStateFromIdPath = ({
   return statePath;
 };
 
-export const isFolder: TisFolder<CollectionPickerItem> = <
-  TItem extends TypeWithModel,
->(
-  item: TItem,
-) => item.model === "collection";
+export const isFolder: TisFolder<
+  CollectionId,
+  SearchModelType,
+  CollectionPickerItem
+> = <Item extends TypeWithModel<CollectionId, SearchModelType>>(item: Item) => {
+  return item.model === "collection";
+};

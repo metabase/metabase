@@ -1,5 +1,5 @@
 import type React from "react";
-import { useState, forwardRef, useImperativeHandle, useCallback } from "react";
+import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
@@ -7,14 +7,16 @@ import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
+import type { SearchListQuery } from "metabase-types/api";
 
-import type { PickerState, CollectionPickerItem } from "../../types";
+import type { PickerState } from "../../types";
 import type { EntityPickerModalOptions } from "../EntityPickerModal";
 import { LoadingSpinner } from "../LoadingSpinner";
 import { NestedItemPicker } from "../NestedItemPicker";
 
 import { CollectionItemPickerResolver } from "./CollectionItemPickerResolver";
-import { getStateFromIdPath, getCollectionIdPath, isFolder } from "./utils";
+import type { CollectionPickerItem } from "./types";
+import { getCollectionIdPath, getStateFromIdPath, isFolder } from "./utils";
 
 export type CollectionPickerOptions = EntityPickerModalOptions & {
   showPersonalCollections?: boolean;
@@ -41,7 +43,9 @@ export const CollectionPickerInner = (
   }: CollectionPickerProps,
   ref: React.Ref<unknown>,
 ) => {
-  const [path, setPath] = useState<PickerState<CollectionPickerItem>>(() =>
+  const [path, setPath] = useState<
+    PickerState<CollectionPickerItem, SearchListQuery>
+  >(() =>
     getStateFromIdPath({
       idPath: ["root"],
       namespace: options.namespace,
