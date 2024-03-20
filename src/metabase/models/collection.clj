@@ -1265,7 +1265,11 @@
                               :children [{:name \"G\"}]}]}]}
      {:name \"H\"}]"
   [coll-type-ids collections]
-  (let [all-visible-ids (set (map :id collections))]
+  (let [;; instead of attempting to re-sort like the database does, keep things consistent by just keeping things in
+        ;; the same order they're already in.
+        original-position (into {} (map-indexed (fn [i {id :id}]
+                                                  [id i]) collections))
+        all-visible-ids (set (map :id collections))]
     (transduce
      identity
      (fn ->tree
@@ -1298,8 +1302,8 @@
        ([m]
         (->> (vals m)
              (map #(update % :children ->tree))
-             (sort-by (fn [{coll-type :type, coll-name :name, coll-id :id}]
+             (sort-by (fn [{coll-id :id}]
                         ;; coll-type is `nil` or "instance-analytics"
                         ;; nil sorts first, so we get instance-analytics at the end, which is what we want
-                        [coll-type ((fnil u/lower-case-en "") coll-name) coll-id])))))
+                        (original-position coll-id))))))
      (annotate-collections coll-type-ids collections))))
