@@ -7,21 +7,21 @@ import CollectionPicker from "metabase/containers/CollectionPicker";
 import Button from "metabase/core/components/Button";
 import type { Collection, CollectionId } from "metabase-types/api";
 
-import { ButtonContainer } from "./CollectionMoveModal.styled";
+import { ButtonContainer } from "./MoveModal.styled";
 
-interface CollectionMoveModalProps {
+interface MoveModalProps {
   title: string;
   onClose: () => void;
   onMove: (collection: any) => void;
   initialCollectionId?: number | string | null;
 }
 
-export const CollectionMoveModal = ({
+export const MoveModal = ({
   title,
   onClose,
   onMove,
   initialCollectionId,
-}: CollectionMoveModalProps) => {
+}: MoveModalProps) => {
   const [selectedCollectionId, setSelectedCollectionId] =
     useState(initialCollectionId);
 
