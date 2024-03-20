@@ -298,25 +298,15 @@
         :none
         (data-perms/set-database-permission! group-id db-id :perms/download-results :no)))))
 
-(defn- create-queries-max-perm [new-native-perms]
-  (case new-native-perms
-    :write :query-builder-and-native
-    :query-builder))
+(defn- update-native-data-access-permissions!
+  [group-id db-id new-native-perms]
+  (data-perms/set-database-permission! group-id db-id :perms/native-query-editing (case new-native-perms
+                                                                                    :write :yes
+                                                                                    :none  :no)))
 
 (defn- update-table-level-data-access-permissions!
-  [group-id db-id max-create-queries-perm schema new-table-perms]
-  (let [new-create-queries-perms
-        (-> new-table-perms
-            (update-vals (fn [table-perm]
-                           (if (map? table-perm)
-                             (if (#{:all :segmented} (table-perm :query))
-                               max-create-queries-perm
-                               :no)
-                             (case table-perm
-                               :all max-create-queries-perm
-                               :none :no))))
-            (update-keys (fn [table-id] {:id table-id :db_id db-id :schema schema})))
-        new-data-access-perms
+  [group-id db-id schema new-table-perms]
+  (let [new-table-perms
         (-> new-table-perms
             (update-vals (fn [table-perm]
                            (if (map? table-perm)
@@ -330,57 +320,41 @@
                                :all  :unrestricted
                                :none :no-self-service))))
             (update-keys (fn [table-id] {:id table-id :db_id db-id :schema schema})))]
-    (data-perms/set-table-permissions! group-id :perms/data-access new-data-access-perms)
-    (data-perms/set-table-permissions! group-id :perms/create-queries new-create-queries-perms)))
+    (data-perms/set-table-permissions! group-id :perms/data-access new-table-perms)))
 
 (defn- update-schema-level-data-access-permissions!
-  [group-id db-id max-create-queries-perm schema new-schema-perms]
+  [group-id db-id schema new-schema-perms]
   (if (map? new-schema-perms)
-    (update-table-level-data-access-permissions! group-id db-id max-create-queries-perm schema new-schema-perms)
+    (update-table-level-data-access-permissions! group-id db-id schema new-schema-perms)
     (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
       (when (seq tables)
         (case new-schema-perms
           :all
-          (do (data-perms/set-table-permissions! group-id :perms/data-access (zipmap tables (repeat :unrestricted)))
-              (data-perms/set-table-permissions! group-id :perms/create-queries (zipmap tables (repeat max-create-queries-perm))))
+          (data-perms/set-table-permissions! group-id :perms/data-access (zipmap tables (repeat :unrestricted)))
 
           :none
-          (do (data-perms/set-table-permissions! group-id :perms/data-access (zipmap tables (repeat :no-self-service)))
-              (data-perms/set-table-permissions! group-id :perms/create-queries (zipmap tables (repeat :no)))))))))
+          (data-perms/set-table-permissions! group-id :perms/data-access (zipmap tables (repeat :no-self-service))))))))
 
 (defn- update-db-level-data-access-permissions!
   [group-id db-id new-db-perms]
   (when-let [new-native-perms (:native new-db-perms)]
-    (data-perms/set-database-permission! group-id db-id :perms/native-query-editing (case new-native-perms
-                                                                                      :write :yes
-                                                                                      :none :no)))
-  (let [max-create-queries-perm (create-queries-max-perm (:native new-db-perms))]
-    (when-let [schemas (:schemas new-db-perms)]
-      (if (map? schemas)
+    (update-native-data-access-permissions! group-id db-id new-native-perms))
+  (when-let [schemas (:schemas new-db-perms)]
+    (if (map? schemas)
+      (doseq [[schema schema-changes] schemas]
+        (update-schema-level-data-access-permissions! group-id db-id schema schema-changes))
+      (case schemas
+        (:all :impersonated)
+        (data-perms/set-database-permission! group-id db-id :perms/data-access :unrestricted)
+
+        :none
+        (data-perms/set-database-permission! group-id db-id :perms/data-access :no-self-service)
+
+        :block
         (do
-          (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
-          (doseq [[schema schema-changes] schemas]
-            (update-schema-level-data-access-permissions! group-id db-id max-create-queries-perm schema schema-changes)))
-        (case schemas
-          (:all :impersonated)
-          (do
-            (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
-            (data-perms/set-database-permission! group-id db-id :perms/data-access :unrestricted)
-            (data-perms/set-database-permission! group-id db-id :perms/create-queries max-create-queries-perm))
-
-          :none
-          (do
-            (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
-            (data-perms/set-database-permission! group-id db-id :perms/data-access :no-self-service)
-            (data-perms/set-database-permission! group-id db-id :perms/create-queries :no))
-
-          :block
-          (do
-            (when-not (premium-features/has-feature? :advanced-permissions)
-              (throw (ee-permissions-exception :block)))
-            (data-perms/set-database-permission! group-id db-id :perms/view-data :blocked)
-            (data-perms/set-database-permission! group-id db-id :perms/data-access :block)
-            (data-perms/set-database-permission! group-id db-id :perms/create-queries :no)))))))
+          (when-not (premium-features/has-feature? :advanced-permissions)
+            (throw (ee-permissions-exception :block)))
+          (data-perms/set-database-permission! group-id db-id :perms/data-access :block))))))
 
 (defn- update-details-perms!
   [group-id db-id value]

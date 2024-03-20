@@ -153,12 +153,6 @@
           {group-id-1
            {database-id-1
             {:perms/native-query-editing :no
-             :perms/view-data :unrestricted
-             :perms/create-queries {"PUBLIC"
-                                    {table-id-1 :query-builder
-                                     table-id-2 :no}
-                                    ""
-                                    {table-id-3 :query-builder}}
              :perms/data-access {"PUBLIC"
                                  {table-id-1 :unrestricted
                                   table-id-2 :no-self-service}
@@ -173,10 +167,8 @@
               :schemas :all}}}}
           {group-id-1
            {database-id-1
-            {:perms/view-data :unrestricted
-             :perms/native-query-editing :yes
-             :perms/data-access :unrestricted
-             :perms/create-queries :query-builder-and-native}}}
+            {:perms/native-query-editing :yes
+             :perms/data-access :unrestricted}}}
 
           ;; Setting data access permissions at the schema-level
           {group-id-1
@@ -188,12 +180,6 @@
           {group-id-1
            {database-id-1
             {:perms/native-query-editing :no
-             :perms/view-data :unrestricted
-             :perms/create-queries {"PUBLIC"
-                                    {table-id-1 :query-builder
-                                     table-id-2 :query-builder}
-                                    ""
-                                    {table-id-3 :no}}
              :perms/data-access {"PUBLIC"
                                  {table-id-1 :unrestricted
                                   table-id-2 :unrestricted}
