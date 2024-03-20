@@ -193,3 +193,25 @@
    (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
    {:write? true}
    delete-session-schema!))
+
+(def ^:dynamic *use-original-describe-database-impl?*
+  "Whether to use the actual prod impl for `describe-database` rather than the special test one that only syncs
+  the tables qualified by the database name."
+  false)
+
+(defonce ^:private ^{:arglists '([driver database])}
+  original-describe-database
+  (get-method driver/describe-database :redshift))
+
+;; For test databases, only sync the tables that are qualified by the db name
+(defmethod driver/describe-database :redshift
+  [driver database]
+  (if *use-original-describe-database-impl?*
+    (original-describe-database driver database)
+    (let [r (original-describe-database driver database)]
+      (update r :tables (fn [tables]
+                          (into #{}
+                                (filter #(or (tx/qualified-by-db-name? (:name database) (:name %))
+                                             ;; the `extsales` table is used for testing external tables
+                                             (= (:name %) "extsales")))
+                                tables))))))
