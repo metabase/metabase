@@ -18,7 +18,7 @@
    [toucan2.core :as t2])
   (:import
    (java.util.jar JarEntry JarFile)
-   (sun.nio.fs UnixPath)))
+   (java.nio.file Path)))
 
 (set! *warn-on-reflection* true)
 
@@ -219,7 +219,7 @@
 (defn analytics-checksum
   "Hashes the contents of all non-dir files in the `analytics-dir-resource`."
   []
-  (->> ^UnixPath (instance-analytics-plugin-dir (plugins/plugins-dir))
+  (->> ^Path (instance-analytics-plugin-dir (plugins/plugins-dir))
        (.toFile)
        file-seq
        (remove fs/directory?)
