@@ -49,6 +49,6 @@
    (context
     "/autodescribe" []
     (ee.api.common/+require-premium-feature :llm-autodescription (deferred-tru "LLM Auto-description") llm.api/routes))
-   (compojure/context
+   (context
     "/caching" []
     (ee.api.common/+require-premium-feature :cache-granular-controls (deferred-tru "Caching") caching/routes))))
