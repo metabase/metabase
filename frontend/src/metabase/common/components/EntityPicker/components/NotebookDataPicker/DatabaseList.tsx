@@ -27,14 +27,12 @@ export const DatabaseList = ({
     query: { saved: false }, // saved questions are fetched in a separate tab
   });
 
-  const items = databases.map((database): NotebookDataPickerItem => {
-    return {
-      description: database.description,
-      id: database.id,
-      model: "database",
-      name: database.displayName(),
-    };
-  });
+  const items: NotebookDataPickerItem[] = databases.map(database => ({
+    description: database.description,
+    id: database.id,
+    model: "database",
+    name: database.displayName(),
+  }));
 
   if (error) {
     return <LoadingAndErrorWrapper error={error} />;
