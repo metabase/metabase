@@ -59,7 +59,7 @@ export const BorderedViewTitleHeader = styled(ViewTitleHeader)`
   border-bottom: 1px solid ${color("border")};
   padding-top: 8px;
   padding-bottom: 8px;
-  height: ${headerHeight};
+  min-height: ${headerHeight};
 `;
 
 export const QueryBuilderViewHeaderContainer = styled.div`
