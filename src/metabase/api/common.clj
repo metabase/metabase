@@ -281,14 +281,14 @@
           route                                               (add-route-param-schema arg->schema route)
           ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
           ;; their API error messages
-          docstr                                              (route-dox method route docstr args
-                                                                               (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
-                                                                               body)]
+          route-doc                                           (route-dox method route docstr args
+                                                                         (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
+                                                                            body)]
       ;; Don't i18n this, it's dev-facing only
       (when-not docstr
         (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
                                   (ns-name *ns*) fn-name)))
-      (assoc parsed :fn-name fn-name, :route route, :docstr docstr))))
+      (assoc parsed :fn-name fn-name, :route route, :route-doc route-doc, :docstr docstr))))
 
 (defn validate-param-values
   "Log a warning if the request body contains any parameters not included in `expected-params` (which is presumably
@@ -313,7 +313,7 @@
 
 (defmacro defendpoint*
   "Impl macro for [[defendpoint]]; don't use this directly."
-  [{:keys [method route fn-name docstr args body arg->schema]}]
+  [{:keys [method route fn-name route-doc docstr args body arg->schema]}]
   {:pre [(or (string? route) (vector? route))]}
   (let [method-kw       (method-symbol->keyword method)
         allowed-params  (mapv keyword (keys arg->schema))
@@ -324,7 +324,8 @@
                                        [(keyword k) v]))]
     `(def ~(vary-meta fn-name
                       merge
-                      {:doc          docstr
+                      {:doc          route-doc
+                       :orig-doc     docstr
                        :method       method-kw
                        :path         route
                        :schema       schema
