@@ -54,12 +54,14 @@ describe("command palette", () => {
     openCommandPalette();
 
     commandPalette().within(() => {
-      commandPaletteSearch().type("Name");
-      cy.findByRole("option", { name: /Site Name/ }).click();
+      commandPaletteSearch().type("Nested");
+      cy.findByRole("option", { name: /Enable Nested Queries/ }).click();
     });
 
+    cy.findByTestId("enable-nested-queries-setting").should("be.visible");
+
     cy.location("pathname").should("contain", "settings/general");
-    cy.location("hash").should("contain", "#site-name");
+    cy.location("hash").should("contain", "#enable-nested-queries");
 
     openCommandPalette();
 
