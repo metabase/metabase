@@ -1,6 +1,7 @@
 export const CHART_STYLE = {
   series: {
     zIndex: 2, // Note: goal line (which uses echarts' markLine) has a fixed z value of 5 https://github.com/apache/echarts/blob/fbee94d5dd3fe8a957524620eb3657145670bd50/src/component/marker/MarkLineModel.ts#L116
+    zIndexLineArea: 3, // https://github.com/metabase/metabase/issues/40209
     barWidth: 0.8,
     histogramBarWidth: 0.995,
   },

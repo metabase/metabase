@@ -449,6 +449,13 @@ AreaStackAllSeriesWithoutInterpolation.args = {
   renderingContext,
 };
 
+export const AreaOverBar = Template.bind({});
+AreaOverBar.args = {
+  rawSeries: data.areaOverBar as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
