@@ -68,7 +68,7 @@
   justify-content: flex-end;
 }
 
-:global(.align-start) {
+.alignStart {
   align-items: flex-start;
 }
 

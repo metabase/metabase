@@ -202,7 +202,7 @@ function PulseDetails({ pulse, parameters }) {
           <li
             className={cx(
               CS.flex,
-              "align-start",
+              CS.alignStart,
               CS.mr1,
               CS.textBold,
               CS.textMedium,
@@ -226,7 +226,7 @@ function PulseDetails({ pulse, parameters }) {
           <li
             className={cx(
               CS.flex,
-              "align-start",
+              CS.alignStart,
               CS.mt1,
               CS.mr1,
               CS.textBold,
