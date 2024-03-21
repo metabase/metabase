@@ -102,10 +102,6 @@
   flex-direction: column;
 }
 
-:global(.flex-column-reverse) {
-  flex-direction: column-reverse;
-}
-
 @media screen and (--breakpoint-min-sm) {
   :global(.sm-flex-column) {
     flex-direction: column;
