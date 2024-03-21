@@ -5,11 +5,9 @@
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.log :as log])
   (:import
    (java.time ZonedDateTime)))
 
@@ -21,8 +19,8 @@
 
 (def ^:private ^:dynamic *results-timezone-id-override* nil)
 
-(mu/defn ^:private valid-timezone-id :- [:maybe ::lib.schema.expression.temporal/timezone-id]
-  [timezone-id :- [:maybe :string]]
+;; TODO - consider making this `metabase.util.date-2/the-timezone-id`
+(defn- valid-timezone-id [timezone-id]
   (when (and (string? timezone-id)
              (seq timezone-id))
     (try
@@ -41,7 +39,7 @@
 ;;; |                                                Public Interface                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn report-timezone-id-if-supported :- [:maybe ::lib.schema.expression.temporal/timezone-id]
+(defn report-timezone-id-if-supported
   "Timezone ID for the report timezone, if the current driver and database supports it. (If the current driver supports it, this is
   bound by the `bind-effective-timezone` middleware.)"
   (^String []
@@ -51,7 +49,7 @@
    (when (driver/database-supports? driver :set-timezone database)
      (valid-timezone-id (report-timezone-id*)))))
 
-(mu/defn database-timezone-id :- [:maybe ::lib.schema.expression.temporal/timezone-id]
+(defn database-timezone-id
   "The timezone that the current database is in, as determined by the most recent sync."
   (^String []
    (database-timezone-id ::db-from-store))
@@ -64,19 +62,19 @@
                          database)]
           (:timezone database))))))
 
-(mu/defn system-timezone-id :- ::lib.schema.expression.temporal/timezone-id
+(defn system-timezone-id
   "The system timezone of this Metabase instance."
   ^String []
   (.. (t/system-clock) getZone getId))
 
-(mu/defn requested-timezone-id :- [:maybe ::lib.schema.expression.temporal/timezone-id]
+(defn requested-timezone-id
   "The timezone that we would *like* to run a query in, regardless of whether we are actually able to do so. This is
   always equal to the value of the `report-timezone` Setting (if it is set), otherwise the database timezone (if known),
   otherwise the system timezone."
   ^String []
   (valid-timezone-id (report-timezone-id*)))
 
-(mu/defn results-timezone-id :- ::lib.schema.expression.temporal/timezone-id
+(defn results-timezone-id
   "The timezone that a query is actually ran in ­ report timezone, if set and supported by the current driver;
   otherwise the timezone of the database (if known), otherwise the system timezone. Guaranteed to always return a
   timezone ID ­ never returns `nil`."
