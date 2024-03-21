@@ -32,7 +32,7 @@ const EditableReferenceHeader = ({
     <div className={cx("relative", L.header)}>
       <div className="flex align-center mr1">
         {headerIcon && (
-          <Icon className="text-light" name={headerIcon} size={21} />
+          <Icon className={CS.textLight} name={headerIcon} size={21} />
         )}
       </div>
       {type === "table" && !hasSingleSchema && !isEditing && (

@@ -111,7 +111,9 @@ export class DimensionList extends Component {
     return (
       <Box className="Field-extra">
         {item.dimension?.tag && (
-          <span className="h5 text-light px1">{item.dimension.tag}</span>
+          <span className={cx(CS.h5, CS.textLight, CS.px1)}>
+            {item.dimension.tag}
+          </span>
         )}
         {subDimensions?.length > 0 ? (
           <PopoverWithTrigger

@@ -131,7 +131,9 @@ const SemanticTypeAndTargetPicker = ({
             <Option name={c.name} value={c.code} key={c.code}>
               <span className="flex full align-center">
                 <span>{c.name}</span>
-                <span className="text-bold text-light ml1">{c.symbol}</span>
+                <span className={cx(CS.textBold, CS.textLight, CS.ml1)}>
+                  {c.symbol}
+                </span>
               </span>
             </Option>
           ))}

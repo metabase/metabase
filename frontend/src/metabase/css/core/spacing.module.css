@@ -19,7 +19,8 @@
   margin-right: auto;
 }
 
-:global(.mt-auto) {
+:global(.mt-auto),
+.mtAuto {
   margin-top: auto;
 }
 

@@ -65,7 +65,16 @@ class TableSelectorInner extends Component {
             setSourceTableFn={setTableId}
             triggerElement={
               tableId == null ? (
-                <span className="flex align-center justify-between flex-full text-medium text-bold">
+                <span
+                  className={cx(
+                    CS.flex,
+                    CS.alignCenter,
+                    CS.justifyBetween,
+                    CS.flexFull,
+                    CS.textMedium,
+                    CS.textBold,
+                  )}
+                >
                   {t`Filter by table`}
                   <Icon name="chevrondown" size={12} />
                 </span>

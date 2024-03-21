@@ -119,13 +119,13 @@ function ProfileLink({ adminItems, onLogout }) {
               <h3 className="text-dark mb1">
                 {t`You're on version`} {tag}
               </h3>
-              <p className="text-medium text-bold">
+              <p className={cx(CS.textMedium, CS.textBold)}>
                 {t`Built on`} {date}
               </p>
               {!/^v\d+\.\d+\.\d+$/.test(tag) && (
                 <div>
                   {_.map(versionExtra, (value, key) => (
-                    <p key={key} className="text-medium text-bold">
+                    <p key={key} className={cx(CS.textMedium, CS.textBold)}>
                       {capitalize(key)}: {value}
                     </p>
                   ))}

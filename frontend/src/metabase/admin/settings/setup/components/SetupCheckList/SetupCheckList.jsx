@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -30,7 +31,9 @@ const TaskList = ({ tasks }) => (
 );
 
 const TaskSectionHeader = ({ name }) => (
-  <h4 className="text-medium text-bold text-uppercase pb2">{name}</h4>
+  <h4 className={cx(CS.textMedium, CS.textBold, CS.textUppercase, CS.pb2)}>
+    {name}
+  </h4>
 );
 
 const TaskSection = ({ name, tasks }) => (

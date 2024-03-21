@@ -163,7 +163,7 @@ class AlertListItemInner extends Component {
 
     return (
       <li
-        className={cx("flex p3 text-medium border-bottom", {
+        className={cx(CS.flex, CS.p3, CS.textMedium, CS.borderBottom, {
           "bg-light-blue": highlight,
         })}
       >

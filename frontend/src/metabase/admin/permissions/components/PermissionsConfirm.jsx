@@ -64,7 +64,7 @@ const PermissionsConfirm = ({ diff }) => (
               {database.revokedTables && (
                 <TableAccessChange
                   verb={t`denied access to`}
-                  colorClassName="text-error"
+                  colorClassName={CS.textError}
                   tables={database.revokedTables}
                 />
               )}

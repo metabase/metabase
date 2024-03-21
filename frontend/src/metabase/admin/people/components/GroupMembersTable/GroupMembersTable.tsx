@@ -6,6 +6,7 @@ import AdminContentTable from "metabase/components/AdminContentTable";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import PaginationControls from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import User from "metabase/entities/users";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
@@ -138,7 +139,9 @@ function GroupMembersTable({
       )}
       {!hasMembers && (
         <div className="mt4 pt4 flex layout-centered">
-          <h2 className="text-medium">{t`A group is only as good as its members.`}</h2>
+          <h2
+            className={CS.textMedium}
+          >{t`A group is only as good as its members.`}</h2>
         </div>
       )}
     </>
@@ -203,7 +206,7 @@ const UserRow = ({
           className="text-right cursor-pointer"
           onClick={() => onMembershipRemove(groupMembership?.membership_id)}
         >
-          <Icon name="close" className="text-light" size={16} />
+          <Icon name="close" className={CS.textLight} size={16} />
         </td>
       ) : null}
     </tr>

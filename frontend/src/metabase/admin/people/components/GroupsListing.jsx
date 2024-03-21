@@ -122,7 +122,7 @@ function ActionsPopover({
   return (
     <PopoverWithTrigger
       className="block"
-      triggerElement={<Icon className="text-light" name="ellipsis" />}
+      triggerElement={<Icon className={CS.textLight} name="ellipsis" />}
     >
       <ul className={cx(AdminS.UserActionsSelect, CS.py1)}>
         <EditGroupButton onClick={onEditGroupClicked.bind(null, group)}>
@@ -247,7 +247,7 @@ const ApiKeyCount = ({ apiKeys }) => {
     return null;
   }
   return (
-    <span className="text-light">
+    <span className={CS.textLight}>
       {apiKeys.length === 1
         ? t` (includes 1 API key)`
         : t` (includes ${apiKeys.length} API keys)`}

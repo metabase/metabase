@@ -23,7 +23,7 @@ const ReferenceHeader = ({
     <div className={cx("relative", L.header)}>
       {headerIcon && (
         <div className="flex align-center mr2">
-          <Icon className="text-light" name={headerIcon} size={21} />
+          <Icon className={CS.textLight} name={headerIcon} size={21} />
         </div>
       )}
       <div className={S.headerBody}>

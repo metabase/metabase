@@ -42,7 +42,10 @@ class SnippetRowInner extends Component {
                   }
             }
           >
-            <Icon name="snippet" className="hover-child--hidden text-light" />
+            <Icon
+              name="snippet"
+              className={cx("hover-child--hidden", CS.textLight)}
+            />
             <Icon
               name={insertSnippet ? "arrow_left_to_line" : "snippet"}
               className="hover-child"
@@ -56,7 +59,9 @@ class SnippetRowInner extends Component {
         </div>
         {isOpen && (
           <div className="px3 pb2 pt1">
-            {description && <p className="text-medium mt0">{description}</p>}
+            {description && (
+              <p className={cx(CS.textMedium, CS.mt0)}>{description}</p>
+            )}
             <pre
               className="bg-light bordered rounded p1 text-monospace text-small text-pre-wrap overflow-auto"
               style={{ maxHeight: 320 }}

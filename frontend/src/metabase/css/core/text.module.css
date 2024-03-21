@@ -122,7 +122,8 @@
   font-weight: 700;
 }
 
-:global(.text-heavy) {
+:global(.text-heavy),
+.textHeavy {
   font-weight: 900;
 }
 
@@ -160,7 +161,8 @@
   line-height: normal;
 }
 
-:global(.text-small) {
+:global(.text-small),
+.textSmall {
   font-size: 0.875em;
 }
 
@@ -190,7 +192,8 @@
   word-wrap: anywhere;
 }
 
-:global(.text-nowrap) {
+:global(.text-nowrap),
+.textNoWrap {
   white-space: nowrap;
 }
 

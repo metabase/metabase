@@ -97,7 +97,14 @@ function NewVersionAvailable({ currentVersion }) {
       </NewVersionContainer>
 
       <div
-        className="text-medium bordered rounded p2 mt2 overflow-y-scroll"
+        className={cx(
+          CS.textMedium,
+          CS.bordered,
+          CS.rounded,
+          CS.p2,
+          CS.mt2,
+          "overflow-y-scroll",
+        )}
         style={{ height: 330 }}
       >
         <h3 className="pb3 text-uppercase">{t`What's Changed:`}</h3>
@@ -136,7 +143,9 @@ function HostingCTA() {
           <Icon name="cloud" size={24} />
         </HostingCTAIconContainer>
         <div>
-          <Text className="text-brand mb0">{t`Want to have upgrades taken care of for you?`}</Text>
+          <Text
+            className={cx(CS.textBrand, CS.mb0)}
+          >{t`Want to have upgrades taken care of for you?`}</Text>
           <Text className="text-brand text-bold">{t`Migrate to Metabase Cloud.`}</Text>
         </div>
       </HostingCTAContent>
@@ -154,7 +163,7 @@ function Version({ version }) {
 
   return (
     <div className="pb3">
-      <h3 className="text-medium">
+      <h3 className={CS.textMedium}>
         {formatVersion(version.version)}{" "}
         {version.patch ? "(" + t`patch release` + ")" : null}
       </h3>

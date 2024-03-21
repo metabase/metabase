@@ -52,8 +52,16 @@ export class GuiQueryEditor extends Component {
   };
 
   renderAdd(text, onClick, targetRefName) {
-    const className =
-      "text-light text-bold flex align-center text-medium-hover cursor-pointer no-decoration transition-color";
+    const className = cx(
+      CS.textLight,
+      CS.textBold,
+      CS.flex,
+      CS.alignCenter,
+      "text-medium-hover",
+      CS.cursorPointer,
+      CS.noDecoration,
+      CS.transitionColor,
+    );
     if (onClick) {
       return (
         <a className={className} onClick={onClick}>

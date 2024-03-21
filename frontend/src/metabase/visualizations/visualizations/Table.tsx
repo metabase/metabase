@@ -3,6 +3,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import * as DataGrid from "metabase/lib/data_grid";
 import { formatColumn } from "metabase/lib/formatting";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
@@ -413,7 +414,7 @@ class Table extends Component<TableProps, TableState> {
         <div
           className={cx(
             "flex-full px1 pb1 text-centered flex flex-column layout-centered",
-            { "text-slate-light": isDashboard, "text-slate": !isDashboard },
+            { [CS.textSlateLight]: isDashboard, [CS.textSlate]: !isDashboard },
           )}
         >
           <img

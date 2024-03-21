@@ -48,7 +48,10 @@ export default class NewModelOption extends Component {
           <h2 className={cx(S.modelTitle, { [CS.textBrand]: hover })}>
             {title}
           </h2>
-          <p className="text-medium text-small" style={{ maxWidth: "360px" }}>
+          <p
+            className={cx(CS.textMedium, CS.textSmall)}
+            style={{ maxWidth: "360px" }}
+          >
             {description}
           </p>
         </div>

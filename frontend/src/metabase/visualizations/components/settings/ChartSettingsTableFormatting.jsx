@@ -16,6 +16,7 @@ import Radio from "metabase/core/components/Radio";
 import Select, { Option } from "metabase/core/components/Select";
 import { Sortable, SortableList } from "metabase/core/components/Sortable";
 import Toggle from "metabase/core/components/Toggle";
+import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getAccentColors,
@@ -275,7 +276,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
         </span>
         <Icon
           name="close"
-          className="cursor-pointer text-light text-medium-hover"
+          className={cx(CS.cursorPointer, CS.textLight, "text-medium-hover")}
           onClick={e => {
             e.stopPropagation();
             onRemove();

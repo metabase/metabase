@@ -3,6 +3,7 @@ import { Fragment } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 
 export default function PaginationControls({
   page,
@@ -29,7 +30,7 @@ export default function PaginationControls({
         {page * pageSize + 1} - {page * pageSize + itemsLength}
         {showTotal && (
           <Fragment>
-            <span className="text-light">&nbsp;{t`of`}&nbsp;</span>
+            <span className={CS.textLight}>&nbsp;{t`of`}&nbsp;</span>
             <span data-testid="pagination-total">{total}</span>
           </Fragment>
         )}

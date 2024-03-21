@@ -1,10 +1,12 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
 import UserAvatar from "metabase/components/UserAvatar";
+import CS from "metabase/css/core/index.css";
 
 import RevisionDiff from "./RevisionDiff";
 
@@ -74,7 +76,7 @@ export default class Revision extends Component {
           />
         </div>
         <div className="flex-full mt1 mb4">
-          <div className="flex mb1 text-medium">
+          <div className={cx(CS.flex, CS.mb1, CS.textMedium)}>
             <span className="">
               <strong>{this.getName()}</strong> {this.getAction()}
             </span>

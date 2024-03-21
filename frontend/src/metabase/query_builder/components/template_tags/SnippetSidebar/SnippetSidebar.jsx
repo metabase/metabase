@@ -108,7 +108,9 @@ class SnippetSidebarInner extends React.Component {
                 d="M0,1H8M0,3H10M0,5H7M0,7H10M0,9H3"
               />
             </svg>
-            <h4 className="text-medium">{t`Snippets are reusable bits of SQL`}</h4>
+            <h4
+              className={CS.textMedium}
+            >{t`Snippets are reusable bits of SQL`}</h4>
             <button
               onClick={openSnippetModalWithSelectedText}
               className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
@@ -124,7 +126,7 @@ class SnippetSidebarInner extends React.Component {
               <div className="flex-full">
                 <div
                   /* Hide the search input by collapsing dimensions rather than `display: none`.
-                                                         This allows us to immediately focus on it when showSearch is set to true.*/
+                                                                           This allows us to immediately focus on it when showSearch is set to true.*/
                   style={showSearch ? {} : { width: 0, height: 0 }}
                   className="text-heavy h3 overflow-hidden"
                 >
@@ -167,7 +169,15 @@ class SnippetSidebarInner extends React.Component {
                   )}
                 </span>
               </div>
-              <div className="flex-align-right flex align-center text-medium no-decoration">
+              <div
+                className={cx(
+                  CS.flexAlignRight,
+                  CS.flex,
+                  CS.alignCenter,
+                  CS.textMedium,
+                  CS.noDecoration,
+                )}
+              >
                 {[
                   ...PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map(f =>
                     f(this, { className: "mr2" }),

@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
@@ -130,7 +131,9 @@ export const Help = () => {
         <AdminHeader title={t`Diagnostic Info`} className="mb2" />
         <p>{t`Please include these details in support requests. Thank you!`}</p>
         <InfoBlock>{detailString}</InfoBlock>
-        <div className="text-medium text-bold text-uppercase py2">{t`Advanced Details (click to download)`}</div>
+        <div
+          className={cx(CS.textMedium, CS.textBold, CS.textUppercase, CS.py2)}
+        >{t`Advanced Details (click to download)`}</div>
         <ol>
           <HelpLink
             title={t`Connection Pool Details`}

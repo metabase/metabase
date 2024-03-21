@@ -1,9 +1,11 @@
+import cx from "classnames";
 import { useLayoutEffect } from "react";
 import { connect } from "react-redux";
 import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -28,7 +30,9 @@ interface DatabaseLoaderProps {
 interface DispatchProps {
   onSelectDatabase: (
     databaseId: DatabaseId,
-    options: { useReplace?: boolean },
+    options: {
+      useReplace?: boolean;
+    },
   ) => void;
 }
 
@@ -60,7 +64,7 @@ const MetadataHeader = ({
   return (
     <div className="MetadataEditor-header flex align-center flex-no-shrink py4">
       <Icon
-        className="flex align-center flex-no-shrink text-medium"
+        className={cx(CS.flex, CS.alignCenter, CS.flexNoShrink, CS.textMedium)}
         name="database"
       />
       <div className="MetadataEditor-headerSection h2">

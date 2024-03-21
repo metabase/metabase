@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import UserAvatar from "metabase/components/UserAvatar";
+import CS from "metabase/css/core/index.css";
 import Typeahead from "metabase/hoc/Typeahead";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
@@ -68,7 +69,12 @@ export default function AddMemberRow({ users, excludeIds, onCancel, onDone }) {
             >
               {user.common_name}
               <Icon
-                className="pl1 cursor-pointer text-slate text-medium-hover"
+                className={cx(
+                  CS.pl1,
+                  CS.cursorPointer,
+                  CS.textSlate,
+                  "text-medium-hover",
+                )}
                 name="close"
                 onClick={() => handleRemoveUser(user)}
               />

@@ -67,9 +67,9 @@
 
 :global(.shrink-below-content-size) {
   /* W3C spec says:
-       * By default, flex items won’t shrink below their minimum content size (the length of the longest word or
-       * fixed-size element). To change this, set the min-width or min-height property.
-       */
+         * By default, flex items won’t shrink below their minimum content size (the length of the longest word or
+         * fixed-size element). To change this, set the min-width or min-height property.
+         */
   min-width: 0;
   min-height: 0;
 }
@@ -94,7 +94,8 @@
   justify-content: space-evenly;
 }
 
-:global(.justify-between) {
+:global(.justify-between),
+.justifyBetween {
   justify-content: space-between;
 }
 
@@ -261,7 +262,8 @@
 /* Contents of elements inside flex items might not be wrapped correctly on IE11,
    set max-width manually to enforce wrapping
 */
-:global(.ie-wrap-content-fix) {
+:global(.ie-wrap-content-fix),
+.ieWrapContentFix {
   max-width: 100%;
 }
 

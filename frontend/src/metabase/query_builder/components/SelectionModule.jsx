@@ -235,7 +235,13 @@ export default class SelectionModule extends Component {
     if (this.props.remove) {
       remove = (
         <a
-          className="text-light no-decoration pr1 flex align-center"
+          className={cx(
+            CS.textLight,
+            CS.noDecoration,
+            CS.pr1,
+            CS.flex,
+            CS.alignCenter,
+          )}
           onClick={this.props.remove.bind(null, this.props.index)}
         >
           <Icon name="close" />

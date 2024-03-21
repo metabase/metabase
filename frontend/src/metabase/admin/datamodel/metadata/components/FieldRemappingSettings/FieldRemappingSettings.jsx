@@ -263,7 +263,7 @@ class FieldRemappingSettings extends Component {
                     {fkMappingField ? (
                       fkMappingField.display_name
                     ) : (
-                      <span className="text-medium">{t`Choose a field`}</span>
+                      <span className={CS.textMedium}>{t`Choose a field`}</span>
                     )}
                   </FieldSelectButton>
                 }

@@ -5,6 +5,7 @@ import { t, jt } from "ttag";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import CS from "metabase/css/core/index.css";
 import { validateCronExpression } from "metabase/lib/cron";
 
 import {
@@ -74,7 +75,7 @@ function Input({
       className={cx(
         "Form-input",
         {
-          "border-error bg-error-input": hasError,
+          [cx(CS.borderError, CS.bgErrorInput)]: hasError,
         },
         className,
       )}

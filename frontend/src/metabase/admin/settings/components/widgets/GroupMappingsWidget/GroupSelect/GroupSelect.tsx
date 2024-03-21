@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import GroupSummary from "metabase/admin/people/components/GroupSummary";
@@ -8,6 +9,7 @@ import type {
 } from "metabase/admin/types";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Select from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
 import {
   isDefaultGroup,
   isAdminGroup,
@@ -58,10 +60,10 @@ export const GroupSelect = ({
 }: GroupSelectProps) => {
   const triggerElement = (
     <div className="flex align-center">
-      <span className="mr1 text-medium">
+      <span className={cx(CS.mr1, CS.textMedium)}>
         <GroupSummary groups={groups} selectedGroupIds={selectedGroupIds} />
       </span>
-      <Icon className="text-light" name="chevrondown" size={10} />
+      <Icon className={CS.textLight} name="chevrondown" size={10} />
     </div>
   );
 

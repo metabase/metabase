@@ -96,7 +96,15 @@ export default class LegendItem extends Component {
           <div className="flex align-center overflow-hidden">
             <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified>
             {description && (
-              <div className="hover-child ml1 flex align-center text-medium">
+              <div
+                className={cx(
+                  "hover-child",
+                  CS.ml1,
+                  CS.flex,
+                  CS.alignCenter,
+                  CS.textMedium,
+                )}
+              >
                 <Tooltip tooltip={description} maxWidth="22em">
                   <Icon className={infoClassName} name="info" />
                 </Tooltip>

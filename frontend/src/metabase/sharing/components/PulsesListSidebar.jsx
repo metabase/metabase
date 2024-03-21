@@ -61,7 +61,13 @@ function _PulsesListSidebar({
           <Tooltip tooltip={t`Close`}>
             <Icon
               name="close"
-              className="text-light bg-light-hover rounded p1 cursor-pointer"
+              className={cx(
+                CS.textLight,
+                "bg-light-hover",
+                CS.rounded,
+                CS.p1,
+                CS.cursorPointer,
+              )}
               size={22}
               onClick={onCancel}
             />
@@ -179,20 +185,33 @@ function PulseDetails({ pulse, parameters }) {
   const filterText = buildFilterText(pulse, parameters);
 
   return (
-    <div className="text-medium hover-child">
+    <div className={cx(CS.textMedium, "hover-child")}>
       <ul
         className="flex flex-column scroll-x scroll-y text-unspaced"
         style={{ maxHeight: 130 }}
       >
         {recipientText && (
-          <li className="flex align-start mr1 text-bold text-medium hover-child hover--inherit">
+          <li
+            className={cx(
+              CS.flex,
+              "align-start",
+              CS.mr1,
+              CS.textBold,
+              CS.textMedium,
+              "hover-child hover--inherit",
+            )}
+          >
             <Icon
               name="group"
-              className="text-medium hover-child hover--inherit"
+              className={cx(CS.textMedium, "hover-child hover--inherit")}
               size={12}
             />
             <span
-              className="ml1 text-medium hover-child hover--inherit"
+              className={cx(
+                CS.ml1,
+                CS.textMedium,
+                "hover-child hover--inherit",
+              )}
               style={{ fontSize: "12px" }}
             >
               {recipientText}
@@ -200,14 +219,28 @@ function PulseDetails({ pulse, parameters }) {
           </li>
         )}
         {filterText && (
-          <li className="flex align-start mt1 mr1 text-bold text-medium hover-child hover--inherit">
+          <li
+            className={cx(
+              CS.flex,
+              "align-start",
+              CS.mt1,
+              CS.mr1,
+              CS.textBold,
+              CS.textMedium,
+              "hover-child hover--inherit",
+            )}
+          >
             <Icon
               name="filter"
-              className="text-medium hover-child hover--inherit"
+              className={cx(CS.textMedium, "hover-child hover--inherit")}
               size={12}
             />
             <span
-              className="ml1 text-medium hover-child hover--inherit"
+              className={cx(
+                CS.ml1,
+                CS.textMedium,
+                "hover-child hover--inherit",
+              )}
               style={{ fontSize: "12px" }}
             >
               {filterText}

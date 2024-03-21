@@ -303,9 +303,13 @@ const SettingContainer = ({
 }) => (
   <div className={className}>
     {name && (
-      <div className="text-medium text-bold text-uppercase my1">{name}</div>
+      <div className={cx(CS.textMedium, CS.textBold, CS.textUppercase, CS.my1)}>
+        {name}
+      </div>
     )}
-    {description && <div className="text-medium my1">{description}</div>}
+    {description && (
+      <div className={cx(CS.textMedium, CS.my1)}>{description}</div>
+    )}
     {children}
   </div>
 );
@@ -405,7 +409,16 @@ const EditMap = ({
             )}
           </LoadingAndErrorWrapper>
         ) : (
-          <div className="flex-full flex layout-centered text-bold text-light text-centered">
+          <div
+            className={cx(
+              CS.flexFull,
+              CS.flex,
+              CS.layoutCentered,
+              CS.textBold,
+              CS.textLight,
+              CS.textCentered,
+            )}
+          >
             {t`Load a GeoJSON file to see a preview`}
           </div>
         )}

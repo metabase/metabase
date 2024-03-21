@@ -86,7 +86,15 @@ export default function QueryVisualization(props) {
 }
 
 export const VisualizationEmptyState = ({ className }) => (
-  <div className={cx(className, "flex flex-column layout-centered text-light")}>
+  <div
+    className={cx(
+      className,
+      CS.flex,
+      CS.flexColumn,
+      CS.layoutCentered,
+      CS.textLight,
+    )}
+  >
     <h3>{t`Here's where your results will appear`}</h3>
   </div>
 );

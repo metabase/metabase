@@ -194,7 +194,9 @@ const SegmentDetail = props => {
                           <div>
                             <Link
                               className={cx(
-                                "text-brand text-bold text-paragraph",
+                                CS.textBrand,
+                                CS.textBold,
+                                "text-paragraph",
                               )}
                               to={`/reference/databases/${table.db_id}/tables/${table.id}`}
                             >

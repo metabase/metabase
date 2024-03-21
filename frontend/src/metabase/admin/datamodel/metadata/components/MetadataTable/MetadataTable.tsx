@@ -224,7 +224,15 @@ const TableVisibilitySection = ({
   );
 
   return (
-    <div className="MetadataTable-header flex align-center py2 text-medium">
+    <div
+      className={cx(
+        "MetadataTable-header",
+        CS.flex,
+        CS.alignCenter,
+        CS.py2,
+        CS.textMedium,
+      )}
+    >
       <span className="mx1 text-uppercase">{t`Visibility`}</span>
       <span id="VisibilityTypes">
         <MetadataVisibilityBadge
@@ -244,7 +252,9 @@ const TableVisibilitySection = ({
 
         {table.visibility_type && (
           <span id="VisibilitySubTypes" className="border-left mx2">
-            <span className="mx2 text-uppercase text-medium">{t`Why Hide?`}</span>
+            <span
+              className={cx(CS.mx2, CS.textUppercase, CS.textMedium)}
+            >{t`Why Hide?`}</span>
             <MetadataVisibilityBadge
               isChecked={table.visibility_type === "technical"}
               onClick={handleChangeTechnical}

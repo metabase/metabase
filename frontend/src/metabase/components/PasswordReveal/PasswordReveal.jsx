@@ -23,7 +23,16 @@ const Label = () => (
     style={{ top: -12 }}
     className={cx(CS.absolute, CS.textCentered, CS.left, CS.right)}
   >
-    <span className="px1 bg-white h6 text-bold text-medium text-uppercase">
+    <span
+      className={cx(
+        CS.px1,
+        CS.bgWhite,
+        CS.h6,
+        CS.textBold,
+        CS.textMedium,
+        CS.textUppercase,
+      )}
+    >
       {t`Temporary Password`}
     </span>
   </div>
@@ -46,7 +55,7 @@ export default class PasswordReveal extends Component {
         {visible ? (
           <input
             style={styles.input}
-            className="text-light text-normal mr3 borderless"
+            className={cx(CS.textLight, CS.textNormal, CS.mr3, CS.borderless)}
             value={password}
             onClick={({ target }) =>
               target.setSelectionRange(0, target.value.length)

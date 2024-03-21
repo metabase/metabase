@@ -50,7 +50,7 @@ export default class LoadingAndErrorWrapper extends Component {
 
     return (
       <div className={contentClassName}>
-        <h2 className="text-normal text-light ie-wrap-content-fix">
+        <h2 className={cx(CS.textNormal, CS.textLight, CS.ieWrapContentFix)}>
           {this.getErrorMessage()}
         </h2>
       </div>
@@ -153,7 +153,7 @@ export default class LoadingAndErrorWrapper extends Component {
           <div className={contentClassName}>
             {loadingScenes && loadingScenes[sceneIndex]}
             {!loadingScenes && showSpinner && <LoadingSpinner />}
-            <h2 className="text-normal text-light mt1">
+            <h2 className={cx(CS.textNormal, CS.textLight, CS.mt1)}>
               {loadingMessages[messageIndex]}
             </h2>
           </div>

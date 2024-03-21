@@ -1,3 +1,4 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import ReactDOM from "react-dom";
@@ -5,6 +6,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
@@ -351,7 +353,14 @@ export class AggregationPopover extends Component {
         <div style={{ minWidth: 300 }}>
           <div
             ref={_ => (this._header = _)}
-            className="text-medium p1 py2 border-bottom flex align-center"
+            className={cx(
+              CS.textMedium,
+              CS.p1,
+              CS.py1,
+              CS.borderBottom,
+              CS.flex,
+              CS.alignCenter,
+            )}
           >
             <a
               className="cursor-pointer flex align-center"

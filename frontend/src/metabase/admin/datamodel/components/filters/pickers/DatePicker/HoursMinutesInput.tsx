@@ -1,6 +1,8 @@
+import cx from "classnames";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import NumericInput from "metabase/components/NumericInput";
+import CS from "metabase/css/core/index.css";
 import { has24HourModeSetting } from "metabase/lib/time";
 import { Icon } from "metabase/ui";
 
@@ -74,7 +76,12 @@ const HoursMinutesInput = ({
     )}
     {onClear && (
       <Icon
-        className="text-light cursor-pointer text-medium-hover ml-auto"
+        className={cx(
+          CS.textLight,
+          CS.cursorPointer,
+          "text-medium-hover",
+          CS.mlAuto,
+        )}
         name="close"
         onClick={onClear}
       />

@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import * as React from "react";
@@ -10,6 +11,7 @@ import _ from "underscore";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 import { isEmail, isEmpty } from "metabase/lib/utils";
 
 import { CollapsibleSectionContent } from "./SettingsBatchForm.styled";
@@ -298,7 +300,9 @@ class SettingsBatchForm extends Component {
         )}
 
         {formErrors && formErrors.message && (
-          <div className="m2 text-error text-bold">{formErrors.message}</div>
+          <div className={cx(CS.m2, CS.textError, CS.textBold)}>
+            {formErrors.message}
+          </div>
         )}
 
         <div className="m2 mb4">
@@ -360,6 +364,7 @@ class CollapsibleSection extends React.Component {
       show: !previousState.show,
     }));
   }
+
   render() {
     const { title, children } = this.props;
     const { show } = this.state;
