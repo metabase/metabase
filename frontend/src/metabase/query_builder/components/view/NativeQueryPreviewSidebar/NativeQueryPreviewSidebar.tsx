@@ -46,14 +46,14 @@ export const NativeQueryPreviewSidebar = (): JSX.Element => {
     dispatch(setUIControls({ isNativeEditorOpen: true }));
   }, [question, query, dispatch]);
 
-  const isError = (error: unknown) =>
+  const getErrorMessage = (error: unknown) =>
     typeof error === "string" ? error : undefined;
 
   return (
     <NativeQueryPreview
       title={TITLE[engineType]}
       query={query}
-      error={isError(error)}
+      error={getErrorMessage(error)}
       isLoading={isLoading}
     >
       {query && (
