@@ -57,9 +57,8 @@ const ChartSettingsWidget = ({
       disabled={disabled}
       className={cx({
         [FormS.FormField]: isFormField,
-        [PopoverS.FormFieldOverride]: isFormField,
+        [PopoverS.FormField]: isFormField,
       })}
-      // TODO: this should have data-testid="form-field" if isFormField === true
       inline={inline}
       marginBottom={marginBottom}
       data-testid={dataTestId}

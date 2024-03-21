@@ -4,6 +4,7 @@ import type * as React from "react";
 import PopoverS from "metabase/components/Popover/Popover.module.css";
 import Tooltip from "metabase/core/components/Tooltip";
 import FormS from "metabase/css/components/form.module.css";
+import CS from "metabase/css/core/index.css";
 import type { BaseFieldDefinition } from "metabase-types/forms";
 
 import {
@@ -44,9 +45,9 @@ function FormFieldView({
     <div
       id={fieldId}
       data-testid="form-field"
-      className={cx(FormS.FormField, PopoverS.FormFieldOverride, className, {
+      className={cx(FormS.FormField, PopoverS.FormField, className, {
         [FormS.FormFieldError]: !!error,
-        flex: horizontal,
+        [CS.flex]: horizontal,
       })}
     >
       {align === "left" && <InputContainer>{children}</InputContainer>}

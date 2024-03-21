@@ -108,7 +108,7 @@
   margin-bottom: 60px;
 }
 
-:global(.PopoverBody) .FormFieldOverride {
+:global(.PopoverBody) .FormField {
   margin-bottom: 0.75rem;
 }
 

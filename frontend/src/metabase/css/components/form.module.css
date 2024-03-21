@@ -43,6 +43,10 @@
   border-color: var(--color-error);
 }
 
+.noFocus:focus {
+  outline: 0;
+}
+
 .FormInput:focus:not(.noFocus),
 .FormField:hover .FormInput:not(.noFocus) {
   border-color: var(--color-brand);
