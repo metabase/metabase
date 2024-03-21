@@ -41,7 +41,6 @@ export function CoordinateFilterEditor({
     stageIndex,
     column,
     filter,
-    defaultOperator: "between",
   });
 
   const handleOperatorChange = (

@@ -29,8 +29,8 @@ describe("issue 18454", () => {
   });
 
   it("should show card descriptions (metabase#18454)", () => {
-    cy.get(".DashCard").realHover();
-    cy.get(".DashCard").within(() => {
+    cy.findByTestId("dashcard-container").realHover();
+    cy.findByTestId("dashcard-container").within(() => {
       cy.icon("info").trigger("mouseenter", { force: true });
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

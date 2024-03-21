@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import CS from "metabase/css/core/index.css";
 import MetabaseSettings from "metabase/lib/settings";
 
-import SettingsSetting from "../SettingsSetting";
+import { SettingsSetting } from "../SettingsSetting";
 
 import VersionUpdateNotice from "./VersionUpdateNotice/VersionUpdateNotice";
 

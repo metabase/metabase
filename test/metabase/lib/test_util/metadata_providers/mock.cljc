@@ -26,7 +26,7 @@
    [:tables   {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/TableMetadata   :metadata/table)]]]
    [:fields   {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/ColumnMetadata  :metadata/column)]]]
    [:cards    {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/card   :metadata/card)]]]
-   [:metrics  {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/MetricMetadata  :metadata/metric)]]]
+   [:metrics  {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/LegacyMetricMetadata  :metadata/metric)]]]
    [:segments {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/SegmentMetadata :metadata/segment)]]]
    [:settings {:optional true} [:maybe [:map-of :keyword any?]]]])
 
