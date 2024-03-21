@@ -30,7 +30,9 @@ const replaceZerosForLogScale = (dataset: ChartDataset): ChartDataset => {
       getNumberOr(datum[WATERFALL_END_KEY], null),
     ].filter(isNotNull);
 
-    hasZeros = datumNumericValues.includes(0);
+    if (!hasZeros) {
+      hasZeros = datumNumericValues.includes(0);
+    }
 
     minNonZeroValue = Math.min(
       minNonZeroValue,
@@ -43,10 +45,10 @@ const replaceZerosForLogScale = (dataset: ChartDataset): ChartDataset => {
   }
 
   if (minNonZeroValue < 0) {
-    throw Error(t`X-axis must not cross 0 when using log scale.`);
+    throw Error(t`Y-axis must not cross 0 when using log scale.`);
   }
 
-  const zeroReplacementValue = minNonZeroValue > 1 ? 1 : minNonZeroValue;
+  const zeroReplacementValue = Math.min(minNonZeroValue, 1);
 
   return replaceValues(dataset, (dataKey: DataKey, value: RowValue) =>
     dataKey !== X_AXIS_DATA_KEY && value === 0 ? zeroReplacementValue : value,
@@ -100,20 +102,17 @@ export const getWaterfallDataset = (
     });
   }
 
-  if (settings["graph.y_axis.scale"] === "pow") {
-    transformedDataset = replaceValues(
-      transformedDataset,
-      (dataKey: DataKey, value: RowValue) =>
-        WATERFALL_DATA_KEYS.includes(dataKey)
-          ? // TODO use this more generally for both pow and log scales
-            yAxisScaleTransforms.toEChartsAxisValue(value)
-          : value,
-    );
-  } else if (settings["graph.y_axis.scale"] === "log") {
+  if (settings["graph.y_axis.scale"] === "log") {
     transformedDataset = replaceZerosForLogScale(transformedDataset);
   }
 
-  return transformedDataset;
+  return replaceValues(
+    transformedDataset,
+    (dataKey: DataKey, value: RowValue) =>
+      WATERFALL_DATA_KEYS.includes(dataKey)
+        ? yAxisScaleTransforms.toEChartsAxisValue(value)
+        : value,
+  );
 };
 
 export const extendOriginalDatasetWithTotalDatum = (
