@@ -102,18 +102,6 @@
   flex-direction: column;
 }
 
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-flex-column) {
-    flex-direction: column;
-  }
-}
-
-@media screen and (--breakpoint-min-md) {
-  :global(.md-flex-column) {
-    flex-direction: column;
-  }
-}
-
 :global(.flex-row),
 .flex-row {
   flex-direction: row;
