@@ -1032,7 +1032,7 @@
 
 (defn- all-unique?
   [funnel-rows]
-  (let [ks (into #{} (map :key funnel-rows))]
+  (let [ks (into #{} (map :key) funnel-rows)]
     (= (count ks) (count funnel-rows))))
 
 (defn- build-funnel-rows
