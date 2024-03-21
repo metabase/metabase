@@ -12,7 +12,7 @@ export default class CopyWidget extends Component {
     return (
       <div className={cx(CS.flex, CS.relative)} style={style}>
         <input
-          className={cx("Form-input flex-full", {
+          className={cx("Form-input", CS.flexFull, {
             [CS.noFocus]: !onChange,
           })}
           style={{

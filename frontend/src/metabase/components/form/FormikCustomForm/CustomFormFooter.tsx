@@ -36,12 +36,12 @@ function CustomFormFooter({
     >
       <CustomFormSubmit fullWidth={fullWidth}>{submitTitle}</CustomFormSubmit>
       {onCancel && (
-        <Button className="mx1" type="button" onClick={onCancel}>
+        <Button className={CS.mx1} type="button" onClick={onCancel}>
           {cancelTitle}
         </Button>
       )}
-      <div className="flex-full" />
-      <CustomFormMessage className="ml1" noPadding />
+      <div className={CS.flexFull} />
+      <CustomFormMessage className={CS.ml1} noPadding />
       {footerExtraButtons}
     </div>
   );

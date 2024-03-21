@@ -121,7 +121,7 @@ class SnippetSidebarInner extends React.Component {
               className={cx(CS.flex, CS.alignCenter, CS.pl3, CS.pr2)}
               style={{ paddingTop: 10, paddingBottom: 11 }}
             >
-              <div className="flex-full">
+              <div className={CS.flexFull}>
                 <div
                   /* Hide the search input by collapsing dimensions rather than `display: none`.
                                                          This allows us to immediately focus on it when showSearch is set to true.*/
@@ -240,7 +240,7 @@ class SnippetSidebarInner extends React.Component {
                 />
               </div>
             </div>
-            <div className="flex-full">
+            <div className={CS.flexFull}>
               {displayedItems.length > 0
                 ? displayedItems.map(item => (
                     <Row

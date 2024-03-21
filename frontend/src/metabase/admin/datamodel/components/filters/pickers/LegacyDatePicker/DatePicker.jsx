@@ -7,6 +7,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Calendar from "metabase/components/Calendar";
+import CS from "metabase/css/core/index.css";
 import { FieldDimension } from "metabase-lib/v1/Dimension";
 
 import DatePickerSelector from "../DatePicker/DatePickerSelector";
@@ -353,7 +354,7 @@ export default class DatePicker extends Component {
         {Widget && (
           <Widget
             {...this.props}
-            className="flex-full"
+            className={CS.flexFull}
             filter={filter}
             hideHoursAndMinutes={this.props.hideTimeSelectors}
             onFilterChange={filter => {

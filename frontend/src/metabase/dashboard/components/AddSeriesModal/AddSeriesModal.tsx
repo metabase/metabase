@@ -142,7 +142,7 @@ export class AddSeriesModal extends Component<Props, State> {
           <div className="flex-no-shrink h3 pl4 pt4 pb2 text-bold">
             Edit data
           </div>
-          <div className="flex-full ml2 mr1 relative">
+          <div className={cx(CS.flexFull, CS.ml2, CS.mr1, CS.relative)}>
             <Visualization
               canRemoveSeries={CAN_REMOVE_SERIES}
               className={CS.spread}

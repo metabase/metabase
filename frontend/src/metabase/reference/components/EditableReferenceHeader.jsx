@@ -63,7 +63,7 @@ const EditableReferenceHeader = ({
           [
             <Ellipsified
               key="1"
-              className={!headerLink && "flex-full"}
+              className={!headerLink && CS.flexFull}
               tooltipMaxWidth="100%"
             >
               {name === "Details"

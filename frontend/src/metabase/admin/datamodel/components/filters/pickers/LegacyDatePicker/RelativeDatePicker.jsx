@@ -47,7 +47,7 @@ export default class RelativeDatePicker extends Component {
           onChange={value => onFilterChange(assoc(filter, 2, formatter(value)))}
           placeholder="30"
         />
-        <div className="flex-full">
+        <div className={CS.flexFull}>
           <DateUnitSelector
             open={this.state.showUnits}
             value={unit}

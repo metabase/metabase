@@ -181,7 +181,7 @@ export const PublicLinksActionListing = connect(mapStateToProps)(
 );
 
 export const EmbeddedResources = () => (
-  <Stack spacing="md" className="flex-full">
+  <Stack spacing="md" className={CS.flexFull}>
     <div>
       <Text mb="sm">{t`Embedded Dashboards`}</Text>
       <div className="bordered rounded full" style={{ maxWidth: 820 }}>

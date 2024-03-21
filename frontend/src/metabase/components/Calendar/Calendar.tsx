@@ -129,9 +129,9 @@ export default class Calendar extends Component<CalendarProps, State> {
             <Icon name="chevronleft" size={10} />
           </CalendarIconContainer>
         )}
-        <span className="flex-full" />
+        <span className={CS.flexFull} />
         <h4>{current.format("MMMM YYYY")}</h4>
-        <span className="flex-full" />
+        <span className={CS.flexFull} />
         {side !== "left" && (
           <CalendarIconContainer onClick={this.next}>
             <Icon name="chevronright" size={10} />

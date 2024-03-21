@@ -126,7 +126,7 @@ export default class SelectionModule extends Component {
             key={index}
           >
             <Icon name="check" size={12} />
-            <div className="flex-full">
+            <div className={CS.flexFull}>
               <div className={QueryBuilderS.SelectionModuleDisplay}>
                 {display}
               </div>

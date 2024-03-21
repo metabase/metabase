@@ -46,7 +46,7 @@ const MiniBar = ({ value, extent: [min, max], options }) => {
     <div className={cx(CS.flex, CS.alignCenter, "justify-end", CS.relative)}>
       {/* TEXT VALUE */}
       <div
-        className="text-ellipsis text-bold text-right flex-full"
+        className={cx("text-ellipsis", CS.textBold, CS.textRight, CS.flexFull)}
         style={{ minWidth: LABEL_MIN_WIDTH }}
       >
         {formatValue(value, { ...options, jsx: true, type: "cell" })}

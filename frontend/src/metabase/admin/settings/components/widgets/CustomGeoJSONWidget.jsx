@@ -143,7 +143,7 @@ export default class CustomGeoJSONWidget extends Component {
     }
 
     return (
-      <div className="flex-full">
+      <div className={CS.flexFull}>
         <div className={cx(CS.flex, "justify-between")}>
           <SettingHeader setting={setting} />
           {!this.state.map && (

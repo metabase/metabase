@@ -55,7 +55,7 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
                     }
                   />
                   <SeriesNameInput
-                    className="flex-full ml1 align-self-stretch"
+                    className={cx(CS.flexFull, CS.ml1, CS.alignSelfStretch)}
                     // set vertical padding to 0 and use align-self-stretch to match siblings
                     style={{ paddingTop: 0, paddingBottom: 0 }}
                     aria-label="series-name-input"

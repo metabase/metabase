@@ -8,8 +8,7 @@
   display: flex;
 }
 
-:global(.flex-auto),
-.flex-auto {
+.flexAuto {
   flex: auto;
 }
 
@@ -122,7 +121,8 @@
   align-self: center;
 }
 
-:global(.align-self-stretch) {
+:global(.align-self-stretch),
+.alignSelfStretch {
   align-self: stretch;
 }
 

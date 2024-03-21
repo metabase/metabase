@@ -508,7 +508,11 @@ class Visualization extends PureComponent {
               <CardVisualization
                 {...this.props}
                 // NOTE: CardVisualization class used as a selector for tests
-                className="CardVisualization flex-full flex-basis-none"
+                className={cx(
+                  "CardVisualization",
+                  CS.flexFull,
+                  "flex-basis-none",
+                )}
                 isPlaceholder={isPlaceholder}
                 isMobile={isMobile}
                 series={series}

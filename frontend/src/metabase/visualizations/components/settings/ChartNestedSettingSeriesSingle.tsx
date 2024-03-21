@@ -46,7 +46,7 @@ const ChartNestedSettingsSeriesSingle = ({
           onChange={value => onChangeObjectSettings(object, { color: value })}
         />
         <SeriesNameInput
-          className="flex-full ml1 align-self-stretch"
+          className={cx(CS.flexFull, CS.ml1, CS.alignSelfStretch)}
           value={computedSettings.title}
           aria-label="series-name-input"
           subtitle={
