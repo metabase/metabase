@@ -131,7 +131,7 @@ function HostingCTA() {
     <HostingCTARoot
       className={cx(
         CS.rounded,
-        "bg-light",
+        CS.bgLight,
         CS.mt4,
         CS.textBrand,
         CS.py2,

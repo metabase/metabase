@@ -258,9 +258,9 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
     onClick={onClick}
     data-testid="formatting-rule-preview"
   >
-    <div className="p1 border-bottom relative bg-light">
+    <div className={cx(CS.p1, CS.borderBottom, CS.relative, CS.bgLight)}>
       <div className="px1 flex align-center relative">
-        <span className="h4 flex-auto text-dark text-wrap">
+        <span className={cx(CS.h4, CS.flexAuto, CS.textDark, CS.textWrap)}>
           {rule.columns.length > 0 ? (
             rule.columns
               .map(

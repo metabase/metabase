@@ -66,14 +66,16 @@
   color: var(--color-text-medium);
 }
 
-:global(.text-dark),
-.text-dark,
-:global(.text-dark-hover:hover) {
+.textDark,
+.textDarkHover:hover {
   color: var(--color-text-dark);
 }
 
 :global(.bg-light),
-:global(.bg-light-hover:hover) {
+.bg-light,
+.bgLight,
+:global(.bg-light-hover:hover),
+.bgLightHover:hover {
   background-color: var(--color-bg-light);
 }
 

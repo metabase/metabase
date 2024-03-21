@@ -198,8 +198,12 @@ export class AlertEducationalScreen extends Component {
     return (
       <div className="pt2 pb4 ml-auto mr-auto text-centered">
         <div className="pt4">
-          <h1 className="mb1 text-dark">{t`The wide world of alerts`}</h1>
-          <h3 className="mb4 text-normal text-dark">{t`There are a few different kinds of alerts you can get`}</h3>
+          <h1
+            className={cx(CS.mb1, CS.textDark)}
+          >{t`The wide world of alerts`}</h1>
+          <h3
+            className={cx(CS.mb4, CS.textNormal, CS.textDark)}
+          >{t`There are a few different kinds of alerts you can get`}</h3>
         </div>
         {
           // @mazameli: needed to do some negative margin spacing to match the designs
@@ -438,7 +442,7 @@ const AlertModalTitle = ({ text }) => (
         app/assets/img/alerts/alert-bell-confetti-illustration@2x.png 2x
       "
     />
-    <h1 className="text-dark">{text}</h1>
+    <h1 className={CS.textDark}>{text}</h1>
   </div>
 );
 
@@ -540,7 +544,7 @@ export const AlertSettingToggle = ({
   setting,
 }) => (
   <div className="mb4 pb2">
-    <h3 className="text-dark mb1">{title}</h3>
+    <h3 className={cx(CS.textDark, CS.mb1)}>{title}</h3>
     <Radio
       value={alert[setting]}
       onChange={value => onAlertChange({ ...alert, [setting]: value })}
@@ -555,13 +559,13 @@ export const AlertSettingToggle = ({
 export function AlertEditSchedule({ alertType, schedule, onScheduleChange }) {
   return (
     <div>
-      <h3 className="mt4 mb3 text-dark">
+      <h3 className={cx(CS.mt4, CS.mb3, CS.textDark)}>
         How often should we check for results?
       </h3>
 
       <div className="bordered rounded mb2">
         {alertType === ALERT_TYPE_ROWS && <RawDataAlertTip />}
-        <div className="p3 bg-light">
+        <div className={cx(CS.p3, CS.bgLight)}>
           <SchedulePicker
             schedule={schedule}
             scheduleOptions={["hourly", "daily", "weekly"]}
@@ -597,7 +601,9 @@ class AlertEditChannelsInner extends Component {
     const { alert, user, users, formInput } = this.props;
     return (
       <div className="mt4 pt2">
-        <h3 className="text-dark mb3">{jt`Where do you want to send these alerts?`}</h3>
+        <h3
+          className={cx(CS.textDark, CS.mb3)}
+        >{jt`Where do you want to send these alerts?`}</h3>
         <div className="mb2">
           <PulseEditChannels
             pulse={alert}
@@ -663,7 +669,8 @@ function RawDataAlertTipInner(props) {
           CS.p2,
           CS.mr2,
           CS.textMedium,
-          "circle bg-light",
+          "circle",
+          CS.bgLight,
         )}
       >
         <Icon name="lightbulb" size="20" />

@@ -243,11 +243,21 @@ export const AlertListItem = connect(state => ({ user: getUser(state) }), {
 
 export const UnsubscribedListItem = () => (
   <li className="border-bottom flex align-center py4 text-bold">
-    <div className="circle flex align-center justify-center p1 bg-light ml2">
+    <div
+      className={cx(
+        "circle",
+        CS.flex,
+        CS.alignCenter,
+        CS.justifyCenter,
+        CS.p1,
+        CS.bgLight,
+        CS.ml2,
+      )}
+    >
       <Icon name="check" className={cx(CS.textSuccess)} />
     </div>
     <h3
-      className="text-dark"
+      className={CS.textDark}
       style={{ marginLeft: 10 }}
     >{jt`Okay, you're unsubscribed`}</h3>
   </li>
@@ -329,6 +339,6 @@ export class AlertCreatorTitle extends Component {
         ? t`You're receiving ${creator}'s alerts`
         : t`${creator} set up an alert`;
 
-    return <h3 className="text-dark">{text}</h3>;
+    return <h3 className={CS.textDark}>{text}</h3>;
   }
 }

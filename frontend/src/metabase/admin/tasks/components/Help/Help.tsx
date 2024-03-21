@@ -84,7 +84,9 @@ interface InfoBlockProps {
 }
 
 const InfoBlock = ({ children }: InfoBlockProps) => (
-  <InfoBlockRoot className="bordered rounded bg-light relative">
+  <InfoBlockRoot
+    className={cx(CS.bordered, CS.rounded, CS.bgLight, CS.relative)}
+  >
     <InfoBlockButton>
       <CopyButton value={children} />
     </InfoBlockButton>

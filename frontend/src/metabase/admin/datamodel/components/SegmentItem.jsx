@@ -22,7 +22,7 @@ export default class SegmentItem extends Component {
         <td className="px1 py1 text-wrap">
           <span className="flex align-center">
             <Icon name="segment" className={cx(CS.mr1, CS.textMedium)} />
-            <span className="text-dark text-bold">{segment.name}</span>
+            <span className={cx(CS.textDark, CS.textBold)}>{segment.name}</span>
           </span>
         </td>
         <td className="px1 py1 text-wrap">{segment.definition_description}</td>

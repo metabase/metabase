@@ -7,6 +7,7 @@ import { isActionDashCard } from "metabase/actions/utils";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import {
   isNativeDashCard,
   isVirtualDashCard,
@@ -265,7 +266,7 @@ export function DashCardCardParameterMapper({
             <Icon
               name="info"
               size={16}
-              className="text-dark-hover"
+              className={CS.textDarkHover}
               tooltip={mappingInfoText}
             />
           </TextCardDefault>

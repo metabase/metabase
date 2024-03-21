@@ -44,7 +44,7 @@ export function Relationships({
     <ObjectRelationships>
       <div className={cx(CS.textBold, CS.textMedium)}>
         {jt`${(
-          <span className="text-dark" key={objectName}>
+          <span className={CS.textDark} key={objectName}>
             {objectName}
           </span>
         )} is connected to:`}

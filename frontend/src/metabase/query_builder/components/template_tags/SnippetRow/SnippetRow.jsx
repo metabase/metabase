@@ -29,7 +29,18 @@ class SnippetRowInner extends Component {
         )}
       >
         <div
-          className="cursor-pointer bg-light-hover text-bold flex align-center justify-between py2 px3 hover-parent hover--display"
+          className={cx(
+            CS.cursorPointer,
+            CS.bgLightHover,
+            CS.textBold,
+            CS.flex,
+            CS.alignCenter,
+            CS.justifyBetween,
+            CS.py2,
+            CS.px3,
+            "hover-parent",
+            "hover--display",
+          )}
           onClick={() => this.setState({ isOpen: !isOpen })}
         >
           <SnippetContent
@@ -63,7 +74,16 @@ class SnippetRowInner extends Component {
               <p className={cx(CS.textMedium, CS.mt0)}>{description}</p>
             )}
             <pre
-              className="bg-light bordered rounded p1 text-monospace text-small text-pre-wrap overflow-auto"
+              className={cx(
+                CS.bgLight,
+                CS.bordered,
+                CS.rounded,
+                CS.p1,
+                CS.textMonospace,
+                CS.textSmall,
+                "text-pre-wrap",
+                "overflow-auto",
+              )}
               style={{ maxHeight: 320 }}
             >
               {content}

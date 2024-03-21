@@ -49,7 +49,7 @@ function _PulsesListSidebar({
               name="add"
               className={cx(
                 CS.textBrand,
-                "bg-light-hover",
+                CS.bgLightHover,
                 CS.rounded,
                 CS.p1,
                 CS.cursorPointer,
@@ -63,7 +63,7 @@ function _PulsesListSidebar({
               name="close"
               className={cx(
                 CS.textLight,
-                "bg-light-hover",
+                CS.bgLightHover,
                 CS.rounded,
                 CS.p1,
                 CS.cursorPointer,

@@ -13,6 +13,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 import CheckBox from "metabase/core/components/CheckBox";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Swapper from "metabase/core/components/Swapper";
+import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { Icon } from "metabase/ui";
 
@@ -247,7 +248,7 @@ const EntityItem = ({
   return (
     <EntityItemWrapper
       className={cx("hover-parent hover--visibility", {
-        "bg-light-hover": variant === "list",
+        [CS.bgLightHover]: variant === "list",
       })}
       variant={variant}
       disabled={disabled}

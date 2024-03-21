@@ -53,7 +53,8 @@
   width: 100%;
 }
 
-:global(.half) {
+:global(.half),
+.half {
   width: 50%;
 }
 
