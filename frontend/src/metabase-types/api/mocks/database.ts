@@ -44,6 +44,7 @@ export const createMockDatabaseData = (
   opts?: Partial<DatabaseData>,
 ): DatabaseData => ({
   name: "Database",
+  description: "Some example data for you to play around with.",
   engine: "H2",
   details: {},
   schedules: {},
