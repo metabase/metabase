@@ -100,14 +100,10 @@ export function getPermissionWarningModal(
 }
 
 export function getControlledDatabaseWarningModal(
-  permissions: GroupsPermissions,
-  groupId: Group["id"],
+  currDbPermissionValue: string,
   entityId: EntityId,
 ) {
-  if (
-    getSchemasPermission(permissions, groupId, entityId, "data") !==
-    "controlled"
-  ) {
+  if (currDbPermissionValue !== "controlled") {
     const [entityType, entityTypePlural] = isTableEntityId(entityId)
       ? [t`table`, t`tables`]
       : isSchemaEntityId(entityId)
@@ -132,7 +128,7 @@ export function getRawQueryWarningModal(
     value === "write" &&
     getNativePermission(permissions, groupId, entityId) !== "write" &&
     !["all", "impersonated"].includes(
-      getSchemasPermission(permissions, groupId, entityId, "data"),
+      getSchemasPermission(permissions, groupId, entityId, "view-data"),
     )
   ) {
     return {
@@ -156,7 +152,7 @@ export function getRevokingAccessToAllTablesWarningModal(
 ) {
   if (
     value === "none" &&
-    getSchemasPermission(permissions, groupId, entityId, "data") ===
+    getSchemasPermission(permissions, groupId, entityId, "view-data") ===
       "controlled" &&
     getNativePermission(permissions, groupId, entityId) !== "none"
   ) {
@@ -171,7 +167,7 @@ export function getRevokingAccessToAllTablesWarningModal(
     const afterChangesNoAccessToAnyTable = _.every(
       allTableEntityIds,
       id =>
-        getFieldsPermission(permissions, groupId, id, "data") === "none" ||
+        getFieldsPermission(permissions, groupId, id, "view-data") === "none" ||
         _.isEqual(id, entityId),
     );
     if (afterChangesNoAccessToAnyTable) {

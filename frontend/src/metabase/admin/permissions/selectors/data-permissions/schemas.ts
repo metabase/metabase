@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
 import {
   getNativePermission,
@@ -14,7 +16,7 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
-import { limitDatabasePermission } from "../../permissions";
+import { granulateDatabasePermissions } from "../../permissions";
 import type { DatabaseEntityId } from "../../types";
 import {
   getPermissionWarning,
@@ -27,6 +29,7 @@ const buildAccessPermission = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
+  originalPermissions: GroupsPermissions,
   defaultGroup: Group,
   database: Database,
 ) => {
@@ -44,13 +47,19 @@ const buildAccessPermission = (
     permissions,
     groupId,
     entityId,
-    "data",
+    "view-data",
+  );
+  const originalAccessPermissionValue = getSchemasPermission(
+    originalPermissions,
+    groupId,
+    entityId,
+    "view-data",
   );
   const defaultGroupAccessPermissionValue = getSchemasPermission(
     permissions,
     defaultGroup.id,
     entityId,
-    "data",
+    "view-data",
   );
   const accessPermissionWarning = getPermissionWarning(
     accessPermissionValue,
@@ -61,7 +70,7 @@ const buildAccessPermission = (
   );
 
   return {
-    permission: "data",
+    permission: "view-data",
     type: "access",
     isDisabled: isAdmin,
     disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
@@ -70,16 +79,23 @@ const buildAccessPermission = (
     warning: accessPermissionWarning,
     confirmations: accessPermissionConfirmations,
     options: PLUGIN_ADVANCED_PERMISSIONS.addDatabasePermissionOptions(
-      [
+      _.compact([
         DATA_PERMISSION_OPTIONS.all,
         DATA_PERMISSION_OPTIONS.controlled,
-        DATA_PERMISSION_OPTIONS.noSelfService,
-      ],
+        originalAccessPermissionValue ===
+          DATA_PERMISSION_OPTIONS.noSelfService.value &&
+          DATA_PERMISSION_OPTIONS.noSelfService,
+      ]),
       database,
     ),
     postActions: {
-      controlled: () =>
-        limitDatabasePermission(groupId, entityId, accessPermissionValue),
+      controlled: (_, __, ___, accessPermissionValue) => {
+        return granulateDatabasePermissions(
+          groupId,
+          entityId,
+          accessPermissionValue,
+        );
+      },
       ...PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
     },
     actions: PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
@@ -147,6 +163,7 @@ export const buildSchemasPermissions = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
+  originalPermissions: GroupsPermissions,
   defaultGroup: Group,
   database: Database,
 ) => {
@@ -155,6 +172,7 @@ export const buildSchemasPermissions = (
     groupId,
     isAdmin,
     permissions,
+    originalPermissions,
     defaultGroup,
     database,
   );

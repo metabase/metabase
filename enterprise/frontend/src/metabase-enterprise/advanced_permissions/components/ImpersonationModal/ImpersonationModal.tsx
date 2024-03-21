@@ -91,7 +91,7 @@ const _ImpersonationModal = ({ route, params }: ImpersonationModalProps) => {
       dispatch(
         updateDataPermission({
           groupId,
-          permission: { type: "access", permission: "data" },
+          permission: { type: "access", permission: "view-data" },
           value: "impersonated",
           entityId: { databaseId },
         }),

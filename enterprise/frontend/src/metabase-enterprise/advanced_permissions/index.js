@@ -31,7 +31,7 @@ const IMPERSONATED_PERMISSION_OPTION = {
 
 const BLOCK_PERMISSION_OPTION = {
   label: t`Block`,
-  value: "block",
+  value: "blocked",
   icon: "close",
   iconColor: "danger",
 };
@@ -81,17 +81,6 @@ if (hasPremiumFeature("advanced_permissions")) {
 
   PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission = value =>
     value === BLOCK_PERMISSION_OPTION.value;
-
-  PLUGIN_ADVANCED_PERMISSIONS.getDatabaseLimitedAccessPermission = value => {
-    if (
-      value === BLOCK_PERMISSION_OPTION.value ||
-      value === IMPERSONATED_PERMISSION_OPTION.value
-    ) {
-      return "none";
-    }
-
-    return null;
-  };
 
   PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled = (value, subject) => {
     return (

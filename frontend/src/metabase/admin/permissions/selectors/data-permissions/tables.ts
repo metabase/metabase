@@ -1,4 +1,5 @@
 import { push } from "react-router-redux";
+import _ from "underscore";
 
 import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
 import {
@@ -26,14 +27,28 @@ const buildAccessPermission = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
+  originalPermissions: GroupsPermissions,
   defaultGroup: Group,
 ) => {
-  const value = getTablesPermission(permissions, groupId, entityId, "data");
+  const value = getTablesPermission(
+    permissions,
+    groupId,
+    entityId,
+    "view-data",
+  );
+
+  const originalValue = getTablesPermission(
+    originalPermissions,
+    groupId,
+    entityId,
+    "view-data",
+  );
+
   const defaultGroupValue = getTablesPermission(
     permissions,
     defaultGroup.id,
     entityId,
-    "data",
+    "view-data",
   );
 
   const warning = getPermissionWarning(
@@ -52,11 +67,11 @@ const buildAccessPermission = (
       defaultGroup,
       groupId,
     ),
-    getControlledDatabaseWarningModal(permissions, groupId, entityId),
+    getControlledDatabaseWarningModal(newValue, entityId),
   ];
 
   return {
-    permission: "data",
+    permission: "view-data",
     type: "access",
     isDisabled:
       isAdmin ||
@@ -70,11 +85,12 @@ const buildAccessPermission = (
       controlled: () => push(getGroupFocusPermissionsUrl(groupId, entityId)),
     },
     options: PLUGIN_ADVANCED_PERMISSIONS.addSchemaPermissionOptions(
-      [
+      _.compact([
         DATA_PERMISSION_OPTIONS.all,
         DATA_PERMISSION_OPTIONS.controlled,
-        DATA_PERMISSION_OPTIONS.noSelfService,
-      ],
+        originalValue === DATA_PERMISSION_OPTIONS.noSelfService.value &&
+          DATA_PERMISSION_OPTIONS.noSelfService,
+      ]),
       value,
     ),
   };
@@ -106,6 +122,7 @@ export const buildTablesPermissions = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
+  originalPermissions: GroupsPermissions,
   defaultGroup: Group,
 ): PermissionSectionConfig[] => {
   const accessPermission = buildAccessPermission(
@@ -113,6 +130,7 @@ export const buildTablesPermissions = (
     groupId,
     isAdmin,
     permissions,
+    originalPermissions,
     defaultGroup,
   );
 
