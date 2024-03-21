@@ -98,7 +98,7 @@ export const AccordionListCell = ({
             </Box>
           )}
           {sections.length > 1 && section.items && section.items.length > 0 && (
-            <span className="flex-align-right ml1 hover-child">
+            <span className={cx(CS.flexAlignRight, CS.ml1, "hover-child")}>
               <Icon
                 name={
                   sectionIsExpanded(sectionIndex) ? "chevronup" : "chevrondown"

@@ -88,8 +88,6 @@
   align-self: stretch;
 }
 
-:global(.flex-align-right),
-.flex-align-right,
 .flexAlignRight {
   margin-left: auto;
 }

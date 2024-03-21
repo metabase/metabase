@@ -80,7 +80,7 @@ export default class Revision extends Component {
             <span>
               <strong>{this.getName()}</strong> {this.getAction()}
             </span>
-            <span className="flex-align-right h5">
+            <span className={cx(CS.flexAlignRight, CS.h5)}>
               {moment(revision.timestamp).format("MMMM DD, YYYY")}
             </span>
           </div>

@@ -264,7 +264,7 @@ export default class PulseEditChannels extends Component {
           )}
           <h2>{channelSpec.name}</h2>
           <Toggle
-            className="flex-align-right"
+            className={CS.flexAlignRight}
             value={channels.length > 0}
             onChange={this.toggleChannel.bind(this, channelSpec.type)}
           />
