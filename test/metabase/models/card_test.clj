@@ -3,7 +3,11 @@
    [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [java-time :as t]
    [metabase.config :as config]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models
     :refer [Collection
             Dashboard
@@ -38,7 +42,9 @@
                              :size_x       4
                              :size_y       4}))
               (get-dashboard-count []
-                (card/dashboard-count (t2/select-one :model/Card :id card-id)))]
+                (-> (t2/select-one :model/Card :id card-id)
+                    (t2/hydrate :dashboard_count)
+                    :dashboard_count))]
         (is (= 0
                (get-dashboard-count)))
         (testing "add to a Dashboard"
@@ -375,11 +381,11 @@
 (deftest ^:parallel template-tag-parameters-test
   (testing "Card with a Field filter parameter"
     (mt/with-temp [:model/Card card {:dataset_query (qp.card-test/field-filter-query)}]
-      (is (= [{:id "_DATE_",
-               :type :date/all-options,
-               :target [:dimension [:template-tag "date"]],
-               :name "Check-In Date",
-               :slug "date",
+      (is (= [{:id "_DATE_"
+               :type :date/all-options
+               :target [:dimension [:template-tag "date"]]
+               :name "Check-In Date"
+               :slug "date"
                :default nil
                :required false}]
              (card/template-tag-parameters card))))))
@@ -387,11 +393,11 @@
 (deftest ^:parallel template-tag-parameters-test-2
   (testing "Card with a non-Field-filter parameter"
     (mt/with-temp [:model/Card card {:dataset_query (qp.card-test/non-field-filter-query)}]
-      (is (= [{:id "_ID_",
-               :type :number/=,
-               :target [:variable [:template-tag "id"]],
-               :name "Order ID",
-               :slug "id",
+      (is (= [{:id "_ID_"
+               :type :number/=
+               :target [:variable [:template-tag "id"]]
+               :name "Order ID"
+               :slug "id"
                :default "1"
                :required true}]
              (card/template-tag-parameters card))))))
@@ -399,11 +405,11 @@
 (deftest ^:parallel template-tag-parameters-test-3
   (testing "Should ignore native query snippets and source card IDs"
     (mt/with-temp [:model/Card card {:dataset_query (qp.card-test/non-parameter-template-tag-query)}]
-      (is (= [{:id "_ID_",
-               :type :number/=,
-               :target [:variable [:template-tag "id"]],
-               :name "Order ID",
-               :slug "id",
+      (is (= [{:id "_ID_"
+               :type :number/=
+               :target [:variable [:template-tag "id"]]
+               :name "Order ID"
+               :slug "id"
                :default "1"
                :required true}]
              (card/template-tag-parameters card))))))
@@ -501,8 +507,8 @@
     (t2.with-temp/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
                                                                               :card_id      1
                                                                               :target       [:dimension [:field-id 1]]}]}]
-      (is (= [{:parameter_id "22486e00",
-               :card_id      1,
+      (is (= [{:parameter_id "22486e00"
+               :card_id      1
                :target       [:dimension [:field 1 nil]]}]
              (t2/select-one-fn :parameter_mappings :model/Card :id card-id))))))
 
@@ -901,3 +907,94 @@
                               {:collection_id 1})))
         (is (true? (changed? {:dataset_query {} :collection_id 1}
                              {:dataset_query nil :collection_id 1})))))))
+
+(deftest hydrate-dashboard-count-test
+  (mt/with-temp
+    [:model/Card          card1 {}
+     :model/Card          card2 {}
+     :model/Card          card3 {}
+     :model/Dashboard     dash  {}
+     :model/DashboardCard _dc1  {:card_id (:id card1) :dashboard_id (:id dash)}
+     :model/DashboardCard _dc2  {:card_id (:id card1) :dashboard_id (:id dash)}
+     :model/DashboardCard _dc3  {:card_id (:id card2) :dashboard_id (:id dash)}]
+    (is (= [2 1 0]
+           (map :dashboard_count (t2/hydrate [card1 card2 card3] :dashboard_count))))))
+
+(deftest hydrate-parameter-usage-count-test
+  (mt/with-temp
+    [:model/Card          card1 {}
+     :model/Card          card2 {}
+     :model/Card          card3 {}
+     :model/ParameterCard _pc1  {:card_id (:id card1)
+                                 :parameter_id              "param_1"
+                                 :parameterized_object_type "card"
+                                 :parameterized_object_id (:id card1)}
+     :model/ParameterCard _pc2  {:card_id (:id card1)
+                                 :parameter_id              "param_2"
+                                 :parameterized_object_type "card"
+                                 :parameterized_object_id (:id card2)}
+     :model/ParameterCard _pc3  {:card_id (:id card2)
+                                 :parameter_id              "param_3"
+                                 :parameterized_object_type "card"
+                                 :parameterized_object_id (:id card3)}]
+   (is (= [2 1 0]
+          (map :parameter_usage_count (t2/hydrate [card1 card2 card3] :parameter_usage_count))))))
+
+(deftest average-query-time-and-last-query-started-test
+  (let [now       (t/offset-date-time)
+        yesterday (t/minus now (t/days 1))]
+    (mt/with-temp
+      [:model/Card           card {}
+       :model/QueryExecution _qe1 {:card_id      (:id card)
+                                   :started_at   now
+                                   :cache_hit    false
+                                   :running_time 50}
+       :model/QueryExecution _qe2 {:card_id      (:id card)
+                                   :started_at   yesterday
+                                   :cache_hit    false
+                                   :running_time 100}]
+      (is (= 75 (-> card (t2/hydrate :average_query_time) :average_query_time int)))
+      (is (= now (-> card (t2/hydrate :last_query_start) :last_query_start))))))
+
+(deftest save-mlv2-card-test
+  (testing "App DB CRUD should work for a Card with an MLv2 query (#39024)"
+    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          venues            (lib.metadata/table metadata-provider (mt/id :venues))
+          query             (lib/query metadata-provider venues)]
+      (mt/with-temp [:model/Card card {:dataset_query query}]
+        (testing "Save to app DB: table_id and database_id should get populated"
+          (is (=? {:dataset_query {:lib/type     :mbql/query
+                                   :database     (mt/id)
+                                   :stages       [{:lib/type :mbql.stage/mbql, :source-table (mt/id :venues)}]
+                                   :lib/metadata metadata-provider}
+                   :table_id      (mt/id :venues)
+                   :database_id   (mt/id)}
+                  card)))
+        (testing "Save to app DB: Check MLv2 query was serialized to app DB in a sane way. Metadata provider should be removed"
+          (is (= {"lib/type" "mbql/query"
+                  "database" (mt/id)
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" (mt/id :venues)}]}
+                 (json/parse-string (t2/select-one-fn :dataset_query (t2/table-name :model/Card) :id (u/the-id card))))))
+        (testing "fetch from app DB"
+          (is (=? {:dataset_query {:lib/type     :mbql/query
+                                   :database     (mt/id)
+                                   :stages       [{:lib/type :mbql.stage/mbql, :source-table (mt/id :venues)}]
+                                   :lib/metadata (lib.metadata.jvm/application-database-metadata-provider (mt/id))}
+                   :query_type    :query
+                   :table_id      (mt/id :venues)
+                   :database_id   (mt/id)}
+                  (t2/select-one :model/Card :id (u/the-id card)))))
+        (testing "Update query: change table to ORDERS; query and table_id should reflect that"
+          (let [orders (lib.metadata/table metadata-provider (mt/id :orders))]
+            (is (= 1
+                   (t2/update! :model/Card :id (u/the-id card)
+                               {:dataset_query (lib/query metadata-provider orders)})))
+            (is (=? {:dataset_query {:lib/type     :mbql/query
+                                     :database     (mt/id)
+                                     :stages       [{:lib/type :mbql.stage/mbql, :source-table (mt/id :orders)}]
+                                     :lib/metadata (lib.metadata.jvm/application-database-metadata-provider (mt/id))}
+                     :query_type    :query
+                     :table_id      (mt/id :orders)
+                     :database_id   (mt/id)}
+                    (t2/select-one :model/Card :id (u/the-id card))))))))))

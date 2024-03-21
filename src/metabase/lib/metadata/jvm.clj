@@ -263,7 +263,7 @@
 ;;; Metric
 ;;;
 
-(derive :metadata/metric :model/Metric)
+(derive :metadata/metric :model/LegacyMetric)
 
 (methodical/defmethod t2.model/resolve-model :metadata/metric
   [model]
@@ -291,7 +291,7 @@
                 :metric/description
                 :metric/archived
                 :metric/definition]
-    :from      [[(t2/table-name :model/Metric) :metric]]
+    :from      [[(t2/table-name :model/LegacyMetric) :metric]]
     :left-join [[(t2/table-name :model/Table) :table]
                 [:= :metric/table_id :table/id]]}))
 

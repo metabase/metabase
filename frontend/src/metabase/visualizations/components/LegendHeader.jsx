@@ -58,7 +58,7 @@ class LegendHeader extends Component {
       <div
         className={cx(
           styles.LegendHeader,
-          "Card-title mx1 flex flex-no-shrink flex-row align-center",
+          "Card-title text-default text-smaller mx1 flex flex-no-shrink flex-row align-center",
         )}
       >
         {series.map((s, index) => [

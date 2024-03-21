@@ -35,5 +35,6 @@ export const createMockState = (
   settings: createMockSettingsState(),
   setup: createMockSetupState(),
   upload: createMockUploadState(),
+  modal: null,
   ...opts,
 });

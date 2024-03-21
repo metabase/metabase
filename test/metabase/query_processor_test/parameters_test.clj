@@ -240,8 +240,7 @@
                         :template-tags {"number_comma"
                                         {:name "number_comma"
                                          :display-name "Number Comma"
-                                         :type :number
-                                         :dimension [:field (mt/id :venues :price) nil]}}}
+                                         :type :number}}}
                :database (mt/id)
                :parameters [{:type "number/="
                              :value ["1,2,3"]

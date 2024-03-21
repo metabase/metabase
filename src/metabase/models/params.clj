@@ -17,6 +17,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
@@ -292,7 +293,7 @@
 ;;; |                                                 CARD-SPECIFIC                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn card->template-tag-field-clauses :- [:set mbql.s/field]
+(mu/defn ^:private card->template-tag-field-clauses :- [:set mbql.s/field]
   "Return a set of `:field` clauses referenced in template tag parameters in `card`."
   [card]
   (set (for [[_ {dimension :dimension}] (get-in card [:dataset_query :native :template-tags])
@@ -301,13 +302,14 @@
              :when                      field]
          field)))
 
-(mu/defn card->template-tag-field-ids :- [:set ms/PositiveInt]
+(mu/defn card->template-tag-field-ids :- [:set ::lib.schema.id/field]
   "Return a set of Field IDs referenced in template tag parameters in `card`. This is mostly used for determining
   Fields referenced by Cards for purposes other than processing queries. Filters out `:field` clauses using names."
   [card]
   (set (lib.util.match/match (seq (card->template-tag-field-clauses card))
          [:field (id :guard integer?) _]
          id)))
+
 (defmethod param-values :model/Card [card]
   (-> card card->template-tag-field-ids field-ids->param-field-values))
 

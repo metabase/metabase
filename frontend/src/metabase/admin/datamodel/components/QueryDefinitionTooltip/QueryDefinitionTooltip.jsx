@@ -3,6 +3,7 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import { FieldSet } from "metabase/components/FieldSet";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 
 import { QueryDefinition } from "../QueryDefinition";
 
@@ -27,7 +28,10 @@ export class QueryDefinitionTooltip extends Component {
         {object.definition && (
           <div className="mt2">
             <FieldSet legend={t`Definition`} className="border-light">
-              <QueryDefinition className="TooltipFilterList" object={object} />
+              <QueryDefinition
+                className={QueryBuilderS.TooltipFilterList}
+                object={object}
+              />
             </FieldSet>
           </div>
         )}

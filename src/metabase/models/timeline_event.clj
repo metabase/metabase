@@ -54,11 +54,12 @@
 
 ;;;; hydration
 
-(mi/define-simple-hydration-method timeline
-  :timeline
-  "Attach the parent `:timeline` to this [[TimelineEvent]]."
-  [{:keys [timeline_id]}]
-  (t2/select-one 'Timeline :id timeline_id))
+(methodical/defmethod t2/batched-hydrate [:model/TimelineEvent :timeline]
+  [_model k events]
+  (mi/instances-with-hydrated-data
+   events k
+   #(t2/select-pk->fn identity :model/Timeline :id [:in (map :timeline_id events)])
+   :timeline_id))
 
 (defn- fetch-events
   "Fetch events for timelines in `timeline-ids`. Can include optional `start` and `end` dates in the options map, as

@@ -1094,10 +1094,8 @@
 
   `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query"
   [:as {{:keys [filtered filtering]} :params}]
-  {filtered  [:or ms/IntGreaterThanOrEqualToZero
-              [:+ ms/IntGreaterThanOrEqualToZero]]
-   filtering [:maybe [:or ms/IntGreaterThanOrEqualToZero
-                      [:+ ms/IntGreaterThanOrEqualToZero]]]}
+  {filtered  (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)
+   filtering [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]}
   (let [filtered-field-ids  (if (sequential? filtered) (set filtered) #{filtered})
         filtering-field-ids (if (sequential? filtering) (set filtering) #{filtering})]
     (doseq [field-id (set/union filtered-field-ids filtering-field-ids)]

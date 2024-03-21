@@ -18,7 +18,6 @@ import type BaseQuery from "metabase-lib/v1/queries/Query";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
-import { isFK } from "metabase-lib/v1/types/utils/isa";
 import { sortObject } from "metabase-lib/v1/utils";
 
 import type {
@@ -89,6 +88,10 @@ class Question {
    * They are in the grey area between UI state and question state, but having them in Question wrapper is convenient.
    */
   _parameterValues: ParameterValues;
+
+  private __mlv2Query: Lib.Query | undefined;
+
+  private __mlv2MetadataProvider: Lib.MetadataProvider | undefined;
 
   /**
    * Question constructor
@@ -433,36 +436,25 @@ class Question {
    * of Question interface instead of Query interface makes it more convenient to also change the current visualization
    */
 
-  composeThisQuery(): Question | null | undefined {
-    if (this.id()) {
-      const card = {
-        display: "table",
-        dataset_query: {
-          type: "query",
-          database: this.databaseId(),
-          query: {
-            "source-table": getQuestionVirtualTableId(this.id()),
-          },
-        },
-      };
-      return this.setCard(card);
-    }
-  }
-
-  composeDataset(): Question {
-    const type = this.type();
-
-    if (type === "question" || !this.isSaved()) {
+  composeQuestion(): Question {
+    if (!this.isSaved()) {
       return this;
     }
 
-    return this.setDatasetQuery({
-      type: "query",
-      database: this.databaseId(),
-      query: {
-        "source-table": getQuestionVirtualTableId(this.id()),
-      },
-    });
+    const metadata = this.metadataProvider();
+    const tableId = getQuestionVirtualTableId(this.id());
+    const table = Lib.tableOrCardMetadata(metadata, tableId);
+    const query = Lib.queryFromTableOrCardMetadata(metadata, table);
+    return this.setQuery(query);
+  }
+
+  composeQuestionAdhoc(): Question {
+    if (!this.isSaved()) {
+      return this;
+    }
+
+    const query = this.composeQuestion().query();
+    return Question.create({ metadata: this.metadata() }).setQuery(query);
   }
 
   syncColumnsAndSettings(
@@ -603,33 +595,6 @@ class Question {
 
   getResultMetadata() {
     return this.card().result_metadata ?? [];
-  }
-
-  dependentMetadata(): Lib.DependentItem[] {
-    const dependencies = [];
-
-    // we frequently treat dataset/model questions like they are already nested
-    // so we need to fetch the virtual card table representation of the Question
-    // so that we can properly access the table's fields in various scenarios
-    const type = this.type();
-    const isModel = type === "model";
-    if (isModel && this.isSaved()) {
-      dependencies.push({
-        type: "table",
-        id: getQuestionVirtualTableId(this.id()),
-      });
-    }
-
-    this.getResultMetadata().forEach(field => {
-      if (isFK(field) && field.fk_target_field_id) {
-        dependencies.push({
-          type: "field",
-          id: field.fk_target_field_id,
-        });
-      }
-    });
-
-    return dependencies;
   }
 
   /**
@@ -795,46 +760,33 @@ class Question {
     return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
   }
 
-  query(metadata = this._metadata): Query {
+  query(): Query {
     if (this._legacyQuery() instanceof InternalQuery) {
       throw new Error("Internal query is not supported by MLv2");
     }
 
-    const databaseId = this.datasetQuery()?.database;
-
-    // cache the metadata provider we create for our metadata.
-    if (metadata === this._metadata) {
-      if (!this.__mlv2MetadataProvider) {
-        this.__mlv2MetadataProvider = Lib.metadataProvider(
-          databaseId,
-          metadata,
-        );
-      }
-      metadata = this.__mlv2MetadataProvider;
-    }
-
-    if (this.__mlv2QueryMetadata !== metadata) {
-      this.__mlv2QueryMetadata = null;
-      this.__mlv2Query = null;
-    }
-
-    if (!this.__mlv2Query) {
-      this.__mlv2QueryMetadata = metadata;
-      this.__mlv2Query = Lib.fromLegacyQuery(
-        databaseId,
-        metadata,
-        this.datasetQuery(),
-      );
-    }
+    this.__mlv2Query ??= Lib.fromLegacyQuery(
+      this.datasetQuery()?.database,
+      this.metadataProvider(),
+      this.datasetQuery(),
+    );
 
     // Helpers for working with the current query from CLJS REPLs.
     if (process.env.NODE_ENV === "development") {
-      window.__MLv2_metadata = metadata;
+      window.__MLv2_metadata = this.__mlv2MetadataProvider;
       window.__MLv2_query = this.__mlv2Query;
       window.Lib = Lib;
     }
 
     return this.__mlv2Query;
+  }
+
+  private metadataProvider(): Lib.MetadataProvider {
+    this.__mlv2MetadataProvider ??= Lib.metadataProvider(
+      this.datasetQuery()?.database,
+      this.metadata(),
+    );
+    return this.__mlv2MetadataProvider;
   }
 
   setQuery(query: Query): Question {
