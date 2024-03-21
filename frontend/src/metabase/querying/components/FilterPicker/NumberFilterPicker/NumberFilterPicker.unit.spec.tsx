@@ -100,8 +100,9 @@ describe("NumberFilterPicker", () => {
       setup();
 
       expect(screen.getByText("Total")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("Equal to")).toBeInTheDocument();
-      expect(screen.getByPlaceholderText("Enter a number")).toHaveValue("");
+      expect(screen.getByDisplayValue("Between")).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("Min")).toHaveValue("");
+      expect(screen.getByPlaceholderText("Max")).toHaveValue("");
       expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
     });
 
@@ -233,6 +234,8 @@ describe("NumberFilterPicker", () => {
       it("should add a filter with many values", async () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup();
 
+        userEvent.click(screen.getByDisplayValue("Between"));
+        userEvent.click(screen.getByText("Equal to"));
         const input = screen.getByPlaceholderText("Enter a number");
         userEvent.type(input, "-5");
         userEvent.tab();
@@ -269,6 +272,8 @@ describe("NumberFilterPicker", () => {
     it("should handle invalid input", async () => {
       setup();
 
+      userEvent.click(screen.getByDisplayValue("Between"));
+      userEvent.click(screen.getByText("Equal to"));
       userEvent.type(
         screen.getByPlaceholderText("Enter a number"),
         "Twenty four",

@@ -25,6 +25,20 @@ export function getOptionByOperator(operator: Lib.NumberFilterOperatorName) {
   return OPERATOR_OPTIONS[operator];
 }
 
+export function getDefaultOperator(
+  column: Lib.ColumnMetadata,
+): Lib.NumberFilterOperatorName {
+  if (
+    Lib.isPrimaryKey(column) ||
+    Lib.isForeignKey(column) ||
+    Lib.isCategory(column)
+  ) {
+    return "=";
+  } else {
+    return "between";
+  }
+}
+
 export function getDefaultValues(
   operator: Lib.NumberFilterOperatorName,
   values: NumberValue[],

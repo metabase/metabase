@@ -29,14 +29,15 @@
    [clojure.data :as data]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.schema.helpers :as helpers]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.schema.helpers :as helpers]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -60,7 +61,7 @@
   "Given a sequence of field clauses (from the `:fields` clause), return a map of `:field-id` clause (other clauses
   are ineligable) to a remapping dimension information for any Fields that have an `external` type dimension remapping."
   [fields :- [:maybe [:sequential mbql.s/Field]]]
-  (when-let [field-ids (not-empty (set (mbql.u/match fields [:field (id :guard integer?) _] id)))]
+  (when-let [field-ids (not-empty (set (lib.util.match/match fields [:field (id :guard integer?) _] id)))]
     (let [field-metadatas (qp.store/bulk-metadata :metadata/column field-ids)]
       (when-let [remap-field-ids (not-empty (into #{}
                                                   (keep (comp :field-id :lib/external-remap))
@@ -106,7 +107,7 @@
                            (let [field (lib.metadata/field (qp.store/metadata-provider) field-id)]
                              (name-generator (:name field))))]
       (vec
-       (mbql.u/match fields
+       (lib.util.match/match fields
          ;; don't match Fields that have been joined from another Table
          [:field
           (id :guard (every-pred integer? field-id->remapping-dimension))

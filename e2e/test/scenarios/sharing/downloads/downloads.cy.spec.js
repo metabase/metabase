@@ -93,7 +93,7 @@ describe("scenarios > question > download", () => {
         cy.contains("ID").click();
       });
 
-      cy.get(".DashCard").contains("Select…").click();
+      cy.findByTestId("dashcard-container").contains("Select…").click();
       popover().contains("ID").eq(0).click();
 
       saveDashboard();

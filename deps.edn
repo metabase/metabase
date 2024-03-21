@@ -489,6 +489,7 @@
                                    "resources/frontend_client"
                                    "resources/frontend_shared"
                                    "resources/html-entities.edn"
+                                   "resources/openapi/.*"
                                    "frontend/src/cljs"
                                    "frontend/test/metabase/lib/urls\\.unit\\.spec\\.js$"
                                    "frontend/test/metabase/lib/formatting\\.unit\\.spec\\.js$"
@@ -683,7 +684,7 @@
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
                       metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
 
-  ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.mbql` code, and the QP
+  ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/mbql
   :test/mbql

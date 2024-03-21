@@ -184,7 +184,8 @@
   }
 }
 
-:global(.flex-column) {
+:global(.flex-column),
+.flexColumn {
   flex-direction: column;
 }
 
