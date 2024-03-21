@@ -46,7 +46,7 @@ export const useInitData = ({
       setIsInitialized(true);
       setIsLoggedIn(true);
     });
-  }, [config, store, store.dispatch]);
+  }, [config, store]);
 
   return {
     isLoggedIn,
