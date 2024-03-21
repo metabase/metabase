@@ -120,7 +120,6 @@
   max-width: 100%;
 }
 
-:global(.row-gap-1),
-.row-gap-1 {
+.rowGap1 {
   row-gap: var(--gap-1);
 }

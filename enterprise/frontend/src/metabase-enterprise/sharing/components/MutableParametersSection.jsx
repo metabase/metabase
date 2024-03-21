@@ -56,7 +56,7 @@ function MutableParametersSection({
       bodyClass={CS.mt2}
     >
       <ParametersList
-        className={cx(CS.alignStretch, "row-gap-1")}
+        className={cx(CS.alignStretch, CS.rowGap1)}
         vertical
         dashboard={dashboard}
         parameters={valuePopulatedParameters}
