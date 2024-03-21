@@ -10,7 +10,7 @@ export function signedSquareRoot(value: number) {
   return getSign(value) * Math.sqrt(Math.abs(value));
 }
 
-export function getYAxisScaleTransforms(
+export function getAxisTransforms(
   scale: NumericScale | undefined,
   stackType?: StackType,
 ): NumericAxisScaleTransforms {
