@@ -285,18 +285,12 @@
                    "FROM"
                    "  \"PUBLIC\".\"CHECKINS\""
                    "WHERE"
-                   "  ("
-                   "    (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= ?)"
-                   "    AND (\"PUBLIC\".\"CHECKINS\".\"DATE\" < ?)"
-                   "  )"
-                   "  OR ("
-                   "    (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= ?)"
-                   "    AND (\"PUBLIC\".\"CHECKINS\".\"DATE\" < ?)"
-                   "  )"]
+                   "  \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?"
+                   "  OR \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?"]
           :params [#t "2014-06-01"
-                   #t "2014-07-01"
+                   #t "2014-06-30"
                    #t "2015-06-01"
-                   #t "2015-07-01"]}
+                   #t "2015-06-30"]}
          (-> (qp.compile/compile
               (mt/query checkins
                 {:query      {:aggregation [[:count]]}

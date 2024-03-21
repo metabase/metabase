@@ -443,14 +443,14 @@
                        :aggregation [[:avg &checkins_by_user.*count/Float]]
                        :breakout    [!month.last_login]})]
           (mt/with-native-query-testing-context query
-            (is (= {:rows    [["2014-01-01T00:00:00" 77]
-                              ["2014-02-01T00:00:00" 81]
-                              ["2014-04-01T00:00:00" 49]
-                              ["2014-07-01T00:00:00" 68]
-                              ["2014-08-01T00:00:00" 64]
-                              ["2014-10-01T00:00:00" 65]
-                              ["2014-11-01T00:00:00" 74]
-                              ["2014-12-01T00:00:00" 70]]
+            (is (= {:rows    [["2014-01-01" 77]
+                              ["2014-02-01" 81]
+                              ["2014-04-01" 49]
+                              ["2014-07-01" 68]
+                              ["2014-08-01" 64]
+                              ["2014-10-01" 65]
+                              ["2014-11-01" 74]
+                              ["2014-12-01" 70]]
                     :columns [(mt/format-name "last_login") "avg"]}
                    (mt/format-rows-by [identity int]
                      (mt/rows+column-names
@@ -747,9 +747,9 @@
                        :order-by     [[:asc !month.&Products.products.created_at]]
                        :limit        3})]
           (mt/with-native-query-testing-context query
-            (is (= [["2016-05-01T00:00:00Z" 3 nil nil]
-                    ["2016-06-01T00:00:00Z" 2 "2016-06-01T00:00:00Z" 1]
-                    ["2016-08-01T00:00:00Z" 2 nil nil]]
+            (is (= [["2016-05-01" 3 nil nil]
+                    ["2016-06-01" 2 "2016-06-01" 1]
+                    ["2016-08-01" 2 nil nil]]
                    (mt/formatted-rows [str int str int]
                      (qp/process-query query))))))))))
 
@@ -770,9 +770,9 @@
                        :order-by     [[:asc !month.created_at]]
                        :limit        3})]
           (mt/with-native-query-testing-context query
-            (is (= [["2016-04-01T00:00:00Z" 26 nil nil]
-                    ["2016-05-01T00:00:00Z" 77 nil nil]
-                    ["2016-06-01T00:00:00Z" 82 nil nil]]
+            (is (= [["2016-04-01" 26 nil nil]
+                    ["2016-05-01" 77 nil nil]
+                    ["2016-06-01" 82 nil nil]]
                    (mt/formatted-rows [str int str int]
                      (qp/process-query query))))))))))
 
@@ -1000,9 +1000,9 @@
                    :expressions {:strange [:/ [:field "sum" {:base-type "type/Float"}] 100]}
                    :limit 3})]
       (mt/with-native-query-testing-context query
-        (is (= [["Doohickey" "Balistreri-Ankunding" "2018-01-01T00:00:00Z" 210.24 2.1024]
-                ["Doohickey" "Balistreri-Ankunding" "2018-02-01T00:00:00Z" 315.36 3.1536]
-                ["Doohickey" "Balistreri-Ankunding" "2018-03-01T00:00:00Z" 315.36 3.1536]]
+        (is (= [["Doohickey" "Balistreri-Ankunding" "2018-01-01" 210.24 2.1024]
+                ["Doohickey" "Balistreri-Ankunding" "2018-02-01" 315.36 3.1536]
+                ["Doohickey" "Balistreri-Ankunding" "2018-03-01" 315.36 3.1536]]
                (mt/formatted-rows [str str str 2.0 4.0]
                  (qp/process-query query))))))))
 
@@ -1044,8 +1044,8 @@
                               :order-by     [[:asc [:field "CREATED_AT" {:base-type :type/DateTime}]]]
                               :limit        2}}]
         (mt/with-native-query-testing-context query
-          (is (= [["2016-05-01T00:00:00Z" 3 nil                    nil]
-                  ["2016-06-01T00:00:00Z" 2 "2016-06-01T00:00:00Z" 1]]
+          (is (= [["2016-05-01" 3 nil          nil]
+                  ["2016-06-01" 2 "2016-06-01" 1]]
                  (mt/rows (qp/process-query query)))))))))
 
 (deftest ^:parallel test-31769

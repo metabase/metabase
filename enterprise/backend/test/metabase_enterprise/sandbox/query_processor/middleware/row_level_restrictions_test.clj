@@ -608,9 +608,9 @@
                                                :remappings {"user_id" [:variable [:template-tag "sandbox"]]}}
                                     :checkins {:remappings {"user_id" [:dimension $checkins.user_id]}}}
                        :attributes {"user_id" 1}})
-      (is (= [[2 "2014-09-18T00:00:00Z"  1 31 31 "Bludso's BBQ"         5 33.8894 -118.207 2]
-              [72 "2015-04-18T00:00:00Z" 1  1  1 "Red Medicine"         4 10.0646 -165.374 3]
-              [80 "2013-12-27T00:00:00Z" 1 99 99 "Golden Road Brewing" 10 34.1505 -118.274 2]]
+      (is (= [[2 "2014-09-18"  1 31 31 "Bludso's BBQ"         5 33.8894 -118.207 2]
+              [72 "2015-04-18" 1  1  1 "Red Medicine"         4 10.0646 -165.374 3]
+              [80 "2013-12-27" 1 99 99 "Golden Road Brewing" 10 34.1505 -118.274 2]]
              (mt/rows
               (mt/run-mbql-query checkins
                 {:joins    [{:fields       :all
@@ -958,9 +958,9 @@
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
     (mt/dataset test-data
       (let [mbql-sandbox-results (met/with-gtaps! {:gtaps      (mt/$ids
-                                                                {:orders   {:remappings {"user_id" [:dimension $orders.user_id]}}
-                                                                 :products {:remappings {"user_cat" [:dimension $products.category]}}})
-                                                  :attributes {"user_id" 1, "user_cat" "Widget"}}
+                                                                 {:orders   {:remappings {"user_id" [:dimension $orders.user_id]}}
+                                                                  :products {:remappings {"user_cat" [:dimension $products.category]}}})
+                                                   :attributes {"user_id" 1, "user_cat" "Widget"}}
                                    (mt/with-column-remappings [orders.product_id products.title]
                                      (mt/run-mbql-query orders)))]
         (doseq [orders-gtap-card-has-metadata?   [true false]
@@ -969,20 +969,20 @@
                            (pr-str orders-gtap-card-has-metadata?)
                            (pr-str products-gtap-card-has-metadata?))
             (met/with-gtaps! {:gtaps      {:orders   {:query      (mt/native-query
-                                                                   {:query         "SELECT * FROM ORDERS WHERE USER_ID={{uid}} AND TOTAL > 10"
-                                                                    :template-tags {"uid" {:display-name "User ID"
-                                                                                           :id           "1"
-                                                                                           :name         "uid"
-                                                                                           :type         :number}}})
-                                                     :remappings {"user_id" [:variable [:template-tag "uid"]]}}
-                                          :products {:query      (mt/native-query
-                                                                   {:query         "SELECT * FROM PRODUCTS WHERE CATEGORY={{cat}} AND PRICE > 10"
-                                                                    :template-tags {"cat" {:display-name "Category"
-                                                                                           :id           "2"
-                                                                                           :name         "cat"
-                                                                                           :type         :text}}})
-                                                     :remappings {"user_cat" [:variable [:template-tag "cat"]]}}}
-                             :attributes {"user_id" "1", "user_cat" "Widget"}}
+                                                                    {:query         "SELECT * FROM ORDERS WHERE USER_ID={{uid}} AND TOTAL > 10"
+                                                                     :template-tags {"uid" {:display-name "User ID"
+                                                                                            :id           "1"
+                                                                                            :name         "uid"
+                                                                                            :type         :number}}})
+                                                      :remappings {"user_id" [:variable [:template-tag "uid"]]}}
+                                           :products {:query      (mt/native-query
+                                                                    {:query         "SELECT * FROM PRODUCTS WHERE CATEGORY={{cat}} AND PRICE > 10"
+                                                                     :template-tags {"cat" {:display-name "Category"
+                                                                                            :id           "2"
+                                                                                            :name         "cat"
+                                                                                            :type         :text}}})
+                                                      :remappings {"user_cat" [:variable [:template-tag "cat"]]}}}
+                              :attributes {"user_id" "1", "user_cat" "Widget"}}
               (when orders-gtap-card-has-metadata?
                 (set-query-metadata-for-gtap-card! &group :orders "uid" 1))
               (when products-gtap-card-has-metadata?
@@ -990,15 +990,17 @@
               (mt/with-column-remappings [orders.product_id products.title]
                 (testing "Sandboxed results should be the same as they would be if the sandbox was MBQL"
                   (letfn [(format-col [col]
-                            (dissoc col :field_ref :id :table_id :fk_field_id :options :position :lib/external_remap :lib/internal_remap :fk_target_field_id))
+                            (as-> col col
+                              (dissoc col :field_ref :id :table_id :fk_field_id :options :position :fk_target_field_id)
+                              (m/filter-keys simple-keyword? col)))
                           (format-results [results]
                             (-> results
                                 (update-in [:data :cols] (partial map format-col))
                                 (m/dissoc-in [:data :native_form])
                                 (m/dissoc-in [:data :results_metadata :checksum])
                                 (update-in [:data :results_metadata :columns] (partial map format-col))))]
-                    (is (= (format-results mbql-sandbox-results)
-                           (format-results (mt/run-mbql-query orders))))))
+                    (is (=? (format-results mbql-sandbox-results)
+                            (format-results (mt/run-mbql-query orders))))))
                 (testing "Should be able to run a query against Orders"
                   (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]]
                          (mt/rows (mt/run-mbql-query orders {:limit 1})))))))))))))

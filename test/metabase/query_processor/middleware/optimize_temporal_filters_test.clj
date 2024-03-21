@@ -335,19 +335,29 @@
   (testing "Should optimize relative-datetime clauses (#11837)"
     (mt/dataset attempted-murders
       (qp.store/with-metadata-provider (mt/id)
-        (is (= (str "SELECT COUNT(*) AS \"count\" "
-                    "FROM \"PUBLIC\".\"ATTEMPTS\" "
-                    "WHERE"
-                    " (\"PUBLIC\".\"ATTEMPTS\".\"DATETIME\""
-                    " >= DATE_TRUNC('month', DATEADD('month', CAST(-1 AS long), CAST(NOW() AS datetime))))"
-                    " AND"
-                    " (\"PUBLIC\".\"ATTEMPTS\".\"DATETIME\""
-                    " < DATE_TRUNC('month', NOW()))")
-               (:query
-                (qp.compile/compile
-                 (mt/mbql-query attempts
-                   {:aggregation [[:count]]
-                    :filter      [:time-interval $datetime :last :month]})))))))))
+        (is (= ["SELECT"
+                "  COUNT(*) AS \"count\""
+                "FROM"
+                "  \"PUBLIC\".\"ATTEMPTS\""
+                "WHERE"
+                "  ("
+                "    \"PUBLIC\".\"ATTEMPTS\".\"DATETIME\" >= CAST("
+                "      DATE_TRUNC("
+                "        'month',"
+                "        DATEADD('month', CAST(-1 AS long), CAST(NOW() AS datetime))"
+                "      ) AS date"
+                "    )"
+                "  )"
+                "  AND ("
+                "    \"PUBLIC\".\"ATTEMPTS\".\"DATETIME\" < CAST(DATE_TRUNC('month', NOW()) AS date)"
+                "  )"]
+               (->> (qp.compile/compile
+                     (mt/mbql-query attempts
+                       {:aggregation [[:count]]
+                        :filter      [:time-interval $datetime :last :month]}))
+                    :query
+                    (driver/prettify-native-form :h2)
+                    str/split-lines)))))))
 
 (deftest ^:parallel flatten-filters-test
   (testing "Should flatten the `:filter` clause after optimizing"
