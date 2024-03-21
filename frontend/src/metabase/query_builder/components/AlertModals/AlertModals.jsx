@@ -228,7 +228,7 @@ export class AlertEducationalScreen extends Component {
               CS.relative,
               CS.flex,
               CS.alignCenter,
-              "flex-reverse",
+              CS.flexReverse,
               CS.pl4,
             )}
             style={{ marginTop: -50, marginRight: -80 }}

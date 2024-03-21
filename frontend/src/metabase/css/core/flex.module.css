@@ -109,7 +109,7 @@
   flex-wrap: wrap;
 }
 
-:global(.flex-reverse) {
+.flexReverse {
   flex-direction: row-reverse;
 }
 

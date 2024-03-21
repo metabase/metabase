@@ -31,7 +31,7 @@ function CustomFormFooter({
   return (
     <div
       className={cx(CS.flex, CS.alignCenter, {
-        "flex-reverse": isModal || isContextModal,
+        [CS.flexReverse]: isModal || isContextModal,
       })}
     >
       <CustomFormSubmit fullWidth={fullWidth}>{submitTitle}</CustomFormSubmit>
