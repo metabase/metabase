@@ -127,12 +127,10 @@
           #(format "%s frame-ancestors %s;" % (if allow-iframes? "*" (or (embedding-app-origin) "'none'")))))
 
 (defn- access-control-headers
-  []
-  (when (embedding-app-origin)
-    {
-      "Access-Control-Allow-Origin"     (embedding-app-origin)
-      "Access-Control-Allow-Headers"    "*"
-      "Access-Control-Expose-Headers"   "X-Metabase-Anti-CSRF-Token"}))
+  [embedding-app-origin]
+  {"Access-Control-Allow-Origin"     (embedding-app-origin)
+   "Access-Control-Allow-Headers"    "*"
+   "Access-Control-Expose-Headers"   "X-Metabase-Anti-CSRF-Token"})
 
 (defn- first-embedding-app-origin
   "Return only the first embedding app origin."
@@ -151,6 +149,7 @@
      (cache-prevention-headers))
    strict-transport-security-header
    (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
+   (when embedding-app-origin (access-control-headers embedding-app-origin))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
      {"X-Frame-Options"                 (if (embedding-app-origin)
@@ -161,8 +160,7 @@
     ;; Prevent Flash / PDF files from including content from site.
     "X-Permitted-Cross-Domain-Policies" "none"
     ;; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
-    "X-Content-Type-Options"            "nosniff"}
-    (access-control-headers)))
+    "X-Content-Type-Options"            "nosniff"}))
 
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
