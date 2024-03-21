@@ -922,6 +922,16 @@
       (h value)]
      :render/text (str value)}))
 
+;; the `:javascript_visualization` render method
+;; is and will continue to handle more and more 'isomorphic' chart types.
+;; Isomorphic in this context just means the frontend Code is mostly shared between the app and the static-viz
+;; As of 2024-03-21, isomorphic chart types include: line, area, bar (LAB), and trend charts
+;; Because this effort began with LAB charts, this method is written to handle multi-series dashcards.
+;; Trend charts were added more recently and will not have multi-series.
+;; Despite this, the function `pu/execute-multi-card` will still correctly execute dashcards.
+;; This conditional is here to cover the case of trend charts in Alerts (not subscriptions). Alerts
+;; exist on Questions and thus have no associated dashcard, which causes `pu/execute-multi-card` to fail.
+
 (mu/defmethod render :javascript_visualization :- formatter/RenderedPulseCard
   [_chart-type render-type _timezone-id card dashcard data]
   (let [combined-cards-results (if dashcard
