@@ -33,15 +33,16 @@ const Progress = styled.div`
   border-bottom-left-radius: 0;
   width: ${props => props.width}%;
   transition: background-color 0.3s;
-"&::before": {
-  display: ${props => (props.animated ? "block" : "none")};
-  position: absolute;
-  content: "";
-  left: 0;
-  width: ${props => props.width / 4}%;
-  height: 100%;
-  background-color: ${c("bg-black")};
-},
+
+  "&::before": {
+    display: ${props => (props.animated ? "block" : "none")};
+    position: absolute;
+    content: "";
+    left: 0;
+    width: ${props => props.width / 4}%;
+    height: 100%;
+    background-color: ${c("bg-black")};
+  },
 `;
 
 // @Question - why is this separate from our progress Viz type?
