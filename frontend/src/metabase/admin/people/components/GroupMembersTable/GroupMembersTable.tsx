@@ -127,7 +127,7 @@ function GroupMembersTable({
         })}
       </AdminContentTable>
       {hasMembers && (
-        <div className={cx(CS.flex, CS.alignCenter, "justify-end", CS.p2)}>
+        <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd, CS.p2)}>
           <PaginationControls
             page={page}
             pageSize={pageSize}

@@ -190,7 +190,7 @@ const EditSandboxingModal = ({
           </div>
         )}
 
-        <div className={cx(CS.flex, CS.alignCenter, "justify-end")}>
+        <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd)}>
           <Button onClick={onCancel}>{t`Cancel`}</Button>
           <ActionButton
             error={error}

@@ -43,7 +43,7 @@ const MiniBar = ({ value, extent: [min, max], options }) => {
       };
 
   return (
-    <div className={cx(CS.flex, CS.alignCenter, "justify-end", CS.relative)}>
+    <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd, CS.relative)}>
       {/* TEXT VALUE */}
       <div
         className={cx("text-ellipsis", CS.textBold, CS.textRight, CS.flexFull)}

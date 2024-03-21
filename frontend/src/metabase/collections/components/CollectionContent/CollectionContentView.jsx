@@ -312,7 +312,7 @@ export function CollectionContentView({
                           onSelectAll={handleSelectAll}
                           onSelectNone={clear}
                         />
-                        <div className={cx(CS.flex, "justify-end", CS.my3)}>
+                        <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
                           {hasPagination && (
                             <PaginationControls
                               showTotal

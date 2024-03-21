@@ -64,7 +64,7 @@
   justify-content: space-between;
 }
 
-:global(.justify-end) {
+.justifyEnd {
   justify-content: flex-end;
 }
 

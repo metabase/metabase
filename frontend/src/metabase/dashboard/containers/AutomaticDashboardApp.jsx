@@ -180,7 +180,7 @@ class AutomaticDashboardAppInner extends Component {
             <Dashboard isXray {...this.props} />
           </div>
           {more && (
-            <div className={cx(CS.flex, "justify-end", CS.px4, CS.pb4)}>
+            <div className={cx(CS.flex, CS.justifyEnd, CS.px4, CS.pb4)}>
               <Link
                 to={more}
                 className="ml2"

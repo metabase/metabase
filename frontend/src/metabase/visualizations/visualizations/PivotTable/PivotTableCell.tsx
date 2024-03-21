@@ -83,7 +83,7 @@ export function Cell({
       <>
         <div
           className={cx(CS.px1, CS.flex, CS.alignCenter, {
-            "justify-end": isBody,
+            [CS.justifyEnd]: isBody,
           })}
         >
           <Ellipsified showTooltip={showTooltip}>{value}</Ellipsified>
