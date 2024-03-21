@@ -1,10 +1,10 @@
-(ns metabase.mbql.schema-test
+(ns metabase.legacy-mbql.schema-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.util.malli.humanize :as mu.humanize]))
 
 (deftest ^:parallel temporal-literal-test

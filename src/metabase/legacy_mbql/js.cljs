@@ -1,7 +1,7 @@
-(ns metabase.mbql.js
-  "JavaScript-friendly interface to metabase.mbql util functions."
+(ns metabase.legacy-mbql.js
+  "JavaScript-friendly interface to metabase.legacy-mbql util functions."
   (:require
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.util :as u]))
 
 (defn- unwrap

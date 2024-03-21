@@ -157,7 +157,7 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.automagic-dashboards.util :as magic.util]
    [metabase.db.query :as mdb.query]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :as field :refer [Field]]

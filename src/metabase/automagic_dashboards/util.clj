@@ -4,9 +4,10 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.mbql.predicates :as mbql.preds]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.predicates :as mbql.preds]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.sync.analyze.classify :as classify]
@@ -61,12 +62,12 @@
 (mu/defn field-reference->id :- [:maybe [:or ms/NonBlankString ms/PositiveInt]]
   "Extract field ID from a given field reference form."
   [clause]
-  (mbql.u/match-one clause [:field id _] id))
+  (lib.util.match/match-one clause [:field id _] id))
 
 (mu/defn collect-field-references :- [:maybe [:sequential mbql.s/field]]
   "Collect all `:field` references from a given form."
   [form]
-  (mbql.u/match form :field &match))
+  (lib.util.match/match form :field &match))
 
 (mu/defn ->field :- [:maybe (ms/InstanceOf Field)]
   "Return `Field` instance for a given ID or name in the context of root."

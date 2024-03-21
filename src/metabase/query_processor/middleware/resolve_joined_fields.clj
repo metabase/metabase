@@ -3,9 +3,10 @@
   (:require
    [clojure.data :as data]
    [malli.core :as mc]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -70,7 +71,7 @@
   [{:keys [source-query joins], :as form} :- InnerQuery]
   ;; don't replace stuff in child `:join` or `:source-query` forms -- remove these from `form` when we call `replace`
   (let [source-table (primary-source-table-id form)
-        form         (mbql.u/replace (dissoc form :joins :source-query)
+        form         (lib.util.match/replace (dissoc form :joins :source-query)
                        ;; don't add `:join-alias` to anything that already has one
                        [:field _ (_ :guard :join-alias)]
                        &match
@@ -88,14 +89,14 @@
                (seq joins)  (assoc :joins joins)
                source-query (assoc :source-query source-query))]
     ;; now deduplicate :fields clauses
-    (mbql.u/replace form
+    (lib.util.match/replace form
       (m :guard (every-pred map? :fields))
       (update m :fields distinct))))
 
 (defn- add-join-alias-to-fields-if-needed
   [form]
   ;; look for any form that has `:joins`, then wrap stuff as needed
-  (mbql.u/replace form
+  (lib.util.match/replace form
     (m :guard (every-pred map? (mc/validator InnerQuery)))
     (cond-> m
       ;; recursively wrap stuff in nested joins or source queries in the form

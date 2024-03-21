@@ -3,7 +3,7 @@
    [clojure.spec.alpha :as s]
    [clojure.test.check.generators :as gen]
    [java-time.api :as t]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models :refer [Action Card Collection Dashboard
                             DashboardCard DashboardCardSeries Database Dimension Field
                             HTTPAction ImplicitAction LegacyMetric NativeQuerySnippet PermissionsGroup
