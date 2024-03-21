@@ -77,7 +77,7 @@ export type CollectionItemModel =
   | "collection"
   | "indexed-entity";
 
-export type CollectionItemId = number;
+export type CollectionItemId = CollectionId;
 
 export interface CollectionItem {
   id: CollectionItemId;

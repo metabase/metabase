@@ -91,7 +91,7 @@ const walkForCollectionItems = (node: MockCollection[]) => {
   node.forEach(n => {
     const collectionItems = n.collections.map((c: MockCollection) =>
       createMockCollectionItem({
-        id: c.id as number,
+        id: c.id,
         name: c.name,
         model: "collection",
         location: c.location || "/",
