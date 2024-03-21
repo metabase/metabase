@@ -56,13 +56,6 @@ SELECT pg.id AS group_id,
                      AND dp.table_id = mt.id
                      AND dp.perm_type = 'perms/data-access'
                      AND dp.perm_value = 'unrestricted' ) THEN 'query-builder'
-           WHEN EXISTS
-                  (SELECT 1
-                   FROM data_permissions dp
-                   WHERE dp.group_id = pg.id
-                     AND dp.table_id = mt.id
-                     AND dp.perm_type = 'perms/data-access'
-                     AND dp.perm_value = 'no-self-service' ) THEN 'no'
            ELSE 'no'
        END AS perm_value
 FROM permissions_group pg
