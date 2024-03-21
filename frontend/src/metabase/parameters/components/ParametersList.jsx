@@ -99,7 +99,8 @@ function ParametersList({
       className={cx(
         className,
         CS.flex,
-        "align-end flex-wrap",
+        CS.alignEnd,
+        "flex-wrap",
         vertical ? CS.flexColumn : CS.flexRow,
       )}
     >

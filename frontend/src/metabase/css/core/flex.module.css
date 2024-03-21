@@ -72,7 +72,7 @@
   align-items: flex-start;
 }
 
-:global(.align-end) {
+.alignEnd {
   align-items: flex-end;
 }
 

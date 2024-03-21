@@ -20,7 +20,7 @@ import {
 
 const getSettingsStyle = settings => ({
   [CS.alignCenter]: settings["text.align_horizontal"] === "center",
-  "align-end": settings["text.align_horizontal"] === "right",
+  [CS.alignStart]: settings["text.align_horizontal"] === "right",
   [CS.justifyCenter]: settings["text.align_vertical"] === "middle",
   [CS.justifyEnd]: settings["text.align_vertical"] === "bottom",
 });
