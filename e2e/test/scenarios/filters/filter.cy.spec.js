@@ -20,7 +20,7 @@ import {
   checkExpressionEditorHelperPopoverPosition,
   getNotebookStep,
   queryBuilderMain,
-  selectOperator,
+  selectFilterOperator,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
@@ -407,7 +407,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("Reviewer").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
-    selectOperator("Is empty");
+    selectFilterOperator("Is empty");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filter").click();
 
@@ -436,7 +436,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("Rating").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
-    selectOperator("Is empty");
+    selectFilterOperator("Is empty");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filter").click();
 
@@ -890,7 +890,7 @@ describe("scenarios > question > filter", () => {
 
       filter({ mode: "notebook" });
       popover().findByText("Total").click();
-      selectOperator("Equal to");
+      selectFilterOperator("Equal to");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("123");
         cy.button("Add filter").click();

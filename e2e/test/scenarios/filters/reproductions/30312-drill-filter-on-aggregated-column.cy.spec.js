@@ -3,7 +3,7 @@ import {
   popover,
   queryBuilderMain,
   restore,
-  selectOperator,
+  selectFilterOperator,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -43,7 +43,7 @@ describe("issue 30312", () => {
       .click();
 
     popover().findByText("Filter by this column").click();
-    selectOperator("Equal to");
+    selectFilterOperator("Equal to");
     popover().within(() => {
       cy.findByPlaceholderText("Enter a number").type("10");
       cy.realPress("Tab");

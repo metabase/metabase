@@ -17,7 +17,7 @@ import {
   queryBuilderMain,
   restore,
   saveQuestion,
-  selectOperator,
+  selectFilterOperator,
   selectSavedQuestionsToJoin,
   startNewQuestion,
   summarize,
@@ -71,7 +71,7 @@ describe("scenarios > question > joined questions", () => {
       cy.findByText("Review").click();
       cy.findByText("Rating").click();
     });
-    selectOperator("Equal to");
+    selectFilterOperator("Equal to");
     popover().within(() => {
       cy.findByLabelText("2").click();
       cy.button("Add filter").click();
@@ -151,7 +151,7 @@ describe("scenarios > question > joined questions", () => {
       cy.findByText("question b").click();
       cy.findByText("CATEGORY").click();
     });
-    selectOperator("Is");
+    selectFilterOperator("Is");
     popover().within(() => {
       cy.findByPlaceholderText("Enter some text").type("Gadget");
       cy.button("Add filter").click();

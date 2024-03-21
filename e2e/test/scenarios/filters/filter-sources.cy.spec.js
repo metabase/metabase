@@ -6,7 +6,7 @@ import {
   getNotebookStep,
   popover,
   restore,
-  selectOperator,
+  selectFilterOperator,
   visitQuestionAdhoc,
   visualize,
 } from "e2e/support/helpers";
@@ -237,7 +237,7 @@ describe("scenarios > filters > filter sources", () => {
       visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
       filter({ mode: "notebook" });
       popover().findByText("Tax").click();
-      selectOperator("Equal to");
+      selectFilterOperator("Equal to");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("6.1");
         cy.button("Add filter").click();
@@ -251,7 +251,7 @@ describe("scenarios > filters > filter sources", () => {
       visitQuestionAdhoc(tableQuestionWithExpression, { mode: "notebook" });
       filter({ mode: "notebook" });
       popover().findByText("Total100").click();
-      selectOperator("Greater than");
+      selectFilterOperator("Greater than");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("250.5");
         cy.button("Add filter").click();
@@ -282,7 +282,7 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByText("Product").click();
         cy.findByText("Rating").click();
       });
-      selectOperator("Equal to");
+      selectFilterOperator("Equal to");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("3.7");
         cy.button("Add filter").click();
@@ -299,7 +299,7 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByText("Product").click();
         cy.findByText("Ean").click();
       });
-      selectOperator("Is");
+      selectFilterOperator("Is");
       popover().within(() => {
         cy.findByText("0001664425970").click();
         cy.button("Add filter").click();
@@ -313,7 +313,7 @@ describe("scenarios > filters > filter sources", () => {
       visitQuestionAdhoc(tableWithAggregations, { mode: "notebook" });
       addNewFilter();
       popover().findByText("Count").click();
-      selectOperator("Equal to");
+      selectFilterOperator("Equal to");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("90");
         cy.button("Add filter").click();
@@ -327,7 +327,7 @@ describe("scenarios > filters > filter sources", () => {
       visitQuestionAdhoc(tableWithAggregations, { mode: "notebook" });
       addNewFilter();
       popover().findByText("Sum of Quantity").click();
-      selectOperator("Less than");
+      selectFilterOperator("Less than");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("350");
         cy.button("Add filter").click();
@@ -358,7 +358,7 @@ describe("scenarios > filters > filter sources", () => {
       });
       filter({ mode: "notebook" });
       popover().findByText("Tax").click();
-      selectOperator("Equal to");
+      selectFilterOperator("Equal to");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("6.1");
         cy.button("Add filter").click();
@@ -376,7 +376,7 @@ describe("scenarios > filters > filter sources", () => {
       });
       filter({ mode: "notebook" });
       popover().findByText("Total100").click();
-      selectOperator("Greater than");
+      selectFilterOperator("Greater than");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("250.5");
         cy.button("Add filter").click();
@@ -415,7 +415,7 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByText("Product").click();
         cy.findByText("Rating").click();
       });
-      selectOperator("Equal to");
+      selectFilterOperator("Equal to");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("3.7");
         cy.button("Add filter").click();
@@ -436,7 +436,7 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByText("Product").click();
         cy.findByText("Ean").click();
       });
-      selectOperator("Is");
+      selectFilterOperator("Is");
       popover().within(() => {
         cy.findByText("0001664425970").click();
         cy.button("Add filter").click();
@@ -454,7 +454,7 @@ describe("scenarios > filters > filter sources", () => {
       });
       addNewFilter();
       popover().findByText("Count").click();
-      selectOperator("Equal to");
+      selectFilterOperator("Equal to");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("90");
         cy.button("Add filter").click();
@@ -472,7 +472,7 @@ describe("scenarios > filters > filter sources", () => {
       });
       addNewFilter();
       popover().findByText("Sum of Quantity").click();
-      selectOperator("Less than");
+      selectFilterOperator("Less than");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("350");
         cy.button("Add filter").click();
@@ -507,7 +507,7 @@ describe("scenarios > filters > filter sources", () => {
       });
       filter({ mode: "notebook" });
       popover().findByText("TAX").click();
-      selectOperator("Equal to");
+      selectFilterOperator("Equal to");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("6.1");
         cy.button("Add filter").click();
@@ -525,7 +525,7 @@ describe("scenarios > filters > filter sources", () => {
       });
       filter({ mode: "notebook" });
       popover().findByText("Total100").click();
-      selectOperator("Greater than");
+      selectFilterOperator("Greater than");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("250.5");
         cy.button("Add filter").click();
@@ -564,7 +564,7 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByText("Product").click();
         cy.findByText("Rating").click();
       });
-      selectOperator("Equal to");
+      selectFilterOperator("Equal to");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("3.7");
         cy.button("Add filter").click();
@@ -585,7 +585,7 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByText("Product").click();
         cy.findByText("Ean").click();
       });
-      selectOperator("Is");
+      selectFilterOperator("Is");
       popover().within(() => {
         cy.findByText("0001664425970").click();
         cy.button("Add filter").click();
@@ -603,7 +603,7 @@ describe("scenarios > filters > filter sources", () => {
       });
       addNewFilter();
       popover().findByText("Count").click();
-      selectOperator("Equal to");
+      selectFilterOperator("Equal to");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("90");
         cy.button("Add filter").click();
@@ -621,7 +621,7 @@ describe("scenarios > filters > filter sources", () => {
       });
       addNewFilter();
       popover().findByText("Sum of QUANTITY").click();
-      selectOperator("Less than");
+      selectFilterOperator("Less than");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("350");
         cy.button("Add filter").click();
@@ -639,7 +639,7 @@ describe("scenarios > filters > filter sources", () => {
       });
       addNewFilter();
       popover().findByText("PRODUCT_ID").click();
-      selectOperator("Equal to");
+      selectFilterOperator("Equal to");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("10");
         cy.button("Add filter").click();

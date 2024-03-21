@@ -16,6 +16,7 @@ import {
   appBar,
   queryBuilderHeader,
   openNotebook,
+  selectFilterOperator,
 } from "e2e/support/helpers";
 
 describe("scenarios > question > saved", () => {
@@ -44,11 +45,8 @@ describe("scenarios > question > saved", () => {
     // Add a filter in order to be able to save question again
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
-    popover().within(() => {
-      cy.findByText("Total: Auto binned").click();
-      cy.findByDisplayValue("Equal to").click();
-    });
-    cy.findByRole("listbox").findByText("Greater than").click();
+    popover().findByText("Total: Auto binned").click();
+    selectFilterOperator("Greater than");
 
     popover().within(() => {
       cy.findByPlaceholderText("Enter a number").type("60");

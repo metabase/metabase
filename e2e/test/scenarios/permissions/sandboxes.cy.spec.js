@@ -23,7 +23,7 @@ import {
   startNewQuestion,
   sendEmailAndAssert,
   setTokenFeatures,
-  selectOperator,
+  selectFilterOperator,
 } from "e2e/support/helpers";
 
 const {
@@ -158,7 +158,7 @@ describeEE("formatting > sandboxes", () => {
         cy.icon("notebook").click();
         filter({ mode: "notebook" });
         popover().findByText("Total").click();
-        selectOperator("Greater than");
+        selectFilterOperator("Greater than");
         popover().within(() => {
           cy.findByPlaceholderText("Enter a number").type("100");
           cy.button("Add filter").click();

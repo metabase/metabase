@@ -6,7 +6,7 @@ import {
   popover,
   relativeDatePicker,
   restore,
-  selectOperator,
+  selectFilterOperator,
   visualize,
 } from "e2e/support/helpers";
 
@@ -414,7 +414,7 @@ describe("scenarios > filters > filter types", () => {
           filter({ mode: "notebook" });
 
           popover().findByText(columnName).click();
-          selectOperator(operator);
+          selectFilterOperator(operator);
           popover().within(() => {
             values.forEach((value, index) => {
               cy.findByLabelText("Filter value").focus().type(value).blur();
@@ -446,7 +446,7 @@ describe("scenarios > filters > filter types", () => {
           filter({ mode: "notebook" });
 
           popover().findByText(columnName).click();
-          selectOperator(operator);
+          selectFilterOperator(operator);
           popover()
             .first()
             .within(() => {
