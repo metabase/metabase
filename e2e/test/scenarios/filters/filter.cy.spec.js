@@ -406,9 +406,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("Reviewer").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
-    cy.findByDisplayValue("Is").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Is empty").click();
+    selectOperator("Is empty");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filter").click();
 
@@ -437,9 +435,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("Rating").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
-    cy.findByDisplayValue("Equal to").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Is empty").click();
+    selectOperator("Is empty");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filter").click();
 
@@ -892,8 +888,9 @@ describe("scenarios > question > filter", () => {
       openOrdersTable({ mode: "notebook" });
 
       filter({ mode: "notebook" });
+      popover().findByText("Total").click();
+      selectOperator("Equal to");
       popover().within(() => {
-        cy.findByText("Total").click();
         cy.findByPlaceholderText("Enter a number").type("123");
         cy.button("Add filter").click();
       });
@@ -1070,4 +1067,9 @@ function openExpressionEditorFromFreshlyLoadedPage() {
   openReviewsTable({ mode: "notebook" });
   filter({ mode: "notebook" });
   cy.findByText("Custom Expression").click();
+}
+
+function selectOperator(operatorName) {
+  cy.findByLabelText("Filter operator").click();
+  cy.findByRole("listbox").findByText(operatorName).click();
 }
