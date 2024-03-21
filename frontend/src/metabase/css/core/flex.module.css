@@ -80,8 +80,7 @@
   align-items: stretch;
 }
 
-:global(.align-self-end),
-.align-self-end {
+.alignSelfEnd {
   align-self: flex-end;
 }
 

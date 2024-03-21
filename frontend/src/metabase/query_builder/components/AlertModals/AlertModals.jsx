@@ -415,7 +415,7 @@ export class DeleteAlertSection extends Component {
                 ButtonsS.ButtonDanger,
                 CS.flexAlignRight,
                 CS.flexNoShrink,
-                "align-self-end",
+                CS.alignSelfEnd,
               )}
               triggerElement={t`Delete this alert`}
             >
