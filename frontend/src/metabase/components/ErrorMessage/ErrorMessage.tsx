@@ -1,9 +1,9 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 
+import { NoRowsError } from "metabase/components/errors/NoRowsError";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { NoRowsError } from "metabase/query_builder/components/errors/NowRowsError";
 
 interface ErrorMessageProps {
   title: string;

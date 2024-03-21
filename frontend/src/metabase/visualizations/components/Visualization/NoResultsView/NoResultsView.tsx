@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import { NoRowsError } from "metabase/components/errors/NoRowsError";
 import Tooltip from "metabase/core/components/Tooltip";
-import { NoRowsError } from "metabase/query_builder/components/errors/NowRowsError";
 
 import { Root, ShortMessage } from "./NoResultsView.styled";
 

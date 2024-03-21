@@ -3,8 +3,8 @@ import cx from "classnames";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import { NoRowsError } from "metabase/components/errors/NoRowsError";
 import CS from "metabase/css/core/index.css";
-import { NoRowsError } from "metabase/query_builder/components/errors/NowRowsError";
 import { getErrorMessage } from "metabase/selectors/app";
 
 import EmbedFrame from "./EmbedFrame";
