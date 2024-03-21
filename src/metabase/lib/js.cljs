@@ -1343,9 +1343,12 @@
       (lib.core/can-run a-query))))
 
 (defn ^:export can-save
-  "Returns true if the query can be saved."
-  [a-query]
-  (lib.cache/side-channel-cache
-   :can-save a-query
-   (fn [_]
-     (lib.core/can-save a-query))))
+  "Returns true if `query` for a card of `card-type` can be saved.
+  `card-type` is optional and defaults to \"question\"."
+  ([a-query]
+   (can-save a-query "question"))
+  ([a-query card-type]
+   (lib.cache/side-channel-cache
+    (keyword "can-save" card-type) a-query
+    (fn [_]
+      (lib.core/can-save a-query (keyword card-type))))))

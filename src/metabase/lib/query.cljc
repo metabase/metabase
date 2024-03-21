@@ -14,6 +14,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
@@ -67,19 +68,27 @@
 
 (defmulti can-save-method
   "Returns whether the query can be saved based on first stage :lib/type."
-  (fn [query]
+  (fn [query _card-type]
     (:lib/type (lib.util/query-stage query 0))))
 
 (defmethod can-save-method :default
-  [_query]
+  [_query _card-type]
   true)
 
+(defmethod can-save-method :mbql.stage/mbql
+  [query card-type]
+  (or (not= card-type :metric)
+      (let [last-stage (lib.util/query-stage query -1)]
+        (and (empty? (:breakout last-stage))
+             (= (-> last-stage :aggregation count) 1)))))
+
 (mu/defn can-save :- :boolean
-  "Returns whether the query can be saved."
-  [query :- ::lib.schema/query]
+  "Returns whether `query` for a card of `card-type` can be saved."
+  [query :- ::lib.schema/query
+   card-type :- ::lib.schema.metadata/card.type]
   (and (lib.metadata/editable? query)
        (can-run query)
-       (boolean (can-save-method query))))
+       (boolean (can-save-method query card-type))))
 
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."

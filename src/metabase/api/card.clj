@@ -15,6 +15,7 @@
    [metabase.events :as events]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models :refer [Card CardBookmark Collection Database PersistedInfo Table]]
@@ -451,6 +452,13 @@
    collection_position    [:maybe ms/PositiveInt]
    result_metadata        [:maybe qr/ResultsMetadata]
    cache_ttl              [:maybe ms/PositiveInt]}
+  (let [card-type (or type :question)
+        pMBQL-query (-> dataset_query compatibility/normalize-dataset-query lib.convert/->pMBQL)
+        metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database pMBQL-query))]
+    (when-not (lib/can-save (lib/query metadata-provider pMBQL-query) card-type)
+      (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (clojure.core/name card-type))
+                      {:type        card-type
+                       :status-code 400}))))
   ;; check that we have permissions to run the query that we're trying to save
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
