@@ -851,7 +851,8 @@
                :type     :query
                :query
                {:source-table (mt/id :orders)
-                :aggregation  [[:count]]}}]
+                :aggregation  [[:count]]
+                :breakout     [[:field (mt/id :orders :created_at) {:base-type :type/DateTime, :temporal-unit :month}]]}}]
         ;; Alerts are set on Questions. They run through the 'pulse' code the same as subscriptions,
         ;; But will not have any Dashcard data associated, which caused an error in the static-viz render code
         ;; which implicitly expected a DashCard to exist
