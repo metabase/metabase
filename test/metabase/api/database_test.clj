@@ -14,7 +14,7 @@
    [metabase.http-client :as client]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
-    :refer [Card Collection Database Field FieldValues Metric Segment Table]]
+    :refer [Card Collection Database Field FieldValues LegacyMetric Segment Table]]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database :refer [protected-password]]
@@ -204,9 +204,9 @@
                                 :type        :model
                                 :archived    true}
 
-     Metric   _                {:table_id table-id-1}
-     Metric   _                {:table_id table-id-1}
-     Metric   _                {:table_id table-id-2}
+     LegacyMetric   _                {:table_id table-id-1}
+     LegacyMetric   _                {:table_id table-id-1}
+     LegacyMetric   _                {:table_id table-id-2}
      Segment  _                {:table_id table-id-2}]
     (testing "should require admin"
       (is (= "You don't have permissions to do that."
@@ -1244,7 +1244,7 @@
              (test-connection-details "h2" (:details (mt/db))))))
 
     (testing "Valid database connection details"
-      (is (= {:valid true}
+      (is (= (merge (:details (mt/db)) {:valid true})
              (api-validate-database {:details {:engine :h2, :details (:details (mt/db))}}))))
 
     (testing "invalid database connection details"
@@ -1255,7 +1255,9 @@
                (test-connection-details "h2" {:db "ABC"}))))
 
       (testing "via the API endpoint"
-        (is (= {:valid false}
+        (is (= {:errors  {:db "check your connection string"}
+                :message "Implicitly relative file paths are not allowed."
+                :valid   false}
                (api-validate-database {:details {:engine :h2, :details {:db "ABC"}}})))))))
 
 (deftest validate-database-test-2

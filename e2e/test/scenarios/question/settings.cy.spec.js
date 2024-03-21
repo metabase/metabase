@@ -62,7 +62,9 @@ describe("scenarios > question > settings", () => {
       cy.findByTestId("visualization-root").contains("8833419218504");
 
       // confirm that the table contains the right columns
-      cy.get(".Visualization .TableInteractive").as("table");
+      cy.findByTestId("query-visualization-root")
+        .get(".TableInteractive")
+        .as("table");
       cy.get("@table").contains("Product → Category");
       cy.get("@table").contains("Product → Ean");
       cy.get("@table").contains("Total").should("not.exist");

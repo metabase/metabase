@@ -489,6 +489,7 @@
                                    "resources/frontend_client"
                                    "resources/frontend_shared"
                                    "resources/html-entities.edn"
+                                   "resources/openapi/.*"
                                    "frontend/src/cljs"
                                    "frontend/test/metabase/lib/urls\\.unit\\.spec\\.js$"
                                    "frontend/test/metabase/lib/formatting\\.unit\\.spec\\.js$"

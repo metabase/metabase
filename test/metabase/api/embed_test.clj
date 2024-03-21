@@ -733,7 +733,7 @@
                                     :format-rows? false}
                        :viz-settings {}
                        :async? true
-                       :cache-ttl nil)]
+                       :cache-strategy nil)]
             (process-userland-query-test/with-query-execution [qe query]
               (client/client :get 200 (str (dashcard-url dashcard) "/csv"))
               (is (= :embedded-csv-download

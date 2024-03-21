@@ -1315,3 +1315,11 @@
     :can-run a-query
     (fn [_]
       (lib.core/can-run a-query))))
+
+(defn ^:export can-save
+  "Returns true if the query can be saved."
+  [a-query]
+  (lib.cache/side-channel-cache
+   :can-save a-query
+   (fn [_]
+     (lib.core/can-save a-query))))

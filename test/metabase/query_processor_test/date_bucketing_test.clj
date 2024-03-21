@@ -900,7 +900,7 @@
   [^TimestampDatasetDef this]
   (let [interval-seconds (.intervalSeconds this)]
     (mt/dataset-definition
-     (str "checkins_interval_" interval-seconds)
+     (str "interval_" interval-seconds)
      ["checkins"
       [{:field-name "timestamp"
         :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
@@ -1044,11 +1044,11 @@
             timestamp-col (m/find-first (comp #{(mt/id :checkins :timestamp)} :id) (lib/visible-columns query))
             query (-> query
                       (lib/expression "Date" timestamp-col)
-                      (lib/filter (lib/time-interval timestamp-col :current :quarter))
+                      (lib/filter (lib/time-interval timestamp-col :current :week))
                       (as-> $q (lib/filter $q (lib/time-interval
                                                 (m/find-first (comp #{"Date"} :name) (lib/visible-columns $q))
-                                                :current :quarter))))]
-        (is (= 30
+                                                :current :week))))]
+        (is (= 7
                (count (mt/rows (qp/process-query query)))))))))
 
 ;; Make sure that when referencing the same field multiple times with different units we return the one that actually

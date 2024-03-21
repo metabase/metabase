@@ -23,7 +23,6 @@ export { default as metrics } from "./metrics";
 export { default as segments } from "./segments";
 export { default as tasks } from "./tasks";
 
-export { default as loginHistory } from "./loginHistory";
 export { default as users } from "./users";
 export { default as groups } from "./groups";
 

@@ -2,7 +2,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import AdminPaneLayout from "metabase/components/AdminPaneLayout";
+import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import * as Urls from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Group, Radio } from "metabase/ui";

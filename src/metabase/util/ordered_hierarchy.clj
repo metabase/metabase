@@ -5,14 +5,39 @@
    [flatland.ordered.set :refer [ordered-set]]
    [medley.core :as m]))
 
+(declare derive)
+
+(defn- derive-children
+  [h [parent & children]]
+  (reduce (fn [h child]
+            (cond
+              (keyword? child) (derive h child parent)
+              (vector? child) (let [grandchild (first child)]
+                                (assert (not (and (contains? (:parents h) grandchild) (rest child)))
+                                        (format "You may only list a %s's children at its first occurrence"
+                                                grandchild))
+                                (derive-children (derive h grandchild parent)
+                                                 child))))
+          h
+          children))
+
+(defn- derive-basis [h basis]
+  (cond (vector? basis) (derive-children h basis)
+        :else (throw (ex-info (str "Unsupported type for ordered-hierarchy: " (type basis))
+                              {:h h :basis basis}))))
+
 (defn make-hierarchy
-  "Similar to [[clojure.core/make-hierarchy]], but the returned hierarchy will supports ordered derivations.
+  "Similar to [[clojure.core/make-hierarchy]], but the returned hierarchy has well-defined orderings for its sets.
+
+  Can take arguments to be treated as roots, defined using hiccup syntax.
 
   !! WARNING !!
   Using [[clojure.core/derive]] with this will corrupt the ordering - you must use the implementation from this ns."
-  []
-  (-> (clojure.core/make-hierarchy)
-      (with-meta {::ordered? true})))
+  ([]
+   (-> (clojure.core/make-hierarchy)
+       (with-meta {::ordered? true})))
+  ([& bases]
+   (reduce derive-basis (make-hierarchy) bases)))
 
 (defn ancestors
   "Returns the immediate and indirect parents of tag, as established via derive. Earlier derivations are shown first.

@@ -1,14 +1,17 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { useMemo, useRef } from "react";
 import innerText from "react-innertext";
 import { t, jt } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Tooltip from "metabase/core/components/Tooltip";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { isEmpty } from "metabase/lib/validate";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import ScalarValue, {
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue";
@@ -113,7 +116,11 @@ export function SmartScalar({
   return (
     <ScalarWrapper>
       <ScalarContainer
-        className="fullscreen-normal-text fullscreen-night-text"
+        className={cx(
+          DashboardS.fullscreenNormalText,
+          DashboardS.fullscreenNightText,
+          EmbedFrameS.fullscreenNightText,
+        )}
         data-testid="scalar-container"
         tooltip={fullScalarValue}
         alwaysShowTooltip={fullScalarValue !== displayValue}
@@ -151,7 +158,11 @@ function ScalarPeriod({ lines = 2, period, onClick }) {
   return (
     <ScalarTitleContainer data-testid="scalar-period" lines={lines}>
       <ScalarPeriodContent
-        className="fullscreen-normal-text fullscreen-night-text"
+        className={cx(
+          DashboardS.fullscreenNormalText,
+          DashboardS.fullscreenNightText,
+          EmbedFrameS.fullscreenNightText,
+        )}
         onClick={onClick}
       >
         <Ellipsified tooltip={period} lines={lines} placement="bottom">
@@ -266,7 +277,13 @@ function PreviousValueComparison({
         </VariationContainerTooltip>
       }
     >
-      <VariationContainer className="fullscreen-normal-text fullscreen-night-text">
+      <VariationContainer
+        className={cx(
+          DashboardS.fullscreenNormalText,
+          DashboardS.fullscreenNightText,
+          EmbedFrameS.fullscreenNightText,
+        )}
+      >
         <VariationPercent iconSize={ICON_SIZE}>
           {fittedChangeDisplay}
         </VariationPercent>
