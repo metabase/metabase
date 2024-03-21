@@ -378,8 +378,8 @@
                       [:source.PRICE :PRICE]]
              :from   [[venues-source-honeysql :source]]
              :where  [:and
-                      [:>= [:raw "\"source\".\"BIRD.ID\""] (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
-                      [:< [:raw "\"source\".\"BIRD.ID\""]  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
+                      [:>= [:raw "\"source\".\"BIRD.ID\""] (t/local-date-time "2017-01-01T00:00")]
+                      [:< [:raw "\"source\".\"BIRD.ID\""]  (t/local-date-time "2017-01-08T00:00")]]
              :limit  [:inline 10]})
            (qp.compile/compile
             (mt/mbql-query venues
@@ -815,8 +815,8 @@
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries)
                          :vertica :sqlite :presto-jdbc :starburst)
     (testing "Do nested queries work with two of the same aggregation? (#9767)"
-      (is (= [["2014-02-01T00:00:00Z" 302 1804]
-              ["2014-03-01T00:00:00Z" 350 2362]]
+      (is (= [["2014-02-01" 302 1804]
+              ["2014-03-01" 350 2362]]
              (mt/formatted-rows [identity int int]
                (mt/run-mbql-query checkins
                  {:source-query
@@ -853,14 +853,16 @@
       ;; currently possible to cast a DateTime field to a year in MBQL, and then cast it a second time in an another
       ;; query using the first as a source. This is a side-effect of MBQL year bucketing coming back as values like
       ;; `2016` rather than timestamps
-      (is (= [[(if (= :sqlite driver/*driver*) "2013-01-01" "2013-01-01T00:00:00Z")]]
-             (mt/rows
-               (mt/run-mbql-query checkins
-                 {:source-query {:source-table $$checkins
-                                 :fields       [!year.date]
-                                 :order-by     [[:asc !year.date]]
-                                 :limit        1}
-                  :fields       [!year.*date]})))))))
+      (let [query (mt/mbql-query checkins
+                    {:source-query {:source-table $$checkins
+                                    :fields       [!year.date]
+                                    :order-by     [[:asc !year.date]]
+                                    :limit        1}
+                     :fields       [!year.*date]})]
+        (mt/with-native-query-testing-context query
+          ;; checkins.date is a DATE column. Truncating to year should return another DATE.
+          (is (= [["2013-01-01"]]
+                 (mt/rows (qp/process-query query)))))))))
 
 (deftest ^:parallel correctly-alias-duplicate-names-in-breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :foreign-keys)
@@ -874,9 +876,9 @@
                                                       :condition    [:= $category_id &c.categories.id]}]}
                        :filter       [:> [:field "count" {:base-type :type/Number}] 0]
                        :limit        3})]
-        (is (= [[ "20th Century Cafe" "Café" 1]
-                [ "25°" "Burger" 1]
-                [ "33 Taps" "Bar" 1]]
+        (is (= [["20th Century Cafe" "Café"   1]
+                ["25°"               "Burger" 1]
+                ["33 Taps"           "Bar"    1]]
                (mt/formatted-rows [str str int]
                  results)))
         (is (= (mt/$ids venues
@@ -1288,7 +1290,8 @@
                                       "FROM \"PUBLIC\".\"ORDERS\" "
                                       "WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ?)"
                                       " AND (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?)")
-                         :params [#t "2020-02-01T00:00Z[UTC]" #t "2020-03-01T00:00Z[UTC]"]}]
+                         :params [(t/offset-date-time #t "2020-02-01T00:00Z")
+                                  (t/offset-date-time #t "2020-03-01T00:00Z")]}]
           (testing "original query"
             (when (= driver/*driver* :h2)
               (is (= q1-native
@@ -1409,7 +1412,7 @@
                          :breakout     [*created_at/DateTimeWithLocalTZ]
                          :limit        1})]
             (mt/with-native-query-testing-context query
-              (is (= [["2016-04-01T00:00:00Z" 175]]
+              (is (= [["2016-04-01" 175]]
                      (mt/formatted-rows [str int]
                        (qp/process-query query)))))))))))
 

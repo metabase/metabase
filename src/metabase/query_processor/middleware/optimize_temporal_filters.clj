@@ -94,10 +94,7 @@
     (mbql.u/update-field-options &match assoc :temporal-unit :default)
 
     [:absolute-datetime t _unit]
-    [:absolute-datetime t :default]
-
-    [:relative-datetime n _unit]
-    [:relative-datetime n :default]))
+    [:absolute-datetime t :default]))
 
 (defmulti ^:private temporal-value-lower-bound
   "Get a clause representing the *lower* bound that should be used when converting a `temporal-value-clause` (e.g.

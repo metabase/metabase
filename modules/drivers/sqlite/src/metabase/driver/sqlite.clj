@@ -199,7 +199,7 @@
                           (->date expr
                                   (h2x/literal "-6 days")
                                   (h2x/literal "weekday 0")))]
-    (sql.qp/adjust-start-of-week :sqlite week-extract-fn expr)))
+    (->date (sql.qp/adjust-start-of-week :sqlite week-extract-fn expr))))
 
 (defmethod sql.qp/date [:sqlite :week-of-year-iso]
   [driver _ expr]

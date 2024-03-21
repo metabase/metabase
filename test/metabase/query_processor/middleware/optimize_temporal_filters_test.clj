@@ -436,3 +436,22 @@
                      {:filter [:=
                                [:field (meta/id :checkins :date) {:base-type :type/Date, :temporal-unit unit}]
                                [:absolute-datetime #t "2014-05-08" unit]]})))))))))
+
+(deftest ^:parallel do-not-change-unit-of-relative-datetime-to-default-test
+  (testing "Never change the unit of a relative datetime to :default. That would not make any sense."
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (is (= {:database (meta/id)
+              :type     :query
+              :query    {:source-table (meta/id :checkins)
+                         :filter       [:between
+                                        [:field (meta/id :checkins :date) {:base-type :type/Date, :temporal-unit :default}]
+                                        [:relative-datetime -30 :day]
+                                        [:relative-datetime -1 :day]]}}
+             (optimize-temporal-filters/optimize-temporal-filters
+              {:database (meta/id)
+               :type     :query
+               :query    {:source-table (meta/id :checkins)
+                          :filter       [:between
+                                         [:field (meta/id :checkins :date) {:base-type :type/Date, :temporal-unit :day}]
+                                         [:relative-datetime -30 :day]
+                                         [:relative-datetime -1 :day]]}}))))))

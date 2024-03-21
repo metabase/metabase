@@ -643,14 +643,11 @@
            base-type    (sql-jdbc.sync.interface/database-type->base-type driver (keyword db-type-name))]
        (log/tracef "Column %d '%s' is a %s which is mapped to base type %s for driver %s\n"
                    i col-name db-type-name base-type driver)
-       {:name      col-name
-        ;; TODO - disabled for now since it breaks a lot of tests. We can re-enable it when the tests are in a better
-        ;; state
-        #_:original_name #_(.getColumnName rsmeta i)
-        #_:jdbc_type #_ (u/ignore-exceptions
-                          (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
-        #_:db_type   #_db-type-name
-        :base_type   (or base-type :type/*)}))
+       {:name                   col-name
+        ;; NOCOMMIT -- this is for debugging purposes only.
+        :qp.debug/original-name (.getColumnName rsmeta i)
+        :qp.debug/db-type       db-type-name
+        :base_type              (or base-type :type/*)}))
    (column-range rsmeta)))
 
 (defn reducible-rows

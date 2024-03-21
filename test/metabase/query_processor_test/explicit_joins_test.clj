@@ -262,10 +262,9 @@
                                           :limit        3})))]
         (is (= (mapv mt/format-name ["id" "name" "last_login" "id_2" "date" "user_id" "venue_id"])
                columns))
-        ;; not sure why only Oracle seems to do this
-        (is (= [[1 "Plato Yeshua"        "2014-04-01T08:30:00Z" 1 "2014-04-07T00:00:00Z" 5 12]
-                [2 "Felipinho Asklepios" "2014-12-05T15:15:00Z" 2 "2014-09-18T00:00:00Z" 1 31]
-                [3 "Kaneonuskatew Eiran" "2014-11-06T16:15:00Z" 3 "2014-09-15T00:00:00Z" 8 56]]
+        (is (= [[1 "Plato Yeshua"        "2014-04-01T08:30:00" 1 "2014-04-07" 5 12]
+                [2 "Felipinho Asklepios" "2014-12-05T15:15:00" 2 "2014-09-18" 1 31]
+                [3 "Kaneonuskatew Eiran" "2014-11-06T16:15:00" 3 "2014-09-15" 8 56]]
                rows))))))
 
 (deftest ^:parallel select-*-source-query-test
@@ -444,14 +443,14 @@
                        :aggregation [[:avg &checkins_by_user.*count/Float]]
                        :breakout    [!month.last_login]})]
           (mt/with-native-query-testing-context query
-            (is (= {:rows    [["2014-01-01T00:00:00Z" 77]
-                              ["2014-02-01T00:00:00Z" 81]
-                              ["2014-04-01T00:00:00Z" 49]
-                              ["2014-07-01T00:00:00Z" 68]
-                              ["2014-08-01T00:00:00Z" 64]
-                              ["2014-10-01T00:00:00Z" 65]
-                              ["2014-11-01T00:00:00Z" 74]
-                              ["2014-12-01T00:00:00Z" 70]]
+            (is (= {:rows    [["2014-01-01T00:00:00" 77]
+                              ["2014-02-01T00:00:00" 81]
+                              ["2014-04-01T00:00:00" 49]
+                              ["2014-07-01T00:00:00" 68]
+                              ["2014-08-01T00:00:00" 64]
+                              ["2014-10-01T00:00:00" 65]
+                              ["2014-11-01T00:00:00" 74]
+                              ["2014-12-01T00:00:00" 70]]
                     :columns [(mt/format-name "last_login") "avg"]}
                    (mt/format-rows-by [identity int]
                      (mt/rows+column-names
@@ -534,11 +533,11 @@
                  "id_2" "name"   "last_login"                                   ; users
                  "id_3" "name_2" "category_id" "latitude" "longitude" "price"]) ; venues
                columns))
-        (is (= [[1 "2014-04-07T00:00:00Z" 5 12
-                 5 "Quentin Sören" "2014-10-03T17:30:00Z"
+        (is (= [[1 "2014-04-07" 5 12
+                 5 "Quentin Sören" "2014-10-03T17:30:00"
                  5 "Brite Spot Family Restaurant" 20 34.078 -118.261 2]
-                [2 "2014-09-18T00:00:00Z" 1 31
-                 1 "Plato Yeshua" "2014-04-01T08:30:00Z"
+                [2 "2014-09-18" 1 31
+                 1 "Plato Yeshua" "2014-04-01T08:30:00"
                  1 "Red Medicine" 4 10.065 -165.374 3]]
                rows))))))
 
@@ -547,8 +546,8 @@
     (testing "we should be able to use a SQL question as a source query in a Join"
       (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                                         [(mt/native-query (qp.compile/compile (mt/mbql-query venues)))])
-        (is (= [[1 "2014-04-07T00:00:00Z" 5 12 12 "The Misfit Restaurant + Bar" 2 34.0154 -118.497 2]
-                [2 "2014-09-18T00:00:00Z" 1 31 31 "Bludso's BBQ"                5 33.8894 -118.207 2]]
+        (is (= [[1 "2014-04-07" 5 12 12 "The Misfit Restaurant + Bar" 2 34.0154 -118.497 2]
+                [2 "2014-09-18" 1 31 31 "Bludso's BBQ"                5 33.8894 -118.207 2]]
                (mt/formatted-rows [int identity int int int identity int 4.0 4.0 int]
                  (mt/run-mbql-query checkins
                    {:joins    [{:fields       :all

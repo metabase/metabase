@@ -176,7 +176,7 @@
                            :parameters [{:type   :date/all-options
                                          :target [:dimension (mt/$ids *checkins.date)] ; expands to appropriate field-literal form
                                          :value  "2014-01-06"}])]
-          (is (= [[182 "2014-01-06T00:00:00Z" 5 31]]
+          (is (= [[182 "2014-01-06" 5 31]]
                  (mt/formatted-rows :checkins
                    (qp/process-query query)))))))))
 

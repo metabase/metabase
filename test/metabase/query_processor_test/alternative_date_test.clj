@@ -37,10 +37,9 @@
     [[4 1433587200000000]
      [0 1433965860000000]]]])
 
-(deftest double-coercion-through-model
-  (testing "Ensure that coerced values only get coerced once. #33861"
-    (mt/dataset
-      toucan-ms-incidents
+(deftest ^:parallel double-coercion-through-model
+  (testing "Ensure that coerced values only get coerced once. (#33861)"
+    (mt/dataset toucan-ms-incidents
       (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
                                                                           :type     :query
                                                                           :query    {:source-table (mt/id :incidents)}}}]
@@ -78,55 +77,30 @@
 
 (deftest results-test
   (mt/test-drivers (mt/normal-drivers)
-    (is (= (cond
-             (= :sqlite driver/*driver*)
-             [["2015-06-01"  6]
-              ["2015-06-02" 10]
-              ["2015-06-03"  4]
-              ["2015-06-04"  9]
-              ["2015-06-05"  9]
-              ["2015-06-06"  8]
-              ["2015-06-07"  8]
-              ["2015-06-08"  9]
-              ["2015-06-09"  7]
-              ["2015-06-10"  9]]
-
-             (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
-             [["2015-06-01T00:00:00-07:00" 6]
-              ["2015-06-02T00:00:00-07:00" 10]
-              ["2015-06-03T00:00:00-07:00" 4]
-              ["2015-06-04T00:00:00-07:00" 9]
-              ["2015-06-05T00:00:00-07:00" 9]
-              ["2015-06-06T00:00:00-07:00" 8]
-              ["2015-06-07T00:00:00-07:00" 8]
-              ["2015-06-08T00:00:00-07:00" 9]
-              ["2015-06-09T00:00:00-07:00" 7]
-              ["2015-06-10T00:00:00-07:00" 9]]
-
-             (qp.test-util/supports-report-timezone? driver/*driver*)
-             [["2015-06-01T00:00:00-07:00" 8]
-              ["2015-06-02T00:00:00-07:00" 9]
-              ["2015-06-03T00:00:00-07:00" 9]
-              ["2015-06-04T00:00:00-07:00" 4]
-              ["2015-06-05T00:00:00-07:00" 11]
-              ["2015-06-06T00:00:00-07:00" 8]
-              ["2015-06-07T00:00:00-07:00" 6]
-              ["2015-06-08T00:00:00-07:00" 10]
-              ["2015-06-09T00:00:00-07:00" 6]
-              ["2015-06-10T00:00:00-07:00" 10]]
-
-             :else
-             [["2015-06-01T00:00:00Z" 6]
-              ["2015-06-02T00:00:00Z" 10]
-              ["2015-06-03T00:00:00Z" 4]
-              ["2015-06-04T00:00:00Z" 9]
-              ["2015-06-05T00:00:00Z" 9]
-              ["2015-06-06T00:00:00Z" 8]
-              ["2015-06-07T00:00:00Z" 8]
-              ["2015-06-08T00:00:00Z" 9]
-              ["2015-06-09T00:00:00Z" 7]
-              ["2015-06-10T00:00:00Z" 9]])
-           (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+    (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+      (is (= (if (or (= :sqlite driver/*driver*)
+                     (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
+                     (not (qp.test-util/supports-report-timezone? driver/*driver*)))
+               [["2015-06-01"  6]
+                ["2015-06-02" 10]
+                ["2015-06-03"  4]
+                ["2015-06-04"  9]
+                ["2015-06-05"  9]
+                ["2015-06-06"  8]
+                ["2015-06-07"  8]
+                ["2015-06-08"  9]
+                ["2015-06-09"  7]
+                ["2015-06-10"  9]]
+               [["2015-06-01" 8]
+                ["2015-06-02" 9]
+                ["2015-06-03" 9]
+                ["2015-06-04" 4]
+                ["2015-06-05" 11]
+                ["2015-06-06" 8]
+                ["2015-06-07" 6]
+                ["2015-06-08" 10]
+                ["2015-06-09" 6]
+                ["2015-06-10" 10]])
              (->> (mt/dataset sad-toucan-incidents
                     (mt/run-mbql-query incidents
                       {:aggregation [[:count]]

@@ -147,10 +147,14 @@
   (-> [:datepart [:raw (name unit)] expr]
       (h2x/with-database-type-info "integer")))
 
-(defn- date-add [unit & exprs]
-  (into [:dateadd [:raw (name unit)]]
-        (map maybe-inline-number)
-        exprs))
+(defn- date-add [unit n expr]
+  (-> [:dateadd
+       [:raw (name unit)]
+       (maybe-inline-number n)
+       expr]
+      (h2x/with-database-type-info (if (string? expr)
+                                     "datetime"
+                                     (h2x/database-type expr)))))
 
 (defn- date-diff [unit x y]
   [:datediff_big [:raw (name unit)] x y])
@@ -176,7 +180,9 @@
   [_driver _unit expr]
   (if (= (h2x/database-type expr) "time")
     (time-from-parts (date-part :hour expr) (date-part :minute expr) 0 0 0)
-    (h2x/maybe-cast :smalldatetime expr)))
+    (h2x/cast-unless-type-in "smalldatetime"
+                             #{"smalldatetime" "datetime2" "datetimeoffset"}
+                             expr)))
 
 (defmethod sql.qp/date [:sqlserver :minute-of-hour]
   [_ _ expr]
@@ -188,15 +194,40 @@
             [year month day hour minute second fraction precision])
       (h2x/with-database-type-info "datetime2")))
 
+(defn- switch-offset [expr offset-expr]
+  (-> [:SwitchOffset expr offset-expr]
+      (h2x/with-database-type-info "offsetdatetime")))
+
 (defmethod sql.qp/date [:sqlserver :hour]
   [_driver _unit expr]
-  (if (= (h2x/database-type expr) "time")
+  (condp = (h2x/database-type expr)
+    "time"
     (time-from-parts (date-part :hour expr) 0 0 0 0)
+
+    "datetimeoffset"
+    (switch-offset
+     (date-time-offset-from-parts (h2x/year expr)
+                                  (h2x/month expr)
+                                  (h2x/day expr)
+                                  (date-part :hour expr)
+                                  0      ; minute
+                                  0      ; seconds
+                                  0      ; fractions
+                                  0      ; hour-offset
+                                  0      ; minute-offset
+                                  0)     ; precision
+     (date-part :tzoffset expr))
+
+    #_else
     (date-time-2-from-parts (h2x/year expr) (h2x/month expr) (h2x/day expr) (date-part :hour expr) 0 0 0 0)))
 
 (defmethod sql.qp/date [:sqlserver :hour-of-day]
   [_driver _unit expr]
   (date-part :hour expr))
+
+(defn- date-from-parts [year month day]
+  (-> [:DateFromParts year month day]
+      (h2x/with-database-type-info "date")))
 
 (defmethod sql.qp/date [:sqlserver :day]
   [_driver _unit expr]
@@ -204,7 +235,7 @@
   ;; SQL functions like `day()` that don't return a full DATE. See `optimized-temporal-buckets` below for more info.
   (if (::optimized-bucketing? *field-options*)
     (h2x/day expr)
-    [:DateFromParts (h2x/year expr) (h2x/month expr) (h2x/day expr)]))
+    (date-from-parts (h2x/year expr) (h2x/month expr) (h2x/day expr))))
 
 (defmethod sql.qp/date [:sqlserver :day-of-week]
   [_driver _unit expr]
@@ -230,18 +261,18 @@
                 (h2x/->date expr)))))
 
 (defmethod sql.qp/date [:sqlserver :week]
-  [driver _ expr]
-  (sql.qp/adjust-start-of-week driver trunc-week expr))
+  [driver _unit expr]
+  (h2x/->date (sql.qp/adjust-start-of-week driver trunc-week expr)))
 
 (defmethod sql.qp/date [:sqlserver :week-of-year-iso]
-  [_ _ expr]
+  [_driver _unit expr]
   (date-part :iso_week expr))
 
 (defmethod sql.qp/date [:sqlserver :month]
-  [_ _ expr]
+  [_driver _unit expr]
   (if (::optimized-bucketing? *field-options*)
     (h2x/month expr)
-    [:DateFromParts (h2x/year expr) (h2x/month expr) [:inline 1]]))
+    (date-from-parts (h2x/year expr) (h2x/month expr) [:inline 1])))
 
 (defmethod sql.qp/date [:sqlserver :month-of-year]
   [_driver _unit expr]
@@ -254,7 +285,7 @@
   [_driver _unit expr]
   (date-add :quarter
             (h2x/dec (date-part :quarter expr))
-            [:DateFromParts (h2x/year expr) [:inline 1] [:inline 1]]))
+            (date-from-parts (h2x/year expr) [:inline 1] [:inline 1])))
 
 (defmethod sql.qp/date [:sqlserver :quarter-of-year]
   [_driver _unit expr]
@@ -264,7 +295,7 @@
   [_driver _unit expr]
   (if (::optimized-bucketing? *field-options*)
     (h2x/year expr)
-    [:DateFromParts (h2x/year expr) [:inline 1] [:inline 1]]))
+    (date-from-parts (h2x/year expr) [:inline 1] [:inline 1])))
 
 (defmethod sql.qp/date [:sqlserver :year-of-era]
   [_driver _unit expr]
@@ -274,12 +305,20 @@
   [_ hsql-form amount unit]
   (date-add unit amount hsql-form))
 
+(defn- date-time-offset-from-parts [year month day hour minute seconds fractions hour-offset minute-offset precision]
+  (-> (into [:datetimeoffsetfromparts]
+            (map maybe-inline-number)
+            [year month day hour minute seconds fractions hour-offset minute-offset precision])
+      (h2x/with-database-type-info "datetimeoffset")))
+
 (defmethod sql.qp/unix-timestamp->honeysql [:sqlserver :seconds]
   [_ _ expr]
   ;; The second argument to DATEADD() gets casted to a 32-bit integer. BIGINT is 64 bites, so we tend to run into
   ;; integer overflow errors (especially for millisecond timestamps).
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
-  (date-add :minute (h2x// expr 60) (h2x/literal "1970-01-01")))
+  (date-add :minute
+            (h2x// expr 60)
+            (date-time-offset-from-parts 1970 1 1 0 0 0 0 0 0 0)))
 
 (defonce
   ^{:private true

@@ -297,24 +297,14 @@
 ;;; |                                      DATETIME EXTRACTION AND MANIPULATION                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- robust-dates
-  [strs]
-  ;; TIMEZONE FIXME — SQLite shouldn't return strings.
-  (let [format-fn (if (= driver/*driver* :sqlite)
-                    #(u.date/format-sql (t/local-date-time %))
-                    u.date/format)]
-    (for [s strs]
-      [(format-fn (u.date/parse s "UTC"))])))
-
 (deftest temporal-arithmetic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :date-arithmetics)
     (doseq [[op interval] [[:+ [:interval -31 :day]]
                            [:- [:interval 31 :day]]]]
       (testing (str "Test that we can do datetime arithemtics using " op " and MBQL `:interval` clause in expressions")
-        (is (= (robust-dates
-                ["2014-09-02T13:45:00"
-                 "2014-07-02T09:30:00"
-                 "2014-07-01T10:30:00"])
+        (is (= [["2014-09-02T13:45:00"]
+                ["2014-07-02T09:30:00"]
+                ["2014-07-01T10:30:00"]]
                (mt/with-temporary-setting-values [report-timezone "UTC"]
                  (-> (mt/run-mbql-query users
                        {:expressions {:prev_month [op $last_login interval]}
@@ -328,10 +318,9 @@
     (doseq [[op interval] [[:+ [:interval -31 :day]]
                            [:- [:interval 31 :day]]]]
       (testing (str "Test interaction of datetime arithmetics with truncation using " op " operator")
-        (is (= (robust-dates
-                ["2014-09-02T00:00:00"
-                 "2014-07-02T00:00:00"
-                 "2014-07-01T00:00:00"])
+        (is (= [["2014-09-02T00:00:00"]
+                ["2014-07-02T00:00:00"]
+                ["2014-07-01T00:00:00"]]
                (mt/with-temporary-setting-values [report-timezone "UTC"]
                  (-> (mt/run-mbql-query users
                        {:expressions {:prev_month [op !day.last_login interval]}
