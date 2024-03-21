@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import { t } from "ttag";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
+import CS from "metabase/css/core/index.css";
 import { getCurrencySymbol } from "metabase/lib/formatting";
 import {
   getFilterArgumentFormatOptions,
@@ -135,7 +136,7 @@ export function DefaultPicker({
         return (
           <FieldValuesWidget
             key={index}
-            className="input"
+            className={CS.input}
             value={values}
             onChange={onValuesChange}
             multi={operator.multi}

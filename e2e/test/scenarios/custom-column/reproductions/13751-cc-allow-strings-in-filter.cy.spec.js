@@ -7,6 +7,7 @@ import {
   restore,
   startNewQuestion,
   queryBuilderMain,
+  selectFilterOperator,
 } from "e2e/support/helpers";
 
 const CC_NAME = "C-States";
@@ -36,9 +37,9 @@ describe("issue 13751", { tags: "@external" }, () => {
     getNotebookStep("filter")
       .findByText(/Add filter/)
       .click();
+    popover().findByText(CC_NAME).click();
+    selectFilterOperator("Is");
     popover().within(() => {
-      cy.findByText(CC_NAME).click();
-      cy.findByDisplayValue("Is").click();
       cy.findByPlaceholderText("Enter some text").type("CO");
       cy.button("Add filter").click();
     });

@@ -426,11 +426,11 @@ export const SegmentApi = {
 };
 
 export const MetricApi = {
-  list: GET("/api/metric"),
-  create: POST("/api/metric"),
-  get: GET("/api/metric/:metricId"),
-  update: PUT("/api/metric/:id"),
-  delete: DELETE("/api/metric/:metricId"),
+  list: GET("/api/legacy-metric"),
+  create: POST("/api/legacy-metric"),
+  get: GET("/api/legacy-metric/:metricId"),
+  update: PUT("/api/legacy-metric/:id"),
+  delete: DELETE("/api/legacy-metric/:metricId"),
 };
 
 export const RevisionApi = {
@@ -488,10 +488,8 @@ export const PersistedModelsApi = {
 
 export const SetupApi = {
   create: POST("/api/setup"),
-  validate_db: POST("/api/setup/validate"),
   admin_checklist: GET("/api/setup/admin_checklist"),
   user_defaults: GET("/api/setup/user_defaults"),
-  validate_token: GET("/api/setup/token-check"),
 };
 
 export const UserApi = {

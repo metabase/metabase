@@ -187,3 +187,12 @@
             :lib.convert/converted? true}
            (lib.query/query meta/metadata-provider
              {:database 74001, :type :query, :query {:source-table 74040}})))))
+
+(deftest ^:parallel can-save-test
+  (mu/disable-enforcement
+    (are [can-save? query]
+      (= can-save?  (lib.query/can-save query))
+      true lib.tu/venues-query
+      false (assoc lib.tu/venues-query :database nil)           ; database unknown - no permissions
+      true (lib/native-query meta/metadata-provider "SELECT")
+      false (lib/native-query meta/metadata-provider ""))))
