@@ -108,6 +108,7 @@ describe("CoordinateFilterPicker", () => {
       expect(screen.getByText("User → Latitude")).toBeInTheDocument();
       expect(screen.getByDisplayValue("Between")).toBeInTheDocument();
       expect(screen.getByPlaceholderText("Min")).toHaveValue("");
+      expect(screen.getByPlaceholderText("Max")).toHaveValue("");
       expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
     });
 
