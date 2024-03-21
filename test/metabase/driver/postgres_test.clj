@@ -18,10 +18,12 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.models.action :as action]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -40,7 +42,9 @@
    [metabase.util.log :as log]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -212,7 +216,20 @@
                    (mt/rows (qp/process-query
                              {:database (u/the-id database)
                               :type     :query
-                              :query    {:source-table (t2/select-one-pk Table :name "presents-and-gifts")}}))))))))))
+                              :query    {:source-table (t2/select-one-pk Table :name "presents-and-gifts")}}))))))))
+    (testing "Make sure that Schemas / Tables / Fields with backslashes in their names get escaped properly"
+      (mt/with-empty-db
+        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+          (doseq [stmt ["CREATE SCHEMA \"my\\schema\";"
+                        "CREATE TABLE \"my\\schema\".\"my\\table\" (\"my\\field\" INTEGER);"
+                        "INSERT INTO \"my\\schema\".\"my\\table\" (\"my\\field\") VALUES (42);"]]
+            (jdbc/execute! conn-spec stmt))
+          (sync/sync-database! (mt/db) {:scan :schema})
+          (is (= [[42]]
+                 (mt/rows (qp/process-query
+                           {:database (u/the-id (mt/db))
+                            :type     :query
+                            :query    {:source-table (t2/select-one-pk :model/Table :db_id (:id (mt/db)))}})))))))))
 
 (mt/defdataset duplicate-names
   [["birds"
@@ -334,7 +351,7 @@
 (deftest partitioned-table-test
   (mt/test-driver :postgres
     (testing (str "Make sure that partitioned tables (in addition to the individual partitions themselves) are
-                   synced properly (#15049")
+                   synced properly (#15049)")
       (let [db-name "partitioned_table_test"
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
@@ -490,6 +507,45 @@
                   "LIMIT"
                   "  1048575"]
                  (str/split-lines (driver/prettify-native-form :postgres (:query only-order))))))))))
+
+(def ^:private json-alias-in-model-mock-metadata-provider
+  (providers.mock/mock-metadata-provider
+    json-alias-mock-metadata-provider
+    {:cards [{:name          "Model with JSON"
+              :id            123
+              :database-id   1
+              :dataset-query {:database 1
+                              :type     :query
+                              :query    {:source-table 1
+                                         :aggregation  [[:count]]
+                                         :breakout     [[:field 1 nil]]}}}]}))
+
+(deftest ^:parallel json-breakout-in-model-test
+  (mt/test-driver :postgres
+    (testing "JSON columns in inner queries are referenced properly in outer queries #34930"
+      (qp.store/with-metadata-provider json-alias-in-model-mock-metadata-provider
+        (let [nested (qp.compile/compile
+                       {:database (meta/id)
+                        :type     :query
+                        :query    {:source-table "card__123"}})]
+          (is (= ["SELECT"
+                  "  \"json_alias_test\" AS \"json_alias_test\","
+                  "  \"source\".\"count\" AS \"count\""
+                  "FROM"
+                  "  ("
+                  "    SELECT"
+                  "      (\"json_alias_test\".\"bob\" #>> array [ ?, ? ] :: text [ ]) :: VARCHAR AS \"json_alias_test\","
+                  "      COUNT(*) AS \"count\""
+                  "    FROM"
+                  "      \"json_alias_test\""
+                  "    GROUP BY"
+                  "      \"json_alias_test\""
+                  "    ORDER BY"
+                  "      \"json_alias_test\" ASC"
+                  "  ) AS \"source\""
+                  "LIMIT"
+                  "  1048575"]
+                 (str/split-lines (driver/prettify-native-form :postgres (:query nested))))))))))
 
 (deftest describe-nested-field-columns-identifier-test
   (mt/test-driver :postgres
@@ -902,9 +958,9 @@
                         :status-code 400
                         :type        actions.error/violate-unique-constraint}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/create (mt/$ids {:create-row {:id      3
-                                                           :column1 "A"
-                                                           :column2 "A"}
+                        :row/create (mt/$ids {:create-row {"id"      3
+                                                           "column1" "A"
+                                                           "column2" "A"}
                                               :database   (:id database)
                                               :query      {:source-table $$mytable}
                                               :type       :query})))))
@@ -915,8 +971,8 @@
                         :status-code 400
                         :type        actions.error/violate-unique-constraint}
                        (sql-jdbc.actions-test/perform-action-ex-data
-                        :row/update (mt/$ids {:update-row {:column1 "A"
-                                                           :column2 "A"}
+                        :row/update (mt/$ids {:update-row {"column1" "A"
+                                                           "column2" "A"}
                                               :database   (:id database)
                                               :query      {:source-table $$mytable
                                                            :filter       [:= $mytable.id 2]}
@@ -1320,6 +1376,43 @@
     (is (= "SET ROLE \"Role.123\";"   (driver.sql/set-role-statement :postgres "Role.123")))
     (is (= "SET ROLE \"$role\";"      (driver.sql/set-role-statement :postgres "$role")))))
 
+(deftest get-tables-parity-with-jdbc-test
+  (testing "make sure our get-tables return result consistent with jdbc getTables"
+    (mt/test-driver :postgres
+      (mt/with-empty-db
+        (sql-jdbc.execute/do-with-connection-with-options
+         :postgres
+         (mt/db)
+         nil
+         (fn [^Connection conn]
+           (let [do-test (fn [& {:keys [schema-pattern table-pattern schemas tables]
+                                 :or   {schema-pattern "public%" ;; postgres get-tables exclude system tables by default
+                                        schemas        nil
+                                        table-pattern  "%"
+                                        tables         nil}
+                                 :as _opts}]
+                           (is (= (into #{} (#'sql-jdbc.describe-database/jdbc-get-tables
+                                             :postgres (.getMetaData conn) nil schema-pattern table-pattern
+                                             ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))
+                                  (into #{} (#'postgres/get-tables (mt/db) schemas tables)))))]
+             (doseq [stmt ["CREATE TABLE public.table (id INTEGER, type TEXT);"
+                           "CREATE UNIQUE INDEX idx_table_type ON public.table(type);"
+                           "CREATE TABLE public.partition_table (id INTEGER) PARTITION BY RANGE (id);"
+                           "CREATE UNIQUE INDEX idx_partition_table_id ON public.partition_table(id);"
+                           "CREATE SEQUENCE public.table_id_seq;"
+                           "CREATE VIEW public.view AS SELECT * FROM public.table;"
+                           "CREATE TYPE public.enum_type AS ENUM ('a', 'b', 'c');"
+                           "CREATE MATERIALIZED VIEW public.materialized_view AS SELECT * FROM public.table;"
+                           "CREATE SCHEMA public_2;"
+                           "CREATE TABLE public_2.table (id INTEGER);"]]
+               (next.jdbc/execute! conn [stmt]))
+             (testing "without any filters"
+               (do-test))
+             (testing "filter by schema"
+               (do-test :schema-pattern "private" :schemas ["private"]))
+             (testing "filter by table name"
+               (do-test :table-pattern "table" :tables ["table"])))))))))
+
 (deftest sync-estimated-row-count-test
   (mt/test-driver :postgres
     (testing "Can sync row count"
@@ -1328,13 +1421,9 @@
                                  :base-type  :type/Text}]
                                [["Los Angeles"]
                                 ["Las Vegas"]]]
-        (sql-jdbc.execute/do-with-connection-with-options
-         :postgres
-         (mt/db)
-         nil
-         (fn [conn]
-           ;; row count is estimated so we VACUUM so the statistic table is updated before syncing
+       (fn [conn]
+                  ;; row count is estimated so we VACUUM so the statistic table is updated before syncing
            (next.jdbc/execute! conn ["VACUUM;"])
            (sync/sync-database! (mt/db) {:scan :schema})
            (is (= {:estimated-row-count 2}
-                  (t2/select-one-fn :properties :model/Table (mt/id :city))))))))))
+                  (t2/select-one-fn :properties :model/Table (mt/id :city)))))))))

@@ -21,7 +21,7 @@ type State = {
   year: number;
 };
 
-class DateMonthYearWidget extends Component<Props, State> {
+export class DateMonthYearWidget extends Component<Props, State> {
   state: State = {
     month: null,
     year: moment().year(),
@@ -92,6 +92,3 @@ const Month = ({ month, selected, onClick }: MonthProp) => (
     {moment().month(month).format("MMMM")}
   </MonthRoot>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DateMonthYearWidget;

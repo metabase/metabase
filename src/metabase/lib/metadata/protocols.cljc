@@ -80,6 +80,12 @@
   [x]
   (satisfies? MetadataProvider x))
 
+(defn metadata-providerable?
+  "Whether `x` is a [[metadata-provider?]], or has one attached at `:lib/metadata` (i.e., a query)."
+  [x]
+  (or (metadata-provider? x)
+      (some-> x :lib/metadata metadata-providerable?)))
+
 (#?(:clj p/defprotocol+ :cljs defprotocol) CachedMetadataProvider
   "Optional. A protocol for a MetadataProvider that some sort of internal cache. This is mostly useful for
   MetadataProviders that can hit some sort of relatively expensive external service,

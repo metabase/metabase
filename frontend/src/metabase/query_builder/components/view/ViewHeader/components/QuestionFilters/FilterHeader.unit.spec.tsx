@@ -5,8 +5,8 @@ import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
 import { createQuery } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import {
   createSampleDatabase,
   ORDERS,

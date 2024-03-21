@@ -17,7 +17,9 @@
    [metabase.plugins :as plugins]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.sample-data :as sample-data]
    [metabase.server :as server]
    [metabase.server.handler :as handler]
@@ -83,8 +85,6 @@
   "General application shutdown function which should be called once at application shutdown."
   []
   (log/info (trs "Metabase Shutting Down ..."))
-  ;; TODO - it would really be much nicer if we implemented a basic notification system so these things could listen
-  ;; to a Shutdown hook of some sort instead of having here
   (task/stop-scheduler!)
   (server/stop-web-server!)
   (prometheus/shutdown!)
@@ -117,6 +117,9 @@
     (log/info (trs "Setting up prometheus metrics"))
     (prometheus/setup!)
     (init-status/set-progress! 0.6))
+
+  (premium-features/airgap-check-user-count)
+  (init-status/set-progress! 0.65)
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
   (let [new-install? (not (setup/has-user-setup))]

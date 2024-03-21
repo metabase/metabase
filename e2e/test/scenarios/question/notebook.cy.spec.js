@@ -8,7 +8,9 @@ import {
   filter,
   filterField,
   getNotebookStep,
+  hovercard,
   join,
+  moveDnDKitElement,
   openNotebook,
   openOrdersTable,
   openProductsTable,
@@ -237,30 +239,49 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.contains("Showing 175 rows");
   });
 
-  // flaky test (#19454)
-  it.skip("should show an info popover for dimensions listened by the custom expression editor", () => {
+  it("should show an info popover for dimensions listened by the custom expression editor", () => {
     // start a custom question with orders
-    startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Sample Database").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Orders").click();
+    openOrdersTable({ mode: "notebook" });
+    filter({ mode: "notebook" });
 
-    // type a dimension name
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add filters to narrow your answer").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
-    enterCustomColumnDetails({ formula: "Total" });
+    popover().contains("Custom Expression").click();
+
+    cy.findByTestId("expression-editor-textfield").within(() => {
+      cy.get(".ace_text-input").focus().type("[");
+    });
 
     // hover over option in the suggestion list
     cy.findByTestId("expression-suggestions-list")
-      .findByText("Total")
-      .trigger("mouseenter");
+      .findByText("Created At")
+      .parents("li")
+      .findByLabelText("More info")
+      .realHover();
 
-    // confirm that the popover is shown
-    popover().contains("The total billed amount.");
-    popover().contains("80.36");
+    hovercard().within(() => {
+      cy.contains("The date and time an order was submitted.");
+      cy.contains("Creation timestamp");
+    });
+  });
+
+  it("should show an info card filter columns in the popover", () => {
+    openOrdersTable({ mode: "notebook" });
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Filter").click();
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Add filters to narrow your answer").click();
+
+    cy.findByRole("tree")
+      .findByText("User ID")
+      .parents("[data-testid='dimension-list-item']")
+      .findByLabelText("More info")
+      .realHover();
+
+    hovercard().within(() => {
+      cy.contains("Foreign Key");
+      cy.findByText(/The id of the user/);
+    });
   });
 
   describe.skip("popover rendering issues (metabase#15502)", () => {
@@ -415,6 +436,18 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.findByText("Tax");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("ID").should("not.exist");
+  });
+
+  it("should render a field info icon in the fields picker", () => {
+    openTable({
+      table: ORDERS_ID,
+      mode: "notebook",
+    });
+
+    cy.findByTestId("fields-picker").click();
+    popover().findAllByLabelText("More info").first().realHover();
+
+    hovercard().contains("This is a unique ID");
   });
 
   it("should treat max/min on a name as a string filter (metabase#21973)", () => {
@@ -674,6 +707,94 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByDisplayValue("5").type("{selectall}50");
       cy.button("Refresh").click();
       assertTableRowCount(10);
+    });
+  });
+
+  it("should be able to drag-n-drop query clauses", () => {
+    function moveElement({ name, horizontal, vertical, index }) {
+      moveDnDKitElement(cy.findByText(name), {
+        horizontal,
+        vertical,
+      });
+      cy.findAllByTestId("notebook-cell-item")
+        .eq(index)
+        .should("have.text", name);
+    }
+
+    function verifyPopoverDoesNotMoveElement({
+      type,
+      name,
+      index,
+      horizontal,
+      vertical,
+    }) {
+      getNotebookStep(type).findByText(name).click();
+      popover().within(() => {
+        moveDnDKitElement(cy.findByDisplayValue("Is"), {
+          horizontal,
+          vertical,
+        });
+      });
+      getNotebookStep(type)
+        .findAllByTestId("notebook-cell-item")
+        .eq(index)
+        .should("have.text", name);
+    }
+
+    const questionDetails = {
+      query: {
+        "source-table": ORDERS_ID,
+        expressions: {
+          E1: ["+", ["field", ORDERS.ID, null], 1],
+          E2: ["+", ["field", ORDERS.ID, null], 2],
+        },
+        filter: [
+          "and",
+          ["=", ["field", ORDERS.ID, null], 1],
+          ["=", ["field", ORDERS.ID, null], 2],
+          ["=", ["field", ORDERS.ID, null], 3],
+        ],
+        breakout: [
+          ["field", ORDERS.ID, null],
+          ["field", ORDERS.PRODUCT_ID, null],
+        ],
+        aggregation: [
+          ["count"],
+          ["sum", ["field", ORDERS.TAX, null]],
+          ["sum", ["field", ORDERS.SUBTOTAL, null]],
+          ["sum", ["field", ORDERS.TOTAL, null]],
+          ["avg", ["field", ORDERS.TOTAL, null]],
+        ],
+        "order-by": [
+          ["asc", ["aggregation", 0]],
+          ["asc", ["aggregation", 4]],
+        ],
+      },
+    };
+    cy.createQuestion(questionDetails, { visitQuestion: true });
+    openNotebook();
+    getNotebookStep("expression").within(() => {
+      moveElement({ name: "E1", horizontal: 100, index: 1 });
+    });
+    getNotebookStep("filter").within(() => {
+      moveElement({ name: "ID is 2", horizontal: -100, index: 0 });
+    });
+    getNotebookStep("summarize").within(() => {
+      cy.findByTestId("aggregate-step").within(() => {
+        moveElement({ name: "Count", vertical: 100, index: 3 });
+      });
+      cy.findByTestId("breakout-step").within(() => {
+        moveElement({ name: "ID", horizontal: 100, index: 1 });
+      });
+    });
+    getNotebookStep("sort").within(() => {
+      moveElement({ name: "Average of Total", horizontal: -100, index: 0 });
+    });
+    verifyPopoverDoesNotMoveElement({
+      type: "filter",
+      name: "ID is 1",
+      index: 1,
+      horizontal: -100,
     });
   });
 });

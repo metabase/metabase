@@ -7,8 +7,8 @@
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.test-metadata :as meta]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
@@ -789,7 +789,7 @@
 
               :else
               "2018-04-18T00:00:00Z")]
-           (mt/with-report-timezone-id "America/Los_Angeles"
+           (mt/with-report-timezone-id! "America/Los_Angeles"
              (mt/first-row
               (process-native
                 :native     {:query (case driver/*driver*

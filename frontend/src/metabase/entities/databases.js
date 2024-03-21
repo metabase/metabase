@@ -20,7 +20,7 @@ import {
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
 import { MetabaseApi } from "metabase/services";
-import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
+import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 // OBJECT ACTIONS
 export const FETCH_DATABASE_METADATA =

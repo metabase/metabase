@@ -7,6 +7,7 @@ import Confirm from "metabase/components/Confirm";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
+import AdminS from "metabase/css/admin.module.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import * as Urls from "metabase/lib/urls";
 import { getSetting } from "metabase/selectors/settings";
@@ -65,8 +66,8 @@ class PublicLinksListing extends Component {
       <LoadingAndErrorWrapper loading={!list} error={error}>
         {() => (
           <table
-            className="ContentTable"
             data-testId={this.props["data-testId"]}
+            className={AdminS.ContentTable}
           >
             <thead>
               <tr>

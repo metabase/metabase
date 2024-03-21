@@ -240,8 +240,7 @@
                         :template-tags {"number_comma"
                                         {:name "number_comma"
                                          :display-name "Number Comma"
-                                         :type :number
-                                         :dimension [:field (mt/id :venues :price) nil]}}}
+                                         :type :number}}}
                :database (mt/id)
                :parameters [{:type "number/="
                              :value ["1,2,3"]
@@ -410,7 +409,6 @@
           query {:database (mt/id)
                  :type     :native
                  :native   {:query         sql
-                            :type          :native
                             :template-tags {"created_at" {:id           "a21ca6d2-f742-a94a-da71-75adf379069c"
                                                           :name         "created_at"
                                                           :display-name "Created At"

@@ -8,8 +8,6 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.table :refer [Table]]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -131,8 +129,8 @@
   "Create `new-tables` for database, or if they already exist, mark them as active."
   [database :- i/DatabaseInstance
    new-tables :- [:set i/DatabaseMetadataTable]]
-  (log/info "Found new tables:"
-            (for [table new-tables]
+  (doseq [table new-tables]
+    (log/info "Found new table:"
               (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [table new-tables]
     (create-or-reactivate-table! database table)))
@@ -239,12 +237,6 @@
      (sync-util/with-error-handling (format "Error updating table metadata for %s" (sync-util/name-for-logging database))
        ;; we need to fetch the tables again because we might have retired tables in the previous steps
        (update-tables-metadata-if-needed! db-tables (db->our-metadata database)))
-
-     ;; update native download perms for all groups if any tables were added or removed
-     (when (or (seq new-tables) (seq old-tables))
-       (sync-util/with-error-handling (format "Error updating native download perms for %s" (sync-util/name-for-logging database))
-         (doseq [{id :id} (perms-group/non-admin-groups)]
-           (perms/update-native-download-permissions! id (u/the-id database)))))
 
      {:updated-tables (+ (count new-tables) (count old-tables))
       :total-tables   (count our-metadata)})))

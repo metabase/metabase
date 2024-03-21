@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -34,14 +33,14 @@
 (mu/defn ^:private store-metadata!
   [cache
    metadata-type :- [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/metric :metadata/segment]
-   id            :- ::lib.schema.common/positive-int
+   id            :- pos-int?
    metadata      :- [:multi
                      {:dispatch :lib/type}
                      [:metadata/database lib.metadata/DatabaseMetadata]
                      [:metadata/table    lib.metadata/TableMetadata]
                      [:metadata/column   lib.metadata/ColumnMetadata]
                      [:metadata/card     ::lib.schema.metadata/card]
-                     [:metadata/metric   lib.metadata/MetricMetadata]
+                     [:metadata/metric   lib.metadata/LegacyMetricMetadata]
                      [:metadata/segment  lib.metadata/SegmentMetadata]]]
   (let [metadata (-> metadata
                      (update-keys u/->kebab-case-en)
@@ -65,8 +64,11 @@
         ;; TODO -- we should probably store `::nil` markers for things we tried to fetch that didn't exist
         (doseq [instance (lib.metadata.protocols/bulk-metadata uncached-provider metadata-type missing-ids)]
           (store-in-cache! cache [metadata-type (:id instance)] instance))))
-    (for [id ids]
-      (get-in-cache cache [metadata-type id]))))
+    (into []
+          (comp (map (fn [id]
+                       (get-in-cache cache [metadata-type id])))
+                (filter some?))
+          ids)))
 
 (defn- tables [metadata-provider cache]
   (let [fetched-tables #(lib.metadata.protocols/tables metadata-provider)]

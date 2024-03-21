@@ -8,11 +8,11 @@
   '#{clojure.core/alter-var-root
      clojure.core/with-redefs
      clojure.core/with-redefs-fn
-     metabase-enterprise.sandbox.test-util/with-gtaps
-     metabase-enterprise.sandbox.test-util/with-gtaps-for-user
+     metabase-enterprise.sandbox.test-util/with-gtaps!
+     metabase-enterprise.sandbox.test-util/with-gtaps-for-user!
      metabase-enterprise.sandbox.test-util/with-user-attributes
-     metabase-enterprise.test/with-gtaps
-     metabase-enterprise.test/with-gtaps-for-user
+     metabase-enterprise.test/with-gtaps!
+     metabase-enterprise.test/with-gtaps-for-user!
      metabase-enterprise.test/with-user-attributes
      metabase.actions.test-util/with-actions
      metabase.actions.test-util/with-actions-disabled
@@ -28,7 +28,6 @@
      metabase.test.util.log/with-log-level
      metabase.test.util.log/with-log-messages-for-level
      metabase.test.util.misc/with-single-admin-user
-     metabase.test.util.timezone/with-system-timezone-id
      metabase.test.util/with-all-users-permission
      metabase.test.util/with-column-remappings
      metabase.test.util/with-discarded-collections-perms-changes
@@ -62,7 +61,6 @@
      metabase.test/with-non-admin-groups-no-root-collection-perms
      metabase.test/with-persistence-enabled
      metabase.test/with-single-admin-user
-     metabase.test/with-system-timezone-id
      metabase.test/with-temp-env-var-value
      metabase.test/with-temp-vals-in-db
      metabase.test/with-temporary-raw-setting-values

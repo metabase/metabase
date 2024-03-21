@@ -5,9 +5,9 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders } from "__support__/ui";
-import Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import Filter from "metabase-lib/queries/structured/Filter";
+import Question from "metabase-lib/v1/Question";
+import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
+import Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
   createSampleDatabase,
   SAMPLE_DB_ID,

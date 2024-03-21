@@ -1,10 +1,12 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
 import { assignUserColors } from "metabase/lib/formatting";
 
@@ -31,7 +33,7 @@ class RevisionHistory extends Component {
     return (
       <LoadingAndErrorWrapper loading={!object || !revisions}>
         {() => (
-          <div className="wrapper">
+          <div className={CS.wrapper}>
             <Breadcrumbs
               className="py4"
               crumbs={[
@@ -41,7 +43,7 @@ class RevisionHistory extends Component {
                 [this.props.objectType + t` History`],
               ]}
             />
-            <div className="wrapper py4" style={{ maxWidth: 950 }}>
+            <div className={cx(CS.wrapper, "py4")} style={{ maxWidth: 950 }}>
               <h2 className="mb4">
                 {t`Revision History for`} &quot;{object.name}&quot;
               </h2>

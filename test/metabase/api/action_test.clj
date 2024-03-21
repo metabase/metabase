@@ -192,7 +192,7 @@
                                                   [:template-tag "source"]]}]})]
     (testing "when action's database and model's database disagree"
       (testing "Both dbs are checked for actions enabled at creation"
-        (mt/dataset test-data-with-time
+        (mt/dataset time-test-data
           (let [test-data-id (mt/id)]
             (mt/dataset test-data
               (mt/with-actions-enabled
@@ -209,7 +209,7 @@
                                      :data {:database-id test-data-id}}
                                     response))))))))))
       (testing "When executing, both dbs are checked for enabled"
-        (mt/dataset test-data-with-time
+        (mt/dataset time-test-data
           (let [test-data-id (mt/id)]
             (mt/with-actions-test-data-and-actions-enabled
               (mt/with-actions [{model-id :id} {:type :model
@@ -526,15 +526,20 @@
                            "source"    "model_detail"
                            "type"      "query"}
                     :user-id (str (mt/user->id :crowberto))}
-                   (last (snowplow-test/pop-event-data-and-user-id!))))))))
+                   (last (snowplow-test/pop-event-data-and-user-id!))))))))))
 
+(deftest execute-action-test-2
+  (mt/with-actions-test-data-and-actions-enabled
     (mt/with-actions [{:keys [action-id]} (assoc unshared-action-opts :archived true)]
       (testing "Check that we get a 404 if the action is archived"
         (is (= "Not found."
                (mt/user-http-request :crowberto
                                      :post 404
                                      (format "action/%s/execute" action-id)
-                                     {:parameters {:id 1 :name "European"}})))))
+                                     {:parameters {:id 1 :name "European"}})))))))
+
+(deftest execute-action-test-3
+  (mt/with-actions-test-data-and-actions-enabled
     (mt/with-actions [{:keys [action-id]} unshared-action-opts]
       (let [nonexistent-id (inc (t2/select-one-pk Action {:order-by [[:id :desc]]}))]
         (testing "Check that we get a 404 if the action doesn't exist"

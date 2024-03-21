@@ -7,7 +7,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database
-                            Field Metric NativeQuerySnippet Pulse PulseCard Segment Table User]]
+                            Field LegacyMetric NativeQuerySnippet Pulse PulseCard Segment Table User]]
    [metabase.models.collection :as collection]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
@@ -93,7 +93,7 @@
    data-sources the current application database.
 
    This is particularly useful for load/dump/serialization tests, where you need both a source and application db."
-  {:style/indent 0}
+  {:style/indent [:defn]}
   [bindings & body]
   (let [arity (count bindings)
         bindings (mapv (fn [binding]
@@ -160,10 +160,10 @@
                                                         "Deeply Nested Personal Collection"
                                                         :location
                                                         (format "/%d/%d/" (crowberto-pc-id) pc-nested-id)}
-                  Metric     {metric-id :id} {:name "My Metric"
-                                              :table_id table-id
-                                              :definition {:source-table table-id
-                                                           :aggregation [:sum [:field numeric-field-id nil]]}}
+                  LegacyMetric {metric-id :id} {:name "My Metric"
+                                                :table_id table-id
+                                                :definition {:source-table table-id
+                                                             :aggregation [:sum [:field numeric-field-id nil]]}}
                   Segment    {segment-id :id} {:name "My Segment"
                                                :table_id table-id
                                                :definition {:source-table table-id
@@ -188,7 +188,7 @@
                                                                                          [:field
                                                                                           category-pk-field-id
                                                                                           {:join-alias "cat"}]]}]}}}
-                  Card       {card-arch-id :id} { ;:archived true
+                  Card       {card-arch-id :id} {;:archived true
                                                  :table_id table-id
                                                  :name "My Arch Card"
                                                  :collection_id collection-id
@@ -202,8 +202,8 @@
                                                  :name root-card-name
                                                  :dataset_query {:type :query
                                                                  :database db-id
-                                                                 :query {:source-table table-id}
-                                                                 :expressions {"Price Known" [:> [:field numeric-field-id nil] 0]}}}
+                                                                 :query {:source-table table-id
+                                                                         :expressions  {"Price Known" [:> [:field numeric-field-id nil] 0]}}}}
                   Card       {card-id-nested :id} {:table_id table-id
                                                    :name "My Nested Card"
                                                    :collection_id collection-id
@@ -238,11 +238,11 @@
                                                           :native
                                                           {:query "SELECT * FROM {{#1}} AS subquery"
                                                            :template-tags
-                                                           {"#1"{:id "72461b3b-3877-4538-a5a3-7a3041924517"
-                                                                 :name "#1"
-                                                                 :display-name "#1"
-                                                                 :type "card"
-                                                                 :card-id card-id}}}}}
+                                                           {"#1" {:id "72461b3b-3877-4538-a5a3-7a3041924517"
+                                                                  :name "#1"
+                                                                  :display-name "#1"
+                                                                  :type "card"
+                                                                  :card-id card-id}}}}}
                   DashboardCard       {dashcard-id :id} {:dashboard_id dashboard-id
                                                          :card_id card-id}
                   DashboardCard       {dashcard-top-level-click-id :id} {:dashboard_id dashboard-id

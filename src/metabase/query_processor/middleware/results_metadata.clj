@@ -26,7 +26,7 @@
 ;;
 ;; 2. Consider whether the actual save operation should be async as with
 ;;    [[metabase.query-processor.middleware.process-userland-query]]
-(defn- record-metadata! [{{:keys [card-id]} :info, {:keys [source-card-id]} :query} metadata]
+(defn- record-metadata! [{{:keys [card-id]} :info, :as query} metadata]
   (try
     ;; At the very least we can skip the Extra DB call to update this Card's metadata results
     ;; if its DB doesn't support nested queries in the first place
@@ -34,7 +34,8 @@
                driver/*driver*
                (driver/database-supports? driver/*driver* :nested-queries (lib.metadata/database (qp.store/metadata-provider)))
                card-id
-               (not source-card-id))
+               ;; don't want to update metadata when we use a Card as a source Card.
+               (not (:qp/source-card-id query)))
       (t2/update! :model/Card card-id {:result_metadata metadata}))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query

@@ -33,14 +33,14 @@ import {
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
 
-import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
-import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
+import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
+import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import {
   normalizeParameters,
   normalizeParameterValue,
-} from "metabase-lib/parameters/utils/parameter-values";
-import Question from "metabase-lib/Question";
-import { getIsPKFromTablePredicate } from "metabase-lib/types/utils/isa";
+} from "metabase-lib/v1/parameters/utils/parameter-values";
+import Question from "metabase-lib/v1/Question";
+import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 
@@ -334,16 +334,14 @@ export const getQuestion = createSelector(
     }
 
     const type = question.type();
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
 
-    // When opening a model, we swap it's `dataset_query`
-    // with clean query using the model as a source table,
-    // to enable "simple mode" like features
-    // This has to be skipped for users without data permissions
-    // as it would be blocked by the backend as an ad-hoc query
-    // see https://github.com/metabase/metabase/issues/20042
-    const hasDataPermission = !!question.database();
-    return type !== "question" && hasDataPermission && !isEditingModel
-      ? question.composeDataset()
+    // When opening a model or a metric, we construct a question
+    // with a clean, ad-hoc, query.
+    // This has to be skipped for users without data permissions.
+    // See https://github.com/metabase/metabase/issues/20042
+    return type !== "question" && isEditable
+      ? question.composeQuestion()
       : question;
   },
 );
@@ -356,7 +354,7 @@ function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
   );
 }
 
-// Model questions may be composed via the `composeDataset` method.
+// Model questions may be composed via the `composeQuestion` method.
 // A composed model question should be treated as equivalent to its original form.
 // We need to handle scenarios where both the `lastRunQuestion` and the `currentQuestion` are
 // in either form.
@@ -371,7 +369,7 @@ function areModelsEquivalent({
     return false;
   }
 
-  const composedOriginal = originalQuestion.composeDataset();
+  const composedOriginal = originalQuestion.composeQuestionAdhoc();
 
   const isLastRunComposed = areLegacyQueriesEqual(
     lastRunQuestion.datasetQuery(),

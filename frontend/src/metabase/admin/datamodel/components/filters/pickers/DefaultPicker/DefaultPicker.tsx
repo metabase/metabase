@@ -4,14 +4,15 @@ import type { ReactElement } from "react";
 import { t } from "ttag";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
+import CS from "metabase/css/core/index.css";
 import { getCurrencySymbol } from "metabase/lib/formatting";
 import {
   getFilterArgumentFormatOptions,
   isFuzzyOperator,
-} from "metabase-lib/operators/utils";
-import type Filter from "metabase-lib/queries/structured/Filter";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import { isCurrency } from "metabase-lib/types/utils/isa";
+} from "metabase-lib/v1/operators/utils";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import { isCurrency } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, FieldId, RowValue } from "metabase-types/api";
 
 import NumberPicker from "../NumberPicker";
@@ -135,7 +136,7 @@ export function DefaultPicker({
         return (
           <FieldValuesWidget
             key={index}
-            className="input"
+            className={CS.input}
             value={values}
             onChange={onValuesChange}
             multi={operator.multi}

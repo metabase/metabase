@@ -10,7 +10,7 @@ import {
   isUploadAborted,
 } from "metabase/lib/uploads";
 import { Box, Stack } from "metabase/ui";
-import type Table from "metabase-lib/metadata/Table";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type { Collection } from "metabase-types/api";
 import type { FileUpload } from "metabase-types/store/upload";
 

@@ -2,12 +2,11 @@ import { assoc, dissoc, assocIn } from "icepick";
 import { parse } from "url";
 
 import { createMockMetadata } from "__support__/metadata";
-import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
 import { deserializeCardFromUrl } from "metabase/lib/card";
-import Question from "metabase-lib/Question";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import * as ML_Urls from "metabase-lib/urls";
+import Question from "metabase-lib/v1/Question";
+import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
+import * as ML_Urls from "metabase-lib/v1/urls";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -610,7 +609,7 @@ describe("Question", () => {
     });
   });
 
-  describe("Question.prototype._syncTableColumnSettings", () => {
+  describe("Question.prototype.syncColumnsAndSettings", () => {
     let question;
     const cols = [
       {
@@ -656,39 +655,37 @@ describe("Question", () => {
 
     beforeEach(() => {
       question = native_orders_count_question.clone();
-      question.setting = jest.fn();
-      question.updateSettings = jest.fn();
+      question.settings = jest.fn(() => ({}));
+      question.setSettings = jest.fn();
     });
 
     describe("when columns have not been defined", () => {
       it("should do nothing when given no cols", () => {
-        question._syncTableColumnSettings({});
-        question._syncTableColumnSettings({ data: { cols: [] } });
-        question._syncTableColumnSettings({ data: { cols } });
+        question.syncColumnsAndSettings({});
+        question.syncColumnsAndSettings({ data: { cols: [] } });
+        question.syncColumnsAndSettings({ data: { cols } });
 
-        expect(question.updateSettings).not.toHaveBeenCalled();
+        expect(question.setSettings).not.toHaveBeenCalled();
       });
 
       it("should do nothing when given cols", () => {
-        question._syncTableColumnSettings({ data: { cols } });
+        question.syncColumnsAndSettings({ data: { cols } });
 
-        expect(question.updateSettings).not.toHaveBeenCalled();
+        expect(question.setSettings).not.toHaveBeenCalled();
       });
     });
 
     describe("after vizSetting columns have been defined", () => {
       beforeEach(() => {
-        question.setting.mockImplementation(property => {
-          if (property === "table.columns") {
-            return vizSettingCols;
-          }
-        });
+        question.settings.mockImplementation(() => ({
+          "table.columns": vizSettingCols,
+        }));
       });
 
       // Adding a column with same name is covered as well, as name is generated at FE and it will
       // be unique (e.g. foo -> foo_2)
       it("should handle the addition and removal of columns", () => {
-        question._syncTableColumnSettings({
+        question.syncColumnsAndSettings({
           data: {
             cols: [
               ...cols.slice(1),
@@ -709,7 +706,7 @@ describe("Question", () => {
           },
         });
 
-        expect(question.updateSettings).toHaveBeenCalledWith({
+        expect(question.setSettings).toHaveBeenCalledWith({
           "table.columns": [
             ...vizSettingCols.slice(1),
             {
@@ -742,13 +739,13 @@ describe("Question", () => {
           name: "foo",
           base_type: "type/Float",
         };
-        question._syncTableColumnSettings({
+        question.syncColumnsAndSettings({
           data: {
             cols: [updatedColumn, ...cols.slice(1)],
           },
         });
 
-        expect(question.updateSettings).toHaveBeenCalledWith({
+        expect(question.setSettings).toHaveBeenCalledWith({
           "table.columns": [
             ...vizSettingCols.slice(1),
             {
@@ -768,7 +765,7 @@ describe("Question", () => {
       });
 
       it("should handle the mutation of a field_ref on an existing column", () => {
-        question._syncTableColumnSettings({
+        question.syncColumnsAndSettings({
           data: {
             cols: [
               {
@@ -789,7 +786,7 @@ describe("Question", () => {
           },
         });
 
-        expect(question.updateSettings).toHaveBeenCalledWith({
+        expect(question.setSettings).toHaveBeenCalledWith({
           "table.columns": [
             ...vizSettingCols.slice(1),
             {
@@ -803,13 +800,13 @@ describe("Question", () => {
       });
 
       it("shouldn't update settings if order of columns has changed", () => {
-        question._syncTableColumnSettings({
+        question.syncColumnsAndSettings({
           data: {
             cols: [cols[1], cols[0]],
           },
         });
 
-        expect(question.updateSettings).not.toHaveBeenCalled();
+        expect(question.setSettings).not.toHaveBeenCalled();
       });
     });
   });
@@ -823,24 +820,6 @@ describe("Question", () => {
     it("should default to an array", () => {
       const question = base_question.setResultsMetadata(null);
       expect(question.getResultMetadata()).toEqual([]);
-    });
-  });
-
-  describe("Question.prototype.dependentMetadata", () => {
-    it("should return model FK field targets", () => {
-      const question = base_question.setResultsMetadata({
-        columns: [{ semantic_type: SEMANTIC_TYPE.FK, fk_target_field_id: 5 }],
-      });
-
-      expect(question.dependentMetadata()).toEqual([{ type: "field", id: 5 }]);
-    });
-
-    it("should skip FK field targets which are not FKs semantically", () => {
-      const question = base_question.setResultsMetadata({
-        columns: [{ fk_target_field_id: 5 }],
-      });
-
-      expect(question.dependentMetadata()).toEqual([]);
     });
   });
 

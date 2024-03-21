@@ -3,8 +3,9 @@ import * as React from "react";
 
 import { Filter as FilterComponent } from "metabase/admin/datamodel/components/Filter";
 import Popover from "metabase/components/Popover";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import type Filter from "metabase-lib/queries/structured/Filter";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
+import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
 
 import { FilterPopover } from "../FilterPopover";
 
@@ -49,7 +50,7 @@ export const filterWidgetFilterRenderer = ({
     {values.length > 0 && (
       <div className="flex align-center flex-wrap">
         {values.map((value, valueIndex) => (
-          <div key={valueIndex} className="Filter-section Filter-section-value">
+          <div key={valueIndex} className={QueryBuilderS.FilterSection}>
             <QueryOption className="QueryOption">{value}</QueryOption>
           </div>
         ))}

@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -111,8 +111,6 @@
       (contains? message :message) (update :message str)
       (contains? message :errors)  (update :errors update-vals str))))
 
-(comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
-
 ;; This is normally set via the env var `MB_DB_CONNECTION_TIMEOUT_MS`
 (defsetting db-connection-timeout-ms
   "Consider [[metabase.driver/can-connect?]] / [[can-connect-with-details?]] to have failed if they were not able to
@@ -181,7 +179,7 @@
          (qp.store/with-metadata-provider db-id
            (:engine (lib.metadata.protocols/database (qp.store/metadata-provider)))))
        (vary-meta assoc ::memoize/args-fn (fn [[db-id]]
-                                            [(mdb.connection/unique-identifier) db-id])))
+                                            [(mdb/unique-identifier) db-id])))
    :ttl/threshold 1000))
 
 (mu/defn database->driver :- :keyword

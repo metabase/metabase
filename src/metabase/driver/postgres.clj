@@ -7,8 +7,10 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql :as sql]
+   [honey.sql.helpers :as sql.helpers]
+   [honey.sql.pg-ops :as sql.pg-ops]
    [java-time.api :as t]
-   [metabase.db.spec :as mdb.spec]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.postgres.actions :as postgres.actions]
@@ -18,6 +20,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
@@ -51,7 +54,8 @@
 (comment
   ;; method impls live in these namespaces.
   postgres.actions/keep-me
-  postgres.ddl/keep-me)
+  postgres.ddl/keep-me
+  sql.pg-ops/keep-me)
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
@@ -80,6 +84,12 @@
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))
+
+(defmethod driver/escape-entity-name-for-metadata :postgres [_driver entity-name]
+  (when entity-name
+    ;; these entities names are used as a pattern for LIKE queries in jdbc
+    ;; so we need to double escape it, first for java, then for sql
+    (str/replace entity-name "\\" "\\\\")))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -205,6 +215,69 @@
 
 (def ^:private ^:dynamic *enum-types* nil)
 
+(defn- get-tables-sql
+  [schemas table-names]
+  ;; Ref: https://github.com/davecramer/pgjdbc/blob/a714bfd/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L1272
+  (sql/format
+   (cond-> {:select    [[:n.nspname :schema]
+                        [:c.relname :name]
+                        [[:case-expr :c.relkind
+                          [:inline "r"] [:inline "TABLE"]
+                          [:inline "p"] [:inline "PARTITIONED TABLE"]
+                          [:inline "v"] [:inline "VIEW"]
+                          [:inline "f"] [:inline "FOREIGN TABLE"]
+                          [:inline "m"] [:inline "MATERIALIZED VIEW"]
+                          :else nil]
+                         :type]
+                        [:d.description :description]]
+            :from      [[:pg_catalog.pg_namespace :n]
+                        [:pg_catalog.pg_class :c]]
+            :left-join [[:pg_catalog.pg_description :d] [:and [:= :c.oid :d.objoid] [:= :d.objsubid [:inline 0]]]
+                        [:pg_catalog.pg_class :dc]      [:and [:= :d.classoid :dc.oid] [:= :dc.relname [:inline "pg_class"]]]
+                        [:pg_catalog.pg_namespace :dn]  [:and [:= :dn.oid :dc.relnamespace] [:= :dn.nspname [:inline "pg_catalog"]]]]
+            :where     [:and [:= :c.relnamespace :n.oid]
+                        ;; filter out system tables
+                        [(keyword "!~") :n.nspname "^pg_"] [:<> :n.nspname "information_schema"]
+                        ;; only get tables of type: TABLE, PARTITIONED TABLE, VIEW, FOREIGN TABLE, MATERIALIZED VIEW
+                        [:raw "c.relkind in ('r', 'p', 'v', 'f', 'm')"]]
+            :order-by  [:type :schema :name]}
+     (seq schemas)
+     (sql.helpers/where [:in :n.nspname schemas])
+
+     (seq table-names)
+     (sql.helpers/where [:in :c.relname table-names]))
+   {:dialect :ansi}))
+
+(defn- get-tables
+  ;; have it as its own method for ease of testing
+  [database schemas tables]
+  (sql-jdbc.execute/reducible-query database (get-tables-sql schemas tables)))
+
+(defn- describe-syncable-tables
+  [{driver :engine :as database}]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       database
+       nil
+       (fn [^Connection conn]
+         (reduce
+          rf
+          init
+          (when-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
+            (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn driver conn)]
+              (eduction
+               (comp (filter have-select-privilege?)
+                     (map #(dissoc % :type)))
+               (get-tables database syncable-schemas nil))))))))))
+
+(defmethod driver/describe-database :postgres
+  [_driver database]
+  ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
+  ;; memrory in a set like this
+  {:tables (into #{} (describe-syncable-tables database))})
+
 ;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
 ;; name, but first fetches database enum types so we have access to them. These are simply binded to the dynamic var
 ;; and used later in `database-type->base-type`, which you will find below.
@@ -218,7 +291,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- ->timestamp [honeysql-form]
-  (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
+  (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "timestamp with time zone" "date"} honeysql-form))
 
 (defn- format-interval
   "Generate a Postgres 'INTERVAL' literal.
@@ -343,7 +416,8 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
-        timestamptz? (h2x/is-of-type? expr "timestamptz")
+        timestamptz? (or (h2x/is-of-type? expr "timestamptz")
+                         (h2x/is-of-type? expr "timestamp with time zone"))
         _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
         expr         [:timezone target-timezone (if (not timestamptz?)
                                                   [:timezone source-timezone expr]
@@ -496,7 +570,8 @@
       (pg-conversion identifier :numeric)
 
       (lib.field/json-field? stored-field)
-      (if (::sql.qp/forced-alias opts)
+      (if (or (::sql.qp/forced-alias opts)
+              (= (::add/source-table opts) ::add/source))
         (keyword (::add/source-alias opts))
         (walk/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :postgres % stored-field)
@@ -570,7 +645,8 @@
 (def ^:private default-base-types
   "Map of default Postgres column types -> Field base types.
    Add more mappings here as you come across them."
-  {:bigint        :type/BigInteger
+  {:array         :type/*
+   :bigint        :type/BigInteger
    :bigserial     :type/BigInteger
    :bit           :type/*
    :bool          :type/Boolean
@@ -581,6 +657,8 @@
    :cidr          :type/Structured ; IPv4/IPv6 network address
    :circle        :type/*
    :citext        :type/Text ; case-insensitive text
+   :char          :type/Text
+   :character     :type/Text
    :date          :type/Date
    :decimal       :type/Decimal
    :float4        :type/Float
@@ -590,6 +668,7 @@
    :int           :type/Integer
    :int2          :type/Integer
    :int4          :type/Integer
+   :integer       :type/Integer
    :int8          :type/BigInteger
    :interval      :type/*               ; time span
    :json          :type/JSON
@@ -715,7 +794,7 @@
                 (merge disable-ssl-params props))
         props (as-> props it
                 (set/rename-keys it {:dbname :db})
-                (mdb.spec/spec :postgres it)
+                (mdb/spec :postgres it)
                 (sql-jdbc.common/handle-additional-options it details-map))]
     props))
 
@@ -790,6 +869,15 @@
 (defmethod driver/create-auto-pk-with-append-csv? :postgres
   [driver]
   (= driver :postgres))
+
+(defmethod sql-jdbc.sync/alter-columns-sql :postgres
+  [driver table-name column-definitions]
+  (first (sql/format {:alter-table  (keyword table-name)
+                      :alter-column (map (fn [[column-name type-and-constraints]]
+                                           (vec (cons column-name (cons :type type-and-constraints))))
+                                         column-definitions)}
+                     :quoted true
+                     :dialect (sql.qp/quote-style driver))))
 
 (defmethod driver/table-name-length-limit :postgres
   [_driver]

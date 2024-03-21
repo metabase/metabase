@@ -209,3 +209,18 @@
 (methodical/defmethod events/publish-event! ::api-key-event
   [topic event]
   (audit-log/record-event! topic event))
+
+(derive ::upload-event ::event)
+(derive :event/upload-create ::upload-event)
+(derive :event/upload-append ::upload-event)
+
+(methodical/defmethod events/publish-event! ::upload-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+(derive ::caching-changed-event ::event)
+(derive :event/caching-update ::caching-changed-event)
+
+(methodical/defmethod events/publish-event! ::caching-changed-event
+  [topic event]
+  (audit-log/record-event! topic event))

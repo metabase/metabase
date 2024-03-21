@@ -3,7 +3,7 @@ import { ngettext, msgid } from "ttag";
 
 import Schemas from "metabase/entities/schemas";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import type Schema from "metabase-lib/metadata/Schema";
+import type Schema from "metabase-lib/v1/metadata/Schema";
 import type { State } from "metabase-types/store";
 
 import {

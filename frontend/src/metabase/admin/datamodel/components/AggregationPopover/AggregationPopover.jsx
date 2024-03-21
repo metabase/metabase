@@ -5,11 +5,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Tooltip from "metabase/core/components/Tooltip";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import { Icon, Box } from "metabase/ui";
-import Aggregation from "metabase-lib/queries/structured/Aggregation";
-import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
+import Aggregation from "metabase-lib/v1/queries/structured/Aggregation";
+import * as AGGREGATION from "metabase-lib/v1/queries/utils/aggregation";
 
 import { QueryDefinitionTooltip } from "../QueryDefinitionTooltip";
 
@@ -172,7 +173,7 @@ export class AggregationPopover extends Component {
       content && (
         <Box p="0.5rem">
           <Tooltip tooltip={content}>
-            <span className="QuestionTooltipTarget" />
+            <span className={QueryBuilderS.QuestionTooltipTarget} />
           </Tooltip>
         </Box>
       )

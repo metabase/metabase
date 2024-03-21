@@ -8,11 +8,11 @@ import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import { Icon } from "metabase/ui";
-import type { FieldDimension } from "metabase-lib/Dimension";
-import { isExpression } from "metabase-lib/expressions";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import Filter from "metabase-lib/queries/structured/Filter";
-import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
+import type { FieldDimension } from "metabase-lib/v1/Dimension";
+import { isExpression } from "metabase-lib/v1/expressions";
+import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
+import Filter from "metabase-lib/v1/queries/structured/Filter";
+import { isStartingFrom } from "metabase-lib/v1/queries/utils/query-time";
 import type { Expression } from "metabase-types/api";
 
 import { DimensionList } from "../DimensionList";

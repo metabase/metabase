@@ -1,11 +1,4 @@
-:root {
-  --sm-width: 752px;
-  --md-width: 940px;
-  --lg-width: 1140px;
-  --xl-width: 1540px;
-}
 /* When converting to styled components, use FullWidthContainer */
-:global(.wrapper),
 .wrapper {
   width: 100%;
   margin: 0 auto;
@@ -13,7 +6,6 @@
 }
 
 @media screen and (--breakpoint-min-sm) {
-  :global(.wrapper),
   .wrapper {
     padding-left: 2em;
     padding-right: 2em;
@@ -21,7 +13,6 @@
 }
 
 @media screen and (--breakpoint-min-md) {
-  :global(.wrapper),
   .wrapper {
     padding-left: 3em;
     padding-right: 3em;
@@ -30,7 +21,8 @@
 
 /* set height full relative to the parent */
 :global(.full-height),
-.full-height {
+.full-height,
+.fullHeight {
   height: 100%;
 }
 
@@ -60,6 +52,7 @@
 .full-width {
   width: 100%;
 }
+
 :global(.half) {
   width: 50%;
 }
@@ -74,7 +67,7 @@
 .relative {
   position: relative;
 }
-:global(.absolute),
+
 .absolute {
   position: absolute;
 }
@@ -83,28 +76,29 @@
 .top {
   top: 0;
 }
+
 :global(.right),
 .right {
   right: 0;
 }
+
 :global(.bottom),
 .bottom {
   bottom: 0;
 }
+
 :global(.left),
 .left {
   left: 0;
 }
 
 @media screen and (--breakpoint-min-md) {
-  :global(.wrapper.wrapper--trim),
-  .wrapper.wrapper--trim {
-    max-width: var(--md-width);
+  .wrapper.wrapperTrim {
+    max-width: 940px;
   }
 }
 
 /* fully fit the parent element - use as a base for app-y pages like QB or settings */
-:global(.spread),
 .spread {
   position: absolute;
   top: 0;
@@ -114,6 +108,6 @@
 }
 
 /* force a stacking context for adding z-index to children */
-:global(.stacking-context) {
+.stackingContext {
   transform: scale(1);
 }

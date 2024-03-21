@@ -5,6 +5,7 @@
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.query.permissions :as query-perms]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as m]
@@ -16,7 +17,8 @@
   [view-or-views]
   (span/with-span!
     {:name "record-view!"}
-    (t2/insert! :model/ViewLog view-or-views)))
+    (when (premium-features/log-enabled?)
+      (t2/insert! :model/ViewLog view-or-views))))
 
 (defn- generate-view
   "Generates a view, given an event map."

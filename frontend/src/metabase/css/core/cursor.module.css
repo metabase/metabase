@@ -1,10 +1,11 @@
 :global(.cursor-pointer),
-.cursor-pointer {
+.cursor-pointer,
+.cursorPointer {
   cursor: pointer;
 }
 
 :global(.cursor-grab),
-.cursor-grab {
+.cursorGrab {
   cursor: grab;
 }
 

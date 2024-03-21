@@ -1,5 +1,5 @@
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 /**
  * We can only "explore results" (i.e. create new questions based on this one)
