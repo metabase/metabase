@@ -129,7 +129,6 @@ const NewItemMenu = ({
     hasDatabaseWithJsonEngine,
     dispatch,
     lastUsedDatabaseId,
-    dispatch,
   ]);
 
   return (
