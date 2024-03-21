@@ -7,7 +7,6 @@ import EmptyState from "metabase/components/EmptyState";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
 import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
 import { Box, Center, Flex, Icon, NavLink } from "metabase/ui";
-import type { SearchModelType } from "metabase-types/api";
 
 import type { TypeWithModel } from "../../types";
 import { getIcon, isSelectedItem } from "../../utils";
@@ -17,7 +16,7 @@ import { PickerColumn } from "./ItemList.styled";
 
 interface ItemListProps<
   Id,
-  Model extends SearchModelType,
+  Model extends string,
   Item extends TypeWithModel<Id, Model>,
 > {
   items?: Item[] | null;
@@ -31,7 +30,7 @@ interface ItemListProps<
 
 export const ItemList = <
   Id,
-  Model extends SearchModelType,
+  Model extends string,
   Item extends TypeWithModel<Id, Model>,
 >({
   items,

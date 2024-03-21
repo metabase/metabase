@@ -1,9 +1,8 @@
 import type { IconName } from "metabase/ui";
-import type { SearchModelType } from "metabase-types/api";
 
 import type { EntityPickerModalOptions } from "./components/EntityPickerModal";
 
-export type TypeWithModel<Id, Model extends SearchModelType> = {
+export type TypeWithModel<Id, Model extends string> = {
   id: Id;
   model: Model;
   name: string;
@@ -11,7 +10,7 @@ export type TypeWithModel<Id, Model extends SearchModelType> = {
 
 export type IsFolder<
   Id,
-  Model extends SearchModelType,
+  Model extends string,
   Item extends TypeWithModel<Id, Model>,
 > = (item: Item) => boolean;
 
@@ -24,7 +23,7 @@ export type PickerStateItem<Item, Query> = {
 
 export type EntityPickerOptions = EntityPickerModalOptions;
 
-export type EntityTab<Model extends SearchModelType> = {
+export type EntityTab<Model extends string> = {
   displayName: string;
   element: JSX.Element;
   icon: IconName;
@@ -33,7 +32,7 @@ export type EntityTab<Model extends SearchModelType> = {
 
 export type ListProps<
   Id,
-  Model extends SearchModelType,
+  Model extends string,
   Item extends TypeWithModel<Id, Model>,
   Query,
   Options extends EntityPickerOptions,

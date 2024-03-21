@@ -35,7 +35,7 @@ export const defaultOptions: EntityPickerModalOptions = {
   allowCreateNew: true,
 };
 
-export interface EntityPickerModalProps<Model extends SearchModelType, Item> {
+export interface EntityPickerModalProps<Model extends string, Item> {
   title?: string;
   selectedItem: Item | null;
   onConfirm: () => void;

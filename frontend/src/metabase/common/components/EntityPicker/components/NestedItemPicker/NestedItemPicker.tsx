@@ -2,13 +2,12 @@ import type { ComponentType } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Flex } from "metabase/ui";
-import type { SearchModelType } from "metabase-types/api";
 
 import type {
   EntityPickerOptions,
-  IsFolder,
   ListProps,
   PickerState,
+  IsFolder,
   TypeWithModel,
 } from "../../types";
 import { AutoScrollBox } from "../AutoScrollBox";
@@ -17,7 +16,7 @@ import { ListBox } from "./NestedItemPicker.styled";
 
 export interface NestedItemPickerProps<
   Id,
-  Model extends SearchModelType,
+  Model extends string,
   Item extends TypeWithModel<Id, Model>,
   Query,
   Options extends EntityPickerOptions,
@@ -34,7 +33,7 @@ export interface NestedItemPickerProps<
 
 export function NestedItemPicker<
   Id,
-  Model extends SearchModelType,
+  Model extends string,
   Item extends TypeWithModel<Id, Model>,
   Query,
   Options extends EntityPickerOptions,
