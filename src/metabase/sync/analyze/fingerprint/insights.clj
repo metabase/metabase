@@ -6,7 +6,7 @@
    [kixi.stats.math :as math]
    [kixi.stats.protocols :as p]
    [medley.core :as m]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]

@@ -8,8 +8,8 @@
                {:source-field 5}]]
      :value [3 5]}"
   (:require
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.mbql.schema :as mbql.s]
    [metabase.models.params :as params]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]

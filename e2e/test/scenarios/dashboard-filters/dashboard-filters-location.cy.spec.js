@@ -43,7 +43,7 @@ describe("scenarios > dashboard > filters > location", () => {
         addWidgetStringFilter(value);
 
         cy.log(`Make sure ${filter} filter returns correct result`);
-        cy.get(".Card").within(() => {
+        cy.findByTestId("dashcard").within(() => {
           cy.contains(representativeResult);
         });
 
@@ -66,7 +66,7 @@ describe("scenarios > dashboard > filters > location", () => {
 
     saveDashboard();
 
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.contains("1510");
     });
   });

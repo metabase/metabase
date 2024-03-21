@@ -20,25 +20,33 @@ describe("scenarios > visualizations > waterfall", () => {
   function verifyWaterfallRendering(xLabel = null, yLabel = null) {
     // a waterfall chart is just a stacked bar chart, with 4 bars
     // (not all of them will be visible at once, but they should exist)
-    cy.get(".Visualization .sub .chart-body").within(() => {
-      cy.get(".stack._0");
-      cy.get(".stack._1");
-      cy.get(".stack._2");
-      cy.get(".stack._3");
-    });
-    cy.get(".Visualization .axis.x").within(() => {
-      cy.findByText("Total");
-    });
+    cy.findByTestId("query-visualization-root")
+      .get(".sub .chart-body")
+      .within(() => {
+        cy.get(".stack._0");
+        cy.get(".stack._1");
+        cy.get(".stack._2");
+        cy.get(".stack._3");
+      });
+    cy.findByTestId("query-visualization-root")
+      .get(".axis.x")
+      .within(() => {
+        cy.findByText("Total");
+      });
 
     if (xLabel) {
-      cy.get(".Visualization .x-axis-label").within(() => {
-        cy.findByText(xLabel);
-      });
+      cy.findByTestId("query-visualization-root")
+        .get(".x-axis-label")
+        .within(() => {
+          cy.findByText(xLabel);
+        });
     }
     if (yLabel) {
-      cy.get(".Visualization .y-axis-label").within(() => {
-        cy.findByText(yLabel);
-      });
+      cy.findByTestId("query-visualization-root")
+        .get(".y-axis-label")
+        .within(() => {
+          cy.findByText(yLabel);
+        });
     }
   }
 
@@ -144,9 +152,11 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.contains("Visualization").click();
     switchToWaterfallDisplay();
 
-    cy.get(".Visualization .axis.x").within(() => {
-      cy.findByText("Total").should("not.exist");
-    });
+    cy.findByTestId("query-visualization-root")
+      .get(".axis.x")
+      .within(() => {
+        cy.findByText("Total").should("not.exist");
+      });
   });
 
   it("should show error for multi-series questions (metabase#15152)", () => {
@@ -224,7 +234,7 @@ describe("scenarios > visualizations > waterfall", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
     cy.icon("waterfall").click({ force: true });
-    cy.get(".Visualization .bar");
+    cy.findByTestId("query-visualization-root").get(".bar");
   });
 
   it("should display correct values when one of them is 0 (metabase#16246)", () => {
@@ -301,26 +311,35 @@ describe("scenarios > visualizations > waterfall", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Show total").next().click();
 
-      cy.get(".Visualization .axis.x").within(() => {
-        cy.findByText("Total").should("not.exist");
-      });
+      cy.findByTestId("query-visualization-root")
+        .get(".axis.x")
+        .within(() => {
+          cy.findByText("Total").should("not.exist");
+        });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Show total").next().click();
-      cy.get(".Visualization .axis.x").within(() => {
-        cy.findByText("Total");
-      });
+      cy.findByTestId("query-visualization-root")
+        .get(".axis.x")
+        .within(() => {
+          cy.findByText("Total");
+        });
     });
 
     it("should allow toggling of value labels", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Display").click();
 
-      cy.get(".Visualization .value-label").should("not.exist");
+      cy.findByTestId("query-visualization-root")
+        .get(".value-label")
+        .should("not.exist");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Show values on data points").next().click();
-      cy.get(".Visualization .value-label").contains(4.56).should("be.visible");
+      cy.findByTestId("query-visualization-root")
+        .get(".value-label")
+        .contains(4.56)
+        .should("be.visible");
     });
   });
 });

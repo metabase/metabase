@@ -346,7 +346,7 @@ describeEE("formatting > sandboxes", () => {
 
         cy.wait("@cardQuery");
         // Drill-through
-        cy.get(".Visualization").within(() => {
+        cy.findByTestId("query-visualization-root").within(() => {
           // Click on the first bar in a graph (Category: "Doohickey")
           cy.get(".bar").eq(0).click({ force: true });
         });
@@ -423,7 +423,7 @@ describeEE("formatting > sandboxes", () => {
 
       cy.wait("@cardQuery");
       // Drill-through
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         // Click on the first bar in a graph (Category: "Doohickey")
         cy.get(".bar").eq(0).click({ force: true });
       });
@@ -734,7 +734,7 @@ describeEE("formatting > sandboxes", () => {
 
         cy.wait("@cardQuery");
         // Drill-through
-        cy.get(".Visualization").within(() => {
+        cy.findByTestId("query-visualization-root").within(() => {
           // Click on the second bar in a graph (Category: "Widget")
           cy.get(".bar").eq(1).click({ force: true });
         });

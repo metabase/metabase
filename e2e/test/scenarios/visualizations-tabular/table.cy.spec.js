@@ -320,8 +320,9 @@ describe("scenarios > visualizations > table", () => {
     popover().findByText("Filter by this column").click();
     selectFilterOperator("Is");
     popover().within(() => {
-      cy.findByPlaceholderText("Search by Password").type("e").blur();
+      cy.findByPlaceholderText("Search by Password").type("e");
       cy.wait("@findSuggestions");
+      cy.findByPlaceholderText("Search by Password").blur();
     });
 
     popover().then($popover => {
