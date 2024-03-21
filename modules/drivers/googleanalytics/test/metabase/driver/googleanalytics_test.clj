@@ -15,7 +15,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
-   [metabase.sync.analyze.fingerprint :as fingerprint]
+   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -52,9 +52,9 @@
   (testing "Google Analytics doesn't support fingerprinting fields"
     (let [fake-db (-> (mt/db)
                       (assoc :engine :googleanalytics))]
-      (with-redefs [fingerprint/fingerprint-table! (fn [_] (throw (Exception. "this should not be called!")))]
-        (is (= (fingerprint/empty-stats-map 0)
-               (fingerprint/fingerprint-fields-for-db! fake-db [(t2/select-one Table :id (mt/id :venues))] (fn [_ _]))))))))
+      (with-redefs [sync.fingerprint/fingerprint-table! (fn [_] (throw (Exception. "this should not be called!")))]
+        (is (= (sync.fingerprint/empty-stats-map 0)
+               (sync.fingerprint/fingerprint-fields-for-db! fake-db [(t2/select-one Table :id (mt/id :venues))] (fn [_ _]))))))))
 
 (deftest ^:parallel basic-compilation-test
   (testing "just check that a basic almost-empty MBQL query can be compiled"
