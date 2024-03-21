@@ -27,7 +27,7 @@ import {
   getSearchTextFromLocation,
 } from "metabase/search/utils";
 import { getNoSearchResultsIllustration } from "metabase/selectors/whitelabel";
-import { Box, Text, Group, Paper } from "metabase/ui";
+import { Box, Text, Group, Paper, Image } from "metabase/ui";
 
 function SearchApp({ location }) {
   const dispatch = useDispatch();
@@ -98,13 +98,10 @@ function SearchApp({ location }) {
                     illustrationElement={
                       noSearchResultsIllustration && (
                         <Box mb={"-2.5rem"}>
-                          <img
+                          <Image
                             src={noSearchResultsIllustration}
-                            style={{
-                              width: 120,
-                              height: 120,
-                              objectFit: "contain",
-                            }}
+                            width={120}
+                            height={120}
                           />
                         </Box>
                       )

@@ -1,7 +1,6 @@
 import { useSelector } from "metabase/lib/redux";
 import { getNoQuestionResultsIllustration } from "metabase/selectors/whitelabel";
-
-import { NoRowsErrorIllustration } from "./NowRowsError.styled";
+import { Image } from "metabase/ui";
 
 export function NoRowsError() {
   const noQuestionResultsIllustration = useSelector(
@@ -10,8 +9,11 @@ export function NoRowsError() {
 
   return (
     noQuestionResultsIllustration && (
-      <NoRowsErrorIllustration
-        backgroundImageSrc={noQuestionResultsIllustration}
+      <Image
+        width={120}
+        height={120}
+        mb="1rem"
+        src={noQuestionResultsIllustration}
       />
     )
   );
