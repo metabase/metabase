@@ -381,7 +381,7 @@ const getYAxisFormatter = (
 };
 
 export const getYAxisLabel = (
-  axisSeriesKeys: DataKey[],
+  seriesModels: SeriesModel[],
   axisColumn: DatasetColumn,
   settings: ComputedVisualizationSettings,
 ) => {
@@ -395,12 +395,12 @@ export const getYAxisLabel = (
     return specifiedAxisName;
   }
 
-  if (axisSeriesKeys.length > 1) {
+  if (seriesModels.length > 1) {
     return undefined;
   }
 
-  if (settings.series_settings?.[axisColumn.name]?.title) {
-    return settings.series_settings[axisColumn.name].title;
+  if (seriesModels[0].name) {
+    return seriesModels[0].name;
   }
 
   return axisColumn.display_name;
@@ -425,21 +425,22 @@ function getYAxisExtent(
 }
 
 export function getYAxisModel(
-  seriesKeys: DataKey[],
+  seriesModels: SeriesModel[],
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   columnByDataKey: Record<DataKey, DatasetColumn>,
   renderingContext: RenderingContext,
 ): YAxisModel | null {
-  if (seriesKeys.length === 0) {
+  if (seriesModels.length === 0) {
     return null;
   }
 
+  const seriesKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
   const stackType = settings["stackable.stack_type"];
 
   const extent = getYAxisExtent(seriesKeys, dataset, stackType);
-  const column = columnByDataKey[seriesKeys[0]];
-  const label = getYAxisLabel(seriesKeys, column, settings);
+  const column = columnByDataKey[seriesModels[0].dataKey];
+  const label = getYAxisLabel(seriesModels, column, settings);
   const formatter = getYAxisFormatter(column, settings, renderingContext);
 
   return {
@@ -459,6 +460,7 @@ export function getYAxesModels(
   isAutoSplitSupported: boolean,
   renderingContext: RenderingContext,
 ) {
+  const seriesByDataKey = _.indexBy(seriesModels, "dataKey");
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
   const extents = getDatasetExtents(seriesDataKeys, dataset);
 
@@ -471,14 +473,14 @@ export function getYAxesModels(
 
   return {
     leftAxisModel: getYAxisModel(
-      leftAxisSeries,
+      leftAxisSeries.map(dataKey => seriesByDataKey[dataKey]),
       dataset,
       settings,
       columnByDataKey,
       renderingContext,
     ),
     rightAxisModel: getYAxisModel(
-      rightAxisSeries,
+      rightAxisSeries.map(dataKey => seriesByDataKey[dataKey]),
       dataset,
       settings,
       columnByDataKey,
