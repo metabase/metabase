@@ -429,11 +429,11 @@
                        "CREATE TABLE %5$s (id INTEGER);\n"
                        "CREATE USER \"%6$s\" WITH PASSWORD '%7$s';\n"
                        "GRANT SELECT ON %1$s TO \"%6$s\";\n"
-                       "GRANT SELECT (id) ON %4$s TO \"%6$s\";\n"
-                       "GRANT UPDATE (id) ON %5$s TO \"%6$s\";\n"
                        "GRANT UPDATE ON %1$s TO \"%6$s\";\n"
                        "GRANT SELECT ON %2$s TO \"%6$s\";\n"
-                       "GRANT SELECT ON %3$s TO \"%6$s\";")
+                       "GRANT SELECT ON %3$s TO \"%6$s\";\n"
+                       "GRANT SELECT (id) ON %4$s TO \"%6$s\";\n"
+                       "GRANT UPDATE (id) ON %5$s TO \"%6$s\";")
                       qual-tbl-name
                       qual-view-name
                       qual-mview-name
