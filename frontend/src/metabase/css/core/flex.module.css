@@ -101,8 +101,7 @@
   flex-direction: column;
 }
 
-:global(.flex-row),
-.flex-row {
+.flexRow {
   flex-direction: row;
 }
 
