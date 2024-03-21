@@ -52,12 +52,7 @@ export const NotebookContainer = ({
       onTransitionEnd={handleTransitionEnd}
     >
       {shouldShowNotebook && <Notebook {...props} />}
-      {isNativePreviewSidebarOpen && (
-        <NativeQueryPreviewSidebar
-          onUpdateQuestion={() => {}}
-          onSetUIControls={() => {}}
-        />
-      )}
+      {isNativePreviewSidebarOpen && <NativeQueryPreviewSidebar />}
     </Flex>
   );
 };

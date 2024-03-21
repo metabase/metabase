@@ -23,6 +23,7 @@ import {
   modal,
   pickEntity,
   hovercard,
+  openNotebook,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -210,12 +211,10 @@ describe("scenarios > question > new", () => {
     openOrdersTable();
 
     cy.url().should("include", "question#");
-    // Isolate icons within "QueryBuilder" scope because there is also `.Icon-sql` in top navigation
-    cy.findByTestId("query-builder-root").icon("notebook").click();
+    openNotebook();
     cy.url().should("include", "question/notebook#");
     cy.findByTestId("query-builder-root").icon("sql").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Convert this question to SQL").click();
+    cy.button("Convert this question to SQL").click();
     cy.url().should("include", "question#");
   });
 
