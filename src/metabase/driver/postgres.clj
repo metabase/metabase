@@ -39,8 +39,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [next.jdbc :as next.jdbc])
+   [metabase.util.malli :as mu])
   (:import
    (java.io StringReader)
    (java.sql Connection ResultSet ResultSetMetaData Time Types)
@@ -219,28 +218,28 @@
   [schemas table-names]
   ;; Ref: https://github.com/davecramer/pgjdbc/blob/a714bfd/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L1272
   (sql/format
-   (cond-> {:select    [[:n.nspname :schema]
-                        [:c.relname :name]
-                        [[:case-expr :c.relkind
-                          [:inline "r"] [:inline "TABLE"]
-                          [:inline "p"] [:inline "PARTITIONED TABLE"]
-                          [:inline "v"] [:inline "VIEW"]
-                          [:inline "f"] [:inline "FOREIGN TABLE"]
-                          [:inline "m"] [:inline "MATERIALIZED VIEW"]
-                          :else nil]
-                         :type]
-                        [:d.description :description]]
-            :from      [[:pg_catalog.pg_namespace :n]
-                        [:pg_catalog.pg_class :c]]
-            :left-join [[:pg_catalog.pg_description :d] [:and [:= :c.oid :d.objoid] [:= :d.objsubid [:inline 0]]]
-                        [:pg_catalog.pg_class :dc]      [:and [:= :d.classoid :dc.oid] [:= :dc.relname [:inline "pg_class"]]]
-                        [:pg_catalog.pg_namespace :dn]  [:and [:= :dn.oid :dc.relnamespace] [:= :dn.nspname [:inline "pg_catalog"]]]]
-            :where     [:and [:= :c.relnamespace :n.oid]
-                        ;; filter out system tables
-                        [(keyword "!~") :n.nspname "^pg_"] [:<> :n.nspname "information_schema"]
-                        ;; only get tables of type: TABLE, PARTITIONED TABLE, VIEW, FOREIGN TABLE, MATERIALIZED VIEW
-                        [:raw "c.relkind in ('r', 'p', 'v', 'f', 'm')"]]
-            :order-by  [:type :schema :name]}
+   (cond->  {:select    [[:n.nspname :schema]
+                         [:c.relname :name]
+                         [[:case-expr :c.relkind
+                           [:inline "r"] [:inline "TABLE"]
+                           [:inline "p"] [:inline "PARTITIONED TABLE"]
+                           [:inline "v"] [:inline "VIEW"]
+                           [:inline "f"] [:inline "FOREIGN TABLE"]
+                           [:inline "m"] [:inline "MATERIALIZED VIEW"]
+                           :else nil]
+                          :type]
+                         [:d.description :description]
+                         [:stat.n_live_tup :estimated_row_count]]
+             :from      [[:pg_catalog.pg_class :c]]
+             :join      [[:pg_catalog.pg_namespace :n]   [:= :c.relnamespace :n.oid]]
+             :left-join [[:pg_catalog.pg_description :d] [:and [:= :c.oid :d.objoid] [:= :d.objsubid 0] [:= :d.classoid [:raw "'pg_class'::regclass"]]]
+                         [:pg_stat_user_tables :stat]    [:and [:= :n.nspname :stat.schemaname] [:= :c.relname :stat.relname]]]
+             :where     [:and [:= :c.relnamespace :n.oid]
+                         ;; filter out system tables
+                         [(keyword "!~") :n.nspname "^pg_"] [:<> :n.nspname "information_schema"]
+                         ;; only get tables of type: TABLE, PARTITIONED TABLE, VIEW, FOREIGN TABLE, MATERIALIZED VIEW
+                         [:raw "c.relkind in ('r', 'p', 'v', 'f', 'm')"]]
+             :order-by  [:type :schema :name]}
      (seq schemas)
      (sql.helpers/where [:in :n.nspname schemas])
 
@@ -982,20 +981,3 @@
 (defmethod driver.sql/default-database-role :postgres
   [_ _]
   "NONE")
-
-(defmethod driver/schema+table->estimated-row-count :postgres
-  [driver database]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   database
-   nil
-   (fn [conn]
-     (try
-      (into {}
-            (map (fn [{:keys [schema table row_count]}]
-                   [[schema table] row_count]))
-            ;; https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-ALL-TABLES-VIEW
-            (next.jdbc/plan conn ["SELECT schemaname as schema, relname as table, n_live_tup as row_count FROM pg_stat_user_tables"]))
-      (catch Exception e
-        (log/trace e "Failed to get user stat tables")
-        {})))))

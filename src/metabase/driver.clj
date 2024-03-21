@@ -1024,12 +1024,3 @@
   {:added "0.48.0", :arglists '([driver database & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
-
-(defmulti schema+table->estimated-row-count
-  "Returns a map of [schema, table name] -> the estimated row count, for each table in the current database.
-  This should be fast and leverage system tables like `pg_stat_user_tables` in Postgres."
-  {:added "0.50.0" :arglists '([driver database])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmethod schema+table->estimated-row-count ::driver [_ _] {})

@@ -259,7 +259,7 @@
     {:name table-name :schema "public" :description nil
      ;; estimated-row-count is estimated, so the value can't be known for sure "during" test without
      ;; VACUUM-ing. So for tests that don't concern the exact value of estimated-row-count, use schema instead
-     :properties {:estimated-row-count (mt/malli=? [:maybe :int])}}
+     :estimated_row_count (mt/malli=? [:maybe :int])}
     opts)))
 
 (defn- describe-database->tables
@@ -280,7 +280,7 @@
                        CREATE MATERIALIZED VIEW test_mview AS
                        SELECT 'Toucans are the coolest type of bird.' AS true_facts;"])
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
-          (is (=? [(default-table-result "test_mview" {:properties {:estimated-row-count (mt/malli=? int?)}})]
+          (is (=? [(default-table-result "test_mview" {:estimated_row_count (mt/malli=? int?)})]
                   (describe-database->tables :postgres database))))))))
 
 (deftest foreign-tables-test
@@ -291,7 +291,8 @@
         ;; You need to set `MB_POSTGRESQL_TEST_USER` in order for this to work apparently.
         ;;
         ;; make sure that the details include optional stuff like `:user`. Otherwise the test is going to FAIL. You can
-        ;; set it at run time from the REPL using [[mt/db-test-env-var!]].
+        ;; set it at run time from the REPL using [[mt/db-test-env-var!]]
+        ;; (mt/db-test-env-var! :postgresql :user "postgres").
         (is (mc/coerce [:map
                         [:port :int]
                         [:host :string]
@@ -312,8 +313,8 @@
                                 OPTIONS (user '" (:user details) "');
                               GRANT ALL ON public.local_table to PUBLIC;")])
         (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
-          (is (=? [(default-table-result "foreign_table" {:properties {:estimated-row-count (mt/malli=? nil?)}})
-                   (default-table-result "local_table" {:properties {:estimated-row-count (mt/malli=? int?)}})]
+          (is (=? [(default-table-result "foreign_table")
+                   (default-table-result "local_table" {:estimated_row_count (mt/malli=? int?)})]
                   (describe-database->tables :postgres database))))))))
 
 (deftest recreated-views-test
@@ -1394,7 +1395,9 @@
                            (is (= (into #{} (#'sql-jdbc.describe-database/jdbc-get-tables
                                              :postgres (.getMetaData conn) nil schema-pattern table-pattern
                                              ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))
-                                  (into #{} (#'postgres/get-tables (mt/db) schemas tables)))))]
+                                  (into #{} (map #(dissoc % :estimated_row_count))
+                                        (#'postgres/get-tables (mt/db) schemas tables)))))]
+
              (doseq [stmt ["CREATE TABLE public.table (id INTEGER, type TEXT);"
                            "CREATE UNIQUE INDEX idx_table_type ON public.table(type);"
                            "CREATE TABLE public.partition_table (id INTEGER) PARTITION BY RANGE (id);"
@@ -1416,14 +1419,14 @@
 (deftest sync-estimated-row-count-test
   (mt/test-driver :postgres
     (testing "Can sync row count"
-      (mt/with-temp-test-data ["city"
-                               [{:field-name "name"
-                                 :base-type  :type/Text}]
-                               [["Los Angeles"]
-                                ["Las Vegas"]]]
-       (fn [conn]
-                  ;; row count is estimated so we VACUUM so the statistic table is updated before syncing
-           (next.jdbc/execute! conn ["VACUUM;"])
-           (sync/sync-database! (mt/db) {:scan :schema})
-           (is (= {:estimated-row-count 2}
-                  (t2/select-one-fn :properties :model/Table (mt/id :city)))))))))
+      (mt/with-temp-test-data [["city"
+                                [{:field-name "name"
+                                  :base-type  :type/Text}]
+                                [["Los Angeles"]
+                                 ["Las Vegas"]]]]
+        (fn [conn]
+          ;; row count is estimated so we VACUUM so the statistic table is updated before syncing
+          (next.jdbc/execute! conn ["VACUUM;"])
+          (sync/sync-database! (mt/db) {:scan :schema})
+          (is (= 2
+                 (t2/select-one-fn :estimated_row_count :model/Table (mt/id :city)))))))))

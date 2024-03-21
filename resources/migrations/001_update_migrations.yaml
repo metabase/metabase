@@ -6058,15 +6058,15 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-03-21T17:41:00
       author: qnkhuat
-      comment: Add metabase_table.properties
+      comment: Add metabase_table.estimated_row_count
       changes:
         - addColumn:
             tableName: metabase_table
             columns:
               - column:
-                  name: properties
-                  type: ${text.type}
-                  remarks: Various property for a table
+                  name: estimated_row_count
+                  type: integer
+                  remarks: The estimated row count
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

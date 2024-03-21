@@ -9,14 +9,12 @@
 
 (mr/def ::DatabaseMetadataTable
   [:map
-   [:name           ::lib.schema.common/non-blank-string]
-   [:schema         [:maybe ::lib.schema.common/non-blank-string]]
-   [:require-filter {:optional true} :boolean]
+   [:name                                  ::lib.schema.common/non-blank-string]
+   [:schema                                [:maybe ::lib.schema.common/non-blank-string]]
+   [:esetimated-row-count {:optional true} [:maybe :int]]
+   [:require-filter       {:optional true} :boolean]
    ;; `:description` in this case should be a column/remark on the Table, if there is one.
-   [:description    {:optional true} [:maybe :string]]
-   [:properties     {:optional true} [:maybe
-                                      [:map {:closed true}
-                                       [:estimated-row-count {:optional true} [:maybe int?]]]]]])
+   [:description          {:optional true} [:maybe :string]]])
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."
