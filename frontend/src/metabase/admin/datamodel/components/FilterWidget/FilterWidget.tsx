@@ -53,7 +53,7 @@ export const filterWidgetFilterRenderer = ({
       )}
     </div>
     {values.length > 0 && (
-      <div className={cx(CS.flex, CS.alignCenter, "flex-wrap")}>
+      <div className={cx(CS.flex, CS.alignCenter, CS.flexWrap)}>
         {values.map((value, valueIndex) => (
           <div key={valueIndex} className={QueryBuilderS.FilterSection}>
             <QueryOption className="QueryOption">{value}</QueryOption>

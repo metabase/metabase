@@ -132,7 +132,7 @@ export default class SelectPicker extends Component {
               ))}
             </ul>
           ) : (
-            <div className={cx(CS.flex, "flex-wrap", CS.py1)}>
+            <div className={cx(CS.flex, CS.flexWrap, CS.py1)}>
               {validOptions.map(option => (
                 <div
                   key={option.key}

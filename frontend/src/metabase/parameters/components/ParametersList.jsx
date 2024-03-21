@@ -100,7 +100,7 @@ function ParametersList({
         className,
         CS.flex,
         CS.alignEnd,
-        "flex-wrap",
+        CS.flexWrap,
         vertical ? CS.flexColumn : CS.flexRow,
       )}
     >
