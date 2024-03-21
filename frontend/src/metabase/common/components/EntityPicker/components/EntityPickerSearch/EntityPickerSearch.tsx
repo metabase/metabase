@@ -10,7 +10,11 @@ import { useDispatch } from "metabase/lib/redux";
 import { SearchLoadingSpinner } from "metabase/nav/components/search/SearchResults";
 import type { WrappedResult } from "metabase/search/types";
 import { Box, Flex, Icon, Stack, Tabs, TextInput } from "metabase/ui";
-import type { SearchResults } from "metabase-types/api";
+import type {
+  SearchModelType,
+  SearchResultId,
+  SearchResults,
+} from "metabase-types/api";
 
 import type { TypeWithModel } from "../../types";
 
@@ -26,8 +30,8 @@ const defaultSearchFilter = <
 ) => results;
 
 export function EntityPickerSearchInput<
-  Id,
-  Model extends string,
+  Id extends SearchResultId,
+  Model extends SearchModelType,
   Item extends TypeWithModel<Id, Model>,
 >({
   searchQuery,
@@ -55,9 +59,9 @@ export function EntityPickerSearchInput<
         if (searchQuery) {
           Search.api
             .list({ models, q: searchQuery }, { cancelled: cancelled.promise })
-            .then((results: SearchResults) => {
+            .then((results: SearchResults<Id, Model, Item>) => {
               if (results.data) {
-                const items = results.data as unknown as Item[];
+                const items = results.data;
                 const filteredResults = searchFilter(items);
                 setSearchResults(filteredResults);
               } else {

@@ -5,6 +5,7 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
+import type { SearchModelType, SearchResultId } from "metabase-types/api";
 
 import type {
   EntityPickerOptions,
@@ -49,8 +50,8 @@ export interface EntityPickerModalProps<Model extends string, Item> {
 }
 
 export function EntityPickerModal<
-  Id,
-  Model extends string,
+  Id extends SearchResultId,
+  Model extends SearchModelType,
   Item extends TypeWithModel<Id, Model>,
 >({
   title = t`Choose an item`,
@@ -106,7 +107,7 @@ export function EntityPickerModal<
           <GrowFlex justify="space-between">
             <Modal.Title lh="2.5rem">{title}</Modal.Title>
             {hydratedOptions.showSearch && (
-              <EntityPickerSearchInput
+              <EntityPickerSearchInput<Id, Model, Item>
                 models={tabModels}
                 setSearchResults={setSearchResults}
                 searchQuery={searchQuery}

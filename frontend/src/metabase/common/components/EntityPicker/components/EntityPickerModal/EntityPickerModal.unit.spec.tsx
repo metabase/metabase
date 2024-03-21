@@ -19,9 +19,9 @@ import type { EntityTab, TypeWithModel } from "../../types";
 import type { EntityPickerModalOptions } from "./EntityPickerModal";
 import { EntityPickerModal } from "./EntityPickerModal";
 
-type SampleModelType = "test1" | "test2";
+type SampleModelType = "card" | "table";
 
-interface setupProps {
+interface SetupOpts {
   title?: string;
   onItemSelect?: () => void;
   onClose?: () => void;
@@ -39,7 +39,7 @@ const TestPicker = ({ name }: { name: string }) => (
 const TEST_TAB: EntityTab<SampleModelType> = {
   icon: "audit",
   displayName: "All the foo",
-  model: "test1",
+  model: "card",
   element: <TestPicker name="foo" />,
 };
 
@@ -51,7 +51,7 @@ const setup = ({
   tabs = [TEST_TAB],
   selectedItem = null,
   ...rest
-}: setupProps = {}) => {
+}: SetupOpts = {}) => {
   mockGetBoundingClientRect();
   mockScrollBy();
 
@@ -102,7 +102,7 @@ describe("EntityPickerModal", () => {
         {
           icon: "folder",
           displayName: "All the bar",
-          model: "test2",
+          model: "table",
           element: <TestPicker name="bar" />,
         },
       ];
