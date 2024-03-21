@@ -106,6 +106,8 @@ describe("StringFilterEditor", () => {
         },
       });
 
+      userEvent.click(screen.getByText("contains"));
+      userEvent.click(screen.getByText("Is"));
       userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
       act(() => jest.advanceTimersByTime(1000));
       userEvent.click(await screen.findByText("a@metabase.test"));
@@ -120,6 +122,8 @@ describe("StringFilterEditor", () => {
         column: findColumn("PEOPLE", "PASSWORD"),
       });
 
+      userEvent.click(screen.getByText("contains"));
+      userEvent.click(screen.getByText("Is"));
       userEvent.type(screen.getByPlaceholderText("Enter some text"), "Test");
       userEvent.tab();
 

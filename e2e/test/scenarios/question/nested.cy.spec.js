@@ -368,10 +368,10 @@ describe("scenarios > question > nested", () => {
         display: "scalar",
       }).then(({ body: { id } }) => {
         visitQuestion(id);
-        cy.get(".ScalarValue").findByText(value);
+        cy.findByTestId("scalar-value").findByText(value);
 
         visitNestedQueryAdHoc(id);
-        cy.get(".ScalarValue").findByText(value);
+        cy.findByTestId("scalar-value").findByText(value);
       });
     }
   });

@@ -106,8 +106,9 @@ describe("CoordinateFilterPicker", () => {
       setup();
 
       expect(screen.getByText("User → Latitude")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("Is")).toBeInTheDocument();
-      expect(screen.getByPlaceholderText("Enter a number")).toHaveValue("");
+      expect(screen.getByDisplayValue("Between")).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("Min")).toHaveValue("");
+      expect(screen.getByPlaceholderText("Max")).toHaveValue("");
       expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
     });
 
@@ -315,6 +316,8 @@ describe("CoordinateFilterPicker", () => {
       it("should add a filter with many values", async () => {
         const { getNextFilterParts, getNextFilterColumnNames } = setup();
 
+        userEvent.click(screen.getByDisplayValue("Between"));
+        userEvent.click(screen.getByText("Is"));
         const input = screen.getByPlaceholderText("Enter a number");
         userEvent.type(input, "5");
         userEvent.tab();
@@ -333,7 +336,8 @@ describe("CoordinateFilterPicker", () => {
 
     it("should handle invalid input", async () => {
       setup();
-
+      userEvent.click(screen.getByDisplayValue("Between"));
+      userEvent.click(screen.getByText("Is"));
       userEvent.type(
         screen.getByPlaceholderText("Enter a number"),
         "Twenty four",

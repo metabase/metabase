@@ -4,7 +4,7 @@
   "Schema model types"
   ["Database"
    "Field"
-   "Metric"
+   "LegacyMetric"
    "Segment"
    "Table"])
 
@@ -41,6 +41,7 @@
    "ApplicationPermissionsRevision"
    "AuditLog"
    "BookmarkOrdering"
+   "CacheConfig"
    "CardBookmark"
    "CollectionBookmark"
    "CollectionPermissionGraphRevision"
@@ -51,7 +52,7 @@
    "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
-   "MetricImportantField"
+   "LegacyMetricImportantField"
    "ModelIndex"
    "ModelIndexValue"
    "ModerationReview"

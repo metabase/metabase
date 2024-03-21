@@ -9,10 +9,10 @@
    [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    [metabase.db :as mdb]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -35,7 +35,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- all-table-ids [m]
-  (into #{} cat (mbql.u/match m
+  (into #{} cat (lib.util.match/match m
                   (_ :guard (every-pred map? :source-table (complement ::gtap?)))
                   (let [recursive-ids (all-table-ids (dissoc &match :source-table))]
                     (cons (:source-table &match) recursive-ids)))))
@@ -81,7 +81,7 @@
   "If the `:target` of a parameter contains a `:field` clause, return the base type corresponding to the Field it
   references. Otherwise returns `nil`."
   [[_ target-field-clause]]
-  (when-let [field-id (mbql.u/match-one target-field-clause [:field (field-id :guard integer?) _] field-id)]
+  (when-let [field-id (lib.util.match/match-one target-field-clause [:field (field-id :guard integer?) _] field-id)]
     (:base-type (lib.metadata.protocols/field (qp.store/metadata-provider) field-id))))
 
 (defn- attr-value->param-value
@@ -235,7 +235,7 @@
   [{table-id :table_id, attribute-remappings :attribute_remappings}]
   (->>
    (for [target-field-clause (vals attribute-remappings)]
-     (mbql.u/match-one target-field-clause
+     (lib.util.match/match-one target-field-clause
        [:field (field-id :guard integer?) _]
        (:table-id (lib.metadata.protocols/field (qp.store/metadata-provider) field-id))))
    (cons table-id)
@@ -292,7 +292,7 @@
   from their GTAPs."
   [m table-id->gtap]
   ;; replace maps that have `:source-table` key and a matching entry in `table-id->gtap`, but do not have `::gtap?` key
-  (mbql.u/replace m
+  (lib.util.match/replace m
     (_ :guard (every-pred map? (complement ::gtap?) :source-table #(get table-id->gtap (:source-table %))))
     (let [updated             (apply-gtap &match (get table-id->gtap (:source-table &match)))
           ;; now recursively apply gtaps anywhere else they might exist at this level, e.g. `:joins`
@@ -301,7 +301,7 @@
                                (apply-gtaps (dissoc updated :source-table :source-query) table-id->gtap))]
       ;; add a `::gtap?` key next to every `:source-table` key so when we do a second pass after adding JOINs they
       ;; don't get processed again
-      (mbql.u/replace recursively-updated
+      (lib.util.match/replace recursively-updated
         (_ :guard (every-pred map? :source-table))
         (assoc &match ::gtap? true)))))
 

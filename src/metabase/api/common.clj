@@ -42,15 +42,17 @@
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
+   [clojure.tools.macro :as macro]
    [compojure.core :as compojure]
    [medley.core :as m]
    [metabase.api.common.internal
     :refer [add-route-param-schema
             auto-coerce
             route-dox
-            validate-params
             route-fn-name
+            validate-params
             wrap-response-if-needed]]
+   [metabase.api.common.openapi :as openapi]
    [metabase.config :as config]
    [metabase.events :as events]
    [metabase.models.interface :as mi]
@@ -59,10 +61,13 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [potemkin :as p]
    [ring.middleware.multipart-params :as mp]
    [toucan2.core :as t2]))
 
 (declare check-403 check-404)
+
+(p/import-vars [openapi openapi-object])
 
 ;;; ----------------------------------------------- DYNAMIC VARIABLES ------------------------------------------------
 ;; These get bound by middleware for each HTTP request.
@@ -276,14 +281,14 @@
           route                                               (add-route-param-schema arg->schema route)
           ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
           ;; their API error messages
-          docstr                                              (route-dox method route docstr args
-                                                                               (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
-                                                                               body)]
+          route-doc                                           (route-dox method route docstr args
+                                                                         (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
+                                                                            body)]
       ;; Don't i18n this, it's dev-facing only
       (when-not docstr
         (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
                                   (ns-name *ns*) fn-name)))
-      (assoc parsed :fn-name fn-name, :route route, :docstr docstr))))
+      (assoc parsed :fn-name fn-name, :route route, :route-doc route-doc, :docstr docstr))))
 
 (defn validate-param-values
   "Log a warning if the request body contains any parameters not included in `expected-params` (which is presumably
@@ -308,17 +313,24 @@
 
 (defmacro defendpoint*
   "Impl macro for [[defendpoint]]; don't use this directly."
-  [{:keys [method route fn-name docstr args body arg->schema]}]
+  [{:keys [method route fn-name route-doc docstr args body arg->schema]}]
   {:pre [(or (string? route) (vector? route))]}
   (let [method-kw       (method-symbol->keyword method)
         allowed-params  (mapv keyword (keys arg->schema))
         prep-route      #'compojure/prepare-route
         multipart?      (get (meta method) :multipart false)
-        handler-wrapper (if multipart? mp/wrap-multipart-params identity)]
+        handler-wrapper (if multipart? mp/wrap-multipart-params identity)
+        schema          (into [:map] (for [[k v] arg->schema]
+                                       [(keyword k) v]))]
     `(def ~(vary-meta fn-name
-                      assoc
-                      :doc          docstr
-                      :is-endpoint? true)
+                      merge
+                      {:doc          route-doc
+                       :orig-doc     docstr
+                       :method       method-kw
+                       :path         route
+                       :schema       schema
+                       :is-endpoint? true}
+                      (meta method))
        ;; The next form is a copy of `compojure/compile-route`, with the sole addition of the call to
        ;; `validate-param-values`. This is because to validate the request body we need to intercept the request
        ;; before the destructuring takes place. I.e., we need to validate the value of `(:body request#)`, and that's
@@ -392,14 +404,29 @@
     (api/define-routes api/+check-superuser) ; all API endpoints in this namespace will require superuser access"
   {:style/indent 0}
   [& middleware]
-  (let [api-route-fns (namespace->api-route-fns *ns*)
-        routes        `(compojure/routes ~@api-route-fns)
+  (let [api-route-fns (vec (namespace->api-route-fns *ns*))
+        routes        `(with-meta (compojure/routes ~@api-route-fns) {:routes ~api-route-fns})
         docstring     (str "Routes for " *ns*)]
-    `(def ~(vary-meta 'routes assoc :doc (api-routes-docstring *ns* api-route-fns middleware))
+    `(def ~(vary-meta 'routes assoc
+                      :doc    (api-routes-docstring *ns* api-route-fns middleware)
+                      :routes api-route-fns)
        ~docstring
        ~(if (seq middleware)
           `(-> ~routes ~@middleware)
           routes))))
+
+(defmacro context
+  "Replacement for `compojure.core/context`, but with metadata"
+  [path args & routes]
+  `(with-meta (compojure/context ~path ~args ~@routes) {:routes (vector ~@routes)
+                                                        :path   ~path}))
+
+(defmacro defroutes
+  "Replacement for `compojure.core/defroutes, but with metadata"
+  [name & routes]
+  (let [[name routes] (macro/name-with-attributes name routes)
+        name          (vary-meta name assoc :routes (vec routes))]
+    `(def ~name (compojure/routes ~@routes))))
 
 (defn +check-superuser
   "Wrap a Ring handler to make sure the current user is a superuser before handling any requests.

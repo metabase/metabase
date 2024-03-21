@@ -14,8 +14,8 @@
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
-   [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Database]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
@@ -428,7 +428,7 @@
 (defn- file-size-mb [csv-file]
   (/ (.length ^File csv-file) 1048576.0))
 
-(defn- load-from-csv!
+(defn- create-from-csv!
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
   [driver db-id table-name ^File csv-file]
@@ -536,9 +536,10 @@
   [file]
   (with-open [reader (bom/bom-reader file)]
     (let [rows (csv/read-csv reader)]
-      {:size-mb     (file-size-mb file)
-       :num-columns (count (first rows))
-       :num-rows    (count (rest rows))})))
+      {:size-mb           (file-size-mb file)
+       :num-columns       (count (first rows))
+       :num-rows          (count (rest rows))
+       :generated-columns 0})))
 
 (mu/defn create-csv-upload!
   "Main entry point for CSV uploading.
@@ -584,7 +585,7 @@
                                    (unique-table-name driver)
                                    (u/lower-case-en))
             schema+table-name (table-identifier {:schema schema-name :name table-name})
-            stats             (load-from-csv! driver (:id database) schema+table-name file)
+            stats             (create-from-csv! driver (:id database) schema+table-name file)
             ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
             table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})
             _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true})
