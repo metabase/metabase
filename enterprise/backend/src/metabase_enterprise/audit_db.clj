@@ -20,6 +20,8 @@
    (java.util.jar JarEntry JarFile)
    (sun.nio.fs UnixPath)))
 
+(def ^:private audit-installed? (atom false))
+
 (set! *warn-on-reflection* true)
 
 (defn- running-from-jar?
@@ -83,24 +85,30 @@
   "Default Dashboard Overview (this is a dashboard) entity id."
   "bJEYb0o5CXlfWFcIztDwJ")
 
-(def ^{:arglists '([model entity-id])} entity-id->object
+(def ^{:arglists '([audit-installed? model entity-id])
+       :private  true} memoized-select-audit-entity*
+  (mdb/memoize-for-application-db
+   (fn [audit-installed? model entity-id]
+     (when audit-installed?
+       (t2/select-one model :entity_id entity-id)))))
+
+(defn memoized-select-audit-entity
   "Returns the object from entity id and model. Memoizes from entity id.
   Should only be used for audit/pre-loaded objects."
-  (mdb/memoize-for-application-db
-   (fn [model entity-id]
-     (t2/select-one model :entity_id entity-id))))
+  [model entity-id]
+  (memoized-select-audit-entity* @audit-installed? model entity-id))
 
 (defenterprise default-custom-reports-collection
   "Default custom reports collection."
   :feature :none
   []
-  (entity-id->object :model/Collection default-custom-reports-entity-id))
+  (memoized-select-audit-entity :model/Collection default-custom-reports-entity-id))
 
 (defenterprise default-audit-collection
   "Default audit collection (instance analytics) collection."
   :feature :none
   []
-  (entity-id->object :model/Collection default-audit-collection-entity-id))
+  (memoized-select-audit-entity :model/Collection default-audit-collection-entity-id))
 
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
@@ -288,4 +296,6 @@
    (let [audit-db (t2/select-one :model/Database :is_audit true)]
        ;; prevent sync while loading
      ((sync-util/with-duplicate-ops-prevented :sync-database audit-db
-        (fn [] (maybe-load-analytics-content! audit-db)))))))
+        (fn []
+          (maybe-load-analytics-content! audit-db)
+          (reset! audit-installed? true)))))))
