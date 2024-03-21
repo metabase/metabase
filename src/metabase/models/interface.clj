@@ -9,6 +9,7 @@
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.dispatch :as models.dispatch]
