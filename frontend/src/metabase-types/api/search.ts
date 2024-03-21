@@ -56,7 +56,7 @@ export interface SearchResults<
 > {
   data: Result[];
   models: Model[] | null;
-  available_models: Model[];
+  available_models: SearchModelType[];
   limit: number;
   offset: number;
   table_db_id: DatabaseId | null;
