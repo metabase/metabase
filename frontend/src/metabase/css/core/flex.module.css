@@ -97,7 +97,6 @@
   justify-content: center;
 }
 
-:global(.flex-column),
 .flexColumn {
   flex-direction: column;
 }
