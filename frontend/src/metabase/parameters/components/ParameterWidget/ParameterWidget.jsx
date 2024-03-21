@@ -64,8 +64,7 @@ export class ParameterWidget extends Component {
         commitImmediately={commitImmediately}
         setParameterValueToDefault={setParameterValueToDefault}
         enableRequiredBehavior={enableParameterRequiredBehavior}
-        isSortable={isSortable}
-        disableSort={!isEditing}
+        isSortable={isSortable && isEditing}
       />
     );
   }

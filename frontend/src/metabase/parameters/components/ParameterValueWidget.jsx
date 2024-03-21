@@ -61,6 +61,7 @@ class ParameterValueWidget extends Component {
     // Don't use in settings sidebars.
     enableRequiredBehavior: PropTypes.bool,
     mimicMantine: PropTypes.bool,
+    isSortable: PropTypes.bool,
   };
 
   state = { isFocused: false };
@@ -156,13 +157,13 @@ class ParameterValueWidget extends Component {
   }
 
   wrapSortable(children) {
-    const { disableSort = true, parameter } = this.props;
+    const { isSortable = false, parameter } = this.props;
 
     return (
       <Sortable
         id={parameter.id}
         draggingStyle={{ opacity: 0.5 }}
-        disabled={disableSort}
+        disabled={!isSortable}
         role="listitem"
       >
         {children}
