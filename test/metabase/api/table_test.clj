@@ -7,10 +7,9 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models :refer [Card Database Field FieldValues Table]]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.table :as table]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
@@ -129,12 +128,10 @@
   (testing "GET /api/table/:id"
     (is (= (merge
             (dissoc (table-defaults) :segments :field_values :metrics)
-            (t2/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :venues))
+            (t2/hydrate (t2/select-one [Table :id :created_at :updated_at :initial_sync_status] :id (mt/id :venues)) :pk_field)
             {:schema       "PUBLIC"
              :name         "VENUES"
              :display_name "Venues"
-             :pk_field     (table/pk-field-id (t2/select-one Table :id (mt/id :venues)))
-             :id           (mt/id :venues)
              :db_id        (mt/id)})
            (mt/user-http-request :rasta :get 200 (format "table/%d" (mt/id :venues)))))
 
@@ -156,7 +153,7 @@
                 options)
     (m/map-keys #(Long/parseLong %) options)
     ;; since we're comparing API responses, need to de-keywordize the `:field` clauses
-    (mbql.u/replace options :field (mt/obj->json->obj &match))))
+    (lib.util.match/replace options :field (mt/obj->json->obj &match))))
 
 (defn- query-metadata-defaults []
   (-> (table-defaults)
@@ -319,12 +316,11 @@
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :updated_at)
                   (update :db merge (select-keys (mt/db) [:details :settings])))
-              (t2/select-one [Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
+              (t2/hydrate (t2/select-one [Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table)) :pk_field)
               {:description     "What a nice table!"
                :entity_type     nil
                :visibility_type "hidden"
-               :display_name    "Userz"
-               :pk_field        (table/pk-field-id table)})
+               :display_name    "Userz"})
              (dissoc (mt/user-http-request :crowberto :get 200 (format "table/%d" (u/the-id table)))
                      :updated_at))))
     (testing "Can update description, caveat, points of interest to be empty (#11097)"
@@ -808,7 +804,7 @@
 
       (testing "time columns"
         (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers))
-          (mt/dataset test-data-with-time
+          (mt/dataset time-test-data
             (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users)))]
               (is (= @#'api.table/time-dimension-indexes
                      (dimension-options-for-field response "last_login_time"))))))))))

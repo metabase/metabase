@@ -12,6 +12,8 @@
    [clojure.walk :as walk]
    [goog.object :as gobject]
    [medley.core :as m]
+   [metabase.legacy-mbql.js :as mbql.js]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
@@ -27,8 +29,6 @@
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.js :as mbql.js]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -1050,7 +1050,7 @@
 
 (defn ^:export database-id
   "Get the Database ID (`:database`) associated with a query. If the query is using
-  the [[metabase.mbql.schema/saved-questions-virtual-database-id]] (used in some situations for queries with a
+  the [[metabase.legacy-mbql.schema/saved-questions-virtual-database-id]] (used in some situations for queries with a
   `:source-card`)
 
     {:database -1337}
@@ -1315,3 +1315,11 @@
     :can-run a-query
     (fn [_]
       (lib.core/can-run a-query))))
+
+(defn ^:export can-save
+  "Returns true if the query can be saved."
+  [a-query]
+  (lib.cache/side-channel-cache
+   :can-save a-query
+   (fn [_]
+     (lib.core/can-save a-query))))

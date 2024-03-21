@@ -29,7 +29,7 @@ export function canSearchFieldValues(
   );
 }
 
-function getFieldOptions(fieldValues: FieldValue[]): SelectItem[] {
+export function getFieldOptions(fieldValues: FieldValue[]): SelectItem[] {
   return fieldValues
     .filter(([value]) => value != null)
     .map(([value, label = value]) => ({

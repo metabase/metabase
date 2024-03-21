@@ -36,5 +36,5 @@ describe("issue 11435", () => {
 });
 
 const hoverLineDot = ({ index } = {}) => {
-  cy.get(".Visualization .dot").eq(index).realHover();
+  cy.findByTestId("query-visualization-root").get(".dot").eq(index).realHover();
 };

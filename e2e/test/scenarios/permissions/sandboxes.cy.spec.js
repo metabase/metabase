@@ -23,6 +23,7 @@ import {
   startNewQuestion,
   sendEmailAndAssert,
   setTokenFeatures,
+  selectFilterOperator,
 } from "e2e/support/helpers";
 
 const {
@@ -156,11 +157,8 @@ describeEE("formatting > sandboxes", () => {
         cy.log("Add filter to a question");
         cy.icon("notebook").click();
         filter({ mode: "notebook" });
-        popover().within(() => {
-          cy.findByText("Total").click({ force: true });
-          cy.findByDisplayValue("Equal to").click();
-        });
-        cy.findByRole("listbox").findByText("Greater than").click();
+        popover().findByText("Total").click();
+        selectFilterOperator("Greater than");
         popover().within(() => {
           cy.findByPlaceholderText("Enter a number").type("100");
           cy.button("Add filter").click();
@@ -348,7 +346,7 @@ describeEE("formatting > sandboxes", () => {
 
         cy.wait("@cardQuery");
         // Drill-through
-        cy.get(".Visualization").within(() => {
+        cy.findByTestId("query-visualization-root").within(() => {
           // Click on the first bar in a graph (Category: "Doohickey")
           cy.get(".bar").eq(0).click({ force: true });
         });
@@ -425,7 +423,7 @@ describeEE("formatting > sandboxes", () => {
 
       cy.wait("@cardQuery");
       // Drill-through
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         // Click on the first bar in a graph (Category: "Doohickey")
         cy.get(".bar").eq(0).click({ force: true });
       });
@@ -736,7 +734,7 @@ describeEE("formatting > sandboxes", () => {
 
         cy.wait("@cardQuery");
         // Drill-through
-        cy.get(".Visualization").within(() => {
+        cy.findByTestId("query-visualization-root").within(() => {
           // Click on the second bar in a graph (Category: "Widget")
           cy.get(".bar").eq(1).click({ force: true });
         });

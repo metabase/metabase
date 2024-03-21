@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.limit
   "Middleware that handles limiting the maximum number of rows returned by a query."
   (:require
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.util :as qp.util]))
 
@@ -25,7 +25,7 @@
 
 (defn determine-query-max-rows
   "Given a `query`, return the max rows that should be returned. This is either:
-  1. the output of [[metabase.mbql.util/query->max-rows-limit]] when called on the given query
+  1. the output of [[metabase.legacy-mbql.util/query->max-rows-limit]] when called on the given query
   2. [[metabase.query-processor.interface/absolute-max-results]] (a constant, non-nil backstop value)"
   [query]
   (when-not (disable-max-results? query)

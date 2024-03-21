@@ -53,7 +53,7 @@ describe.skip("issue 19744", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("All Options").click();
 
-    cy.get(".DashCard").contains("Select…").click();
+    cy.findByTestId("dashcard-container").contains("Select…").click();
     popover().contains("Created At");
   });
 });

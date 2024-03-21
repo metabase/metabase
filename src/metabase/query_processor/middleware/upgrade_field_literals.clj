@@ -2,9 +2,8 @@
   (:require
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.query-processor.middleware.resolve-fields
-    :as qp.resolve-fields]
+   [metabase.lib.util.match :as lib.util.match]
+   [metabase.query-processor.middleware.resolve-fields :as qp.resolve-fields]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -37,7 +36,7 @@
         columns (set (vals field-name->field))]
     (cond
       field-ref
-      (mbql.u/match-one field-ref
+      (lib.util.match/match-one field-ref
         ;; If the matching Field ref is an integer `:field` clause then replace it with the corrected clause.
         [:field (id :guard integer?) new-options]
         (let [new-clause [:field id (merge new-options (dissoc options :base-type))]]
@@ -76,7 +75,7 @@
   (let [source-aliases    (into #{} (keep :source_alias) source-metadata)
         field-name->field (merge (m/index-by :name source-metadata)
                                  (m/index-by (comp u/lower-case-en :name) source-metadata))]
-    (mbql.u/replace inner-query
+    (lib.util.match/replace inner-query
       ;; don't upgrade anything inside `source-query` or `source-metadata`.
       (_ :guard (constantly (some (set &parents) [:source-query :source-metadata])))
       &match

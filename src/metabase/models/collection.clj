@@ -66,13 +66,16 @@
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
+(defn- default-audit-collection?
+  [{:keys [id] :as _col}]
+  (= id (:id (perms/default-audit-collection))))
+
 (defmethod mi/can-write? Collection
   ([instance]
-   (mi/can-write? :model/Collection (:id instance)))
-  ([model pk]
-   (if (= pk (:id (perms/default-audit-collection)))
-     false
-     (mi/current-user-has-full-permissions? :write model pk))))
+   (and (not (default-audit-collection? instance))
+        (mi/current-user-has-full-permissions? :write instance)))
+  ([_model pk]
+   (mi/can-write? (t2/select-one :model/Collection pk))))
 
 (defmethod mi/can-read? Collection
   ([instance]
@@ -417,11 +420,10 @@
   [{:keys [location]} :- CollectionWithLocationOrRoot]
   (some-> location location-path->parent-id))
 
-(mi/define-simple-hydration-method parent-id
-  :parent_id
+(methodical/defmethod t2/simple-hydrate [:default :parent_id]
   "Get the immediate parent `collection` id, if set."
-  [collection]
-  (parent-id* collection))
+  [_model k collection]
+  (assoc collection k (parent-id* collection)))
 
 (mu/defn children-location :- LocationPath
   "Given a `collection` return a location path that should match the `:location` value of all the children of the

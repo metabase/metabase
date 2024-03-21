@@ -30,7 +30,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Rustic Paper Wallet");
         cy.findAllByText("Doohickey").should("not.exist");
       });
@@ -42,16 +42,16 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Rustic Paper Wallet");
         cy.findAllByText("Doohickey").should("not.exist");
       });
     });
 
     describe("required tag", () => {
-      it("needs a default value to run or save the query", () => {
+      it("needs a default value to save the query, but allows running it", () => {
         SQLFilter.toggleRequired();
-        SQLFilter.getRunQueryButton().should("be.disabled");
+        SQLFilter.getRunQueryButton().should("not.be.disabled");
         SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
 
         SQLFilter.getSaveQueryButton().realHover();
@@ -109,7 +109,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Aerodynamic Linen Coat");
         cy.findAllByText("4.3");
       });
@@ -121,16 +121,16 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Aerodynamic Linen Coat");
         cy.findAllByText("4.3");
       });
     });
 
     describe("required tag", () => {
-      it("needs a default value to run or save the query", () => {
+      it("needs a default value to save the query, but allows running it", () => {
         SQLFilter.toggleRequired();
-        SQLFilter.getRunQueryButton().should("be.disabled");
+        SQLFilter.getRunQueryButton().should("not.be.disabled");
         SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
 
         SQLFilter.getSaveQueryButton().realHover();
@@ -196,7 +196,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("No results!");
       });
     });
@@ -214,7 +214,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("No results!");
       });
     });
@@ -230,9 +230,9 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     }
 
     describe("required tag", () => {
-      it("needs a default value for to run or save query", () => {
+      it("needs a default value to save the query, but allows running it", () => {
         SQLFilter.toggleRequired();
-        SQLFilter.getRunQueryButton().should("be.disabled");
+        SQLFilter.getRunQueryButton().should("not.be.disabled");
         SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
 
         SQLFilter.getSaveQueryButton().realHover();

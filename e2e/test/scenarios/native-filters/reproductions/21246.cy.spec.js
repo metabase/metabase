@@ -57,7 +57,7 @@ describe("issue 21246", () => {
         cy.visit(`/question/${id}`);
         cy.wait("@dataset");
 
-        cy.get(".ScalarValue").invoke("text").should("eq", "18,760");
+        cy.findByTestId("scalar-value").invoke("text").should("eq", "18,760");
       });
     });
   });
@@ -83,5 +83,5 @@ describe("issue 21246", () => {
 });
 
 function resultAssertion(res) {
-  cy.get(".ScalarValue").invoke("text").should("eq", res);
+  cy.findByTestId("scalar-value").invoke("text").should("eq", res);
 }

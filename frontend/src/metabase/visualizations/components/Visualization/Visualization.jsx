@@ -193,20 +193,9 @@ class Visualization extends PureComponent {
   };
 
   _getQuestionForCardCached(metadata, card) {
-    if (!metadata || !card) {
-      return;
-    }
-    const { isQueryBuilder, queryBuilderMode } = this.props;
-    const question = new Question(card, metadata);
-
-    // Datasets in QB should behave as raw tables opened in simple mode
-    // composeQuestion replaces the dataset_query with a clean query using the dataset as a source table
-    // Ideally, this logic should happen somewhere else
-    return question.type() === "model" &&
-      isQueryBuilder &&
-      queryBuilderMode !== "dataset"
-      ? question.composeQuestion()
-      : question;
+    return card != null && metadata != null
+      ? new Question(card, metadata)
+      : undefined;
   }
 
   getMode(maybeModeOrQueryMode, question) {
@@ -516,7 +505,7 @@ class Visualization extends PureComponent {
             >
               <CardVisualization
                 {...this.props}
-                // NOTE: CardVisualization class used to target ExplicitSize HOC
+                // NOTE: CardVisualization class used as a selector for tests
                 className="CardVisualization flex-full flex-basis-none"
                 isPlaceholder={isPlaceholder}
                 isMobile={isMobile}

@@ -26,13 +26,13 @@
       [clojure.set :as set]
       [clojure.spec.alpha :as s]
       [medley.core :as m]
-      [metabase.mbql.normalize :as mbql.normalize])]
+      [metabase.legacy-mbql.normalize :as mbql.normalize])]
     :cljs
     [(:require
       [clojure.set :as set]
       [clojure.spec.alpha :as s]
       [medley.core :as m]
-      [metabase.mbql.normalize :as mbql.normalize])]))
+      [metabase.legacy-mbql.normalize :as mbql.normalize])]))
 
 ;;; -------------------------------------------------- Main API --------------------------------------------------
 

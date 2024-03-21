@@ -5,26 +5,29 @@ import { onlyOn } from "@cypress/skip-test";
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  SECOND_COLLECTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_MODEL_ID,
+  SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import {
-  popover,
-  restore,
-  startNewQuestion,
-  openReviewsTable,
-  openNotebook,
-  visitQuestion,
-  resetTestTable,
-  resyncDatabase,
-  visualize,
-  saveQuestion,
-  visitModel,
-  openQuestionActions,
-  isOSS,
+  createQuestion,
   isEE,
+  isOSS,
+  openNotebook,
+  openQuestionActions,
+  openReviewsTable,
+  popover,
+  resetTestTable,
+  restore,
+  resyncDatabase,
+  saveQuestion,
+  startNewQuestion,
+  visitModel,
+  visitQuestion,
+  visualize,
 } from "e2e/support/helpers";
+import { checkNotNull } from "metabase/lib/types";
 
 const { REVIEWS_ID } = SAMPLE_DATABASE;
 
@@ -86,7 +89,7 @@ describe("scenarios > notebook > data source", () => {
     });
 
     it("should not show saved questions if only models exist (metabase#25142)", () => {
-      cy.createQuestion({
+      createQuestion({
         name: "GUI Model",
         query: { "source-table": REVIEWS_ID, limit: 1 },
         display: "table",
@@ -114,7 +117,7 @@ describe("scenarios > notebook > data source", () => {
     // That's the reason this test is a bit vague. Will be reported as a separate issue
     // and covered in a separate reproduction.
     it("should not show models if only saved questions exist", () => {
-      cy.createQuestion({
+      createQuestion({
         name: "GUI Question",
         query: { "source-table": REVIEWS_ID, limit: 1 },
         display: "table",
@@ -228,7 +231,7 @@ describe("scenarios > notebook > data source", () => {
   });
 
   describe("saved entity as a source (aka the virtual table)", () => {
-    const modelDetails: Parameters<typeof cy.createQuestion>[0] = {
+    const modelDetails: StructuredQuestionDetails = {
       name: "GUI Model",
       query: { "source-table": REVIEWS_ID, limit: 1 },
       display: "table",
@@ -242,7 +245,7 @@ describe("scenarios > notebook > data source", () => {
     });
 
     it("data selector should properly show a model as the source (metabase#39699)", () => {
-      cy.createQuestion(modelDetails, { visitQuestion: true });
+      createQuestion(modelDetails, { visitQuestion: true });
       openNotebook();
       cy.findByTestId("data-step-cell")
         .should("have.text", modelDetails.name)
@@ -266,7 +269,7 @@ describe("scenarios > notebook > data source", () => {
       });
 
       cy.findByTestId("select-list")
-        .findByLabelText(modelDetails.name)
+        .findByLabelText(checkNotNull(modelDetails.name))
         .should("have.attr", "aria-selected", "true");
     });
 
@@ -298,7 +301,7 @@ describe("scenarios > notebook > data source", () => {
         query: { "source-table": `card__${SOURCE_QUESTION_ID}` },
       };
 
-      cy.createQuestion(nestedQuestionDetails, {
+      createQuestion(nestedQuestionDetails, {
         wrapId: true,
         idAlias: "nestedQuestionId",
       });

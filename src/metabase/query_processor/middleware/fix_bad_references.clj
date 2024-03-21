@@ -2,7 +2,7 @@
   (:require
    [clojure.walk :as walk]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -34,7 +34,7 @@
    (fix-bad-references* inner-query inner-query (find-source-table inner-query)))
 
   ([inner-query form source-table & sources]
-   (mbql.u/replace form
+   (lib.util.match/replace form
      ;; don't replace anything inside source metadata.
      (_ :guard (constantly ((set &parents) :source-metadata)))
      &match
