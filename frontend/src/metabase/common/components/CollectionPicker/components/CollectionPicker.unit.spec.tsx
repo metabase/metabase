@@ -80,7 +80,7 @@ const flattenCollectionTree = (
   return [
     ...node.map(n => ({
       name: n.name,
-      id: n.id as CollectionId,
+      id: n.id,
       is_personal: !!n.is_personal,
       location: n.location,
     })),
