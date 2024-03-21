@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import cx from "classnames";
 import { connect } from "react-redux";
 import { t } from "ttag";
 

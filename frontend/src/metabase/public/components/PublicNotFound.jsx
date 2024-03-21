@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
