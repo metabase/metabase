@@ -92,24 +92,6 @@
   margin-left: auto;
 }
 
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-flex-align-right) {
-    margin-left: auto;
-  }
-}
-
-@media screen and (--breakpoint-min-md) {
-  :global(.md-flex-align-right) {
-    margin-left: auto;
-  }
-}
-
-@media screen and (--breakpoint-min-lg) {
-  :global(.lg-flex-align-right) {
-    margin-left: auto;
-  }
-}
-
 :global(.layout-centered),
 .layout-centered,
 .layoutCentered {
