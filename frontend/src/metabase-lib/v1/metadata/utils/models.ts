@@ -6,11 +6,11 @@ import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 import type {
   DatasetColumn,
+  FieldId,
   FieldReference,
   ModelCacheRefreshStatus,
   TableColumnOrderSetting,
   TemplateTag,
-  FieldId,
 } from "metabase-types/api";
 
 type FieldMetadata = {
@@ -111,23 +111,21 @@ export function checkCanBeModel(question: Question) {
 }
 
 export function isAdHocModelQuestion(
-  question: Question,
+  question?: Question,
   originalQuestion?: Question,
 ) {
-  const query = question.query();
-  const { isNative } = Lib.queryDisplayInfo(query);
-  if (!originalQuestion || isNative) {
+  if (!question || !originalQuestion) {
     return false;
   }
 
   const isModel =
     question.type() === "model" || originalQuestion.type() === "model";
-  const isSameCard = question.id() === originalQuestion.id();
+  const isSameQuestion = question.id() === originalQuestion.id();
   const isSelfReferencing =
-    Lib.sourceTableOrCardId(query) ===
+    Lib.sourceTableOrCardId(question.query()) ===
     getQuestionVirtualTableId(originalQuestion.id());
 
-  return isModel && isSameCard && isSelfReferencing;
+  return isModel && isSameQuestion && isSelfReferencing;
 }
 
 export function checkCanRefreshModelCache(
