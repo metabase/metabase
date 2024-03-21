@@ -100,7 +100,7 @@
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
                           [:%lower.name :asc]]})
-    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
+   exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -538,12 +538,7 @@
               (assoc row :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
               (dissoc row :personal_owner_id)))]
     (for [row rows]
-      ;; Go through this rigamarole instead of hydration because we
-      ;; don't get models back from ulterior over-query
-      ;; Previous examination with logging to DB says that there's no N+1 query for this.
-      ;; However, this was only tested on H2 and Postgres
-      (-> row
-          (assoc :can_write (mi/can-write? Collection (:id row)))
+      (-> (t2/hydrate (t2/instance :model/Collection row) :can_write)
           (dissoc :collection_position :display :moderated_status :icon
                   :collection_preview :dataset_query :table_id :query_type :is_upload)
           update-personal-collection))))
