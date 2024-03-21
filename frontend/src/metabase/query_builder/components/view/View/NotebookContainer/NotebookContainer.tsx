@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 import { useSelector } from "metabase/lib/redux";
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
-import NativeQueryPreviewSidebar from "metabase/query_builder/components/view/NativeQueryPreviewSidebar";
+import { NativeQueryPreviewSidebar } from "metabase/query_builder/components/view/NativeQueryPreviewSidebar";
 import { getUiControls } from "metabase/query_builder/selectors";
 import { Flex } from "metabase/ui";
 

@@ -24,7 +24,7 @@ const BUTTON_TITLE = {
   json: t`Convert this question to a native query`,
 };
 
-const NativeQueryPreviewSidebar = (): JSX.Element => {
+export const NativeQueryPreviewSidebar = (): JSX.Element => {
   const dispatch = useDispatch();
   const question = checkNotNull(useSelector(getQuestion));
   const [createNativeDataset, datasetResult] = useCreateNativeDatasetMutation();
@@ -66,6 +66,3 @@ const NativeQueryPreviewSidebar = (): JSX.Element => {
     </NativeQueryPreview>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default NativeQueryPreviewSidebar;
