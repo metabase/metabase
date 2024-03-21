@@ -12,14 +12,11 @@
   flex: auto;
 }
 
-:global(.flex-full),
-.flex-full,
 .flexFull {
   flex: 1 0 auto;
 }
 
-:global(.flex-half),
-.flex-half {
+.flexHalf {
   flex: 0.5;
 }
 
