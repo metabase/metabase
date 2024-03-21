@@ -371,7 +371,7 @@
                      :data
                      (select-keys [:requested_timezone :results_timezone])))))))))
 
-(deftest pivot-dataset-test
+(deftest ^:parallel pivot-dataset-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
@@ -385,8 +385,12 @@
 
             (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
             (is (= ["WV" "Facebook" nil 4 45 292] (nth rows 1000)))
-            (is (= [nil nil nil 7 18760 69540] (last rows)))))
+            (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
+(deftest ^:parallel pivot-dataset-with-added-expression-test
+  (mt/test-drivers (api.pivots/applicable-drivers)
+    (mt/dataset test-data
+      (testing "POST /api/dataset/pivot"
         ;; this only works on a handful of databases -- most of them don't allow you to ask for a Field that isn't in
         ;; the GROUP BY expression
         (when (#{:mongo :h2 :sqlite} driver/*driver*)
@@ -415,13 +419,13 @@
                         :name            "pivot-grouping"
                         :display_name    "pivot-grouping"
                         :expression_name "pivot-grouping"
-                        :field_ref       ["expression" "pivot-grouping"]
+                        :field_ref       ["expression" "pivot-grouping" {:base-type "type/Integer"}]
                         :source          "breakout"}
                        (nth cols 3))))
 
               (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
 
-(deftest pivot-filter-dataset-test
+(deftest ^:parallel pivot-filter-dataset-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
@@ -438,7 +442,7 @@
             (is (= ["WA" nil 2 148] (nth rows 135)))
             (is (= [nil nil 3 7562] (last rows)))))))))
 
-(deftest pivot-parameter-dataset-test
+(deftest ^:parallel pivot-parameter-dataset-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
