@@ -3,16 +3,18 @@ import fetchMock from "fetch-mock";
 import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
 import {
   act,
-  renderWithProviders,
-  screen,
   mockGetBoundingClientRect,
   mockScrollBy,
+  renderWithProviders,
+  screen,
 } from "__support__/ui";
 import type { CollectionId } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
+
+import type { CollectionPickerItem } from "../types";
 
 import { CollectionPicker } from "./CollectionPicker";
 
@@ -85,7 +87,7 @@ const flattenCollectionTree = (
   ].concat(...node.map(n => flattenCollectionTree(n.collections)));
 };
 
-const walkForCollectionItems = (node: any[]) => {
+const walkForCollectionItems = (node: MockCollection[]) => {
   node.forEach(n => {
     const collectionItems = n.collections.map((c: MockCollection) =>
       createMockCollectionItem({
@@ -108,18 +110,18 @@ const walkForCollectionItems = (node: any[]) => {
   });
 };
 
-interface setupProps {
+interface SetupOpts {
   initialValue?: {
     id: CollectionId;
     model: "collection";
   };
-  onItemSelect?: (item: any) => void;
+  onItemSelect?: (item: CollectionPickerItem) => void;
 }
 
 const setup = ({
   initialValue = { id: "root", model: "collection" },
-  onItemSelect = jest.fn(),
-}: setupProps = {}) => {
+  onItemSelect = jest.fn<void, [CollectionPickerItem]>(),
+}: SetupOpts = {}) => {
   mockGetBoundingClientRect();
   mockScrollBy();
 
