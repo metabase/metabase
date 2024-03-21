@@ -35,11 +35,12 @@
  *  As a solution, `flex-basis-auto` should always be used in conjunction with `flex-full` when it is
  *  a desired behavior that the element grows with its contents.
 */
-:global(.flex-basis-auto) {
+.flexBasisAuto {
   flex-basis: auto;
 }
 
-:global(.flex-basis-none) {
+:global(.flex-basis-none),
+.flexBasisNone {
   flex-basis: 0;
 }
 

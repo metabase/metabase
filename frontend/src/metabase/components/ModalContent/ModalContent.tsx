@@ -117,7 +117,7 @@ export const ModalBody = ({
   <div
     className={cx("ModalBody", {
       [CS.px4]: formModal,
-      [cx(CS.flex, CS.flexFull, "flex-basis-auto")]: !formModal,
+      [cx(CS.flex, CS.flexFull, CS.flexBasisAuto)]: !formModal,
     })}
   >
     <div
