@@ -618,9 +618,9 @@
    The goal of rate limiting should be to prevent very obvious abuse, but it should
    be relatively lax so we don't annoy legitimate users."
   (throttle/make-throttler :action-uuid
-                           :attempts-threshold 1
-                           :initial-delay-ms 100
-                           :attempt-ttl-ms 100
+                           :attempts-threshold 10
+                           :initial-delay-ms 1000
+                           :attempt-ttl-ms 1000
                            :delay-exponent 1))
 
 (api/defendpoint POST "/action/:uuid/execute"
