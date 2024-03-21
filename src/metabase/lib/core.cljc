@@ -231,7 +231,7 @@
   with-join-strategy
   with-join-conditions]
  [lib.legacy-metric
-  available-metrics]
+  available-legacy-metrics]
  [lib.limit
   current-limit
   limit]

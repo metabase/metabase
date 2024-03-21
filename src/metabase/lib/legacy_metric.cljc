@@ -91,11 +91,11 @@
         (lib.metadata.calculation/column-name query stage-number metric-metadata))
       "metric"))
 
-(mu/defn available-metrics :- [:maybe [:sequential {:min 1} lib.metadata/LegacyMetricMetadata]]
+(mu/defn available-legacy-metrics :- [:maybe [:sequential {:min 1} lib.metadata/LegacyMetricMetadata]]
   "Get a list of Metrics that you may consider using as aggregations for a query. Only Metrics that have the same
   `table-id` as the `source-table` for this query will be suggested."
   ([query]
-   (available-metrics query -1))
+   (available-legacy-metrics query -1))
   ([query :- ::lib.schema/query
     stage-number :- :int]
    (when (zero? (lib.util/canonical-stage-index query stage-number))

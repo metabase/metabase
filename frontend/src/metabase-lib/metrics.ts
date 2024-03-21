@@ -3,8 +3,8 @@ import type { MetricId } from "metabase-types/api";
 
 import type { MetricMetadata, Query } from "./types";
 
-export function availableMetrics(query: Query): MetricMetadata[] {
-  return ML.available_metrics(query);
+export function availableLegacyMetrics(query: Query): MetricMetadata[] {
+  return ML.available_legacy_metrics(query);
 }
 
 export function metricMetadata(
