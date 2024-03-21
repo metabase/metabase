@@ -1038,7 +1038,7 @@
 (defn- build-funnel-rows
   [funnel-rows raw-rows]
   (let [funnel-rows (map-indexed (fn [idx row] (assoc row :idx (inc idx))) funnel-rows)
-        xf-rows     (into {} (map (fn [row] (vec (take-last 2 row))) raw-rows))]
+        xf-rows     (into {} (map (fn [row] (vec (take-last 2 row)))) raw-rows)]
     (for [{idx     :idx
            k       :key
            enabled :enabled} funnel-rows]
