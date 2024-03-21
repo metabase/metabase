@@ -84,10 +84,6 @@
   align-self: flex-end;
 }
 
-:global(.align-self-center) {
-  align-self: center;
-}
-
 :global(.align-self-stretch),
 .alignSelfStretch {
   align-self: stretch;
