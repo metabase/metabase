@@ -84,7 +84,6 @@
   align-self: flex-end;
 }
 
-:global(.align-self-stretch),
 .alignSelfStretch {
   align-self: stretch;
 }

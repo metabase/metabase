@@ -36,7 +36,7 @@ const ChartNestedSettingsSeriesSingle = ({
   return (
     <div
       key={objectKey}
-      className="px4 align-self-stretch"
+      className={cx(CS.px4, CS.alignSelfStretch)}
       data-testid="series-settings"
     >
       <div className={cx(CS.flex, CS.alignCenter, CS.borderBottom, CS.pb2)}>

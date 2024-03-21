@@ -43,7 +43,7 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
                   CS.pt2,
                   CS.mt2,
                   CS.borderTop,
-                  "align-self-stretch",
+                  CS.alignSelfStretch,
                 )}
               >
                 <div className={cx(CS.flex, CS.alignCenter)}>
