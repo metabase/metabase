@@ -113,10 +113,6 @@
   flex-direction: row-reverse;
 }
 
-:global(.no-flex) {
-  flex: 0 1 0%;
-}
-
 @media screen and (--breakpoint-min-md) {
   :global(.md-no-flex) {
     flex: 0 !important;
