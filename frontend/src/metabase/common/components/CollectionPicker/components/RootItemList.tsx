@@ -5,7 +5,6 @@ import { useCollectionQuery } from "metabase/common/hooks";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import type { CollectionId } from "metabase-types/api";
 
 import { ItemList } from "../../EntityPicker";
 import type { CollectionItemListProps, CollectionPickerItem } from "../types";
@@ -63,7 +62,7 @@ export const RootItemList = ({
       } else if (rootCollectionError) {
         collectionsData.push({
           name: t`Collections`,
-          id: "root" as CollectionId,
+          id: "root",
           description: null,
           can_write: false,
           model: "collection",
