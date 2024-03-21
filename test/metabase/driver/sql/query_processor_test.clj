@@ -400,7 +400,7 @@
   (testing "We should be able to compile a complicated query with multiple joins and expressions correctly"
     (is (= '{:select   [source.PRODUCTS__via__PRODUCT_ID__CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
                         source.PEOPLE__via__USER_ID__SOURCE AS PEOPLE__via__USER_ID__SOURCE
-                        DATE_TRUNC ("year" source.CREATED_AT) AS CREATED_AT
+                        CAST (DATE_TRUNC ("year" source.CREATED_AT) AS date) AS CREATED_AT
                         source.pivot-grouping AS pivot-grouping
                         COUNT (*) AS count]
              :from     [{:select    [ORDERS.USER_ID                     AS USER_ID
@@ -422,17 +422,17 @@
                                      AND
                                      ((PRODUCTS__via__PRODUCT_ID.CATEGORY = ?) OR (PRODUCTS__via__PRODUCT_ID.CATEGORY = ?))
                                      AND
-                                     (ORDERS.CREATED_AT >= DATE_TRUNC ("year" DATEADD ("year" CAST (-2 AS long) CAST (NOW () AS datetime))))
+                                     (ORDERS.CREATED_AT >= CAST (DATE_TRUNC ("year" DATEADD ("year" CAST (-2 AS long) CAST (NOW () AS datetime))) AS date))
                                      AND
-                                     (ORDERS.CREATED_AT < DATE_TRUNC ("year" NOW ()))]}
+                                     (ORDERS.CREATED_AT < CAST (DATE_TRUNC ("year" NOW ()) AS date))]}
                         AS source]
              :group-by [source.PRODUCTS__via__PRODUCT_ID__CATEGORY
                         source.PEOPLE__via__USER_ID__SOURCE
-                        DATE_TRUNC ("year" source.CREATED_AT)
+                        CAST (DATE_TRUNC ("year" source.CREATED_AT) AS date)
                         source.pivot-grouping]
              :order-by [source.PRODUCTS__via__PRODUCT_ID__CATEGORY ASC
                         source.PEOPLE__via__USER_ID__SOURCE ASC
-                        DATE_TRUNC ("year" source.CREATED_AT) ASC
+                        CAST (DATE_TRUNC ("year" source.CREATED_AT) AS date) ASC
                         source.pivot-grouping ASC]}
            (-> (lib.tu.macros/mbql-query orders
                  {:aggregation [[:aggregation-options [:count] {:name "count"}]]
@@ -586,7 +586,7 @@
         (testing "Generated SQL"
           (is (= '{:select [source.PRICE AS PRICE
                             source.test  AS test]
-                   :from   [{:select [TIMESTAMPADD ("second" VENUES.PRICE timestamp "1970-01-01T00:00:00Z") AS PRICE
+                   :from   [{:select [TIMESTAMPADD ("second" VENUES.PRICE timestamp with time zone "1970-01-01T00:00:00Z") AS PRICE
                                       1 * 1 AS test]
                              :from   [VENUES]}
                             AS source]
@@ -700,12 +700,12 @@
   (is (= '{:select [source.DATE  AS DATE
                     source.sum   AS sum
                     source.sum_2 AS sum_2]
-           :from   [{:select   [DATE_TRUNC ("month" CHECKINS.DATE) AS DATE
-                                SUM (CHECKINS.USER_ID)                                           AS sum
-                                SUM (CHECKINS.VENUE_ID)                                          AS sum_2]
+           :from   [{:select   [CAST (DATE_TRUNC ("month" CHECKINS.DATE) AS date) AS DATE
+                                SUM (CHECKINS.USER_ID)                            AS sum
+                                SUM (CHECKINS.VENUE_ID)                           AS sum_2]
                      :from     [CHECKINS]
-                     :group-by [DATE_TRUNC ("month" CHECKINS.DATE)]
-                     :order-by [DATE_TRUNC ("month" CHECKINS.DATE) ASC]}
+                     :group-by [CAST (DATE_TRUNC ("month" CHECKINS.DATE) AS date)]
+                     :order-by [CAST (DATE_TRUNC ("month" CHECKINS.DATE) AS date) ASC]}
                     AS source]
            :where  [source.sum > 300]
            :limit  [2]}

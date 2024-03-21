@@ -198,6 +198,12 @@
   (-> [:SwitchOffset expr offset-expr]
       (h2x/with-database-type-info "offsetdatetime")))
 
+(defn- date-time-offset-from-parts [year month day hour minute seconds fractions hour-offset minute-offset precision]
+  (-> (into [:datetimeoffsetfromparts]
+            (map maybe-inline-number)
+            [year month day hour minute seconds fractions hour-offset minute-offset precision])
+      (h2x/with-database-type-info "datetimeoffset")))
+
 (defmethod sql.qp/date [:sqlserver :hour]
   [_driver _unit expr]
   (condp = (h2x/database-type expr)
@@ -304,12 +310,6 @@
 (defmethod sql.qp/add-interval-honeysql-form :sqlserver
   [_ hsql-form amount unit]
   (date-add unit amount hsql-form))
-
-(defn- date-time-offset-from-parts [year month day hour minute seconds fractions hour-offset minute-offset precision]
-  (-> (into [:datetimeoffsetfromparts]
-            (map maybe-inline-number)
-            [year month day hour minute seconds fractions hour-offset minute-offset precision])
-      (h2x/with-database-type-info "datetimeoffset")))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:sqlserver :seconds]
   [_ _ expr]

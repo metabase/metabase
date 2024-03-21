@@ -588,7 +588,7 @@
               (run-action! {:name "Darth Vader"})
               (let [[new-name last-login] (first (mt/rows (mt/run-mbql-query users {:breakout [$name $last_login] :filter [:= $id 1]})))]
                 (is (= "Darth Vader" new-name))
-                (is (= "2023-04-01T00:00:00Z" last-login)))))
+                (is (= "2023-04-01" last-login)))))
           (testing "{<param-id>: null} means a parameter is missing, and should not be replaced with a default value"
             (let [run-action! #(mt/user-http-request :crowberto
                                                      :post 200
@@ -597,7 +597,7 @@
               (run-action! {:name "Darth Vader" :last_login nil})
               (let [[new-name last-login] (first (mt/rows (mt/run-mbql-query users {:breakout [$name $last_login] :filter [:= $id 1]})))]
                 (is (= "Darth Vader" new-name))
-                (is (= "2023-04-01T00:00:00Z" last-login))))))))))
+                (is (= "2023-04-01" last-login))))))))))
 
 (deftest hidden-parameter-test
   (mt/with-actions-test-data-tables #{"users"}

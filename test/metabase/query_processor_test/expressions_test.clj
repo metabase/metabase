@@ -2,14 +2,12 @@
   "Tests for expressions (calculated columns)."
   (:require
    [clojure.test :refer :all]
-   [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel basic-test
