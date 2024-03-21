@@ -113,30 +113,6 @@
   flex-direction: row-reverse;
 }
 
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-flex-reverse) {
-    flex-direction: row-reverse;
-  }
-}
-
-@media screen and (--breakpoint-min-md) {
-  :global(.md-flex-reverse) {
-    flex-direction: row-reverse;
-  }
-}
-
-@media screen and (--breakpoint-min-lg) {
-  :global(.lg-flex-reverse) {
-    flex-direction: row-reverse;
-  }
-}
-
-@media screen and (--breakpoint-min-xl) {
-  :global(.xl-flex-reverse) {
-    flex-direction: row-reverse;
-  }
-}
-
 :global(.no-flex) {
   flex: 0 1 0%;
 }
