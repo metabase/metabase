@@ -105,12 +105,6 @@
   flex-direction: row;
 }
 
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-flex-row) {
-    flex-direction: row;
-  }
-}
-
 :global(.flex-wrap) {
   flex-wrap: wrap;
 }
