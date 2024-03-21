@@ -1,7 +1,6 @@
 import { useKBar, useMatches, KBarResults, type ActionImpl } from "kbar";
 import { useState } from "react";
 import { useDebounce } from "react-use";
-import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
@@ -9,6 +8,7 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { Flex, Box, Icon } from "metabase/ui";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
+import { processResults } from "../utils";
 
 export const PaletteResults = () => {
   // Used for finding actions within the list
@@ -83,27 +83,4 @@ export const PaletteResults = () => {
       />
     </Flex>
   );
-};
-
-const processResults = (results: (string | ActionImpl)[]) => {
-  const groupedResults = _.groupBy(
-    results.filter((r): r is ActionImpl => !(typeof r === "string")),
-    "section",
-  );
-
-  const actions = processSection(t`Actions`, groupedResults["basic"]);
-  const search = processSection(t`Search results`, groupedResults["search"]);
-  const recent = processSection(t`Recent items`, groupedResults["recent"]);
-  const admin = processSection(t`Admin`, groupedResults["admin"]);
-  const docs = groupedResults["docs"] || [];
-
-  return [...actions.slice(0, 6), ...search, ...recent, ...admin, ...docs];
-};
-
-const processSection = (sectionName: string, items?: ActionImpl[]) => {
-  if (items && items.length > 0) {
-    return [sectionName, ...items];
-  } else {
-    return [];
-  }
 };
