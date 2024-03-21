@@ -42,12 +42,12 @@
   "More or less the same as a [[metabase.models.segment]], but with kebab-case keys."
   [:ref ::lib.schema.metadata/segment])
 
-(def MetricMetadata
+(def LegacyMetricMetadata
   "Malli schema for a legacy v1 [[metabase.models.metric]], but with kebab-case keys. A Metric defines an MBQL snippet
   with an aggregation and optionally a filter clause. You can add a `:metric` reference to the `:aggregations` in an
   MBQL stage, and the QP treats it like a macro and expands it to the underlying clauses --
   see [[metabase.query-processor.middleware.expand-macros]]."
-  [:ref ::lib.schema.metadata/metric])
+  [:ref ::lib.schema.metadata/legacy-metric])
 
 (def TableMetadata
   "Schema for metadata about a specific [[metabase.models.table]]. More or less the same as a [[metabase.models.table]],
@@ -152,13 +152,21 @@
    card-id               :- ::lib.schema.id/card]
   (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id))
 
+(mu/defn card-or-throw :- ::lib.schema.metadata/card
+  "Like [[card]], but throws if the Card is not found."
+  [metadata-providerable :- MetadataProviderable
+   card-id               :- ::lib.schema.id/card]
+  (or (card metadata-providerable card-id)
+      (throw (ex-info (i18n/tru "Card {0} does not exist, or belongs to a different Database." (pr-str card-id) )
+                      {:card-id card-id}))))
+
 (mu/defn segment :- [:maybe SegmentMetadata]
   "Get metadata for the Segment with `segment-id`, if it can be found."
   [metadata-providerable :- MetadataProviderable
    segment-id            :- ::lib.schema.id/segment]
   (lib.metadata.protocols/segment (->metadata-provider metadata-providerable) segment-id))
 
-(mu/defn metric :- [:maybe MetricMetadata]
+(mu/defn metric :- [:maybe LegacyMetricMetadata]
   "Get metadata for the Metric with `metric-id`, if it can be found."
   [metadata-providerable :- MetadataProviderable
    metric-id             :- ::lib.schema.id/metric]

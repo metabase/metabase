@@ -48,11 +48,11 @@
     [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
     [metabase.automagic-dashboards.schema :as ads]
     [metabase.automagic-dashboards.util :as magic.util]
-    [metabase.mbql.normalize :as mbql.normalize]
-    [metabase.mbql.util :as mbql.u]
+    [metabase.legacy-mbql.normalize :as mbql.normalize]
+    [metabase.legacy-mbql.util :as mbql.u]
     [metabase.models.field :as field :refer [Field]]
     [metabase.models.interface :as mi]
-    [metabase.models.metric :refer [Metric]]
+    [metabase.models.metric :refer [LegacyMetric]]
     [metabase.models.table :refer [Table]]
     [metabase.util :as u]
     [metabase.util.date-2 :as u.date]
@@ -78,7 +78,7 @@
     @fields))
 
 (defn semantic-groups
-  "From a :model/Metric, construct a mapping of semantic types of linked fields to
+  "From a :model/LegacyMetric, construct a mapping of semantic types of linked fields to
    sets of fields that can satisfy that type. A linked field is one that is in the
    source table for the metric contribute to the metric itself, is not a PK, and
    has a semantic_type (we assume nil semantic_type fields are boring)."
@@ -151,11 +151,11 @@
   [_ {:keys [display_name full-name]}]
   (or full-name display_name))
 
-(defmethod ->reference [:string Metric]
+(defmethod ->reference [:string LegacyMetric]
   [_ {:keys [name full-name]}]
   (or full-name name))
 
-(defmethod ->reference [:mbql Metric]
+(defmethod ->reference [:mbql LegacyMetric]
   [_ {:keys [id definition]}]
   (if id
     [:metric id]
@@ -473,7 +473,7 @@
      :metrics    (concat (set-score 50 metrics) (set-score 95 linked-metrics)
                          (let [entity (-> context :root :entity)]
                            ;; metric x-rays talk about "this" in the template
-                           (when (mi/instance-of? :model/Metric entity)
+                           (when (mi/instance-of? :model/LegacyMetric entity)
                              [{:metric-name       "this"
                                :metric-title      (:name entity)
                                :metric-definition {:aggregation [(->reference :mbql entity)]}

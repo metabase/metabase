@@ -44,7 +44,7 @@ describe("issue 17060", () => {
 
     runQuery();
 
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("num");
     });
   });

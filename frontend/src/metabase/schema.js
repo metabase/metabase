@@ -144,7 +144,3 @@ export const RecentItemSchema = new schema.Entity("recentItems", undefined, {
 export const PopularItemSchema = new schema.Entity("popularItems", undefined, {
   idAttribute: ({ model, model_id }) => `${model}:${model_id}`,
 });
-
-export const LoginHistorySchema = new schema.Entity("loginHistory", undefined, {
-  idAttribute: ({ timestamp }) => `${timestamp}`,
-});

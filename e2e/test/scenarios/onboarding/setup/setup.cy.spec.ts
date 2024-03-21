@@ -194,9 +194,7 @@ describe("scenarios > setup", () => {
     });
     cy.location("pathname").should("eq", "/");
 
-    main()
-      .findByText("Get started with Embedding Metabase in your app")
-      .should("not.exist");
+    main().findByText("Embed Metabase in your app").should("not.exist");
   });
 
   // Values in this test are set through MB_USER_DEFAULTS environment variable!
@@ -321,15 +319,7 @@ describe("scenarios > setup", () => {
 
     cy.location("pathname").should("eq", "/");
 
-    main()
-      .findByText("Get started with Embedding Metabase in your app")
-      .should("exist");
-
-    cy.reload();
-
-    main()
-      .findByText("Get started with Embedding Metabase in your app")
-      .should("exist");
+    main().findByText("Embed Metabase in your app").should("exist");
 
     main()
       .findByRole("link", { name: "Learn more" })
@@ -339,17 +329,10 @@ describe("scenarios > setup", () => {
         /https:\/\/www.metabase.com\/docs\/[^\/]*\/embedding\/start\.html\?utm_media=embed-minimal-homepage/,
       );
 
-    cy.icon("close").click();
-
-    main()
-      .findByText("Get started with Embedding Metabase in your app")
-      .should("not.exist");
-
     cy.reload();
 
-    main()
-      .findByText("Get started with Embedding Metabase in your app")
-      .should("not.exist");
+    // should only show up once
+    main().findByText("Embed Metabase in your app").should("not.exist");
   });
 });
 

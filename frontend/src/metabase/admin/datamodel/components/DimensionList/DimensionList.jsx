@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -6,6 +7,8 @@ import _ from "underscore";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import AccordionList from "metabase/core/components/AccordionList";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { Icon, Box } from "metabase/ui";
 import { FieldDimension } from "metabase-lib/v1/Dimension";
 
@@ -173,7 +176,14 @@ export class DimensionList extends Component {
 
     return (
       <FieldListGroupingTrigger
-        className="FieldList-grouping-trigger text-white-hover flex align-center p1 cursor-pointer"
+        className={cx(
+          QueryBuilderS.FieldListGroupingTrigger,
+          "text-white-hover",
+          CS.flex,
+          CS.alignCenter,
+          CS.p1,
+          CS.cursorPointer,
+        )}
         data-testid="dimension-list-item-binning"
       >
         {name && <h4>{name}</h4>}

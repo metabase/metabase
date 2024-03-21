@@ -6,13 +6,11 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models :refer [Field Table]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]
-   [toucan2.core :as t2]))
+   [metabase.util.honey-sql-2 :as h2x]))
 
 ;; TIMEZONE FIXME
 (def broken-drivers
@@ -43,7 +41,7 @@
 
 ;; TODO - we should also do similar tests for timezone-unaware columns
 (deftest result-rows-test
-  (mt/dataset test-data-with-timezones
+  (mt/dataset tz-test-data
     (mt/test-drivers (timezone-aware-column-drivers)
       (is (= [[12 "2014-07-03T01:30:00Z"]
               [10 "2014-07-03T19:30:00Z"]]
@@ -67,7 +65,7 @@
               (format "There should be %d checkins on July 3rd in the %s timezone" (count expected-rows) timezone)))))))
 
 (deftest filter-test
-  (mt/dataset test-data-with-timezones
+  (mt/dataset tz-test-data
     (mt/test-drivers (set-timezone-drivers)
       (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (is (= [[6 "Shad Ferdynand" "2014-08-02T05:30:00-07:00"]]
@@ -99,13 +97,10 @@
                    "same as specifying UTC for a report timezone")))))))
 
 (defn- table-identifier [table-key]
-  (let [table-name (t2/select-one-fn :name Table, :id (mt/id table-key))]
-    (apply h2x/identifier :table (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) table-name))))
+  (apply h2x/identifier :table (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) (name table-key))))
 
 (defn- field-identifier [table-key field-key]
-  (let [table-name (t2/select-one-fn :name Table, :id (mt/id table-key))
-        field-name (t2/select-one-fn :name Field, :id (mt/id table-key field-key))]
-    (apply h2x/identifier :field (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) table-name field-name))))
+  (apply h2x/identifier :field (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) (name table-key) (name field-key))))
 
 (defn- honeysql->sql [honeysql]
   (first (sql.qp/format-honeysql driver/*driver* honeysql)))
@@ -175,7 +170,7 @@
                      #(isa? driver/hierarchy % :sql)
                      (set/intersection (set-timezone-drivers)
                                        (mt/normal-drivers-with-feature :native-parameters)))
-    (mt/dataset test-data-with-timezones
+    (mt/dataset tz-test-data
       (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (testing "Native dates should be parsed with the report timezone"
           (doseq [[params-description query] (native-params-queries)]
@@ -350,7 +345,7 @@
 (deftest filter-datetime-by-date-in-timezone-fixed-date-test
   (mt/test-drivers (set-timezone-drivers)
     (testing "Fixed date"
-      (mt/dataset test-data-with-timezones
+      (mt/dataset tz-test-data
         (let [expected-datetime #t "2014-07-03T01:30:00Z"]
           (doseq [[timezone date-filter] [["US/Pacific" "2014-07-02"]
                                           ["US/Eastern" "2014-07-02"]

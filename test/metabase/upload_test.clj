@@ -533,7 +533,7 @@
      (mt/with-model-cleanup [:model/Table]
        (do-with-upload-table! ~create-table-expr (fn [~table-binding] ~@body)))))
 
-(deftest load-from-csv-table-name-test
+(deftest create-from-csv-table-name-test
   (testing "Can upload two files with the same name"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (let [csv-file-prefix "some file prefix"]
@@ -564,13 +564,13 @@
   [table]
   (mt/rows (query-table table)))
 
-(deftest load-from-csv-test
+(deftest create-from-csv-test
   (testing "Upload a CSV file"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -613,13 +613,13 @@
               (is (= 2
                      (count (rows-for-table table)))))))))))
 
-(deftest load-from-csv-date-test
+(deftest create-from-csv-date-test
   (testing "Upload a CSV file with a datetime column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -637,7 +637,7 @@
                       (t2/select-one Field :database_position 1 :table_id (:id table)))))
             (is (some? table))))))))
 
-(deftest load-from-csv-offset-datetime-test
+(deftest create-from-csv-offset-datetime-test
   (testing "Upload a CSV file with an offset datetime column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
@@ -654,7 +654,7 @@
                                 ["2022-01-01T12:00:00+07:30" "2022-01-01T04:30:00Z"]]]
             (testing "Fields exists after sync"
               (with-upload-table!
-                [table (do (@#'upload/load-from-csv!
+                [table (do (@#'upload/create-from-csv!
                             driver/*driver*
                             (mt/id)
                             table-name
@@ -668,13 +668,13 @@
                 (is (= (map second datetime-pairs)
                        (map second (rows-for-table table))))))))))))
 
-(deftest load-from-csv-boolean-test
+(deftest create-from-csv-boolean-test
   (testing "Upload a CSV file"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -708,7 +708,7 @@
                     alternating (map even? (range (count bool-column)))]
                 (is (= alternating bool-column))))))))))
 
-(deftest load-from-csv-length-test
+(deftest create-from-csv-length-test
   (testing "Upload a CSV file with large names and numbers"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (let [length-limit (driver/table-name-length-limit driver/*driver*)
@@ -719,7 +719,7 @@
         (is (pos? length-limit) "driver/table-name-length-limit has been set")
         (with-mysql-local-infile-on-and-off
           (with-upload-table!
-            [table (do (@#'upload/load-from-csv!
+            [table (do (@#'upload/create-from-csv!
                         driver/*driver*
                         (mt/id)
                         table-name
@@ -737,12 +737,12 @@
                         [3 Long/MAX_VALUE true]]
                        (rows-for-table table)))))))))))
 
-(deftest load-from-csv-empty-header-test
+(deftest create-from-csv-empty-header-test
   (testing "Upload a CSV file with a blank column name"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-upload-table!
         [table (let [table-name (mt/random-name)]
-                 (@#'upload/load-from-csv!
+                 (@#'upload/create-from-csv!
                   driver/*driver*
                   (mt/id)
                   table-name
@@ -754,13 +754,13 @@
           (is (= [@#'upload/auto-pk-column-name "unnamed_column" "ship_name" "unnamed_column_2"]
                  (column-names-for-table table))))))))
 
-(deftest load-from-csv-duplicate-names-test
+(deftest create-from-csv-duplicate-names-test
   (testing "Upload a CSV file with duplicate column names"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -773,13 +773,13 @@
               (is (= [@#'upload/auto-pk-column-name "unknown" "unknown_2" "unknown_3" "unknown_2_2"]
                      (column-names-for-table table))))))))))
 
-(deftest load-from-csv-bool-and-int-test
+(deftest create-from-csv-bool-and-int-test
   (testing "Upload a CSV file with integers and booleans in the same column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -796,13 +796,13 @@
                     [4 "   no" false true  2]]
                    (rows-for-table table)))))))))
 
-(deftest load-from-csv-existing-id-column-test
+(deftest create-from-csv-existing-id-column-test
   (testing "Upload a CSV file with an existing ID column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -821,13 +821,13 @@
                      :database_is_auto_increment false}
                     (t2/select-one Field :database_position 1 :table_id (:id table))))))))))
 
-(deftest load-from-csv-existing-string-id-column-test
+(deftest create-from-csv-existing-string-id-column-test
   (testing "Upload a CSV file with an existing string ID column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -844,14 +844,14 @@
                      :database_is_auto_increment false}
                     (t2/select-one Field :database_position 1 :table_id (:id table))))))))))
 
-(deftest load-from-csv-reserved-db-words-test
+(deftest create-from-csv-reserved-db-words-test
   (testing "Upload a CSV file with column names that are reserved by the DB, ignoring them"
     (testing "A single column whose name normalizes to _mb_row_id"
       (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
         (with-mysql-local-infile-on-and-off
           (with-upload-table!
             [table (let [table-name (mt/random-name)]
-                     (@#'upload/load-from-csv!
+                     (@#'upload/create-from-csv!
                       driver/*driver*
                       (mt/id)
                       table-name
@@ -870,7 +870,7 @@
         (with-mysql-local-infile-on-and-off
           (with-upload-table!
             [table (let [table-name (mt/random-name)]
-                     (@#'upload/load-from-csv!
+                     (@#'upload/create-from-csv!
                       driver/*driver*
                       (mt/id)
                       table-name
@@ -889,7 +889,7 @@
         (with-mysql-local-infile-on-and-off
           (with-upload-table!
             [table (let [table-name (mt/random-name)]
-                     (@#'upload/load-from-csv!
+                     (@#'upload/create-from-csv!
                       driver/*driver*
                       (mt/id)
                       table-name
@@ -904,13 +904,13 @@
                       [2 "Millennium Falcon" " Han Solo"]]
                      (rows-for-table table))))))))))
 
-(deftest load-from-csv-missing-values-test
+(deftest create-from-csv-missing-values-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-mysql-local-infile-on-and-off
       (testing "Can upload a CSV with missing values"
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -925,13 +925,13 @@
                     [2 nil nil]]
                    (rows-for-table table)))))))))
 
-(deftest load-from-csv-tab-test
+(deftest create-from-csv-tab-test
   (testing "Upload a CSV file with tabs in the values"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -946,13 +946,13 @@
                     [2 "Millennium\tFalcon" "Han\tSolo"]]
                    (rows-for-table table)))))))))
 
-(deftest load-from-csv-carriage-return-test
+(deftest create-from-csv-carriage-return-test
   (testing "Upload a CSV file with carriage returns in the values"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -967,13 +967,13 @@
                     [2 "Millennium\rFalcon" "Han\rSolo"]]
                    (rows-for-table table)))))))))
 
-(deftest load-from-csv-BOM-test
+(deftest create-from-csv-BOM-test
   (testing "Upload a CSV file with a byte-order mark (BOM)"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -987,13 +987,13 @@
             (is (= [@#'upload/auto-pk-column-name, "ship", "captain"]
                    (column-names-for-table table)))))))))
 
-(deftest load-from-csv-injection-test
+(deftest create-from-csv-injection-test
   (testing "Upload a CSV file with very rude values"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -1009,12 +1009,12 @@
                     [2 2 ";Millennium Falcon" "Han Solo\""]]
                    (rows-for-table table)))))))))
 
-(deftest load-from-csv-eof-marker-test
+(deftest create-from-csv-eof-marker-test
   (testing "Upload a CSV file with Postgres's 'end of input' marker"
     (mt/test-drivers [:postgres]
       (with-upload-table!
         [table (let [table-name (mt/random-name)]
-                 (@#'upload/load-from-csv!
+                 (@#'upload/create-from-csv!
                   driver/*driver*
                   (mt/id)
                   table-name
@@ -1132,25 +1132,26 @@
     (snowplow-test/with-fake-snowplow-collector
       (with-upload-table! [_table (card->table (upload-example-csv!))]
         (testing "Successfully creating a CSV Upload publishes statistics to Snowplow"
-          (is (=? {:data    {"model_id"          pos?
+          (is (=? {:data    {"event"             "csv_upload_successful"
+                             "model_id"          pos?
                              "size_mb"           3.910064697265625E-5
                              "num_columns"       2
                              "num_rows"          2
                              "generated_columns" 1
-                             "upload_seconds"    pos?
-                             "event"             "csv_upload_successful"}
+                             "upload_seconds"    pos?}
                    :user-id (str (mt/user->id :rasta))}
                   (last (snowplow-test/pop-event-data-and-user-id!)))))
 
         (testing "Failures when creating a CSV Upload will publish statistics to Snowplow"
-          (mt/with-dynamic-redefs [upload/load-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+          (mt/with-dynamic-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
             (try (upload-example-csv!)
                  (catch Throwable _
                    nil))
-            (is (= {:data    {"size_mb"     3.910064697265625E-5
-                              "num_columns" 2
-                              "num_rows"    2
-                              "event"       "csv_upload_failed"}
+            (is (= {:data    {"event"             "csv_upload_failed"
+                              "size_mb"           3.910064697265625E-5
+                              "num_columns"       2
+                              "num_rows"          2
+                              "generated_columns" 0}
                     :user-id (str (mt/user->id :rasta))}
                    (last (snowplow-test/pop-event-data-and-user-id!))))))))))
 
@@ -1557,19 +1558,19 @@
                file     (csv-file-with csv-rows (mt/random-name))]
            (append-csv! {:file file, :table-id (:id table)})
 
-           (is (=? {:data    {"size_mb"           1.811981201171875E-5
+           (is (=? {:data    {"event"             "csv_append_successful"
+                              "size_mb"           1.811981201171875E-5
                               "num_columns"       1
                               "num_rows"          1
                               "generated_columns" 0
-                              "upload_seconds"    pos?
-                              "event"             "csv_append_successful"}
+                              "upload_seconds"    pos?}
                     :user-id (str (mt/user->id :crowberto))}
                    (last (snowplow-test/pop-event-data-and-user-id!))))
 
            (io/delete-file file)))
 
        (testing "Failures when appending to CSV Uploads will publish statistics to Snowplow"
-         (mt/with-dynamic-redefs [upload/load-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+         (mt/with-dynamic-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
            (let [csv-rows ["mispelled_name, unexpected_column" "Duke Cakewalker, r2dj"]
                  file     (csv-file-with csv-rows (mt/random-name))]
              (try
@@ -1578,10 +1579,11 @@
                (finally
                  (io/delete-file file))))
 
-           (is (= {:data    {"size_mb"     5.245208740234375E-5
-                             "num_columns" 2
-                             "num_rows"    1
-                             "event"       "csv_append_failed"}
+           (is (= {:data    {"event"             "csv_append_failed"
+                             "size_mb"           5.245208740234375E-5
+                             "num_columns"       2
+                             "num_rows"          1
+                             "generated_columns" 0}
                    :user-id (str (mt/user->id :crowberto))}
                   (last (snowplow-test/pop-event-data-and-user-id!))))))))))
 
@@ -1880,7 +1882,7 @@
       (with-mysql-local-infile-on-and-off
        (with-upload-table!
          [table (let [table-name (mt/random-name)]
-                  (@#'upload/load-from-csv!
+                  (@#'upload/create-from-csv!
                    driver/*driver*
                    (mt/id)
                    table-name
