@@ -54,7 +54,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
         applyFilterByType(filter, value);
 
         cy.log(`Make sure ${filter} filter returns correct result`);
-        cy.get(".Card").within(() => {
+        cy.findByTestId("dashcard").within(() => {
           cy.contains(representativeResult);
         });
 
@@ -78,7 +78,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
 
     saveDashboard();
 
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.contains("Rustic Paper Wallet");
     });
 

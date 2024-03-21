@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.optimize-temporal-filters
     :as optimize-temporal-filters]

@@ -2,13 +2,13 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]))
 
 (defn- field-ids [form]
-  (set (mbql.u/match form
+  (set (lib.util.match/match form
          [:field (id :guard integer?) _]
          id)))
 

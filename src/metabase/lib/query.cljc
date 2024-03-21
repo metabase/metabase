@@ -3,6 +3,7 @@
   (:require
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.expression :as lib.expression]
@@ -13,8 +14,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -147,7 +147,7 @@
         :stages
         (into []
               (map (fn [[stage-number stage]]
-                     (mbql.u/replace stage
+                     (lib.util.match/replace stage
                        [:field
                         (opts :guard (every-pred map? (complement (some-fn :base-type :effective-type))))
                         (field-id :guard (every-pred number? pos?))]

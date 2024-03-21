@@ -5,9 +5,11 @@ import { createRef, Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import DashboardS from "metabase/css/dashboard.module.css";
 import { color } from "metabase/lib/colors";
 import { getColorsForValues } from "metabase/lib/colors/charts";
 import { formatValue } from "metabase/lib/formatting";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import {
   ChartSettingsError,
   MinRowsError,
@@ -541,7 +543,9 @@ export default class PieChart extends Component {
               data-testid="detail-value"
               className={cx(
                 styles.Value,
-                "fullscreen-normal-text fullscreen-night-text",
+                DashboardS.fullscreenNormalText,
+                DashboardS.fullscreenNightText,
+                EmbedFrameS.fullscreenNightText,
               )}
             >
               {value}

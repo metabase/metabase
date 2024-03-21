@@ -68,3 +68,14 @@ export type UserListQuery = {
   limit?: number;
   offset?: number;
 };
+
+export type UserLoginHistoryItem = {
+  timestamp: string;
+  device_description: string;
+  ip_address: string;
+  location: string;
+  active: boolean;
+  timezone: string | null;
+};
+
+export type UserLoginHistory = UserLoginHistoryItem[];
