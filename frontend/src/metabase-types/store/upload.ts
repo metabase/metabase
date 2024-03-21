@@ -8,6 +8,7 @@ export type FileUpload = {
   tableId?: TableId;
   message?: string;
   error?: string;
+  uploadMode?: "append" | "create" | "replace";
   id: number;
 };
 

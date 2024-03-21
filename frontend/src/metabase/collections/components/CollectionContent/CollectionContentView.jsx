@@ -77,10 +77,16 @@ export function CollectionContentView({
   };
 
   const handleUploadFile = useCallback(
-    ({ collectionId, tableId, modelId }) => {
+    ({ collectionId, tableId, modelId, uploadMode }) => {
       if (uploadedFile && (collectionId || tableId)) {
         closeModelUploadModal();
-        uploadFile({ file: uploadedFile, collectionId, tableId, modelId });
+        uploadFile({
+          file: uploadedFile,
+          collectionId,
+          tableId,
+          modelId,
+          uploadMode,
+        });
       }
     },
     [uploadFile, uploadedFile, closeModelUploadModal],

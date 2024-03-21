@@ -1,7 +1,8 @@
 import type { ChangeEvent } from "react";
-import { useCallback, useRef } from "react";
+import { useCallback, useState, useRef } from "react";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import EntityMenu from "metabase/components/EntityMenu";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import Button from "metabase/core/components/Button";
@@ -19,8 +20,8 @@ import { softReloadCard } from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
-import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import {
@@ -71,10 +72,8 @@ export const QuestionActions = ({
   onInfoClick,
   onModelPersistenceChange,
 }: Props) => {
-  const isMetabotEnabled = useSelector(state =>
-    getSetting(state, "is-metabot-enabled"),
-  );
-
+  const [uploadMode, setUploadMode] = useState<"append" | "replace">("append");
+  const isMetabotEnabled = useSetting("is-metabot-enabled");
   const canUpload = useSelector(canUploadToQuestion(question));
 
   const isModerator = useSelector(getUserIsAdmin) && question.canWrite?.();
@@ -232,8 +231,9 @@ export const QuestionActions = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUploadClick = () => {
+  const handleUploadClick = (newUploadMode: "append" | "replace") => {
     if (fileInputRef.current) {
+      setUploadMode(newUploadMode);
       fileInputRef.current.click();
     }
   };
@@ -245,6 +245,7 @@ export const QuestionActions = ({
         file,
         tableId: question._card.based_on_upload,
         reloadQuestionData: true,
+        uploadMode,
       })(dispatch);
 
       // reset the file input so that subsequent uploads of the same file trigger the change handler
@@ -281,21 +282,47 @@ export const QuestionActions = ({
           <input
             type="file"
             accept="text/csv"
-            id="append-file-input"
+            id="upload-file-input"
             ref={fileInputRef}
             onChange={handleFileUpload}
             style={{ display: "none" }}
           />
           <Tooltip tooltip={t`Upload data to this model`}>
             <ViewHeaderIconButtonContainer>
-              <Button
+              <Menu position="bottom-end">
+                <Menu.Target>
+                  <Button
+                    onlyIcon
+                    icon="upload"
+                    iconSize={HEADER_ICON_SIZE}
+                    color={infoButtonColor}
+                    data-testid="qb-header-append-button"
+                  />
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    icon={<Icon name="add" />}
+                    onClick={() => handleUploadClick("append")}
+                  >
+                    {t`Append data to this model`}
+                  </Menu.Item>
+
+                  <Menu.Item
+                    icon={<Icon name="refresh" />}
+                    onClick={() => handleUploadClick("replace")}
+                  >
+                    {t`Replace all data in this model`}
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+              {/* <Button
                 onlyIcon
                 icon="upload"
                 iconSize={HEADER_ICON_SIZE}
                 onClick={handleUploadClick}
                 color={infoButtonColor}
                 data-testid="qb-header-append-button"
-              />
+              /> */}
             </ViewHeaderIconButtonContainer>
           </Tooltip>
         </>

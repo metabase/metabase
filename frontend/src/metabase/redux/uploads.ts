@@ -42,6 +42,7 @@ export interface UploadFileProps {
   collectionId?: CollectionId;
   tableId?: TableId;
   modelId?: CardId;
+  uploadMode: "append" | "create" | "replace";
   reloadQuestionData?: boolean;
 }
 
@@ -52,6 +53,7 @@ export const uploadFile = createThunkAction(
       collectionId,
       tableId,
       modelId,
+      uploadMode,
       reloadQuestionData,
     }: UploadFileProps) =>
     async (dispatch: Dispatch) => {
@@ -87,13 +89,22 @@ export const uploadFile = createThunkAction(
         formData.append("file", file);
         formData.append("collection_id", String(collectionId));
 
-        const response = await (tableId
-          ? MetabaseApi.tableAppendCSV({ tableId, formData })
-          : CardApi.uploadCSV({ formData }));
+        const response = await (() => {
+          switch (uploadMode) {
+            case "append":
+              return MetabaseApi.tableAppendCSV({ tableId, formData });
+            case "replace":
+              return MetabaseApi.tableReplaceCSV({ tableId, formData });
+            case "create":
+            default:
+              return CardApi.uploadCSV({ formData });
+          }
+        })();
 
         dispatch(
           uploadEnd({
             id,
+            uploadMode,
             modelId: response || modelId,
           }),
         );

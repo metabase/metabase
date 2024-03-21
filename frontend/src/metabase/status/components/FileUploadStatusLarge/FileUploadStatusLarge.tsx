@@ -90,9 +90,15 @@ const getTitle = (
   uploadDestination: Collection | Table,
 ) => {
   const isDone = uploads.every(isUploadCompleted);
+  const isOnlyReplace = uploads.every(
+    upload => upload.uploadMode === "replace",
+  );
   const isError = uploads.some(isUploadAborted);
 
   if (isDone) {
+    if (isOnlyReplace) {
+      return t`Data replaced in ${uploadDestination.name}`;
+    }
     return t`Data added to ${uploadDestination.name}`;
   } else if (isError) {
     return t`Error uploading your file`;

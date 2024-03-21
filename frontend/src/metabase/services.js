@@ -364,6 +364,10 @@ export const MetabaseApi = {
     formData: true,
     fetch: true,
   }),
+  tableReplaceCSV: POST("/api/table/:tableId/replace-csv", {
+    formData: true,
+    fetch: true,
+  }),
   field_get: GET("/api/field/:fieldId"),
   // field_summary:               GET("/api/field/:fieldId/summary"),
   field_values: GET("/api/field/:fieldId/values"),
