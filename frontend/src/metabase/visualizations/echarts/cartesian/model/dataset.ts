@@ -32,6 +32,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { isMetric } from "metabase-lib/types/utils/isa";
 import { isCategoryAxis, isNumericAxis } from "./guards";
+import { signedSquareRoot } from "./transforms";
 
 /**
  * Sums two metric column values.
@@ -309,12 +310,6 @@ const getStackedAreasInterpolateTransform = (
   };
 };
 
-const getSign = (value: number) => (value >= 0 ? 1 : -1);
-// TODO dedupe this function
-function signedSquareRoot(value: number) {
-  return getSign(value) * Math.sqrt(Math.abs(value));
-}
-
 function getStackedPowerTransform(seriesDataKeys: DataKey[]): TransformFn {
   return (datum: Datum) => {
     const transformedSeriesValues: Record<DataKey, number> = {};
@@ -430,12 +425,9 @@ export const applyVisualizationSettingsDataTransformations = (
       condition: settings["stackable.stack_type"] === "normalized",
       fn: getNormalizedDatasetTransform(seriesDataKeys),
     },
-    {
-      condition: true, // TODO remove constant condition
-      fn: getKeyBasedDatasetTransform(seriesDataKeys, value =>
-        yAxisScaleTransforms.toEChartsAxisValue(value),
-      ),
-    },
+    getKeyBasedDatasetTransform(seriesDataKeys, value =>
+      yAxisScaleTransforms.toEChartsAxisValue(value),
+    ),
     {
       condition:
         settings["graph.y_axis.scale"] === "pow" &&

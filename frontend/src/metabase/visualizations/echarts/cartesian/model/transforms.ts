@@ -6,7 +6,7 @@ function getSign(value: number) {
   return value >= 0 ? 1 : -1;
 }
 
-function signedSquareRoot(value: number) {
+export function signedSquareRoot(value: number) {
   return getSign(value) * Math.sqrt(Math.abs(value));
 }
 
