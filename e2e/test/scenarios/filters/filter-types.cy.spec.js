@@ -6,6 +6,7 @@ import {
   popover,
   relativeDatePicker,
   restore,
+  selectOperator,
   visualize,
 } from "e2e/support/helpers";
 
@@ -551,11 +552,6 @@ describe("scenarios > filters > filter types", () => {
     });
   });
 });
-
-function selectOperator(operatorName) {
-  cy.findByLabelText("Filter operator").click();
-  cy.findByText(operatorName).click();
-}
 
 function assertFilterName(filterName, options) {
   getNotebookStep("filter", options)

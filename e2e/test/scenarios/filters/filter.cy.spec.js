@@ -20,6 +20,7 @@ import {
   checkExpressionEditorHelperPopoverPosition,
   getNotebookStep,
   queryBuilderMain,
+  selectOperator,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
@@ -1067,9 +1068,4 @@ function openExpressionEditorFromFreshlyLoadedPage() {
   openReviewsTable({ mode: "notebook" });
   filter({ mode: "notebook" });
   cy.findByText("Custom Expression").click();
-}
-
-function selectOperator(operatorName) {
-  cy.findByLabelText("Filter operator").click();
-  cy.findByRole("listbox").findByText(operatorName).click();
 }

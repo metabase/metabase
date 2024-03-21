@@ -6,6 +6,7 @@ import {
   getNotebookStep,
   popover,
   restore,
+  selectOperator,
   visitQuestionAdhoc,
   visualize,
 } from "e2e/support/helpers";
@@ -649,11 +650,6 @@ describe("scenarios > filters > filter sources", () => {
     });
   });
 });
-
-function selectOperator(operatorName) {
-  cy.findByLabelText("Filter operator").click();
-  cy.findByRole("listbox").findByText(operatorName).click();
-}
 
 function addNewFilter() {
   cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
