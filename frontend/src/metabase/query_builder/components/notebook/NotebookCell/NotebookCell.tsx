@@ -1,5 +1,6 @@
 import { forwardRef, isValidElement } from "react";
 
+import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
 import type { BorderSide } from "./NotebookCell.styled";
@@ -94,7 +95,7 @@ export const NotebookCellAdd = forwardRef<HTMLDivElement, NotebookCellAddProps>(
   function NotebookCellAdd({ initialAddText, ...props }, ref) {
     return (
       <NotebookCellItem {...props} inactive={!!initialAddText} ref={ref}>
-        {initialAddText || <Icon name="add" className="text-white" />}
+        {initialAddText || <Icon name="add" className={CS.textWhite} />}
       </NotebookCellItem>
     );
   },

@@ -134,7 +134,7 @@ export default class LoadingAndErrorWrapper extends Component {
       CS.flex,
       CS.flexColumn,
       CS.layoutCentered,
-      { "bg-white": !noBackground },
+      { [CS.bgWhite]: !noBackground },
     );
 
     if (noWrapper && !error && !loading) {

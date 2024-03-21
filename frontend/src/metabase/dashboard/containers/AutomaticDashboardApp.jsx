@@ -121,7 +121,7 @@ class AutomaticDashboardAppInner extends Component {
         <div className="" style={{ marginRight: hasSidebar ? 346 : undefined }}>
           {isHeaderVisible && (
             <div
-              className="bg-white border-bottom"
+              className={cx(CS.bgWhite, CS.borderBottom)}
               data-testid="automatic-dashboard-header"
             >
               <div className={CS.wrapper}>

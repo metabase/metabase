@@ -22,7 +22,7 @@ class DefaultLogoIcon extends Component {
         className={cx(
           "Icon",
           { [CS.textBrand]: !dark },
-          { "text-white": dark },
+          { [CS.textWhite]: dark },
         )}
         viewBox="0 0 66 85"
         width={width}

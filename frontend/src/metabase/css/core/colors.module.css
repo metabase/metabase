@@ -71,23 +71,18 @@
   color: var(--color-text-dark);
 }
 
-:global(.bg-light),
-.bg-light,
 .bgLight,
-:global(.bg-light-hover:hover),
 .bgLightHover:hover {
   background-color: var(--color-bg-light);
 }
 
-:global(.bg-medium) {
+.bgMedium {
   background-color: var(--color-bg-medium);
 }
 
 /* white  - move to bottom for specificity since its often used on hovers, etc */
-:global(.text-white),
-.text-white,
 .textWhite,
-:global(.text-white-hover:hover) {
+.textWhiteHover:hover {
   color: var(--color-text-white);
 }
 

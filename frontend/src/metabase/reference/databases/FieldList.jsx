@@ -140,7 +140,16 @@ const FieldList = props => {
         {() =>
           Object.keys(entities).length > 0 ? (
             <div className={CS.wrapper}>
-              <div className="pl4 pb2 mb4 bg-white rounded bordered">
+              <div
+                className={cx(
+                  CS.pl4,
+                  CS.pb2,
+                  CS.mb4,
+                  CS.bgWhite,
+                  CS.rounded,
+                  CS.bordered,
+                )}
+              >
                 <div className={S.item}>
                   <div className={R.columnHeader}>
                     <div className={cx(S.itemTitle, F.fieldNameTitle)}>

@@ -67,7 +67,7 @@ export default class Revision extends Component {
     return (
       <li className="flex flex-row">
         <div className="flex flex-column align-center mr2">
-          <div className="text-white">
+          <div className={CS.textWhite}>
             <UserAvatar user={revision.user} bg={userColor} />
           </div>
           <div

@@ -215,7 +215,7 @@ function GroupRow({
           to={"/admin/people/groups/" + group.id}
           className="link no-decoration flex align-center"
         >
-          <span className="text-white">
+          <span className={CS.textWhite}>
             <UserAvatar
               user={{ first_name: getGroupNameLocalized(group) }}
               bg={backgroundColor}

@@ -180,7 +180,7 @@ export class DimensionList extends Component {
       <FieldListGroupingTrigger
         className={cx(
           QueryBuilderS.FieldListGroupingTrigger,
-          "text-white-hover",
+          CS.textWhiteHover,
           CS.flex,
           CS.alignCenter,
           CS.p1,

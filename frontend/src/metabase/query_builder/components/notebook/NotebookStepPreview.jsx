@@ -69,7 +69,15 @@ const NotebookStepPreview = ({ step, onClose }) => {
         </PreviewIconContainer>
       </PreviewHeader>
       {isDirty ? (
-        <PreviewButtonContainer className="bordered shadowed rounded bg-white p4">
+        <PreviewButtonContainer
+          className={cx(
+            CS.bordered,
+            CS.shadowed,
+            CS.rounded,
+            CS.bgWhite,
+            CS.p4,
+          )}
+        >
           <Button onClick={refresh}>{t`Refresh`}</Button>
         </PreviewButtonContainer>
       ) : (

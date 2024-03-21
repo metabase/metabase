@@ -1,8 +1,10 @@
+import cx from "classnames";
 import type { ChangeEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import Select, { Option } from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
 import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import type {
   EmbeddingParameters,
@@ -76,7 +78,7 @@ export const ParametersSettings = ({
                 buttonProps={{
                   "aria-label": parameter.name,
                 }}
-                className="ml-auto bg-white"
+                className={cx(CS.mlAuto, CS.bgWhite)}
                 value={embeddingParams[parameter.slug] || "disabled"}
                 onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                   onChangeEmbeddingParameters({

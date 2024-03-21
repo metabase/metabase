@@ -1,3 +1,4 @@
+/* TODO: MAKE SURE THIS WORKS WITH .textWhite */
 .editHeader {
   composes: text-white from "style";
   align-items: center;

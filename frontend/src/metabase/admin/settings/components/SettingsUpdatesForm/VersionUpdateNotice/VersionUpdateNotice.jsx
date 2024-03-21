@@ -75,7 +75,7 @@ function NewVersionAvailable({ currentVersion }) {
   return (
     <div>
       <NewVersionContainer className="p2 bordered rounded border-success flex flex-row align-center justify-between">
-        <span className="text-white text-bold">
+        <span className={cx(CS.textWhite, CS.textBold)}>
           {t`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
           {t`You're running ${currentVersion}`}
         </span>
@@ -139,7 +139,16 @@ function HostingCTA() {
       )}
     >
       <HostingCTAContent>
-        <HostingCTAIconContainer className="circular bg-medium align-center justify-center ml1 mr2">
+        <HostingCTAIconContainer
+          className={cx(
+            "circular",
+            CS.bgMedium,
+            CS.alignCenter,
+            CS.justifyCenter,
+            CS.ml1,
+            CS.mr2,
+          )}
+        >
           <Icon name="cloud" size={24} />
         </HostingCTAIconContainer>
         <div>
