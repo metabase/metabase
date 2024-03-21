@@ -1,1 +1,2 @@
-export * from "./QueryVisualization";
+export { QueryVisualizationSdk } from "./QueryVisualization";
+export { MetabaseProvider } from "./MetabaseProvider";

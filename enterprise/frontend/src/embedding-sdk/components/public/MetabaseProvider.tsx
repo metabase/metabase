@@ -8,13 +8,13 @@ import { getStore } from "metabase/store";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
 
-import { SdkContentWrapper } from "./components/SdkContentWrapper";
-import type { SDKConfigType } from "./config";
-import { EmbeddingContext } from "./context";
-import { useInitData } from "./hooks";
+import type { SDKConfigType } from "../../config";
+import { EmbeddingContext } from "../../context";
+import { useInitData } from "../../hooks";
+import { SdkContentWrapper } from "../SdkContentWrapper";
 
 import "metabase/css/vendor.css";
-import "./styles.css";
+import "../../styles.css";
 
 const MetabaseProviderInternal = ({
   children,
