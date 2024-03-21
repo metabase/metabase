@@ -6,7 +6,10 @@ import { Button, Icon } from "metabase/ui";
 import type { SearchModelType } from "metabase-types/api";
 
 import type { EntityTab } from "../../EntityPicker";
-import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
+import {
+  EntityPickerModal,
+  defaultOptions as baseDefaultOptions,
+} from "../../EntityPicker";
 import type { CollectionPickerItem, CollectionPickerOptions } from "../types";
 
 import { CollectionPicker } from "./CollectionPicker";
@@ -28,6 +31,11 @@ const searchFilter = (
   searchResults: CollectionPickerItem[],
 ): CollectionPickerItem[] => {
   return searchResults.filter(result => result.can_write);
+};
+
+const defaultOptions: CollectionPickerOptions = {
+  ...baseDefaultOptions,
+  allowCreateNew: true,
 };
 
 export const CollectionPickerModal = ({
