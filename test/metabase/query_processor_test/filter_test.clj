@@ -4,9 +4,14 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
@@ -766,14 +771,44 @@
         ;; the rows returned should be the ones with a nil count, in increasing ID order
         (is (= (if (mt/sorts-nil-first? driver/*driver* :type/Integer)
                  ;; if nils come first, we expect the first three rows having a nil count, in id ascending order
-                 [[1 "2018-09-20T00:00:00Z" nil]
-                  [8 "2018-09-27T00:00:00Z" nil]
-                  [15 "2018-10-04T00:00:00Z" nil]]
+                 [[1 "2018-09-20" nil]
+                  [8 "2018-09-27" nil]
+                  [15 "2018-10-04" nil]]
                  ;; if nils come last, we expect the first three rows having a count of 0, in id ascending order
-                 [[2 "2018-09-21T00:00:00Z" 0]
-                  [3 "2018-09-22T00:00:00Z" 0]
-                  [9 "2018-09-28T00:00:00Z" 0]])
+                 [[2 "2018-09-21" 0]
+                  [3 "2018-09-22" 0]
+                  [9 "2018-09-28" 0]])
               (mt/formatted-rows [int identity int]
                 (mt/run-mbql-query bird-count
                   {:order-by [[:asc $count] [:asc $id]]
                    :limit    3}))))))))
+
+(deftest filter-on-specific-date-test
+  (testing "Filtering on a specific date should work correctly regardless of report timezone/DB timezone support (#39769)"
+    (mt/test-drivers (mt/normal-drivers)
+      (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+        (let [metadata-provider (lib.tu/merged-mock-metadata-provider
+                                 (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                 {:database {:timezone "US/Pacific"}})
+              checkins          (lib.metadata/table metadata-provider (mt/id :checkins))
+              checkins-id       (lib.metadata/field metadata-provider (mt/id :checkins :id))
+              checkins-date     (lib.metadata/field metadata-provider (mt/id :checkins :date))
+              query             (-> (lib/query metadata-provider checkins)
+                                    (lib/filter (lib/= checkins-date "2014-05-08"))
+                                    (lib/order-by checkins-id)
+                                    (lib/with-fields [checkins-id checkins-date]))]
+          (mt/with-native-query-testing-context query
+            (let [preprocessed (qp.preprocess/preprocess query)]
+              (testing "Preprocessing should give us a [:= field date] filter, not [:between field datetime datetime]"
+                (is (=? {:query {:filter [:=
+                                          [:field (mt/id :checkins :date) {:base-type :type/Date, :temporal-unit :default}]
+                                          [:absolute-datetime #t "2014-05-08" :default]]}}
+                        preprocessed))))
+            (testing "Results: should return correct rows"
+              (let [results (qp/process-query query)]
+                (is (= [[629 "2014-05-08"]
+                        [733 "2014-05-08"]
+                        [813 "2014-05-08"]]
+                       ;; WRONG => [[991 "2014-05-09T00:00:00-07:00"]]
+                       (mt/formatted-rows [int str]
+                         results)))))))))))
