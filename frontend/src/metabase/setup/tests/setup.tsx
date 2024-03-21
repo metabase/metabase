@@ -3,9 +3,13 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupPropertiesEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { TokenFeatures, UsageReason } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import {
+  createMockSettings,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockSetupState,
@@ -45,8 +49,9 @@ export async function setup({
   fetchMock.post("path:/api/util/password_check", { valid: true });
   fetchMock.post("path:/api/setup", {});
   fetchMock.put("path:/api/setting/anon-tracking-enabled", 200);
-  fetchMock.get("path:/api/session/properties", 200);
+  setupPropertiesEndpoints(createMockSettings());
   fetchMock.get("path:/api/setting", 200);
+  fetchMock.put("path:/api/setting", 200);
 
   renderWithProviders(<Setup />, { storeInitialState: state });
 

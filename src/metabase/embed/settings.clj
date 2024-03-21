@@ -31,3 +31,28 @@
                     (if new-value
                       (snowplow/track-event! ::snowplow/embedding-enabled api/*current-user-id* snowplow-payload)
                       (snowplow/track-event! ::snowplow/embedding-disabled api/*current-user-id* snowplow-payload))))))
+
+
+;; settings for the embedding homepage
+(defsetting embedding-homepage
+  (deferred-tru "Embedding homepage status")
+  :type       :string
+  :default    "hidden"
+  :export?    true
+  :visibility :admin)
+
+
+(defsetting setup-embedding-autoenabled
+  (deferred-tru "Embedding homepage status")
+  :type       :boolean
+  :default    false
+  :export?    true
+  :visibility :admin)
+
+
+(defsetting setup-license-active-at-setup
+  (deferred-tru "Embedding homepage status")
+  :type       :boolean
+  :default    false
+  :export?    true
+  :visibility :admin)
