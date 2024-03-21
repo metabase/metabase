@@ -2,6 +2,7 @@ import cx from "classnames";
 import type * as React from "react";
 
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import type { BaseFieldDefinition } from "metabase-types/forms";
 
 import {
@@ -57,7 +58,7 @@ function FormFieldView({
                 standAlone={standAloneLabel}
               >
                 {title}
-                {error && <span className="text-error">: {error}</span>}
+                {error && <span className={CS.textError}>: {error}</span>}
               </Label>
             )}
             {info && (

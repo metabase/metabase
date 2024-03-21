@@ -283,7 +283,9 @@ class FieldRemappingSettings extends Component {
                 />
               </PopoverWithTrigger>
               {dismissedInitialFkTargetPopover && (
-                <div className="text-error ml2">{t`Please select a column to use for display.`}</div>
+                <div
+                  className={cx(CS.textError, CS.ml2)}
+                >{t`Please select a column to use for display.`}</div>
               )}
             </>
           )}
@@ -291,7 +293,7 @@ class FieldRemappingSettings extends Component {
         {hasChanged && hasFKMappingValue && <RemappingNamingTip />}
         {mappingType === MAP_OPTIONS.custom &&
           (isFieldsAccessRestricted ? (
-            <div className="pt2 text-error">
+            <div className={cx(CS.pt2, CS.textError)}>
               {t`You need unrestricted data access on this table to map custom display values.`}
             </div>
           ) : (

@@ -46,7 +46,7 @@
 :global(.text-error),
 .text-error,
 .textError,
-:global(.text-error-hover:hover) {
+.textErrorHover {
   color: var(--color-error);
 }
 

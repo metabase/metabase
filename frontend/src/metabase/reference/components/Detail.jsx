@@ -5,6 +5,8 @@ import { memo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
+
 import S from "./Detail.module.css";
 
 const Detail = ({
@@ -41,7 +43,7 @@ const Detail = ({
           </span>
         )}
         {isEditing && field.error && field.touched && (
-          <span className="text-error">{field.error}</span>
+          <span className={CS.textError}>{field.error}</span>
         )}
       </div>
     </div>

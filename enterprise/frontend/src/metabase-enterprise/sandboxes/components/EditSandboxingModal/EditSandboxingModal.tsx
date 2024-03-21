@@ -203,7 +203,7 @@ const EditSandboxingModal = ({
           </ActionButton>
         </div>
         {error && (
-          <div className="flex align-center my2 text-error">
+          <div className={cx(CS.flex, CS.alignCenter, CS.my2, CS.textError)}>
             {typeof error === "string"
               ? error
               : // @ts-expect-error provide correct type for error

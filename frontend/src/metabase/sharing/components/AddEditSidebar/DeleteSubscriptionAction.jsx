@@ -50,7 +50,7 @@ function DeleteSubscriptionAction({ pulse, handleArchive }) {
           ButtonsS.Button,
           ButtonsS.ButtonBorderless,
           CS.textLight,
-          "text-error-hover",
+          CS.textErrorHover,
           CS.flexAlignRight,
           CS.flexNoShrink,
         )}
