@@ -1,6 +1,8 @@
 import { t } from "ttag";
 
-import { Flex, Icon, Stack, Text, HoverCard } from "metabase/ui";
+import { Flex, Text } from "metabase/ui";
+
+import { ImageUploadInfoDot } from "./ImageUploadInfoDot";
 
 type IllustrationType =
   | "login-page"
@@ -20,32 +22,6 @@ const TITLES: Record<IllustrationType, string> = {
   "no-search-results": t`No search results`,
 };
 
-const DESCRIPTIONS_WIDTHS: Record<IllustrationType, number> = {
-  "login-page": 400,
-  "landing-page": 400,
-  "no-question-results": 250,
-  "no-search-results": 250,
-};
-
-const DESCRIPTIONS: Record<IllustrationType, string[]> = {
-  "login-page": [
-    t`For best results, choose an image that is horizontally oriented and upload it as an SVG file. Other accepted formats are JPG and PNG.`,
-    t`Your file should not be larger than 2MB.`,
-  ],
-  "landing-page": [
-    t`For best results, choose an image that is horizontally oriented and upload it as an SVG file. Other accepted formats are JPG and PNG.`,
-    t`Your file should not be larger than 2MB.`,
-  ],
-  "no-question-results": [
-    t`For best results, upload an SVG file. Other accepted formats are JPG and PNG.`,
-    t`Your file should not be larger than 2MB.`,
-  ],
-  "no-search-results": [
-    t`For best results, upload an SVG file. Other accepted formats are JPG and PNG.`,
-    t`Your file should not be larger than 2MB.`,
-  ],
-};
-
 export function IllustrationDescription({
   errorMessageContainerId,
   type,
@@ -54,20 +30,7 @@ export function IllustrationDescription({
     <Text fw="bold" transform="none">
       <Flex align="center">
         {TITLES[type]}
-        <HoverCard position="top-start">
-          <HoverCard.Target>
-            <Icon aria-hidden name="info" />
-          </HoverCard.Target>
-          <HoverCard.Dropdown>
-            <Stack p="md" spacing="sm" maw={DESCRIPTIONS_WIDTHS[type]}>
-              {DESCRIPTIONS[type].map((message, index) => (
-                <Text key={index} size="sm">
-                  {message}
-                </Text>
-              ))}
-            </Stack>
-          </HoverCard.Dropdown>
-        </HoverCard>
+        {ImageUploadInfoDot}
         <Text color="error" aria-hidden id={errorMessageContainerId}></Text>
       </Flex>
     </Text>

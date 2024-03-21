@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { Button, Flex, Icon, Paper, Select, Text } from "metabase/ui";
+import { Box, Button, Flex, Icon, Paper, Select, Text } from "metabase/ui";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
@@ -35,6 +35,7 @@ type IllustrationWidgetProps = {
     | "no-question-results-illustration-custom"
     | "no-search-results-illustration-custom";
   errorMessageContainerId: string;
+  imageUploadInfoDot: JSX.Element;
   defaultPreviewType: "lighthouse" | "sailboat";
 };
 
@@ -50,6 +51,7 @@ export function IllustrationWidget({
   defaultIllustrationLabel,
   customIllustrationSetting,
   errorMessageContainerId,
+  imageUploadInfoDot,
   defaultPreviewType,
 }: IllustrationWidgetProps) {
   const [value, setValue] = useState(setting.value ?? setting.default);
@@ -151,11 +153,12 @@ export function IllustrationWidget({
             error={Boolean(errorMessage)}
           />
           {value === "custom" && (
-            <Flex gap="sm" w="100%" align="center">
+            <Flex w="100%" align="center">
               <Button
                 style={{ flexShrink: 0 }}
                 onClick={() => fileInputRef.current?.click()}
               >{t`Choose File`}</Button>
+              {<Box ml="sm">{imageUploadInfoDot}</Box>}
               <input
                 data-testid="file-input"
                 ref={fileInputRef}
@@ -165,7 +168,7 @@ export function IllustrationWidget({
                 accept="image/jpeg,image/png,image/svg+xml"
                 multiple={false}
               />
-              <Text truncate="end">
+              <Text ml="lg" truncate="end">
                 {!customIllustrationSource
                   ? t`No file chosen`
                   : fileName
@@ -177,6 +180,7 @@ export function IllustrationWidget({
                   leftIcon={<Icon name="close" />}
                   variant="subtle"
                   c="text-dark"
+                  ml="md"
                   compact
                   onClick={handleRemoveCustomIllustration}
                   aria-label={t`Remove custom illustration`}
