@@ -1,4 +1,11 @@
-import { restore, saveQuestion, startNewQuestion } from "e2e/support/helpers";
+import {
+  restore,
+  saveQuestion,
+  startNewQuestion,
+  openOrdersTable,
+  openNotebook,
+  popover,
+} from "e2e/support/helpers";
 
 const MONGO_DB_NAME = "QA Mongo";
 
@@ -11,29 +18,18 @@ describe("issue 32121", () => {
 
     it("clicking 'Explore results' works (metabase#32121)", () => {
       // Stepping all the way through the QB because I couldn't repro with canned `createNativeQuestion` JSON.
-      startNewQuestion();
+      openOrdersTable({ limit: 1 });
+      openNotebook();
+      cy.findByTestId("qb-header").icon("sql").click();
+      cy.get("pre").should("exist");
 
-      // Query the entire Orders table, then convert to SQL.
-      cy.get("#DataPopover").findByText("Raw Data").click();
-      cy.get("#DataPopover").findByText("Orders").click();
-      cy.findByTestId("qb-header").find(".Icon-sql").click();
-      cy.get(".Modal").findByText("Convert this question to SQL").click();
+      cy.button("Convert this question to SQL").click();
 
-      // Run the query.
-      cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.findByTestId("native-query-editor-container").icon("play").click();
-      cy.wait("@dataset");
-      cy.findByTestId("question-row-count").contains(
-        "Showing first 2,000 rows",
-      );
-
-      // Save it.
-      saveQuestion("all Orders");
+      cy.get(".cellData").contains("37.65");
+      saveQuestion("foo");
 
       cy.findByTestId("qb-header").findByText("Explore results").click();
-      cy.findByTestId("question-row-count").contains(
-        "Showing first 2,000 rows",
-      );
+      cy.get(".cellData").contains("37.65");
     });
   });
 
@@ -41,37 +37,25 @@ describe("issue 32121", () => {
     before(() => {
       restore("mongo-5");
       cy.signInAsAdmin();
-
-      startNewQuestion();
-      cy.get("#DataPopover").findByText("Raw Data").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(MONGO_DB_NAME).click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders").click();
     });
 
     it("convert GUI question to native query, and 'Explore results' works (metabase#32121)", () => {
+      startNewQuestion();
+      popover().within(() => {
+        cy.findByText("Raw Data").click();
+        cy.findByText(MONGO_DB_NAME).click();
+        cy.findByText("Orders").click();
+      });
       cy.findByTestId("query-builder-root").icon("sql").click();
+      cy.get("pre").should("exist");
 
-      cy.get(".Modal")
-        .findByText("Convert this question to a native query")
-        .click();
-      cy.get(".Modal").should("not.exist");
+      cy.button("Convert this question to a native query").click();
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.findByTestId("native-query-editor-container").icon("play").click();
-      cy.wait("@dataset");
-
-      saveQuestion("all Orders");
-
-      cy.findByTestId("question-row-count").contains(
-        "Showing first 2,000 rows",
-      );
+      cy.get(".cellData").contains("37.65");
+      saveQuestion("foo");
 
       cy.findByTestId("qb-header").findByText("Explore results").click();
-      cy.findByTestId("question-row-count").contains(
-        "Showing first 2,000 rows",
-      );
+      cy.get(".cellData").contains("37.65");
     });
   });
 });

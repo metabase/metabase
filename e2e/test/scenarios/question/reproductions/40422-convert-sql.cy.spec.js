@@ -38,7 +38,7 @@ function convertToSqlAndSave() {
   openNotebook();
   queryBuilderHeader().button("View the SQL").click();
   cy.wait("@datasetNative");
-  modal().button("Convert this question to SQL").click();
+  cy.button("Convert this question to SQL").click();
   cy.findByTestId("native-query-editor").should("be.visible");
   queryBuilderHeader().findByText("Save").click();
   modal().last().findByText("Save").click();
