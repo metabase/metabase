@@ -1,7 +1,7 @@
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useCreateNativeDatasetMutation } from "metabase/api";
+import { useGetNativeDatasetQuery } from "metabase/api";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
@@ -27,16 +27,11 @@ const BUTTON_TITLE = {
 export const NativeQueryPreviewSidebar = (): JSX.Element => {
   const dispatch = useDispatch();
   const question = checkNotNull(useSelector(getQuestion));
-  const [createNativeDataset, datasetResult] = useCreateNativeDatasetMutation();
 
   const engineType = getEngineNativeType(question.database()?.engine);
 
-  useEffect(() => {
-    const payload = Lib.toLegacyQuery(question.query());
-    createNativeDataset(payload);
-  }, [createNativeDataset, question]);
-
-  const { data, error, isLoading } = datasetResult;
+  const payload = Lib.toLegacyQuery(question.query());
+  const { data, error, isLoading } = useGetNativeDatasetQuery(payload);
   const query = data?.query;
 
   const handleConvertClick = useCallback(() => {
