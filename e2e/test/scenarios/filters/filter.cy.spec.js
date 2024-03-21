@@ -20,6 +20,7 @@ import {
   checkExpressionEditorHelperPopoverPosition,
   getNotebookStep,
   queryBuilderMain,
+  selectFilterOperator,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
@@ -406,9 +407,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("Reviewer").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
-    cy.findByDisplayValue("Is").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Is empty").click();
+    selectFilterOperator("Is empty");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filter").click();
 
@@ -437,9 +436,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("Rating").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
-    cy.findByDisplayValue("Equal to").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Is empty").click();
+    selectFilterOperator("Is empty");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filter").click();
 
@@ -892,8 +889,9 @@ describe("scenarios > question > filter", () => {
       openOrdersTable({ mode: "notebook" });
 
       filter({ mode: "notebook" });
+      popover().findByText("Total").click();
+      selectFilterOperator("Equal to");
       popover().within(() => {
-        cy.findByText("Total").click();
         cy.findByPlaceholderText("Enter a number").type("123");
         cy.button("Add filter").click();
       });

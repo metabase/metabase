@@ -1,4 +1,4 @@
-(ns metabase.mbql.schema.helpers
+(ns metabase.legacy-mbql.schema.helpers
   (:refer-clojure :exclude [distinct])
   (:require
    [clojure.string :as str]
@@ -24,7 +24,7 @@
         :rest     [:* (wrap-clause-arg-schema arg-schema)]
         (wrap-clause-arg-schema vector-arg-schema)))))
 
-;; TODO - this is a copy of the one in the [[metabase.mbql.util]] namespace. We need to reorganize things a bit so we
+;; TODO - this is a copy of the one in the [[metabase.legacy-mbql.util]] namespace. We need to reorganize things a bit so we
 ;; can use the same fn and avoid circular refs
 (defn is-clause?
   "If `x` an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
@@ -40,7 +40,7 @@
      (= k-or-ks (first x)))))
 
 (defn clause
-  "Impl of [[metabase.mbql.schema.macros/defclause]] macro. Creates a Malli schema."
+  "Impl of [[metabase.legacy-mbql.schema.macros/defclause]] macro. Creates a Malli schema."
   [tag & arg-schemas]
   [:and
    [:fn

@@ -1,19 +1,18 @@
-(ns metabase.mbql.util
+(ns metabase.legacy-mbql.util
   "Utilitiy functions for working with MBQL queries."
   (:refer-clojure :exclude [replace])
   (:require
    [clojure.string :as str]
+   [metabase.legacy-mbql.predicates :as mbql.preds]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.mbql.predicates :as mbql.preds]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.schema.helpers :as schema.helpers]
-   [metabase.mbql.util.match :as mbql.match]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    #?@(:clj
-       [[metabase.models.dispatch :as models.dispatch]
-        [potemkin :as p]])))
+       [[metabase.models.dispatch :as models.dispatch]])))
 
 (defn qualified-name
   "Like `name`, but if `x` is a namespace-qualified keyword, returns that a string including the namespace."
@@ -67,7 +66,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- combine-compound-filters-of-type [compound-type subclauses]
-  (mapcat #(mbql.match/match-one %
+  (mapcat #(lib.util.match/match-one %
              [(_ :guard (partial = compound-type)) & args]
              args
              _
@@ -147,7 +146,7 @@
 (defn desugar-inside
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."
   [m]
-  (mbql.match/replace m
+  (lib.util.match/replace m
     [:inside lat-field lon-field lat-max lon-min lat-min lon-max]
     [:and
      [:between lat-field lat-min lat-max]
@@ -156,21 +155,21 @@
 (defn desugar-is-null-and-not-null
   "Rewrite `:is-null` and `:not-null` filter clauses as simpler `:=` and `:!=`, respectively."
   [m]
-  (mbql.match/replace m
+  (lib.util.match/replace m
     [:is-null field]  [:=  field nil]
     [:not-null field] [:!= field nil]))
 
 (defn desugar-is-empty-and-not-empty
   "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively."
   [m]
-  (mbql.match/replace m
+  (lib.util.match/replace m
     [:is-empty field]  [:or  [:=  field nil] [:=  field ""]]
     [:not-empty field] [:and [:!= field nil] [:!= field ""]]))
 
 (defn- replace-field-or-expression
   "Replace a field or expression inside :time-interval"
   [m unit]
-  (mbql.match/replace m
+  (lib.util.match/replace m
     [:field id-or-name opts]
     [:field id-or-name (assoc opts :temporal-unit unit)]
 
@@ -181,7 +180,7 @@
 (defn desugar-time-interval
   "Rewrite `:time-interval` filter clauses as simpler ones like `:=` or `:between`."
   [m]
-  (mbql.match/replace m
+  (lib.util.match/replace m
     [:time-interval field-or-expression n unit] (recur [:time-interval field-or-expression n unit nil])
 
     ;; replace current/last/next with corresponding value of n and recur
@@ -231,7 +230,7 @@
 (defn desugar-does-not-contain
   "Rewrite `:does-not-contain` filter clauses as simpler `:not` clauses."
   [m]
-  (mbql.match/replace m
+  (lib.util.match/replace m
     [:does-not-contain & args]
     [:not (into [:contains] args)]))
 
@@ -241,7 +240,7 @@
      [:= field x y]  -> [:or  [:=  field x] [:=  field y]]
      [:!= field x y] -> [:and [:!= field x] [:!= field y]]"
   [m]
-  (mbql.match/replace m
+  (lib.util.match/replace m
     [:= field x y & more]
     (apply vector :or (for [x (concat [x y] more)]
                         [:= field x]))
@@ -254,11 +253,11 @@
   "Replace `relative-datetime` clauses like `[:relative-datetime :current]` with `[:relative-datetime 0 <unit>]`.
   `<unit>` is inferred from the `:field` the clause is being compared to (if any), otherwise falls back to `default.`"
   [m]
-  (mbql.match/replace m
+  (lib.util.match/replace m
     [clause field & (args :guard (partial some (partial = [:relative-datetime :current])))]
-    (let [temporal-unit (or (mbql.match/match-one field [:field _ {:temporal-unit temporal-unit}] temporal-unit)
+    (let [temporal-unit (or (lib.util.match/match-one field [:field _ {:temporal-unit temporal-unit}] temporal-unit)
                             :default)]
-      (into [clause field] (mbql.match/replace args
+      (into [clause field] (lib.util.match/replace args
                              [:relative-datetime :current]
                              [:relative-datetime 0 temporal-unit])))))
 
@@ -286,12 +285,12 @@
 (defn desugar-temporal-extract
   "Replace datetime extractions clauses like `[:get-year field]` with `[:temporal-extract field :year]`."
   [m]
-  (mbql.match/replace m
+  (lib.util.match/replace m
     [(op :guard temporal-extract-ops) field & args]
     [:temporal-extract field (temporal-extract-ops->unit [op (first args)])]))
 
 (defn- desugar-divide-with-extra-args [expression]
-  (mbql.match/replace expression
+  (lib.util.match/replace expression
     [:/ x y z & more]
     (recur (into [:/ [:/ x y]] (cons z more)))))
 
@@ -622,11 +621,11 @@
            [:aggregation-options [:sum [:field 1 nil]] {:name \"Sum-41\"}]]
 
   Most often, `aggregation->name-fn` will be something like `annotate/aggregation-name`, but for purposes of keeping
-  the `metabase.mbql` module seperate from the `metabase.query-processor` code we'll let you pass that in yourself."
+  the `metabase.legacy-mbql` module seperate from the `metabase.query-processor` code we'll let you pass that in yourself."
   {:style/indent 1}
   [aggregation->name-fn :- fn?
    aggregations         :- [:sequential mbql.s/Aggregation]]
-  (mbql.match/replace aggregations
+  (lib.util.match/replace aggregations
     [:aggregation-options _ (_ :guard :name)]
     &match
 
@@ -746,7 +745,7 @@
   (not-empty
    (into #{}
          (comp cat (filter some?))
-         (mbql.match/match coll
+         (lib.util.match/match coll
            [:field (id :guard integer?) opts]
            [id (:source-field opts)]))))
 
@@ -763,11 +762,3 @@
           (sequential? form) (recur (onto-stack (map-indexed vector form)) matches)
           :else              (recur stack                                  matches)))
       matches)))
-
-#?(:clj
-   (p/import-vars
-    [mbql.match
-     match
-     match-one
-     replace
-     replace-in]))

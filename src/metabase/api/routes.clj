@@ -87,7 +87,7 @@
       "/"               (-> (respond "index.html")
                             ;; Better would be to append this to our CSP, but there is no good way right now and it's
                             ;; just a single page. Necessary for rapidoc to work, script injects styles in runtime.
-                            (assoc-in [:headers "Content-Security-Policy"] "style-src 'unsafe-inline'"))
+                            (assoc-in [:headers "Content-Security-Policy"] "script-src 'self' 'unsafe-inline'"))
       "/rapidoc-min.js" (respond "rapidoc-min.js")
       "/openapi.json"   (merge
                          (api/openapi-object (resolve 'metabase.api.routes/routes))

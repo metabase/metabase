@@ -14,10 +14,11 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.params.field-values :as params.field-values]
@@ -54,14 +55,14 @@
   [field-form]
   (if (integer? field-form)
     [:field field-form nil]
-    (mbql.u/match-one field-form :field)))
+    (lib.util.match/match-one field-form :field)))
 
 (mu/defn unwrap-field-or-expression-clause :- mbql.s/Field
   "Unwrap a `:field` clause or expression clause, such as a template tag. Also handles unwrapped integers for
   legacy compatibility."
   [field-or-ref-form]
   (or (unwrap-field-clause field-or-ref-form)
-      (mbql.u/match-one field-or-ref-form :expression)))
+      (lib.util.match/match-one field-or-ref-form :expression)))
 
 (defn wrap-field-id-if-needed
   "Wrap a raw Field ID in a `:field` clause if needed."
@@ -251,7 +252,7 @@
   `dashcards` must be hydrated with :card."
   [dashcards]
   (set/union
-   (set (mbql.u/match (seq (dashcards->parameter-mapping-field-clauses dashcards))
+   (set (lib.util.match/match (seq (dashcards->parameter-mapping-field-clauses dashcards))
           [:field (id :guard integer?) _]
           id))
    (cards->card-param-field-ids (map :card dashcards))))
@@ -264,7 +265,7 @@
                   (for [param params
                         :let  [clause (param-target->field-clause (:target param)
                                                                   card)
-                               ids (mbql.u/match clause
+                               ids (lib.util.match/match clause
                                      [:field (id :guard integer?) _]
                                      id)]
                         :when (seq ids)]
@@ -305,7 +306,7 @@
   "Return a set of Field IDs referenced in template tag parameters in `card`. This is mostly used for determining
   Fields referenced by Cards for purposes other than processing queries. Filters out `:field` clauses using names."
   [card]
-  (set (mbql.u/match (seq (card->template-tag-field-clauses card))
+  (set (lib.util.match/match (seq (card->template-tag-field-clauses card))
          [:field (id :guard integer?) _]
          id)))
 
