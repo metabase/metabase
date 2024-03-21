@@ -458,7 +458,7 @@
 
     (pg-conversion :my_field ::integer) -> HoneySQL -[Compile]-> \"my_field\"::integer"
   [expr psql-type]
-  (-> [::pg-conversion expr psql-type]))
+  [::pg-conversion expr psql-type])
 
 (defn- format-text-array
   "Create a Postgres text array literal from a sequence of elements. Used for the `::json-query` stuff
