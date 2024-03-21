@@ -26,7 +26,7 @@
   flex: 1;
 }
 
-.Calendar-day {
+.CalendarDay {
   color: var(--color-text-light);
   position: relative;
   border-radius: 99px;

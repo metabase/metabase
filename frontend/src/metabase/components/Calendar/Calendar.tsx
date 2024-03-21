@@ -295,8 +295,6 @@ class Week extends Component<WeekProps> {
           [CalendarS.CalendarDayThisMonth]: date.month() === month.month(),
           [CalendarS.CalendarDaySelected]: isSelectedStart,
           [CalendarS.CalendarDaySelectedEnd]: isSelectedEnd,
-          "Calendar-day--week-start": i === 0,
-          "Calendar-day--week-end": i === 6,
           [CalendarS.CalendarDayInRange]:
             (selectAll && isInRange) ||
             (!(
