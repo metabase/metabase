@@ -1132,13 +1132,13 @@
     (snowplow-test/with-fake-snowplow-collector
       (with-upload-table! [_table (card->table (upload-example-csv!))]
         (testing "Successfully creating a CSV Upload publishes statistics to Snowplow"
-          (is (=? {:data    {"model_id"          pos?
+          (is (=? {:data    {"event"             "csv_upload_successful"
+                             "model_id"          pos?
                              "size_mb"           3.910064697265625E-5
                              "num_columns"       2
                              "num_rows"          2
                              "generated_columns" 1
-                             "upload_seconds"    pos?
-                             "event"             "csv_upload_successful"}
+                             "upload_seconds"    pos?}
                    :user-id (str (mt/user->id :rasta))}
                   (last (snowplow-test/pop-event-data-and-user-id!)))))
 
@@ -1147,10 +1147,11 @@
             (try (upload-example-csv!)
                  (catch Throwable _
                    nil))
-            (is (= {:data    {"size_mb"     3.910064697265625E-5
-                              "num_columns" 2
-                              "num_rows"    2
-                              "event"       "csv_upload_failed"}
+            (is (= {:data    {"event"             "csv_upload_failed"
+                              "size_mb"           3.910064697265625E-5
+                              "num_columns"       2
+                              "num_rows"          2
+                              "generated_columns" 0}
                     :user-id (str (mt/user->id :rasta))}
                    (last (snowplow-test/pop-event-data-and-user-id!))))))))))
 
@@ -1557,12 +1558,12 @@
                file     (csv-file-with csv-rows (mt/random-name))]
            (append-csv! {:file file, :table-id (:id table)})
 
-           (is (=? {:data    {"size_mb"           1.811981201171875E-5
+           (is (=? {:data    {"event"             "csv_append_successful"
+                              "size_mb"           1.811981201171875E-5
                               "num_columns"       1
                               "num_rows"          1
                               "generated_columns" 0
-                              "upload_seconds"    pos?
-                              "event"             "csv_append_successful"}
+                              "upload_seconds"    pos?}
                     :user-id (str (mt/user->id :crowberto))}
                    (last (snowplow-test/pop-event-data-and-user-id!))))
 
@@ -1578,10 +1579,11 @@
                (finally
                  (io/delete-file file))))
 
-           (is (= {:data    {"size_mb"     5.245208740234375E-5
-                             "num_columns" 2
-                             "num_rows"    1
-                             "event"       "csv_append_failed"}
+           (is (= {:data    {"event"             "csv_append_failed"
+                             "size_mb"           5.245208740234375E-5
+                             "num_columns"       2
+                             "num_rows"          1
+                             "generated_columns" 0}
                    :user-id (str (mt/user->id :crowberto))}
                   (last (snowplow-test/pop-event-data-and-user-id!))))))))))
 

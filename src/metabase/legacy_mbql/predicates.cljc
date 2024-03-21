@@ -1,9 +1,8 @@
-(ns metabase.mbql.predicates
+(ns metabase.legacy-mbql.predicates
   "Predicate functions for checking whether something is a valid instance of a given MBQL clause."
   (:require
-   [metabase.lib.schema.temporal-bucketing
-    :as lib.schema.temporal-bucketing]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
 
 (def ^{:arglists '([unit])} DateTimeUnit?

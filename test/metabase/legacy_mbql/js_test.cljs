@@ -1,7 +1,7 @@
-(ns metabase.mbql.js-test
+(ns metabase.legacy-mbql.js-test
   (:require
    [cljs.test :as t]
-   [metabase.mbql.js :as mbql.js]))
+   [metabase.legacy-mbql.js :as mbql.js]))
 
 (t/deftest normalize-test
   (t/testing "normalize should preserve keyword namespaces"

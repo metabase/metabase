@@ -1,9 +1,9 @@
 (ns metabase.query-processor.middleware.check-features
   (:require
    [metabase.driver :as driver]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -22,7 +22,7 @@
 (defn- query->required-features [query]
   (into
    #{}
-   (mbql.u/match (:query query)
+   (lib.util.match/match (:query query)
      :stddev
      :standard-deviation-aggregations
 

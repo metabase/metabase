@@ -1,7 +1,7 @@
 (ns metabase.query-processor.streaming
   (:require
    [metabase.async.streaming-response :as streaming-response]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming.csv :as qp.csv]

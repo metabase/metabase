@@ -1,5 +1,6 @@
-(ns hooks.metabase.mbql.schemas.macros
-  (:require [clj-kondo.hooks-api :as hooks]))
+(ns hooks.metabase.legacy-mbql.schemas.macros
+  (:require
+   [clj-kondo.hooks-api :as hooks]))
 
 (defn- unwrap-defclause-clause-name
   "The `clause-name-form` can be either a plain symbol, or a vector like `[var-name mbql-clause-name]`. For the vector
