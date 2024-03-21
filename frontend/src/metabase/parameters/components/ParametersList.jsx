@@ -4,6 +4,7 @@ import cx from "classnames";
 import { useCallback, useMemo } from "react";
 
 import { SortableList, Sortable } from "metabase/core/components/Sortable";
+import CS from "metabase/css/core/index.css";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { Icon } from "metabase/ui";
 
@@ -77,7 +78,14 @@ function ParametersList({
         commitImmediately={commitImmediately}
         dragHandle={
           isEditing && setParameterIndex ? (
-            <div className="flex layout-centered cursor-grab text-inherit">
+            <div
+              className={cx(
+                CS.flex,
+                CS.layoutCentered,
+                CS.cursorGrab,
+                "text-inherit",
+              )}
+            >
               <Icon name="grabber" />
             </div>
           ) : null
@@ -90,8 +98,9 @@ function ParametersList({
     <div
       className={cx(
         className,
-        "flex align-end flex-wrap",
-        vertical ? "flex-column" : "flex-row",
+        CS.flex,
+        "align-end flex-wrap",
+        vertical ? CS.flexColumn : CS.flexRow,
       )}
     >
       <SortableList

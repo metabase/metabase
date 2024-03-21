@@ -74,7 +74,18 @@ function NewVersionAvailable({ currentVersion }) {
 
   return (
     <div>
-      <NewVersionContainer className="p2 bordered rounded border-success flex flex-row align-center justify-between">
+      <NewVersionContainer
+        className={cx(
+          CS.p2,
+          CS.bordered,
+          CS.rounded,
+          "border-success",
+          CS.flex,
+          CS.flexRow,
+          CS.alignCenter,
+          "justify-between",
+        )}
+      >
         <span className="text-white text-bold">
           {t`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
           {t`You're running ${currentVersion}`}

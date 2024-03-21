@@ -1,4 +1,7 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
+
+import CS from "metabase/css/core/index.css";
 import { color, alpha } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 
@@ -40,7 +43,7 @@ const MiniBar = ({ value, extent: [min, max], options }) => {
       };
 
   return (
-    <div className="flex align-center currentcolor justify-end relative">
+    <div className={cx(CS.flex, CS.alignCenter, "justify-end", CS.relative)}>
       {/* TEXT VALUE */}
       <div
         className="text-ellipsis text-bold text-right flex-full"

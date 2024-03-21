@@ -76,11 +76,11 @@ const MetadataTableColumn = ({
       aria-label={field.name}
       data-testid={`column-${field.name}`}
     >
-      <div className="flex flex-column flex-auto">
+      <div className={cx(CS.flex, CS.flexColumn, CS.flexAuto)}>
         <div className="text-monospace mb1" style={{ fontSize: "12px" }}>
           {getFieldRawName(field)}
         </div>
-        <div className="flex flex-column">
+        <div className={cx(CS.flex, CS.flexColumn)}>
           <div>
             <ColumnInput
               style={{ minWidth: 420 }}
@@ -90,7 +90,7 @@ const MetadataTableColumn = ({
               onBlurChange={handleChangeName}
             />
             <div className="clearfix">
-              <div className="flex flex-auto">
+              <div className={cx(CS.flex, CS.flexAuto)}>
                 <div className="pl1 flex-auto">
                   <FieldVisibilityPicker
                     className="block"
@@ -120,7 +120,16 @@ const MetadataTableColumn = ({
               </div>
             </div>
           </div>
-          <div className={cx(CS.bgWhite, "flex flex-column flex-full mt1 mr1")}>
+          <div
+            className={cx(
+              CS.bgWhite,
+              CS.flex,
+              CS.flexColumn,
+              CS.flexFull,
+              CS.mt1,
+              CS.mr1,
+            )}
+          >
             <ColumnInput
               className={cx(AdminS.TableEditorFieldDescription, CS.rounded)}
               type="text"

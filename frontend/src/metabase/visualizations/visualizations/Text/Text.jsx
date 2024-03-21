@@ -6,6 +6,7 @@ import rehypeExternalLinks from "rehype-external-links";
 import remarkGfm from "remark-gfm";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { isEmpty } from "metabase/lib/validate";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
@@ -92,7 +93,12 @@ export function Text({
               remarkPlugins={REMARK_PLUGINS}
               rehypePlugins={REHYPE_PLUGINS}
               className={cx(
-                "full flex-full flex flex-column text-card-markdown cursor-text",
+                CS.full,
+                CS.flexFull,
+                CS.flex,
+                CS.flexColumn,
+                "text-card-markdown",
+                "cursor-text",
                 getSettingsStyle(settings),
               )}
             >
@@ -134,7 +140,11 @@ export function Text({
           remarkPlugins={REMARK_PLUGINS}
           rehypePlugins={REHYPE_PLUGINS}
           className={cx(
-            "full flex-full flex flex-column text-card-markdown",
+            CS.full,
+            CS.flexFull,
+            CS.flex,
+            CS.flexColumn,
+            "text-card-markdown",
             getSettingsStyle(settings),
           )}
         >

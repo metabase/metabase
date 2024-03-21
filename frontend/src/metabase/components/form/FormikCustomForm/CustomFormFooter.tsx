@@ -4,6 +4,7 @@ import type * as React from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 
 import CustomFormMessage from "./CustomFormMessage";
 import CustomFormSubmit from "./CustomFormSubmit";
@@ -29,7 +30,7 @@ function CustomFormFooter({
 }: CustomFormFooterProps) {
   return (
     <div
-      className={cx("flex align-center", {
+      className={cx(CS.flex, CS.alignCenter, {
         "flex-reverse": isModal || isContextModal,
       })}
     >

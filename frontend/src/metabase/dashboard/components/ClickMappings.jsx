@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { getIn, assocIn, dissocIn } from "icepick";
 import { Component } from "react";
 import { connect } from "react-redux";
@@ -6,6 +7,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Select from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
 import { getParameters } from "metabase/dashboard/selectors";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import MetabaseSettings from "metabase/lib/settings";
@@ -166,6 +168,7 @@ const getSourceOption = {
   parameter: p => ({ type: "parameter", id: p.id, name: p.name }),
   userAttribute: name => ({ type: "userAttribute", name, id: name }),
 };
+
 function TargetWithoutSource({
   target,
   sourceOptions,
@@ -217,7 +220,14 @@ function TargetWithSource({
   return (
     <div className="mb2">
       <div
-        className="bordered rounded p2 text-medium flex align-center"
+        className={cx(
+          CS.bordered,
+          CS.rounded,
+          CS.p2,
+          CS.textMedium,
+          CS.flex,
+          CS.alignCenter,
+        )}
         style={{ borderColor: "#E2E4E8" }}
       >
         <svg
@@ -321,6 +331,7 @@ export function withUserAttributes(ComposedComponent) {
         this.setState({ userAttributes: await GTAPApi.attributes() });
       }
     }
+
     render() {
       return (
         <ComposedComponent

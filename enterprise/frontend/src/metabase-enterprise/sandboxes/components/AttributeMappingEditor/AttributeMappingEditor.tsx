@@ -1,8 +1,10 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select, { Option } from "metabase/core/components/Select";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 import type { GroupTableAccessPolicyDraft } from "metabase-enterprise/sandboxes/types";
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
@@ -32,7 +34,15 @@ const AttributeMappingEditor = ({
     onChange={onChange}
     keyPlaceholder={t`Pick a user attribute`}
     keyHeader={
-      <div className="text-uppercase text-small text-grey-4 flex align-center">
+      <div
+        className={cx(
+          CS.textUppercase,
+          "text-small",
+          "text-grey-4",
+          CS.flex,
+          CS.alignCenter,
+        )}
+      >
         {t`User attribute`}
         <Tooltip
           tooltip={t`We can automatically get your users’ attributes if you’ve set up SSO, or you can add them manually from the "…" menu in the People section of the Admin Panel.`}

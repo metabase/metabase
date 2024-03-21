@@ -1,10 +1,12 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
 import UserAvatar from "metabase/components/UserAvatar";
+import CS from "metabase/css/core/index.css";
 
 import RevisionDiff from "./RevisionDiff";
 
@@ -63,9 +65,9 @@ export default class Revision extends Component {
     }
 
     return (
-      <li className="flex flex-row">
-        <div className="flex flex-column align-center mr2">
-          <div className="text-white">
+      <li className={cx(CS.flex, CS.flexRow)}>
+        <div className={cx(CS.flex, CS.flexColumn, CS.alignCenter, CS.mr2)}>
+          <div className={CS.textWhite}>
             <UserAvatar user={revision.user} bg={userColor} />
           </div>
           <div
@@ -74,8 +76,8 @@ export default class Revision extends Component {
           />
         </div>
         <div className="flex-full mt1 mb4">
-          <div className="flex mb1 text-medium">
-            <span className="">
+          <div className={cx(CS.flex, CS.mb1, CS.textMedium)}>
+            <span>
               <strong>{this.getName()}</strong> {this.getAction()}
             </span>
             <span className="flex-align-right h5">

@@ -1,6 +1,8 @@
+import cx from "classnames";
 import type * as React from "react";
 
 import ColorSelector from "metabase/core/components/ColorSelector";
+import CS from "metabase/css/core/index.css";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import type { SingleSeries, VisualizationSettings } from "metabase-types/api";
 
@@ -37,7 +39,7 @@ const ChartNestedSettingsSeriesSingle = ({
       className="px4 align-self-stretch"
       data-testid="series-settings"
     >
-      <div className="flex align-center border-bottom pb2">
+      <div className={cx(CS.flex, CS.alignCenter, CS.borderBottom, CS.pb2)}>
         <ColorSelector
           value={computedSettings.color}
           colors={getAccentColors()}

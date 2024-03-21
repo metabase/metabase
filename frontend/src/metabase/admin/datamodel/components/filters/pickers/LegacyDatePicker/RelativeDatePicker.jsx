@@ -3,6 +3,8 @@ import cx from "classnames";
 import { assoc } from "icepick";
 import { Component } from "react";
 
+import CS from "metabase/css/core/index.css";
+
 import DateUnitSelector from "../DatePicker/DateUnitSelector";
 
 import { IntervalInput } from "./RelativeDatePicker.styled";
@@ -28,9 +30,9 @@ export default class RelativeDatePicker extends Component {
     const intervals = filter[2];
     const unit = filter[3];
     return (
-      <div className={cx(className, "flex align-center")}>
+      <div className={cx(className, CS.flex, CS.alignCenter)}>
         <IntervalInput
-          className="mr2 text-right"
+          className={cx(CS.mr2, CS.textRight)}
           style={{
             width: 65,
             // needed to match Select's AdminSelect classes :-/

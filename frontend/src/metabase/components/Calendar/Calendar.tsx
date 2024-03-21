@@ -3,6 +3,7 @@ import type { Moment } from "moment-timezone"; // eslint-disable-line no-restric
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { Component } from "react";
 
+import CS from "metabase/css/core/index.css";
 import {
   getDayOfWeekOptions,
   getFirstDayOfWeekIndex,
@@ -115,7 +116,14 @@ export default class Calendar extends Component<CalendarProps, State> {
   renderMonthHeader(current?: Moment, side?: "left" | "right") {
     current = current || moment();
     return (
-      <div className="Calendar-header flex align-center border-bottom">
+      <div
+        className={cx(
+          "Calendar-header",
+          CS.flex,
+          CS.alignCenter,
+          CS.borderBottom,
+        )}
+      >
         {side !== "right" && (
           <CalendarIconContainer onClick={this.previous}>
             <Icon name="chevronleft" size={10} />

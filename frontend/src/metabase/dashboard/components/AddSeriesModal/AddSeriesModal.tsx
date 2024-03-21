@@ -138,7 +138,7 @@ export class AddSeriesModal extends Component<Props, State> {
 
     return (
       <div className={cx(CS.spread, CS.flex)}>
-        <div className="flex flex-column flex-full">
+        <div className={cx(CS.flex, CS.flexColumn, CS.flexFull)}>
           <div className="flex-no-shrink h3 pl4 pt4 pb2 text-bold">
             Edit data
           </div>
@@ -159,7 +159,7 @@ export class AddSeriesModal extends Component<Props, State> {
             />
             {this.state.isLoading && (
               <div
-                className="spred flex layout-centered"
+                className={cx(CS.spread, CS.flex, CS.layoutCentered)}
                 style={{ backgroundColor: color("bg-white") }}
               >
                 <div className="h3 rounded bordered p3 bg-white shadowed">
@@ -184,7 +184,7 @@ export class AddSeriesModal extends Component<Props, State> {
           </div>
         </div>
         <div
-          className="border-left flex flex-column"
+          className={cx("border-left", CS.flex, CS.flexColumn)}
           style={{
             width: 370,
             backgroundColor: color("bg-light"),

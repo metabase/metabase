@@ -233,7 +233,9 @@ const TableHeader = ({
   return (
     <div
       className={cx(
-        "flex justify-between align-center",
+        CS.flex,
+        "justify-between",
+        CS.alignCenter,
         AdminS.AdminListSection,
       )}
     >

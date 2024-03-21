@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -8,6 +9,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import * as Urls from "metabase/lib/urls";
 import { getSetting } from "metabase/selectors/settings";
@@ -105,7 +107,7 @@ class PublicLinksListing extends Component {
                       </td>
                     )}
                     {revoke && (
-                      <td className="flex layout-centered">
+                      <td className={cx(CS.flex, CS.layoutCentered)}>
                         <Confirm
                           title={t`Disable this link?`}
                           content={t`They won't work anymore, and can't be restored, but you can create new links.`}

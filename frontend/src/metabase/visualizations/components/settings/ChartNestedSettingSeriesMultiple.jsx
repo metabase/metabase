@@ -46,7 +46,7 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
                   "align-self-stretch",
                 )}
               >
-                <div className="flex align-center">
+                <div className={cx(CS.flex, CS.alignCenter)}>
                   <ColorSelector
                     value={settings.color}
                     colors={getAccentColors()}

@@ -219,7 +219,9 @@ export class GuiQueryEditor extends Component {
       // TODO: move this into AggregationWidget?
       return (
         <div className={cx(QueryBuilderS.QuerySection, CS.disabled)}>
-          <a className="QueryOption p1 flex align-center">{t`Raw data`}</a>
+          <a
+            className={cx("QueryOption", CS.p1, CS.flex, CS.alignCenter)}
+          >{t`Raw data`}</a>
         </div>
       );
     }
@@ -255,7 +257,16 @@ export class GuiQueryEditor extends Component {
             }
           />
         ) : (
-          <span className="flex align-center px2 py2 text-bold text-grey">
+          <span
+            className={cx(
+              CS.flex,
+              CS.alignCenter,
+              CS.px2,
+              CS.py2,
+              CS.textBold,
+              "text-grey",
+            )}
+          >
             {legacyQuery.table() && legacyQuery.table().displayName()}
           </span>
         )}
