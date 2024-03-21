@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.query-processor.middleware.desugar :as desugar]))
 
-;; actual desugaring logic and tests are in [[metabase.mbql.util-test]]
+;; actual desugaring logic and tests are in [[metabase.legacy-mbql.util-test]]
 (deftest ^:parallel e2e-test
   (is (= {:database 1
           :type     :query

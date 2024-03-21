@@ -1,4 +1,4 @@
-(ns metabase.mbql.schema
+(ns metabase.legacy-mbql.schema
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
   (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs])
   (:require
@@ -6,6 +6,8 @@
    [clojure.set :as set]
    [malli.core :as mc]
    [malli.error :as me]
+   [metabase.legacy-mbql.schema.helpers :as helpers :refer [is-clause?]]
+   [metabase.legacy-mbql.schema.macros :refer [defclause one-of]]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
@@ -13,8 +15,6 @@
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
-   [metabase.mbql.schema.macros :refer [defclause one-of]]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]))
 
