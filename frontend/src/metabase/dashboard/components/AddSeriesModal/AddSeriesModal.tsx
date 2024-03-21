@@ -177,7 +177,7 @@ export class AddSeriesModal extends Component<Props, State> {
               </div>
             )}
           </div>
-          <div className={cx(CS.flexNoShrink, CS.pl4, CS.pb4, pt1)}>
+          <div className={cx(CS.flexNoShrink, CS.pl4, CS.pb4, CS.pt1)}>
             <button
               className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
               onClick={this.handleDone}
