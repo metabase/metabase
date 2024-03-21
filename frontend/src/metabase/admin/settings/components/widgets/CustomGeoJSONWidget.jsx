@@ -323,7 +323,7 @@ const EditMap = ({
 }) => (
   <div data-testid="edit-map-modal">
     <div className={CS.flex}>
-      <div className="flex-no-shrink">
+      <div className={CS.flexNoShrink}>
         <h2>{!originalMap ? t`Add a new map` : t`Edit map`}</h2>
         <SettingContainer description={t`What do you want to call this map?`}>
           <div className={CS.flex}>

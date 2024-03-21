@@ -1,3 +1,5 @@
+import cx from "classnames";
+
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
@@ -14,7 +16,7 @@ export const AdminPaneTitle = ({
   buttonLink,
   headingContent,
 }: AdminPaneProps) => {
-  const buttonClassName = "ml-auto flex-no-shrink";
+  const buttonClassName = cx(CS.mlAuto, CS.flexNoShrink);
   return (
     <Container>
       <HeadingContainer>

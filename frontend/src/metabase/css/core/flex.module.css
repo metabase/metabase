@@ -20,8 +20,6 @@
   flex: 0.5;
 }
 
-:global(.flex-no-shrink),
-.flex-no-shrink,
 .flexNoShrink {
   flex-shrink: 0;
 }

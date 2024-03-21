@@ -139,7 +139,16 @@ export class AddSeriesModal extends Component<Props, State> {
     return (
       <div className={cx(CS.spread, CS.flex)}>
         <div className={cx(CS.flex, CS.flexColumn, CS.flexFull)}>
-          <div className="flex-no-shrink h3 pl4 pt4 pb2 text-bold">
+          <div
+            className={cx(
+              CS.flexNoShrink,
+              CS.h3,
+              CS.pl4,
+              CS.pt4,
+              CS.pb2,
+              CS.textBold,
+            )}
+          >
             Edit data
           </div>
           <div className={cx(CS.flexFull, CS.ml2, CS.mr1, CS.relative)}>
@@ -168,7 +177,7 @@ export class AddSeriesModal extends Component<Props, State> {
               </div>
             )}
           </div>
-          <div className="flex-no-shrink pl4 pb4 pt1">
+          <div className={cx(CS.flexNoShrink, CS.pl4, CS.pb4, pt1)}>
             <button
               className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
               onClick={this.handleDone}
