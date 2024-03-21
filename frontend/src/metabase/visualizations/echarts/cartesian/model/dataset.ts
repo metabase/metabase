@@ -375,17 +375,39 @@ function filterNullDimensionValues(dataset: ChartDataset) {
   return filteredDataset;
 }
 
+const Y_AXIS_CROSSING_ERROR = Error(
+  t`Y-axis must not cross 0 when using log scale.`,
+);
+
 export function replaceZeroesForLogScale(
   dataset: ChartDataset,
   seriesDataKeys: DataKey[],
 ) {
   let hasZeros = false;
   let minNonZeroValue = Infinity;
+  let sign: number | undefined = undefined;
 
   dataset.forEach(datum => {
     const datumNumericValues = seriesDataKeys
       .map(key => getNumberOr(datum[key], null))
       .filter(isNotNull);
+
+    const hasPositive = datumNumericValues.some(value => value > 0);
+    const hasNegative = datumNumericValues.some(value => value < 0);
+
+    if (hasPositive && hasNegative) {
+      throw Y_AXIS_CROSSING_ERROR;
+    }
+
+    if (sign === undefined && hasPositive) {
+      sign = 1;
+    }
+    if (sign === undefined && hasNegative) {
+      sign = -1;
+    }
+    if ((sign === 1 && hasNegative) || (sign === -1 && hasPositive)) {
+      throw Y_AXIS_CROSSING_ERROR;
+    }
 
     if (!hasZeros) {
       hasZeros = datumNumericValues.includes(0);
@@ -393,19 +415,18 @@ export function replaceZeroesForLogScale(
 
     minNonZeroValue = Math.min(
       minNonZeroValue,
-      ...datumNumericValues.filter(number => number !== 0),
+      ...datumNumericValues
+        .map(value => Math.abs(value))
+        .filter(number => number !== 0),
     );
   });
 
-  if (!hasZeros && minNonZeroValue > 0) {
+  // if sign is still undefined all metric series values are 0
+  if (!hasZeros || sign === undefined) {
     return dataset;
   }
 
-  if (minNonZeroValue < 0) {
-    throw Error(t`Y-axis must not cross 0 when using log scale.`);
-  }
-
-  const zeroReplacementValue = Math.min(minNonZeroValue, 1);
+  const zeroReplacementValue = sign * Math.min(minNonZeroValue, 1);
 
   return replaceValues(dataset, (dataKey: DataKey, value: RowValue) =>
     seriesDataKeys.includes(dataKey) && value === 0
