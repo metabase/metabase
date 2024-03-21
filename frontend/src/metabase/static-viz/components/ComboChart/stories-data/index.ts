@@ -18,6 +18,8 @@ import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import barStackedNormalizedEmptySpace37880 from "./bar-stacked-normalized-empty-space-37880.json";
 import barTwoAxesStackedWithNegativeValues from "./bar-two-axes-stacked-with-negative-values.json";
 import barBreakoutWithLineSeriesStackedRightAxisOnly from "./bar-breakout-with-line-series-stacked-right-axis-only.json";
+import barAutoFormattingCompact from "./bar-auto-formatting-compact.json";
+import barAutoFormattingFull from "./bar-auto-formatting-full.json";
 import barStackedTotalFormattedValues from "./bar-stacked-total-formatted-values.json";
 import barStackedPowYAxis from "./bar-stacked-pow-y-axis.json";
 import barStackedPowYAxisNegatives from "./bar-stacked-pow-y-axis-negatives.json";
@@ -124,4 +126,6 @@ export const data = {
   barStackDisplayOverridesSeriesDisplays,
   areaStackAllSeriesWithoutInterpolation,
   areaOverBar,
+  barAutoFormattingCompact,
+  barAutoFormattingFull,
 };

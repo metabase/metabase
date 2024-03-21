@@ -168,6 +168,21 @@ BarStackedPowYAxisNegatives.args = {
   renderingContext,
 };
 
+export const BarAutoFormattingCompact = Template.bind({});
+BarAutoFormattingCompact.args = {
+  rawSeries: data.barAutoFormattingCompact as any,
+  dashcardSettings: {},
+  renderingContext,
+} as any;
+
+export const BarAutoFormattingFull = Template.bind({});
+BarAutoFormattingFull.args = {
+  rawSeries: data.barAutoFormattingFull as any,
+  dashcardSettings: {},
+  renderingContext,
+  getColor: color,
+} as any;
+
 export const BarStackedNormalizedEmptySpace37880 = Template.bind({});
 BarStackedNormalizedEmptySpace37880.args = {
   rawSeries: data.barStackedNormalizedEmptySpace37880 as any,

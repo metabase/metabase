@@ -106,12 +106,14 @@ export const buildEChartsWaterfallSeries = (
   const buildLabelOption = (key: DataKey) => ({
     ...buildEChartsLabelOptions(
       seriesModel,
+      dataset,
       settings,
       renderingContext,
       settings["graph.show_values"],
     ),
     formatter: getDataLabelFormatter(
       seriesModel,
+      dataset,
       settings,
       key,
       renderingContext,
