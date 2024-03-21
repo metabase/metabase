@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.convert :as lib.convert]
@@ -16,7 +17,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))

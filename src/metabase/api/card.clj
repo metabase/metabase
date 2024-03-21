@@ -10,12 +10,11 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
+   [metabase.compatibility :as compatibility]
    [metabase.driver :as driver]
    [metabase.events :as events]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models :refer [Card CardBookmark Collection Database PersistedInfo Table]]
@@ -453,10 +452,7 @@
    result_metadata        [:maybe qr/ResultsMetadata]
    cache_ttl              [:maybe ms/PositiveInt]}
   ;; check that we have permissions to run the query that we're trying to save
-  (check-data-permissions-for-query
-   (if (= (some-> (:lib/type dataset_query) keyword) :mbql/query)
-     (-> dataset_query lib.normalize/normalize lib.convert/->legacy-MBQL)
-     dataset_query))
+  (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
   (let [body (cond-> body
@@ -481,7 +477,7 @@
 (defn- check-allowed-to-modify-query
   "If the query is being modified, check that we have data permissions to run the query."
   [card-before-updates card-updates]
-  (let [card-updates (m/update-existing card-updates :dataset_query mbql.normalize/normalize)]
+  (let [card-updates (m/update-existing card-updates :dataset_query compatibility/normalize-dataset-query)]
     (when (api/column-will-change? :dataset_query card-before-updates card-updates)
       (check-data-permissions-for-query (:dataset_query card-updates)))))
 
