@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import { t } from "ttag";
 import type {
   DatasetColumn,
   RawSeries,
@@ -30,6 +31,7 @@ import {
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import { isMetric } from "metabase-lib/types/utils/isa";
 import { isCategoryAxis, isNumericAxis } from "./guards";
 import { signedSquareRoot } from "./transforms";
@@ -373,6 +375,45 @@ function filterNullDimensionValues(dataset: ChartDataset) {
   return filteredDataset;
 }
 
+export function replaceZeroesForLogScale(
+  dataset: ChartDataset,
+  seriesDataKeys: DataKey[],
+) {
+  let hasZeros = false;
+  let minNonZeroValue = Infinity;
+
+  dataset.forEach(datum => {
+    const datumNumericValues = seriesDataKeys
+      .map(key => getNumberOr(datum[key], null))
+      .filter(isNotNull);
+
+    if (!hasZeros) {
+      hasZeros = datumNumericValues.includes(0);
+    }
+
+    minNonZeroValue = Math.min(
+      minNonZeroValue,
+      ...datumNumericValues.filter(number => number !== 0),
+    );
+  });
+
+  if (!hasZeros && minNonZeroValue > 0) {
+    return dataset;
+  }
+
+  if (minNonZeroValue < 0) {
+    throw Error(t`Y-axis must not cross 0 when using log scale.`);
+  }
+
+  const zeroReplacementValue = Math.min(minNonZeroValue, 1);
+
+  return replaceValues(dataset, (dataKey: DataKey, value: RowValue) =>
+    seriesDataKeys.includes(dataKey) && value === 0
+      ? zeroReplacementValue
+      : value,
+  );
+}
+
 function getHistogramDataset(
   dataset: ChartDataset,
   histogramInterval: number | undefined,
@@ -405,6 +446,8 @@ export const applyVisualizationSettingsDataTransformations = (
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
 ) => {
+  const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
+
   if (
     xAxisModel.axisType === "value" ||
     xAxisModel.axisType === "time" ||
@@ -413,11 +456,13 @@ export const applyVisualizationSettingsDataTransformations = (
     dataset = filterNullDimensionValues(dataset);
   }
 
+  if (settings["graph.y_axis.scale"] === "log") {
+    dataset = replaceZeroesForLogScale(dataset, seriesDataKeys);
+  }
+
   if (xAxisModel.axisType === "category" && xAxisModel.isHistogram) {
     dataset = getHistogramDataset(dataset, xAxisModel.histogramInterval);
   }
-
-  const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
 
   return transformDataset(dataset, [
     getNullReplacerTransform(settings, seriesModels),
