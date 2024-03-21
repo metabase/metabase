@@ -56,8 +56,6 @@
   align-items: center;
 }
 
-:global(.justify-center),
-.justify-center,
 .justifyCenter {
   justify-content: center;
 }
