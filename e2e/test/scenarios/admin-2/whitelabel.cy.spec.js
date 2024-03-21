@@ -327,7 +327,7 @@ describeEE("formatting > whitelabel", () => {
         .clear()
         .type("/test-1")
         .blur();
-      cy.wait(["@putLandingPage", "@getSettings"]);
+      undoToast().findByText("Changes saved").should("be.visible");
 
       cy.findByTestId("landing-page-error").should("not.exist");
       cy.findByRole("navigation").findByText("Exit admin").click();
