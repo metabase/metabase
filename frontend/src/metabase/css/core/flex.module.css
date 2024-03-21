@@ -60,10 +60,6 @@
   justify-content: center;
 }
 
-:global(.justify-evenly) {
-  justify-content: space-evenly;
-}
-
 :global(.justify-between) {
   justify-content: space-between;
 }
