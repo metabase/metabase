@@ -20,16 +20,6 @@
   flex: 0.5;
 }
 
-:global(.flex-3-quarters),
-.flex-3-quarters {
-  flex: 0.75;
-}
-
-:global(.flex-1-quarter),
-.flex-1-quarter {
-  flex: 0.25;
-}
-
 :global(.flex-no-shrink),
 .flex-no-shrink,
 .flexNoShrink {
