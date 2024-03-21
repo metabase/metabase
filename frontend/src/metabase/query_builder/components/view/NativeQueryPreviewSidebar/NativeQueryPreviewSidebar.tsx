@@ -1,20 +1,19 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import { useCreateNativeDatasetMutation } from "metabase/api";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch } from "metabase/lib/redux";
 import { updateQuestion, setUIControls } from "metabase/query_builder/actions";
-import {
-  getNativeQueryFn,
-  getQuestion,
-} from "metabase/query_builder/selectors";
+import { getQuestion } from "metabase/query_builder/selectors";
 import { Button } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { NativeQueryForm } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { NativeQueryPreview, useNativeQuery } from "../NativeQueryPreview";
+import { NativeQueryPreview } from "../NativeQueryPreview";
 
 import { createDatasetQuery } from "./utils";
 
@@ -35,11 +34,19 @@ interface NativeQueryPreviewSidebarProps {
 
 const NativeQueryPreviewSidebar = ({
   question,
-  onLoadQuery,
 }: NativeQueryPreviewSidebarProps): JSX.Element => {
-  const engineType = getEngineNativeType(question.database()?.engine);
-  const { query, error, isLoading } = useNativeQuery(question, onLoadQuery);
   const dispatch = useDispatch();
+  const [createNativeDataset, datasetResult] = useCreateNativeDatasetMutation();
+
+  const engineType = getEngineNativeType(question.database()?.engine);
+
+  useEffect(() => {
+    const payload = Lib.toLegacyQuery(question.query());
+    createNativeDataset(payload);
+  }, [createNativeDataset, question]);
+
+  const { data, error, isLoading } = datasetResult;
+  const query = data?.query;
 
   const handleConvertClick = useCallback(() => {
     if (!query) {
@@ -72,7 +79,6 @@ const NativeQueryPreviewSidebar = ({
 const mapStateToProps = (state: State) => ({
   // FIXME: remove the non-null assertion operator
   question: getQuestion(state)!,
-  onLoadQuery: getNativeQueryFn(state),
 });
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
