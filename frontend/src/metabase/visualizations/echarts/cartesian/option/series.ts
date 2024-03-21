@@ -308,7 +308,7 @@ const buildEChartsLineAreaSeries = (
         opacity: blurOpacity,
       },
     },
-    z: CHART_STYLE.series.zIndex,
+    z: CHART_STYLE.series.zIndexLineArea,
     id: seriesModel.dataKey,
     type: "line",
     yAxisIndex,
