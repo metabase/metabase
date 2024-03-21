@@ -6,11 +6,11 @@ import Questions from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import {
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
-} from "metabase-lib/metadata/utils/saved-questions";
+} from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { State } from "metabase-types/store";
 
 import { NotebookRoot } from "./Notebook.styled";

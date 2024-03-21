@@ -5,7 +5,7 @@ import {
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, getIcon } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";

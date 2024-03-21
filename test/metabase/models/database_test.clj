@@ -7,13 +7,13 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models :refer [Database Permissions]]
+   [metabase.models :refer [Database]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.models.secret :as secret :refer [Secret]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.user :as user]
    [metabase.query-processor.store :as qp.store]
    [metabase.server.middleware.session :as mw.session]
    [metabase.task :as task]
@@ -34,20 +34,37 @@
             trigger))
         (:triggers (task/job-info "metabase.task.sync-and-analyze.job"))))
 
-(deftest perms-test
-  (testing "After creating a Database, All Users group should get full permissions by default"
-    (t2.with-temp/with-temp [Database db]
-      (is (= true
-             (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
-                                              (perms/data-perms-path db))))
-      (is (= true
-             (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
-                                              (perms/feature-perms-path :download :full db))))))
+(deftest set-new-database-permissions!-test
+  (testing "New permissions are set appropriately for a new database, for all groups"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                   :model/Database         {db-id :id}    {}]
+      ;; All Users group should have native query editing abilities, but not database management
+      (let [all-users-group-id (u/the-id (perms-group/all-users))]
+        (is (= {all-users-group-id
+                {db-id
+                 {:perms/download-results      :one-million-rows
+                  :perms/data-access           :unrestricted
+                  :perms/native-query-editing  :yes
+                  :perms/manage-table-metadata :no
+                  :perms/manage-database       :no}}}
+               (data-perms/data-permissions-graph :group-id all-users-group-id :db-id db-id))))
 
-  (testing "After deleting a Database, no permissions for the DB should still exist"
-    (t2.with-temp/with-temp [Database {db-id :id}]
-      (t2/delete! Database :id db-id)
-      (is (= [] (t2/select Permissions :object [:like (str "%" (perms/data-perms-path db-id) "%")]))))))
+      ;; Other groups should have no DB-level perms
+      (is (= {group-id
+              {db-id
+               {:perms/download-results      :no
+                :perms/data-access           :no-self-service
+                :perms/native-query-editing  :no
+                :perms/manage-table-metadata :no
+                :perms/manage-database       :no}}}
+             (data-perms/data-permissions-graph :group-id group-id :db-id db-id))))))
+
+(deftest cleanup-permissions-after-delete-db-test
+  (mt/with-temp [:model/Database {db-id :id} {}]
+    (is (true? (t2/exists? :model/DataPermissions :db_id db-id)))
+    (t2/delete! :model/Database db-id)
+    (testing "All permissions are deleted when we delete the database"
+      (is (false? (t2/exists? :model/DataPermissions :db_id db-id))))))
 
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"
@@ -318,3 +335,17 @@
       (let [db (first (t2/insert-returning-instances! Database (dissoc (mt/with-temp-defaults Database) :details)))]
         (is (partial= {:details {}}
                       db))))))
+
+(deftest hydrate-tables-test
+  (is (= ["CATEGORIES"
+          "CHECKINS"
+          "ORDERS"
+          "PEOPLE"
+          "PRODUCTS"
+          "REVIEWS"
+          "USERS"
+          "VENUES"]
+       (-> (mt/db)
+           (t2/hydrate :tables)
+           :tables
+           (#(map :name %))))))

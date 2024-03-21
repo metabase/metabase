@@ -44,14 +44,14 @@
              {:aggregation     [[:count]]
               :breakout        [!week.date]
               :filter          [:between !week.date "2014-02-01T00:00:00-08:00" "2014-05-01T00:00:00-07:00"]
-              :source-query    source-query
+              :source-query    (:query source-query)
               :source-metadata source-metadata})
            (upgrade-field-literals
             (mt/mbql-query nil
               {:aggregation     [[:count]]
                :breakout        [!week.*DATE/Date]
                :filter          [:between !week.*DATE/Date "2014-02-01T00:00:00-08:00" "2014-05-01T00:00:00-07:00"]
-               :source-query    source-query
+               :source-query    (:query source-query)
                :source-metadata source-metadata}))))))
 
 (deftest support-legacy-filter-clauses-test

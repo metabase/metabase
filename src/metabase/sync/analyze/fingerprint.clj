@@ -7,7 +7,7 @@
    [metabase.analyze.fingerprint :as fingerprint]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.db.metadata-queries :as metadata-queries]
-   [metabase.db.util :as mdb.u]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.field :as field :refer [Field]]
@@ -159,10 +159,10 @@
   [:and
    [:= :active true]
    [:or
-    [:not (mdb.u/isa :semantic_type :type/PK)]
+    [:not (mdb.query/isa :semantic_type :type/PK)]
     [:= :semantic_type nil]]
    [:not-in :visibility_type ["retired" "sensitive"]]
-   [:not (mdb.u/isa :base_type :type/Structured)]])
+   [:not (mdb.query/isa :base_type :type/Structured)]])
 
 (def ^:dynamic *refingerprint?*
   "Whether we are refingerprinting or doing the normal fingerprinting. Refingerprinting should get fields that already
@@ -222,10 +222,7 @@
    (qp.store/with-metadata-provider (u/the-id database)
      (reduce (fn [acc table]
                (log-progress-fn (if *refingerprint?* "refingerprint-fields" "fingerprint-fields") table)
-               (let [results (if (= :googleanalytics (:engine database))
-                               (empty-stats-map 0)
-                               (fingerprint-fields! table))
-                     new-acc (merge-with + acc results)]
+               (let [new-acc (merge-with + acc (fingerprint-fields! table))]
                  (if (continue? new-acc)
                    new-acc
                    (reduced new-acc))))
@@ -237,8 +234,9 @@
   [database        :- (mi/InstanceOf :model/Database)
    tables          :- [:maybe [:sequential (mi/InstanceOf :model/Table)]]
    log-progress-fn :- LogProgressFn]
-  ;; TODO: Maybe the driver should have a function to tell you if it supports fingerprinting?
-  (fingerprint-fields-for-db!* database tables log-progress-fn))
+  (if (driver/database-supports? (:engine database) :fingerprint database)
+    (fingerprint-fields-for-db!* database tables log-progress-fn)
+    (empty-stats-map 0)))
 
 (def ^:private max-refingerprint-field-count
   "Maximum number of fields to refingerprint. Balance updating our fingerprinting values while not spending too much

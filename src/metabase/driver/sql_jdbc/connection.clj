@@ -4,7 +4,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [metabase.connection-pool :as connection-pool]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -247,7 +247,7 @@
                             ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
                             ;; not in [[database-id->connection-pool]].
                             (:is-audit db)
-                            {:datasource (mdb.connection/data-source)}
+                            {:datasource (mdb/data-source)}
 
                             (= ::not-found details)
                             nil

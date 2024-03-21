@@ -7,7 +7,7 @@ import { createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
 import { getLocation } from "metabase/selectors/routing";
 import * as Lib from "metabase-lib";
-import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
+import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
 
 import {
   getCard,
@@ -57,8 +57,8 @@ export const popState = createThunkAction(
     const card = getCard(getState());
     if (location.state && location.state.card) {
       if (!equals(card, location.state.card)) {
-        const shouldRefreshUrl = location.state.card.type === "model";
-        await dispatch(setCardAndRun(location.state.card, shouldRefreshUrl));
+        const shouldUpdateUrl = location.state.card.type === "model";
+        await dispatch(setCardAndRun(location.state.card, { shouldUpdateUrl }));
         await dispatch(setCurrentState(location.state));
         await dispatch(resetUIControls());
       }

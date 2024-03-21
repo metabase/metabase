@@ -17,6 +17,7 @@ import {
   queryBuilderMain,
   restore,
   saveQuestion,
+  selectFilterOperator,
   selectSavedQuestionsToJoin,
   startNewQuestion,
   summarize,
@@ -69,6 +70,9 @@ describe("scenarios > question > joined questions", () => {
     popover().within(() => {
       cy.findByText("Review").click();
       cy.findByText("Rating").click();
+    });
+    selectFilterOperator("Equal to");
+    popover().within(() => {
       cy.findByLabelText("2").click();
       cy.button("Add filter").click();
     });
@@ -146,6 +150,9 @@ describe("scenarios > question > joined questions", () => {
     popover().within(() => {
       cy.findByText("question b").click();
       cy.findByText("CATEGORY").click();
+    });
+    selectFilterOperator("Is");
+    popover().within(() => {
       cy.findByPlaceholderText("Enter some text").type("Gadget");
       cy.button("Add filter").click();
     });
@@ -160,7 +167,7 @@ describe("scenarios > question > joined questions", () => {
     cy.findByTestId("qb-filters-panel")
       .findByText("question b - PRODUCT_ID → Category is Gadget")
       .should("be.visible");
-    cy.get(".ScalarValue").contains("Gadget").should("be.visible");
+    cy.findByTestId("scalar-value").contains("Gadget").should("be.visible");
   });
 
   it("should join structured questions (metabase#13000, metabase#13649, metabase#13744)", () => {
@@ -292,11 +299,11 @@ describe("scenarios > question > joined questions", () => {
     // Test LHS column infers RHS column's temporal unit
 
     cy.findByLabelText("Left column").click();
-    popover().findByText("by month").click({ force: true });
-    popover().last().findByText("Week").click();
+    popover().findByText("Created At").click();
 
     cy.findByLabelText("Right column").click();
-    popover().findByText("Created At").click();
+    popover().findByText("by month").click({ force: true });
+    popover().last().findByText("Week").click();
 
     assertJoinColumnName("left", "Created At: Week");
     assertJoinColumnName("right", "Created At: Week");
@@ -315,7 +322,7 @@ describe("scenarios > question > joined questions", () => {
 
     visualize();
 
-    cy.get(".ScalarValue").contains("2,087");
+    cy.findByTestId("scalar-value").contains("2,087");
   });
 
   it("should remove a join when changing the source table", () => {

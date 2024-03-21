@@ -43,7 +43,7 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
 
         SQLFilter.runQuery();
 
-        cy.get(".Visualization").within(() => {
+        cy.findByTestId("query-visualization-root").within(() => {
           cy.findByText(representativeResult);
           cy.findByText("Toucan").should("not.exist");
         });
@@ -58,11 +58,6 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
       ([subType, { searchTerm, value, representativeResult }], index) => {
         FieldFilter.setWidgetType(subType);
 
-        // When we run the first iteration, there will be no default filter value set
-        if (index !== 0) {
-          FieldFilter.clearDefaultFilterValue();
-        }
-
         FieldFilter.openEntryForm({ isFilterRequired: true });
 
         searchTerm
@@ -71,7 +66,7 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
 
         SQLFilter.runQuery();
 
-        cy.get(".Visualization").within(() => {
+        cy.findByTestId("query-visualization-root").within(() => {
           cy.findByText(representativeResult);
           cy.findByText("Toucan").should("not.exist");
         });

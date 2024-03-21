@@ -420,7 +420,7 @@ describe("Notebook Editor > Join Step", () => {
 
     userEvent.click(notEqualsOperator);
     await waitFor(() =>
-      expect(screen.queryByTestId("select-list")).not.toBeVisible(),
+      expect(screen.queryByTestId("select-list")).not.toBeInTheDocument(),
     );
 
     userEvent.click(screen.getByLabelText("Change operator"));

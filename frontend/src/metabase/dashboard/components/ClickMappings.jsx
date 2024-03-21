@@ -9,16 +9,16 @@ import Select from "metabase/core/components/Select";
 import { getParameters } from "metabase/dashboard/selectors";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import MetabaseSettings from "metabase/lib/settings";
-import { loadMetadataForDependentItems } from "metabase/redux/metadata";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { GTAPApi } from "metabase/services";
 import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 import {
   getTargetsForDashboard,
   getTargetsForQuestion,
-} from "metabase-lib/parameters/utils/click-behavior";
+} from "metabase-lib/v1/parameters/utils/click-behavior";
 
 import { TargetTrigger } from "./ClickMappings.styled";
 
@@ -291,10 +291,9 @@ function loadQuestionMetadata(getQuestion) {
       }
 
       fetch() {
-        const { question, loadMetadataForDependentItems } = this.props;
+        const { question, loadMetadataForCard } = this.props;
         if (question) {
-          const dependentItems = Lib.dependentMetadata(question.query());
-          loadMetadataForDependentItems(dependentItems);
+          loadMetadataForCard(question.card());
         }
       }
 
@@ -308,7 +307,7 @@ function loadQuestionMetadata(getQuestion) {
       (state, props) => ({
         question: getQuestion && getQuestion(state, props),
       }),
-      { loadMetadataForDependentItems },
+      { loadMetadataForCard },
     )(MetadataLoader);
   };
 }

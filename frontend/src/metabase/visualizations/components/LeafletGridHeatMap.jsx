@@ -3,8 +3,8 @@ import L from "leaflet";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { rangeForValue } from "metabase-lib/queries/utils/range-for-value";
-import { isNumeric, isMetric } from "metabase-lib/types/utils/isa";
+import { rangeForValue } from "metabase-lib/v1/queries/utils/range-for-value";
+import { isNumeric, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { computeNumericDataInverval } from "../lib/numeric";
 

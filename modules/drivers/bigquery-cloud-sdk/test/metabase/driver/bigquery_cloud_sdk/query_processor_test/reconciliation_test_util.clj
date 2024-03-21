@@ -7,7 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.test :as mt]
@@ -166,7 +166,7 @@
 
 (defn- temporal-type-reconciliation-expected-value
   [{:keys [field temporal-type expected-value honeysql-filter-fn num-args], :as _test-case}]
-  (let [field-literal?      (mbql.u/match-one field [:field (_ :guard string?) _])
+  (let [field-literal?      (lib.util.match/match-one field [:field (_ :guard string?) _])
         expected-identifier (cond-> (-> (h2x/identifier :field "ABC" (name temporal-type))
                                         (vary-meta assoc ::bigquery.qp/do-not-qualify? true))
                               (not field-literal?) (h2x/with-database-type-info (name temporal-type)))
@@ -181,11 +181,11 @@
                             (repeat (dec num-args) filter-value))]
     (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause)))
 
-(defn test-temporal-type-reconciliation
+(defn test-temporal-type-reconciliation!
   [test-case]
   (mt/test-driver :bigquery-cloud-sdk
     (qp.store/with-metadata-provider mock-temporal-fields-metadata-provider
-      (mt/with-report-timezone-id nil
+      (mt/with-report-timezone-id! nil
         (binding [*print-meta* true]
           (when-let [test-case (expand-test-case test-case)]
             (is (= (temporal-type-reconciliation-expected-value test-case)

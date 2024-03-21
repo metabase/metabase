@@ -215,11 +215,13 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(mi/define-simple-hydration-method channels
-  :channels
-  "Return the PulseChannels associated with this `notification`."
-  [notification-or-id]
-  (t2/select PulseChannel, :pulse_id (u/the-id notification-or-id)))
+(methodical/defmethod t2/batched-hydrate [:default :channels]
+  [_model k pulses]
+  (mi/instances-with-hydrated-data
+   pulses k
+   #(group-by :pulse_id (t2/select :model/PulseChannel :pulse_id [:in (map :id pulses)]))
+   :id
+   {:default []}))
 
 (def ^:dynamic *allow-hydrate-archived-cards*
   "By default the :cards hydration method only return active cards,
@@ -227,26 +229,30 @@
   false)
 
 (mu/defn ^:private cards* :- [:sequential HybridPulseCard]
-  [notification-or-id]
+  [pulse-ids]
   (t2/select
    :model/Card
    {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls
-                :pc.dashboard_card_id :dc.dashboard_id [nil :parameter_mappings]] ;; :dc.parameter_mappings - how do you select this?
+                :pc.dashboard_card_id :dc.dashboard_id [nil :parameter_mappings] [:p.id :pulse_id]] ;; :dc.parameter_mappings - how do you select this?
     :from      [[:pulse :p]]
     :join      [[:pulse_card :pc] [:= :p.id :pc.pulse_id]
                 [:report_card :c] [:= :c.id :pc.card_id]]
     :left-join [[:report_dashboardcard :dc] [:= :pc.dashboard_card_id :dc.id]]
     :where     [:and
-                [:= :p.id (u/the-id notification-or-id)]
+                [:in :p.id pulse-ids]
                 (when-not *allow-hydrate-archived-cards*
                   [:= :c.archived false])]
     :order-by [[:pc.position :asc]]}))
 
-(mi/define-simple-hydration-method cards
-  :cards
-  "Return the Cards associated with this `notification`."
-  [notification-or-id]
-  (cards* notification-or-id))
+(methodical/defmethod t2/batched-hydrate [:model/Pulse :cards]
+  [_model k pulses]
+  (mi/instances-with-hydrated-data
+   pulses k
+   #(update-vals (group-by :pulse_id (cards* (map :id pulses)))
+                 (fn [cards] (map (fn [card] (dissoc card :pulse_id)) cards)))
+
+   :id
+   {:default []}))
 
 ;;; ---------------------------------------- Notification Fetching Helper Fns ----------------------------------------
 
@@ -271,7 +277,7 @@
   (dissoc notification :alert_condition :alert_above_goal :alert_first_only))
 
 ;; TODO - do we really need this function? Why can't we just use `t2/select` and `hydrate` like we do for everything
-;; else?
+;; else?  (#40016)
 (mu/defn retrieve-pulse :- [:maybe (mi/InstanceOf Pulse)]
   "Fetch a single *Pulse*, and hydrate it with a set of 'standard' hydrations; remove Alert columns, since this is a
   *Pulse* and they will all be unset."
@@ -588,7 +594,7 @@
                 (dissoc :card))
       (seq cards) (assoc :cards cards))))
 
-;; TODO - why do we make sure to strictly validate everything when we create a PULSE but not when we create an ALERT?
+;; TODO - why do we make sure to strictly validate everything when we create a PULSE but not when we create an ALERT? (#40016)
 (defn update-alert!
   "Updates the given `alert` and returns it"
   [alert]

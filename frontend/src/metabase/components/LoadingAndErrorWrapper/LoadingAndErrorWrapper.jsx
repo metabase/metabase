@@ -5,6 +5,7 @@ import { Children, Component } from "react";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import CS from "metabase/css/core/index.css";
 
 export default class LoadingAndErrorWrapper extends Component {
   state = {
@@ -125,7 +126,8 @@ export default class LoadingAndErrorWrapper extends Component {
     const { messageIndex, sceneIndex } = this.state;
 
     const contentClassName = cx(
-      "wrapper py4 text-brand text-centered flex-full flex flex-column layout-centered",
+      CS.wrapper,
+      "py4 text-brand text-centered flex-full flex flex-column layout-centered",
       { "bg-white": !noBackground },
     );
 

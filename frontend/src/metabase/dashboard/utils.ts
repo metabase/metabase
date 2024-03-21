@@ -12,7 +12,7 @@ import {
   isDateParameter,
   isNumberParameter,
   isStringParameter,
-} from "metabase-lib/parameters/utils/parameter-type";
+} from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
   Card,
   CardId,
@@ -81,6 +81,10 @@ export function expandInlineCard(card?: Card | VirtualCard) {
     ...card,
     id: _.uniqueId("card"),
   };
+}
+
+export function isQuestionCard(card: Card | VirtualCard) {
+  return card.dataset_query != null;
 }
 
 export function isQuestionDashCard(

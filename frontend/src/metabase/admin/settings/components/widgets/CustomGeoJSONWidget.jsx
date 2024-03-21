@@ -9,6 +9,9 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Modal from "metabase/components/Modal";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Select, { Option } from "metabase/core/components/Select";
+import AdminS from "metabase/css/admin.module.css";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import { uuid } from "metabase/lib/utils";
 import { SettingsApi, GeoJSONApi } from "metabase/services";
 import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth";
@@ -145,7 +148,7 @@ export default class CustomGeoJSONWidget extends Component {
           <SettingHeader setting={setting} />
           {!this.state.map && (
             <button
-              className="Button Button--primary ml1"
+              className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary, CS.ml1)}
               onClick={() =>
                 this.setState({
                   map: {
@@ -211,7 +214,7 @@ export default class CustomGeoJSONWidget extends Component {
 
 const ListMaps = ({ maps, onEditMap, onDeleteMap }) => (
   <section>
-    <table className="ContentTable">
+    <table className={AdminS.ContentTable}>
       <thead>
         <tr>
           <th>{t`Name`}</th>
@@ -229,12 +232,14 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }) => (
               <td className="cursor-pointer" onClick={() => onEditMap(map)}>
                 <Ellipsified style={{ maxWidth: 600 }}>{map.url}</Ellipsified>
               </td>
-              <td className="Table-actions">
+              <td className={AdminS.TableActions}>
                 <Confirm
                   action={() => onDeleteMap(map)}
                   title={t`Delete custom map`}
                 >
-                  <button className="Button Button--danger">{t`Remove`}</button>
+                  <button
+                    className={cx(ButtonsS.Button, ButtonsS.ButtonDanger)}
+                  >{t`Remove`}</button>
                 </Confirm>
               </td>
             </tr>
@@ -324,7 +329,13 @@ const EditMap = ({
           <div className="flex">
             <input
               type="text"
-              className="SettingsInput AdminInput bordered rounded h3"
+              className={cx(
+                AdminS.AdminInput,
+                AdminS.SettingsInput,
+                CS.bordered,
+                CS.rounded,
+                CS.h3,
+              )}
               placeholder={t`e.g. United Kingdom, Brazil, Mars`}
               value={map.name}
               onChange={e => onMapChange({ ...map, name: e.target.value })}
@@ -334,18 +345,24 @@ const EditMap = ({
         <SettingContainer
           description={t`URL for the GeoJSON file you want to use`}
         >
-          <div className="flex">
+          <div className={CS.flex}>
             <input
               type="text"
-              className="SettingsInput AdminInput bordered rounded h3"
+              className={cx(
+                AdminS.AdminInput,
+                AdminS.SettingsInput,
+                CS.bordered,
+                CS.rounded,
+                CS.h3,
+              )}
               placeholder={t`Like https://my-mb-server.com/maps/my-map.json`}
               value={map.url}
               onChange={e => onMapChange({ ...map, url: e.target.value })}
             />
             <button
-              className={cx("Button ml1", {
-                "Button--primary": !geoJson,
-                disabled: !map.url,
+              className={cx(ButtonsS.Button, CS.ml1, {
+                [ButtonsS.ButtonPrimary]: !geoJson,
+                [CS.disabled]: !map.url,
               })}
               onClick={onLoadGeoJson}
             >
@@ -382,7 +399,7 @@ const EditMap = ({
             error={geoJsonError}
           >
             {() => (
-              <div className="spread relative">
+              <div className={cx(CS.spread, CS.relative)}>
                 <ChoroplethPreview geoJson={geoJson} />
               </div>
             )}
@@ -397,12 +414,12 @@ const EditMap = ({
     <div className="py1 flex">
       <div className="ml-auto">
         <button
-          className={cx("Button Button")}
+          className={ButtonsS.Button}
           onClick={onCancel}
         >{t`Cancel`}</button>
         <button
-          className={cx("Button Button--primary ml1", {
-            disabled:
+          className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary, CS.ml1, {
+            [CS.disabled]:
               !map.name || !map.url || !map.region_name || !map.region_key,
           })}
           onClick={onSave}

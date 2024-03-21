@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
@@ -11,7 +11,7 @@
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :refer [Metric]]
+   [metabase.models.metric :refer [LegacyMetric]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.segment :refer [Segment]]
@@ -41,7 +41,7 @@
 
 (def ^{:arglists '([entity] [model id])} fully-qualified-name
   "Get the logical path for entity `entity`."
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn
      ([entity] (fully-qualified-name* entity))
      ([model id]
@@ -70,7 +70,7 @@
     (str (->> field :table_id (fully-qualified-name Table)) "/fks/" (safe-name field))
     (str (->> field :table_id (fully-qualified-name Table)) "/fields/" (safe-name field))))
 
-(defmethod fully-qualified-name* Metric
+(defmethod fully-qualified-name* LegacyMetric
   [metric]
   (str (->> metric :table_id (fully-qualified-name Table)) "/metrics/" (safe-name metric)))
 
@@ -183,7 +183,7 @@
 
 (defmethod path->context* "metrics"
   [context _ _ metric-name]
-  (assoc context :metric (t2/select-one-pk Metric
+  (assoc context :metric (t2/select-one-pk LegacyMetric
                            :table_id (:table context)
                            :name     metric-name)))
 

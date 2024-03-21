@@ -213,7 +213,7 @@ describe("RowChart", () => {
       userEvent.click(bars[0]);
 
       expect(onClick).toHaveBeenCalledWith(
-        expect.objectContaining({ currentTarget: expect.anything() }),
+        expect.objectContaining({ target: expect.anything() }),
         expect.objectContaining({
           datum: expect.objectContaining({ x: 100, x1: 200, y: "foo" }),
           series: expect.objectContaining({
@@ -231,7 +231,7 @@ describe("RowChart", () => {
       userEvent.click(bars[5]);
 
       expect(onClick).toHaveBeenCalledWith(
-        expect.objectContaining({ currentTarget: expect.anything() }),
+        expect.objectContaining({ target: expect.anything() }),
         expect.objectContaining({
           datum: expect.objectContaining({ x: 300, x1: 600, y: "baz" }),
           series: expect.objectContaining({
@@ -251,7 +251,7 @@ describe("RowChart", () => {
       userEvent.hover(bars[0]);
 
       expect(onHover).toHaveBeenCalledWith(
-        expect.objectContaining({ currentTarget: expect.anything() }),
+        expect.objectContaining({ target: expect.anything() }),
         expect.objectContaining({
           datum: expect.objectContaining({ x: 100, x1: 200, y: "foo" }),
           series: expect.objectContaining({
@@ -269,7 +269,7 @@ describe("RowChart", () => {
       userEvent.click(bars[5]);
 
       expect(onHover).toHaveBeenCalledWith(
-        expect.objectContaining({ currentTarget: expect.anything() }),
+        expect.objectContaining({ target: expect.anything() }),
         expect.objectContaining({
           datum: expect.objectContaining({ x: 300, x1: 600, y: "baz" }),
           series: expect.objectContaining({

@@ -378,6 +378,8 @@ describe("FilterPicker", () => {
       );
 
       userEvent.click(screen.getByText("Total"));
+      userEvent.click(screen.getByDisplayValue("Between"));
+      userEvent.click(screen.getByText("Equal to"));
       const input = screen.getByPlaceholderText("Enter a number");
       userEvent.type(input, "100");
       userEvent.click(screen.getByText("Update filter"));
@@ -403,7 +405,6 @@ describe("FilterPicker", () => {
 
       // The expression editor applies changes on blur,
       // but for some reason it doesn't work without `act`.
-      // eslint-disable-next-line testing-library/no-unnecessary-act
       await act(async () => {
         await userEvent.type(input, text, { delay });
         await userEvent.tab();

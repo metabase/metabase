@@ -39,10 +39,10 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
-(mu/defn filter-drill-adjusted-query :- [:map
-                                         [:query ::lib.schema/query]
-                                         [:stage-number :int]
-                                         [:column lib.filter/ColumnWithOperators]]
+(mu/defn prepare-query-for-drill-addition :- [:map
+                                              [:query ::lib.schema/query]
+                                              [:stage-number :int]
+                                              [:column lib.filter/ColumnWithOperators]]
   "If the column we're filtering on is an aggregation, the filtering must happen in a later stage. This function returns
   a map with that possibly-updated `:query` and `:stage-number`, plus the `:column` for filtering in that stage (with
   filter operators, as returned by [[lib.filter/filterable-columns]]).
@@ -56,19 +56,27 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    column       :- ::lib.schema.metadata/column
-   column-ref   :- ::lib.schema.ref/ref]
+   column-ref   :- ::lib.schema.ref/ref
+   adding       :- [:enum :filter :expression]]
   (let [next-stage    (->> (lib.util/canonical-stage-index query stage-number)
                            (lib.util/next-stage-number query))
         base          (cond
-                        ;; Not an aggregation: just the input query and stage.
-                        (not= (:lib/source column) :source/aggregations)
+                        ;; An extra stage is needed if:
+                        ;; - The target column is an aggregation
+                        ;; - OR the target column is a breakout AND we are adding a custom expression based on it.
+                        ;;
+                        ;; So if neither of those cases apply, we can just return the original query and stage index.
+                        (not (or (= (:lib/source column) :source/aggregations)
+                                 (and (= (:lib/source column) :source/breakouts)
+                                      (= adding :expression))))
                         {:query        query
                          :stage-number stage-number}
 
-                        ;; Aggregation column: if there's a later stage, use it.
+                        ;; An extra stage is needed.
+                        ;; If there's a later stage, then use it.
                         next-stage {:query        query
                                     :stage-number next-stage}
-                        ;; Aggregation column with no later stage; append a stage.
+                        ;; And if there isn't a later stage, add one.
                         :else      {:query        (lib.stage/append-stage query)
                                     :stage-number -1})
         columns       (lib.filter/filterable-columns (:query base) (:stage-number base))
@@ -103,7 +111,7 @@
          :type       :drill-thru/column-filter
          :initial-op initial-op}
         ;; When the column we would be filtering on is an aggregation, it can't be filtered without adding a stage.
-        (filter-drill-adjusted-query query stage-number column column-ref)))))
+        (prepare-query-for-drill-addition query stage-number column column-ref :filter)))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/column-filter
   [_query _stage-number {:keys [initial-op]}]

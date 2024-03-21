@@ -49,7 +49,10 @@ describe("support > permissions (metabase#8472)", () => {
     popover().contains("Is").click();
 
     // Filter the first card by User Address
-    selectDashboardFilter(cy.get(".DashCard").first(), "Address");
+    selectDashboardFilter(
+      cy.findByTestId("dashcard-container").first(),
+      "Address",
+    );
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Done").click();

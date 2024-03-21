@@ -3,10 +3,11 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.async.streaming-response :as streaming-response]
    [metabase.async.streaming-response.thread-pool :as thread-pool]
    [metabase.async.util :as async.u]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.execute.diagnostic
     :as sql-jdbc.execute.diagnostic]
    [metabase.server :as server]
@@ -55,7 +56,7 @@
 
 (defn- stats [diag-info-fn]
   (str
-   (when-let [^PoolBackedDataSource pool (let [data-source (mdb.connection/data-source)]
+   (when-let [^PoolBackedDataSource pool (let [data-source (mdb/data-source)]
                                            (when (instance? PoolBackedDataSource data-source)
                                              data-source))]
      (trs "App DB connections: {0}/{1}"
@@ -92,10 +93,14 @@
              (or (string? body) (coll? body)))
     (str "\n" (u/pprint-to-str body))))
 
+(defn- format-log-context [{:keys [log-context]} _]
+  (pr-str log-context))
+
 (defn- format-info [info opts]
   (str/join " " (filter some? [(format-status-info info)
                                (format-performance-info info)
                                (format-threads-info info opts)
+                               (format-log-context info opts)
                                (format-error-info info opts)])))
 
 
@@ -209,7 +214,8 @@
           (let [info           {:request       request
                                 :start-time    (System/nanoTime)
                                 :call-count-fn call-count-fn
-                                :diag-info-fn  diag-info-fn}
+                                :diag-info-fn  diag-info-fn
+                                :log-context   {:metabase-user-id api/*current-user-id*}}
                 response->info (fn [response]
                                  (assoc info :response response))
                 respond        (comp respond logged-response response->info)]

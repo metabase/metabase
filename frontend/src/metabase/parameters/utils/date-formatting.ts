@@ -7,14 +7,14 @@ import { EXCLUDE_OPERATORS } from "metabase/admin/datamodel/components/filters/p
 import {
   DATE_MBQL_FILTER_MAPPING,
   PARAMETER_OPERATOR_TYPES,
-} from "metabase-lib/parameters/constants";
-import type { UiParameter } from "metabase-lib/parameters/types";
-import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
+} from "metabase-lib/v1/parameters/constants";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { dateParameterValueToMBQL } from "metabase-lib/v1/parameters/utils/mbql";
 import {
   generateTimeFilterValuesDescriptions,
   getRelativeDatetimeInterval,
   getStartingFrom,
-} from "metabase-lib/queries/utils/query-time";
+} from "metabase-lib/v1/queries/utils/query-time";
 
 // Use a placeholder value as field references are not used in dashboard filters
 const noopRef = null;

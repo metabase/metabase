@@ -6,7 +6,7 @@ import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input/Input";
 import { isNotNull } from "metabase/lib/types";
 import type * as Lib from "metabase-lib";
-import { isExpression } from "metabase-lib/expressions";
+import { isExpression } from "metabase-lib/v1/expressions";
 import type { Expression } from "metabase-types/api";
 
 import { ExpressionEditorTextfield } from "./ExpressionEditorTextfield";

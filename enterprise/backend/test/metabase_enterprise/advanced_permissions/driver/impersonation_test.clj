@@ -9,8 +9,6 @@
    [metabase.driver.postgres-test :as postgres-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models.database :refer [Database]]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.server.middleware.session :as mw.session]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -23,44 +21,44 @@
     (is (nil? (@#'impersonation/connection-impersonation-role (mt/db)))))
 
   (testing "Correctly fetches the impersonation when one is in effect"
-    (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                :attributes     {"impersonation_attr" "impersonation_role"}}
+    (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                 :attributes     {"impersonation_attr" "impersonation_role"}}
       (is (= "impersonation_role"
              (@#'impersonation/connection-impersonation-role (mt/db))))))
 
   (testing "Throws exception if multiple conflicting impersonations are in effect"
-    ;; Use nested `with-impersonations` macros so that different groups are used
-    (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr_1"}]
-                                                :attributes     {"impersonation_attr_1" "impersonation_role_1"}}
-      (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr_2"}]
-                                                  :attributes     {"impersonation_attr_2" "impersonation_role_2"}}
+    ;; Use nested `with-impersonations!` macros so that different groups are used
+    (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr_1"}]
+                                                 :attributes     {"impersonation_attr_1" "impersonation_role_1"}}
+      (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr_2"}]
+                                                   :attributes     {"impersonation_attr_2" "impersonation_role_2"}}
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Multiple conflicting connection impersonation policies found for current user"
              (@#'impersonation/connection-impersonation-role (mt/db)))))))
 
   (testing "Returns nil if the permissions in another group supercede the impersonation"
-    (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                :attributes     {"impersonation_attr" "impersonation_role"}}
-      ;; `with-impersonations` creates a new group and revokes data perms in `all users`, so if we re-grant data perms
+    (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                 :attributes     {"impersonation_attr" "impersonation_role"}}
+      ;; `with-impersonations!` creates a new group and revokes data perms in `all users`, so if we re-grant data perms
       ;; for all users, it should supercede the impersonation policy in the new group
-      (perms/grant-full-data-permissions! (perms-group/all-users) (mt/id))
-      (is (nil? (@#'impersonation/connection-impersonation-role (mt/db))))))
+      (mt/with-full-data-perms-for-all-users!
+        (is (nil? (@#'impersonation/connection-impersonation-role (mt/db)))))))
 
   (testing "Returns nil for superuser, even if they are in a group with an impersonation policy defined"
-    (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                :attributes     {"impersonation_attr" "impersonation_role"}}
+    (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                 :attributes     {"impersonation_attr" "impersonation_role"}}
       (mw.session/as-admin
        (is (nil? (@#'impersonation/connection-impersonation-role (mt/db)))))))
 
   (testing "Does not throw an exception if passed a nil `database-or-id`"
-    (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                :attributes     {"impersonation_attr" "impersonation_role"}}
+    (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                 :attributes     {"impersonation_attr" "impersonation_role"}}
       (is (nil? (@#'impersonation/connection-impersonation-role nil)))))
 
   (testing "Throws an exception if impersonation should be enforced, but the user doesn't have the required attribute"
-    (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                :attributes     {}}
+    (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                 :attributes     {}}
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"User does not have attribute required for connection impersonation."
@@ -84,8 +82,8 @@
           (jdbc/execute! spec [statement]))
         (t2.with-temp/with-temp [Database database {:engine :postgres, :details details}]
           (mt/with-db database (sync/sync-database! database)
-            (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                        :attributes     {"impersonation_attr" "impersonation.role"}}
+            (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                         :attributes     {"impersonation_attr" "impersonation.role"}}
               (is (= []
                      (-> {:query "SELECT * FROM \"table_with_access\";"}
                          mt/native-query
@@ -118,8 +116,8 @@
                                (format "GRANT SELECT ON TABLE %s.table_with_access TO %s;" schema user)]]
               (jdbc/execute! spec statement))
             (mt/with-db database (sync/sync-database! database)
-              (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                          :attributes     {"impersonation_attr" user}}
+              (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                           :attributes     {"impersonation_attr" user}}
                 (is (= []
                        (-> {:query (format "SELECT * FROM %s.table_with_access;" schema)}
                            mt/native-query
@@ -132,17 +130,17 @@
                                           mt/process-query
                                           mt/rows)))))
             (finally
-              (doseq [statement [(format "DROP TABLE IF EXISTS %s.table_with_access;" schema)
-                                 (format "DROP TABLE IF EXISTS %s.table_without_access;" schema)
-                                 (format "DROP SCHEMA IF EXISTS %s;" schema)
-                                 (format "DROP USER IF EXISTS %s;" user)]]
-                (jdbc/execute! spec [statement])))))))))
+             (doseq [statement [(format "DROP TABLE IF EXISTS %s.table_with_access;" schema)
+                                  (format "DROP TABLE IF EXISTS %s.table_without_access;" schema)
+                                  (format "DROP SCHEMA IF EXISTS %s;" schema)
+                                  (format "DROP USER IF EXISTS %s;" user)]]
+                 (jdbc/execute! spec [statement])))))))))
 
 (deftest conn-impersonation-test-snowflake
   (mt/test-driver :snowflake
     (mt/with-premium-features #{:advanced-permissions}
-      (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                  :attributes     {"impersonation_attr" "LIMITED.ROLE"}}
+      (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                   :attributes     {"impersonation_attr" "LIMITED.ROLE"}}
         ;; Test database initially has no default role set. All queries should fail, even for non-impersonated users,
         ;; since there is no way to reset the connection after impersonation is applied.
         (is (thrown-with-msg?

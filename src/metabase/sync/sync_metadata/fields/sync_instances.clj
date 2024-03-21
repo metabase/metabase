@@ -14,7 +14,7 @@
    [metabase.models.interface :as mi]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.common :as common]
-   [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
+   [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -134,7 +134,7 @@
               new-fields          (remove known-field? db-field-chunk)
               new-field-instances (create-or-reactivate-fields! table new-fields parent-id)]
           ;; save any updates to `our-metadata`
-          (swap! our-metadata into (fetch-metadata/fields->our-metadata new-field-instances parent-id))
+          (swap! our-metadata into (fields.our-metadata/fields->our-metadata new-field-instances parent-id))
           ;; now return count of rows updated
           (count new-fields))))
 

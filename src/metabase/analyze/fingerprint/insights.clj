@@ -7,7 +7,7 @@
    [kixi.stats.protocols :as p]
    [medley.core :as m]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.sync.util :as sync-util]

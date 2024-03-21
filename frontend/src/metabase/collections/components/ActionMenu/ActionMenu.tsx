@@ -12,7 +12,7 @@ import {
 import EventSandbox from "metabase/components/EventSandbox";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import { getSetting } from "metabase/selectors/settings";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

@@ -6,8 +6,8 @@ import Questions, { getIcon } from "metabase/entities/questions";
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
-import type Question from "metabase-lib/Question";
-import * as ML_Urls from "metabase-lib/urls";
+import type Question from "metabase-lib/v1/Question";
+import * as ML_Urls from "metabase-lib/v1/urls";
 import type { State } from "metabase-types/store";
 
 import {
@@ -38,7 +38,7 @@ function ModelUsageDetails({ model, questions, hasNewQuestionLink }: Props) {
           <EmptyStateActionContainer>
             <Button
               as={Link}
-              to={ML_Urls.getUrl(model.composeDataset())}
+              to={ML_Urls.getUrl(model)}
               icon="add"
             >{t`Create a new question`}</Button>
           </EmptyStateActionContainer>

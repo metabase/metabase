@@ -34,6 +34,7 @@ export const LegendItemDot = styled.div`
   height: 0.75rem;
   border-radius: 50%;
   background-color: ${({ color }) => color};
+  color-adjust: exact;
 `;
 
 export const LegendItemTitle = styled.div`

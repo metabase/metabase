@@ -3,6 +3,7 @@ import { updateIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import Fields from "metabase/entities/fields";
 import Questions from "metabase/entities/questions";
 import Metrics from "metabase/entities/metrics"; // eslint-disable-line import/order -- circular dependencies
 import Segments from "metabase/entities/segments";
@@ -14,7 +15,6 @@ import {
   createThunkAction,
   withAction,
   withCachedDataAndRequestState,
-  withForceReload,
   withNormalize,
 } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -27,7 +27,9 @@ import { MetabaseApi } from "metabase/services";
 import {
   convertSavedQuestionToVirtualTable,
   getQuestionVirtualTableId,
-} from "metabase-lib/metadata/utils/saved-questions";
+  getCollectionVirtualSchemaId,
+  getCollectionVirtualSchemaName,
+} from "metabase-lib/v1/metadata/utils/saved-questions";
 
 const listTablesForDatabase = async (...args) =>
   // HACK: no /api/database/:dbId/tables endpoint
@@ -82,13 +84,6 @@ const Tables = createEntity({
     // loads `query_metadata` for a single table
     fetchMetadata: compose(
       withAction(FETCH_METADATA),
-      withForceReload((state, { id }) => {
-        // if there is a virtual table without fields,
-        // it might be due to a question with a long-running request that hasn't finished yet.
-        // in this case we should reload the metadata until we get the fields
-        const table = Tables.selectors.getObject(state, { entityId: id });
-        return table?.fields?.length === 0;
-      }),
       withCachedDataAndRequestState(
         ({ id }) => [...Tables.getObjectStatePath(id)],
         ({ id }) => [...Tables.getObjectStatePath(id), "fetchMetadata"],
@@ -115,11 +110,14 @@ const Tables = createEntity({
           const table = Tables.selectors[
             options.selectorName || "getObjectUnfiltered"
           ](getState(), { entityId: id });
-          await Promise.all(
-            getTableForeignKeyTableIds(table).map(id =>
+          await Promise.all([
+            ...getTableForeignKeyTableIds(table).map(id =>
               dispatch(Tables.actions.fetchMetadata({ id }, options)),
             ),
-          );
+            ...getTableForeignKeyFieldIds(table).map(id =>
+              dispatch(Fields.actions.fetch({ id }, options)),
+            ),
+          ]);
         },
     ),
 
@@ -169,25 +167,36 @@ const Tables = createEntity({
 
     if (type === Questions.actionTypes.UPDATE && !error) {
       const card = payload.question;
-      const virtualQuestionId = getQuestionVirtualTableId(card.id);
+      const virtualTableId = getQuestionVirtualTableId(card.id);
 
-      if (card.archived && state[virtualQuestionId]) {
-        delete state[virtualQuestionId];
+      if (card.archived && state[virtualTableId]) {
+        delete state[virtualTableId];
         return state;
       }
 
-      if (state[virtualQuestionId]) {
-        const virtualQuestion = state[virtualQuestionId];
+      if (state[virtualTableId]) {
+        const virtualTable = state[virtualTableId];
+        const virtualSchemaId = getCollectionVirtualSchemaId(card.collection, {
+          isDatasets: card.type === "model",
+        });
+        const virtualSchemaName = getCollectionVirtualSchemaName(
+          card.collection,
+        );
+
         if (
-          virtualQuestion.display_name !== card.name ||
-          virtualQuestion.moderated_status !== card.moderated_status ||
-          virtualQuestion.description !== card.description
+          virtualTable.display_name !== card.name ||
+          virtualTable.moderated_status !== card.moderated_status ||
+          virtualTable.description !== card.description ||
+          virtualTable.schema !== virtualSchemaId ||
+          virtualTable.schema_name !== virtualSchemaName
         ) {
-          state = updateIn(state, [virtualQuestionId], table => ({
+          state = updateIn(state, [virtualTableId], table => ({
             ...table,
             display_name: card.name,
             moderated_status: card.moderated_status,
             description: card.description,
+            schema: virtualSchemaId,
+            schema_name: virtualSchemaName,
           }));
         }
 
@@ -196,7 +205,7 @@ const Tables = createEntity({
 
       return {
         ...state,
-        [virtualQuestionId]: convertSavedQuestionToVirtualTable(card),
+        [virtualTableId]: convertSavedQuestionToVirtualTable(card),
       };
     }
 
@@ -293,8 +302,18 @@ const Tables = createEntity({
 
 function getTableForeignKeyTableIds(table) {
   return _.chain(table.fields)
-    .filter(field => field.target)
+    .filter(field => field.target != null)
     .map(field => field.target.table_id)
+    .uniq()
+    .value();
+}
+
+// overridden model FK columns have fk_target_field_id but don't have a target
+// in this case we load the field instead of the table
+function getTableForeignKeyFieldIds(table) {
+  return _.chain(table.fields)
+    .filter(field => field.target == null && field.fk_target_field_id != null)
+    .map(field => field.fk_target_field_id)
     .uniq()
     .value();
 }

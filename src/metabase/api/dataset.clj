@@ -9,9 +9,9 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.params.custom-values :as custom-values]
@@ -98,7 +98,7 @@
   "Schema for valid export formats for downloading query results."
   (into [:enum] export-formats))
 
-(mu/defn export-format->context :- mbql.s/Context
+(mu/defn export-format->context :- ::lib.schema.info/context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
   in `export-format`.
 

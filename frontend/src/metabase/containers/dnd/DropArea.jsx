@@ -2,6 +2,8 @@
 import cx from "classnames";
 import { Component } from "react";
 
+import CS from "metabase/css/core/index.css";
+
 const DropTargetBackgroundAndBorder = ({
   highlighted,
   hovered,
@@ -13,7 +15,7 @@ const DropTargetBackgroundAndBorder = ({
   marginBottom = margin,
 }) => (
   <div
-    className={cx("absolute rounded", {
+    className={cx(CS.absolute, CS.rounded, {
       "pointer-events-none": !highlighted,
     })}
     style={{

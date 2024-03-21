@@ -8,6 +8,8 @@ import _ from "underscore";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import Search from "metabase/entities/search";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
@@ -109,7 +111,7 @@ class SnippetSidebarInner extends React.Component {
             <h4 className="text-medium">{t`Snippets are reusable bits of SQL`}</h4>
             <button
               onClick={openSnippetModalWithSelectedText}
-              className="Button Button--primary"
+              className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
               style={{ marginTop: 80 }}
             >{t`Create a snippet`}</button>
           </div>
@@ -122,12 +124,12 @@ class SnippetSidebarInner extends React.Component {
               <div className="flex-full">
                 <div
                   /* Hide the search input by collapsing dimensions rather than `display: none`.
-                     This allows us to immediately focus on it when showSearch is set to true.*/
+                                                         This allows us to immediately focus on it when showSearch is set to true.*/
                   style={showSearch ? {} : { width: 0, height: 0 }}
                   className="text-heavy h3 overflow-hidden"
                 >
                   <input
-                    className="input input--borderless p0"
+                    className={cx(CS.input, CS.inputBorderless, CS.p0)}
                     ref={e => (this.searchBox = e)}
                     onChange={e =>
                       this.setState({ searchString: e.target.value })

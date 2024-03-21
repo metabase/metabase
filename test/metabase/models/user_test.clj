@@ -4,11 +4,21 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config :as config]
+   [metabase.db :as mdb]
+   [metabase.db.schema-migrations-test.impl
+    :as schema-migrations-test.impl]
    [metabase.http-client :as client]
    [metabase.integrations.google]
    [metabase.models
-    :refer [Collection Database PermissionsGroup PermissionsGroupMembership
-            Pulse PulseChannel PulseChannelRecipient Session Table User]]
+    :refer [Collection
+            Database
+            PermissionsGroup
+            PermissionsGroupMembership
+            Pulse
+            PulseChannel
+            PulseChannelRecipient
+            Session
+            User]]
    [metabase.models.collection :as collection]
    [metabase.models.collection-test :as collection-test]
    [metabase.models.permissions :as perms]
@@ -72,18 +82,6 @@
                (->> (user/permissions-set (mt/user->id :lucky))
                     remove-non-collection-perms
                     (collection-test/perms-path-ids->names [child-collection grandchild-collection])))))))))
-
-(deftest group-data-permissions-test
-  (testing "If a User is a member of a Group with data permissions for an object, `permissions-set` should return the perms"
-    (t2.with-temp/with-temp [Database                   {db-id :id}    {}
-                             Table                      table          {:name "Round Table", :db_id db-id}
-                             PermissionsGroup           {group-id :id} {}
-                             PermissionsGroupMembership _              {:group_id group-id, :user_id (mt/user->id :rasta)}]
-      (perms/revoke-data-perms! (perms-group/all-users) db-id (:schema table) (:id table))
-      (perms/grant-permissions! group-id (perms/table-read-path table))
-      (is (set/subset?
-           #{(perms/table-read-path table)}
-           (user/permissions-set (mt/user->id :rasta)))))))
 
 ;;; Tests for invite-user and create-new-google-auth-user!
 
@@ -563,21 +561,36 @@
               (mt/with-test-user :rasta
                 (is (= (user/last-used-native-database-id) id1))))))))))
 
-  (deftest common-name-test
-    (testing "common_name should be present depending on what is selected"
-      (mt/with-temp [User user {:first_name "John"
-                                :last_name  "Smith"
-                                :email      "john.smith@gmail.com"}]
-        (is (= "John Smith"
-               (:common_name (t2/select-one [User :first_name :last_name] (:id user)))))
-        (is (= "John Smith"
-               (:common_name (t2/select-one User (:id user)))))
-        (is (nil? (:common_name (t2/select-one [User :first_name :email] (:id user)))))
-        (is (nil? (:common_name (t2/select-one [User :email] (:id user)))))))
-    (testing "common_name should be present if first_name and last_name are selected but nil and email is also selected"
-      (mt/with-temp [User user {:first_name nil
-                                :last_name  nil
-                                :email      "john.smith@gmail.com"}]
-        (is (= "john.smith@gmail.com"
-               (:common_name (t2/select-one [User :email :first_name :last_name] (:id user)))))
-        (is (nil? (:common_name (t2/select-one [User :first_name :last_name] (:id user))))))))
+(deftest common-name-test
+  (testing "common_name should be present depending on what is selected"
+    (mt/with-temp [User user {:first_name "John"
+                              :last_name  "Smith"
+                              :email      "john.smith@gmail.com"}]
+      (is (= "John Smith"
+             (:common_name (t2/select-one [User :first_name :last_name] (:id user)))))
+      (is (= "John Smith"
+             (:common_name (t2/select-one User (:id user)))))
+      (is (nil? (:common_name (t2/select-one [User :first_name :email] (:id user)))))
+      (is (nil? (:common_name (t2/select-one [User :email] (:id user)))))))
+
+  (testing "common_name should be present if first_name and last_name are selected but nil and email is also selected"
+    (mt/with-temp [User user {:first_name nil
+                              :last_name  nil
+                              :email      "john.smith@gmail.com"}]
+      (is (= "john.smith@gmail.com"
+             (:common_name (t2/select-one [User :email :first_name :last_name] (:id user)))))
+      (is (nil? (:common_name (t2/select-one [User :first_name :last_name] (:id user))))))))
+
+(deftest block-sso-provisioning-if-instance-not-set-up
+  (testing "SSO users should not be created if an admin user has not already been created (metabase-private#201)"
+    (schema-migrations-test.impl/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db!)
+      (is (thrown-with-msg?
+           Exception
+           #"Instance has not been initialized"
+           (user/create-and-invite-user! {:first_name "John"
+                                          :last_name  "Smith"
+                                          :email      "john.smith@gmail.com"
+                                          :sso_source "jwt"}
+                                         default-invitor
+                                         false))))))

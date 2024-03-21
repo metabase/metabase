@@ -1,4 +1,5 @@
 *.class
+*.*.rej
 *.iml
 *.jar
 *.log
@@ -106,3 +107,6 @@ modules/drivers/*/.lsp/*
 .clj-kondo/metosin/malli-types-clj
 
 .github/static-viz-sources.yaml
+
+# airgap
+/resources/airgap/

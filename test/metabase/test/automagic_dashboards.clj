@@ -2,8 +2,8 @@
   "Helper functions and macros for writing tests for automagic dashboards."
   (:require
    [clojure.test :refer :all]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.models :refer [Card Collection Dashboard DashboardCard]]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -30,7 +30,7 @@
       (is (malli= [:map
                    [:name        ms/NonBlankString]
                    [:description ms/NonBlankString]]
-                  (mt/user-http-request :rasta :get 200 (format "automagic-dashboards/%s" (subs url 16))))))))
+                  (mt/user-http-request :crowberto :get 200 (format "automagic-dashboards/%s" (subs url 16))))))))
 
 (defn- test-card-is-valid [{query :dataset_query, :as card}]
   (testing "Card should be valid"

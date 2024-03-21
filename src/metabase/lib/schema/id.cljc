@@ -1,13 +1,12 @@
 (ns metabase.lib.schema.id
   (:require
-   [metabase.lib.schema.common :as common]
    [metabase.util.malli.registry :as mr]))
 
 ;;; these aren't anything special right now, but maybe in the future we can do something special/intelligent with
 ;;; them, e.g. when we start working on the generative stuff
 
 (mr/def ::database
-  ::common/positive-int)
+  pos-int?)
 
 (def saved-questions-virtual-database-id
   "The ID used to signify that a database is 'virtual' rather than physical.
@@ -30,22 +29,37 @@
   [:= saved-questions-virtual-database-id])
 
 (mr/def ::table
-  ::common/positive-int)
+  pos-int?)
 
 (mr/def ::field
-  ::common/positive-int)
+  pos-int?)
 
 (mr/def ::card
-  ::common/positive-int)
+  pos-int?)
 
 (mr/def ::segment
-  ::common/positive-int)
+  pos-int?)
 
 (mr/def ::metric
-  ::common/positive-int)
+  pos-int?)
 
 (mr/def ::snippet
-  ::common/positive-int)
+  pos-int?)
 
 (mr/def ::dimension
-  ::common/positive-int)
+  pos-int?)
+
+(mr/def ::action
+  pos-int?)
+
+(mr/def ::dashboard
+  pos-int?)
+
+(mr/def ::dashcard
+  pos-int?)
+
+(mr/def ::user
+  pos-int?)
+
+(mr/def ::pulse
+  pos-int?)
