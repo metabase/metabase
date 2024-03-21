@@ -6055,6 +6055,45 @@ databaseChangeLog:
             constraintName: idx_cache_config_unique_model
             columnNames: model, model_id
 
+  - changeSet:
+      id: v50.2024-03-20T16:19:0
+      author: adam-james
+      comment: Added 0.50.0 - Per-user Dashboard Parameter values table
+      changes:
+        - createTable:
+            tableName: user_parameter_value
+            remarks: Table holding last set value of a parameter per user
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'ID of the User who has set the parameter value'
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_user_parameter_value_user_id
+                    deleteCascade: true
+              - column:
+                  name: parameter_id
+                  type: varchar(36)
+                  remarks: "The parameter ID"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: value
+                  type: ${text.type}
+                  remarks: Value of the parameter as a string
+                  constraints:
+                    nullable: true
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
