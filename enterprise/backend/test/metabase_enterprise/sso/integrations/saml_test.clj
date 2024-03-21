@@ -693,7 +693,8 @@
       (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
                      :model/Session _ {:user_id (:id user) :id session-id}]
         (is (t2/exists? :model/Session :id session-id))
-        (let [req-options (saml-post-request-options (saml-test-response)
-                                                     (saml/str->base64 default-redirect-uri))
-              _    (client-full-response :post 302 "/auth/sso" req-options)]
+        (let [req-options (saml-post-request-options
+                           (saml-test-response)
+                           (saml/str->base64 default-redirect-uri))]
+          (client :post 302 "/auth/sso/logout" req-options)
           (is (not (t2/exists? :model/Session :id session-id))))))))
