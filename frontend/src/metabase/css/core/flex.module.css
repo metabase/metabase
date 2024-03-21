@@ -56,11 +56,6 @@
   align-items: center;
 }
 
-:global(.align-baseline),
-.align-baseline {
-  align-items: baseline;
-}
-
 :global(.justify-center),
 .justify-center,
 .justifyCenter {
