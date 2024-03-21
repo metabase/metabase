@@ -1,6 +1,8 @@
 (ns metabase.query-processor.pivot
-  "Pivot table query processor. Runs a bunch of subqueries separately and stitches results together. TODO -- this whole
-  thing is dumb, why don't we just generate a big ol' UNION query? -- Cam"
+  "Pivot table query processor. Determines a bunch of different subqueries to run, then runs them one by one on the data
+  warehouse and concatenates the result rows together, sort of like the way [[clojure.core/lazy-cat]] works. This is
+  dumb, right? It's not just me? Why don't we just generate a big ol' UNION query so we can run one single query
+  instead of running like 10 separate queries? -- Cam"
   (:require
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -44,22 +46,21 @@
 (mr/def ::pivot-cols [:sequential ::index])
 
 (mu/defn ^:private group-bitmask :- ::bitmask
-  "Come up with a display name given a combination of breakout `indices` e.g.
+  "Come up with a display name given a combination of breakout `indexes` e.g.
 
-  This is basically a bitmask of which breakout indices we're excluding, but reversed. Why? This is how Postgres and
-  other DBs determine group numbers. This implements basically what PostgreSQL does for grouping -- look at the
-  original set of groups - if that column is part of *this* group, then set the appropriate bit (entry 1 sets bit 1,
-  etc)
+  This is basically a bitmask of which breakout indexes we're excluding, but reversed. Why? This is how Postgres and
+  other DBs determine group numbers. This implements basically what PostgreSQL does for grouping -- look at the original
+  set of groups - if that column is part of *this* group, then set the appropriate bit (entry 1 sets bit 1, etc)
 
     (group-bitmask 3 [1])   ; -> [_ 1 _] -> 101 -> 101 -> 5
     (group-bitmask 3 [1 2]) ; -> [_ 1 2] -> 100 -> 011 -> 1"
   [num-breakouts :- ::num-breakouts
-   indices       :- [:sequential ::index]]
+   indexes       :- [:sequential ::index]]
   (transduce
    (map (partial bit-shift-left 1))
    (completing bit-xor)
    (int (dec (Math/pow 2 num-breakouts)))
-   indices))
+   indexes))
 
 (mr/def ::breakout-combination
   [:sequential ::index])
@@ -69,7 +70,8 @@
    [:sequential ::breakout-combination]
    [:fn
     {:error/message "Distinct combinations"}
-    distinct?]])
+    #(or (empty? %)
+         (apply distinct? %))]])
 
 (mu/defn ^:private breakout-combinations :- ::breakout-combinations
   "Return a sequence of all breakout combinations (by index) we should generate queries for.
@@ -124,17 +126,17 @@
         ;; bottom right corner [_ _ _ _] => 1111 => Group #15
         [[]]))))))
 
-(mu/defn ^:private keep-breakouts-at-indecies :- ::lib.schema/query
-  "Keep the breakouts at indecies, reordering them if needed. Remove all other breakouts."
-  [query                     :- ::lib.schema/query
-   breakout-indecies-to-keep :- [:maybe ::breakout-combination]]
+(mu/defn ^:private keep-breakouts-at-indexes :- ::lib.schema/query
+  "Keep the breakouts at indexes, reordering them if needed. Remove all other breakouts."
+  [query                    :- ::lib.schema/query
+   breakout-indexes-to-keep :- [:maybe ::breakout-combination]]
   (let [all-breakouts (lib/breakouts query)]
     (reduce
      (fn [query i]
        (lib/breakout query (nth all-breakouts i)))
      (-> (lib/remove-all-breakouts query)
-         (assoc :qp.pivot/breakout-combination breakout-indecies-to-keep))
-     breakout-indecies-to-keep)))
+         (assoc :qp.pivot/breakout-combination breakout-indexes-to-keep))
+     breakout-indexes-to-keep)))
 
 (mu/defn ^:private add-pivot-group-breakout :- ::lib.schema/query
   "Add the grouping field and expression to the query"
@@ -172,12 +174,12 @@
                                                            [:pivot-cols {:optional true} [:maybe ::pivot-cols]]]]
   (try
     (let [all-breakouts (lib/breakouts query)]
-      (for [breakout-indices (u/prog1 (breakout-combinations (count all-breakouts) pivot-rows pivot-cols)
-                               (log/tracef "Using breakout combinations: %s" (pr-str <>)))
-            :let             [group-bitmask (group-bitmask (count all-breakouts) breakout-indices)]]
+      (for [breakout-indexes (u/prog1 (breakout-combinations (count all-breakouts) pivot-rows pivot-cols)
+                                (log/tracef "Using breakout combinations: %s" (pr-str <>)))
+            :let              [group-bitmask (group-bitmask (count all-breakouts) breakout-indexes)]]
         (-> query
             remove-non-aggregation-order-bys
-            (keep-breakouts-at-indecies breakout-indices)
+            (keep-breakouts-at-indexes breakout-indexes)
             (add-pivot-group-breakout group-bitmask))))
     (catch Throwable e
       (throw (ex-info (tru "Error generating pivot queries")
@@ -201,8 +203,8 @@
   "This function needs to be called for each row so that it can actually shape the row according to the
   `column-mapping-fn` we build at the beginning.
 
-  Row mapping function is a function that can reorder the row add `nil`s for columns that aren't present in a particular
-  subquery, with the signature
+  Row mapping function is a function that can reorder the row and add `nil`s for columns that aren't present in a
+  particular subquery, with the signature
 
     (f row) => row'
 
