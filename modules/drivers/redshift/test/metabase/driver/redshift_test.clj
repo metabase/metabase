@@ -269,7 +269,7 @@
                    (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced without errors
                    view-nm))
               (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
-              ;; and its columns' :base_type should have been identified correctly
+                ;; and its columns' :base_type should have been identified correctly
                 (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric",           :base_type :type/Decimal}
                         {:name "raw_null",                    :database_type "character varying", :base_type :type/Text}
                         {:name "raw_var",                     :database_type "character varying", :base_type :type/Text}]
@@ -459,9 +459,7 @@
                        :delete false}}
                     (get-privileges))))
            (finally
-            ;; comment out since it's causing flake
-            ;; can uncomment after we tackle #40058
-            #_(execute! (format
+            (execute! (format
                          (str
                           "DROP TABLE IF EXISTS %2$s CASCADE;\n"
                           "DROP VIEW IF EXISTS %3$s CASCADE;\n"

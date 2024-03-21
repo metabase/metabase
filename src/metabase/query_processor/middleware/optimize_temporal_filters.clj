@@ -3,8 +3,9 @@
   `optimize-temporal-filters` for more details."
   (:require
    [clojure.walk :as walk]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -18,10 +19,10 @@
 
 ;;; TODO -- we can use [[metabase.lib/temporal-bucket]] for this once we convert this middleware to MLv2
 (defn- temporal-unit [field]
-  (mbql.u/match-one field [(_ :guard #{:field :expression}) _ (opts :guard :temporal-unit)] (:temporal-unit opts)))
+  (lib.util.match/match-one field [(_ :guard #{:field :expression}) _ (opts :guard :temporal-unit)] (:temporal-unit opts)))
 
 (defn- optimizable-field? [field]
-  (mbql.u/match-one field
+  (lib.util.match/match-one field
     [(_ :guard #{:field :expression}) _ (_ :guard (comp optimizable-units :temporal-unit))]))
 
 (defmulti ^:private can-optimize-filter?
@@ -30,7 +31,7 @@
 (defn- optimizable-temporal-value?
   "Can `temporal-value` clause can be optimized?"
   [temporal-value]
-  (mbql.u/match-one temporal-value
+  (lib.util.match/match-one temporal-value
     [:relative-datetime (_ :guard #{0 :current})]
     true
 
@@ -41,7 +42,7 @@
   "Do datetime `field` clause and `temporal-value` clause have 'compatible' units that mean we'll be able to optimize
   the filter clause they're in?"
   [field temporal-value]
-  (mbql.u/match-one temporal-value
+  (lib.util.match/match-one temporal-value
     [:relative-datetime (_ :guard #{0 :current})]
     true
 
@@ -63,7 +64,7 @@
 
 (defmethod can-optimize-filter? :default
   [filter-clause]
-  (mbql.u/match-one filter-clause
+  (lib.util.match/match-one filter-clause
     [_tag
      (field :guard optimizable-field?)
      (temporal-value :guard optimizable-temporal-value?)]
@@ -71,7 +72,7 @@
 
 (defmethod can-optimize-filter? :between
   [filter-clause]
-  (mbql.u/match-one filter-clause
+  (lib.util.match/match-one filter-clause
     [_
      (field :guard optimizable-field?)
      (temporal-value-1 :guard optimizable-temporal-value?)
@@ -88,7 +89,7 @@
   (:end (u.date/range t unit)))
 
 (defn- change-temporal-unit-to-default [field]
-  (mbql.u/replace field
+  (lib.util.match/replace field
     [(_ :guard #{:field :expression}) _ (_ :guard (comp optimizable-units :temporal-unit))]
     (mbql.u/update-field-options &match assoc :temporal-unit :default)
 
@@ -140,7 +141,9 @@
   [[_tag field temporal-value]]
   (if (date-field-with-day-bucketing? field)
     [:= (change-temporal-unit-to-default field) (change-temporal-unit-to-default temporal-value)]
-    (let [temporal-unit (mbql.u/match-one field [(_ :guard #{:field :expression}) _ (opts :guard :temporal-unit)] (:temporal-unit opts))]
+    (let [temporal-unit (lib.util.match/match-one field
+                          [(_ :guard #{:field :expression}) _ (opts :guard :temporal-unit)]
+                          (:temporal-unit opts))]
       (when (field-and-temporal-value-have-compatible-units? field temporal-value)
         (let [field' (change-temporal-unit-to-default field)]
           [:and
@@ -190,7 +193,7 @@
        [:<  field' (temporal-value-upper-bound upper-bound (temporal-unit field))]])))
 
 (defn- optimize-temporal-filters* [query]
-  (mbql.u/replace query
+  (lib.util.match/replace query
     (_ :guard (partial mbql.u/is-clause? (set (keys (methods optimize-filter)))))
     (or (when (can-optimize-filter? &match)
           (u/prog1 (optimize-filter &match)
