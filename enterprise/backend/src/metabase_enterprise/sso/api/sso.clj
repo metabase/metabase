@@ -75,6 +75,8 @@
                        :from   [[:core_user :u]]
                        :join   [[:core_session :session] [:= :u.id :session.user_id]]
                        :where  [:= :session.id metabase-session-id]})]
+    ;; If a user doesn't have SLO setup, they will never hit "/handle_slo" so we must delete the session here.
+    (t2/delete! :model/Session :id metabase-session-id)
     {:saml-logout-url
      (when (and (sso-settings/saml-enabled)
                 (= sso_source "saml"))
