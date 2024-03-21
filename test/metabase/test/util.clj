@@ -36,6 +36,7 @@
    [metabase.models.timeline-event :as timeline-event]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor.util :as qp.util]
    [metabase.task :as task]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.data :as data]
@@ -183,6 +184,15 @@
              {:creator_id (user-id :crowberto)
               :name       (u.random/random-name)
               :content    "1 = 1"}))
+
+   :model/QueryExecution
+   (fn [_] {:hash         (qp.util/query-hash {})
+            :running_time 1
+            :result_rows  1
+            :native       false
+            :executor_id  nil
+            :card_id      nil
+            :context      :ad-hoc})
 
    :model/PersistedInfo
    (fn [_] {:question_slug (u.random/random-name)

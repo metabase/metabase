@@ -5,6 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
+import CS from "metabase/css/core/index.css";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import {
   WidgetRoot,
@@ -75,7 +76,7 @@ export default function ParameterFieldWidget({
           return (
             <FieldValuesWidget
               key={index}
-              className={cx("input", numFields - 1 !== index && "mb1")}
+              className={cx(CS.input, numFields - 1 !== index && CS.mb1)}
               value={value}
               parameter={parameter}
               parameters={parameters}
