@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
@@ -15,7 +16,7 @@ const mapStateToProps = (state, props) => ({
 const PublicError = ({ message = t`An error occurred` }) => (
   <EmbedFrame className={CS.spread}>
     <div className={cx(CS.flex, CS.layoutCentered, CS.flexFull, CS.flexColumn)}>
-      <NoRowsError />
+      <NoRowsError mb="1rem" />
       <div className={cx(CS.mt1, CS.h4, "sm-h3 md-h2", CS.textBold)}>
         {message}
       </div>

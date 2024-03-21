@@ -31,7 +31,7 @@ export const ErrorMessage = ({
       )}
     >
       {type === "noRows" ? (
-        <NoRowsError />
+        <NoRowsError mb="1rem" />
       ) : (
         <div
           className={cx(QueryBuilderS.QueryErrorImage, {

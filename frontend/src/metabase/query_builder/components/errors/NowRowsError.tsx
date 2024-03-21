@@ -1,20 +1,19 @@
 import { useSelector } from "metabase/lib/redux";
 import { getNoQuestionResultsIllustration } from "metabase/selectors/whitelabel";
+import type { ImageProps } from "metabase/ui";
 import { Image } from "metabase/ui";
 
-export function NoRowsError() {
+export function NoRowsError(props: ImageProps) {
   const noQuestionResultsIllustration = useSelector(
     getNoQuestionResultsIllustration,
   );
 
-  return (
-    noQuestionResultsIllustration && (
-      <Image
-        width={120}
-        height={120}
-        mb="1rem"
-        src={noQuestionResultsIllustration}
-      />
-    )
-  );
+  return noQuestionResultsIllustration ? (
+    <Image
+      width={120}
+      height={120}
+      src={noQuestionResultsIllustration}
+      {...props}
+    />
+  ) : null;
 }
