@@ -92,8 +92,6 @@
   margin-left: auto;
 }
 
-:global(.layout-centered),
-.layout-centered,
 .layoutCentered {
   align-items: center;
   justify-content: center;
