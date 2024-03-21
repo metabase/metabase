@@ -51,7 +51,7 @@
 
 ;;; TODO -- once we convert this middleware to MLv2 we can use [[metabase.lib.metadata.calculation/type-of]]
 (defn- field-or-expression-effective-type [field-or-expression]
-  (mbql.u/match-one field-or-expression
+  (lib.util.match/match-one field-or-expression
     [(_tag :guard #{:field :expression}) _ (opts :guard :effective-type)]
     (:effective-type opts)
 
