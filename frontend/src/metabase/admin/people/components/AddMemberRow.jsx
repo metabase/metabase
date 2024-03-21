@@ -81,7 +81,7 @@ export default function AddMemberRow({ users, excludeIds, onCancel, onDone }) {
                   CS.pl1,
                   CS.cursorPointer,
                   CS.textSlate,
-                  "text-medium-hover",
+                  CS.textMediumHover,
                 )}
                 name="close"
                 onClick={() => handleRemoveUser(user)}

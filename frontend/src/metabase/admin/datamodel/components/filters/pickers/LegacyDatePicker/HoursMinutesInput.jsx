@@ -67,7 +67,7 @@ const HoursMinutesInput = ({
         className={cx(
           CS.textLight,
           CS.cursorPointer,
-          "text-medium-hover",
+          CS.textMediumHover,
           CS.mlAuto,
         )}
         name="close"

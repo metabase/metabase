@@ -62,7 +62,7 @@
 }
 
 .textMedium,
-:global(.text-medium-hover:hover) {
+.textMediumHover:hover {
   color: var(--color-text-medium);
 }
 
@@ -86,11 +86,10 @@
   color: var(--color-text-white);
 }
 
-:global(.bg-white),
 .bgWhite {
   background-color: var(--color-bg-white);
 }
 
-:global(.bg-light-blue) {
+.bgLightBlue {
   background-color: var(--color-bg-light);
 }

@@ -61,7 +61,7 @@ const NotebookStepPreview = ({ step, onClose }) => {
             onClick={onClose}
             className={cx(
               CS.textLight,
-              "text-medium-hover",
+              CS.textMediumHover,
               CS.cursorPointer,
               CS.ml1,
             )}
@@ -101,8 +101,8 @@ const VisualizationPreview = ({ rawSeries, result }) => {
     <Visualization
       rawSeries={rawSeries}
       error={result && result.error}
-      className={cx("bordered shadowed rounded bg-white", {
-        p2: result && result.error,
+      className={cx(CS.bordered, CS.shadowed, CS.rounded, CS.bgWhite, {
+        [CS.p2]: result && result.error,
       })}
       style={{
         height: open

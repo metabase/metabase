@@ -84,7 +84,7 @@ class AlertListPopoverContent extends Component {
           ))}
         </ul>
         {(!hasOwnAlerts || hasJustUnsubscribedFromOwnAlert) && (
-          <div className={cx(CS.borderTop, CS.p2, "bg-light-blue")}>
+          <div className={cx(CS.borderTop, CS.p2, CS.bgLightBlue)}>
             <a
               className="link flex align-center text-bold text-small"
               onClick={this.onAdd}
@@ -164,7 +164,7 @@ class AlertListItemInner extends Component {
     return (
       <li
         className={cx(CS.flex, CS.p3, CS.textMedium, CS.borderBottom, {
-          "bg-light-blue": highlight,
+          [CS.bgLightBlue]: highlight,
         })}
       >
         <Icon name="alert" size="20" />

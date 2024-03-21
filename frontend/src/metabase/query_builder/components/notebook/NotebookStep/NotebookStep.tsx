@@ -122,7 +122,8 @@ function NotebookStep({
               className={cx(
                 CS.mlAuto,
                 CS.textLight,
-                "text-medium-hover hover-child",
+                CS.textMediumHover,
+                "hover-child",
               )}
               onClick={handleClickRevert}
             >
