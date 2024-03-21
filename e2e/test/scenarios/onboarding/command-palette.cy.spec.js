@@ -4,6 +4,7 @@ import {
   commandPalette,
   commandPaletteSearch,
   closeCommandPalette,
+  visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
 
 describe("command palette", () => {
@@ -14,7 +15,15 @@ describe("command palette", () => {
 
   it("should render a searchable command palette", () => {
     cy.visit("/");
-    cy.findByAltText("Metabot");
+
+    cy.findByPlaceholderText("Search…").click();
+
+    cy.findByTestId("search-results-floating-container").should(
+      "contain.text",
+      "Open command palette",
+    );
+
+    cy.get("body").type("{esc}");
 
     cy.log("open the command palette with keybinding");
     openCommandPalette();
@@ -72,5 +81,27 @@ describe("command palette", () => {
 
     cy.location("pathname").should("contain", "settings/localization");
     cy.location("hash").should("contain", "#start-of-week");
+  });
+
+  it("should not be accessible when doing full app embedding", () => {
+    visitFullAppEmbeddingUrl({
+      url: "/",
+      qs: {
+        top_nav: true,
+        search: true,
+      },
+    });
+
+    cy.findByPlaceholderText("Search…").click();
+
+    cy.findByTestId("search-results-floating-container").should(
+      "not.contain.text",
+      "Open command palette",
+    );
+
+    cy.get("body").type("{esc}");
+
+    openCommandPalette();
+    commandPalette().should("not.exist");
   });
 });
