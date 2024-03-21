@@ -9,18 +9,20 @@ import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { SearchListQuery } from "metabase-types/api";
 
-import type { PickerState } from "../../types";
-import { LoadingSpinner } from "../LoadingSpinner";
-import { NestedItemPicker } from "../NestedItemPicker";
-
-import { CollectionItemPickerResolver } from "./CollectionItemPickerResolver";
-import type { CollectionPickerItem, CollectionPickerOptions } from "./types";
+import {
+  LoadingSpinner,
+  NestedItemPicker,
+  type PickerState,
+} from "../../EntityPicker";
+import type { CollectionPickerItem, CollectionPickerOptions } from "../types";
 import {
   generateKey,
   getCollectionIdPath,
   getStateFromIdPath,
   isFolder,
-} from "./utils";
+} from "../utils";
+
+import { CollectionItemPickerResolver } from "./CollectionItemPickerResolver";
 
 const defaultOptions: CollectionPickerOptions = {
   showPersonalCollections: true,

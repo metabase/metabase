@@ -6,7 +6,7 @@ import type {
   SearchModelType,
 } from "metabase-types/api";
 
-import type { PickerState, TisFolder, TypeWithModel } from "../../types";
+import type { PickerState, TisFolder, TypeWithModel } from "../EntityPicker";
 
 import type { CollectionPickerItem } from "./types";
 

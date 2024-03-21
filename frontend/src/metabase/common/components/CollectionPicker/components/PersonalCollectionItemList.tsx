@@ -3,9 +3,8 @@ import { useMemo } from "react";
 import { useCollectionListQuery } from "metabase/common/hooks";
 import type { Collection } from "metabase-types/api";
 
-import { ItemList } from "../ItemList";
-
-import type { CollectionItemListProps, CollectionPickerItem } from "./types";
+import { ItemList } from "../../EntityPicker";
+import type { CollectionItemListProps, CollectionPickerItem } from "../types";
 
 export const PersonalCollectionsItemList = ({
   onClick,

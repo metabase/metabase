@@ -5,12 +5,12 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
 import type { SearchModelType } from "metabase-types/api";
 
-import type { EntityTab } from "../../types";
-import { EntityPickerModal, defaultOptions } from "../EntityPickerModal";
+import type { EntityTab } from "../../EntityPicker";
+import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
+import type { CollectionPickerItem, CollectionPickerOptions } from "../types";
 
 import { CollectionPicker } from "./CollectionPicker";
 import { NewCollectionDialog } from "./NewCollectionDialog";
-import type { CollectionPickerItem, CollectionPickerOptions } from "./types";
 
 interface CollectionPickerModalProps {
   title?: string;

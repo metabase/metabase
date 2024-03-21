@@ -1,9 +1,10 @@
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 
+import type { CollectionItemListProps } from "../types";
+
 import { PersonalCollectionsItemList } from "./PersonalCollectionItemList";
 import { RootItemList } from "./RootItemList";
 import { SearchItemList } from "./SearchItemList";
-import type { CollectionItemListProps } from "./types";
 
 export const CollectionItemPickerResolver = ({
   onClick,

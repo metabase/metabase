@@ -1,8 +1,7 @@
 import { useSearchListQuery } from "metabase/common/hooks";
 
-import { ItemList } from "../ItemList";
-
-import type { CollectionItemListProps, CollectionPickerItem } from "./types";
+import { ItemList } from "../../EntityPicker";
+import type { CollectionItemListProps, CollectionPickerItem } from "../types";
 
 export const SearchItemList = ({
   query,

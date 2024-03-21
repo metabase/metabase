@@ -5,8 +5,11 @@ import type {
   SearchResult,
 } from "metabase-types/api";
 
-import type { ListProps, TypeWithModel } from "../../types";
-import type { EntityPickerModalOptions } from "../EntityPickerModal";
+import type {
+  EntityPickerModalOptions,
+  ListProps,
+  TypeWithModel,
+} from "../EntityPicker";
 
 export type CollectionPickerItem = TypeWithModel<
   CollectionId,

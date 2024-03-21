@@ -7,9 +7,8 @@ import { useSelector } from "metabase/lib/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type { CollectionId } from "metabase-types/api";
 
-import { ItemList } from "../ItemList";
-
-import type { CollectionItemListProps, CollectionPickerItem } from "./types";
+import { ItemList } from "../../EntityPicker";
+import type { CollectionItemListProps, CollectionPickerItem } from "../types";
 
 const personalCollectionsRoot: CollectionPickerItem = {
   ...PERSONAL_COLLECTIONS,
