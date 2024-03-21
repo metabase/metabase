@@ -8,11 +8,6 @@
   display: flex;
 }
 
-:global(.inline-flex),
-.inline-flex {
-  display: inline-flex;
-}
-
 :global(.flex-auto),
 .flex-auto {
   flex: auto;
