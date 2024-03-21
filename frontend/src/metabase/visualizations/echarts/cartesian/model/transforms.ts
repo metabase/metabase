@@ -31,7 +31,23 @@ export function getYAxisScaleTransforms(
       },
     };
   }
-  // TODO re-implement log y-axis scale
+  if (scale === "log") {
+    return {
+      toEChartsAxisValue: value => {
+        if (!isNumber(value)) {
+          return null;
+        }
+        // Transformation for stacked charts occurs in model/dataset.ts
+        if (stackType != null) {
+          return value;
+        }
+        return Math.log10(Math.abs(value)) * getSign(value);
+      },
+      fromEChartsAxisValue: value => {
+        return Math.pow(10, Math.abs(value)) * getSign(value);
+      },
+    };
+  }
 
   return {
     toEChartsAxisValue: value => {
