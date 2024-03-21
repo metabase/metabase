@@ -34,6 +34,9 @@ describe("issue 15353", () => {
 
     cy.wait("@pivotDataset");
 
-    cy.get(".Visualization").should("contain", "Count renamed");
+    cy.findByTestId("query-visualization-root").should(
+      "contain",
+      "Count renamed",
+    );
   });
 });

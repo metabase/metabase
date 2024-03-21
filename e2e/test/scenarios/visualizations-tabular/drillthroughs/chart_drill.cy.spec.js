@@ -52,7 +52,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
 
     cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
-    cy.get(".Visualization") // drag across to filter
+    cy.findByTestId("query-visualization-root") // drag across to filter
       .trigger("mousedown", 120, 200)
       .trigger("mousemove", 230, 200)
       .trigger("mouseup", 230, 200);
@@ -97,7 +97,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
       cy.createQuestion(questionDetails, { visitQuestion: true });
 
-      cy.get(".Visualization")
+      cy.findByTestId("query-visualization-root")
         .trigger("mousedown", 240, 200)
         .trigger("mousemove", 420, 200)
         .trigger("mouseup", 420, 200);
@@ -486,7 +486,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         visitQuestion(QUESTION_ID);
 
         // Initial visualization has rendered and we can now drill-through
-        cy.get(".Visualization .bar").eq(4).click({ force: true });
+        cy.findByTestId("query-visualization-root")
+          .get(".bar")
+          .eq(4)
+          .click({ force: true });
         cy.findByText("See these People").click();
 
         // We should see the resulting dataset of that drill-through
@@ -782,5 +785,5 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 });
 
 function hoverLineDot({ index } = {}) {
-  cy.get(".Visualization .dot").eq(index).realHover();
+  cy.findByTestId("query-visualization-root").get(".dot").eq(index).realHover();
 }

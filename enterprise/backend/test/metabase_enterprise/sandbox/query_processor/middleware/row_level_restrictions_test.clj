@@ -12,8 +12,8 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models :refer [Card Collection Field Table]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
@@ -165,7 +165,7 @@
 
 ;; TODO -- #19754 adds [[mt/remove-source-metadata]] that can be used here (once it gets merged)
 (defn- remove-metadata [m]
-  (mbql.u/replace m
+  (lib.util.match/replace m
     (_ :guard (every-pred map? :source-metadata))
     (remove-metadata (dissoc &match :source-metadata))))
 
@@ -736,7 +736,7 @@
                                          :cache-strategy {:type             :ttl
                                                           :multiplier       60
                                                           :avg-execution-ms 10
-                                                          :min-duration     0})))]
+                                                          :min-duration-ms  0})))]
         (testing "Run the query, should not be cached"
           (let [result (run-query)]
             (is (= nil
@@ -1051,7 +1051,7 @@
                           (let [results (qp/process-query (assoc query :cache-strategy {:type             :ttl
                                                                                         :multiplier       60
                                                                                         :avg-execution-ms 10
-                                                                                        :min-duration     0}))]
+                                                                                        :min-duration-ms  0}))]
                             {:cached?  (boolean (:cached (:cache/details results)))
                              :num-rows (count (mt/rows results))}))]
           (mt/with-temporary-setting-values [enable-query-caching true]

@@ -48,7 +48,7 @@
     :model/DashboardCardSeries
     :model/LoginHistory
     :model/FieldValues
-    :model/MetricImportantField
+    :model/LegacyMetricImportantField
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview

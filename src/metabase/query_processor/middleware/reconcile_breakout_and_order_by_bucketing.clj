@@ -34,8 +34,8 @@
   generate one that directly corresponds to the bad example above. This middleware finds these cases and rewrites the
   query to look like the good example."
   (:require
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli :as mu]))
 
 (mu/defn ^:private reconcile-bucketing :- mbql.s/Query
@@ -48,12 +48,12 @@
   ;; In causes where a Field is broken out more than once, prefer the bucketing used by the first breakout; accomplish
   ;; this by reversing the sequence of matches below, meaning the first match will get merged into the map last,
   ;; overwriting later matches
-  (let [unbucketed-ref->bucketed-ref (into {} (reverse (mbql.u/match breakouts
+  (let [unbucketed-ref->bucketed-ref (into {} (reverse (lib.util.match/match breakouts
                                                          [:field id-or-name opts]
                                                          [[:field id-or-name (not-empty (dissoc opts :temporal-unit :binning))]
                                                           &match])))]
     ;; rewrite order-by clauses as needed...
-    (-> (mbql.u/replace-in query [:query :order-by]
+    (-> (lib.util.match/replace-in query [:query :order-by]
           ;; if order by is already bucketed, nothing to do
           [:field id-or-name (_ :guard (some-fn :temporal-unit :binning))]
           &match
@@ -81,9 +81,9 @@
   [{{breakouts :breakout, order-bys :order-by} :query, :as query}]
   (if (or
        ;; if there's no breakouts bucketed by a datetime-field or binning-strategy...
-       (empty? (mbql.u/match breakouts [:field _ (_ :guard (some-fn :temporal-unit :binning))]))
+       (empty? (lib.util.match/match breakouts [:field _ (_ :guard (some-fn :temporal-unit :binning))]))
        ;; or if there's no order-bys that are *not* bucketed...
-       (empty? (mbql.u/match order-bys
+       (empty? (lib.util.match/match order-bys
                  [:field _ (_ :guard (some-fn :temporal-unit :binning))]
                  nil
 

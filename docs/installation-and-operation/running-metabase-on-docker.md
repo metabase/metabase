@@ -112,6 +112,50 @@ Keep in mind that Metabase will be connecting from _within_ your Docker containe
 
 If you've already been running Metabase with the default application database (H2), and want to use a production-ready application database without losing your app data (your questions, dashboards, etc), see [Migrating from H2 to a production database](migrating-from-h2.md).
 
+## Example Docker compose YAML file
+
+Here's an example `docker-compose.yml` file for running Metabase with a PostgreSQL database `metabaseappdb`:
+
+```yml
+version: '3.9'
+services:
+  metabase:
+    image: metabase/metabase:latest
+    container_name: metabase
+    hostname: metabase
+    volumes:
+    - /dev/urandom:/dev/random:ro
+    ports:
+      - 3000:3000
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabaseappdb
+      MB_DB_PORT: 5432
+      MB_DB_USER: metabase
+      MB_DB_PASS: mysecretpassword
+      MB_DB_HOST: postgres
+    networks:
+      - metanet1
+    healthcheck:
+      test: curl --fail -I http://localhost:3000/api/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 5
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    hostname: postgres
+    environment:
+      POSTGRES_USER: metabase
+      POSTGRES_DB: metabaseappdb
+      POSTGRES_PASSWORD: mysecretpassword
+    networks:
+      - metanet1
+networks:
+  metanet1:
+    driver: bridge
+```
+
 ## Additional Docker maintenance and configuration
 
 - [Customizing the Metabase Jetty server](#customizing-the-metabase-jetty-server)
@@ -233,9 +277,9 @@ In addition to this example yml file, you'll need to create two files:
 
 These files should be in the same directory as the `docker-compose.yml`. Put the db_user in the db_user.txt file, and db_password in the db_password.txt file.
 
-Notice the "\_FILE" on the environment variables that have a secret):
+Notice the "\_FILE" on the environment variables that have a secret:
 
-```
+```yml
 version: '3.9'
 services:
   metabase:

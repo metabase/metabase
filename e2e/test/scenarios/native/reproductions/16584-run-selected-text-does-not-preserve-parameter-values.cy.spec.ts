@@ -26,6 +26,8 @@ describe("issue 16584", () => {
 
     runNativeQuery();
 
-    cy.get(".Visualization").findByText("NL").should("exist");
+    cy.findByTestId("query-visualization-root")
+      .findByText("NL")
+      .should("exist");
   });
 });

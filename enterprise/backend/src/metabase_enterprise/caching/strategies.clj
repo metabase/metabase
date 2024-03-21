@@ -34,7 +34,7 @@
     [:ttl      [:map {:closed true}
                 [:type [:= :ttl]]
                 [:multiplier ms/PositiveInt]
-                [:min_duration ms/PositiveInt]]]
+                [:min_duration_ms ms/IntGreaterThanOrEqualToZero]]]
     [:duration [:map {:closed true}
                 [:type [:= :duration]]
                 [:duration ms/PositiveInt]

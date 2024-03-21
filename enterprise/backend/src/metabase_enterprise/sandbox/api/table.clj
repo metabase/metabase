@@ -4,7 +4,7 @@
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase.api.common :as api]
    [metabase.api.table :as api.table]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
@@ -38,7 +38,7 @@
 
 (mu/defn ^:private query->fields-ids :- [:maybe [:sequential :int]]
   [{{{:keys [fields]} :query} :dataset_query} :- [:maybe :map]]
-  (mbql.u/match fields [:field (id :guard integer?) _] id))
+  (lib.util.match/match fields [:field (id :guard integer?) _] id))
 
 (defn- maybe-filter-fields [table query-metadata-response]
   ;; If we have sandboxed permissions and the associated GTAP limits the fields returned, we need make sure the

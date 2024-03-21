@@ -27,7 +27,7 @@
          #"Semantic type must be a UNIXTimestamp"
          (sql.qp/semantic-type->unix-timestamp-unit :type/Integer)))))
 
-(mt/defdataset toucan-microsecond-incidents
+(mt/defdataset toucan-ms-incidents
   [["incidents" [{:field-name "severity"
                   :base-type  :type/Integer}
                  {:field-name        "timestamp"
@@ -40,7 +40,7 @@
 (deftest double-coercion-through-model
   (testing "Ensure that coerced values only get coerced once. #33861"
     (mt/dataset
-      toucan-microsecond-incidents
+      toucan-ms-incidents
       (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
                                                                           :type     :query
                                                                           :query    {:source-table (mt/id :incidents)}}}]
@@ -58,7 +58,7 @@
                        ;; default result shape
                        #{[1 4 "2015-06-06T10:40:00Z"] [2 0 "2015-06-10T19:51:00Z"]})]
       (is (= results
-             (set (mt/rows (mt/dataset toucan-microsecond-incidents
+             (set (mt/rows (mt/dataset toucan-ms-incidents
                              (mt/run-mbql-query incidents)))))))))
 
 (deftest filter-test

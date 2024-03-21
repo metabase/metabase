@@ -50,7 +50,7 @@ describe("issue 24839: should be able to summarize a nested question based on th
 
     popover().contains("Distinct values").click();
 
-    cy.get(".ScalarValue").invoke("text").should("eq", "49");
+    cy.findByTestId("scalar-value").invoke("text").should("eq", "49");
 
     cy.findByTestId("aggregation-item")
       .invoke("text")

@@ -118,7 +118,7 @@
   {:type             :ttl
    :multiplier       60
    :avg-execution-ms 1000
-   :min-duration     (public-settings/query-caching-min-ttl)})
+   :min-duration-ms  (public-settings/query-caching-min-ttl)})
 
 (defn- test-query [query-kvs]
   (merge {:cache-strategy (ttl-strategy), :lib/type :mbql/query, :stages [{:abc :def}]} query-kvs))
