@@ -128,7 +128,8 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.get(".Visualization .enable-dots")
+    cy.findByTestId("query-visualization-root")
+      .get(".enable-dots")
       .last()
       .find(".dot")
       .eq(3)
@@ -510,7 +511,7 @@ describe("scenarios > visualizations > line chart", () => {
 
     function renameSeries(series) {
       cy.icon("pencil").click();
-      cy.get(".Card").realHover();
+      cy.findByTestId("dashcard").realHover();
       cy.icon("palette").click();
       series.forEach(serie => {
         const [old_name, new_name] = serie;
@@ -595,7 +596,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.get(".Visualization")
+    cy.findByTestId("query-visualization-root")
       .trigger("mousedown", 180, 200)
       .trigger("mousemove", 180, 200)
       .trigger("mouseup", 220, 200);

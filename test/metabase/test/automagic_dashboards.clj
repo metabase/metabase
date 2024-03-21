@@ -2,8 +2,8 @@
   "Helper functions and macros for writing tests for automagic dashboards."
   (:require
    [clojure.test :refer :all]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.models :refer [Card Collection Dashboard DashboardCard]]
    [metabase.test :as mt]
    [metabase.util :as u]

@@ -1,30 +1,31 @@
-import { useEffect } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import EntityMenuItem from "metabase/components/EntityMenuItem";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { loadInfo } from "metabase-enterprise/audit_app/reducer";
-import type { AuditInfoState } from "metabase-enterprise/audit_app/types/state";
+import { useDispatch } from "metabase/lib/redux";
+import { useGetAuditInfoQuery } from "metabase-enterprise/api";
 import type { DashboardId } from "metabase-types/api";
 
 interface InstanceAnalyticsButtonProps {
-  entitySelector: (state: AuditInfoState) => number;
+  model: "dashboard" | "question";
   linkQueryParams: { dashboard_id: DashboardId } | { question_id: number };
 }
 
 export const InstanceAnalyticsButton = ({
-  entitySelector,
+  model,
   linkQueryParams,
 }: InstanceAnalyticsButtonProps) => {
   const dispatch = useDispatch();
-  const entityId = useSelector(state =>
-    entitySelector(state as AuditInfoState),
-  );
+  const { data: auditInfo, error, isLoading } = useGetAuditInfoQuery();
 
-  useEffect(() => {
-    dispatch(loadInfo());
-  }, [dispatch]);
+  if (isLoading || error || !auditInfo) {
+    return null;
+  }
+
+  const entityId =
+    model === "dashboard"
+      ? auditInfo.dashboard_overview
+      : auditInfo.question_overview;
 
   if (entityId !== undefined) {
     return (

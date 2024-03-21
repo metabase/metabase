@@ -153,7 +153,8 @@
                            :parsed-string  (.substring deparenthesized-s 0 parsed-idx)
                            :ignored-string (.substring deparenthesized-s parsed-idx)}))))
       (if has-parens?
-        (- parsed-number)
+        ;; By casting to double we ensure that the sign is preserved for 0.0
+        (- (double parsed-number))
         parsed-number))))
 
 (defn- parse-number

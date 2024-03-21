@@ -45,7 +45,7 @@ export const reducer = createReducer(initialState, builder => {
   builder.addCase(updateLocale.fulfilled, state => {
     state.isLocaleLoaded = true;
   });
-  builder.addCase(submitUser.pending, (state, { meta }) => {
+  builder.addCase(submitUser.fulfilled, (state, { meta }) => {
     state.user = meta.arg;
   });
   builder.addCase(submitUsageReason.pending, (state, { meta }) => {
@@ -72,7 +72,7 @@ export const reducer = createReducer(initialState, builder => {
     state.database = undefined;
     state.invite = undefined;
   });
-  builder.addCase(updateTracking.pending, (state, { meta }) => {
+  builder.addCase(updateTracking.fulfilled, (state, { meta }) => {
     state.isTrackingAllowed = meta.arg;
   });
   builder.addCase(submitSetup.fulfilled, state => {

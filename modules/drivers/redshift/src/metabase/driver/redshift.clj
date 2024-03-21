@@ -15,7 +15,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
@@ -356,7 +356,7 @@
                 (if (contains? param :name)
                   [(:name param) (:value param)]
 
-                  (when-let [field-id (mbql.u/match-one param
+                  (when-let [field-id (lib.util.match/match-one param
                                         [:field (field-id :guard integer?) _]
                                         (when (contains? (set &parents) :dimension)
                                           field-id))]

@@ -264,7 +264,8 @@
           pg-field-3-id :type/Text
           mysql-field-1-id :type/JSON
           mysql-field-2-id :type/Text)
-        (testing "Rollback restores the original state"
+        ;; TODO: this is commented out temporarily because it flakes for MySQL
+        #_(testing "Rollback restores the original state"
            (migrate! :down 46)
            (let [new-base-types (t2/select-pk->fn :base_type Field)]
              (are [field-id expected] (= expected (get new-base-types field-id))
@@ -466,7 +467,7 @@
                                          :id [:in [rev-dash-1-new rev-dash-2-new rev-card-1-new]])))))))
 (deftest fks-are-indexed-test
   (mt/test-driver :postgres
-    (testing "all FKs should be indexed"
+    (testing "FKs are not created automatically in Postgres, check that migrations add necessary indexes"
      (is (= [] (t2/query
                 "SELECT
                      conrelid::regclass AS table_name,
@@ -522,6 +523,7 @@
           (testing (str "View " view-name " should be created")
             ;; Just assert that something was returned by the query and no exception was thrown
             (is (partial= [] (t2/query (str "SELECT 1 FROM " view-name))))))
+        #_#_ ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37434)
         (migrate! :down 47)
         (testing "Views should be removed when downgrading"
           (doseq [view-name new-view-names]

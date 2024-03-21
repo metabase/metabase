@@ -52,7 +52,7 @@ describe("scenarios > dashboard > filters > location", () => {
         filterWidget().eq(index).click();
         addWidgetStringFilter(value);
 
-        cy.get(".Card").within(() => {
+        cy.findByTestId("dashcard").within(() => {
           cy.contains(representativeResult);
         });
 
@@ -76,7 +76,7 @@ describe("scenarios > dashboard > filters > location", () => {
 
     saveDashboard();
 
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.contains("Arnold Adams");
     });
 
@@ -88,7 +88,7 @@ describe("scenarios > dashboard > filters > location", () => {
 
     addWidgetStringFilter("Pittsburg", { buttonLabel: "Update filter" });
 
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.contains("Aracely Jenkins");
     });
   });

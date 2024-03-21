@@ -23,8 +23,5 @@ export type ErrorPayload = Partial<{
   localizedEntityName: string;
   entityInfo: Card | Dashboard | Collection;
   queryResults: DatasetData;
-  instanceInfo: {
-    bugReportDetails: MetabaseInfo;
-    sessionProperties: any;
-  };
+  bugReportDetails: MetabaseInfo;
 }>;

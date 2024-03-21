@@ -97,3 +97,7 @@ export function sourceTableOrCardId(query: Query): TableId | null {
 export function canRun(query: Query): boolean {
   return ML.can_run(query);
 }
+
+export function canSave(query: Query): boolean {
+  return ML.can_save(query);
+}

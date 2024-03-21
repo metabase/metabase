@@ -4,10 +4,22 @@ import { t } from "ttag";
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { UtilApi, MetabaseApi, SessionApi } from "metabase/services";
+import { UtilApi, MetabaseApi } from "metabase/services";
 
 import type { ErrorPayload, ReportableEntityName } from "./types";
 import { getEntityDetails, hasQueryData } from "./utils";
+
+const maybeSerializeError = (key: string, value: any) => {
+  if (value?.constructor.name === "Error") {
+    return {
+      name: value.name,
+      message: value.message,
+      stack: value.stack,
+      cause: value.cause,
+    };
+  }
+  return value;
+};
 
 export const useErrorInfo = (
   { enabled }: { enabled?: boolean } = { enabled: true },
@@ -37,24 +49,26 @@ export const useErrorInfo = (
       ? UtilApi.bug_report_details().catch(nullOnCatch)
       : Promise.resolve(null);
 
-    const sessionPropertiesRequest = SessionApi.properties().catch(nullOnCatch);
-
     const logsRequest: any = isAdmin
       ? UtilApi.logs().catch(nullOnCatch)
       : Promise.resolve(null);
 
     // @ts-expect-error non-standard error property
-    const frontendErrors = console?.errorBuffer?.map?.(err => err.join(""));
+    const frontendErrors = console?.errorBuffer?.map?.(errArray =>
+      errArray
+        .map((errLine: any) => JSON.stringify(errLine, maybeSerializeError))
+        .join(""),
+    );
 
     const settledPromises = await Promise.allSettled([
       entityInfoRequest,
       bugReportDetailsRequest,
-      sessionPropertiesRequest,
       logsRequest,
     ]);
 
-    const [entityInfo, bugReportDetails, sessionProperties, logs] =
-      settledPromises.map((promise: any) => promise.value);
+    const [entityInfo, bugReportDetails, logs] = settledPromises.map(
+      (promise: any) => promise.value,
+    );
 
     const queryResults =
       hasQueryData(entity) &&
@@ -78,8 +92,6 @@ export const useErrorInfo = (
         log?.msg?.includes?.(` userID: ${currentUser.id} `),
     );
 
-    const { engines, ...sessionPropertiesWithoutEngines } = sessionProperties;
-
     const payload: ErrorPayload = {
       url: location,
       entityInfo,
@@ -90,10 +102,7 @@ export const useErrorInfo = (
       frontendErrors,
       backendErrors,
       userLogs,
-      instanceInfo: {
-        sessionProperties: sessionPropertiesWithoutEngines,
-        bugReportDetails,
-      },
+      bugReportDetails,
     };
 
     return payload;

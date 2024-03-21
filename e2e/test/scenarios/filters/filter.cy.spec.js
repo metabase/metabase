@@ -105,7 +105,7 @@ describe("scenarios > question > filter", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("12872");
     cy.log("At the moment of unfixed issue, it's showing '0'");
-    cy.get(".ScalarValue").contains("1");
+    cy.findByTestId("scalar-value").contains("1");
   });
 
   it("should filter based on remapped values (metabase#13235)", () => {
@@ -146,7 +146,7 @@ describe("scenarios > question > filter", () => {
             aggregation: [
               [
                 "aggregation-options",
-                ["+", 1, 1],
+                ["+", ["count"], 1],
                 { name: CE_NAME, "display-name": CE_NAME },
               ],
             ],
@@ -761,7 +761,7 @@ describe("scenarios > question > filter", () => {
       },
     });
 
-    cy.get(".ScalarValue").contains("5.41");
+    cy.findByTestId("scalar-value").contains("5.41");
     filter();
 
     filterField("Category").findByText("Gizmo").click();

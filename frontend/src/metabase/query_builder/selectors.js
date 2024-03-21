@@ -334,15 +334,13 @@ export const getQuestion = createSelector(
     }
 
     const type = question.type();
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
 
-    // When opening a model, we swap it's `dataset_query`
-    // with clean query using the model as a source table,
-    // to enable "simple mode" like features
-    // This has to be skipped for users without data permissions
-    // as it would be blocked by the backend as an ad-hoc query
-    // see https://github.com/metabase/metabase/issues/20042
-    const hasDataPermission = !!question.database();
-    return type !== "question" && hasDataPermission && !isEditingModel
+    // When opening a model or a metric, we construct a question
+    // with a clean, ad-hoc, query.
+    // This has to be skipped for users without data permissions.
+    // See https://github.com/metabase/metabase/issues/20042
+    return type !== "question" && isEditable
       ? question.composeQuestion()
       : question;
   },
@@ -371,7 +369,7 @@ function areModelsEquivalent({
     return false;
   }
 
-  const composedOriginal = originalQuestion.composeQuestion();
+  const composedOriginal = originalQuestion.composeQuestionAdhoc();
 
   const isLastRunComposed = areLegacyQueriesEqual(
     lastRunQuestion.datasetQuery(),

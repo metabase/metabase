@@ -1,7 +1,7 @@
 (ns metabase.pulse.render-test
   (:require
    [clojure.test :refer :all]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models
     :refer [Card Dashboard DashboardCard DashboardCardSeries]]
    [metabase.pulse :as pulse]
@@ -29,7 +29,7 @@
 
 (deftest render-test
   (testing "if the pulse rendered correctly it will have an img tag."
-    (is (some? (mbql.u/match-one (render-results
+    (is (some? (lib.util.match/match-one (render-results
                                   (mt/mbql-query checkins
                                     {:aggregation [[:count]]
                                      :breakout    [!month.date]}))
@@ -228,5 +228,5 @@
       (mt/with-temp-env-var-value! [mb-site-url "https://mb.com"]
         (let [rendered-card-content (:content (binding [render/*include-title* true]
                                                 (render/render-pulse-card :inline (pulse/defaulted-timezone card) card nil (qp/process-query (:dataset_query card)))))]
-          (is (some? (mbql.u/match-one rendered-card-content
+          (is (some? (lib.util.match/match-one rendered-card-content
                                        [:a (_ :guard #(= (format "https://mb.com/question/%d" (:id card)) (:href %))) "A Card"]))))))))

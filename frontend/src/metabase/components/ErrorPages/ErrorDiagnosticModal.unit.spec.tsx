@@ -45,30 +45,29 @@ const defaultErrorPayload: ErrorPayload = {
   localizedEntityName: "Question",
   entityInfo: createMockCard(),
   queryResults: createMockDatasetData({ rows: [[1]] }),
-  instanceInfo: {
-    bugReportDetails: {
-      "application-database": "h2",
-      "application-database-details": {},
-      databases: ["h2"],
-      "hosting-env": "production",
-      "run-mode": "prod",
-      settings: {},
-      version: {
-        date: "2021-08-31",
-        hash: "abcdef",
-        src_hash: "abcdef",
-        tag: "v1.0.0",
-      },
-    },
-    sessionProperties: {
-      settings: "foo",
+  bugReportDetails: {
+    "application-database": "h2",
+    "application-database-details": {},
+    databases: ["h2"],
+    "hosting-env": "production",
+    "run-mode": "prod",
+    settings: {},
+    version: {
+      date: "2021-08-31",
+      hash: "abcdef",
+      src_hash: "abcdef",
+      tag: "v1.0.0",
     },
   },
 };
 
 const setup = (errorInfo: ErrorPayload) => {
   render(
-    <ErrorDiagnosticModal errorInfo={errorInfo} onClose={() => undefined} />,
+    <ErrorDiagnosticModal
+      errorInfo={errorInfo}
+      onClose={() => undefined}
+      loading={false}
+    />,
   );
 };
 

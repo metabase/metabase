@@ -27,7 +27,6 @@
             User]]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions.graph :as data-perms.graph]
-   [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -36,6 +35,7 @@
    [metabase.models.timeline-event :as timeline-event]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor.util :as qp.util]
    [metabase.task :as task]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.data :as data]
@@ -171,7 +171,7 @@
             :ip_address         "0:0:0:0:0:0:0:1"
             :timestamp          (t/zoned-date-time)})
 
-   :model/Metric
+   :model/LegacyMetric
    (fn [_] (default-timestamped
              {:creator_id  (rasta-id)
               :definition  {}
@@ -183,6 +183,15 @@
              {:creator_id (user-id :crowberto)
               :name       (u.random/random-name)
               :content    "1 = 1"}))
+
+   :model/QueryExecution
+   (fn [_] {:hash         (qp.util/query-hash {})
+            :running_time 1
+            :result_rows  1
+            :native       false
+            :executor_id  nil
+            :card_id      nil
+            :context      :ad-hoc})
 
    :model/PersistedInfo
    (fn [_] {:question_slug (u.random/random-name)
@@ -673,43 +682,48 @@
   "Additional conditions applied to the query to find the max ID for a model prior to a test run. This can be used to
   exclude rows which intentionally use non-sequential IDs, like the internal user."
   {:arglists '([model])}
-  mi/model)
+  t2/resolve-model)
 
 (defmethod with-max-model-id-additional-conditions :default
   [_]
-  [:not= :id config/internal-mb-user-id])
+  nil)
 
 (defmethod with-max-model-id-additional-conditions :model/User
   [_]
   [:not= :id config/internal-mb-user-id])
 
 (defmethod with-max-model-id-additional-conditions :model/Database
- [_]
- [:not= :id perms/audit-db-id])
+  [_]
+  [:not= :id perms/audit-db-id])
+
+(defn- model->model&pk [model]
+  (if (vector? model)
+    model
+    [model (first (t2/primary-keys model))]))
 
 (defn do-with-model-cleanup [models f]
-  {:pre [(sequential? models) (every? #(isa? % :metabase/model) models)]}
+  {:pre [(sequential? models) (every? #(or (isa? % :metabase/model)
+                                           ;; to support [[:model/Model :updated_at]] syntax
+                                           (isa? (first %) :metabase/model)) models)]}
   (mb.hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
-  (let [model->old-max-id (into {} (for [model models]
-                                     [model (:max-id (t2/select-one [model [(keyword (str "%max." (name (first (t2/primary-keys model)))))
-                                                                            :max-id]]
-                                                                    {:where (with-max-model-id-additional-conditions model)}))]))]
+  (let [models (map model->model&pk models)
+        model->old-max-id (into {} (for [[model pk] models
+                                         :let [conditions (with-max-model-id-additional-conditions model)]]
+                                     [model (:max-id (t2/select-one [model [[:max pk] :max-id]]
+                                                                    {:where (or conditions true)}))]))]
     (try
-      (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name models))) "\n")
+      (testing (str "\n" (pr-str (cons 'with-model-cleanup (map (comp name first) models))) "\n")
         (f))
       (finally
-        (doseq [model models
+        (doseq [[model pk] models
                 ;; might not have an old max ID if this is the first time the macro is used in this test run.
-                :let  [old-max-id            (or (get model->old-max-id model)
-                                                 0)
-                       max-id-condition      [:> (first (t2/primary-keys model)) old-max-id]
+                :let  [old-max-id            (get model->old-max-id model)
+                       max-id-condition      (if old-max-id [:> pk old-max-id] true)
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
           (t2/query-one
            {:delete-from (t2/table-name model)
-            :where       (if (seq additional-conditions)
-                           [:and max-id-condition additional-conditions]
-                           max-id-condition)}))))))
+            :where       [:and max-id-condition additional-conditions]}))))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
@@ -721,6 +735,10 @@
     (with-model-cleanup [Card]
       (create-card-via-api!)
       (is (= ...)))
+
+    (with-model-cleanup [[QueryCache :updated_at]]
+      (created-query-cache!)
+      (is cached?))
 
   Only works for models that have a numeric primary key e.g. `:id`."
   [models & body]
@@ -870,15 +888,15 @@
          pk->original      (atom {})
          method-unique-key (str (random-uuid))
          before-method-fn  (fn [_model row]
-                             (swap! pk->original merge {(u/the-id row) (t2/original row)})
+                             (swap! pk->original assoc (u/the-id row) (t2/original row))
                              row)]
      (methodical/add-aux-method-with-unique-key! #'t2.before-update/before-update :before model before-method-fn method-unique-key)
      (try
       (thunk)
       (finally
        (methodical/remove-aux-method-with-unique-key! #'t2.before-update/before-update :before model method-unique-key)
-       (doseq [[id orignal-val] @pk->original]
-         (t2/update! model id orignal-val)))))
+       (doseq [[id original-val] @pk->original]
+         (t2/update! model id original-val)))))
    (with-discard-model-updates (rest models)
      (thunk))))
 

@@ -2,6 +2,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { ResizableBox } from "react-resizable";
 
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { color, darken } from "metabase/lib/colors";
 
 const aceEditorStyle = css`
@@ -131,7 +132,7 @@ export const NativeQueryEditorRoot = styled.div`
 
   ${aceEditorStyle}
 
-  .GuiBuilder-data {
+  .${QueryBuilderS.GuiBuilderData} {
     border-right: none;
   }
 `;

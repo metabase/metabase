@@ -15,12 +15,11 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { capitalize } from "metabase/lib/formatting";
 import {
   Button,
-  Center,
+  Box,
   Icon,
   Loader,
   Text,
   Stack,
-  Box,
   Modal,
   Flex,
 } from "metabase/ui";
@@ -30,7 +29,8 @@ import { useErrorInfo } from "./use-error-info";
 import { downloadObjectAsJson, hasQueryData } from "./utils";
 
 interface ErrorDiagnosticModalProps {
-  errorInfo: ErrorPayload;
+  errorInfo?: ErrorPayload | null;
+  loading: boolean;
   onClose: () => void;
 }
 
@@ -38,8 +38,31 @@ type PayloadSelection = Partial<Record<keyof ErrorPayload, boolean>>;
 
 export const ErrorDiagnosticModal = ({
   errorInfo,
+  loading,
   onClose,
 }: ErrorDiagnosticModalProps) => {
+  if (loading || !errorInfo) {
+    return (
+      <Modal opened onClose={onClose}>
+        <Stack align="center" justify="center" mb="lg">
+          <Text w="bold" color="text-medium" mb="sm">
+            {c(
+              "loading message indicating that we are gathering debugging information to aid in providing technical support",
+            ).t`Gathering diagnostic information...`}
+          </Text>
+          <Loader />
+        </Stack>
+      </Modal>
+    );
+  }
+
+  const canIncludeQueryData = hasQueryData(errorInfo?.entityName);
+
+  const hiddenValues = {
+    url: true,
+    entityName: true,
+  };
+
   const handleSubmit = (values: PayloadSelection) => {
     const selectedKeys = Object.keys(values).filter(
       key => values[key as keyof PayloadSelection],
@@ -51,13 +74,6 @@ export const ErrorDiagnosticModal = ({
       `metabase-diagnostic-info-${new Date().toISOString()}`,
     );
     onClose();
-  };
-
-  const canIncludeQueryData = hasQueryData(errorInfo?.entityName);
-
-  const hiddenValues = {
-    url: true,
-    entityName: true,
   };
 
   return (
@@ -77,7 +93,7 @@ export const ErrorDiagnosticModal = ({
           backendErrors: true,
           userLogs: true,
           logs: true,
-          instanceInfo: true,
+          bugReportDetails: true,
         }}
         onSubmit={handleSubmit}
       >
@@ -115,9 +131,9 @@ export const ErrorDiagnosticModal = ({
               </>
             )}
             <FormCheckbox
-              name="instanceInfo"
+              name="bugReportDetails"
               // eslint-disable-next-line no-literal-metabase-strings -- we're mucking around in the software here
-              label={t`Metabase instance version and settings`}
+              label={t`Metabase instance version information`}
             />
           </Stack>
           <Alert variant="warning">
@@ -139,22 +155,7 @@ export const ErrorDiagnosticModal = ({
 };
 
 export const ErrorDiagnosticModalTrigger = () => {
-  const { value: errorInfo, loading, error } = useErrorInfo();
-
   const [isModalOpen, setModalOpen] = useState(false);
-
-  if (loading || !errorInfo) {
-    return (
-      <Center>
-        <Loader />
-      </Center>
-    );
-  }
-
-  if (error) {
-    console.error(error);
-    return null;
-  }
 
   return (
     <ErrorBoundary>
@@ -180,17 +181,103 @@ export const ErrorDiagnosticModalTrigger = () => {
           {t`Download diagnostic information`}
         </Button>
       </Stack>
+      <ErrorDiagnosticModalWrapper
+        isModalOpen={isModalOpen}
+        onClose={() => setModalOpen(false)}
+      />
+    </ErrorBoundary>
+  );
+};
+
+export const ErrorDiagnosticModalWrapper = ({
+  isModalOpen,
+  onClose,
+}: {
+  isModalOpen: boolean;
+  onClose: () => void;
+}) => {
+  const {
+    value: errorInfo,
+    loading,
+    error,
+  } = useErrorInfo({ enabled: isModalOpen });
+
+  if (!isModalOpen) {
+    return null;
+  }
+
+  if (error) {
+    console.error(error);
+    return null;
+  }
+
+  return (
+    <ErrorBoundary>
       {isModalOpen && (
         <ErrorDiagnosticModal
+          loading={loading}
           errorInfo={errorInfo}
-          onClose={() => setModalOpen(false)}
+          onClose={onClose}
         />
       )}
     </ErrorBoundary>
   );
 };
 
-export function KeyboardTriggeredErrorModal() {
+// this is an intermediate modal to give a better error explanation for use
+// when an error component is potentially too small to contain text
+export const ErrorExplanationModal = ({
+  isModalOpen,
+  onClose,
+}: {
+  isModalOpen: boolean;
+  onClose: () => void;
+}) => {
+  const [
+    isShowingDiagnosticModal,
+    { turnOn: openDiagnosticModal, turnOff: closeDiagnosticModal },
+  ] = useToggle(false);
+
+  if (isModalOpen && isShowingDiagnosticModal) {
+    return (
+      <ErrorDiagnosticModalWrapper
+        isModalOpen
+        onClose={() => {
+          onClose();
+          closeDiagnosticModal();
+        }}
+      />
+    );
+  }
+
+  return (
+    <Modal
+      title={t`Oops, something went wrong`}
+      opened={isModalOpen}
+      onClose={onClose}
+    >
+      <Text my="md">
+        {t`We've run into an error, try to refresh the page or go back.`}
+      </Text>
+      <Text my="md">
+        {c("indicates an email address to which to send diagnostic information")
+          .jt`If the error persists, you can download diagnostic information to send to
+        ${(
+          <Link key="email" variant="brand" to="mailto:help@metabase.com">
+            {t`help@metabase.com`}
+          </Link>
+        )}`}
+      </Text>
+      <Flex justify="flex-end">
+        <Button variant="filled" onClick={openDiagnosticModal}>
+          {t`Download diagnostic info`}
+        </Button>
+      </Flex>
+    </Modal>
+  );
+};
+
+export const KeyboardTriggeredErrorModal = () => {
   const [
     isShowingDiagnosticModal,
     { turnOn: openDiagnosticModal, turnOff: closeDiagnosticModal },
@@ -223,27 +310,13 @@ export function KeyboardTriggeredErrorModal() {
     return null;
   }
 
-  if (loading || !errorInfo) {
-    return (
-      <Modal opened onClose={closeDiagnosticModal}>
-        <Stack align="center" justify="center" mb="lg">
-          <Text w="bold" color="text-medium" mb="sm">
-            {c(
-              "loading message indicating that we are gathering debugging information to aid in providing technical support",
-            ).t`Gathering diagnostic information...`}
-          </Text>
-          <Loader />
-        </Stack>
-      </Modal>
-    );
-  }
-
   return (
     <ErrorBoundary>
       <ErrorDiagnosticModal
+        loading={loading}
         errorInfo={errorInfo}
         onClose={closeDiagnosticModal}
       />
     </ErrorBoundary>
   );
-}
+};
