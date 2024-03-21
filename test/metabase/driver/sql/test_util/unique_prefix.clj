@@ -40,8 +40,7 @@
    (unique-prefix* (utc-date)))
   ([local-date]
    {:pre [(instance? java.time.LocalDate local-date)]}
-   "2023_02_17_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_"
-   #_(-> (format "%s_%s_" local-date (public-settings/site-uuid))
+   (-> (format "%s_%s_" local-date (public-settings/site-uuid))
          (str/replace  #"-" "_"))))
 
 (def ^{:arglists '([])} unique-prefix

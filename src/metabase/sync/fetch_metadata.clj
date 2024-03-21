@@ -5,6 +5,7 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
    [metabase.driver.util :as driver.u]
    [metabase.sync.interface :as i]
    [metabase.util :as u]
@@ -19,7 +20,7 @@
              :redshift)
       (assert (->> (:tables <>)
                    (keep :schema)
-                   (every? #{"2023_02_17_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_schema" "spectrum"}))))))
+                   (every? #{(str (sql.tu.unique-prefix/unique-prefix) "schema") "spectrum"}))))))
 
 (mu/defn fields-metadata
   "Effectively a wrapper for [[metabase.driver/describe-fields]] that also validates the output against the schema."
