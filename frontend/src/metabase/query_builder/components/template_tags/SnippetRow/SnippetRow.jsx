@@ -35,7 +35,7 @@ class SnippetRowInner extends Component {
             CS.textBold,
             CS.flex,
             CS.alignCenter,
-            "justify-between",
+            CS.justifyBetween,
             CS.py2,
             CS.px3,
             "hover-parent",

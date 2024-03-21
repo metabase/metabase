@@ -119,7 +119,7 @@ function _AddEditEmailSidebar({
             CS.textBold,
             CS.py3,
             CS.flex,
-            "justify-between",
+            CS.justifyBetween,
             CS.alignCenter,
             CS.borderTop,
           )}
@@ -135,7 +135,7 @@ function _AddEditEmailSidebar({
             CS.textBold,
             CS.py2,
             CS.flex,
-            "justify-between",
+            CS.justifyBetween,
             CS.alignCenter,
             CS.borderTop,
           )}

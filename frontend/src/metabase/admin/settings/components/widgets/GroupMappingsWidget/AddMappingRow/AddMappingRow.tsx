@@ -51,7 +51,7 @@ function AddMappingRow({
             CS.p1,
             CS.bordered,
             CS.borderBrand,
-            "justify-between",
+            CS.justifyBetween,
             CS.rounded,
             CS.relative,
             CS.flex,

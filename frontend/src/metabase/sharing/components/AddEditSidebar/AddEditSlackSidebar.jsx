@@ -108,7 +108,7 @@ function _AddEditSlackSidebar({
             CS.textBold,
             CS.py2,
             CS.flex,
-            "justify-between",
+            CS.justifyBetween,
             CS.alignCenter,
             CS.borderTop,
           )}

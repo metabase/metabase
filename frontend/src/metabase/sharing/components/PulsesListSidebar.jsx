@@ -45,7 +45,7 @@ function _PulsesListSidebar({
           CS.px4,
           CS.pt3,
           CS.flex,
-          "justify-between",
+          CS.justifyBetween,
           CS.alignCenter,
         )}
       >

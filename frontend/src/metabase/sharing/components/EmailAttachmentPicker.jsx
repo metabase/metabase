@@ -193,7 +193,7 @@ export default class EmailAttachmentPicker extends Component {
 
         {isEnabled && (
           <div>
-            <div className={cx(CS.my1, CS.flex, "justify-between")}>
+            <div className={cx(CS.my1, CS.flex, CS.justifyBetween)}>
               <Label className="pt1">{t`File format`}</Label>
               <SegmentedControl
                 options={[
@@ -211,7 +211,7 @@ export default class EmailAttachmentPicker extends Component {
                 CS.pt1,
                 CS.pb2,
                 CS.flex,
-                "justify-between",
+                CS.justifyBetween,
                 CS.alignCenter,
               )}
             >

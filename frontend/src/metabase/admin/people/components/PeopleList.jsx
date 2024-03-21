@@ -226,7 +226,7 @@ const PeopleList = ({
 
       {hasUsers && (
         <div
-          className={cx(CS.flex, CS.alignCenter, "justify-between", CS.p2)}
+          className={cx(CS.flex, CS.alignCenter, CS.justifyBetween, CS.p2)}
           data-testid="people-list-footer"
         >
           <div className="text-medium text-bold">

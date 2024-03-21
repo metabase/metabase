@@ -60,7 +60,7 @@
   justify-content: center;
 }
 
-:global(.justify-between) {
+.justifyBetween {
   justify-content: space-between;
 }
 

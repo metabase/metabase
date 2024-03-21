@@ -83,7 +83,7 @@ function NewVersionAvailable({ currentVersion }) {
           CS.flex,
           CS.flexRow,
           CS.alignCenter,
-          "justify-between",
+          CS.justifyBetween,
         )}
       >
         <span className="text-white text-bold">
