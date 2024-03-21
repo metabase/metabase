@@ -241,10 +241,12 @@
      [:= field x y]  -> [:or  [:=  field x] [:=  field y]]
      [:!= field x y] -> [:and [:!= field x] [:!= field y]]"
   [m]
-  (mbql.match/replace m
+  m
+  #_(mbql.match/replace m
     [:= field x y & more]
-    (apply vector :or (for [x (concat [x y] more)]
-                        [:= field x]))
+    [:in (into [field x y] more)]
+    #_(apply vector :or (for [x (concat [x y] more)]
+                          [:= field x]))
 
     [:!= field x y & more]
     (apply vector :and (for [x (concat [x y] more)]

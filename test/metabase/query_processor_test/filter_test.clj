@@ -777,3 +777,24 @@
                 (mt/run-mbql-query bird-count
                   {:order-by [[:asc $count] [:asc $id]]
                    :limit    3}))))))))
+
+(deftest ^:parallel x-test
+  (let [query (mt/mbql-query venues {:filter [:= $id 1 2]})]
+    (is (=? {:query ["SELECT"
+                     "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\","
+                     "  \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\","
+                     "  \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\","
+                     "  \"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\","
+                     "  \"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\","
+                     "  \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\""
+                     "FROM"
+                     "  \"PUBLIC\".\"VENUES\""
+                     "WHERE"
+                     "  \"PUBLIC\".\"VENUES\".\"ID\" IN (1, 2)"
+                     "LIMIT"
+                     "  1048575"]}
+            (-> (qp.compile/compile query)
+                (update :query (fn [sql]
+                                 (->> sql
+                                      (driver/prettify-native-form :h2)
+                                      clojure.string/split-lines))))))))
