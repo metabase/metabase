@@ -39,7 +39,6 @@
   flex-basis: auto;
 }
 
-:global(.flex-basis-none),
 .flexBasisNone {
   flex-basis: 0;
 }

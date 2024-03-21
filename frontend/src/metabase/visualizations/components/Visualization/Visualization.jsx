@@ -511,7 +511,7 @@ class Visualization extends PureComponent {
                 className={cx(
                   "CardVisualization",
                   CS.flexFull,
-                  "flex-basis-none",
+                  CS.flexBasisNone,
                 )}
                 isPlaceholder={isPlaceholder}
                 isMobile={isMobile}

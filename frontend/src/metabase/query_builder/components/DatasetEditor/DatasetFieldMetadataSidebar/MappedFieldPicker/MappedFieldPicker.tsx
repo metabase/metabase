@@ -94,7 +94,7 @@ function MappedFieldPicker({
       className={cx(
         CS.flex,
         CS.flexFull,
-        "flex-basis-none",
+        CS.flexBasisNone,
         CS.justifyCenter,
         CS.alignCenter,
       )}
