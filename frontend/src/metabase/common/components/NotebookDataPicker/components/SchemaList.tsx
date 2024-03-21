@@ -14,7 +14,7 @@ interface Props {
   >;
   query: SchemaListQuery;
   selectedItem: NotebookDataPickerItem | null;
-  onClick: (val: NotebookDataPickerItem) => void;
+  onClick: (item: NotebookDataPickerItem) => void;
 }
 
 export const SchemaList = ({

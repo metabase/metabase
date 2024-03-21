@@ -14,7 +14,7 @@ interface Props {
   >;
   query: TableListQuery;
   selectedItem: NotebookDataPickerItem | null;
-  onClick: (val: NotebookDataPickerItem) => void;
+  onClick: (item: NotebookDataPickerItem) => void;
 }
 
 export const TableList = ({
