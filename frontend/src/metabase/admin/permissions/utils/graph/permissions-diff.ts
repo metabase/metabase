@@ -51,7 +51,7 @@ function diffDatabasePermissions(
         schemaName: table.schema_name || "",
         tableId: table.id as ConcreteTableId,
       },
-      "data",
+      "view-data",
     );
     const newFieldsPerm = getFieldsPermission(
       newPerms,
@@ -61,7 +61,7 @@ function diffDatabasePermissions(
         schemaName: table.schema_name || "",
         tableId: table.id as ConcreteTableId,
       },
-      "data",
+      "view-data",
     );
     if (oldFieldsPerm !== newFieldsPerm) {
       if (isRestrictivePermission(newFieldsPerm)) {

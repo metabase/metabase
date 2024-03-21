@@ -17,6 +17,19 @@ import type {
 export const isRestrictivePermission = (value: string) =>
   value === "block" || value === "none";
 
+// util to ease migration of perms attributes into a flatter structure
+function getDataPermissionPath(
+  databaseId: number,
+  permission: DataPermission,
+  nestedPath?: Array<string | number>,
+) {
+  if (permission === "view-data" || permission === "create-queries") {
+    return [databaseId, permission, ...(nestedPath || [])];
+  } else {
+    return [databaseId, permission, "schemas", ...(nestedPath || [])];
+  }
+}
+
 export function getPermission(
   permissions: GroupsPermissions,
   groupId: number,
@@ -82,7 +95,7 @@ export const getSchemasPermission = (
   return getPermission(
     permissions,
     groupId,
-    [databaseId, permission, "schemas"],
+    getDataPermissionPath(databaseId, permission),
     true,
   );
 };
@@ -113,7 +126,7 @@ export const getTablesPermission = (
     return getPermission(
       permissions,
       groupId,
-      [databaseId, permission, "schemas", schemaName || ""],
+      getDataPermissionPath(databaseId, permission, [schemaName || ""]),
       true,
     );
   } else {
@@ -140,7 +153,10 @@ export const getFieldsPermission = (
     return getPermission(
       permissions,
       groupId,
-      [databaseId, permission, "schemas", schemaName ?? "", tableId],
+      getDataPermissionPath(databaseId, permission, [
+        schemaName ?? "",
+        tableId,
+      ]),
       true,
     );
   } else {
@@ -332,7 +348,7 @@ export function updateFieldsPermission(
   permissions = updatePermission(
     permissions,
     groupId,
-    [databaseId, permission, "schemas", schemaName, tableId],
+    getDataPermissionPath(databaseId, permission, [schemaName, tableId]),
     ((PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE as any)[
       value
     ] as any) || value,
@@ -365,7 +381,7 @@ export function updateTablesPermission(
   permissions = updatePermission(
     permissions,
     groupId,
-    [databaseId, permission, "schemas", schemaName || ""],
+    getDataPermissionPath(databaseId, permission, [schemaName || ""]),
     value,
     tableIds,
   );
@@ -404,7 +420,7 @@ export function updateSchemasPermission(
   return updatePermission(
     permissions,
     groupId,
-    [databaseId, permission, "schemas"],
+    getDataPermissionPath(databaseId, permission),
     value,
     schemaNamesOrNoSchema,
   );

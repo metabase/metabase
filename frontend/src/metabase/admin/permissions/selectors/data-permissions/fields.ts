@@ -1,5 +1,8 @@
+import _ from "underscore";
+
 import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
 import {
+  getSchemasPermission,
   getFieldsPermission,
   getNativePermission,
 } from "metabase/admin/permissions/utils/graph";
@@ -28,15 +31,28 @@ const buildAccessPermission = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
+  originalPermissions: GroupsPermissions,
   defaultGroup: Group,
   database: Database,
 ) => {
-  const value = getFieldsPermission(permissions, groupId, entityId, "data");
+  const value = getFieldsPermission(
+    permissions,
+    groupId,
+    entityId,
+    "view-data",
+  );
+
+  const originalValue = getFieldsPermission(
+    originalPermissions,
+    groupId,
+    entityId,
+    "view-data",
+  );
   const defaultGroupValue = getFieldsPermission(
     permissions,
     defaultGroup.id,
     entityId,
-    "data",
+    "view-data",
   );
 
   const warning = getPermissionWarning(
@@ -47,6 +63,13 @@ const buildAccessPermission = (
     groupId,
   );
 
+  const currDbPermissionValue = getSchemasPermission(
+    permissions,
+    groupId,
+    entityId,
+    "view-data",
+  );
+
   const confirmations = (newValue: string) => [
     getPermissionWarningModal(
       newValue,
@@ -55,7 +78,7 @@ const buildAccessPermission = (
       defaultGroup,
       groupId,
     ),
-    getControlledDatabaseWarningModal(permissions, groupId, entityId),
+    getControlledDatabaseWarningModal(currDbPermissionValue, entityId),
     getRevokingAccessToAllTablesWarningModal(
       database,
       permissions,
@@ -66,7 +89,7 @@ const buildAccessPermission = (
   ];
 
   return {
-    permission: "data",
+    permission: "view-data",
     type: "access",
     isDisabled:
       isAdmin ||
@@ -76,11 +99,12 @@ const buildAccessPermission = (
     value,
     warning,
     options: PLUGIN_ADVANCED_PERMISSIONS.addTablePermissionOptions(
-      [
+      _.compact([
         DATA_PERMISSION_OPTIONS.all,
         ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
-        DATA_PERMISSION_OPTIONS.noSelfService,
-      ],
+        originalValue === DATA_PERMISSION_OPTIONS.noSelfService.value &&
+          DATA_PERMISSION_OPTIONS.noSelfService,
+      ]),
       value,
     ),
     actions: PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
@@ -115,6 +139,7 @@ export const buildFieldsPermissions = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
+  originalPermissions: GroupsPermissions,
   defaultGroup: Group,
   database: Database,
 ): PermissionSectionConfig[] => {
@@ -123,6 +148,7 @@ export const buildFieldsPermissions = (
     groupId,
     isAdmin,
     permissions,
+    originalPermissions,
     defaultGroup,
     database,
   );

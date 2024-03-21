@@ -62,7 +62,7 @@ export const advancedPermissionsSlice = createSlice({
       .addCase(LOAD_DATA_PERMISSIONS, () => initialState)
       .addCase(SAVE_DATA_PERMISSIONS, () => initialState)
       .addCase(UPDATE_DATA_PERMISSION, (state, { payload }: any) => {
-        if (payload.value === "impersonated") {
+        if (payload?.value === "impersonated") {
           return state;
         }
 

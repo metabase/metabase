@@ -20,10 +20,7 @@ import {
   handleActions,
   combineReducers,
 } from "metabase/lib/redux";
-import {
-  PLUGIN_DATA_PERMISSIONS,
-  PLUGIN_ADVANCED_PERMISSIONS,
-} from "metabase/plugins";
+import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { CollectionsApi, PermissionsApi } from "metabase/services";
 
@@ -90,26 +87,34 @@ export const loadCollectionPermissions = createThunkAction(
   },
 );
 
-export const LIMIT_DATABASE_PERMISSION =
-  "metabase/admin/permissions/LIMIT_DATABASE_PERMISSION";
-export const limitDatabasePermission = createThunkAction(
-  LIMIT_DATABASE_PERMISSION,
-  (groupId, entityId, accessPermissionValue) => dispatch => {
-    const newValue =
-      PLUGIN_ADVANCED_PERMISSIONS.getDatabaseLimitedAccessPermission(
-        accessPermissionValue,
-      );
-
-    if (newValue) {
+export const GRANULATE_DATABASE_TABLE_PERMISSIONS =
+  "metabase/admin/permissions/GRANULATE_DATABASE_TABLE_PERMISSIONS";
+export const granulateDatabasePermissions = createThunkAction(
+  GRANULATE_DATABASE_TABLE_PERMISSIONS,
+  (groupId, entityId, value) => dispatch => {
+    // HACK: updatePermission fn sets entities of controlled values (schemas in this case
+    // to the previously set value of the parent (database in this case). if the db perm
+    // value is set to something other than restrictied before changing to controlled, the
+    // table's view data dropdowns will get locked in an unchangable state (e.g. blocked, impersonated)
+    if (value === "controlled") {
       dispatch(
         updateDataPermission({
           groupId,
-          permission: { type: "access", permission: "data" },
-          value: newValue,
+          permission: { type: "access", permission: "view-data" },
+          value: "unrestricted",
           entityId,
         }),
       );
     }
+
+    dispatch(
+      updateDataPermission({
+        groupId,
+        permission: { type: "access", permission: "view-data" },
+        value,
+        entityId,
+      }),
+    );
 
     dispatch(push(getGroupFocusPermissionsUrl(groupId, entityId)));
   },
@@ -137,6 +142,7 @@ export const updateDataPermission = createThunkAction(
           entityId,
           groupId,
           view,
+          value,
         );
         if (action) {
           dispatch(action);

@@ -30,7 +30,7 @@ describe("updateNativePermission", () => {
       entityId,
       undefined,
       database,
-      "data",
+      "view-data",
     );
 
     expect(updatedGraph).toStrictEqual({
@@ -48,7 +48,7 @@ describe("updateNativePermission", () => {
       entityId,
       "write",
       database,
-      "data",
+      "view-data",
     );
 
     expect(updatedGraph).toStrictEqual({
@@ -79,7 +79,7 @@ describe("updateNativePermission", () => {
         entityId,
         "write",
         database,
-        "data",
+        "view-data",
       );
 
       expect(updatedGraph).toStrictEqual({
@@ -98,7 +98,7 @@ describe("updateNativePermission", () => {
       entityId,
       "write",
       database,
-      "data",
+      "view-data",
     );
 
     expect(updatedGraph).toStrictEqual({

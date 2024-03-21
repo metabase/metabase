@@ -1,9 +1,12 @@
 import { t } from "ttag";
 
+import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
+
 export const DATA_PERMISSION_OPTIONS = {
   all: {
     label: t`Unrestricted`,
-    value: "all",
+    value: "unrestricted",
     icon: "check",
     iconColor: "success",
   },
@@ -14,8 +17,17 @@ export const DATA_PERMISSION_OPTIONS = {
     iconColor: "warning",
   },
   noSelfService: {
-    label: t`No self-service`,
-    value: "none",
+    label: (
+      <>
+        {t`No self-service (Deprecated)`}
+        <Icon
+          name="warning"
+          color={color("accent5")}
+          style={{ marginBottom: "-3px", marginLeft: ".25rem" }}
+        />
+      </>
+    ),
+    value: "legacy-no-self-service",
     icon: "eye",
     iconColor: "accent5",
   },
