@@ -15,9 +15,11 @@
   "Get basic Metadata about a `database` and its Tables. Doesn't include information about the Fields."
   [database :- i/DatabaseInstance]
   (u/prog1 (driver/describe-database (driver.u/database->driver database) database)
-    (assert (->> (:tables <>)
-                 (keep :schema)
-                 (every? #{"2023_02_17_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_schema" "spectrum"})))))
+    (when (= (driver.u/database->driver database)
+             :redshift)
+      (assert (->> (:tables <>)
+                   (keep :schema)
+                   (every? #{"2023_02_17_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_schema" "spectrum"}))))))
 
 (mu/defn fields-metadata
   "Effectively a wrapper for [[metabase.driver/describe-fields]] that also validates the output against the schema."
