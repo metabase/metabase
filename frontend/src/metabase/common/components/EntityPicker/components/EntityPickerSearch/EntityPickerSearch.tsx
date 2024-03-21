@@ -23,7 +23,7 @@ import { getSearchTabText } from "./utils";
 
 const defaultSearchFilter = <
   Id,
-  Model extends string,
+  Model extends SearchModelType,
   Item extends TypeWithModel<Id, Model>,
 >(
   results: Item[],
@@ -98,7 +98,7 @@ export function EntityPickerSearchInput<
 
 export const EntityPickerSearchResults = <
   Id,
-  Model extends string,
+  Model extends SearchModelType,
   Item extends TypeWithModel<Id, Model>,
 >({
   searchResults,
@@ -154,7 +154,7 @@ export const EntityPickerSearchResults = <
 
 export const EntityPickerSearchTab = <
   Id,
-  Model extends string,
+  Model extends SearchModelType,
   Item extends TypeWithModel<Id, Model>,
 >({
   searchResults,

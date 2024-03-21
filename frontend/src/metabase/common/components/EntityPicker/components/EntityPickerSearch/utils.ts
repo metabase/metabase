@@ -1,5 +1,7 @@
 import { c, msgid } from "ttag";
 
+import type { SearchModelType } from "metabase-types/api";
+
 import type { TypeWithModel } from "../../types";
 
 const emptySearchResultTranslationContext = c(
@@ -11,7 +13,7 @@ const searchResultTranslationContext = c(
 
 export function getSearchTabText<
   Id,
-  Model extends string,
+  Model extends SearchModelType,
   Item extends TypeWithModel<Id, Model>,
 >(searchResults: Item[] | null, searchQuery: string): string {
   if (!searchResults || !searchResults.length) {

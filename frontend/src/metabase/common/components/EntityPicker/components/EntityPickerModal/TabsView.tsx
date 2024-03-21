@@ -1,4 +1,5 @@
 import { Icon, Tabs } from "metabase/ui";
+import type { SearchModelType } from "metabase-types/api";
 
 import type { EntityTab, TypeWithModel } from "../../types";
 import {
@@ -8,7 +9,7 @@ import {
 
 export const TabsView = <
   Id,
-  Model extends string,
+  Model extends SearchModelType,
   Item extends TypeWithModel<Id, Model>,
 >({
   tabs,
