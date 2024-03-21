@@ -72,7 +72,7 @@ export default class InputWithSelectPrefix extends Component {
       <div
         className={cx(
           CS.flex,
-          "align-stretch",
+          CS.alignStretch,
           AdminS.SettingsInput,
           FormS.FormInput,
           CS.p0,

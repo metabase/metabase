@@ -76,7 +76,7 @@
   align-items: flex-end;
 }
 
-:global(.align-stretch) {
+.alignStretch {
   align-items: stretch;
 }
 
