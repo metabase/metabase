@@ -66,13 +66,16 @@
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
+(defn- default-audit-collection?
+  [{:keys [id] :as _col}]
+  (= id (:id (perms/default-audit-collection))))
+
 (defmethod mi/can-write? Collection
   ([instance]
-   (mi/can-write? :model/Collection (:id instance)))
-  ([model pk]
-   (if (= pk (:id (perms/default-audit-collection)))
-     false
-     (mi/current-user-has-full-permissions? :write model pk))))
+   (and (not (default-audit-collection? instance))
+        (mi/current-user-has-full-permissions? :write instance)))
+  ([_model pk]
+   (mi/can-write? (t2/select-one :model/Collection pk))))
 
 (defmethod mi/can-read? Collection
   ([instance]
