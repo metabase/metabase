@@ -12,13 +12,12 @@
    [metabase.api.field :as api.field]
    [metabase.driver :as driver]
    [metabase.events :as events]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.models
-    :refer [Card CardBookmark Collection Database PersistedInfo Table]]
+   [metabase.lib.util.match :as lib.util.match]
+   [metabase.models :refer [Card CardBookmark Collection Database PersistedInfo Table]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
@@ -809,7 +808,7 @@
   chain-filter issues or dashcards to worry about."
   [card param query]
   (when-let [field-clause (params/param-target->field-clause (:target param) card)]
-    (when-let [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
+    (when-let [field-id (lib.util.match/match-one field-clause [:field (id :guard integer?) _] id)]
       (api.field/search-values-from-field-id field-id query))))
 
 (mu/defn param-values

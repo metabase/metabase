@@ -7,7 +7,7 @@
   (:require
    [medley.core :as m]
    [metabase.config :as config]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]

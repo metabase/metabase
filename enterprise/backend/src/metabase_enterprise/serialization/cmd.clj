@@ -18,7 +18,7 @@
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :as field :refer [Field]]
-   [metabase.models.metric :refer [Metric]]
+   [metabase.models.metric :refer [LegacyMetric]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.segment :refer [Segment]]
@@ -204,8 +204,8 @@
                       (t2/select Field :table_id [:in (map :id tables)] {:order-by [[:id :asc]]})
                       (t2/select Field))
         metrics     (if (contains? opts :only-db-ids)
-                      (t2/select Metric :table_id [:in (map :id tables)] {:order-by [[:id :asc]]})
-                      (t2/select Metric))
+                      (t2/select LegacyMetric :table_id [:in (map :id tables)] {:order-by [[:id :asc]]})
+                      (t2/select LegacyMetric))
         collections (select-collections users state)]
     (binding [serialize/*include-entity-id* (boolean include-entity-id)]
       (dump/dump! path

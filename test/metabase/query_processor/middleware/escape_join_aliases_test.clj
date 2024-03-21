@@ -4,7 +4,7 @@
    [flatland.ordered.map :as ordered-map]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.middleware.escape-join-aliases :as escape]
    [metabase.util :as u]))
 
@@ -515,7 +515,7 @@
           (is (not (contains? (:info q') :alias/escaped->original))))
         (testing "aliases in the query remain the same"
           (letfn [(all-join-aliases* [query]
-                    (mbql.u/match query
+                    (lib.util.match/match query
                       (m :guard (every-pred map? :alias))
                       (cons (:alias m) (all-join-aliases* (dissoc m :alias)))))
                   (all-join-aliases [query]

@@ -18,6 +18,7 @@ import {
   leftSidebar,
   sidebar,
   moveDnDKitElement,
+  selectFilterOperator,
 } from "e2e/support/helpers";
 
 describe("scenarios > visualizations > table", () => {
@@ -316,10 +317,12 @@ describe("scenarios > visualizations > table", () => {
     openPeopleTable();
     headerCells().filter(":contains('Password')").click();
 
+    popover().findByText("Filter by this column").click();
+    selectFilterOperator("Is");
     popover().within(() => {
-      cy.findByText("Filter by this column").click();
-      cy.findByPlaceholderText("Search by Password").type("e").blur();
+      cy.findByPlaceholderText("Search by Password").type("e");
       cy.wait("@findSuggestions");
+      cy.findByPlaceholderText("Search by Password").blur();
     });
 
     popover().then($popover => {

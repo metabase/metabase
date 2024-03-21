@@ -8,14 +8,14 @@
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.annotate :as annotate]
-   [metabase.query-processor.middleware.wrap-value-literals
-    :as qp.wrap-value-literals]
+   [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.nest-query :as nest-query]
@@ -840,7 +840,7 @@
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
-  (mbql.u/match-one (nth (:aggregation *inner-query*) index)
+  (lib.util.match/match-one (nth (:aggregation *inner-query*) index)
     [:aggregation-options ag (options :guard :name)]
     (->honeysql driver (h2x/identifier :field-alias (:name options)))
 
@@ -988,7 +988,7 @@
   ([form]
    (rewrite-fields-to-force-using-column-aliases form {:is-breakout false}))
   ([form {is-breakout :is-breakout}]
-   (mbql.u/replace form
+   (lib.util.match/replace form
      [:field id-or-name opts]
      [:field id-or-name (cond-> opts
                           true
@@ -1127,7 +1127,7 @@
 
 (defn- correct-null-behaviour
   [driver [op & args :as clause]]
-  (if-let [field-arg (mbql.u/match-one args
+  (if-let [field-arg (lib.util.match/match-one args
                        :field          &match)]
     ;; We must not transform the head again else we'll have an infinite loop
     ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
@@ -1319,7 +1319,7 @@
 
 (defn- format-honeysql-2 [dialect honeysql-form]
   ;; throw people a bone and make sure they're not trying to use Honey SQL 1 stuff inside Honey SQL 2.
-  (mbql.u/match honeysql-form
+  (lib.util.match/match honeysql-form
     (form :guard record?)
     (throw (ex-info (format "Not supported by Honey SQL 2: ^%s %s"
                             (.getCanonicalName (class form))
