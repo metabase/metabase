@@ -154,6 +154,20 @@ BarStackedTotalFormattedValues.args = {
   renderingContext,
 };
 
+export const BarStackedPowYAxis = Template.bind({});
+BarStackedPowYAxis.args = {
+  rawSeries: data.barStackedPowYAxis as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarStackedPowYAxisNegatives = Template.bind({});
+BarStackedPowYAxisNegatives.args = {
+  rawSeries: data.barStackedPowYAxisNegatives as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const BarStackedNormalizedEmptySpace37880 = Template.bind({});
 BarStackedNormalizedEmptySpace37880.args = {
   rawSeries: data.barStackedNormalizedEmptySpace37880 as any,
@@ -431,6 +445,13 @@ BarStackDisplayOverridesSeriesDisplays.args = {
 export const AreaStackAllSeriesWithoutInterpolation = Template.bind({});
 AreaStackAllSeriesWithoutInterpolation.args = {
   rawSeries: data.areaStackAllSeriesWithoutInterpolation as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const AreaOverBar = Template.bind({});
+AreaOverBar.args = {
+  rawSeries: data.areaOverBar as any,
   dashcardSettings: {},
   renderingContext,
 };

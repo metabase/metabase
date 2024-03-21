@@ -19,6 +19,8 @@ import barStackedNormalizedEmptySpace37880 from "./bar-stacked-normalized-empty-
 import barTwoAxesStackedWithNegativeValues from "./bar-two-axes-stacked-with-negative-values.json";
 import barBreakoutWithLineSeriesStackedRightAxisOnly from "./bar-breakout-with-line-series-stacked-right-axis-only.json";
 import barStackedTotalFormattedValues from "./bar-stacked-total-formatted-values.json";
+import barStackedPowYAxis from "./bar-stacked-pow-y-axis.json";
+import barStackedPowYAxisNegatives from "./bar-stacked-pow-y-axis-negatives.json";
 import barFullyNullDimension37902 from "./bar-fully-null-dimension-37902.json";
 import autoYSplit from "./auto-y-split.json";
 import messedUpAxis from "./messed-up-axis.json";
@@ -57,6 +59,7 @@ import nullCategoryValueFormatting from "./null-category-value-formatting.json";
 import areaStackInterpolateMissingValues from "./area-stack-interpolate-missing-values.json";
 import barStackDisplayOverridesSeriesDisplays from "./bar-stack-display-overrides-series-displays.json";
 import areaStackAllSeriesWithoutInterpolation from "./area-stack-all-series-without-interpolation.json";
+import areaOverBar from "./area-over-bar-40209.json";
 
 export const data = {
   lineLinearXScale,
@@ -79,6 +82,8 @@ export const data = {
   barTwoAxesStackedWithNegativeValues,
   barBreakoutWithLineSeriesStackedRightAxisOnly,
   barStackedTotalFormattedValues,
+  barStackedPowYAxis,
+  barStackedPowYAxisNegatives,
   barStackedNormalizedEmptySpace37880,
   barsBreakoutSortedWithNegativeValuesPowerYAxis,
   barFullyNullDimension37902,
@@ -118,4 +123,5 @@ export const data = {
   areaStackInterpolateMissingValues,
   barStackDisplayOverridesSeriesDisplays,
   areaStackAllSeriesWithoutInterpolation,
+  areaOverBar,
 };
