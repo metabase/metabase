@@ -8,7 +8,7 @@ export type TypeWithModel<Id, Model extends string> = {
   name: string;
 };
 
-export type TisFolder<
+export type IsFolder<
   Id,
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
@@ -40,7 +40,7 @@ export type ListProps<
   query?: Query;
   onClick: (val: Item) => void;
   selectedItem: Item | null;
-  isFolder: TisFolder<Id, Model, Item>;
+  isFolder: IsFolder<Id, Model, Item>;
   isCurrentLevel: boolean;
   options: Options;
 };

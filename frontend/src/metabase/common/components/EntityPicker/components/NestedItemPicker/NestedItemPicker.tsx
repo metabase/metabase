@@ -7,7 +7,7 @@ import type {
   EntityPickerOptions,
   ListProps,
   PickerState,
-  TisFolder,
+  IsFolder,
   TypeWithModel,
 } from "../../types";
 import { AutoScrollBox } from "../AutoScrollBox";
@@ -27,7 +27,7 @@ export interface NestedItemPickerProps<
   itemName: string;
   options: Options;
   path: PickerState<Item, Query>;
-  isFolder: TisFolder<Id, Model, Item>;
+  isFolder: IsFolder<Id, Model, Item>;
   listResolver: ComponentType<ListProps<Id, Model, Item, Query, Options>>;
 }
 

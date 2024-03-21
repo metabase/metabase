@@ -6,7 +6,7 @@ import type {
   SearchModelType,
 } from "metabase-types/api";
 
-import type { PickerState, TisFolder, TypeWithModel } from "../EntityPicker";
+import type { PickerState, IsFolder, TypeWithModel } from "../EntityPicker";
 
 import type { CollectionPickerItem } from "./types";
 
@@ -87,7 +87,7 @@ export const getStateFromIdPath = ({
   return statePath;
 };
 
-export const isFolder: TisFolder<
+export const isFolder: IsFolder<
   CollectionId,
   SearchModelType,
   CollectionPickerItem
