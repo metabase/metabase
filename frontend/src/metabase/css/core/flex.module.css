@@ -52,7 +52,6 @@
   min-height: 0;
 }
 
-:global(.align-center),
 .alignCenter {
   align-items: center;
 }

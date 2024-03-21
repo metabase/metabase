@@ -134,7 +134,16 @@ function HostingCTA() {
   return (
     <HostingCTARoot className="rounded bg-light mt4 text-brand py2 px1">
       <HostingCTAContent>
-        <HostingCTAIconContainer className="circular bg-medium align-center justify-center ml1 mr2">
+        <HostingCTAIconContainer
+          className={cx(
+            "circular",
+            "bg-medium",
+            CS.alignCenter,
+            CS.justifyCenter,
+            CS.ml1,
+            CS.mr2,
+          )}
+        >
           <Icon name="cloud" size={24} />
         </HostingCTAIconContainer>
         <div>

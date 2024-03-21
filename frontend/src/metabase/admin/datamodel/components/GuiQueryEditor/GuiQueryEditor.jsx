@@ -54,19 +54,27 @@ export class GuiQueryEditor extends Component {
   };
 
   renderAdd(text, onClick, targetRefName) {
-    const className =
-      "text-light text-bold flex align-center text-medium-hover cursor-pointer no-decoration transition-color";
+    const className = cx(
+      CS.textLight,
+      CS.textBold,
+      CS.flex,
+      CS.alignCenter,
+      "text-medium-hover",
+      CS.cursorPointer,
+      CS.noDecoration,
+      CS.transitionColor,
+    );
     if (onClick) {
       return (
         <a className={className} onClick={onClick}>
-          {text && <span className="mr1">{text}</span>}
+          {text && <span className={CS.mr1}>{text}</span>}
           {this.renderAddIcon(targetRefName)}
         </a>
       );
     } else {
       return (
         <span className={className}>
-          {text && <span className="mr1">{text}</span>}
+          {text && <span className={CS.mr1}>{text}</span>}
           {this.renderAddIcon(targetRefName)}
         </span>
       );
@@ -134,12 +142,12 @@ export class GuiQueryEditor extends Component {
         className={cx(QueryBuilderS.QuerySection, { [CS.disabled]: !enabled })}
       >
         <div className={QueryBuilderS.QueryFilters}>{filterList}</div>
-        <div className="mx2">
+        <div className={CS.mx2}>
           <PopoverWithTrigger
             id="FilterPopover"
             ref={this.filterPopover}
             triggerElement={addFilterButton}
-            triggerClasses="flex align-center"
+            triggerClasses={cx(CS.flex, CS.alignCenter)}
             horizontalAttachments={["left", "center"]}
             autoWidth
           >

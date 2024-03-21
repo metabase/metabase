@@ -44,14 +44,14 @@ export function FilterPopoverHeader({
 
   return showHeader ? (
     <div
-      className={cx(className, "text-medium p1", {
-        "flex align-center": !showOperatorSelectorOnOwnRow,
+      className={cx(className, CS.textMedium, CS.p1, {
+        [cx(CS.flex, CS.alignCenter)]: !showOperatorSelectorOnOwnRow,
       })}
     >
       {showFieldPicker && (
         <SidebarHeader
-          className={cx("text-default py1", {
-            pr2: !showOperatorSelectorOnOwnRow,
+          className={cx(CS.textDefault, CS.py1, {
+            [CS.pr2]: !showOperatorSelectorOnOwnRow,
           })}
           title={field.displayName({ includeTable: true })}
           onBack={onBack}
