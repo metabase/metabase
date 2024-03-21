@@ -37,7 +37,6 @@ export const getWaterfallXAxisModel = (
 ): WaterfallXAxisModel => {
   const xAxisModel = getXAxisModel(
     dimensionModel,
-    undefined,
     rawSeries,
     dataset,
     settings,

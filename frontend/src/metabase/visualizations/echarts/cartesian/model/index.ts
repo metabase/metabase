@@ -97,13 +97,8 @@ export const getCartesianChartModel = (
   }
   dataset = sortDataset(dataset, settings["graph.x_axis.scale"]);
 
-  const xAxisSeriesModel = seriesModels.find(
-    seriesModel => seriesModel.column.name === dimensionModel.column.name,
-  );
-
   const xAxisModel = getXAxisModel(
     dimensionModel,
-    xAxisSeriesModel,
     rawSeries,
     dataset,
     settings,

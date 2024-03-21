@@ -762,25 +762,17 @@ export const isNumeric = (
   return numericScale.includes(scale as NumericScale);
 };
 
-function getXAxisLabel(
-  seriesModel: SeriesModel | undefined,
-  settings: ComputedVisualizationSettings,
-) {
-  if (settings["graph.x_axis.labels_enabled"] === false) {
-    return undefined;
-  }
-  return settings["graph.x_axis.title_text"] ?? seriesModel?.name;
-}
-
 export function getXAxisModel(
   dimensionModel: DimensionModel,
-  seriesModel: SeriesModel | undefined,
   rawSeries: RawSeries,
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): XAxisModel {
-  const label = getXAxisLabel(seriesModel, settings);
+  const label = settings["graph.x_axis.labels_enabled"]
+    ? settings["graph.x_axis.title_text"]
+    : undefined;
+
   const xAxisScale = settings["graph.x_axis.scale"];
 
   if (xAxisScale === "timeseries") {
