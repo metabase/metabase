@@ -4,7 +4,6 @@
   --gap-1: 0.5rem;
 }
 
-:global(.flex),
 .flex {
   display: flex;
 }
