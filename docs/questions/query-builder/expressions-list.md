@@ -31,7 +31,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [case](./expressions/case.md)
     - [coalesce](./expressions/coalesce.md)
     - [isnull](./expressions/isnull.md)
-    - [nonnull](#nonnull)
+    - [notnull](#notnull)
 
   - [Math functions](#math-functions)
     - [abs](#abs)
@@ -259,7 +259,7 @@ Syntax: `isnull(column)`
 
 Example: `isnull([Tax])` would return true if no value were present in the column for that row.
 
-Related: [nonnull](#nonnull), [isempty](#isempty)
+Related: [notnull](#notnull), [isempty](#isempty)
 
 ### notnull
 
@@ -269,7 +269,7 @@ Syntax: `notnull(column)`
 
 Example: `notnull([Tax])` would return true if there is a value present in the column for that row.
 
-Related: [isnull](#nonnull), [nonempty](#notempty)
+Related: [isnull](#isnull), [notempty](#notempty)
 
 ## Math functions
 Math functions implement common mathematical operations.
@@ -415,13 +415,13 @@ Related: [startsWith](#startswith), [contains](#contains), [doesNotContain](#doe
 
 ### [isempty](./expressions/isempty.md)
 
-Returns true if a _string column_ contains an empty string or is null. Calling this function on a non-string column will cause an error.
+Returns true if a _string column_ contains an empty string or is null. Calling this function on a non-string column will cause an error. You can use [isnull](#isnull) for non-string columns.
 
 Syntax: `isempty(column)`
 
 Example: `isempty([Feedback])` would return true if `Feedback` was an empty string (`''`) or did not contain a value.
 
-Related: [nonempty](#nonempty), [isnull](#isnull)
+Related: [notempty](#notempty), [isnull](#isnull)
 
 ### ltrim
 
@@ -451,9 +451,9 @@ Example: `lower([Status])`. If the `Status` were "QUIET", the expression would r
 
 Related: [upper](#upper).
 
-### [nonempty](./expressions/isempty.md)
+### notempty
 
-Returns true if a _string column_ contains a value that is not the empty string. Calling this function on a non-string column will cause an error.
+Returns true if a _string column_ contains a value that is not the empty string. Calling this function on a non-string column will cause an error. You can use [notnull](#notnull) on non-string columns.
 
 Syntax: `notempty(column)`
 
