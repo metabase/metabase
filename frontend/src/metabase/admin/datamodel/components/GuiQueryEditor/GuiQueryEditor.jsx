@@ -235,7 +235,7 @@ export class GuiQueryEditor extends Component {
           QueryBuilderS.GuiBuilderData,
           CS.flex,
           CS.alignCenter,
-            GuiQueryEditorS.arrowRight,
+          GuiQueryEditorS.arrowRight,
         )}
         data-testid="gui-builder-data"
       >
