@@ -67,8 +67,7 @@
                               :persist-models           true
                               :table-privileges         true
                               :schemas                  true
-                              :connection-impersonation true
-                              :sync-estimated-row-count true}]
+                              :connection-impersonation true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
