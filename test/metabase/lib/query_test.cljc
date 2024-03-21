@@ -200,7 +200,7 @@
 (deftest ^:parallel normalize-test
   (testing "Normalize (including adding :lib/uuids) when creating a new query"
     (are [x] (=? {:lib/type :mbql/query
-                  :database 1
+                  :database (meta/id)
                   :stages   [{:lib/type     :mbql.stage/mbql
                               :source-table 1
                               :aggregation  [[:count {:lib/uuid string?}]]
@@ -210,18 +210,25 @@
                                               4]]}]}
                  (lib/query meta/metadata-provider x))
       {"lib/type" "mbql/query"
-       "database" 1
+       "database" (meta/id)
        "stages"   [{"lib/type"     "mbql.stage/mbql"
                     "source-table" 1
                     "aggregation"  [["count" {}]]
                     "filters"      [["=" {} ["field" {} 1] 4]]}]}
 
       {:lib/type :mbql/query
-       :database 1
+       :database (meta/id)
        :stages   [{:lib/type     :mbql.stage/mbql
                    :source-table 1
                    :aggregation  [[:count {}]]
                    :filters      [[:=
                                    {}
                                    [:field {} 1]
-                                   4]]}]})))
+                                   4]]}]}
+
+      ;; denormalized legacy query
+      {"type"     "query"
+       "database" (meta/id)
+       "query"    {"source-table" 1
+                   "aggregation"  [["count"]]
+                   "filter"       ["=" ["field" 1 nil] 4]}})))
