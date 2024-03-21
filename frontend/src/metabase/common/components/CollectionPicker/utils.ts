@@ -58,7 +58,7 @@ export const getStateFromIdPath = ({
   const statePath: PickerState<CollectionPickerItem, SearchListQuery> = [
     {
       selectedItem: {
-        name: "", // TODO?
+        name: "",
         model: "collection",
         id: idPath[0],
       },
@@ -76,7 +76,7 @@ export const getStateFromIdPath = ({
       },
       selectedItem: nextLevelId
         ? {
-            name: "", // TODO?
+            name: "",
             model: "collection",
             id: nextLevelId,
           }
