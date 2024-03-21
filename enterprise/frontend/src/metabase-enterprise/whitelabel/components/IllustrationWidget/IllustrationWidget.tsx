@@ -52,7 +52,7 @@ export function IllustrationWidget({
   errorMessageContainerId,
   defaultPreviewType,
 }: IllustrationWidgetProps) {
-  const value = setting.value ?? setting.default;
+  const [value, setValue] = useState(setting.value ?? setting.default);
   const [fileName, setFileName] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -64,8 +64,11 @@ export function IllustrationWidget({
     ],
     [defaultIllustrationLabel],
   );
+  const customIllustrationSource =
+    settingValues[customIllustrationSetting] ?? undefined;
 
   async function handleChange(value: IllustrationSettingValue) {
+    setValue(value);
     setErrorMessage("");
     // Avoid saving the same value
     // When setting.value is set to the default value its value would be `null`
@@ -73,11 +76,9 @@ export function IllustrationWidget({
       return;
     }
 
-    if (value === "custom" && settingValues[customIllustrationSetting]) {
+    if (value === "custom" && customIllustrationSource) {
       await onChange("custom");
-    } else if (value === "custom") {
-      fileInputRef.current?.click();
-    } else {
+    } else if (value !== "custom") {
       await onChange(value);
     }
   }
@@ -116,11 +117,11 @@ export function IllustrationWidget({
     }
     setFileName("");
     // Setting 2 setting values at the same time could result in one of them not being saved
+    setValue("default");
     await onChange("default");
     await onChangeSetting(customIllustrationSetting, null);
   }
 
-  const isCustomIllustration = value === "custom";
   const errorMessageContainer = document.getElementById(
     errorMessageContainerId,
   );
@@ -135,52 +136,54 @@ export function IllustrationWidget({
           style={{ borderRight: `1px solid ${color("border")}` }}
         >
           {getPreviewImage({
-            value,
-            customSource: settingValues[customIllustrationSetting] ?? undefined,
+            value: value,
+            customSource: customIllustrationSource,
             defaultPreviewType,
           })}
         </Flex>
-        <Flex p="lg" w="25rem" align="center" gap="sm">
+        <Flex p="lg" w="25rem" align="center" gap="md" direction="column">
           <Select
             id={id}
             data={data}
             value={value}
             onChange={handleChange}
-            w={isCustomIllustration ? "8.25rem" : "100%"}
-            style={{
-              flexShrink: isCustomIllustration ? 0 : undefined,
-            }}
+            w="100%"
             error={Boolean(errorMessage)}
           />
-          {isCustomIllustration && (
-            <Text truncate="end" ml="auto">
-              {fileName ? fileName : t`Remove uploaded image`}
-            </Text>
+          {value === "custom" && (
+            <Flex gap="sm" w="100%" align="center">
+              <Button
+                style={{ flexShrink: 0 }}
+                onClick={() => fileInputRef.current?.click()}
+              >{t`Choose File`}</Button>
+              <input
+                data-testid="file-input"
+                ref={fileInputRef}
+                hidden
+                onChange={handleFileUpload}
+                type="file"
+                accept="image/jpeg,image/png,image/svg+xml"
+                multiple={false}
+              />
+              <Text truncate="end">
+                {!customIllustrationSource
+                  ? t`No file chosen`
+                  : fileName
+                  ? fileName
+                  : t`Remove uploaded image`}
+              </Text>
+              {customIllustrationSource && (
+                <Button
+                  leftIcon={<Icon name="close" />}
+                  variant="subtle"
+                  c="text-dark"
+                  compact
+                  onClick={handleRemoveCustomIllustration}
+                  aria-label={t`Remove custom illustration`}
+                />
+              )}
+            </Flex>
           )}
-          {/**
-           * <Select /> has an annoying 0.25rem top margin which I don't have time to fix yet.
-           * This makes sure the X button is aligned with the Select component.
-           */}
-          {isCustomIllustration && (
-            <Button
-              leftIcon={<Icon name="close" />}
-              mt="0.25rem"
-              variant="subtle"
-              c="text-dark"
-              compact
-              onClick={handleRemoveCustomIllustration}
-              aria-label={t`Remove custom illustration`}
-            />
-          )}
-          <input
-            data-testid="file-input"
-            hidden
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-            type="file"
-            accept="image/jpeg,image/png,image/svg+xml"
-            multiple={false}
-          />
         </Flex>
       </Flex>
       {errorMessage &&
@@ -226,7 +229,7 @@ function getPreviewImage({
     return null;
   }
 
-  if (value === "custom") {
+  if (value === "custom" && customSource) {
     return <PreviewImage src={customSource} />;
   }
 
