@@ -97,27 +97,6 @@
   justify-content: center;
 }
 
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-layout-centered) {
-    align-items: center;
-    justify-content: center;
-  }
-}
-
-@media screen and (--breakpoint-min-md) {
-  :global(.md-layout-centered) {
-    align-items: center;
-    justify-content: center;
-  }
-}
-
-@media screen and (--breakpoint-min-lg) {
-  :global(.lg-layout-centered) {
-    align-items: center;
-    justify-content: center;
-  }
-}
-
 :global(.flex-column),
 .flexColumn {
   flex-direction: column;
