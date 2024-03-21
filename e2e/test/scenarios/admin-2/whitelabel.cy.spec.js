@@ -340,7 +340,7 @@ describeEE("formatting > whitelabel", () => {
         .clear()
         .type("/test-2")
         .blur();
-      cy.wait(["@putLandingPage", "@getSettings"]);
+      undoToast().findByText("Changes saved").should("be.visible");
 
       // set to valid value then test invalid value is not persisted
       cy.findByLabelText("Landing page custom destination")
