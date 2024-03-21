@@ -5824,7 +5824,7 @@ databaseChangeLog:
             sql: >-
               DROP VIEW IF EXISTS v_content;
 
-    - changeSet:
+  - changeSet:
       id: v50.2024-02-29T15:06:43
       author: tsmacdonald
       comment: Add the query_field join table
