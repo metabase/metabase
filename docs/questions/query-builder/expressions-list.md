@@ -52,7 +52,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [ltrim](#ltrim)
     - [length](#length)
     - [lower](#lower)
-    - [nonempty](#nonempty)
+    - [notempty](#notempty)
     - [regexextract](./expressions/regexextract.md)
     - [replace](#replace)
     - [rtrim](#rtrim)
@@ -261,15 +261,15 @@ Example: `isnull([Tax])` would return true if no value were present in the colum
 
 Related: [nonnull](#nonnull), [isempty](#isempty)
 
-### [nonnull](./expressions/isnull.md)
+### notnull
 
 Returns true if the column contains a value.
 
-Syntax: `nonnull(column)`
+Syntax: `notnull(column)`
 
-Example: `nonnull([Tax])` would return true if there is a value present in the column for that row.
+Example: `notnull([Tax])` would return true if there is a value present in the column for that row.
 
-Related: [isnull](#nonnull), [nonempty](#nonempty)
+Related: [isnull](#nonnull), [nonempty](#notempty)
 
 ## Math functions
 Math functions implement common mathematical operations.
@@ -455,13 +455,12 @@ Related: [upper](#upper).
 
 Returns true if a _string column_ contains a value that is not the empty string. Calling this function on a non-string column will cause an error.
 
-Syntax: `nonempty(column)`
+Syntax: `notempty(column)`
 
-Example: `nonempty([Feedback])` would return true if `Feedback` contains a value that isn't the empty string (`''`).
+Example: `notempty([Feedback])` would return true if `Feedback` contains a value that isn't the empty string (`''`).
 
-[Learn more](./expressions/isempty.md) about how Metabase handles empty strings and nulls.
 
-Related: [isempty](#isempty), [nonnull](#nonnull)
+Related: [isempty](#isempty), [isnull](#isnull), [notnull](#notnull)
 
 
 ### [regexextract](./expressions/regexextract.md)
