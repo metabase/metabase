@@ -1,20 +1,16 @@
 import { useCallback } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 
+import { useGetNativeDatasetQuery } from "metabase/api";
 import { getEngineNativeType } from "metabase/lib/engine";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import { updateQuestion, setUIControls } from "metabase/query_builder/actions";
-import {
-  getNativeQueryFn,
-  getQuestion,
-} from "metabase/query_builder/selectors";
+import { getQuestion } from "metabase/query_builder/selectors";
 import { Button } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
-import type { NativeQueryForm } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import * as Lib from "metabase-lib";
 
-import { NativeQueryPreview, useNativeQuery } from "../NativeQueryPreview";
+import { NativeQueryPreview } from "../NativeQueryPreview";
 
 import { createDatasetQuery } from "./utils";
 
@@ -28,18 +24,15 @@ const BUTTON_TITLE = {
   json: t`Convert this question to a native query`,
 };
 
-interface NativeQueryPreviewSidebarProps {
-  question: Question;
-  onLoadQuery: () => Promise<NativeQueryForm>;
-}
-
-const NativeQueryPreviewSidebar = ({
-  question,
-  onLoadQuery,
-}: NativeQueryPreviewSidebarProps): JSX.Element => {
-  const engineType = getEngineNativeType(question.database()?.engine);
-  const { query, error, isLoading } = useNativeQuery(question, onLoadQuery);
+export const NativeQueryPreviewSidebar = (): JSX.Element => {
   const dispatch = useDispatch();
+  const question = checkNotNull(useSelector(getQuestion));
+
+  const engineType = getEngineNativeType(question.database()?.engine);
+
+  const payload = Lib.toLegacyQuery(question.query());
+  const { data, error, isLoading } = useGetNativeDatasetQuery(payload);
+  const query = data?.query;
 
   const handleConvertClick = useCallback(() => {
     if (!query) {
@@ -53,11 +46,14 @@ const NativeQueryPreviewSidebar = ({
     dispatch(setUIControls({ isNativeEditorOpen: true }));
   }, [question, query, dispatch]);
 
+  const getErrorMessage = (error: unknown) =>
+    typeof error === "string" ? error : undefined;
+
   return (
     <NativeQueryPreview
       title={TITLE[engineType]}
       query={query}
-      error={error}
+      error={getErrorMessage(error)}
       isLoading={isLoading}
     >
       {query && (
@@ -68,12 +64,3 @@ const NativeQueryPreviewSidebar = ({
     </NativeQueryPreview>
   );
 };
-
-const mapStateToProps = (state: State) => ({
-  // FIXME: remove the non-null assertion operator
-  question: getQuestion(state)!,
-  onLoadQuery: getNativeQueryFn(state),
-});
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps)(NativeQueryPreviewSidebar);
