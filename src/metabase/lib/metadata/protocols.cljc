@@ -40,9 +40,9 @@
     match [[metabase.lib.metadata/CardMetadata]. Currently just used for display name purposes if you have a Card as a
     source query.")
 
-  (metric [metadata-provider metric-id]
+  (legacy-metric [metadata-provider metric-id]
     "Return metadata for a particular capital-M Metric, i.e. something from the `metric` table in the application
-    database. Metadata should match [[metabase.lib.metadata/MetricMetadata]].")
+    database. Metadata should match [[metabase.lib.metadata/LegacyMetricMetadata]].")
 
   (segment [metadata-provider segment-id]
     "Return metadata for a particular captial-S Segment, i.e. something from the `segment` table in the application
@@ -64,9 +64,9 @@
     "Return a sequence of Fields associated with a Table with the given `table-id`. Fields should satisfy
   the [[metabase.lib.metadata/ColumnMetadata]] schema. If no such Table exists, this should error.")
 
-  (metrics [metadata-provider table-id]
+  (legacy-metrics [metadata-provider table-id]
     "Return a sequence of legacy Metrics associated with a Table with the given `table-id`. Metrics should satisfy
-  the [[metabase.lib.metadata/MetricMetadata]] schema. If no such Table exists, this should error.")
+  the [[metabase.lib.metadata/LegacyMetricMetadata]] schema. If no such Table exists, this should error.")
 
   (segments [metadata-provider table-id]
     "Return a sequence of legacy Segments associated with a Table with the given `table-id`. Segments should satisfy

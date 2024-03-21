@@ -26,7 +26,7 @@
    [:tables   {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/TableMetadata   :metadata/table)]]]
    [:fields   {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/ColumnMetadata  :metadata/column)]]]
    [:cards    {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/card   :metadata/card)]]]
-   [:metrics  {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/LegacyMetricMetadata  :metadata/metric)]]]
+   [:metrics  {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/LegacyMetricMetadata  :metadata/legacy-metric)]]]
    [:segments {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/SegmentMetadata :metadata/segment)]]]
    [:settings {:optional true} [:maybe [:map-of :keyword any?]]]])
 
@@ -43,7 +43,7 @@
   (card     [_this card-id]    (some-> (m/find-first #(= (:id %) card-id) (:cards metadata))
                                        (assoc :lib/type :metadata/card)))
   (metric   [_this metric-id]  (some-> (m/find-first #(= (:id %) metric-id) (:metrics metadata))
-                                       (assoc :lib/type :metadata/metric)))
+                                       (assoc :lib/type :metadata/legacy-metric)))
   (segment  [_this segment-id] (some-> (m/find-first #(= (:id %) segment-id) (:segments metadata))
                                        (assoc :lib/type :metadata/segment)))
   (tables   [_this]            (for [table (:tables metadata)]
@@ -54,7 +54,7 @@
                                  (assoc field :lib/type :metadata/column)))
   (metrics  [_this table-id]   (for [metric (:metrics metadata)
                                      :when  (= (:table-id metric) table-id)]
-                                 (assoc metric :lib/type :metadata/metric)))
+                                 (assoc metric :lib/type :metadata/legacy-metric)))
   (segments [_this table-id]   (for [segment (:segments metadata)
                                      :when   (= (:table-id segment) table-id)]
                                  (assoc segment :lib/type :metadata/segment)))

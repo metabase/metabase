@@ -45,21 +45,21 @@
 (deftest ^:parallel normalize-metric-segment-definition-test
   (testing "Legacy Metric/Segment definitions should get normalized"
     (is (= {:filter [:= [:field 1 nil] [:field 2 {:temporal-unit :month}]]}
-           ((:out mi/transform-metric-segment-definition)
+           ((:out mi/transform-legacy-metric-segment-definition)
             (json/generate-string
              {:filter [:= [:field-id 1] [:datetime-field [:field-id 2] :month]]}))))))
 
 (deftest ^:parallel dont-explode-on-way-out-from-db-test
   (testing "`metric-segment-definition`s should avoid explosions coming out of the DB..."
     (is (= nil
-           ((:out mi/transform-metric-segment-definition)
+           ((:out mi/transform-legacy-metric-segment-definition)
             (json/generate-string
              {:filter 1000}))))
 
     (testing "...but should still throw them coming in"
       (is (thrown?
            Exception
-           ((:in mi/transform-metric-segment-definition)
+           ((:in mi/transform-legacy-metric-segment-definition)
             {:filter 1000}))))))
 
 (deftest handle-errors-gracefully-test

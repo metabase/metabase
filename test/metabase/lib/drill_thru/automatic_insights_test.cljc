@@ -115,7 +115,7 @@
     (let [metric   {:description "Orders with a subtotal of $100 or more."
                     :archived false
                     :updated-at "2023-10-04T20:11:34.029582"
-                    :lib/type :metadata/metric
+                    :lib/type :metadata/legacy-metric
                     :definition
                     {"source-table" (meta/id :orders)
                      "aggregation" [["count"]]

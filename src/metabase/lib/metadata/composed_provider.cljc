@@ -46,17 +46,17 @@
 
 (deftype ComposedMetadataProvider [metadata-providers]
   metadata.protocols/MetadataProvider
-  (database [_this]              (some metadata.protocols/database metadata-providers))
-  (table    [_this table-id]     (object-for-id metadata.protocols/table   table-id     metadata-providers))
-  (field    [_this field-id]     (object-for-id metadata.protocols/field   field-id     metadata-providers))
-  (card     [_this card-id]      (object-for-id metadata.protocols/card    card-id      metadata-providers))
-  (metric   [_this metric-id]    (object-for-id metadata.protocols/metric  metric-id    metadata-providers))
-  (segment  [_this segment-id]   (object-for-id metadata.protocols/segment segment-id   metadata-providers))
-  (setting  [_this setting-name] (object-for-id metadata.protocols/setting setting-name metadata-providers))
-  (tables   [_this]              (m/distinct-by :id (mapcat metadata.protocols/tables metadata-providers)))
-  (fields   [_this table-id]     (objects-for-table-id metadata.protocols/fields   table-id metadata-providers))
-  (metrics  [_this table-id]     (objects-for-table-id metadata.protocols/metrics  table-id metadata-providers))
-  (segments [_this table-id]     (objects-for-table-id metadata.protocols/segments table-id metadata-providers))
+  (database       [_this]              (some metadata.protocols/database metadata-providers))
+  (table          [_this table-id]     (object-for-id metadata.protocols/table         table-id     metadata-providers))
+  (field          [_this field-id]     (object-for-id metadata.protocols/field         field-id     metadata-providers))
+  (card           [_this card-id]      (object-for-id metadata.protocols/card          card-id      metadata-providers))
+  (legacy-metric  [_this metric-id]    (object-for-id metadata.protocols/legacy-metric metric-id    metadata-providers))
+  (segment        [_this segment-id]   (object-for-id metadata.protocols/segment       segment-id   metadata-providers))
+  (setting        [_this setting-name] (object-for-id metadata.protocols/setting       setting-name metadata-providers))
+  (tables         [_this]              (m/distinct-by :id (mapcat metadata.protocols/tables metadata-providers)))
+  (fields         [_this table-id]     (objects-for-table-id metadata.protocols/fields         table-id metadata-providers))
+  (legacy-metrics [_this table-id]     (objects-for-table-id metadata.protocols/legacy-metrics table-id metadata-providers))
+  (segments       [_this table-id]     (objects-for-table-id metadata.protocols/segments       table-id metadata-providers))
 
   metadata.protocols/CachedMetadataProvider
   (cached-database [_this]

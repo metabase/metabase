@@ -1,4 +1,4 @@
-(ns metabase.api.metric
+(ns metabase.api.legacy-metric
   "/api/legacy-metric endpoints."
   (:require
    [clojure.data :as data]

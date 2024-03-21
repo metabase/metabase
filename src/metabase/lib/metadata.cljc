@@ -34,18 +34,14 @@
   to differentiate between the two versions."
   [:ref ::lib.schema.metadata/column])
 
-(def ^:deprecated CardMetadata
-  "DEPRECATED: use [[::lib.schema.metadata/card]] instead."
-  [:ref ::lib.schema.metadata/card])
-
 (def SegmentMetadata
   "More or less the same as a [[metabase.models.segment]], but with kebab-case keys."
   [:ref ::lib.schema.metadata/segment])
 
 (def LegacyMetricMetadata
-  "Malli schema for a legacy v1 [[metabase.models.metric]], but with kebab-case keys. A Metric defines an MBQL snippet
-  with an aggregation and optionally a filter clause. You can add a `:metric` reference to the `:aggregations` in an
-  MBQL stage, and the QP treats it like a macro and expands it to the underlying clauses --
+  "Malli schema for a legacy v1 [[metabase.models.legacy-metric]], but with kebab-case keys. A Metric defines an MBQL
+  snippet with an aggregation and optionally a filter clause. You can add a `:metric` reference to the `:aggregations`
+  in an MBQL stage, and the QP treats it like a macro and expands it to the underlying clauses --
   see [[metabase.query-processor.middleware.expand-macros]]."
   [:ref ::lib.schema.metadata/legacy-metric])
 
@@ -166,11 +162,11 @@
    segment-id            :- ::lib.schema.id/segment]
   (lib.metadata.protocols/segment (->metadata-provider metadata-providerable) segment-id))
 
-(mu/defn metric :- [:maybe LegacyMetricMetadata]
+(mu/defn legacy-metric :- [:maybe LegacyMetricMetadata]
   "Get metadata for the Metric with `metric-id`, if it can be found."
   [metadata-providerable :- MetadataProviderable
-   metric-id             :- ::lib.schema.id/metric]
-  (lib.metadata.protocols/metric (->metadata-provider metadata-providerable) metric-id))
+   metric-id             :- ::lib.schema.id/legacy-metric]
+  (lib.metadata.protocols/legacy-metric (->metadata-provider metadata-providerable) metric-id))
 
 (mu/defn table-or-card :- [:maybe [:or ::lib.schema.metadata/card TableMetadata]]
   "Convenience, for frontend JS usage (see #31915): look up metadata based on Table ID, handling legacy-style
@@ -210,7 +206,7 @@
   mostly useful for mock metadata providers and the like; the only metadata provider where the performance boost
   from [[bulk-metadata]] is important, the application database MetadataProvider, implements `BulkMetadata` natively."
   [provider      :- ::lib.schema.metadata/metadata-provider
-   metadata-type :- [:enum :metadata/card :metadata/column :metadata/metric :metadata/segment :metadata/table]
+   metadata-type :- [:enum :metadata/card :metadata/column :metadata/legacy-metric :metadata/segment :metadata/table]
    ids           :- [:maybe
                      [:or
                       [:set pos-int?]
@@ -218,7 +214,7 @@
   (let [f (case metadata-type
             :metadata/card    lib.metadata.protocols/card
             :metadata/column  lib.metadata.protocols/field
-            :metadata/metric  lib.metadata.protocols/metric
+            :metadata/legacy-metric  lib.metadata.protocols/legacy-metric
             :metadata/segment lib.metadata.protocols/segment
             :metadata/table   lib.metadata.protocols/table)]
     (into []
@@ -242,7 +238,7 @@
 
   This can also be called for side-effects to warm the cache."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   metadata-type         :- [:enum :metadata/card :metadata/column :metadata/metric :metadata/segment :metadata/table]
+   metadata-type         :- [:enum :metadata/card :metadata/column :metadata/legacy-metric :metadata/segment :metadata/table]
    ids                   :- [:maybe [:or [:sequential pos-int?] [:set pos-int?]]]]
   (when-let [ids (not-empty (cond-> ids
                               (not (set? ids)) distinct))] ; remove duplicates but preserve order.
@@ -270,7 +266,7 @@
                                                          [:id pos-int?]]]]
   "Like [[bulk-metadata]], but verifies that all the requested objects were returned; throws an Exception otherwise."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   metadata-type         :- [:enum :metadata/card :metadata/column :metadata/metric :metadata/segment :metadata/table]
+   metadata-type         :- [:enum :metadata/card :metadata/column :metadata/legacy-metric :metadata/segment :metadata/table]
    ids                   :- [:maybe [:or [:sequential pos-int?] [:set pos-int?]]]]
   (let [results     (bulk-metadata metadata-providerable metadata-type ids)
         fetched-ids (into #{} (keep :id) results)]

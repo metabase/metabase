@@ -37,7 +37,7 @@
 (methodical/defmethod t2/model-for-automagic-hydration [:default :segment] [_original-model _k] :model/Segment)
 
 (t2/deftransforms :model/Segment
-  {:definition mi/transform-metric-segment-definition})
+  {:definition mi/transform-legacy-metric-segment-definition})
 
 (doto :model/Segment
   (derive :metabase/model)

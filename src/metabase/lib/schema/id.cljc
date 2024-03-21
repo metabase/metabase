@@ -40,7 +40,7 @@
 (mr/def ::segment
   pos-int?)
 
-(mr/def ::metric
+(mr/def ::legacy-metric
   pos-int?)
 
 (mr/def ::snippet

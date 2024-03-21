@@ -116,7 +116,7 @@
   ;; supported.
   #_metric-id [:schema
                [:or
-                [:ref ::id/metric]
+                [:ref ::id/legacy-metric]
                 ;; GA metric ref
                 ::common/non-blank-string]])
 

@@ -184,7 +184,7 @@
                                                                              [:segment 1]]}}]})
       (testing "Sanity check: make sure we're overriding the old Metric 1 from mock-metadata-provider"
         (is (=? {:name "My Metric"}
-                (lib.metadata/metric (qp.store/metadata-provider) 1))))
+                (lib.metadata/legacy-metric (qp.store/metadata-provider) 1))))
       (is (= (mbql-query
               {:source-table 1000
                :aggregation  [[:aggregation-options [:sum [:field 18 nil]] {:display-name "My Metric"}]]
@@ -400,7 +400,7 @@
 
 (deftest ^:parallel preserve-uuids-test
   (testing "the aggregation that replaces a :metric ref should keep the :metric's :lib/uuid, so :aggregation refs pointing to it are still valid"
-    (let [metric            {:lib/type    :metadata/metric
+    (let [metric            {:lib/type    :metadata/legacy-metric
                              :id          1
                              :table-id    2
                              :name        "Revenue"
