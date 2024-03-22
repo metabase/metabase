@@ -23,7 +23,7 @@ import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants
 
 import type { ChartMeasurements } from "../chart-measurements/types";
 import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
-import { getTimeSeriesIntervalDuration } from "../utils/timeseries";
+import { getTicksOptions } from "./ticks";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
 
@@ -170,6 +170,7 @@ const getCommonDimensionAxisOptions = (
 
 export const buildDimensionAxis = (
   chartModel: BaseCartesianChartModel,
+  width: number,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   hasTimelineEvents: boolean,
@@ -189,6 +190,7 @@ export const buildDimensionAxis = (
   if (isTimeSeriesAxis(xAxisModel)) {
     return buildTimeSeriesDimensionAxis(
       xAxisModel,
+      width,
       hasTimelineEvents,
       settings,
       chartMeasurements,
@@ -252,12 +254,14 @@ export const buildNumericDimensionAxis = (
 
 export const buildTimeSeriesDimensionAxis = (
   xAxisModel: TimeSeriesXAxisModel,
+  width: number,
   hasTimelineEvents: boolean,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
 ): TimeAxisBaseOption => {
-  const { formatter } = xAxisModel;
+  const { formatter, maxInterval, minInterval, canRender, xDomainPadded } =
+    getTicksOptions(xAxisModel, width);
 
   return {
     ...getCommonDimensionAxisOptions(
@@ -273,20 +277,16 @@ export const buildTimeSeriesDimensionAxis = (
       ...getDimensionTicksDefaultOption(settings, renderingContext),
       formatter: (rawValue: number) => {
         const value = xAxisModel.fromAxisValue(rawValue);
-        if (xAxisModel.tickRenderPredicate?.(value) ?? true) {
+        if (canRender(value)) {
           return ` ${formatter(value.format("YYYY-MM-DDTHH:mm:ss"))} `; // spaces force padding between ticks
         }
         return "";
       },
     },
-    min: range => {
-      return range.min - getTimeSeriesIntervalDuration(xAxisModel.interval) / 2;
-    },
-    max: range => {
-      return range.max + getTimeSeriesIntervalDuration(xAxisModel.interval) / 2;
-    },
-    minInterval: xAxisModel.ticksMinInterval,
-    maxInterval: xAxisModel.ticksMaxInterval,
+    min: xDomainPadded[0],
+    max: xDomainPadded[1],
+    minInterval,
+    maxInterval,
   };
 };
 
@@ -407,6 +407,7 @@ const buildMetricsAxes = (
 
 export const buildAxes = (
   chartModel: BaseCartesianChartModel,
+  width: number,
   chartMeasurements: ChartMeasurements,
   settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
@@ -415,6 +416,7 @@ export const buildAxes = (
   return {
     xAxis: buildDimensionAxis(
       chartModel,
+      width,
       settings,
       chartMeasurements,
       hasTimelineEvents,

@@ -7,47 +7,10 @@ import type {
   RawSeries,
   RowValue,
 } from "metabase-types/api";
-import type {
-  CartesianChartDateTimeAbsoluteUnit,
-  TimeSeriesInterval,
-} from "metabase/visualizations/echarts/cartesian/model/types";
+import type { TimeSeriesInterval } from "metabase/visualizations/echarts/cartesian/model/types";
 import { parseTimestamp } from "metabase/lib/time";
 import type { Formatter } from "metabase/visualizations/types";
 import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
-
-const getApproximateUnitDurationMs = (
-  unit: CartesianChartDateTimeAbsoluteUnit,
-) => {
-  switch (unit) {
-    case "ms":
-      return 1;
-    case "second":
-      return 1000;
-    case "minute":
-      return 60 * 1000;
-    case "hour":
-      return 60 * 60 * 1000;
-    case "day":
-      return 24 * 60 * 60 * 1000;
-    case "week":
-      return 7 * 24 * 60 * 60 * 1000;
-    case "month":
-      return 28 * 24 * 60 * 60 * 1000;
-    case "quarter":
-      return 3 * 30 * 24 * 60 * 60 * 1000;
-    case "year":
-      return 365 * 24 * 60 * 60 * 1000;
-    default:
-      throw Error(`Unsupported unit ${unit}`);
-  }
-};
-
-export const getTimeSeriesIntervalDuration = ({
-  unit,
-  count,
-}: TimeSeriesInterval) => {
-  return getApproximateUnitDurationMs(unit) * count;
-};
 
 export const tryGetDate = (rowValue: RowValue): Dayjs | null => {
   if (typeof rowValue === "boolean") {
@@ -86,10 +49,11 @@ export const TIMESERIES_INTERVALS: (TimeSeriesInterval & {
   { unit: "month", count: 1, testFn: (d: Dayjs) => d.date() }, // (15) 1 month
   { unit: "month", count: 3, testFn: (d: Dayjs) => d.month() % 3 }, // (16) 3 months / 1 quarter
   { unit: "year", count: 1, testFn: (d: Dayjs) => d.month() }, // (17) 1 year
-  { unit: "year", count: 5, testFn: (d: Dayjs) => d.year() % 5 }, // (18) 5 year
-  { unit: "year", count: 10, testFn: (d: Dayjs) => d.year() % 10 }, // (19) 10 year
-  { unit: "year", count: 50, testFn: (d: Dayjs) => d.year() % 50 }, // (20) 50 year
-  { unit: "year", count: 100, testFn: (d: Dayjs) => d.year() % 100 }, // (21) 100 year
+  { unit: "year", count: 2, testFn: (d: Dayjs) => d.year() % 2 }, // (18) 5 year
+  { unit: "year", count: 5, testFn: (d: Dayjs) => d.year() % 5 }, // (19) 5 year
+  { unit: "year", count: 10, testFn: (d: Dayjs) => d.year() % 10 }, // (20) 10 year
+  { unit: "year", count: 50, testFn: (d: Dayjs) => d.year() % 50 }, // (21) 50 year
+  { unit: "year", count: 100, testFn: (d: Dayjs) => d.year() % 100 }, // (22) 100 year
 ];
 
 // mapping from Metabase "unit" to d3 intervals above
@@ -163,7 +127,7 @@ export function computeTimeseriesDataInverval(
 
 /// The number of milliseconds between each tick for an entry in TIMESERIES_INTERVALS.
 /// For example a "5 seconds" interval would have a tick "distance" of 5000 milliseconds.
-function intervalTickDistanceMilliseconds(interval: TimeSeriesInterval) {
+export function getTimeSeriesIntervalDuration(interval: TimeSeriesInterval) {
   // add COUNT nuumber of INTERVALS to the UNIX timestamp 0. e.g. add '5 hours' to 0. Then get the new timestamp
   // (in milliseconds). Since we added to 0 this will be the interval between each tick
   return dayjs(0).add(interval.count, interval.unit).valueOf();
@@ -176,7 +140,7 @@ function expectedTickCount(
   timeRangeMilliseconds: number,
 ) {
   return Math.ceil(
-    timeRangeMilliseconds / intervalTickDistanceMilliseconds(interval),
+    timeRangeMilliseconds / getTimeSeriesIntervalDuration(interval),
   );
 }
 
@@ -186,6 +150,7 @@ function timeseriesTicksInterval(
   xInterval: TimeSeriesInterval,
   timeRangeMilliseconds: number,
   maxTickCount: number,
+  minTickCount: number = 2,
 ) {
   // first we want to find out where in TIMESERIES_INTERVALS we should start looking for a good match. Find the
   // interval with a matching interval and count (e.g. `hour` and `1`) and we'll start there.
@@ -197,31 +162,43 @@ function timeseriesTicksInterval(
     initialIndex = 0;
   }
 
-  // now starting at the TIMESERIES_INTERVALS entry in question, calculate the expected tick count for that interval
-  // based on the time range we are displaying. If the expected tick count is less than or equal to the target
-  // maxTickCount, we can go ahead and use this interval. Otherwise continue on to the next larger interval, for
-  // example every 3 hours instead of every one hour. Continue until we find something with an interval large enough
-  // to keep the total tick count under the max tick count
-  for (const interval of _.rest(TIMESERIES_INTERVALS, initialIndex)) {
-    if (expectedTickCount(interval, timeRangeMilliseconds) <= maxTickCount) {
-      return interval;
+  // Fallback value: the largest tick interval (every 100 years)
+  let intervalIndex = TIMESERIES_INTERVALS.length - 1;
+
+  // Looking for the first interval which produces less ticks than the maxTicksCount.
+  // However, if it produces less than minTickCount ticks we prefer taking a smaller previous interval.
+  for (let i = initialIndex; i < TIMESERIES_INTERVALS.length; i++) {
+    const intervalTicksCount = expectedTickCount(
+      TIMESERIES_INTERVALS[i],
+      timeRangeMilliseconds,
+    );
+
+    if (intervalTicksCount > maxTickCount) {
+      continue;
+    }
+
+    // finding an interval that produces less than maxTicksCount ticks
+    if (intervalTicksCount <= maxTickCount) {
+      // check if the interval produces less ticks than minTickCount
+      const isTooSparse = intervalTicksCount < minTickCount;
+      // if the interval produces too few ticks select the previous interval
+      intervalIndex = isTooSparse ? Math.max(i - 1, 0) : i;
+      break;
     }
   }
 
-  // If we still failed to find an interval that will produce less ticks than the max then fall back to the largest
-  // tick interval (every 100 years)
-  return TIMESERIES_INTERVALS[TIMESERIES_INTERVALS.length - 1];
+  return TIMESERIES_INTERVALS[intervalIndex];
 }
 
 /// return the maximum number of ticks to show for a timeseries chart of a given width
 function maxTicksForChartWidth(chartWidth: number, tickFormat: Formatter) {
   const PIXELS_PER_CHARACTER = 7;
-  // if there isn't enough buffer, the labels are hidden in LineAreaBarPostRender
-  const TICK_BUFFER_PIXELS = 20;
+  // if there isn't enough buffer, the labels are hidden by ECharts
+  const TICK_BUFFER_PIXELS = 10;
 
   // day of week and month names vary in length, but it's slow to check all of them
   // as an approximation we just use a specific date which was long in my locale
-  const formattedValue = tickFormat(new Date(2019, 8, 4));
+  const formattedValue = tickFormat(new Date(2019, 8, 4).toISOString());
   const pixelsPerTick =
     formattedValue.length * PIXELS_PER_CHARACTER + TICK_BUFFER_PIXELS;
   return Math.floor(chartWidth / pixelsPerTick); // round down so we don't end up with too many ticks
@@ -241,13 +218,22 @@ export function computeTimeseriesTicksInterval(
   xDomain: ContinuousDomain,
   xInterval: TimeSeriesInterval,
   chartWidth: number,
-  tickFormat: Formatter,
+  tickFormat: (value: RowValue) => string,
 ) {
   return timeseriesTicksInterval(
     xInterval,
     timeRangeMilliseconds(xDomain),
     maxTicksForChartWidth(chartWidth, tickFormat),
   );
+}
+
+export function getLargestInterval(intervals: TimeSeriesInterval[]) {
+  return intervals.reduce((largest, current) => {
+    return getTimeSeriesIntervalDuration(current) >
+      getTimeSeriesIntervalDuration(largest)
+      ? current
+      : largest;
+  });
 }
 
 // We should always have results_timezone, but just in case we fallback to UTC

@@ -104,6 +104,7 @@ export const getCartesianChartOption = (
     series: seriesOption,
     ...buildAxes(
       chartModel,
+      chartWidth,
       chartMeasurements,
       settings,
       hasTimelineEvents,
