@@ -26,7 +26,6 @@ import {
   replaceValues,
   getDatasetExtents,
   applyVisualizationSettingsDataTransformations,
-  applySquareRootScaling,
   sortDataset,
 } from "./dataset";
 import type {
