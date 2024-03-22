@@ -5,8 +5,8 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { QuestionPickerItem } from "metabase/common/components/EntityPicker";
-import { QuestionPickerModal } from "metabase/common/components/EntityPicker";
+import type { QuestionPickerItem } from "metabase/common/components/QuestionPicker";
+import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
@@ -437,8 +437,8 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       <QuestionPickerModal
         onChange={handleSelect}
         value={{
-          id: replaceCardModalDashCard.card.id,
-          model: "card",
+          id: replaceCardModalDashCard.card.collection_id,
+          model: "collection",
         }}
         onClose={handleClose}
         options={{

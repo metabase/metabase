@@ -4,7 +4,7 @@ import { t } from "ttag";
 import {
   QuestionPickerModal,
   type QuestionPickerItem,
-} from "metabase/common/components/EntityPicker";
+} from "metabase/common/components/QuestionPicker";
 import { replaceCard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { Flex, Button } from "metabase/ui";

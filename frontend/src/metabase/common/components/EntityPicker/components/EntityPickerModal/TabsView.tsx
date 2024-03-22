@@ -26,6 +26,8 @@ export const TabsView = <
   const hasSearchTab = !!searchQuery;
   const defaultTab = hasSearchTab ? { model: "search" } : tabs[0];
 
+  // TODO: better search tab handling, probably need to control tab state
+
   return (
     <Tabs
       defaultValue={defaultTab.model}
@@ -41,11 +43,7 @@ export const TabsView = <
           const { model, icon, displayName } = tab;
 
           return (
-            <Tabs.Tab
-              key={model}
-              value={displayName}
-              icon={<Icon name={icon} />}
-            >
+            <Tabs.Tab key={model} value={model} icon={<Icon name={icon} />}>
               {displayName}
             </Tabs.Tab>
           );
@@ -59,12 +57,12 @@ export const TabsView = <
       </Tabs.List>
 
       {tabs.map(tab => {
-        const { displayName, model } = tab;
+        const { model } = tab;
 
         return (
           <Tabs.Panel
             key={model}
-            value={displayName}
+            value={model}
             style={{
               flexGrow: 1,
               height: 0,
