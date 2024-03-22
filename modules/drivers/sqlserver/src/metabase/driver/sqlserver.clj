@@ -576,11 +576,23 @@
 
 (doseq [op [:= :!= :< :<= :> :>= :between]]
   (defmethod sql.qp/->honeysql [:sqlserver op]
-    [driver [_ field :as clause]]
+    [driver [_tag field & args :as _clause]]
     (binding [*compared-field-options* (when (and (vector? field)
                                                   (= (get field 0) :field))
                                          (get field 2))]
-      ((get-method sql.qp/->honeysql [:sql-jdbc op]) driver clause))))
+      (let [field-hsql (sql.qp/->honeysql driver field)]
+        (into [op field-hsql]
+              (comp (map (fn [arg]
+                           (sql.qp/->honeysql driver arg)))
+                    ;; We read string literals like `2019-11-05T14:23:46.410` as `datetime2`, which is never going to be
+                    ;; `=` to a `datetime` (etc.). Wrap all args after the first in temporal filters in a cast() to the
+                    ;; same type as the first arg so filters work correctly.
+                    (or (when-let [field-database-type (h2x/database-type field-hsql)]
+                          (when (#{"datetime" "datetime2" "datetimeoffset" "smalldatetime"} field-database-type)
+                            (map (fn [expr]
+                                   (h2x/maybe-cast field-database-type expr)))))
+                        identity))
+              args)))))
 
 (defmethod driver/db-default-timezone :sqlserver
   [driver database]
