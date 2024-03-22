@@ -436,6 +436,16 @@
 (mr/def ::card-type
   (into [:enum {:decode/json keyword}] (mapcat (juxt identity u/qualified-name)) card/card-types))
 
+(defn- check-if-card-can-be-saved
+  [dataset-query card-type]
+  (let [card-type (or card-type :question)
+        pMBQL-query (-> dataset-query compatibility/normalize-dataset-query lib.convert/->pMBQL)
+        metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database pMBQL-query))]
+    (when-not (lib/can-save (lib/query metadata-provider pMBQL-query) card-type)
+      (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (clojure.core/name card-type))
+                      {:type        card-type
+                       :status-code 400})))))
+
 (api/defendpoint POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
@@ -452,13 +462,7 @@
    collection_position    [:maybe ms/PositiveInt]
    result_metadata        [:maybe qr/ResultsMetadata]
    cache_ttl              [:maybe ms/PositiveInt]}
-  (let [card-type (or type :question)
-        pMBQL-query (-> dataset_query compatibility/normalize-dataset-query lib.convert/->pMBQL)
-        metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database pMBQL-query))]
-    (when-not (lib/can-save (lib/query metadata-provider pMBQL-query) card-type)
-      (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (clojure.core/name card-type))
-                      {:type        card-type
-                       :status-code 400}))))
+  (check-if-card-can-be-saved dataset_query type)
   ;; check that we have permissions to run the query that we're trying to save
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
@@ -520,6 +524,7 @@
    result_metadata        [:maybe qr/ResultsMetadata]
    cache_ttl              [:maybe ms/PositiveInt]
    collection_preview     [:maybe :boolean]}
+  (check-if-card-can-be-saved dataset_query type)
   (let [card-before-update     (t2/hydrate (api/write-check Card id)
                                            [:moderation_reviews :moderator_details])
         card-updates           (cond-> card-updates
