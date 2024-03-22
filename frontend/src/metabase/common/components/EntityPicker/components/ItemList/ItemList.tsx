@@ -26,7 +26,7 @@ interface ItemListProps<
   selectedItem: Item | null;
   isFolder: (item: Item) => boolean;
   isCurrentLevel: boolean;
-  shouldDisableItem?: (item: TItem) => boolean;
+  shouldDisableItem?: (item: Item) => boolean;
 }
 
 export const ItemList = <
@@ -41,6 +41,7 @@ export const ItemList = <
   selectedItem,
   isFolder,
   isCurrentLevel,
+  shouldDisableItem,
 }: ItemListProps<Id, Model, Item>) => {
   const activeItemIndex = useMemo(() => {
     if (!items) {

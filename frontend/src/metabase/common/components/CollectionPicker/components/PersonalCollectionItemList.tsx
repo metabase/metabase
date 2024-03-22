@@ -11,6 +11,7 @@ export const PersonalCollectionsItemList = ({
   selectedItem,
   isFolder,
   isCurrentLevel,
+  shouldDisableItem,
 }: CollectionItemListProps) => {
   const {
     data: collections,

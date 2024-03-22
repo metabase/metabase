@@ -5,7 +5,7 @@ import { isItemCollection } from "metabase/collections/utils";
 import {
   CollectionPickerModal,
   type CollectionPickerItem,
-} from "metabase/common/components/EntityPicker";
+} from "metabase/common/components/CollectionPicker";
 import type { CollectionId, CollectionItem } from "metabase-types/api";
 
 interface MoveModalProps {

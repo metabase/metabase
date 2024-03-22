@@ -29,7 +29,7 @@ export interface NestedItemPickerProps<
   path: PickerState<Item, Query>;
   isFolder: IsFolder<Id, Model, Item>;
   listResolver: ComponentType<ListProps<Id, Model, Item, Query, Options>>;
-  shouldDisableItem: (item: Item) => boolean;
+  shouldDisableItem?: (item: Item) => boolean;
 }
 
 export function NestedItemPicker<
