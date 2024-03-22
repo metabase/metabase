@@ -162,7 +162,6 @@
 /* margin */
 
 /* 0 */
-:global(.m0),
 .m0 {
   margin: 0;
 }

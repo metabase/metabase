@@ -120,7 +120,7 @@ export const ParametersSettings = ({
               {valuePopulatedLockedParameters.map(parameter => (
                 <StaticParameterWidget
                   key={parameter.id}
-                  className="m0"
+                  className={CS.m0}
                   parameter={parameter}
                   parameters={valuePopulatedLockedParameters}
                   setValue={(value: string) =>

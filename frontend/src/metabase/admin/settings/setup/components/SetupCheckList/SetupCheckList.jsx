@@ -48,7 +48,7 @@ const TaskTitle = ({ title, titleClassName }) => (
 );
 
 const TaskDescription = ({ description }) => (
-  <p className="m0 mt1">{description}</p>
+  <p className={cx(CS.m0, CS.mt1)}>{description}</p>
 );
 
 const CompletionBadge = ({ completed }) => (

@@ -73,7 +73,7 @@ const HelpLink = ({ title, description, link }: HelpLinkProps) => (
     <HelpExternalLink href={link} target="_blank">
       <div>
         <h3 className="text-brand">{title}</h3>
-        <p className="m0 mt1">{description}</p>
+        <p className={cx(CS.m0, CS.mt1)}>{description}</p>
       </div>
     </HelpExternalLink>
   </li>
