@@ -56,6 +56,7 @@ import {
 import {
   getColumnSettingKey,
   findColumnIndexesForColumnSettings,
+  findColumnSettingIndexesForColumns,
 } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { nestedSettings } from "./nested";
@@ -524,34 +525,42 @@ export const buildTableColumnSettings = ({
     // title: t`Columns`,
     widget: ChartSettingTableColumns,
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],
-    getValue: (series, vizSettings) => {
-      function isValid([{ card, data }], columnSettings) {
+    getValue: ([{ data }], vizSettings) => {
+      const { cols } = data;
+
+      function isValid(columnSettings) {
         const columnIndexes = findColumnIndexesForColumnSettings(
-          data.cols,
+          cols,
           columnSettings.filter(({ enabled }) => enabled),
         );
         return columnIndexes.every(columnIndex => columnIndex >= 0);
       }
 
-      function getDefault([{ data }]) {
-        return data.cols.map(col => ({
-          name: col.name,
-          key: getColumnKey(col),
-          enabled: getIsColumnVisible(col),
-          fieldRef: col.field_ref,
-        }));
-      }
-
       function getValue(columnSettings) {
-        return columnSettings.map(setting => ({
-          ...setting,
-          key: getColumnSettingKey(setting),
-        }));
+        const settingIndexes = findColumnSettingIndexesForColumns(
+          cols,
+          columnSettings,
+        );
+
+        return [
+          ...columnSettings.map(setting => ({
+            ...setting,
+            key: getColumnSettingKey(setting),
+          })),
+          ...cols
+            .filter((_, columnIndex) => settingIndexes[columnIndex] < 0)
+            .map(column => ({
+              name: column.name,
+              key: getColumnKey(column),
+              enabled: getIsColumnVisible(column),
+              fieldRef: column.field_ref,
+            })),
+        ];
       }
 
       const columnSettings = vizSettings["table.columns"];
-      if (!columnSettings || !isValid(series, columnSettings)) {
-        return getDefault(series);
+      if (!columnSettings || !isValid(columnSettings)) {
+        return getValue([]);
       } else {
         return getValue(columnSettings);
       }
