@@ -10,9 +10,9 @@ import { Api } from "./api";
 export const fieldApi = Api.injectEndpoints({
   endpoints: builder => ({
     getFieldValues: builder.query<FieldValuesResponse, FieldId>({
-      query: id => ({
+      query: fieldId => ({
         method: "GET",
-        url: `/api/field/${id}/values`,
+        url: `/api/field/${fieldId}/values`,
       }),
     }),
     searchFieldValues: builder.query<FieldValue[], FieldSearchInput>({
@@ -20,6 +20,18 @@ export const fieldApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/field/${fieldId}/search/${searchFieldId}`,
         body,
+      }),
+    }),
+    rescanFieldValues: builder.mutation<void, FieldId>({
+      query: fieldId => ({
+        method: "POST",
+        url: `/api/field/${fieldId}/rescan_values`,
+      }),
+    }),
+    discardFieldValues: builder.mutation<void, FieldId>({
+      query: fieldId => ({
+        method: "POST",
+        url: `/api/field/${fieldId}/discard_values`,
       }),
     }),
   }),
