@@ -155,7 +155,6 @@
   padding-left: var(--padding-4);
 }
 
-:global(.pr4),
 .pr4 {
   padding-right: var(--padding-4);
 }
