@@ -138,118 +138,150 @@ describeEE("formatting > whitelabel", () => {
       });
     });
 
-    describe("login page illustration", () => {
-      it("should only allow uploading a valid image files (PNG, JPG, SVG)", () => {
-        /**
-         * Unfortunately, we couldn't test the browser file selector with Cypress yet.
-         * With `input.selectFile`, we still can select any files unlike the browser file selector
-         * which would respect the `accept` attribute (which specifies the accepted MIME types).
-         */
-        cy.visit("/admin/settings/whitelabel/conceal-metabase");
-
-        cy.findByTestId("login-page-illustration-setting").within(() => {
-          cy.log("test error message for file size > 2MB");
+    describe("custom illustrations", () => {
+      describe("login page illustration", () => {
+        it("should only allow uploading a valid image files (PNG, JPG, SVG) and display on login page", () => {
           /**
-           * This makes sure we scroll to the component which sits at the bottom of the page.
+           * Unfortunately, we couldn't test the browser file selector with Cypress yet.
+           * With `input.selectFile`, we still can select any files unlike the browser file selector
+           * which would respect the `accept` attribute (which specifies the accepted MIME types).
            */
-          cy.findByLabelText("Login and unsubscribe pages").click();
-        });
-        mantinePopover().findByText("Custom").click();
-        cy.findByTestId("login-page-illustration-setting").within(() => {
-          cy.findByTestId("file-input").selectFile(
-            {
-              contents: Cypress.Buffer.from("a".repeat(2 * MB + 1)),
-              fileName: "big-file.jpg",
-              mimeType: "image/jpeg",
-            },
-            { force: true },
-          );
-          cy.findByText(
-            "The image you chose is larger than 2MB. Please choose another one.",
-          ).should("be.visible");
-          cy.findByText("big-file.jpg").should("not.exist");
+          cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
-          cy.findByRole("searchbox", {
-            name: "Login and unsubscribe pages",
-          }).click();
-        });
-        mantinePopover().findByText("Custom").click();
-        cy.log("test uploading a corrupted file");
-        cy.findByTestId("login-page-illustration-setting").within(() => {
-          cy.findByTestId("file-input").selectFile(
-            {
-              contents: Cypress.Buffer.from("a".repeat(2 * MB)),
-              fileName: "corrupted-file.jpg",
-              mimeType: "image/jpeg",
-            },
-            { force: true },
-          );
-          cy.findByText(
-            "The image you chose is corrupted. Please choose another one.",
-          )
-            .scrollIntoView()
-            .should("be.visible");
-          cy.findByText("corrupted-file.jpg").should("not.exist");
-        });
-
-        cy.log('test replacing the "corrupted" file with a valid one');
-        cy.findByTestId("login-page-illustration-setting").within(() => {
-          cy.findByTestId("file-input").selectFile(
-            {
-              contents: "e2e/support/assets/logo.jpeg",
-              mimeType: "image/jpeg",
-            },
-            { force: true },
-          );
-          cy.findByText("logo.jpeg").should("be.visible");
-
-          cy.findByText(
-            "The image you chose is corrupted. Please choose another one.",
-          ).should("not.exist");
-        });
-        undoToast().findByText("Changes saved").should("be.visible");
-        undoToast().icon("close").click();
-
-        cy.log("test removing the custom illustration");
-        cy.findByTestId("login-page-illustration-setting").within(() => {
-          cy.button("Remove custom illustration").click();
-          cy.log(
-            "the default option should be selected once removing the custom illustration",
-          );
-          cy.findByDisplayValue("Lighthouse").should("be.visible");
-        });
-        undoToast().findByText("Changes saved").should("be.visible");
-        undoToast().icon("close").click();
-
-        cy.log("test uploading a valid image file");
-        cy.findByTestId("login-page-illustration-setting")
-          .findByRole("searchbox", { name: "Login and unsubscribe pages" })
-          .click();
-        mantinePopover().findByText("Custom").click();
-        cy.findByTestId("login-page-illustration-setting").within(() => {
-          cy.findByTestId("file-input").selectFile(
-            {
-              contents: "e2e/support/assets/logo.jpeg",
-              mimeType: "image/jpeg",
-            },
-            { force: true },
-          );
-          cy.findByText("logo.jpeg").should("be.visible");
-        });
-        undoToast().findByText("Changes saved").should("be.visible");
-
-        cy.signOut();
-        cy.visit("/");
-
-        cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
-          logo_data => {
-            cy.findByTestId("login-page-container").should(
-              "have.css",
-              "background-image",
-              `url("data:image/jpeg;base64,${logo_data}")`,
+          cy.log("test error message for file size > 2MB");
+          cy.findByTestId("login-page-illustration-setting").within(() => {
+            /**
+             * This makes sure we scroll to the component which sits at the bottom of the page.
+             */
+            cy.findByLabelText("Login and unsubscribe pages").click();
+          });
+          mantinePopover().findByText("Custom").click();
+          cy.findByTestId("login-page-illustration-setting").within(() => {
+            cy.findByTestId("file-input").selectFile(
+              {
+                contents: Cypress.Buffer.from("a".repeat(2 * MB + 1)),
+                fileName: "big-file.jpg",
+                mimeType: "image/jpeg",
+              },
+              { force: true },
             );
-          },
-        );
+            cy.findByText(
+              "The image you chose is larger than 2MB. Please choose another one.",
+            ).should("be.visible");
+            cy.findByText("big-file.jpg").should("not.exist");
+
+            /**
+             * 1. This doesn't actually open the file browser on Cypress,
+             * but I did this to simulate selecting an option because
+             * doing this would clear the error message.
+             *
+             * 2. For some reason, `cy.findByLabelText("Login page").click()` doesn't work here.
+             */
+            cy.findByRole("searchbox", {
+              name: "Login and unsubscribe pages",
+            }).click();
+          });
+          mantinePopover().findByText("Custom").click();
+          cy.log("test uploading a corrupted file");
+          cy.findByTestId("login-page-illustration-setting").within(() => {
+            cy.findByTestId("file-input").selectFile(
+              {
+                contents: Cypress.Buffer.from("a".repeat(2 * MB)),
+                fileName: "corrupted-file.jpg",
+                mimeType: "image/jpeg",
+              },
+              { force: true },
+            );
+            cy.findByText(
+              "The image you chose is corrupted. Please choose another one.",
+            )
+              .scrollIntoView()
+              .should("be.visible");
+            cy.findByText("corrupted-file.jpg").should("not.exist");
+          });
+
+          cy.log('test replacing the "corrupted" file with a valid one');
+          cy.findByTestId("login-page-illustration-setting").within(() => {
+            cy.findByTestId("file-input").selectFile(
+              {
+                contents: "e2e/support/assets/logo.jpeg",
+                mimeType: "image/jpeg",
+              },
+              { force: true },
+            );
+            cy.findByText("logo.jpeg").should("be.visible");
+
+            cy.findByText(
+              "The image you chose is corrupted. Please choose another one.",
+            ).should("not.exist");
+          });
+          undoToast().findByText("Changes saved").should("be.visible");
+          undoToast().icon("close").click();
+
+          cy.log("test removing the custom illustration");
+          cy.findByTestId("login-page-illustration-setting").within(() => {
+            cy.button("Remove custom illustration").click();
+            cy.log(
+              "the default option should be selected once removing the custom illustration",
+            );
+            cy.findByDisplayValue("Lighthouse").should("be.visible");
+          });
+          undoToast().findByText("Changes saved").should("be.visible");
+          undoToast().icon("close").click();
+
+          cy.log("test uploading a valid image file");
+          cy.findByTestId("login-page-illustration-setting")
+            .findByRole("searchbox", { name: "Login and unsubscribe pages" })
+            .click();
+          mantinePopover().findByText("Custom").click();
+          cy.findByTestId("login-page-illustration-setting").within(() => {
+            cy.findByTestId("file-input").selectFile(
+              {
+                contents: "e2e/support/assets/logo.jpeg",
+                mimeType: "image/jpeg",
+              },
+              { force: true },
+            );
+            cy.findByText("logo.jpeg").should("be.visible");
+          });
+          undoToast().findByText("Changes saved").should("be.visible");
+
+          cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
+            logo_data => {
+              const backgroundImage = `url("data:image/jpeg;base64,${logo_data}")`;
+              cy.signOut();
+              cy.visit("/");
+              cy.findByTestId("login-page-illustration").should(
+                "have.css",
+                "background-image",
+                backgroundImage,
+              );
+
+              cy.visit("/unsubscribe?hash=hash&email=email&pulse-id=pulse-id");
+              cy.findByTestId("unsubscribe-page-illustration").should(
+                "have.css",
+                "background-image",
+                backgroundImage,
+              );
+            },
+          );
+
+          cy.log("test no illustration");
+          cy.signInAsAdmin();
+          cy.visit("/admin/settings/whitelabel/conceal-metabase");
+
+          cy.findByTestId("login-page-illustration-setting").within(() => {
+            cy.findByLabelText("Login and unsubscribe pages").click();
+          });
+          mantinePopover().findByText("No illustration").click();
+
+          cy.signOut();
+          cy.visit("/");
+          cy.findByTestId("login-page-illustration").should("not.exist");
+
+          cy.visit("/unsubscribe?hash=hash&email=email&pulse-id=pulse-id");
+          cy.findByTestId("unsubscribe-page-illustration").should("not.exist");
+        });
       });
     });
   });

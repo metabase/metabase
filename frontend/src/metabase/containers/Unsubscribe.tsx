@@ -185,6 +185,7 @@ function UnsubscribeRoot({ children }: { children: JSX.Element }) {
     <LayoutRoot>
       {loginPageIllustration && (
         <LayoutIllustration
+          data-testid="unsubscribe-page-illustration"
           backgroundImageSrc={loginPageIllustration.src}
           isDefault={loginPageIllustration.isDefault}
         />
