@@ -96,6 +96,7 @@ export function useModelsAndOption({
       case "waterfall":
         return getWaterfallChartOption(
           chartModel,
+          width,
           chartMeasurements,
           timelineEventsModel,
           selectedTimelineEventIds ?? [],
