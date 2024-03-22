@@ -1,10 +1,13 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { FieldPicker } from "metabase/common/components/FieldPicker";
+import type { NotebookDataPickerItem } from "metabase/common/components/NotebookDataPicker";
+import { NotebookDataPickerModal } from "metabase/common/components/NotebookDataPicker";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
@@ -20,12 +23,13 @@ export const DataStep = ({
   updateQuery,
 }: NotebookStepUiComponentProps) => {
   const { stageIndex } = step;
-
   const question = step.question;
   const collectionId = question.collectionId();
   const databaseId = Lib.databaseID(query);
   const tableId = Lib.sourceTableOrCardId(query);
   const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : null;
+
+  const [isDataPickerOpen, setIsDataPickerOpen] = useState(false);
 
   const pickerLabel = table
     ? Lib.displayInfo(query, stageIndex, table).displayName
@@ -65,16 +69,37 @@ export const DataStep = ({
         rightContainerStyle={{ width: 37, height: 37, padding: 0 }}
         data-testid="data-step-cell"
       >
-        <DataSourceSelector
-          hasTableSearch
-          collectionId={collectionId}
-          databaseQuery={{ saved: true }}
-          selectedDatabaseId={databaseId}
-          selectedTableId={tableId}
-          setSourceTableFn={handleTableSelect}
-          isInitiallyOpen={!table}
-          triggerElement={<DataStepCell>{pickerLabel}</DataStepCell>}
-        />
+        <>
+          <DataSourceSelector
+            hasTableSearch
+            collectionId={collectionId}
+            databaseQuery={{ saved: true }}
+            selectedDatabaseId={databaseId}
+            selectedTableId={tableId}
+            setSourceTableFn={handleTableSelect}
+            isInitiallyOpen={!table}
+            triggerElement={<DataStepCell>{pickerLabel} - OLD</DataStepCell>}
+          />
+
+          <DataStepCell onClick={() => setIsDataPickerOpen(true)}>
+            {pickerLabel}
+          </DataStepCell>
+
+          {isDataPickerOpen && (
+            <NotebookDataPickerModal
+              onChange={(item: NotebookDataPickerItem) => {
+                const tableId =
+                  item.model === "table"
+                    ? item.id
+                    : getQuestionVirtualTableId(item.id);
+                const databaseId = 1; // TODO
+                handleTableSelect(tableId, databaseId);
+              }}
+              onClose={() => setIsDataPickerOpen(false)}
+              value={null} // TODO
+            />
+          )}
+        </>
       </NotebookCellItem>
     </NotebookCell>
   );
