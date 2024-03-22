@@ -471,6 +471,13 @@ AreaOverBar.args = {
   renderingContext,
 };
 
+export const TimeSeriesTicksCompactFormattingMixedTimezones = Template.bind({});
+TimeSeriesTicksCompactFormattingMixedTimezones.args = {
+  rawSeries: data.timeSeriesTicksCompactFormattingMixedTimezones as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
