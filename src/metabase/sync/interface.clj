@@ -8,7 +8,7 @@
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::DatabaseMetadataTable
-  [:map
+  [:map {:closed true}
    [:name                                     ::lib.schema.common/non-blank-string]
    [:schema                                   [:maybe ::lib.schema.common/non-blank-string]]
    ;; for databases that store an estimated row count in system tables (e.g: postgres)
