@@ -298,13 +298,27 @@ export const PLUGIN_MODERATION = {
   ) => [],
 };
 
+export interface QuestionCacheSectionProps {
+  question: Question;
+  onSave: (cache_ttl?: number) => Promise<Question> | undefined;
+}
+
+export interface DashboardCacheSectionProps {
+  dashboard: Dashboard;
+  onSave: (cache_ttl?: number) => Promise<Dashboard>;
+}
+
 export const PLUGIN_CACHING = {
   dashboardCacheTTLFormField: null,
   questionCacheTTLFormField: null,
-  getQuestionsImplicitCacheTTL: (_question?: any) => null,
-  QuestionCacheSection: PluginPlaceholder,
-  DashboardCacheSection: PluginPlaceholder,
-  DatabaseCacheTimeField: PluginPlaceholder,
+  getQuestionsImplicitCacheTTL: (_question?: any) => null as number | null,
+  QuestionCacheSection:
+    PluginPlaceholder as React.ComponentType<QuestionCacheSectionProps>,
+  DashboardCacheSection:
+    PluginPlaceholder as React.ComponentType<DashboardCacheSectionProps>,
+  DatabaseCacheTimeField: PluginPlaceholder as React.ComponentType<
+    Record<string, never>
+  >,
   isEnabled: () => false,
   hasQuestionCacheSection: (_question: Question) => false,
 };
