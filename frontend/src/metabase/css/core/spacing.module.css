@@ -87,7 +87,6 @@
   padding-bottom: var(--padding-2);
 }
 
-:global(.pl2),
 .pl2 {
   padding-left: var(--padding-2);
 }
