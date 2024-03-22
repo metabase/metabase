@@ -60,6 +60,7 @@ export const NativeQueryPreviewSidebar = (): JSX.Element => {
 
   return (
     <Flex
+      data-testid="native-query-preview-sidebar"
       className={cx(SB.container)}
       role="complementary"
       direction="column"
