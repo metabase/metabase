@@ -62,6 +62,7 @@ import areaStackInterpolateMissingValues from "./area-stack-interpolate-missing-
 import barStackDisplayOverridesSeriesDisplays from "./bar-stack-display-overrides-series-displays.json";
 import areaStackAllSeriesWithoutInterpolation from "./area-stack-all-series-without-interpolation.json";
 import areaOverBar from "./area-over-bar-40209.json";
+import timeSeriesTicksCompactFormattingMixedTimezones from "./time-series-ticks-compact-formatting-mixed-timezones.json";
 
 export const data = {
   lineLinearXScale,
@@ -128,4 +129,5 @@ export const data = {
   areaOverBar,
   barAutoFormattingCompact,
   barAutoFormattingFull,
+  timeSeriesTicksCompactFormattingMixedTimezones,
 };

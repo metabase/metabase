@@ -3,6 +3,7 @@ import type {
   Card,
   DatasetData,
   RawSeries,
+  RowValue,
   Series,
   TimelineEvent,
   TimelineEventId,
@@ -21,7 +22,7 @@ import type { RemappingHydratedDatasetColumn } from "./columns";
 
 export type ColorGetter = (colorName: string) => string;
 export type Formatter = (
-  value: unknown,
+  value: RowValue,
   options?: OptionsType | StaticFormattingOptions,
 ) => string;
 
