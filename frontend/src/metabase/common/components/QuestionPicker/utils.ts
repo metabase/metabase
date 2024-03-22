@@ -1,17 +1,18 @@
 import { isRootCollection } from "metabase/collections/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
-import type { CollectionId } from "metabase-types/api";
-
 import type {
-  PickerState,
-  CollectionPickerItem,
-  TypeWithModel,
-  TisFolder,
-} from "../../types";
+  CollectionId,
+  SearchListQuery,
+  SearchModelType,
+} from "metabase-types/api";
+
+import type { PickerState, IsFolder, TypeWithModel } from "../EntityPicker";
+
+import type { QuestionPickerItem } from "./types";
 
 export const getCollectionIdPath = (
   collection: Pick<
-    CollectionPickerItem,
+    QuestionPickerItem,
     "id" | "location" | "is_personal" | "effective_location"
   >,
   userPersonalCollectionId?: CollectionId,
@@ -50,13 +51,16 @@ export const getCollectionIdPath = (
 export const getStateFromIdPath = ({
   idPath,
   namespace,
+  models = ["card", "dataset"],
 }: {
   idPath: CollectionId[];
   namespace?: "snippets";
-}): PickerState<CollectionPickerItem> => {
-  const statePath: PickerState<CollectionPickerItem> = [
+  models?: SearchModelType[];
+}): PickerState<QuestionPickerItem, SearchListQuery> => {
+  const statePath: PickerState<QuestionPickerItem, SearchListQuery> = [
     {
       selectedItem: {
+        name: "",
         model: "collection",
         id: idPath[0],
       },
@@ -69,11 +73,15 @@ export const getStateFromIdPath = ({
     statePath.push({
       query: {
         collection: id,
-        models: ["collection", "card", "dataset"],
+        models: ["collection", ...models],
         namespace,
       },
       selectedItem: nextLevelId
-        ? { model: "collection", id: nextLevelId }
+        ? {
+            name: "",
+            model: "collection",
+            id: nextLevelId,
+          }
         : null,
     });
   });
@@ -81,8 +89,13 @@ export const getStateFromIdPath = ({
   return statePath;
 };
 
-export const isFolder: TisFolder<CollectionPickerItem> = <
-  TItem extends TypeWithModel,
->(
-  item: TItem,
-) => item?.model === "collection";
+export const isFolder: IsFolder<
+  CollectionId,
+  SearchModelType,
+  QuestionPickerItem
+> = <Item extends TypeWithModel<CollectionId, SearchModelType>>(item: Item) => {
+  return item?.model === "collection";
+};
+
+export const generateKey = (query?: SearchListQuery) =>
+  JSON.stringify(query ?? "root");
