@@ -46,7 +46,7 @@ function _CartesianChart(props: VisualizationProps) {
   const title = settings["card.title"] || card.name;
   const description = settings["card.description"];
 
-  const legendItems = useMemo(
+  const { legendItems, isReversed } = useMemo(
     () => getLegendItems(chartModel, settings),
     [chartModel, settings],
   );
@@ -84,6 +84,7 @@ function _CartesianChart(props: VisualizationProps) {
         />
       )}
       <CartesianChartLegendLayout
+        isReversed={isReversed}
         hasLegend={hasLegend}
         labels={legendItems.map(item => item.name)}
         colors={legendItems.map(item => item.color)}
