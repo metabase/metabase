@@ -53,7 +53,7 @@ const FieldTypeDetail = ({
             </span>
           )}
         </span>
-        <span className="ml4">
+        <span className={CS.ml4}>
           {isEditing
             ? (isTypeFK(fieldTypeFormField.value) ||
                 (isTypeFK(field.semantic_type) &&

@@ -293,7 +293,6 @@
   margin-bottom: var(--margin-4);
 }
 
-:global(.ml4),
 .ml4 {
   margin-left: var(--margin-4);
 }
