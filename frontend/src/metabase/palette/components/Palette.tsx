@@ -1,11 +1,12 @@
 import { KBarPortal, VisualState, useKBar } from "kbar";
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { withRouter } from "react-router";
-import { useMount } from "react-use";
 import _ from "underscore";
 
 import { useOnClickOutside } from "metabase/hooks/use-on-click-outside";
 import { isWithinIframe } from "metabase/lib/dom";
+import { useSelector } from "metabase/lib/redux";
+import { getUser } from "metabase/selectors/user";
 import { Box, Card, Center, Overlay } from "metabase/ui";
 
 import { useCommandPaletteBasicActions } from "../hooks/useCommandPaletteBasicActions";
@@ -16,13 +17,15 @@ import { PaletteResults } from "./PaletteResults";
 
 /** Command palette */
 export const Palette = withRouter(props => {
-  useCommandPaletteBasicActions(props);
+  const isLoggedIn = useSelector(state => !!getUser(state));
+
+  useCommandPaletteBasicActions({ ...props, isLoggedIn });
 
   //Disable when iframed in
   const { query } = useKBar();
-  useMount(() => {
-    query.disable(isWithinIframe());
-  });
+  useEffect(() => {
+    query.disable(isWithinIframe() || !isLoggedIn);
+  }, [isLoggedIn, query]);
 
   return (
     <KBarPortal>

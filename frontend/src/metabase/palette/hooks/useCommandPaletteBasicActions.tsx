@@ -19,15 +19,21 @@ import {
 } from "metabase/selectors/data";
 import { Icon } from "metabase/ui";
 
-export const useCommandPaletteBasicActions = (props: WithRouterProps) => {
+export const useCommandPaletteBasicActions = ({
+  isLoggedIn,
+  ...props
+}: WithRouterProps & { isLoggedIn: boolean }) => {
   const dispatch = useDispatch();
   const collectionId = useSelector(state =>
     Collections.selectors.getInitialCollectionId(state, props),
   );
 
-  const { data: databases = [] } = useDatabaseListQuery();
+  const { data: databases = [] } = useDatabaseListQuery({
+    enabled: isLoggedIn,
+  });
   const { data: models = [] } = useSearchListQuery({
     query: { models: "dataset", limit: 1 },
+    enabled: isLoggedIn,
   });
 
   const hasDataAccess = getHasDataAccess(databases);

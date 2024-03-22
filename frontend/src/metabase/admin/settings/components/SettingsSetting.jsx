@@ -45,7 +45,11 @@ export const SettingsSetting = props => {
 
   useEffect(() => {
     if (hash === `#${setting.key}` && thisRef.current) {
-      scrollIntoView(thisRef.current, { behavior: "smooth", block: "center" });
+      scrollIntoView(thisRef.current, {
+        behavior: "smooth",
+        block: "center",
+        scrollMode: "if-needed",
+      });
 
       thisRef.current.focus();
 

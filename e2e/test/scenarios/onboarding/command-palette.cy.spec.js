@@ -1,3 +1,4 @@
+import { USERS } from "e2e/support/cypress_data";
 import {
   restore,
   openCommandPalette,
@@ -6,6 +7,8 @@ import {
   closeCommandPalette,
   visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
+
+const { admin } = USERS;
 
 describe("command palette", () => {
   beforeEach(() => {
@@ -103,5 +106,29 @@ describe("command palette", () => {
 
     openCommandPalette();
     commandPalette().should("not.exist");
+  });
+
+  it("should not be accessible when a user is not logged in", () => {
+    cy.intercept("GET", "/api/search**").as("search");
+    cy.intercept("GET", "/api/database").as("database");
+
+    cy.signOut();
+    cy.visit("/");
+
+    cy.findByRole("heading", { name: "Sign in to Metabase" });
+
+    openCommandPalette();
+    commandPalette().should("not.exist");
+
+    cy.get("@database").should("be.null");
+    cy.get("@search").should("be.null");
+
+    cy.findByLabelText("Email address").type(admin.email);
+    cy.findByLabelText("Password").type(admin.password);
+    cy.button("Sign in").click();
+    cy.findByTestId("greeting-message");
+
+    openCommandPalette();
+    commandPalette().should("exist");
   });
 });
