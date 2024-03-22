@@ -1316,7 +1316,7 @@
 
 (defn append-csv-with-defaults!
   "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden."
-  [& options]
+  [& {:as options}]
   (update-csv-with-defaults! ::upload/append options))
 
 (defn catch-ex-info* [f]
