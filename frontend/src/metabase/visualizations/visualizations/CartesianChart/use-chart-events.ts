@@ -17,13 +17,17 @@ import {
   getTimelineEventsHoverData,
   hasSelectedTimelineEvents,
 } from "metabase/visualizations/visualizations/CartesianChart/events";
-import type { BaseCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import type {
+  BaseCartesianChartModel,
+  ChartDataset,
+} from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ClickObject,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type { CardId } from "metabase-types/api";
+import { ORIGINAL_INDEX_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
@@ -180,9 +184,9 @@ export const useChartEvents = (
         return;
       }
 
-      const { datumIndex, index } = hovered;
+      const { datumIndex: originalDatumIndex, index } = hovered;
       const hoveredSeries = chartModel.seriesModels[index];
-      if (!hoveredSeries) {
+      if (!hoveredSeries || !originalDatumIndex) {
         return;
       }
 
@@ -192,21 +196,37 @@ export const useChartEvents = (
         option?.series as LineSeriesOption[]
       ).findIndex(series => series.id === hoveredSeries.dataKey);
 
+      // (issue #40215)
+      // since some transformed datasets have indexes differing from
+      // the original datasets indexes and ECharts uses the transformedDataset
+      // for rendering, we need to figure out the correct transformedDataset's
+      // index in order to highlight the correct element
+      const transformedDatumIndex = getTransformedDatumIndex(
+        chartModel.transformedDataset,
+        originalDatumIndex,
+      );
+
       chart.dispatchAction({
         type: "highlight",
-        dataIndex: datumIndex,
+        dataIndex: transformedDatumIndex,
         seriesIndex: eChartsSeriesIndex,
       });
 
       return () => {
         chart.dispatchAction({
           type: "downplay",
-          dataIndex: datumIndex,
+          dataIndex: transformedDatumIndex,
           seriesIndex: eChartsSeriesIndex,
         });
       };
     },
-    [chartModel.seriesModels, chartRef, hovered, option?.series],
+    [
+      chartModel.seriesModels,
+      chartModel.transformedDataset,
+      chartRef,
+      hovered,
+      option?.series,
+    ],
   );
 
   // In order to keep brushing always enabled we have to re-enable it on every model change
@@ -290,3 +310,18 @@ export const useChartEvents = (
     eventHandlers,
   };
 };
+
+function getTransformedDatumIndex(
+  transformedDataset: ChartDataset,
+  originalDatumIndex: number,
+) {
+  const transformedDatumIndex = transformedDataset.findIndex(
+    datum => datum[ORIGINAL_INDEX_DATA_KEY] === originalDatumIndex,
+  );
+
+  if (transformedDatumIndex === -1) {
+    return originalDatumIndex;
+  }
+
+  return transformedDatumIndex;
+}
