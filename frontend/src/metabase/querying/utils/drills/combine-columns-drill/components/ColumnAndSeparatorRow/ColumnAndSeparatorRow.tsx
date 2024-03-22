@@ -49,16 +49,12 @@ export const ColumnAndSeparatorRow = ({
 
       <Select
         className={styles.column}
+        classNames={{
+          wrapper: styles.wrapper,
+        }}
         data={options}
         label={showLabels ? t`Column` : undefined}
         placeholder={t`Column`}
-        styles={{
-          wrapper: {
-            "&:not(:only-child)": {
-              marginTop: 0,
-            },
-          },
-        }}
         value={toSelectValue(options, column)}
         onChange={value => {
           const column = fromSelectValue(options, value);
@@ -68,13 +64,11 @@ export const ColumnAndSeparatorRow = ({
 
       {showRemove && (
         <Button
+          classNames={{
+            root: styles.remove,
+          }}
           aria-label={t`Remove column`}
           leftIcon={<Icon name="close" />}
-          styles={{
-            root: {
-              borderColor: "transparent",
-            },
-          }}
           variant="default"
           onClick={() => {
             onRemove(index);
