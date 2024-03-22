@@ -782,6 +782,7 @@
                 (mt/run-mbql-query bird-count
                   {:order-by [[:asc $count] [:asc $id]]
                    :limit    3}))))))))
+
 (deftest filter-on-specific-date-test
   (testing "Filtering on a specific date should work correctly regardless of report timezone/DB timezone support (#39769)"
     (mt/test-drivers (mt/normal-drivers)
