@@ -193,7 +193,7 @@
         (remove metabase-metadata/is-metabase-metadata-table?)
         (:tables db-metadata)))
 
-(mu/defn ^:private db->our-metadata :- [:set i/DatabaseMetadataTable]
+(mu/defn ^:private db->our-metadata :- [:set (ms/InstanceOf :model/Table)]
   "Return information about what Tables we have for this DB in the Metabase application DB."
   [database :- i/DatabaseInstance]
   (set (t2/select [:model/Table :id :name :schema :description :database_require_filter :estimated_row_count]
