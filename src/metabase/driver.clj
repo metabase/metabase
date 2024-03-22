@@ -944,7 +944,7 @@
   "Delete the current contents of `table-name`.
   If something like a SQL TRUNCATE statement is supported, we use that, but may otherwise fall back to explicitly
   deleting rows, or dropping and recreating the table.
-  Depending on the driver, the semantics on whether triggers are fired, AUTO_INCREMENT is reset etc, are allowed to vary.
+  Depending on the driver, the semantics can vary on whether triggers are fired, AUTO_INCREMENT is reset etc.
   The application assumes that the implementation can be rolled back if inside a transaction."
   {:added "0.50.0", :arglists '([driver db-id table-name])}
   dispatch-on-initialized-driver
