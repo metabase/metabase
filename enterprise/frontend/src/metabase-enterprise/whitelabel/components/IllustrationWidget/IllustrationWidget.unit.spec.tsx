@@ -1,14 +1,23 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
 
 import type { StringSetting } from "./IllustrationWidget";
 import { IllustrationWidget } from "./IllustrationWidget";
 
 interface SetupOpts {
   setting: StringSetting;
-  defaultPreviewType: "lighthouse" | "sailboat";
-  defaultIllustrationLabel: string;
+  settingValues: Partial<
+    Pick<
+      EnterpriseSettings,
+      | "login-page-illustration-custom"
+      | "landing-page-illustration-custom"
+      | "no-question-results-illustration-custom"
+      | "no-search-results-illustration-custom"
+    >
+  >;
+  type: "background" | "icon";
   customIllustrationSetting:
     | "login-page-illustration-custom"
     | "landing-page-illustration-custom"
@@ -17,8 +26,8 @@ interface SetupOpts {
 }
 function setup({
   setting,
-  defaultPreviewType,
-  defaultIllustrationLabel,
+  settingValues,
+  type,
   customIllustrationSetting,
 }: SetupOpts) {
   const onChange = jest.fn();
@@ -28,11 +37,10 @@ function setup({
       setting={setting}
       onChange={onChange}
       onChangeSetting={onChangeSetting}
-      settingValues={{}}
-      defaultIllustrationLabel={defaultIllustrationLabel}
+      settingValues={settingValues}
       customIllustrationSetting={customIllustrationSetting}
       errorMessageContainerId="does-not-matter-in-unit-tests"
-      defaultPreviewType={defaultPreviewType}
+      type={type}
     />,
   );
 
@@ -45,16 +53,19 @@ describe("IllustrationWidget", () => {
     value: null,
     default: "default",
   } as const;
-  const defaultIllustrationLabel = "Lighthouse";
-  const defaultPreviewType = "lighthouse";
   const customIllustrationSetting = "login-page-illustration-custom";
+  const defaultSettingValues = {
+    [customIllustrationSetting]: "",
+  };
+  const defaultIllustrationLabel = "Lighthouse";
+  const defaultType = "background";
 
   describe("select options", () => {
     it("should render default value", () => {
       setup({
         setting: defaultSetting,
-        defaultPreviewType,
-        defaultIllustrationLabel,
+        settingValues: defaultSettingValues,
+        type: defaultType,
         customIllustrationSetting,
       });
       expect(
@@ -65,8 +76,8 @@ describe("IllustrationWidget", () => {
     it("should render options", () => {
       setup({
         setting: defaultSetting,
-        defaultPreviewType,
-        defaultIllustrationLabel,
+        settingValues: defaultSettingValues,
+        type: defaultType,
         customIllustrationSetting,
       });
       userEvent.click(screen.getByRole("searchbox"));
@@ -83,8 +94,8 @@ describe("IllustrationWidget", () => {
 
       const { onChange } = setup({
         setting: defaultSetting,
-        defaultPreviewType,
-        defaultIllustrationLabel,
+        settingValues: defaultSettingValues,
+        type: defaultType,
         customIllustrationSetting,
       });
       userEvent.click(screen.getByRole("searchbox"));
@@ -97,8 +108,8 @@ describe("IllustrationWidget", () => {
 
       const { onChange } = setup({
         setting: defaultSetting,
-        defaultPreviewType,
-        defaultIllustrationLabel,
+        settingValues: defaultSettingValues,
+        type: defaultType,
         customIllustrationSetting,
       });
       userEvent.click(screen.getByRole("searchbox"));
@@ -122,10 +133,14 @@ describe("IllustrationWidget", () => {
         value: "custom",
       } as const;
 
+      const settingValues = {
+        [customIllustrationSetting]: "some-image-url",
+      };
+
       const { onChange, onChangeSetting } = setup({
         setting,
-        defaultPreviewType,
-        defaultIllustrationLabel,
+        settingValues,
+        type: defaultType,
         customIllustrationSetting,
       });
 
@@ -146,10 +161,14 @@ describe("IllustrationWidget", () => {
         value: "custom",
       } as const;
 
+      const settingValues = {
+        [customIllustrationSetting]: "some-image-url",
+      };
+
       const { onChange, onChangeSetting } = setup({
         setting,
-        defaultPreviewType,
-        defaultIllustrationLabel,
+        settingValues,
+        type: defaultType,
         customIllustrationSetting,
       });
 
@@ -166,10 +185,14 @@ describe("IllustrationWidget", () => {
         value: "custom",
       } as const;
 
+      const settingValues = {
+        [customIllustrationSetting]: "some-image-url",
+      };
+
       const { onChange, onChangeSetting } = setup({
         setting,
-        defaultPreviewType,
-        defaultIllustrationLabel,
+        settingValues,
+        type: defaultType,
         customIllustrationSetting,
       });
 
@@ -189,8 +212,8 @@ describe("IllustrationWidget", () => {
     it("should not call callbacks when selecting the default option twice", () => {
       const { onChange, onChangeSetting } = setup({
         setting: defaultSetting,
-        defaultPreviewType,
-        defaultIllustrationLabel,
+        settingValues: defaultSettingValues,
+        type: defaultType,
         customIllustrationSetting,
       });
 
@@ -211,8 +234,8 @@ describe("IllustrationWidget", () => {
       } as const;
       const { onChange, onChangeSetting } = setup({
         setting,
-        defaultPreviewType,
-        defaultIllustrationLabel,
+        settingValues: defaultSettingValues,
+        type: defaultType,
         customIllustrationSetting,
       });
 
@@ -231,8 +254,8 @@ describe("IllustrationWidget", () => {
       } as const;
       const { onChange, onChangeSetting } = setup({
         setting,
-        defaultPreviewType,
-        defaultIllustrationLabel,
+        settingValues: defaultSettingValues,
+        type: defaultType,
         customIllustrationSetting,
       });
 

@@ -1,5 +1,5 @@
 import type { ChangeEvent } from "react";
-import { useMemo, useState, useRef } from "react";
+import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { t } from "ttag";
 
@@ -10,6 +10,8 @@ import type {
   EnterpriseSettings,
   IllustrationSettingValue,
 } from "metabase-enterprise/settings/types";
+
+import { ImageUploadInfoDot } from "../ImageUploadInfoDot";
 
 import {
   LighthouseImage,
@@ -22,25 +24,38 @@ export interface StringSetting {
   default: IllustrationSettingValue;
 }
 
+type IllustrationType = "background" | "icon";
+
 type IllustrationWidgetProps = {
   id?: string;
   setting: StringSetting;
   onChange: (value: IllustrationSettingValue) => Promise<void>;
   onChangeSetting: (key: EnterpriseSettingKey, value: unknown) => Promise<void>;
   settingValues: Partial<EnterpriseSettings>;
-  defaultIllustrationLabel: string;
   customIllustrationSetting:
     | "login-page-illustration-custom"
     | "landing-page-illustration-custom"
     | "no-question-results-illustration-custom"
     | "no-search-results-illustration-custom";
   errorMessageContainerId: string;
-  imageUploadInfoDot: JSX.Element;
-  defaultPreviewType: "lighthouse" | "sailboat";
+  type: IllustrationType;
 };
 
 const MB = 1024 * 1024;
 const IMAGE_SIZE_LIMIT = 2 * MB;
+
+const OPTIONS: Record<IllustrationType, any[]> = {
+  background: [
+    { label: t`Lighthouse`, value: "default" },
+    { label: t`No illustration`, value: "no-illustration" },
+    { label: t`Custom`, value: "custom" },
+  ],
+  icon: [
+    { label: t`Sailboat`, value: "default" },
+    { label: t`No illustration`, value: "no-illustration" },
+    { label: t`Custom`, value: "custom" },
+  ],
+};
 
 export function IllustrationWidget({
   id,
@@ -48,24 +63,15 @@ export function IllustrationWidget({
   onChange,
   onChangeSetting,
   settingValues,
-  defaultIllustrationLabel,
   customIllustrationSetting,
   errorMessageContainerId,
-  imageUploadInfoDot,
-  defaultPreviewType,
+  type,
 }: IllustrationWidgetProps) {
   const [value, setValue] = useState(setting.value ?? setting.default);
   const [fileName, setFileName] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const data = useMemo(
-    () => [
-      { label: defaultIllustrationLabel, value: "default" },
-      { label: t`No illustration`, value: "no-illustration" },
-      { label: t`Custom`, value: "custom" },
-    ],
-    [defaultIllustrationLabel],
-  );
+  const options = OPTIONS[type];
   const customIllustrationSource =
     settingValues[customIllustrationSetting] ?? undefined;
 
@@ -104,6 +110,7 @@ export function IllustrationWidget({
           );
           return;
         }
+        setErrorMessage("");
         setFileName(file.name);
         // Setting 2 setting values at the same time could result in one of them not being saved
         await onChange("custom");
@@ -140,13 +147,13 @@ export function IllustrationWidget({
           {getPreviewImage({
             value: value,
             customSource: customIllustrationSource,
-            defaultPreviewType,
+            defaultPreviewType: type,
           })}
         </Flex>
         <Flex p="lg" w="25rem" align="center" gap="md" direction="column">
           <Select
             id={id}
-            data={data}
+            data={options}
             value={value}
             onChange={handleChange}
             w="100%"
@@ -158,7 +165,7 @@ export function IllustrationWidget({
                 style={{ flexShrink: 0 }}
                 onClick={() => fileInputRef.current?.click()}
               >{t`Choose File`}</Button>
-              {<Box ml="sm">{imageUploadInfoDot}</Box>}
+              {<Box ml="sm">{<ImageUploadInfoDot type={type} />}</Box>}
               <input
                 data-testid="file-input"
                 ref={fileInputRef}
@@ -206,18 +213,15 @@ async function isFileIntact(dataUri: string) {
   });
 }
 
-const PREVIEW_ELEMENTS: Record<
-  IllustrationWidgetProps["defaultPreviewType"],
-  JSX.Element
-> = {
-  lighthouse: <LighthouseImage />,
-  sailboat: <SailboatImage />,
+const PREVIEW_ELEMENTS: Record<IllustrationType, JSX.Element> = {
+  background: <LighthouseImage />,
+  icon: <SailboatImage />,
 };
 
 interface GetPreviewImageProps {
   value: IllustrationSettingValue;
   customSource: string | undefined;
-  defaultPreviewType: IllustrationWidgetProps["defaultPreviewType"];
+  defaultPreviewType: IllustrationType;
 }
 
 function getPreviewImage({

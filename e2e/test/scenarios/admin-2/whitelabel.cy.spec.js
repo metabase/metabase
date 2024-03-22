@@ -191,16 +191,13 @@ describeEE("formatting > whitelabel", () => {
           );
           cy.findByText(
             "The image you chose is corrupted. Please choose another one.",
-          ).should("be.visible");
+          )
+            .scrollIntoView()
+            .should("be.visible");
           cy.findByText("corrupted-file.jpg").should("not.exist");
         });
 
-        cy.log("test removing the custom illustration");
-        /**
-         * I opted for uploading the same file twice rather than uploading once,
-         * testing the login page, and revisiting the settings page to test removing it.
-         * Since visiting multiple pages should make the test runs slower.
-         */
+        cy.log('test replacing the "corrupted" file with a valid one');
         cy.findByTestId("login-page-illustration-setting").within(() => {
           cy.findByTestId("file-input").selectFile(
             {
@@ -210,10 +207,15 @@ describeEE("formatting > whitelabel", () => {
             { force: true },
           );
           cy.findByText("logo.jpeg").should("be.visible");
+
+          cy.findByText(
+            "The image you chose is corrupted. Please choose another one.",
+          ).should("not.exist");
         });
         undoToast().findByText("Changes saved").should("be.visible");
         undoToast().icon("close").click();
 
+        cy.log("test removing the custom illustration");
         cy.findByTestId("login-page-illustration-setting").within(() => {
           cy.button("Remove custom illustration").click();
           cy.log(
@@ -225,6 +227,10 @@ describeEE("formatting > whitelabel", () => {
         undoToast().icon("close").click();
 
         cy.log("test uploading a valid image file");
+        cy.findByTestId("login-page-illustration-setting")
+          .findByRole("searchbox", { name: "Login page" })
+          .click();
+        mantinePopover().findByText("Custom").click();
         cy.findByTestId("login-page-illustration-setting").within(() => {
           cy.findByTestId("file-input").selectFile(
             {

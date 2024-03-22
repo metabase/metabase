@@ -3,37 +3,23 @@ import { t } from "ttag";
 
 import { Icon, Stack, Text, HoverCard } from "metabase/ui";
 
-type IllustrationType =
-  | "login-page"
-  | "landing-page"
-  | "no-question-results"
-  | "no-search-results";
+type IllustrationType = "background" | "icon";
 
 interface CustomFileUploadInfoDot {
   type: IllustrationType;
 }
 
 const DESCRIPTIONS_WIDTHS: Record<IllustrationType, number> = {
-  "login-page": 400,
-  "landing-page": 400,
-  "no-question-results": 250,
-  "no-search-results": 250,
+  background: 400,
+  icon: 250,
 };
 
 const DESCRIPTIONS: Record<IllustrationType, string[]> = {
-  "login-page": [
+  background: [
     t`For best results, choose an image that is horizontally oriented and upload it as an SVG file. Other accepted formats are JPG and PNG.`,
     t`Your file should not be larger than 2MB.`,
   ],
-  "landing-page": [
-    t`For best results, choose an image that is horizontally oriented and upload it as an SVG file. Other accepted formats are JPG and PNG.`,
-    t`Your file should not be larger than 2MB.`,
-  ],
-  "no-question-results": [
-    t`For best results, upload an SVG file. Other accepted formats are JPG and PNG.`,
-    t`Your file should not be larger than 2MB.`,
-  ],
-  "no-search-results": [
+  icon: [
     t`For best results, upload an SVG file. Other accepted formats are JPG and PNG.`,
     t`Your file should not be larger than 2MB.`,
   ],
