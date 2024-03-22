@@ -6,7 +6,7 @@ import { t } from "ttag";
 import { useGetNativeDatasetQuery } from "metabase/api";
 import { DelayedLoadingSpinner } from "metabase/common/components/EntityPicker/components/LoadingSpinner";
 import { color } from "metabase/lib/colors";
-import { getEngineNativeType } from "metabase/lib/engine";
+import { formatNativeQuery, getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { updateQuestion, setUIControls } from "metabase/query_builder/actions";
@@ -32,29 +32,31 @@ export const NativeQueryPreviewSidebar = (): JSX.Element => {
   const dispatch = useDispatch();
   const question = checkNotNull(useSelector(getQuestion));
 
-  const engineType = getEngineNativeType(question.database()?.engine);
+  const engine = question.database()?.engine;
+  const engineType = getEngineNativeType(engine);
 
   const payload = Lib.toLegacyQuery(question.query());
   const { data, error, isLoading } = useGetNativeDatasetQuery(payload);
   const query = data?.query;
 
+  const formattedQuery = formatNativeQuery(query, engine);
+
   const handleConvertClick = useCallback(() => {
-    if (!query) {
+    if (!formattedQuery) {
       return;
     }
 
-    const newDatasetQuery = createDatasetQuery(query, question);
+    const newDatasetQuery = createDatasetQuery(formattedQuery, question);
     const newQuestion = question.setDatasetQuery(newDatasetQuery);
 
     dispatch(updateQuestion(newQuestion, { shouldUpdateUrl: true, run: true }));
     dispatch(setUIControls({ isNativeEditorOpen: true }));
-  }, [question, query, dispatch]);
+  }, [question, dispatch, formattedQuery]);
 
   const getErrorMessage = (error: unknown) =>
     typeof error === "string" ? error : undefined;
 
   const borderStyle = `1px solid ${color("border")}`;
-  const aceMode = getEngineNativeType(engineType);
 
   return (
     <Flex
@@ -88,8 +90,8 @@ export const NativeQueryPreviewSidebar = (): JSX.Element => {
         {!error && query && (
           <NativeQueryEditorRoot style={{ height: "100%", flex: 1 }}>
             <AceEditor
-              value={query}
-              mode={aceMode}
+              value={formattedQuery}
+              mode={engineType}
               readOnly
               height="100%"
               highlightActiveLine={false}
