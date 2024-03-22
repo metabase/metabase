@@ -8,6 +8,8 @@ import {
   restore,
   setTokenFeatures,
   undoToast,
+  visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 function checkFavicon(url) {
@@ -321,6 +323,86 @@ describeEE("formatting > whitelabel", () => {
 
           cy.visit("/");
           cy.findByTestId("landing-page-illustration").should("not.exist");
+        });
+      });
+
+      describe("no data illustration", () => {
+        it("should allow display the selected illustration at relevant places", () => {
+          cy.visit("/admin/settings/whitelabel/conceal-metabase");
+
+          cy.findByRole("searchbox", {
+            name: "When calculations return no results",
+          }).should("have.value", "Sailboat");
+
+          cy.findByRole("searchbox", {
+            name: "When calculations return no results",
+          }).click();
+          mantinePopover().findByText("Custom").click();
+
+          cy.findByTestId("no-data-illustration-setting").within(() => {
+            cy.findByTestId("file-input").selectFile(
+              {
+                contents: "e2e/support/assets/logo.jpeg",
+                mimeType: "image/jpeg",
+              },
+              { force: true },
+            );
+            cy.findByText("logo.jpeg").should("be.visible");
+          });
+          undoToast().findByText("Changes saved").should("be.visible");
+
+          cy.createDashboardWithQuestions({
+            dashboardName: "No results dashboard",
+            questions: [
+              {
+                name: "No results question",
+                native: {
+                  query: "select * from products where id = 999999999",
+                },
+              },
+            ],
+          }).then(({ dashboard, questions }) => {
+            cy.wrap(dashboard.id).as("dashboardId");
+            cy.wrap(questions[0].id).as("questionId");
+          });
+
+          cy.log("test custom illustration");
+
+          visitDashboard("@dashboardId");
+          cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
+            logo_data => {
+              const imageDataUrl = `data:image/jpeg;base64,${logo_data}`;
+              cy.wrap(imageDataUrl).as("imageDataUrl");
+              cy.findByAltText("No results").should(
+                "have.attr",
+                "src",
+                imageDataUrl,
+              );
+            },
+          );
+
+          visitQuestion("@questionId");
+          cy.get("@imageDataUrl").then(imageDataUrl => {
+            cy.findByAltText("No results").should(
+              "have.attr",
+              "src",
+              imageDataUrl,
+            );
+          });
+
+          cy.log("test no illustration");
+
+          cy.visit("/admin/settings/whitelabel/conceal-metabase");
+          cy.findByRole("searchbox", {
+            name: "When calculations return no results",
+          }).click();
+          mantinePopover().findByText("No illustration").click();
+
+          visitDashboard("@dashboardId");
+          cy.findByAltText("No results").should("not.exist");
+
+          visitQuestion("@questionId");
+          cy.findByAltText("No results").should("not.exist");
         });
       });
     });
