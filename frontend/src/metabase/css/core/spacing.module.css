@@ -13,8 +13,7 @@
   margin-left: auto;
 }
 
-:global(.mr-auto),
-.mr-auto {
+.mrAuto {
   margin-right: auto;
 }
 
