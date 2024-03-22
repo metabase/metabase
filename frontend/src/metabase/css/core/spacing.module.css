@@ -261,7 +261,6 @@
   margin-bottom: var(--margin-3);
 }
 
-:global(.ml3),
 .ml3 {
   margin-left: var(--margin-3);
 }
