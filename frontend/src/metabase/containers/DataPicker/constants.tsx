@@ -12,6 +12,7 @@ export const DATA_BUCKET: Record<string, DataPickerDataType> = {
   MODELS: "models",
   RAW_DATA: "raw-data",
   SAVED_QUESTIONS: "questions",
+  METRICS: "metrics",
 } as const;
 
 export const DEFAULT_DATA_PICKER_FILTERS: DataPickerFilters = {
@@ -40,4 +41,11 @@ export const SAVED_QUESTIONS_INFO_ITEM: DataTypeInfoItem = {
   icon: "folder",
   name: t`Saved Questions`,
   description: t`Use any question’s results to start a new question.`,
+};
+
+export const METRICS_INFO_ITEM: DataTypeInfoItem = {
+  id: DATA_BUCKET.METRICS,
+  icon: "metric",
+  name: t`Metrics`,
+  description: t`Trustworthy definitions to start from.`,
 };

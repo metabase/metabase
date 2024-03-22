@@ -9,7 +9,11 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-export type DataPickerDataType = "models" | "raw-data" | "questions";
+export type DataPickerDataType =
+  | "models"
+  | "raw-data"
+  | "questions"
+  | "metrics";
 
 export type DataPickerValue = {
   type?: DataPickerDataType;
