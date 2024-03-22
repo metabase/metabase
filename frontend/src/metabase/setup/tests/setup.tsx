@@ -58,7 +58,9 @@ export async function setup({
   fetchMock.post("path:/api/util/password_check", { valid: true });
   fetchMock.post("path:/api/setup", {});
   fetchMock.put("path:/api/setting/anon-tracking-enabled", 200);
-  setupPropertiesEndpoints(createMockSettings());
+  setupPropertiesEndpoints(
+    createMockSettings({ "token-features": tokenFeatures }),
+  );
   setupSettingsEndpoints(settingOverrides);
   fetchMock.put("path:/api/setting", 200);
 
@@ -136,4 +138,15 @@ export const expectSectionsToHaveLabelsInOrder = ({
       expect(within(section).getByText(`${index + 1}`)).toBeInTheDocument();
     }
   });
+};
+
+export const getLastSettingsPutPayload = async () => {
+  const lastSettingsCall = fetchMock.lastCall("path:/api/setting", {
+    method: "PUT",
+  });
+
+  expect(lastSettingsCall).toBeTruthy();
+  expect(lastSettingsCall![1]).toBeTruthy();
+
+  return JSON.parse((await lastSettingsCall![1]!.body!) as string);
 };

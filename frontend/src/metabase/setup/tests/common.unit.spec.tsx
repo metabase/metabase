@@ -1,7 +1,6 @@
 /* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "expectSectionToHaveLabel", "expectSectionsToHaveLabelsInOrder"] }] */
 
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { screen } from "__support__/ui";
 import { createMockSettingDefinition } from "metabase-types/api/mocks";
@@ -16,6 +15,7 @@ import {
   skipLanguageStep,
   skipWelcomeScreen,
   submitUserInfoStep,
+  getLastSettingsPutPayload,
 } from "./setup";
 
 describe("setup (OSS)", () => {
@@ -130,7 +130,7 @@ describe("setup (OSS)", () => {
   });
 
   describe("embedding homepage flags", () => {
-    it("should set set the correct flags when interested in embedding", async () => {
+    it("should set the correct flags when interested in embedding", async () => {
       await setup();
       skipWelcomeScreen();
       skipLanguageStep();
@@ -146,6 +146,26 @@ describe("setup (OSS)", () => {
         "enable-embedding": true,
         "setup-embedding-autoenabled": true,
       });
+    });
+
+    it("should not set 'embedding-homepage' when not interested in embedding", async () => {
+      await setup();
+      skipWelcomeScreen();
+      skipLanguageStep();
+      await submitUserInfoStep();
+
+      selectUsageReason("self-service-analytics");
+      clickNextStep();
+
+      screen.getByText("I'll add my data later").click();
+
+      screen.getByText("Finish").click();
+
+      const flags = await getLastSettingsPutPayload();
+
+      expect(flags["embedding-homepage"]).toBeUndefined();
+      expect(flags["enable-embedding"]).toBeUndefined();
+      expect(flags["setup-embedding-autoenabled"]).toBeUndefined();
     });
 
     it("should not autoenable embedding if it was set by an env", async () => {
@@ -178,14 +198,3 @@ describe("setup (OSS)", () => {
     });
   });
 });
-
-const getLastSettingsPutPayload = async () => {
-  const lastSettingsCall = fetchMock.lastCall("path:/api/setting", {
-    method: "PUT",
-  });
-
-  expect(lastSettingsCall).toBeTruthy();
-  expect(lastSettingsCall![1]).toBeTruthy();
-
-  return JSON.parse((await lastSettingsCall![1]!.body!) as string);
-};
