@@ -362,9 +362,9 @@
 
 (defn- update-table-level-create-queries-permissions!
   [group-id db-id schema new-table-perms]
-  (let [new-table-perms
-        (-> new-table-perms
-            (update-keys (fn [table-id] {:id table-id :db_id db-id :schema schema})))]
+  (let [new-table-perms (update-keys
+                         new-table-perms
+                         (fn [table-id] {:id table-id :db_id db-id :schema schema}))]
     (data-perms/set-table-permissions! group-id :perms/create-queries new-table-perms)))
 
 (defn- update-schema-level-create-queries-permissions!
