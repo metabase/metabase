@@ -86,7 +86,7 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
                 {objectSettingsWidgets &&
                 objectSettingsWidgets.length > 0 &&
                 isSelected(single) ? (
-                  <div className="mt3">{objectSettingsWidgets}</div>
+                  <div className={CS.mt3}>{objectSettingsWidgets}</div>
                 ) : null}
               </div>
             );

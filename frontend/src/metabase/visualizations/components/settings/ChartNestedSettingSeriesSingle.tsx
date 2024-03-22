@@ -58,7 +58,7 @@ const ChartNestedSettingsSeriesSingle = ({
         />
       </div>
       {objectSettingsWidgets && objectSettingsWidgets.length > 0 ? (
-        <div className="mt3">{objectSettingsWidgets}</div>
+        <div className={CS.mt3}>{objectSettingsWidgets}</div>
       ) : null}
     </div>
   );

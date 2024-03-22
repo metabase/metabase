@@ -297,7 +297,7 @@ class FieldRemappingSettings extends Component {
               {t`You need unrestricted data access on this table to map custom display values.`}
             </div>
           ) : (
-            <div className="mt3">
+            <div className={CS.mt3}>
               {hasChanged && <RemappingNamingTip />}
               <ValueRemappings
                 remappings={remapping}

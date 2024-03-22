@@ -253,7 +253,6 @@
   margin-bottom: var(--padding-3);
 }
 
-:global(.mt3),
 .mt3 {
   margin-top: var(--margin-3);
 }
