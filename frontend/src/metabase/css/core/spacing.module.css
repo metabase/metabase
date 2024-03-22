@@ -271,7 +271,6 @@
 
 /* 4 */
 
-:global(.m4),
 .m4 {
   margin: var(--margin-4);
 }
