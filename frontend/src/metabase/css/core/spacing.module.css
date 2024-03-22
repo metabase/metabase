@@ -32,11 +32,6 @@
   padding-top: 0;
 }
 
-:global(.pr0),
-.pr0 {
-  padding-right: 0;
-}
-
 /* 1 */
 :global(.p1),
 .p1 {
