@@ -772,6 +772,8 @@ class TableInteractive extends Component {
               "justify-end": isRightAligned,
             },
           )}
+          role="columnheader"
+          aria-label={columnTitle}
           onClick={
             // only use the onClick if not draggable since it's also handled in Draggable's onStop
             isClickable && !isDraggable
