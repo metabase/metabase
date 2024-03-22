@@ -188,7 +188,7 @@ function Version({ version }) {
       <ul style={{ listStyleType: "disc", listStylePosition: "inside" }}>
         {version.highlights &&
           version.highlights.map((highlight, index) => (
-            <li key={index} style={{ lineHeight: "1.5" }} className="pl1">
+            <li key={index} style={{ lineHeight: "1.5" }} className={CS.pl1}>
               {highlight}
             </li>
           ))}

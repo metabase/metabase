@@ -55,7 +55,6 @@
   padding-bottom: var(--padding-1);
 }
 
-:global(.pl1),
 .pl1 {
   padding-left: var(--padding-1);
 }
