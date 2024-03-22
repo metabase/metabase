@@ -589,10 +589,7 @@
     :describe-fields
 
     ;; Does the driver support fingerprint the fields. Default is true
-    :fingerprint
-
-    ;; Does the driver support sync the estimated row count of a table
-    :sync-estimated-row-count})
+    :fingerprint})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?

@@ -1415,18 +1415,3 @@
                (do-test :schema-pattern "private" :schemas ["private"]))
              (testing "filter by table name"
                (do-test :table-pattern "table" :tables ["table"])))))))))
-
-(deftest sync-estimated-row-count-test
-  (mt/test-driver :postgres
-    (testing "Can sync row count"
-      (mt/with-temp-test-data [["city"
-                                [{:field-name "name"
-                                  :base-type  :type/Text}]
-                                [["Los Angeles"]
-                                 ["Las Vegas"]]]]
-        (fn [conn]
-          ;; row count is estimated so we VACUUM so the statistic table is updated before syncing
-          (next.jdbc/execute! conn ["VACUUM;"])
-          (sync/sync-database! (mt/db) {:scan :schema})
-          (is (= 2
-                 (t2/select-one-fn :estimated_row_count :model/Table (mt/id :city)))))))))
