@@ -6,7 +6,10 @@ import {
   openReviewsTable,
   visualize,
   openNotebook,
+  startNewQuestion,
+  popover,
   visitQuestionAdhoc,
+  saveQuestion,
   visitQuestion,
   createQuestion,
   saveSavedQuestion,
@@ -131,6 +134,50 @@ describe("converting question to SQL (metabase#12651, metabase#21615, metabase#3
     cy.get(".cellData").should("contain", "37.65");
   });
 });
+
+describe(
+  "converting question to a native query (metabase#15946, metabase#32121)",
+  { tags: "@mongo" },
+  () => {
+    const MONGO_DB_NAME = "QA Mongo";
+
+    beforeEach(() => {
+      restore("mongo-5");
+      cy.signInAsAdmin();
+    });
+
+    it("should work ", () => {
+      startNewQuestion();
+      popover().within(() => {
+        cy.findByText("Raw Data").click();
+        cy.findByText(MONGO_DB_NAME).click();
+        cy.findByText("Products").click();
+      });
+
+      cy.findByLabelText("View the native query").click();
+      cy.findByTestId("native-query-preview-sidebar").within(() => {
+        cy.findByText("Native query for this question").should("exist");
+        cy.get(".ace_content")
+          .should("contain", "$project")
+          .and("contain", "$limit");
+
+        cy.button("Convert this question to a native query").click();
+      });
+
+      cy.log("Database and table should be pre-selected (metabase#15946)");
+      cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
+      cy.findByTestId("selected-table").should("have.text", "Products");
+      cy.get(".cellData").contains("Small Marble Shoes");
+
+      cy.log(
+        "should be possible to save a question and `Explore results` (metabase#32121)",
+      );
+      saveQuestion("foo");
+      cy.findByTestId("qb-header").findByText("Explore results").click();
+      cy.get(".cellData").contains("Small Marble Shoes");
+    });
+  },
+);
 
 function convertToSql() {
   openNotebook();
