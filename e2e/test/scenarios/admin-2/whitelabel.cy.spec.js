@@ -149,13 +149,14 @@ describeEE("formatting > whitelabel", () => {
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
           cy.log("test error message for file size > 2MB");
-          cy.findByTestId("login-page-illustration-setting").within(() => {
-            /**
-             * This makes sure we scroll to the component which sits at the bottom of the page.
-             */
-            cy.findByLabelText("Login and unsubscribe pages").click();
-          });
+          cy.findByRole("searchbox", {
+            name: "Login and unsubscribe pages",
+          }).click();
           mantinePopover().findByText("Custom").click();
+          /**
+           * Clicking "Choose File" doesn't actually open the file browser on Cypress,
+           * so I need to use `selectFile` with the file input instead.
+           */
           cy.findByTestId("login-page-illustration-setting").within(() => {
             cy.findByTestId("file-input").selectFile(
               {
@@ -169,18 +170,10 @@ describeEE("formatting > whitelabel", () => {
               "The image you chose is larger than 2MB. Please choose another one.",
             ).should("be.visible");
             cy.findByText("big-file.jpg").should("not.exist");
-
-            /**
-             * 1. This doesn't actually open the file browser on Cypress,
-             * but I did this to simulate selecting an option because
-             * doing this would clear the error message.
-             *
-             * 2. For some reason, `cy.findByLabelText("Login page").click()` doesn't work here.
-             */
-            cy.findByRole("searchbox", {
-              name: "Login and unsubscribe pages",
-            }).click();
           });
+          cy.findByRole("searchbox", {
+            name: "Login and unsubscribe pages",
+          }).click();
           mantinePopover().findByText("Custom").click();
           cy.log("test uploading a corrupted file");
           cy.findByTestId("login-page-illustration-setting").within(() => {
@@ -270,9 +263,9 @@ describeEE("formatting > whitelabel", () => {
           cy.signInAsAdmin();
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
-          cy.findByTestId("login-page-illustration-setting").within(() => {
-            cy.findByLabelText("Login and unsubscribe pages").click();
-          });
+          cy.findByRole("searchbox", {
+            name: "Login and unsubscribe pages",
+          }).click();
           mantinePopover().findByText("No illustration").click();
 
           cy.signOut();
