@@ -438,13 +438,13 @@
 
 (defn- check-if-card-can-be-saved
   [dataset-query card-type]
-  (let [card-type (or card-type :question)
-        pMBQL-query (-> dataset-query compatibility/normalize-dataset-query lib.convert/->pMBQL)
-        metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database pMBQL-query))]
-    (when-not (lib/can-save (lib/query metadata-provider pMBQL-query) card-type)
-      (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (clojure.core/name card-type))
-                      {:type        card-type
-                       :status-code 400})))))
+  (when (= card-type :metric)
+    (let [pMBQL-query (-> dataset-query compatibility/normalize-dataset-query lib.convert/->pMBQL)
+          metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database pMBQL-query))]
+      (when-not (lib/can-save (lib/query metadata-provider pMBQL-query) card-type)
+        (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (clojure.core/name card-type))
+                        {:type        card-type
+                         :status-code 400}))))))
 
 (api/defendpoint POST "/"
   "Create a new `Card`."
