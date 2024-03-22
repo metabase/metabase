@@ -52,7 +52,7 @@ const ConfirmContent = ({
       </Button>
       <Button
         danger
-        className="ml2"
+        className={CS.ml2}
         onClick={() => {
           onAction();
           onClose();

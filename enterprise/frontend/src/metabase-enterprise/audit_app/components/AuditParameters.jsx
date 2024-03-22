@@ -76,7 +76,7 @@ export default class AuditParameters extends Component {
           ))}
           {buttons?.map(({ key, label, disabled, onClick }) => (
             <Button
-              className="ml2"
+              className={CS.ml2}
               key={key}
               primary
               disabled={isEmpty || disabled}

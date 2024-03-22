@@ -229,7 +229,6 @@
   margin-bottom: var(--margin-2);
 }
 
-:global(.ml2),
 .ml2 {
   margin-left: var(--margin-2);
 }

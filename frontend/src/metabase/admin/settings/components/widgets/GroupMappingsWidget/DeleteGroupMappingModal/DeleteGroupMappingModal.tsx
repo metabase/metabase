@@ -9,6 +9,7 @@ import Modal from "metabase/components/Modal";
 import { ModalFooter } from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
+import CS from "metabase/css/core/index.css";
 
 import {
   ModalHeader,
@@ -71,7 +72,7 @@ const DeleteGroupMappingModal = ({
           <p>{whatShouldHappenText}</p>
 
           <Radio
-            className="ml2"
+            className={CS.ml2}
             vertical
             value={value as DeleteMappingModalValueType | undefined}
             options={[

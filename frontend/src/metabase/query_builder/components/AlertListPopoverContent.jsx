@@ -174,7 +174,7 @@ class AlertListItemInner extends Component {
         })}
       >
         <Icon name="alert" size="20" />
-        <div className="full ml2">
+        <div className={cx("full", CS.ml2)}>
           <div className={cx(CS.flex, "align-top")}>
             <div>
               <AlertCreatorTitle alert={alert} user={user} />
@@ -190,7 +190,7 @@ class AlertListItemInner extends Component {
               )}
               {!isAdmin && !unsubscribingProgress && (
                 <a
-                  className="link ml2"
+                  className={cx("link", CS.ml2)}
                   onClick={this.onUnsubscribe}
                 >{jt`Unsubscribe`}</a>
               )}

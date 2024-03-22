@@ -284,7 +284,7 @@ class SettingsBatchForm extends Component {
     return (
       <div>
         {breadcrumbs && (
-          <Breadcrumbs crumbs={breadcrumbs} className="ml2 mb3" />
+          <Breadcrumbs crumbs={breadcrumbs} className={cx(CS.ml2, CS.mb3)} />
         )}
 
         {layout.map((section, index) =>

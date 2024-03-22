@@ -283,7 +283,9 @@ class FieldRemappingSettings extends Component {
                 />
               </PopoverWithTrigger>
               {dismissedInitialFkTargetPopover && (
-                <div className="text-error ml2">{t`Please select a column to use for display.`}</div>
+                <div
+                  className={cx(CS.textError, CS.ml2)}
+                >{t`Please select a column to use for display.`}</div>
               )}
             </>
           )}

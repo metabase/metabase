@@ -186,7 +186,7 @@ class AutomaticDashboardAppInner extends Component {
             <div className={cx(CS.flex, CS.justifyEnd, CS.px4, CS.pb4)}>
               <Link
                 to={more}
-                className="ml2"
+                className={CS.ml2}
                 onClick={() =>
                   MetabaseAnalytics.trackStructEvent(
                     "AutoDashboard",
