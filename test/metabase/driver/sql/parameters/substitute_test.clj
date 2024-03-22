@@ -12,6 +12,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
 (defn- optional [& args] (params/->Optional args))
@@ -803,10 +804,16 @@
                                   :template-tags {"date" {:name "date" :display-name "Date" :type :date}}}
                      :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}]}]
           (mt/with-native-query-testing-context query
-            (is (= [(if (= driver/*driver* :vertica)
+            (is (= [(cond
                       ;; TIMEZONE FIXME — Busted
-                      "2018-04-17"
-                      "2018-04-18")]
+                      (= driver/*driver* :vertica)
+                      "2018-04-17T00:00:00-07:00"
+
+                      (qp.test-util/supports-report-timezone? driver/*driver*)
+                      "2018-04-18T00:00:00-07:00"
+
+                      :else
+                      "2018-04-18T00:00:00Z")]
                    (mt/first-row (qp/process-query query))))))))))
 
 ;; Some random end-to-end param expansion tests added as part of the SQL Parameters 2.0 rewrite
