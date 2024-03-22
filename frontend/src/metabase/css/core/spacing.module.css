@@ -129,7 +129,6 @@
 
 /* 4 */
 
-:global(.p4),
 .p4 {
   padding: var(--padding-4);
 }

@@ -138,6 +138,7 @@
 }
 
 .guideEditCard {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: input p4 from "style";
 }
 

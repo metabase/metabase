@@ -192,7 +192,7 @@ export default class CustomGeoJSONWidget extends Component {
         />
         {this.state.map ? (
           <Modal wide>
-            <div className="p4">
+            <div className={CS.p4}>
               <EditMap
                 map={this.state.map}
                 originalMap={this.state.originalMap}
