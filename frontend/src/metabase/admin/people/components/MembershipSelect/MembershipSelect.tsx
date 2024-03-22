@@ -69,7 +69,7 @@ export const MembershipSelect = ({
   const selectedGroupIds = Array.from(memberships.keys());
   const triggerElement = (
     <div className={cx(CS.flex, CS.alignCenter)} aria-label="group-summary">
-      <span className="mr1 text-medium">
+      <span className={cx(CS.mr1, CS.textMedium)}>
         <GroupSummary groups={groups} selectedGroupIds={selectedGroupIds} />
       </span>
       <Icon className="text-light" name="chevrondown" size={10} />

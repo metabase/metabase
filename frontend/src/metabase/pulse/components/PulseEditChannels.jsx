@@ -259,7 +259,7 @@ export default class PulseEditChannels extends Component {
         >
           {CHANNEL_ICONS[channelSpec.type] && (
             <Icon
-              className="mr1 text-light"
+              className={cx(CS.mr1, "text-light")}
               name={CHANNEL_ICONS[channelSpec.type]}
               size={28}
             />

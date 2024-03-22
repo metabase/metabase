@@ -187,7 +187,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
       <PickerSpacedRow>
         <PickerText>{t`at`}</PickerText>
         <Select
-          className="mr1"
+          className={CS.mr1}
           value={minuteOfHour}
           options={MINUTE_OPTIONS}
           onChange={(e: SelectChangeEvent<number>) =>
@@ -214,7 +214,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
         <PickerSpacedRow>
           <PickerText>{t`at`}</PickerText>
           <Select
-            className="mr1"
+            className={CS.mr1}
             value={hour}
             options={HOUR_OPTIONS}
             onChange={(e: SelectChangeEvent<number>) =>

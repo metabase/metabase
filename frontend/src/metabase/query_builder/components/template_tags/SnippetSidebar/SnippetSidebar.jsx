@@ -161,7 +161,7 @@ class SnippetSidebarInner extends React.Component {
                         );
                       }}
                     >
-                      <Icon name="chevronleft" className="mr1" />
+                      <Icon name="chevronleft" className={CS.mr1} />
                       {snippetCollection.name}
                     </SnippetTitle>
                   )}

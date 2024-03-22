@@ -135,7 +135,7 @@ export default class SpecificDatePicker extends Component {
                   )
                 }
               >
-                <Icon className="mr1" name="clock" />
+                <Icon className={CS.mr1} name="clock" />
                 {t`Add a time`}
               </TimeLabel>
             ) : (

@@ -201,7 +201,6 @@
   margin-left: var(--margin-1);
 }
 
-:global(.mr1),
 .mr1 {
   margin-right: var(--margin-1);
 }

@@ -45,7 +45,7 @@ class DashboardMoveModal extends Component {
 
 const DashboardMoveToast = ({ collectionId }) => (
   <ToastRoot>
-    <Icon name="collection" className="mr1" color="white" />
+    <Icon name="collection" className={CS.mr1} color="white" />
     {jt`Dashboard moved to ${(
       <Collection.Link
         id={collectionId}

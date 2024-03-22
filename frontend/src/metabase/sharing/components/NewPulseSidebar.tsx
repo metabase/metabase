@@ -45,7 +45,7 @@ export function NewPulseSidebar({
               <Icon
                 name="mail"
                 className={cx(
-                  "mr1",
+                  CS.mr1,
                   {
                     "text-brand hover-child hover--inherit": emailConfigured,
                   },
@@ -85,7 +85,7 @@ export function NewPulseSidebar({
               <Icon
                 name={slackConfigured ? "slack_colorized" : "slack"}
                 size={16}
-                className={cx("mr1", {
+                className={cx(CS.mr1, {
                   "text-light": !slackConfigured,
                   "hover-child hover--inherit": slackConfigured,
                 })}

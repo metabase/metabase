@@ -35,7 +35,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
               <tr>
                 <td>
                   <ColorSelector
-                    className="mr1"
+                    className={CS.mr1}
                     value={segment.color}
                     colors={getColorPalette()}
                     onChange={color => onChangeProperty(index, "color", color)}

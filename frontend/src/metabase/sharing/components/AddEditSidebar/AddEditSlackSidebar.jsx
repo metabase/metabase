@@ -46,7 +46,7 @@ function _AddEditSlackSidebar({
       onCancel={onCancel}
     >
       <div className={cx(CS.pt4, CS.flex, CS.alignCenter, CS.px4)}>
-        <Icon name="slack" className="mr1" size={21} />
+        <Icon name="slack" className={CS.mr1} size={21} />
         <Heading>{t`Send this dashboard to Slack`}</Heading>
       </div>
       <CaveatMessage />

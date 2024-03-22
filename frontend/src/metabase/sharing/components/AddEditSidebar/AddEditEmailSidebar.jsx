@@ -49,7 +49,7 @@ function _AddEditEmailSidebar({
       onCancel={onCancel}
     >
       <div className={cx(CS.pt4, CS.px4, CS.flex, CS.alignCenter)}>
-        <Icon name="mail" className="mr1" size={21} />
+        <Icon name="mail" className={CS.mr1} size={21} />
         <Heading>{t`Email this dashboard`}</Heading>
       </div>
       <CaveatMessage />

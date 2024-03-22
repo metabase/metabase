@@ -68,7 +68,7 @@ export const UserCollectionList = () => {
                         <CardContent>
                           <Icon
                             name="person"
-                            className="mr1"
+                            className={CS.mr1}
                             color={color("text-medium")}
                             size={18}
                           />

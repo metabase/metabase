@@ -147,7 +147,7 @@ function ExpressionEditorSuggestionsListItem({
         <Icon
           name={icon}
           color={isHighlighted ? highlighted : normal}
-          className="mr1"
+          className={CS.mr1}
           data-ignore-outside-clicks
         />
         <SuggestionTitle data-ignore-outside-clicks>

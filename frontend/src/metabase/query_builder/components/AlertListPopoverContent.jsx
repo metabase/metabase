@@ -205,7 +205,7 @@ class AlertListItemInner extends Component {
           }
           <ul className={cx(CS.flex, CS.mt2, "text-small")}>
             <li className={cx(CS.flex, CS.alignCenter)}>
-              <Icon name="clock" size="12" className="mr1" />{" "}
+              <Icon name="clock" size="12" className={CS.mr1} />{" "}
               <AlertScheduleText
                 schedule={alert.channels[0]}
                 verbose={!isAdmin}
