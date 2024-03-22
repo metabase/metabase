@@ -46,7 +46,11 @@ export const ToggleNativeQueryPreview = ({
 
   return (
     <Tooltip label={tooltip} position="top">
-      <SqlButton onClick={handleClick} aria-label={tooltip}>
+      <SqlButton
+        isSelected={isNativePreviewSidebarOpen}
+        onClick={handleClick}
+        aria-label={tooltip}
+      >
         <Icon size="1rem" name="sql" />
       </SqlButton>
     </Tooltip>
