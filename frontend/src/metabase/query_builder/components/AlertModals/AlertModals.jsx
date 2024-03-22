@@ -165,7 +165,7 @@ class CreateAlertModalContentInner extends Component {
             onAlertChange={this.onAlertChange}
           />
           <AlertModalFooter>
-            <Button onClick={onCancel} className="mr2">{t`Cancel`}</Button>
+            <Button onClick={onCancel} className={CS.mr2}>{t`Cancel`}</Button>
             <ButtonWithStatus
               titleForState={{ default: t`Done` }}
               disabled={!isValid}
@@ -245,7 +245,7 @@ export class AlertEducationalScreen extends Component {
               "
             />
             <p
-              className="mr2 text-right"
+              className={cx(CS.mr2, CS.textRight)}
               style={textStyle}
             >{jt`When a line or bar ${(
               <strong>{t`crosses a goal line`}</strong>
@@ -341,7 +341,7 @@ class UpdateAlertModalContentInner extends Component {
           )}
 
           <AlertModalFooter>
-            <Button onClick={onCancel} className="mr2">{t`Cancel`}</Button>
+            <Button onClick={onCancel} className={CS.mr2}>{t`Cancel`}</Button>
             <ButtonWithStatus
               titleForState={{ default: t`Save changes` }}
               disabled={!isValid}

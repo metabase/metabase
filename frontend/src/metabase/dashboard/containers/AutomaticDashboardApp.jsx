@@ -135,7 +135,7 @@ class AutomaticDashboardAppInner extends Component {
                   <div className={cx(CS.flex, CS.alignCenter, CS.py2)}>
                     <XrayIcon name="bolt" size={24} />
                     <div>
-                      <h2 className="text-wrap mr2">
+                      <h2 className={cx("text-wrap", CS.mr2)}>
                         {dashboard && <TransientTitle dashboard={dashboard} />}
                       </h2>
                     </div>

@@ -178,7 +178,7 @@ class SnippetSidebarInner extends React.Component {
               >
                 {[
                   ...PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map(f =>
-                    f(this, { className: "mr2" }),
+                    f(this, { className: CS.mr2 }),
                   ),
                 ]}
                 {snippets.length >= MIN_SNIPPETS_FOR_SEARCH && (
@@ -223,7 +223,7 @@ class SnippetSidebarInner extends React.Component {
                             <Icon
                               name={icon}
                               size={ICON_SIZE}
-                              className="mr2"
+                              className={CS.mr2}
                             />
                             <h4>{name}</h4>
                           </MenuIconContainer>
