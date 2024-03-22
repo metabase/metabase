@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-database
     :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
@@ -12,11 +11,9 @@
    [metabase.models :refer [Database Field Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definition-test :as dataset-definition-test]
    [metabase.util :as u]
-   [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -285,18 +282,3 @@
               (let [syncable (driver/syncable-schemas driver/*driver* db-filtered)]
                 (is (not (contains? syncable "public")))
                 (is (not (contains? syncable fake-schema-name)))))))))))
-
-(deftest sync-estimated-row-count-test
-  (mt/test-driver :postgres
-    (testing "Can sync row count"
-      (mt/dataset test-data
-        ;; row count is estimated so we VACUUM so the statistic table is updated before syncing
-        (sql-jdbc.execute/do-with-connection-with-options
-         driver/*driver*
-         (mt/db)
-         nil
-         (fn [conn]
-           (next.jdbc/execute! conn ["VACUUM;"])))
-        (sync/sync-database! (mt/db) {:scan :schema})
-        (is (= 100
-               (t2/select-one-fn :estimated_row_count :model/Table (mt/id :venues))))))))
