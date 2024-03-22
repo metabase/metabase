@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import type { InputProps } from "metabase/core/components/Input";
+import CS from "metabase/css/core/index.css";
 
 import {
   LicenseErrorMessage,
@@ -57,7 +58,7 @@ export const LicenseInput = ({
         <Button
           disabled={isDisabled}
           data-testid="activate-button"
-          className="px2"
+          className={CS.px2}
           onClick={handleActivate}
         >
           {t`Activate`}

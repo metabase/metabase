@@ -69,7 +69,6 @@
   padding: var(--padding-2);
 }
 
-:global(.px2),
 .px2 {
   padding-left: var(--padding-2);
   padding-right: var(--padding-2);

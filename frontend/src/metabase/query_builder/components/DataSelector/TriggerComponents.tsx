@@ -1,7 +1,9 @@
+import cx from "classnames";
 import type { CSSProperties, ReactNode } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { Icon, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -43,7 +45,10 @@ export function Trigger({
 
   return (
     <span
-      className={className || "px2 py2 text-bold cursor-pointer text-default"}
+      className={
+        className ||
+        cx(CS.px2, CS.py2, CS.textBold, CS.cursorPointer, CS.textDefault)
+      }
       style={style}
     >
       {children}
