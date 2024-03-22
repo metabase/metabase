@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { jt, t } from "ttag";
 
-import { useListDatabaseCandidatesQuery } from "metabase/api";
+import { useListDatabaseCandidatesQuery, skipToken } from "metabase/api";
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import { useSetting } from "metabase/common/hooks/use-setting";
 import Button from "metabase/core/components/Button";
@@ -31,8 +31,7 @@ const useSampleDatabaseLink = () => {
   const sampleDatabase = databases?.find(d => d.is_sample);
 
   const { data: databaseCandidates } = useListDatabaseCandidatesQuery(
-    { id: sampleDatabase?.id },
-    { skip: !sampleDatabase || !xraysEnabled },
+    sampleDatabase?.id && xraysEnabled ? sampleDatabase.id : skipToken,
   );
 
   const sampleUrl = databaseCandidates

@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useListDatabaseCandidatesQuery } from "metabase/api";
+import { skipToken, useListDatabaseCandidatesQuery } from "metabase/api";
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Select from "metabase/core/components/Select";
@@ -32,8 +32,7 @@ export const HomeXraySection = () => {
   const databaseListState = useDatabaseListQuery();
   const database = getXrayDatabase(databaseListState.data);
   const candidateListState = useListDatabaseCandidatesQuery(
-    { id: database?.id },
-    { skip: !database },
+    database?.id ?? skipToken,
   );
   const isLoading = databaseListState.isLoading || candidateListState.isLoading;
   const error = databaseListState.error ?? candidateListState.error;
