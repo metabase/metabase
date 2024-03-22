@@ -40,9 +40,22 @@ export interface SearchScore {
   column?: string;
 }
 
-export interface SearchResults {
-  data: SearchResult[];
-  models: SearchModelType[] | null;
+interface BaseSearchResult<
+  Id extends SearchResultId,
+  Model extends SearchModelType,
+> {
+  id: Id;
+  model: Model;
+  name: string;
+}
+
+export interface SearchResults<
+  Id extends SearchResultId = SearchResultId,
+  Model extends SearchModelType = SearchModelType,
+  Result extends BaseSearchResult<Id, Model> = SearchResult<Id, Model>,
+> {
+  data: Result[];
+  models: Model[] | null;
   available_models: SearchModelType[];
   limit: number;
   offset: number;
@@ -62,10 +75,13 @@ export type SearchResultId =
   | TableId
   | DashboardId;
 
-export interface SearchResult {
-  id: SearchResultId;
+export interface SearchResult<
+  Id extends SearchResultId = SearchResultId,
+  Model extends SearchModelType = SearchModelType,
+> {
+  id: Id;
   name: string;
-  model: SearchModelType;
+  model: Model;
   description: string | null;
   archived: boolean | null;
   collection_position: number | null;

@@ -5,16 +5,9 @@ import { useCollectionQuery } from "metabase/common/hooks";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import type { CollectionId } from "metabase-types/api";
 
-import type {
-  EntityPickerOptions,
-  CollectionPickerItem,
-  TypeWithModel,
-  TisFolder,
-} from "../../types";
-
-import { ItemList } from "./ItemList";
+import { ItemList } from "../../EntityPicker";
+import type { CollectionItemListProps, CollectionPickerItem } from "../types";
 
 const personalCollectionsRoot: CollectionPickerItem = {
   ...PERSONAL_COLLECTIONS,
@@ -24,13 +17,6 @@ const personalCollectionsRoot: CollectionPickerItem = {
   description: "",
 };
 
-interface RootItemListProps<CollectionPickerItem extends TypeWithModel> {
-  onClick: (val: CollectionPickerItem) => void;
-  selectedItem: CollectionPickerItem | null;
-  options: EntityPickerOptions;
-  isFolder: TisFolder<CollectionPickerItem>;
-  isCurrentLevel: boolean;
-}
 /**
  * This is a special item list that exists "above" our analytics and might include:
  * a) the highest-level collections the user can access (often "our analytics")
@@ -43,7 +29,7 @@ export const RootItemList = ({
   options,
   isFolder,
   isCurrentLevel,
-}: RootItemListProps<CollectionPickerItem>) => {
+}: CollectionItemListProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
   const currentUser = useSelector(getUser);
 
@@ -76,7 +62,7 @@ export const RootItemList = ({
       } else if (rootCollectionError) {
         collectionsData.push({
           name: t`Collections`,
-          id: "root" as CollectionId,
+          id: "root",
           description: null,
           can_write: false,
           model: "collection",

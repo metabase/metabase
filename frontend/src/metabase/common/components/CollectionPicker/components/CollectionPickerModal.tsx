@@ -1,17 +1,15 @@
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
+import type { SearchModelType } from "metabase-types/api";
 
-import type { CollectionPickerItem, EntityTab } from "../../types";
-import { EntityPickerModal, defaultOptions } from "../EntityPickerModal";
+import type { EntityTab } from "../../EntityPicker";
+import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
+import type { CollectionPickerItem, CollectionPickerOptions } from "../types";
 
-import {
-  CollectionPicker,
-  type CollectionPickerOptions,
-} from "./CollectionPicker";
+import { CollectionPicker } from "./CollectionPicker";
 import { NewCollectionDialog } from "./NewCollectionDialog";
 
 interface CollectionPickerModalProps {
@@ -24,6 +22,12 @@ interface CollectionPickerModalProps {
 
 const canSelectItem = (item: CollectionPickerItem | null): boolean => {
   return !!item && item?.can_write !== false;
+};
+
+const searchFilter = (
+  searchResults: CollectionPickerItem[],
+): CollectionPickerItem[] => {
+  return searchResults.filter(result => result.can_write);
 };
 
 export const CollectionPickerModal = ({
@@ -45,12 +49,6 @@ export const CollectionPickerModal = ({
   const pickerRef = useRef<{
     onFolderSelect: (item: { folder: CollectionPickerItem }) => void;
   }>();
-
-  const searchFilter = useCallback(
-    searchResults =>
-      searchResults.filter((result: SearchResult) => result.can_write),
-    [],
-  );
 
   const handleItemSelect = useCallback(
     (item: CollectionPickerItem) => {
@@ -81,7 +79,7 @@ export const CollectionPickerModal = ({
     </Button>,
   ];
 
-  const tabs: [EntityTab] = [
+  const tabs: [EntityTab<SearchModelType>] = [
     {
       displayName: t`Collections`,
       model: "collection",
