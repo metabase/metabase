@@ -120,10 +120,17 @@ export interface Field {
   updated_at: string;
 }
 
-export interface FieldValuesResult {
+export interface FieldValuesResponse {
   field_id: FieldId;
   values: FieldValue[];
   has_more_values: boolean;
+}
+
+export interface FieldSearchInput {
+  fieldId: FieldId;
+  searchFieldId: FieldId;
+  value: string;
+  limit: number;
 }
 
 export interface FieldFormattingSettings {
