@@ -133,7 +133,6 @@
   padding: var(--padding-4);
 }
 
-:global(.px4),
 .px4 {
   padding-left: var(--padding-4);
   padding-right: var(--padding-4);

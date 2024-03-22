@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { t } from "ttag";
 
 import HostingInfoLink from "metabase/admin/settings/components/widgets/HostingInfoLink";
@@ -8,7 +9,7 @@ import { Icon } from "metabase/ui";
 
 const MarginHostingCTA = ({ tagline }) => (
   <div
-    className="border-left border-brand text-brand px4"
+    className={cx("border-left", CS.borderBrand, CS.textBrand, CS.px4)}
     style={{ height: 172 }}
   >
     <Icon name="cloud" size={48} style={{ color: "#B9D8F4" }} />
