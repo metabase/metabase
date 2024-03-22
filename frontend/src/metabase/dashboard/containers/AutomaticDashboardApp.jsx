@@ -159,7 +159,7 @@ class AutomaticDashboardAppInner extends Component {
             </div>
           )}
 
-          <div className={cx(CS.wrapper, "pb4")}>
+          <div className={cx(CS.wrapper, CS.pb4)}>
             {parameters && parameters.length > 0 && (
               <div className={cx(CS.px1, CS.pt1)}>
                 <FixedWidthContainer

@@ -147,7 +147,6 @@
   padding-top: var(--padding-4);
 }
 
-:global(.pb4),
 .pb4 {
   padding-bottom: var(--padding-4);
 }
