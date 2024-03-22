@@ -896,9 +896,21 @@
       (h value)]
      :render/text (str value)}))
 
+;; the `:javascript_visualization` render method
+;; is and will continue to handle more and more 'isomorphic' chart types.
+;; Isomorphic in this context just means the frontend Code is mostly shared between the app and the static-viz
+;; As of 2024-03-21, isomorphic chart types include: line, area, bar (LAB), and trend charts
+;; Because this effort began with LAB charts, this method is written to handle multi-series dashcards.
+;; Trend charts were added more recently and will not have multi-series.
+;; Despite this, the function `pu/execute-multi-card` will still correctly execute dashcards.
+;; This conditional is here to cover the case of trend charts in Alerts (not subscriptions). Alerts
+;; exist on Questions and thus have no associated dashcard, which causes `pu/execute-multi-card` to fail.
+
 (s/defmethod render :javascript_visualization :- formatter/RenderedPulseCard
-  [_ render-type _timezone-id card dashcard data]
-  (let [combined-cards-results (pu/execute-multi-card card dashcard)
+  [_chart-type render-type _timezone-id card dashcard data]
+  (let [combined-cards-results (if dashcard
+                                 (pu/execute-multi-card card dashcard)
+                                 (pu/execute-card {:creator_id (:creator_id card)} (:id card)))
         cards-with-data        (map (fn [c d] {:card c :data d})
                                     (cons card (map :card combined-cards-results))
                                     (cons data (map #(get-in % [:result :data]) combined-cards-results)))
@@ -907,8 +919,8 @@
     (case rendered-type
       :svg
       (let [image-bundle (image-bundle/make-image-bundle
-                           render-type
-                           (js-svg/svg-string->bytes content))]
+                          render-type
+                          (js-svg/svg-string->bytes content))]
         {:attachments
          (when image-bundle
            (image-bundle/image-bundle->attachment image-bundle))
