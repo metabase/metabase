@@ -1234,7 +1234,8 @@
                  (driver/connection-properties driver))))
 
 (deftest ^:mb/once create-csv-upload!-schema-does-not-sync-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+  ;; We only need to test this for a single driver, and the way this test has been written is coupled to Postgres
+  (mt/test-driver :postgres
     (mt/with-empty-db
       (let [driver             (driver.u/database->driver (mt/db))
             schema-filter-prop (find-schema-filters-prop driver)
