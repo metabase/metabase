@@ -35,7 +35,6 @@ export default class RelativeDatePicker extends Component {
           className={cx(CS.mr2, CS.textRight)}
           style={{
             width: 65,
-            // needed to match Select's AdminSelect classes :-/
             fontSize: 14,
             fontWeight: 700,
             padding: 8,

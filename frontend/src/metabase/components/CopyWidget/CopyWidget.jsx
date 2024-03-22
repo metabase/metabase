@@ -2,6 +2,7 @@
 import cx from "classnames";
 import { Component } from "react";
 
+import FormS from "metabase/css/components/form.module.css";
 import CS from "metabase/css/core/index.css";
 
 import { CopyWidgetButton } from "./CopyWidget.styled";
@@ -12,8 +13,8 @@ export default class CopyWidget extends Component {
     return (
       <div className={cx(CS.flex, CS.relative)} style={style}>
         <input
-          className={cx("Form-input", CS.flexFull, {
-            [CS.noFocus]: !onChange,
+          className={cx(FormS.FormInput, CS.flexFull, {
+            [FormS.noFocus]: !onChange,
           })}
           style={{
             paddingRight: 40,
