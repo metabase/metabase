@@ -589,14 +589,16 @@ export function getTimeSeriesXAxisModel(
   let ticksMaxInterval;
   let effectiveTickUnit: CartesianChartDateTimeAbsoluteUnit | undefined;
 
+  // If there is no unit in column (unbinned data or native queries) use the one computed from the actual data.
+  const dimensionColumnWithUnit = {
+    ...dimensionColumn,
+    unit: dimensionColumn.unit ?? dataTimeSeriesInterval.unit,
+  };
+
   const formatter = (value: RowValue) =>
     renderingContext.formatValue(value, {
-      ...(settings.column?.(dimensionColumn) ?? {}),
-      column: {
-        ...dimensionColumn,
-        // If there is no unit in column (unbinned data or native queries) use the one computed from the actual data.
-        unit: dimensionColumn.unit ?? dataTimeSeriesInterval.unit,
-      },
+      ...(settings.column?.(dimensionColumnWithUnit) ?? {}),
+      column: dimensionColumnWithUnit,
     });
 
   // If the range of data is small enough not to use a larger interval for ticks
