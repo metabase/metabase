@@ -8,6 +8,7 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.error :as me]
+   [metabase.config :as config]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
@@ -703,6 +704,27 @@
   "In Metabase the FK key used for automagic hydration should use underscores (work around upstream Toucan 2 issue)."
   [_original-model dest-key _hydrated-key]
   [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])
+
+(methodical/defmethod t2.hydrate/hydrate-with-strategy :around ::t2.hydrate/multimethod-simple
+  "Throws an error if do simple hydrations that make DB call on a sequence."
+  [model strategy k instances]
+  (if (or config/is-prod?
+          (< (count instances) 2)
+          ;; we skip checking these keys because most of the times its call count
+          ;; are from deferencing metabase.api.common/*current-user-permissions-set*
+          (#{:can_write :can_read} k))
+    (next-method model strategy k instances)
+    (t2/with-call-count [call-count]
+      (let [res (next-method model strategy k instances)
+            ;; if it's a lazy-seq then we need to realize it so call-count is counted
+            res (if (instance? clojure.lang.LazySeq res)
+                  (doall res)
+                  res)]
+        ;; only throws an exception if the simple hydration makes a DB call
+        (when (pos-int? (call-count))
+          (throw (ex-info (format "N+1 hydration detected!!! Model %s, key %s]" (pr-str model) k)
+                          {:model model :strategy strategy :k k :items-count (count instances) :db-calls (call-count)})))
+        res))))
 
 (mu/defn instances-with-hydrated-data
   "Helper function to write batched hydrations.

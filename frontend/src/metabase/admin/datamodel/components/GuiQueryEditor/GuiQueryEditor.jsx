@@ -18,6 +18,8 @@ import { AggregationWidget } from "../AggregationWidget";
 import { FilterPopover } from "../FilterPopover";
 import { FilterWidgetList } from "../FilterWidgetList";
 
+import GuiQueryEditorS from "./GuiQueryEditor.module.css";
+
 /**
  * @deprecated use MLv2
  */
@@ -233,7 +235,7 @@ export class GuiQueryEditor extends Component {
           QueryBuilderS.GuiBuilderData,
           CS.flex,
           CS.alignCenter,
-          "arrow-right",
+          GuiQueryEditorS.arrowRight,
         )}
         data-testid="gui-builder-data"
       >
