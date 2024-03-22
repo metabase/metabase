@@ -72,18 +72,18 @@ function ParametersList({
       enableParameterRequiredBehavior={enableParameterRequiredBehavior}
       commitImmediately={commitImmediately}
       dragHandle={
-          isEditing && setParameterIndex ? (
-              <div
-                  className={cx(
-                      CS.flex,
-                      CS.layoutCentered,
-                      CS.cursorGrab,
-                      "text-inherit",
-                  )}
-              >
-                  <Icon name="grabber" />
-              </div>
-          ) : null
+        isEditing && setParameterIndex ? (
+          <div
+            className={cx(
+              CS.flex,
+              CS.layoutCentered,
+              CS.cursorGrab,
+              "text-inherit",
+            )}
+          >
+            <Icon name="grabber" />
+          </div>
+        ) : null
       }
       isSortable
     />
