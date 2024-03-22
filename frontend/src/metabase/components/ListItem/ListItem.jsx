@@ -5,6 +5,7 @@ import { memo } from "react";
 
 import Card from "metabase/components/Card";
 import S from "metabase/components/List/List.module.css";
+import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
 import { ListItemLink, ListItemName, Root } from "./ListItem.styled";
@@ -19,7 +20,10 @@ const ListItem = ({
   icon,
 }) => {
   const card = (
-    <Card hoverable className="mb2 p3 bg-white rounded bordered">
+    <Card
+      hoverable
+      className={cx(CS.mb2, CS.p3, CS.bgWhite, CS.rounded, CS.bordered)}
+    >
       <div className={cx(S.item)}>
         <div className={S.itemIcons}>
           {icon && <Icon className={S.chartIcon} name={icon} size={16} />}

@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
@@ -163,12 +164,12 @@ export function DetailsTable({
 
   if (!cols?.length) {
     return (
-      <EmptyState message={t`Select at least one column`} className="p3" />
+      <EmptyState message={t`Select at least one column`} className={CS.p3} />
     );
   }
 
   if (!row?.length) {
-    return <EmptyState message={t`No details found`} className="p3" />;
+    return <EmptyState message={t`No details found`} className={CS.p3} />;
   }
 
   return (

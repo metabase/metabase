@@ -115,7 +115,7 @@ const EditSandboxingModal = ({
 
   return (
     <div>
-      <h2 className="p3">{t`Grant sandboxed access to this table`}</h2>
+      <h2 className={CS.p3}>{t`Grant sandboxed access to this table`}</h2>
 
       <div>
         <div className="px3 pb3">
@@ -183,7 +183,7 @@ const EditSandboxingModal = ({
           ))}
       </div>
 
-      <div className="p3">
+      <div className={CS.p3}>
         {isValid && (
           <div className={CS.pb1}>
             <PolicySummary policy={normalizedPolicy} />

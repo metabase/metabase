@@ -125,7 +125,7 @@ export function ActionDashcardSettings({
 }
 
 const EmptyActionState = () => (
-  <EmptyState className="p3" message={t`Select an action to get started`} />
+  <EmptyState className={CS.p3} message={t`Select an action to get started`} />
 );
 
 export const ConnectedActionDashcardSettings = connect(

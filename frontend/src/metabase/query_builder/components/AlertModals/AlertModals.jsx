@@ -571,7 +571,7 @@ export function AlertEditSchedule({ alertType, schedule, onScheduleChange }) {
 
       <div className="bordered rounded mb2">
         {alertType === ALERT_TYPE_ROWS && <RawDataAlertTip />}
-        <div className="p3 bg-light">
+        <div className={cx(CS.p3, "bg-light")}>
           <SchedulePicker
             schedule={schedule}
             scheduleOptions={["hourly", "daily", "weekly"]}

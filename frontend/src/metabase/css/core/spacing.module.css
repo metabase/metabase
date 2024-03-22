@@ -97,7 +97,6 @@
 
 /* 3 */
 
-:global(.p3),
 .p3 {
   padding: var(--padding-3);
 }
