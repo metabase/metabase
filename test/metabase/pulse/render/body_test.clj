@@ -843,3 +843,28 @@
                                                              :visualization_settings viz}]
             (testing "the render succeeds with unknown column settings keys"
               (is (seq (render.tu/render-card-as-hickory card-id))))))))))
+
+(deftest trend-chart-renders-in-alerts-test
+  (testing "Trend charts render successfully in Alerts. (#39854)"
+    (mt/dataset test-data
+      (let [q {:database (mt/id)
+               :type     :query
+               :query
+               {:source-table (mt/id :orders)
+                :aggregation  [[:count]]
+                :breakout     [[:field (mt/id :orders :created_at) {:base-type :type/DateTime, :temporal-unit :month}]]}}]
+        ;; Alerts are set on Questions. They run through the 'pulse' code the same as subscriptions,
+        ;; But will not have any Dashcard data associated, which caused an error in the static-viz render code
+        ;; which implicitly expected a DashCard to exist
+        ;; Here, we simulate an Alert (NOT a subscription) by only providing a card and not mocking a DashCard.
+        (mt/with-temp [:model/Card {card-id :id} {:display       :smartscalar
+                                                  :dataset_query q}]
+          (let [doc       (render.tu/render-card-as-hickory card-id)
+                span-text (->> doc
+                               (hik.s/select (hik.s/tag :span))
+                               (mapv (comp first :content))
+                               (filter string?)
+                               (filter #(str/includes? % "previous month")))]
+            ;; we look for content that we are certain comes from a
+            ;; successfully rendered trend chart.
+            (is (= ["vs. previous month: "] span-text))))))))

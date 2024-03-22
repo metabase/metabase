@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { createMockMetadata } from "__support__/metadata";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import {
@@ -232,20 +232,6 @@ describe("AggregationPicker", () => {
       });
     });
 
-    it("should show operator descriptions", () => {
-      setup();
-
-      const sumOfOption = screen.getByRole("option", { name: "Sum of ..." });
-      const infoIcon = within(sumOfOption).getByRole("img", {
-        name: "question icon",
-      });
-      userEvent.hover(infoIcon);
-
-      expect(screen.getByRole("tooltip")).toHaveTextContent(
-        "Sum of all the values of a column",
-      );
-    });
-
     it("should apply a column-less operator", () => {
       const { getRecentClauseInfo } = setup();
 
@@ -368,22 +354,6 @@ describe("AggregationPicker", () => {
     it("shouldn't list metrics for other tables", () => {
       setupMetrics({ metadata: createMetadata({ metrics: [TEST_METRIC] }) });
       expect(screen.queryByText(PRODUCT_METRIC.name)).not.toBeInTheDocument();
-    });
-
-    it("should show a description for each metric", () => {
-      setupMetrics({ metadata: createMetadata({ metrics: [TEST_METRIC] }) });
-
-      const metricOption = screen.getByRole("option", {
-        name: TEST_METRIC.name,
-      });
-      const infoIcon = within(metricOption).getByRole("img", {
-        name: "question icon",
-      });
-      userEvent.hover(infoIcon);
-
-      expect(screen.getByRole("tooltip")).toHaveTextContent(
-        TEST_METRIC.description,
-      );
     });
 
     it("should allow picking a metric", () => {

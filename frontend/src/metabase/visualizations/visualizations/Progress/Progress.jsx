@@ -175,9 +175,15 @@ export default class Progress extends Component {
     };
 
     return (
-      <div className={cx(this.props.className, "flex layout-centered")}>
+      <div className={cx(this.props.className, CS.flex, CS.layoutCentered)}>
         <div
-          className="flex-full full-height flex flex-column justify-center"
+          className={cx(
+            CS.flexFull,
+            CS.fullHeight,
+            CS.flex,
+            CS.flexColumn,
+            CS.justifyCenter,
+          )}
           style={{ padding: 10, paddingTop: 0 }}
         >
           <div

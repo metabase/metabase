@@ -3,6 +3,7 @@ import { t, jt } from "ttag";
 
 import Text from "metabase/components/type/Text";
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -40,7 +41,7 @@ export function NewPulseSidebar({
           onClick={onNewEmailPulse}
         >
           <div className="px3 pt3 pb2">
-            <div className="flex align-center">
+            <div className={cx(CS.flex, CS.alignCenter)}>
               <Icon
                 name="mail"
                 className={cx(
@@ -80,7 +81,7 @@ export function NewPulseSidebar({
           onClick={onNewSlackPulse}
         >
           <div className="px3 pt3 pb2">
-            <div className="flex align-center mb1">
+            <div className={cx(CS.flex, CS.alignCenter, CS.mb1)}>
               <Icon
                 name={slackConfigured ? "slack_colorized" : "slack"}
                 size={16}
