@@ -37,10 +37,10 @@
 
   A classifier may see the original field (before any classifiers were run) in the metadata of the field at
   `:sync.classify/original`."
-  [classifiers.name/infer-and-assoc-semantic-type
-   classifiers.category/infer-is-category-or-list
-   classifiers.no-preview-display/infer-no-preview-display
-   classifiers.text-fingerprint/infer-semantic-type])
+  [#'classifiers.name/infer-and-assoc-semantic-type
+   #'classifiers.category/infer-is-category-or-list
+   #'classifiers.no-preview-display/infer-no-preview-display
+   #'classifiers.text-fingerprint/infer-semantic-type])
 
 (mu/defn run-classifiers :- (mi/InstanceOf :model/Field)
   "Run all the available `classifiers` against `field` and `fingerprint`, and return the resulting `field` with
