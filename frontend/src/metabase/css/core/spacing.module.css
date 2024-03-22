@@ -265,7 +265,6 @@
   margin-left: var(--margin-3);
 }
 
-:global(.mr3),
 .mr3 {
   margin-right: var(--margin-3);
 }
