@@ -73,7 +73,7 @@ export const CodeSample = ({
         />
         {source && (
           <CopyButtonContainer>
-            <CopyButton className="p1" value={source} onCopy={onCopy} />
+            <CopyButton className={CS.p1} value={source} onCopy={onCopy} />
           </CopyButtonContainer>
         )}
       </div>

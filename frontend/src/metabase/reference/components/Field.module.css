@@ -17,6 +17,7 @@
 }
 
 .fieldNameTextInput {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: input p1 from "style";
   color: var(--title-color);
   width: 100%;

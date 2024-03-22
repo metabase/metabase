@@ -84,7 +84,7 @@ export class PredefinedRelativeDatePicker extends Component<PredefinedRelativeDa
 
   render() {
     return (
-      <div className="p1 pt2">
+      <div className={cx(CS.p1, CS.pt2)}>
         <section>
           {SHORTCUTS.map((s, index) => (
             <span

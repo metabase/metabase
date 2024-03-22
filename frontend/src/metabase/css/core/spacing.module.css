@@ -33,7 +33,6 @@
 }
 
 /* 1 */
-:global(.p1),
 .p1 {
   padding: var(--padding-1);
 }
