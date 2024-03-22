@@ -118,7 +118,7 @@ const EditSandboxingModal = ({
       <h2 className={CS.p3}>{t`Grant sandboxed access to this table`}</h2>
 
       <div>
-        <div className="px3 pb3">
+        <div className={cx(CS.px3, CS.pb3)}>
           <div className="pb3">
             {t`When users in this group view this table they'll see a version of it that's filtered by their user attributes, or a custom view of it based on a saved question.`}
           </div>
@@ -141,7 +141,7 @@ const EditSandboxingModal = ({
           />
         </div>
         {shouldUseSavedQuestion && (
-          <div className="px3 pb3">
+          <div className={cx(CS.px3, CS.pb3)}>
             <div className={CS.pb2}>
               {t`Pick a saved question that returns the custom view of this table that these users should see.`}
             </div>
@@ -171,7 +171,7 @@ const EditSandboxingModal = ({
               />
             </div>
           ) : (
-            <div className="px3">
+            <div className={CS.px3}>
               <AttributeOptionsEmptyState
                 title={
                   shouldUseSavedQuestion

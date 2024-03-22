@@ -101,7 +101,6 @@
   padding: var(--padding-3);
 }
 
-:global(.px3),
 .px3 {
   padding-left: var(--padding-3);
   padding-right: var(--padding-3);
