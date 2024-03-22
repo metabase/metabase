@@ -234,7 +234,11 @@ function PulseDetails({ pulse, parameters }) {
               size={12}
             />
             <span
-              className="ml1 text-medium hover-child hover--inherit"
+              className={cx(
+                CS.ml1,
+                CS.textMedium,
+                "hover-child hover--inherit",
+              )}
               style={{ fontSize: "12px" }}
             >
               {recipientText}

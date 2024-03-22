@@ -132,7 +132,9 @@ class SetupCheckList extends Component {
       <SetupListRoot>
         <div className={CS.px2}>
           <h2>{t`Getting set up`}</h2>
-          <p className="mt1">{t`A few things you can do to get the most out of Metabase.`}</p>
+          <p
+            className={CS.mt1}
+          >{t`A few things you can do to get the most out of Metabase.`}</p>
           <LoadingAndErrorWrapper
             loading={!this.state.tasks}
             error={this.state.error}

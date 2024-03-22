@@ -161,7 +161,7 @@ const GroupDetail = ({
       title={
         <Fragment>
           {getGroupNameLocalized(group ?? {})}
-          <span className="text-light ml1">
+          <span className={cx(CS.textLight, CS.ml1)}>
             {ngettext(
               msgid`${group.members.length} member`,
               `${group.members.length} members`,

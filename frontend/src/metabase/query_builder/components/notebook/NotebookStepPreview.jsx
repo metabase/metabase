@@ -59,7 +59,12 @@ const NotebookStepPreview = ({ step, onClose }) => {
           <Icon
             name="close"
             onClick={onClose}
-            className="text-light text-medium-hover cursor-pointer ml1"
+            className={cx(
+              CS.textLight,
+              "text-medium-hover",
+              CS.cursorPointer,
+              CS.ml1,
+            )}
           />
         </PreviewIconContainer>
       </PreviewHeader>

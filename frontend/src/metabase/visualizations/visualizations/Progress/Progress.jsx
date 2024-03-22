@@ -247,7 +247,7 @@ export default class Progress extends Component {
               </div>
             )}
           </div>
-          <div className="mt1">
+          <div className={CS.mt1}>
             <span className="float-left">0</span>
             <span className="float-right">{t`Goal ${formatValue(
               goal,

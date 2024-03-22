@@ -93,7 +93,7 @@ export function TypeSelector({
   return (
     <div>
       {options.map(({ value, icon }) => (
-        <div key={value} className="mb1">
+        <div key={value} className={CS.mb1}>
           <BehaviorOption
             value={value}
             dashcard={dashcard}

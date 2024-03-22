@@ -83,7 +83,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         </div>
         <div className={F.fieldDataType}>{field.base_type}</div>
       </div>
-      <div className={cx(S.itemSubtitle, F.fieldSecondary, { mt1: true })}>
+      <div className={cx(S.itemSubtitle, F.fieldSecondary, { [CS.mt1]: true })}>
         <div className={F.fieldForeignKey}>
           {isEditing
             ? (isTypeFK(formField.semantic_type.value) ||
@@ -110,7 +110,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         <div className={F.fieldOther} />
       </div>
       {field.description && (
-        <div className={cx(S.itemSubtitle, "mb2", { mt1: isEditing })}>
+        <div className={cx(S.itemSubtitle, CS.mb2, { [CS.mt1]: isEditing })}>
           {field.description}
         </div>
       )}

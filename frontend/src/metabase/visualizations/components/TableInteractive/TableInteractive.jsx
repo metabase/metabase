@@ -810,7 +810,7 @@ class TableInteractive extends Component {
                 {columnTitle}
                 {isSortable && !isRightAligned && (
                   <Icon
-                    className="Icon ml1"
+                    className={cx("Icon", CS.ml1)}
                     name={isAscending ? "chevronup" : "chevrondown"}
                     size={10}
                     data-testid={columnInfoPopoverTestId}

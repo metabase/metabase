@@ -57,7 +57,7 @@ function _AddEditEmailSidebar({
         className={cx(CS.my2, CS.px4, CS.fullHeight, CS.flex, CS.flexColumn)}
       >
         <div>
-          <div className="text-bold mb1">{t`To:`}</div>
+          <div className={cx(CS.textBold, CS.mb1)}>{t`To:`}</div>
           <RecipientPicker
             isNewPulse={pulse.id == null}
             autoFocus={false}
@@ -144,7 +144,7 @@ function _AddEditEmailSidebar({
             <Heading>{t`Attach results`}</Heading>
             <Icon
               name="info"
-              className="text-medium ml1"
+              className={cx(CS.textMedium, CS.ml1)}
               size={12}
               tooltip={t`Attachments can contain up to 2,000 rows of data.`}
             />

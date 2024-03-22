@@ -194,7 +194,7 @@ const EditSandboxingModal = ({
           <Button onClick={onCancel}>{t`Cancel`}</Button>
           <ActionButton
             error={error}
-            className="ml1"
+            className={CS.ml1}
             actionFn={savePolicy}
             primary
             disabled={!canSave}

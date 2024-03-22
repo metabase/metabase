@@ -200,7 +200,9 @@ export class AlertEducationalScreen extends Component {
         className={cx(CS.pt2, CS.pb4, CS.mlAuto, CS.mrAuto, CS.textCentered)}
       >
         <div className={CS.pt4}>
-          <h1 className="mb1 text-dark">{t`The wide world of alerts`}</h1>
+          <h1
+            className={cx(CS.mb1, CS.textDark)}
+          >{t`The wide world of alerts`}</h1>
           <h3 className="mb4 text-normal text-dark">{t`There are a few different kinds of alerts you can get`}</h3>
         </div>
         {
@@ -406,8 +408,8 @@ export class DeleteAlertSection extends Component {
           className={cx(CS.textError, CS.absolute, CS.top, CS.bgWhite, CS.px1)}
           style={{ marginTop: "-12px" }}
         >{jt`Danger Zone`}</h3>
-        <div className="ml1">
-          <h4 className="text-bold mb1">{jt`Delete this alert`}</h4>
+        <div className={CS.ml1}>
+          <h4 className={cx(CS.textBold, CS.mb1)}>{jt`Delete this alert`}</h4>
           <div className={CS.flex}>
             <p
               className={cx(CS.h4, CS.pr2)}
@@ -550,7 +552,7 @@ export const AlertSettingToggle = ({
   setting,
 }) => (
   <div className={cx(CS.mb4, CS.pb2)}>
-    <h3 className="text-dark mb1">{title}</h3>
+    <h3 className={cx(CS.textDark, CS.mb1)}>{title}</h3>
     <Radio
       value={alert[setting]}
       onChange={value => onAlertChange({ ...alert, [setting]: value })}

@@ -54,7 +54,7 @@ const ChartSettingFieldsPicker = ({
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
-                          className="mb1"
+                          className={CS.mb1}
                         >
                           <ChartSettingFieldPicker
                             {...props}

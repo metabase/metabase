@@ -5,6 +5,7 @@ import { t, jt } from "ttag";
 import _ from "underscore";
 
 import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
+import CS from "metabase/css/core/index.css";
 import Collection, { ROOT_COLLECTION } from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import { color } from "metabase/lib/colors";
@@ -48,7 +49,7 @@ const DashboardMoveToast = ({ collectionId }) => (
     {jt`Dashboard moved to ${(
       <Collection.Link
         id={collectionId}
-        className="ml1"
+        className={CS.ml1}
         color={color("brand")}
       />
     )}`}

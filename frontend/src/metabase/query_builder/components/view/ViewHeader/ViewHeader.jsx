@@ -5,6 +5,7 @@ import { t, ngettext, msgid } from "ttag";
 
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -340,7 +341,7 @@ function AhHocQuestionLeftSide(props) {
       <ViewHeaderLeftSubHeading>
         {isSummarized && (
           <QuestionDataSource
-            className="mb1"
+            className={CS.mb1}
             question={question}
             isObjectDetail={isObjectDetail}
             subHead

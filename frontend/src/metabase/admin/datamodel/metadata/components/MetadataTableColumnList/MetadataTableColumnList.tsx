@@ -150,7 +150,7 @@ const TableFieldOrderDropdown = ({
           aria-label={t`Sort`}
         >
           <Icon
-            className="ml1"
+            className={CS.ml1}
             name="sort_arrows"
             size={14}
             style={{ transform: "translateY(2px)" }}

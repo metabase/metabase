@@ -189,17 +189,14 @@
   margin-bottom: var(--margin-1);
 }
 
-:global(.mt1),
 .mt1 {
   margin-top: var(--margin-1);
 }
 
-:global(.mb1),
 .mb1 {
   margin-bottom: var(--margin-1);
 }
 
-:global(.ml1),
 .ml1 {
   margin-left: var(--margin-1);
 }

@@ -1,3 +1,4 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
@@ -105,8 +106,10 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
             <h3
               className={CS.mb0}
             >{t`Configure your identity provider (IdP)`}</h3>
-            {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
-            <p className="mb4 mt1 text-medium">{t`Your identity provider will need the following info about Metabase.`}</p>
+            <p className={cx(CS.mb4, CS.mt1, CS.textMedium)}>
+              {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+              {t`Your identity provider will need the following info about Metabase.`}
+            </p>
 
             <FormTextInput
               name={FAKE_ACS_URL_KEY}
@@ -117,7 +120,9 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
             />
 
             <h4 className={CS.pt2}>{t`SAML attributes`}</h4>
-            <p className="mb3 mt1 text-medium">{t`In most IdPs, you'll need to put each of these in an input box labeled
+            <p
+              className={cx(CS.mb3, CS.mt1, CS.textMedium)}
+            >{t`In most IdPs, you'll need to put each of these in an input box labeled
                         "Name" in the attribute statements section.`}</p>
 
             <Stack gap="md">
@@ -144,7 +149,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
               {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
               {t`Tell Metabase about your identity provider`}
             </h3>
-            <p className="mb4 mt1 text-medium">
+            <p className={cx(CS.mb4, CS.mt1, CS.textMedium)}>
               {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
               {t`Metabase will need the following info about your provider.`}
             </p>
@@ -197,7 +202,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
             <h3
               className={CS.mb0}
             >{t`Synchronize group membership with your SSO`}</h3>
-            <p className="mb4 mt1 text-medium">
+            <p className={cx(CS.mb4, CS.mt1, CS.textMedium)}>
               {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
               {t`To enable this, you'll need to create mappings to tell Metabase which group(s) your users should
                be added to based on the SSO group they're in.`}

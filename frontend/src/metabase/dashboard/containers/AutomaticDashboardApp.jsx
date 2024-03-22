@@ -79,7 +79,10 @@ class AutomaticDashboardAppInner extends Component {
     triggerToast(
       <div className={cx(CS.flex, CS.alignCenter)}>
         {t`Your dashboard was saved`}
-        <Link className="link text-bold ml1" to={Urls.dashboard(newDashboard)}>
+        <Link
+          className={cx("link", CS.textBold, CS.ml1)}
+          to={Urls.dashboard(newDashboard)}
+        >
           {t`See it`}
         </Link>
       </div>,
@@ -167,7 +170,7 @@ class AutomaticDashboardAppInner extends Component {
                   isFixedWidth={dashboard?.width === "fixed"}
                 >
                   <SyncedParametersList
-                    className="mt1"
+                    className={CS.mt1}
                     parameters={getValuePopulatedParameters({
                       parameters,
                       values: parameterValues,
@@ -284,7 +287,7 @@ const SuggestionSectionHeading = ({ children }) => (
       textTransform: "uppercase",
       color: color("text-medium"),
     }}
-    className="mb1"
+    className={CS.mb1}
   >
     {children}
   </h5>

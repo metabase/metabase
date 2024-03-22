@@ -53,7 +53,7 @@ export function Trigger({
     >
       {children}
       {showDropdownIcon && (
-        <Icon className="ml1" name="chevrondown" size={iconSize} />
+        <Icon className={CS.ml1} name="chevrondown" size={iconSize} />
       )}
     </span>
   );

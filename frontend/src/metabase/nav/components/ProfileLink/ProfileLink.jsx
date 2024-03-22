@@ -118,7 +118,7 @@ function ProfileLink({ adminItems, onLogout }) {
               className="text-dark"
             >{t`Thanks for using ${applicationName}!`}</h2>
             <div className={CS.pt2}>
-              <h3 className="text-dark mb1">
+              <h3 className={cx(CS.textDark, CS.mb1)}>
                 {t`You're on version`} {tag}
               </h3>
               <p className="text-medium text-bold">

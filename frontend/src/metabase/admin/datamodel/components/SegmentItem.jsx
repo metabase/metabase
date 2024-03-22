@@ -18,7 +18,7 @@ export default class SegmentItem extends Component {
     const { segment, onRetire } = this.props;
 
     return (
-      <tr className="mt1 mb3">
+      <tr className={cx(CS.mt1, CS.mb3)}>
         <td className={cx(CS.px1, CS.py1, "text-wrap")}>
           <span className={cx(CS.flex, CS.alignCenter)}>
             <Icon name="segment" className="mr1 text-medium" />

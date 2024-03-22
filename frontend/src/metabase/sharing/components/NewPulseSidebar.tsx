@@ -34,7 +34,7 @@ export function NewPulseSidebar({
       <div className={cx(CS.my1, CS.mx4)}>
         <ChannelCard
           flat
-          className={cx("mt1 mb3", {
+          className={cx(CS.mt1, CS.mb3, {
             "hover-parent hover--inherit": emailConfigured,
           })}
           isConfigured={emailConfigured}
