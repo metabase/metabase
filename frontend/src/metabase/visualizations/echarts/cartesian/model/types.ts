@@ -14,6 +14,7 @@ import type {
   POSITIVE_STACK_TOTAL_DATA_KEY,
   ORIGINAL_INDEX_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import type { OptionsType } from "metabase/lib/formatting/types";
 
 export type BreakoutValue = RowValue;
 export type ColumnName = string;
@@ -86,7 +87,11 @@ export type Datum = Record<DataKey, RowValue> & {
 export type ChartDataset = Datum[];
 export type Extent = [number, number];
 export type SeriesExtents = Record<DataKey, Extent>;
-export type AxisFormatter = (value: RowValue) => string;
+export type AxisFormatter = (value: RowValue, options?: OptionsType) => string;
+export type TimeSeriesAxisFormatter = (
+  value: RowValue,
+  unit?: DateTimeAbsoluteUnit,
+) => string;
 
 export type DateRange = [Dayjs, Dayjs];
 
@@ -108,16 +113,15 @@ export type NumericAxisScaleTransforms = {
 
 export type BaseXAxisModel = {
   label?: string;
-  formatter: AxisFormatter;
   axisType: OptionAxisType;
   canBrush?: boolean;
-  tickRenderPredicate?: (value: Dayjs) => boolean;
 };
 
 export type CategoryXAxisModel = BaseXAxisModel & {
   axisType: "category";
   isHistogram: boolean;
   histogramInterval?: number;
+  formatter: AxisFormatter;
 };
 
 export type NumericXAxisModel = BaseXAxisModel &
@@ -128,6 +132,7 @@ export type NumericXAxisModel = BaseXAxisModel &
     intervalsCount: number;
     ticksMaxInterval?: number;
     isPadded: boolean;
+    formatter: AxisFormatter;
   };
 
 export type TimeSeriesXAxisModel = BaseXAxisModel & {
@@ -137,10 +142,8 @@ export type TimeSeriesXAxisModel = BaseXAxisModel & {
   interval: TimeSeriesInterval;
   intervalsCount: number;
   range: DateRange;
-  ticksMaxInterval?: number;
-  ticksMinInterval?: number;
-  effectiveTickUnit?: CartesianChartDateTimeAbsoluteUnit;
   fromAxisValue: (value: number) => Dayjs;
+  formatter: TimeSeriesAxisFormatter;
 };
 
 export type XAxisModel =

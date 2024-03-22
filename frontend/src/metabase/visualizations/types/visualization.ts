@@ -11,6 +11,7 @@ import type {
   DatasetColumn,
   DatasetData,
   RawSeries,
+  RowValue,
   Series,
   TimelineEvent,
   TimelineEventId,
