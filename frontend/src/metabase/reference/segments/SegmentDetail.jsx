@@ -255,7 +255,7 @@ const SegmentDetail = props => {
                   </li>
                 )}
                 {table && !isEditing && (
-                  <li className="relative mb4">
+                  <li className={cx(CS.relative, CS.mb4)}>
                     <Formula
                       type="segment"
                       entity={entity}

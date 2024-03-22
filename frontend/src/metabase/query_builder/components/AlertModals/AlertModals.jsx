@@ -203,7 +203,9 @@ export class AlertEducationalScreen extends Component {
           <h1
             className={cx(CS.mb1, CS.textDark)}
           >{t`The wide world of alerts`}</h1>
-          <h3 className="mb4 text-normal text-dark">{t`There are a few different kinds of alerts you can get`}</h3>
+          <h3
+            className={cx(CS.mb4, CS.textNormal, CS.textDark)}
+          >{t`There are a few different kinds of alerts you can get`}</h3>
         </div>
         {
           // @mazameli: needed to do some negative margin spacing to match the designs

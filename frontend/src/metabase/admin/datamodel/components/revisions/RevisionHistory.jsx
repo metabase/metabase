@@ -44,7 +44,7 @@ class RevisionHistory extends Component {
               ]}
             />
             <div className={cx(CS.wrapper, CS.py4)} style={{ maxWidth: 950 }}>
-              <h2 className="mb4">
+              <h2 className={CS.mb4}>
                 {t`Revision History for`} &quot;{object.name}&quot;
               </h2>
               <ol>

@@ -109,7 +109,7 @@ function PermissionsPageLayout({
             formModal
             onClose={clearSaveError}
           >
-            <p className="mb4">{saveError}</p>
+            <p className={CS.mb4}>{saveError}</p>
             <div className={cx(CS.mlAuto)}>
               <Button onClick={clearSaveError}>{t`OK`}</Button>
             </div>

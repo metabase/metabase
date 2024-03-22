@@ -37,7 +37,7 @@ const TaskSectionHeader = ({ name }) => (
 );
 
 const TaskSection = ({ name, tasks }) => (
-  <div className="mb4">
+  <div className={CS.mb4}>
     <TaskSectionHeader name={name} />
     <TaskList tasks={tasks} />
   </div>

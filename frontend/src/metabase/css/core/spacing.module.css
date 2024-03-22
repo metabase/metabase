@@ -289,7 +289,6 @@
   margin-top: var(--margin-4);
 }
 
-:global(.mb4),
 .mb4 {
   margin-bottom: var(--margin-4);
 }
