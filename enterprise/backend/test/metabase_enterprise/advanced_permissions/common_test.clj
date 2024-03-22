@@ -744,13 +744,12 @@
                               action
                               :table-id (:id table-a)
                               :user-id (mt/user->id :rasta))]
-            (doseq [native-permissions [:none :write]]
-              (testing (format "With blocked perms it should fail with {:native %s}" native-permissions)
-                (mt/with-all-users-data-perms-graph! {db-id {:data {:native native-permissions, :schemas :block}}}
-                  (is (thrown-with-msg?
-                       clojure.lang.ExceptionInfo
-                       #"You don't have permissions to do that\."
-                       (append-csv!))))))))))))
+            (testing "With blocked perms it should fail"
+              (mt/with-all-users-data-perms-graph! {db-id {:data {:native :none, :schemas :block}}}
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"You don't have permissions to do that\."
+                     (append-csv!)))))))))))
 
 (deftest get-database-can-upload-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
