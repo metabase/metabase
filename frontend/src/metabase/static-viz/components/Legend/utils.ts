@@ -22,29 +22,28 @@ const calculateItemWidth = (
   );
 };
 
-/**
- * Calculates the positions of legend items rendered in rows based on the available width, padding,
- * and font style.
- *
- * @param {LegendItem[]} items - The legend items to be positioned.
- * @param {number} width - The available width for the legend.
- * @param {number} [horizontalPadding=0] - The horizontal padding of the legend.
- * @param {number} [verticalPadding=0] - The vertical padding of the legend.
- * @param {number} [lineHeight=DEFAULT_LEGEND_LINE_HEIGHT] - The line height for each row of legend items.
- * @param {number} [fontSize=DEFAULT_LEGEND_FONT_SIZE] - The font size to be used for the legend items.
- * @param {number} [fontWeight=DEFAULT_LEGEND_FONT_WEIGHT] - The font weight to be used for the legend items.
- * @returns {{ items: PositionedLegendItem[]; height: number }} An object containing the total height of the legend
- *                                                              and the flat list of positioned legend items.
- */
-export const calculateLegendRows = (
-  items: LegendItem[],
-  width: number,
+interface CalculateLegendInput {
+  items: LegendItem[];
+  width: number;
+  horizontalPadding?: number;
+  verticalPadding?: number;
+
+  lineHeight?: number;
+  fontSize?: number;
+  fontWeight?: number;
+  isReversed?: boolean;
+}
+
+export const calculateLegendRows = ({
+  items,
+  width,
   horizontalPadding = 0,
   verticalPadding = 0,
-  lineHeight: number = DEFAULT_LEGEND_LINE_HEIGHT,
-  fontSize: number = DEFAULT_LEGEND_FONT_SIZE,
-  fontWeight: number = DEFAULT_LEGEND_FONT_WEIGHT,
-): { items: PositionedLegendItem[]; height: number } => {
+  lineHeight = DEFAULT_LEGEND_LINE_HEIGHT,
+  fontSize = DEFAULT_LEGEND_FONT_SIZE,
+  fontWeight = DEFAULT_LEGEND_FONT_WEIGHT,
+  isReversed,
+}: CalculateLegendInput): { items: PositionedLegendItem[]; height: number } => {
   if (items.length <= 1) {
     return {
       items: [],
@@ -52,13 +51,15 @@ export const calculateLegendRows = (
     };
   }
 
+  const orderedItems = isReversed ? items.slice().reverse() : items;
+
   const availableTotalWidth = width - 2 * horizontalPadding;
 
   const rows: PositionedLegendItem[][] = [[]];
 
   let currentRowX = horizontalPadding;
 
-  for (const item of items) {
+  for (const item of orderedItems) {
     const currentRowIndex = rows.length - 1;
     const currentRow = rows[currentRowIndex];
     const hasItemsInCurrentRow = currentRow.length > 0;

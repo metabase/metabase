@@ -585,7 +585,8 @@ export const getSortedSeriesModels = (
     });
 
   // On stacked charts we reverse the order of series so that the series
-  // order in the sidebar matches series order on the chart
+  // order in the sidebar matches series order on the chart.
+  // Also it produces historically correct order of series on already saved questions.
   const isReversed = !isEmpty(settings["stackable.stack_type"]);
   if (isReversed) {
     orderedSeriesModels.reverse();
