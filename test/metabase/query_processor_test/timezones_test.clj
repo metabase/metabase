@@ -252,44 +252,51 @@
                                           :let [expected-datetime (u.date/add #t "2012-01-01T01:30:54Z" :day i)
                                                 in-tz (u.date/with-time-zone-same-instant expected-datetime timezone)]]
                                       (concat
-                                        (for [extract-unit extract-units]
-                                          [extract-unit (u.date/extract in-tz extract-unit)])
-                                        (for [trunc-unit trunc-units]
-                                          [trunc-unit
-                                           (-> in-tz
-                                               (u.date/truncate trunc-unit)
-                                               u.date/format-sql
-                                               (str/replace #" " "T"))])
-                                        [[:dt_tz
-                                          (-> in-tz
-                                              u.date/format-sql
-                                              (str/replace #" " "T"))]]))]]
+                                       (for [extract-unit extract-units]
+                                         [extract-unit (u.date/extract in-tz extract-unit)])
+                                       (for [trunc-unit trunc-units]
+                                         [trunc-unit
+                                          (let [t (u.date/truncate in-tz trunc-unit)
+                                                t (cond
+                                                    (#{:day :week :month :quarter :year} trunc-unit)
+                                                    (t/local-date t)
+
+                                                    (t/zoned-date-time? t)
+                                                    (t/offset-date-time t)
+
+                                                    :else
+                                                    t)]
+                                            (u.date/format t))])
+                                       [[:dt_tz
+                                         (-> in-tz
+                                             u.date/format-sql
+                                             (str/replace #" " "T"))]]))]]
           (mt/with-temporary-setting-values [report-timezone timezone]
             (let [rows (->> (mt/run-mbql-query alldates
                               {:expressions (->> extract-units
                                                  (map
-                                                   (fn [extract-unit]
-                                                     [extract-unit [:temporal-extract
-                                                                    [:field (mt/id :alldates :dt) nil]
-                                                                    (get extract-translate extract-unit extract-unit)]]))
+                                                  (fn [extract-unit]
+                                                    [extract-unit [:temporal-extract
+                                                                   [:field (mt/id :alldates :dt) nil]
+                                                                   (get extract-translate extract-unit extract-unit)]]))
                                                  (into {}))
                                :fields (concat
-                                         (for [extract-unit extract-units]
-                                           [:expression extract-unit])
-                                         (for [trunc-unit trunc-units]
-                                           [:field (mt/id :alldates :dt)
-                                            {:temporal-unit trunc-unit}])
-                                         [[:field (mt/id :alldates :dt)]])
+                                        (for [extract-unit extract-units]
+                                          [:expression extract-unit])
+                                        (for [trunc-unit trunc-units]
+                                          [:field (mt/id :alldates :dt)
+                                           {:temporal-unit trunc-unit}])
+                                        [[:field (mt/id :alldates :dt)]])
                                :order-by [[:asc (mt/id :alldates :id)]]})
                             (mt/rows)
                             (map (fn [row]
                                    (map vector
                                         (concat
-                                          (for [extract-unit extract-units]
-                                            extract-unit)
-                                          (for [trunc-unit trunc-units]
-                                            trunc-unit)
-                                          [:dt_tz])
+                                         (for [extract-unit extract-units]
+                                           extract-unit)
+                                         (for [trunc-unit trunc-units]
+                                           trunc-unit)
+                                         [:dt_tz])
                                         row))))]
               (doseq [[expected-row row] (map vector expected-rows rows)]
                 (is (= expected-row row))))))))))
