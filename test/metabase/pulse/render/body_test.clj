@@ -11,6 +11,7 @@
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [toucan2.core :as t2]))
 
 (use-fixtures :each
@@ -620,6 +621,50 @@
                             (hik.s/class "pulse-body")
                             doc)]
             (is (not (render-error? pulse-body)))))))))
+
+(def ^:private funnel-rows
+  [["cart" 1500]
+   ["checkout" 450]
+   ["homepage" 10000]
+   ["product_page" 5000]
+   ["purchase" 225]])
+
+(tx/defdataset funnel-data
+  [["stages"
+    [{:field-name "stage", :base-type :type/Text}
+     {:field-name "count", :base-type :type/Quantity}]
+    funnel-rows]])
+
+(deftest render-funnel-with-row-keys-test
+  (testing "Static-viz Funnel Chart with text keys in viz-settings and text in returned
+            rows renders without error and in the order specified by the viz-settings (#39743)."
+    (mt/dataset funnel-data
+      (let [funnel-query {:database (mt/id)
+                          :type     :query
+                          :query
+                          {:source-table (mt/id :stages)
+                           ;; we explicitly select the 2 columns because if we don't the query returns the ID as well.
+                           ;; this is done here to construct the failing case resulting from the reproduction steps in issue #39743
+                           :fields       [[:field (mt/id :stages :stage)]
+                                          [:field (mt/id :stages :count)]]}}
+            funnel-card  {:display       :funnel
+                          :dataset_query funnel-query
+                          :visualization_settings
+                          {:funnel.rows
+                           [{:key "homepage" :name "homepage" :enabled true}
+                            {:key "product_page" :name "product_page" :enabled true}
+                            {:key "cart" :name "cart" :enabled true}
+                            {:key "checkout" :name "checkout" :enabled true}
+                            {:key "purchase" :name "purchase" :enabled true}]}}]
+        (mt/with-temp [:model/Card {card-id :id} funnel-card]
+          (let [row-names      (into #{} (map first funnel-rows))
+                doc            (render.tu/render-card-as-hickory card-id)
+                section-labels (->> doc
+                                    (hik.s/select (hik.s/tag :tspan))
+                                    (mapv (comp first :content))
+                                    (filter row-names))]
+            (is (= (map :key (get-in funnel-card [:visualization_settings :funnel.rows]))
+                   section-labels))))))))
 
 (deftest render-categorical-donut-test
   (let [columns [{:name          "category",
