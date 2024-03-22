@@ -28,7 +28,7 @@ import { useCommandPaletteBasicActions } from "../hooks/useCommandPaletteBasicAc
 import { PaletteResults } from "./PaletteResults";
 
 const TestComponent = withRouter(
-  ({ q, ...props }: WithRouterProps & { q?: string }) => {
+  ({ q, ...props }: WithRouterProps & { q?: string; isLoggedIn: boolean }) => {
     useCommandPaletteBasicActions(props);
 
     const { query } = useKBar();
@@ -65,7 +65,7 @@ const setup = ({ query }: { query?: string } = {}) => {
 
   renderWithProviders(
     <KBarProvider>
-      <TestComponent q={query} />
+      <TestComponent q={query} isLoggedIn />
     </KBarProvider>,
     {
       storeInitialState: {
