@@ -35,7 +35,7 @@
 
 ;; settings for the embedding homepage
 (defsetting embedding-homepage
-  (deferred-tru "Embedding homepage status")
+  (deferred-tru "Embedding homepage status, indicating if it's visible, hidden or has been dismissed")
   :type       :string
   :default    "hidden"
   :export?    true
@@ -43,7 +43,7 @@
 
 
 (defsetting setup-embedding-autoenabled
-  (deferred-tru "Embedding homepage status")
+  (deferred-tru "Indicates if embedding has enabled automatically during the setup because the user was interested in embedding")
   :type       :boolean
   :default    false
   :export?    true
@@ -51,7 +51,7 @@
 
 
 (defsetting setup-license-active-at-setup
-  (deferred-tru "Embedding homepage status")
+  (deferred-tru "Indicates if at the end of the setup a valid license was active")
   :type       :boolean
   :default    false
   :export?    true
