@@ -195,7 +195,9 @@ const SegmentDetail = props => {
                               className="text-brand text-bold text-paragraph"
                               to={`/reference/databases/${table.db_id}/tables/${table.id}`}
                             >
-                              <span className="pt1">{table.display_name}</span>
+                              <span className={CS.pt1}>
+                                {table.display_name}
+                              </span>
                             </Link>
                           </div>
                         )}

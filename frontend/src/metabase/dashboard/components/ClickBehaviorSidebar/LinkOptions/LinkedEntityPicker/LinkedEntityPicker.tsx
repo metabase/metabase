@@ -111,7 +111,7 @@ function TargetClickMappings({
   return (
     <Entity.Loader id={clickBehavior.targetId}>
       {({ object }: { object: Question | Dashboard }) => (
-        <div className="pt1">
+        <div className={CS.pt1}>
           <Heading>{getTargetClickMappingsHeading(object)}</Heading>
           <ClickMappingsConnected
             object={object}

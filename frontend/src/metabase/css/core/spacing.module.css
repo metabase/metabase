@@ -47,7 +47,6 @@
   padding-bottom: var(--padding-1);
 }
 
-:global(.pt1),
 .pt1 {
   padding-top: var(--padding-1);
 }
