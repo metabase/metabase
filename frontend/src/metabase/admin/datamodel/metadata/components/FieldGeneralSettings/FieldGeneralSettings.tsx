@@ -172,7 +172,7 @@ const FieldTypeSection = ({
     <MetadataSection>
       <MetadataSectionHeader title={t`Field Type`} />
       <SemanticTypeAndTargetPicker
-        className="flex align-center"
+        className={cx(CS.flex, CS.alignCenter)}
         field={field}
         idFields={idFields}
         onUpdateField={onUpdateField}

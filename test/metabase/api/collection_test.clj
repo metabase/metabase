@@ -966,6 +966,37 @@
           (is (= #{"card" "dash" "subcollection" "dataset"}
                  (into #{} (map :name) items))))))))
 
+(deftest collection-items-include-here-and-below-test
+  (testing "GET /api/collection/:id/items"
+    (t2.with-temp/with-temp [:model/Collection {id1 :id} {:name "Collection with Items"}
+                             :model/Collection {id2 :id} {:name "subcollection"
+                                                                       :location (format "/%d/" id1)}]
+      (let [item #(first (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" id1))))]
+        (testing "the item has nothing in or below it"
+          (is (nil? (:here (item))))
+          (is (nil? (:below (item)))))
+        (t2.with-temp/with-temp [:model/Collection {id3 :id} {:location (format "/%d/%d/" id1 id2)}]
+          (testing "now the item has a collection in it"
+            (is (= ["collection"] (:here (item)))))
+          (testing "but nothing :below"
+            (is (nil? (:below (item)))))
+          (t2.with-temp/with-temp [:model/Collection _ {:location (format "/%d/%d/%d/" id1 id2 id3)}]
+            (testing "the item still has a collection in it"
+              (is (= ["collection"] (:here (item)))))
+            (testing "the item now has a collection below it"
+              (is (= ["collection"] (:below (item))))))
+          (t2.with-temp/with-temp [:model/Card _ {:name "card" :collection_id id2}
+                                   :model/Card _ {:name "dataset" :type :model :collection_id id2}]
+            (testing "when the item has a card/dataset, that's reflected in `here` too"
+              (is (= #{"collection" "card" "dataset"} (set (:here (item)))))
+              (is (nil? (:below (item)))))
+            (t2.with-temp/with-temp [:model/Card _ {:name "card" :collection_id id3}]
+              (testing "when the item contains a collection that contains a card, that's `below`"
+                (is (= #{"card"} (set (:below (item))))))))
+          (t2.with-temp/with-temp [:model/Dashboard _ {:collection_id id2}]
+            (testing "when the item has a dashboard, that's reflected in `here` too"
+              (is (= #{"collection" "dashboard"} (set (:here (item))))))))))))
+
 (deftest children-sort-clause-test
   ;; we always place "special" collection types (i.e. "Metabase Analytics") last
   (testing "Default sort"

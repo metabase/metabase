@@ -233,7 +233,9 @@ const TableHeader = ({
   return (
     <div
       className={cx(
-        "flex justify-between align-center",
+        CS.flex,
+        CS.justifyBetween,
+        CS.alignCenter,
         AdminS.AdminListSection,
       )}
     >
@@ -282,7 +284,8 @@ const TableRow = ({
         onClick={handleSelect}
         data-testid="admin-metadata-table-list-item"
         className={cx(
-          "text-wrap justify-between",
+          "text-wrap",
+          CS.justifyBetween,
           CS.flex,
           CS.alignCenter,
           CS.noDecoration,

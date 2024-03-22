@@ -1,8 +1,10 @@
+import cx from "classnames";
 import type { Location } from "history";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { Grid } from "metabase/components/Grid";
+import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
@@ -47,7 +49,9 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
 
   if (!hasDataAccess && !hasNativeWrite) {
     return (
-      <div className="full-height flex align-center justify-center">
+      <div
+        className={cx(CS.fullHeight, CS.flex, CS.alignCenter, CS.justifyCenter)}
+      >
         <NoDatabasesEmptyState />
       </div>
     );

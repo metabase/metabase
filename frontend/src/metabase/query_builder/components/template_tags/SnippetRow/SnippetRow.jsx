@@ -29,7 +29,18 @@ class SnippetRowInner extends Component {
         )}
       >
         <div
-          className="cursor-pointer bg-light-hover text-bold flex align-center justify-between py2 px3 hover-parent hover--display"
+          className={cx(
+            CS.cursorPointer,
+            "bg-light-hover",
+            CS.textBold,
+            CS.flex,
+            CS.alignCenter,
+            CS.justifyBetween,
+            CS.py2,
+            CS.px3,
+            "hover-parent",
+            "hover--display",
+          )}
           onClick={() => this.setState({ isOpen: !isOpen })}
         >
           <SnippetContent
@@ -47,7 +58,7 @@ class SnippetRowInner extends Component {
               name={insertSnippet ? "arrow_left_to_line" : "snippet"}
               className="hover-child"
             />
-            <span className="flex-full ml1">{snippet.name}</span>
+            <span className={cx(CS.flexFull, CS.ml1)}>{snippet.name}</span>
           </SnippetContent>
           <Icon
             name={isOpen ? "chevronup" : "chevrondown"}

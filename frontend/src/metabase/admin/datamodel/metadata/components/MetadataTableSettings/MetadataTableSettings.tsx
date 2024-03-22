@@ -83,7 +83,7 @@ const MetadataTableSettings = ({
   return (
     <div className="relative">
       <div className={cx(CS.wrapper, CS.wrapperTrim)}>
-        <div className="flex align-center my2">
+        <div className={cx(CS.flex, CS.alignCenter, CS.my2)}>
           <MetadataBackButton
             selectedDatabaseId={database.id}
             selectedSchemaId={schemaId}

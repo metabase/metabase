@@ -4,20 +4,22 @@ import FormFooter from "metabase/core/components/FormFooter";
 import Collections from "metabase/entities/collections";
 import {
   Form,
-  FormProvider,
-  FormTextInput,
   FormErrorMessage,
+  FormProvider,
   FormSubmitButton,
+  FormTextInput,
 } from "metabase/forms";
 import { useDispatch } from "metabase/lib/redux";
-import { Modal, Button, Flex } from "metabase/ui";
+import { Button, Flex, Modal } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
+
+import type { CollectionPickerItem } from "../types";
 
 interface NewCollectionDialogProps {
   isOpen: boolean;
   onClose: () => void;
   parentCollectionId: CollectionId;
-  onNewCollection: (item: any) => void;
+  onNewCollection: (item: CollectionPickerItem) => void;
 }
 
 export const NewCollectionDialog = ({
