@@ -80,18 +80,20 @@ export function getDataLabelFormatter(
   renderingContext: RenderingContext,
   formattingOptions: OptionsType = {},
 ) {
+  const isCompact = shouldRenderCompact({
+    dataset,
+    formattingOptions,
+    labelDataKey,
+    renderingContext,
+    seriesModel,
+    settings,
+  });
+
   const valueFormatter = (value: unknown) =>
     renderingContext.formatValue(value, {
       ...(settings.column?.(seriesModel.column) ?? {}),
       jsx: false,
-      compact: shouldRenderCompact({
-        dataset,
-        formattingOptions,
-        labelDataKey,
-        renderingContext,
-        seriesModel,
-        settings,
-      }),
+      compact: isCompact,
       ...formattingOptions,
     });
 
