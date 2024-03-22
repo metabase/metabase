@@ -70,8 +70,8 @@
    [potemkin :as p]
    [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]
-   [toucan2.hydrate :as t2.hydrate]
-   [toucan2.pipeline :as t2.pipeline]))
+   [toucan2.pipeline :as t2.pipeline]
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
