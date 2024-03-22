@@ -29,6 +29,12 @@ export function getGoalLineSeriesOption(
     return null;
   }
 
+  const lineStyle = {
+    color: renderingContext.getColor("text-medium"),
+    type: [5, 5],
+    width: 2,
+  };
+
   return {
     type: "line",
     data: [
@@ -56,10 +62,9 @@ export function getGoalLineSeriesOption(
         textBorderColor: renderingContext.getColor("white"),
       },
       symbol: ["none", "none"],
-      lineStyle: {
-        color: renderingContext.getColor("text-medium"),
-        type: [5, 5],
-        width: 2,
+      lineStyle,
+      emphasis: {
+        lineStyle,
       },
       blur: {
         lineStyle: {
