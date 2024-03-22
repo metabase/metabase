@@ -79,6 +79,7 @@ function DataPicker({
     () =>
       getDataTypes({
         hasModels: modelLookupResult.length > 0,
+        hasMetrics: true,
         hasSavedQuestions: allDatabases.some(
           database => database.is_saved_questions,
         ),

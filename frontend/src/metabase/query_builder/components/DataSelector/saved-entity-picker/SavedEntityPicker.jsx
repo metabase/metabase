@@ -27,6 +27,7 @@ import { findCollectionByName } from "./utils";
 
 const propTypes = {
   isDatasets: PropTypes.bool,
+  isMetrics: PropTypes.bool,
   onSelect: PropTypes.func.isRequired,
   onBack: PropTypes.func.isRequired,
   collections: PropTypes.array.isRequired,
@@ -51,6 +52,7 @@ const ALL_PERSONAL_COLLECTIONS_ROOT = {
 
 function SavedEntityPicker({
   isDatasets,
+  isMetrics,
   onBack,
   onSelect,
   collections,
@@ -120,7 +122,7 @@ function SavedEntityPicker({
       <CollectionsContainer>
         <BackButton onClick={onBack} data-testid="saved-entity-back-navigation">
           <Icon name="chevronleft" className="mr1" />
-          {isDatasets ? t`Models` : t`Saved Questions`}
+          {isDatasets ? t`Models` : isMetrics ? t`Metrics` : t`Saved Questions`}
         </BackButton>
         <TreeContainer data-testid="saved-entity-collection-tree">
           <Tree
@@ -132,6 +134,7 @@ function SavedEntityPicker({
       </CollectionsContainer>
       <SavedEntityList
         isDatasets={isDatasets}
+        isMetrics={isMetrics}
         collection={selectedCollection}
         selectedId={tableId}
         databaseId={databaseId}

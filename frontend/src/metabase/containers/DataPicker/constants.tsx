@@ -10,6 +10,7 @@ export const MIN_SEARCH_LENGTH = 2;
 
 export const DATA_BUCKET: Record<string, DataPickerDataType> = {
   MODELS: "models",
+  METRICS: "metrics",
   RAW_DATA: "raw-data",
   SAVED_QUESTIONS: "questions",
 } as const;
@@ -26,6 +27,13 @@ export const MODELS_INFO_ITEM: DataTypeInfoItem = {
   icon: "model",
   name: t`Models`,
   description: t`The best starting place for new questions.`,
+};
+
+export const METRICS_INFO_ITEM: DataTypeInfoItem = {
+  id: DATA_BUCKET.METRICS,
+  icon: "metric",
+  name: t`Metrics`,
+  description: t`Reliable definitions to start from.`,
 };
 
 export const RAW_DATA_INFO_ITEM: DataTypeInfoItem = {
