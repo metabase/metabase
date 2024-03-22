@@ -53,7 +53,12 @@ Admins can optionally specify a string of text to add in front of the table that
 
 ## Add people to a group with unrestricted data access to the upload schema
 
-In order to upload CSVs, a person must be in a group with Unrestricted access to the schema you've selected to store your uploaded data. Native query editing isn't required for uploading. See [groups](../people-and-groups/managing.md) and [data permissions](../permissions/data.md).
+In order to upload data, a person must be in a group with:
+
+- "Unrestricted access" to the schema you've selected to store your uploaded data. 
+- "Native query editing" set to "Yes" for that schema.
+
+See [groups](../people-and-groups/managing.md) and [data permissions](../permissions/data.md).
 
 ## Primary key auto-generation
 
