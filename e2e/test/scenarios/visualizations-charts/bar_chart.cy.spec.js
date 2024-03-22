@@ -5,10 +5,10 @@ import {
   visitQuestionAdhoc,
   sidebar,
   getDraggableElements,
-  moveColumnDown,
   popover,
   visitDashboard,
   cypressWaitAll,
+  moveDnDKitElement,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -143,12 +143,14 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     it("should allow you to show/hide and reorder columns", () => {
-      moveColumnDown(getDraggableElements().eq(0), 2);
+      moveDnDKitElement(getDraggableElements().eq(0), { vertical: 100 });
 
-      getDraggableElements().each((element, index) => {
-        const draggableName = element[0].innerText;
-        cy.findAllByTestId("legend-item").eq(index).contains(draggableName);
-      });
+      cy.findAllByTestId("legend-item").eq(0).should("contain.text", "Gadget");
+      cy.findAllByTestId("legend-item").eq(1).should("contain.text", "Gizmo");
+      cy.findAllByTestId("legend-item")
+        .eq(2)
+        .should("contain.text", "Doohickey");
+      cy.findAllByTestId("legend-item").eq(3).should("contain.text", "Widget");
 
       const columnIndex = 1;
 
@@ -162,7 +164,9 @@ describe("scenarios > visualizations > bar chart", () => {
         .eq(columnIndex)
         .invoke("text")
         .then(columnName => {
-          cy.get(".Visualization").findByText(columnName).should("not.exist");
+          cy.findByTestId("query-visualization-root")
+            .findByText(columnName)
+            .should("not.exist");
           cy.findAllByTestId("legend-item").should("have.length", 3);
           cy.get(".enable-dots").should("have.length", 3);
         });
@@ -177,7 +181,9 @@ describe("scenarios > visualizations > bar chart", () => {
         .eq(columnIndex)
         .invoke("text")
         .then(columnName => {
-          cy.get(".Visualization").findByText(columnName).should("exist");
+          cy.findByTestId("query-visualization-root")
+            .findByText(columnName)
+            .should("exist");
           cy.findAllByTestId("legend-item").should("have.length", 4);
           cy.get(".enable-dots").should("have.length", 4);
         });
@@ -190,7 +196,7 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {
-      moveColumnDown(getDraggableElements().first(), 2);
+      moveDnDKitElement(getDraggableElements().first(), { vertical: 100 });
 
       getDraggableElements()
         .eq(1)

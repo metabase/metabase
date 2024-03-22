@@ -1,6 +1,7 @@
 :global(.hide) {
   display: none !important;
 }
+
 :global(.show) {
   display: inherit;
 }
@@ -23,6 +24,7 @@
     display: none !important;
   }
 }
+
 @media screen and (--breakpoint-min-xs) {
   :global(.xs-show) {
     display: inherit !important;
@@ -36,6 +38,7 @@
     display: none !important;
   }
 }
+
 @media screen and (--breakpoint-min-sm) {
   :global(.sm-show) {
     display: inherit !important;
@@ -49,11 +52,13 @@
     display: none !important;
   }
 }
+
 @media screen and (--breakpoint-min-md) {
   :global(.md-show) {
     display: inherit !important;
   }
 }
+
 /* large */
 
 @media screen and (--breakpoint-min-lg) {
@@ -61,6 +66,7 @@
     display: none !important;
   }
 }
+
 @media screen and (--breakpoint-min-lg) {
   :global(.lg-show) {
     display: inherit !important;
@@ -68,11 +74,12 @@
 }
 
 /* xl */
-@media screen and (--breakpoint-min-xl) h {
+@media screen and (--breakpoint-min-xl) {
   :global(.xl-hide) {
     display: none !important;
   }
 }
+
 @media screen and (--breakpoint-min-xl) {
   :global(.xl-show) {
     display: inherit !important;

@@ -476,9 +476,9 @@
                       :query    {:source-table (meta/id :venues)
                                  :joins        [{:fields       :all
                                                  :source-table (meta/id :categories)
-                                                 :conditions   [[:=
-                                                                 [:field (meta/id :venues :category-id) nil]
-                                                                 [:field (meta/id :categories :id) {:join-alias "Cat"}]]]
+                                                 :condition    [:=
+                                                                [:field (meta/id :venues :category-id) nil]
+                                                                [:field (meta/id :categories :id) {:join-alias "Cat"}]]
                                                  :alias        "Cat"}]}}
         query        (lib/query meta/metadata-provider legacy-query)]
     (is (=? [{:lib/desired-column-alias "ID"}

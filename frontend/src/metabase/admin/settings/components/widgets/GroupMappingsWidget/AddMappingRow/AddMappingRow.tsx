@@ -1,15 +1,17 @@
+import cx from "classnames";
 import type * as React from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
 import type { MappingsType } from "metabase/admin/types";
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 
 type AddMappingRowProps = {
   mappings: MappingsType;
   placeholder: string;
   onCancel: () => void;
-  onAdd: (value: string) => void;
+  onAdd: (value: string) => void | Promise<void>;
 };
 
 function AddMappingRow({
@@ -27,9 +29,9 @@ function AddMappingRow({
     }
   };
 
-  const handleSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
-    onAdd(value);
+    await onAdd(value);
     setValue("");
   };
 
@@ -43,13 +45,10 @@ function AddMappingRow({
   return (
     <tr>
       <td colSpan={3} style={{ padding: 0 }}>
-        <form
-          className="m2 p1 bordered border-brand justify-between rounded relative flex align-center"
-          onSubmit={isMappingNameUnique ? handleSubmit : undefined}
-        >
+        <div className="m2 p1 bordered border-brand justify-between rounded relative flex align-center">
           <input
             aria-label="new-group-mapping-name-input"
-            className="input--borderless h3 ml1 flex-full"
+            className={cx(CS.inputBorderless, CS.h3, CS.ml1, CS.flexFull)}
             type="text"
             value={value}
             placeholder={placeholder}
@@ -64,9 +63,10 @@ function AddMappingRow({
               type="submit"
               primary={!!isMappingNameUnique}
               disabled={!isMappingNameUnique}
+              onClick={() => (isMappingNameUnique ? handleSubmit() : undefined)}
             >{t`Add`}</Button>
           </div>
-        </form>
+        </div>
       </td>
     </tr>
   );

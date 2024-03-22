@@ -9,14 +9,13 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
-   [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.email :as email]
    [metabase.embed.settings :as embed.settings]
    [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
    [metabase.models
-    :refer [Card Collection Dashboard DashboardCard Database Field Metric
+    :refer [Card Collection Dashboard DashboardCard Database Field LegacyMetric
             PermissionsGroup Pulse PulseCard PulseChannel QueryCache Segment
             Table User]]
    [metabase.models.humanization :as humanization]
@@ -239,9 +238,9 @@
 
     ;; Include `WHERE` clause that includes conditions for a Table related by an FK relationship:
     ;; (Number of Tables per DB engine)
-    (db-frequencies Table (mdb.u/qualify Database :engine)
-      {:left-join [Database [:= (mdb.u/qualify Database :id)
-                                (mdb.u/qualify Table :db_id)]]})
+    (db-frequencies Table (mdb.query/qualify Database :engine)
+      {:left-join [Database [:= (mdb.query/qualify Database :id)
+                                (mdb.query/qualify Table :db_id)]]})
     ;; -> {\"googleanalytics\" 4, \"postgres\" 48, \"h2\" 9}"
   {:style/indent 2}
   [model column & [additonal-honeysql]]
@@ -284,7 +283,7 @@
      :num_cards_per_pulses (medium-histogram (vals (db-frequencies PulseCard :pulse_id   pulse-conditions)))}))
 
 (defn- alert-metrics []
-  (let [alert-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:not= (mdb.u/qualify Pulse :alert_condition) nil]}]
+  (let [alert-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:not= (mdb.query/qualify Pulse :alert_condition) nil]}]
     {:alerts               (t2/count Pulse :alert_condition [:not= nil])
      :with_table_cards     (num-notifications-with-xls-or-csv-cards [:not= :alert_condition nil])
      :first_time_only      (t2/count Pulse :alert_condition [:not= nil], :alert_first_only true)
@@ -342,7 +341,7 @@
 (defn- metric-metrics
   "Get metrics based on Metrics."
   []
-  {:metrics (t2/count Metric)})
+  {:metrics (t2/count LegacyMetric)})
 
 
 ;;; Execution Metrics

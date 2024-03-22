@@ -187,6 +187,7 @@
                             :column          (m/find-first #(= (:name %) "PRODUCT_ID") (lib/returned-columns query))
                             :object-id       venue-id
                             ;; TODO: This field actually refers to the source table, not the target one. Is that right?
+                            ;; Tech Debt Issue: #39409
                             :many-pks?       false}
            :expected-query {:stages [{:filters [[:= {} [:field {} (meta/id :checkins :venue-id)] venue-id]]}]}}))
 

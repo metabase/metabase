@@ -5,6 +5,8 @@ import { t } from "ttag";
 
 import ActionButton from "metabase/components/ActionButton";
 import ModalContent from "metabase/components/ModalContent";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 
 export default class ObjectRetireModal extends Component {
   constructor(props, context) {
@@ -39,21 +41,21 @@ export default class ObjectRetireModal extends Component {
             <p className="text-paragraph">{t`If you're sure you want to retire this ${objectType}, please write a quick explanation of why it's being retired:`}</p>
             <textarea
               ref={this.revisionMessage}
-              className="input full"
+              className={cx(CS.input, CS.full)}
               placeholder={t`This will show up in the activity feed and in an email that will be sent to anyone on your team who created something that uses this ${objectType}.`}
               onChange={e => this.setState({ valid: !!e.target.value })}
             />
           </div>
 
           <div className="Form-actions ml-auto">
-            <a className="Button" onClick={this.props.onClose}>
+            <a className={ButtonsS.Button} onClick={this.props.onClose}>
               {t`Cancel`}
             </a>
             <ActionButton
               actionFn={this.handleSubmit.bind(this)}
-              className={cx("Button ml2", {
-                "Button--danger": valid,
-                disabled: !valid,
+              className={cx(ButtonsS.Button, CS.ml2, {
+                [ButtonsS.ButtonDanger]: valid,
+                [CS.disabled]: !valid,
               })}
               normalText={t`Retire`}
               activeText={t`Retiring…`}

@@ -323,7 +323,7 @@
   (reset-throttlers!)
   (mt/with-premium-features #{:audit-app}
     (testing "Test that a successful password reset creates the correct event"
-      (mt/with-model-cleanup [:model/Activity :model/AuditLog :model/User]
+      (mt/with-model-cleanup [:model/AuditLog :model/User]
         (mt/with-fake-inbox
           (let [password {:old "password"
                           :new "whateverUP12!!"}]

@@ -24,7 +24,7 @@ Interactive embedding is the only kind of embedding that [integrates with SSO an
 
 ## Static embedding
 
-Also known as signed embedding, static embedding is a secure way to embed charts and dashboards.
+Also known as signed embedding, [static embedding](./static-embedding.md) is a secure way to embed charts and dashboards.
 
 **When to use static embedding**: you don’t want to give people ad hoc query access to their data for whatever reason, or you want to present data that applies to all of your tenants at once. For example, say you want to showcase some benchmarking stats: if you just want to make those stats available exclusively to your customers, you could use a signed embed.
 
@@ -48,7 +48,7 @@ If you'd like to share your data with the good people of the internet, you can c
 
 ## Switching from static to interactive embedding
 
-[Interactive embedding](./interactive-embedding.md) requires authentication via single sign-on (SSO), so you'll need to set that up both in your Metabase and in your application's server. Check out our [Interactive embedding quick start](https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start). 
+[Interactive embedding](./interactive-embedding.md) requires authentication via single sign-on (SSO), so you'll need to set that up both in your Metabase and in your application's server. Check out our [Interactive embedding quick start](https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start).
 
 ## Further reading
 

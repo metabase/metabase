@@ -227,6 +227,7 @@ describe("TagEditorParam", () => {
 
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
+        default: null,
         "widget-type": "string/contains",
         options: { "case-sensitive": false },
       });
@@ -248,6 +249,7 @@ describe("TagEditorParam", () => {
 
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
+        default: null,
         "widget-type": "string/=",
         options: undefined,
       });

@@ -23,7 +23,7 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
 
     cy.wait("@dataset");
 
-    cy.get(".Visualization").as("queryPreview");
+    cy.findByTestId("query-visualization-root").as("queryPreview");
 
     cy.get("@queryPreview").should("be.visible").contains("Widget");
 

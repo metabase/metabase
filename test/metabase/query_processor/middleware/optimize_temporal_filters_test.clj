@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.optimize-temporal-filters
     :as optimize-temporal-filters]
@@ -162,7 +162,7 @@
         (let [t     (u.date/parse "2015-11-18" timezone-id)
               lower (t/zoned-date-time (t/local-date 2015 11 18) (t/local-time 0) timezone-id)
               upper (t/zoned-date-time (t/local-date 2015 11 19) (t/local-time 0) timezone-id)]
-          (mt/with-report-timezone-id timezone-id
+          (mt/with-report-timezone-id! timezone-id
             (testing "lower-bound and upper-bound util fns"
               (is (= lower
                      (#'optimize-temporal-filters/temporal-literal-lower-bound :day t))

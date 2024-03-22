@@ -686,3 +686,16 @@
                 "After a successful log-out, you don't have a session")
             (is (not (t2/exists? :model/Session :id session-id))
                 "After a successful log-out, the session is deleted")))))))
+
+(deftest logout-should-delete-session-when-idp-slo-conf-missing-test
+  (testing "Missing SAML SLO config logouts should still delete the user's session."
+    (let [session-id (str (random-uuid))]
+      (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
+                     :model/Session _ {:user_id (:id user) :id session-id}]
+        (is (t2/exists? :model/Session :id session-id))
+        (let [req-options (-> (saml-post-request-options
+                               (saml-test-response)
+                               (saml/str->base64 default-redirect-uri))
+                              (assoc-in [:request-options :cookies mw.session/metabase-session-cookie :value] session-id))]
+          (client :post "/auth/sso/logout" req-options)
+          (is (not (t2/exists? :model/Session :id session-id))))))))

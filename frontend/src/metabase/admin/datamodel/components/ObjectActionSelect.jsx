@@ -1,9 +1,12 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { createRef, Component } from "react";
 import { t } from "ttag";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import { capitalize } from "metabase/lib/formatting";
 import { Icon } from "metabase/ui";
 
@@ -39,7 +42,7 @@ export default class ObjectActionsSelect extends Component {
             </TriggerIconContainer>
           }
         >
-          <ul className="UserActionsSelect">
+          <ul className={AdminS.UserActionsSelect}>
             <li>
               <ActionLink
                 to={"/admin/datamodel/" + objectType + "/" + object.id}
@@ -60,7 +63,7 @@ export default class ObjectActionsSelect extends Component {
                 {t`Revision History`}
               </ActionLink>
             </li>
-            <li className="mt1 border-top">
+            <li className={cx(CS.mt1, CS.borderTop)}>
               <ModalWithTrigger
                 ref={this.retireModal}
                 triggerElement={t`Retire ${objectTypeLocalized}`}

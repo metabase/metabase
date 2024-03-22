@@ -8,20 +8,15 @@ import type {
   PermissionSubject,
 } from "metabase/admin/permissions/types";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
-import type {
-  AvailableModelFilters,
-  ModelFilterControlsProps,
-} from "metabase/browse/utils";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
 import type { IconName, IconProps } from "metabase/ui";
-import type Question from "metabase-lib/Question";
-import type Database from "metabase-lib/metadata/Database";
+import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
   Collection,
   CollectionAuthorityLevelConfig,
-  CollectionEssentials,
   CollectionInstanceAnaltyicsConfig,
   Dashboard,
   Dataset,
@@ -29,7 +24,6 @@ import type {
   GroupPermissions,
   GroupsPermissions,
   Revision,
-  SearchResult,
   User,
   UserListResult,
 } from "metabase-types/api";
@@ -133,7 +127,8 @@ export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
   canWhitelabel: (_state: State) => false,
-  getLoadingMessage: (_state: State) => t`Doing science...`,
+  getLoadingMessage: (_state: State) => (isSlow: boolean) =>
+    isSlow ? t`Waiting for results...` : t`Doing science...`,
   getIsWhiteLabeling: (_state: State) => false,
   // eslint-disable-next-line no-literal-metabase-strings -- This is the actual Metabase name, so we don't want to translate it.
   getApplicationName: (_state: State) => "Metabase",
@@ -154,6 +149,7 @@ export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
 };
 
 export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
+  isEnabled: () => false,
   LLMSuggestQuestionInfo: PluginPlaceholder,
 };
 
@@ -265,12 +261,10 @@ export const PLUGIN_REDUCERS: {
   applicationPermissionsPlugin: any;
   sandboxingPlugin: any;
   shared: any;
-  auditInfo: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
-  auditInfo: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
@@ -338,13 +332,6 @@ export const PLUGIN_EMBEDDING = {
 
 export const PLUGIN_CONTENT_VERIFICATION = {
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
-  availableModelFilters: {} as AvailableModelFilters,
-  ModelFilterControls: (() => null) as ComponentType<ModelFilterControlsProps>,
-  sortModelsByVerification: (_a: SearchResult, _b: SearchResult) => 0,
-  sortCollectionsByVerification: (
-    _a: CollectionEssentials,
-    _b: CollectionEssentials,
-  ) => 0,
 };
 
 export const PLUGIN_DASHBOARD_HEADER = {

@@ -659,10 +659,25 @@ const getFieldSection = fieldName => {
 };
 
 const moveField = (fieldIndex, deltaY) => {
-  cy.get(".Grabber").eq(fieldIndex).trigger("mousedown", 0, 0, { force: true });
-  cy.get("#ColumnsList")
-    .trigger("mousemove", 10, deltaY)
-    .trigger("mouseup", 10, deltaY);
+  cy.findAllByTestId("grabber")
+    .eq(fieldIndex)
+    .trigger("pointerdown", 0, 0, { force: true, button: 0, isPrimary: true })
+    .wait(200)
+    .trigger("pointermove", 5, 5, { force: true, button: 0, isPrimary: true })
+    .wait(200)
+    //cy.get("#ColumnsList")
+    .trigger("pointermove", 10, deltaY, {
+      force: true,
+      button: 0,
+      isPrimary: true,
+    })
+    .wait(200)
+    .trigger("pointerup", 10, deltaY, {
+      force: true,
+      button: 0,
+      isPrimary: true,
+    })
+    .wait(200);
 };
 
 const setTableOrder = order => {

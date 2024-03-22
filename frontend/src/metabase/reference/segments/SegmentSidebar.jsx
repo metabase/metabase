@@ -12,7 +12,7 @@ import MetabaseSettings from "metabase/lib/settings";
 const SegmentSidebar = ({ segment, user, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <ul>
-      <div className={S.breadcrumbs}>
+      <div>
         <Breadcrumbs
           className="py4 ml3"
           crumbs={[[t`Segments`, "/reference/segments"], [segment.name]]}

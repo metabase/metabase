@@ -76,9 +76,7 @@ describe("scenarios > visualizations > maps", () => {
       { visitQuestion: true },
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").closest(".Button").as("vizButton");
-    cy.get("@vizButton").click();
+    cy.button("Visualization").click();
     cy.findByTestId("display-options-sensible").as("sensibleOptions");
 
     cy.get("@sensibleOptions").within(() => {
@@ -250,9 +248,9 @@ describe("scenarios > visualizations > maps", () => {
       .click();
 
     cy.findByTestId("visualization-root")
-      .trigger("mousedown", 500, 500)
-      .trigger("mousemove", 600, 600)
-      .trigger("mouseup", 600, 600);
+      .realMouseDown(500, 500)
+      .realMouseMove(600, 600)
+      .realMouseUp(600, 600);
 
     cy.wait("@dataset");
 

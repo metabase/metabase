@@ -3,7 +3,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { createMockNotebookStep, DEFAULT_QUESTION } from "../test-utils";

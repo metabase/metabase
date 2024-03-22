@@ -18,7 +18,6 @@
             PulseChannel
             PulseChannelRecipient
             Session
-            Table
             User]]
    [metabase.models.collection :as collection]
    [metabase.models.collection-test :as collection-test]
@@ -83,18 +82,6 @@
                (->> (user/permissions-set (mt/user->id :lucky))
                     remove-non-collection-perms
                     (collection-test/perms-path-ids->names [child-collection grandchild-collection])))))))))
-
-(deftest group-data-permissions-test
-  (testing "If a User is a member of a Group with data permissions for an object, `permissions-set` should return the perms"
-    (t2.with-temp/with-temp [Database                   {db-id :id}    {}
-                             Table                      table          {:name "Round Table", :db_id db-id}
-                             PermissionsGroup           {group-id :id} {}
-                             PermissionsGroupMembership _              {:group_id group-id, :user_id (mt/user->id :rasta)}]
-      (perms/revoke-data-perms! (perms-group/all-users) db-id (:schema table) (:id table))
-      (perms/grant-permissions! group-id (perms/table-read-path table))
-      (is (set/subset?
-           #{(perms/table-read-path table)}
-           (user/permissions-set (mt/user->id :rasta)))))))
 
 ;;; Tests for invite-user and create-new-google-auth-user!
 

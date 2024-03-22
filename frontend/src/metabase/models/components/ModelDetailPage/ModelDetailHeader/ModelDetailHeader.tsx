@@ -8,7 +8,7 @@ import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 import ArchiveModelModal from "metabase/questions/containers/ArchiveQuestionModal";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { Collection } from "metabase-types/api";
 
 import {

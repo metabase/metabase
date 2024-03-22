@@ -4,21 +4,21 @@ import { getColumnGroupName } from "metabase/common/utils/column-groups";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
 import * as Lib from "metabase-lib";
-import { TemplateTagDimension } from "metabase-lib/Dimension";
-import type { DimensionOptionsSection } from "metabase-lib/DimensionOptions/types";
-import type Question from "metabase-lib/Question";
+import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
+import type { DimensionOptionsSection } from "metabase-lib/v1/DimensionOptions/types";
+import type Question from "metabase-lib/v1/Question";
 import {
   columnFilterForParameter,
   dimensionFilterForParameter,
   variableFilterForParameter,
-} from "metabase-lib/parameters/utils/filters";
+} from "metabase-lib/v1/parameters/utils/filters";
 import {
   buildColumnTarget,
   buildDimensionTarget,
   buildTemplateTagVariableTarget,
   buildTextTagTarget,
-} from "metabase-lib/parameters/utils/targets";
-import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
+} from "metabase-lib/v1/parameters/utils/targets";
+import type TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type {
   BaseDashboardCard,
   Card,
@@ -120,7 +120,7 @@ export type ParameterMappingOption =
   | NativeParameterMappingOption;
 
 export function getParameterMappingOptions(
-  question: Question,
+  question: Question | undefined,
   parameter: Parameter | null | undefined = null,
   card: Card,
   dashcard: BaseDashboardCard | null | undefined = null,
@@ -144,7 +144,11 @@ export function getParameterMappingOptions(
     return actionParams || [];
   }
 
-  if (!card.dataset_query || (dashcard && isVirtualDashCard(dashcard))) {
+  if (
+    !question ||
+    !card.dataset_query ||
+    (dashcard && isVirtualDashCard(dashcard))
+  ) {
     return [];
   }
 
@@ -154,7 +158,7 @@ export function getParameterMappingOptions(
     // treat the dataset/model question like it is already composed so that we can apply
     // dataset/model-specific metadata to the underlying dimension options
     const query = isModel
-      ? question.composeDataset().query()
+      ? question.composeQuestionAdhoc().query()
       : question.query();
     const stageIndex = -1;
     const availableColumns = Lib.filterableColumns(query, stageIndex);

@@ -22,11 +22,11 @@ import { uploadFile } from "metabase/redux/uploads";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import {
   checkCanBeModel,
   checkDatabaseCanPersistDatasets,
-} from "metabase-lib/metadata/utils/models";
+} from "metabase-lib/v1/metadata/utils/models";
 
 import { canUploadToQuestion } from "../../../../../selectors";
 import { ViewHeaderIconButtonContainer } from "../../ViewHeader.styled";
@@ -189,6 +189,19 @@ export const QuestionActions = ({
       action: () => onOpenModal(MODAL_TYPES.MOVE),
       testId: MOVE_TESTID,
     });
+  }
+
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  if (isEditable) {
+    extraButtons.push({
+      title: t`Duplicate`,
+      icon: "clone",
+      action: () => onOpenModal(MODAL_TYPES.CLONE),
+      testId: CLONE_TESTID,
+    });
+  }
+
+  if (canWrite) {
     if (isQuestion) {
       extraButtons.push({
         title: t`Turn into a model`,
@@ -206,15 +219,7 @@ export const QuestionActions = ({
     }
   }
 
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
-  if (isEditable) {
-    extraButtons.push({
-      title: t`Duplicate`,
-      icon: "clone",
-      action: () => onOpenModal(MODAL_TYPES.CLONE),
-      testId: CLONE_TESTID,
-    });
-  }
+  extraButtons.push(...PLUGIN_QUERY_BUILDER_HEADER.extraButtons(question));
 
   if (canWrite) {
     extraButtons.push({
@@ -224,8 +229,6 @@ export const QuestionActions = ({
       testId: ARCHIVE_TESTID,
     });
   }
-
-  extraButtons.push(...PLUGIN_QUERY_BUILDER_HEADER.extraButtons(question));
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 

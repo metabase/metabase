@@ -12,6 +12,8 @@
    [clojure.walk :as walk]
    [goog.object :as gobject]
    [medley.core :as m]
+   [metabase.legacy-mbql.js :as mbql.js]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
@@ -27,8 +29,6 @@
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.js :as mbql.js]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -83,14 +83,26 @@
     (js.metadata/metadata-provider database-id metadata)))
 
 (defn ^:export query
-  "Coerce a plain map `query` to an actual query object that you can use with MLv2."
+  "Coerce a plain map `query` to an actual query object that you can use with MLv2.
+
+  Attaches a cache to `metadata-provider` so that subsequent calls with the same `database-id` and `query-map` return
+  the same query object."
   ([metadata-provider table-or-card-metadata]
    (lib.core/query metadata-provider table-or-card-metadata))
 
-  ([database-id metadata query-map]
-   (let [query-map (lib.convert/js-legacy-query->pMBQL query-map)]
-     (log/debugf "query map: %s" (pr-str query-map))
-     (lib.core/query (metadataProvider database-id metadata) query-map))))
+  ([database-id metadata-provider query-map]
+   ;; Since the query-map is possibly `Object.freeze`'d, we can't mutate it to attach the query.
+   ;; Therefore, we attach a two-level cache to the metadata-provider:
+   ;; The outer key is the database-id; the inner one i a weak ref to the legacy query-map (a JS object).
+   ;; This should achieve efficient caching of legacy queries without retaining garbage.
+   ;; (Except possibly for a few empty WeakMaps, if queries are cached and then GC'd.)
+   ;; If the metadata changes, the metadata-provider is replaced, so all these caches are destroyed.
+   (lib.cache/side-channel-cache-weak-refs
+     (str database-id) metadata-provider query-map
+     #(->> %
+           lib.convert/js-legacy-query->pMBQL
+           (lib.core/query metadata-provider))
+     {:force? true})))
 
 (defn- fix-namespaced-values
   "This converts namespaced keywords to strings as `\"foo/bar\"`.
@@ -332,6 +344,17 @@
    a-query stage-number
    (lib.core/normalize (js->clj target-clause :keywordize-keys true))
    (lib.core/normalize (js->clj new-clause :keywordize-keys true))))
+
+(defn ^:export swap-clauses
+  "Exchanges the positions of two clauses in a list. Can be used for filters, aggregations, breakouts, and expressions.
+
+  Returns the updated query. If it can't find both clauses in a single list (therefore also in the same stage), emits a
+  warning and returns the query unchanged."
+  [a-query stage-number source-clause target-clause]
+  (lib.core/swap-clauses
+   a-query stage-number
+   (lib.core/normalize (js->clj source-clause :keywordize-keys true))
+   (lib.core/normalize (js->clj target-clause :keywordize-keys true))))
 
 (defn- prep-query-for-equals [a-query field-ids]
   (-> a-query
@@ -1027,7 +1050,7 @@
 
 (defn ^:export database-id
   "Get the Database ID (`:database`) associated with a query. If the query is using
-  the [[metabase.mbql.schema/saved-questions-virtual-database-id]] (used in some situations for queries with a
+  the [[metabase.legacy-mbql.schema/saved-questions-virtual-database-id]] (used in some situations for queries with a
   `:source-card`)
 
     {:database -1337}
@@ -1288,4 +1311,15 @@
 (defn ^:export can-run
   "Returns true if the query is runnable."
   [a-query]
-  (lib.core/can-run a-query))
+  (lib.cache/side-channel-cache
+    :can-run a-query
+    (fn [_]
+      (lib.core/can-run a-query))))
+
+(defn ^:export can-save
+  "Returns true if the query can be saved."
+  [a-query]
+  (lib.cache/side-channel-cache
+   :can-save a-query
+   (fn [_]
+     (lib.core/can-save a-query))))

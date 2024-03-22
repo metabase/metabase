@@ -37,7 +37,7 @@ describe("issue 15444", () => {
 
     SQLFilter.runQuery();
 
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("query-visualization-root").within(() => {
       cy.findAllByText("Doohickey");
       cy.findAllByText("Gizmo").should("not.exist");
     });

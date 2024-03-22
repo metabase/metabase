@@ -34,6 +34,6 @@ fullscreen dashboard mode
   margin-top: 1em;
 }
 
-:global(.DashCard .LegendItem) {
+.DashCard :global(.LegendItem) {
   font-size: 12px;
 }

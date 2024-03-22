@@ -100,6 +100,7 @@
   (when (and sso_source (not (setup/has-user-setup)))
     ;; Only allow SSO users to be provisioned if the setup flow has been completed and an admin has been created
     (throw (Exception. (trs "Instance has not been initialized"))))
+  (premium-features/airgap-check-user-count)
   (merge
    insert-default-values
    user
@@ -267,7 +268,11 @@
                                               [:id (when (premium-features/enable-advanced-permissions?)
                                                      :is_group_manager)]))]
       (for [user users]
-        (assoc user :user_group_memberships (map membership->group (user-id->memberships (u/the-id user))))))))
+        (assoc user :user_group_memberships (->> (user-id->memberships (u/the-id user))
+                                                 (map membership->group)
+                                                 ;; sort these so the id returned is consistent so our tests don't
+                                                 ;; randomly fail
+                                                 (sort-by :id)))))))
 
 (mi/define-batched-hydration-method add-group-ids
   :group_ids

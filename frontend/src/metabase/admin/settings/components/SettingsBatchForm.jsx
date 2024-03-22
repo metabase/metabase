@@ -13,7 +13,7 @@ import Button from "metabase/core/components/Button";
 import { isEmail, isEmpty } from "metabase/lib/utils";
 
 import { CollapsibleSectionContent } from "./SettingsBatchForm.styled";
-import SettingsSetting from "./SettingsSetting";
+import { SettingsSetting } from "./SettingsSetting";
 
 const VALIDATIONS = {
   email: {

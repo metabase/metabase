@@ -7,7 +7,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Calendar from "metabase/components/Calendar";
-import { FieldDimension } from "metabase-lib/Dimension";
+import { FieldDimension } from "metabase-lib/v1/Dimension";
 
 import DatePickerSelector from "../DatePicker/DatePickerSelector";
 import DateUnitSelector from "../DatePicker/DateUnitSelector";

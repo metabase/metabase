@@ -2,7 +2,6 @@
   "Code for creating / destroying an H2 database from a `DatabaseDefinition`."
   (:require
    [metabase.db :as mdb]
-   [metabase.db.spec :as mdb.spec]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.h2]
    [metabase.driver.sql.util :as sql.u]
@@ -119,7 +118,7 @@
 ;; Don't use the h2 driver implementation, which makes the connection string read-only & if-exists only
 (defmethod spec/dbdef->spec :h2
   [driver context dbdef]
-  (mdb.spec/spec :h2 (tx/dbdef->connection-details driver context dbdef)))
+  (mdb/spec :h2 (tx/dbdef->connection-details driver context dbdef)))
 
 (defmethod load-data/load-data! :h2
   [& args]

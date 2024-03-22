@@ -7,11 +7,13 @@ import { AppBanner } from "metabase/components/AppBanner";
 import {
   Archived,
   GenericError,
+  KeyboardTriggeredErrorModal,
   NotFound,
   Unauthorized,
-} from "metabase/containers/ErrorPages";
+} from "metabase/components/ErrorPages";
 import { UndoListing } from "metabase/containers/UndoListing";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
+import CS from "metabase/css/core/index.css";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import { initializeIframeResizer } from "metabase/lib/dom";
 import AppBar from "metabase/nav/containers/AppBar";
@@ -28,6 +30,7 @@ import type { AppErrorDescriptor, State } from "metabase-types/store";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import ErrorBoundary from "./ErrorBoundary";
+import { NewModals } from "./new/components/NewModals/NewModals";
 
 const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (status === 403 || data?.error_code === "unauthorized") {
@@ -96,7 +99,8 @@ function App({
   return (
     <ErrorBoundary onError={onError}>
       <ScrollToTop>
-        <AppContainer className="spread">
+        <AppContainer className={CS.spread}>
+          <KeyboardTriggeredErrorModal />
           <AppBanner location={location} />
           {isAppBarVisible && <AppBar />}
           <AppContentContainer isAdminApp={isAdminApp}>
@@ -108,6 +112,7 @@ function App({
             </AppContent>
             <UndoListing />
             <StatusListing />
+            <NewModals />
           </AppContentContainer>
         </AppContainer>
       </ScrollToTop>

@@ -1,6 +1,6 @@
 // various Metabase-specific "scoping" functions like inside popover/modal/navbar/main/sidebar content area
 export const POPOVER_ELEMENT =
-  ".popover[data-state~='visible'],[data-position]";
+  ".popover[data-state~='visible'],[data-position]:not(.emotion-HoverCard-dropdown)";
 
 export function popover() {
   cy.get(POPOVER_ELEMENT).should("be.visible");
@@ -12,10 +12,10 @@ export function mantinePopover() {
   return cy.get(MANTINE_POPOVER).should("be.visible");
 }
 
-const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']";
+const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']:visible";
 
 export function hovercard() {
-  cy.get(HOVERCARD_ELEMENT).should("be.visible");
+  cy.get(HOVERCARD_ELEMENT, { timeout: 6000 }).should("be.visible");
   return cy.get(HOVERCARD_ELEMENT);
 }
 
@@ -46,7 +46,7 @@ export function sidebar() {
 }
 
 export function rightSidebar() {
-  return cy.findAllByTestId("sidebar-right");
+  return cy.findByTestId("sidebar-right");
 }
 
 export function leftSidebar() {
@@ -166,6 +166,37 @@ export const moveColumnDown = (column, distance) => {
     .trigger("mousemove", 5, 5, { force: true })
     .trigger("mousemove", 0, distance * 50, { force: true })
     .trigger("mouseup", 0, distance * 50, { force: true });
+};
+
+export const moveDnDKitElement = (
+  element,
+  { horizontal = 0, vertical = 0 } = {},
+) => {
+  element
+    .trigger("pointerdown", 0, 0, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200)
+    .trigger("pointermove", 5, 5, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200)
+    .trigger("pointermove", horizontal, vertical, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200)
+    .trigger("pointerup", horizontal, vertical, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200);
 };
 
 export const queryBuilderMain = () => {

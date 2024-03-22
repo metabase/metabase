@@ -29,25 +29,22 @@
         dispatch-value)))
   :hierarchy lib.hierarchy/hierarchy)
 
-(defn- mbql-clause? [expr]
-  (and (vector? expr)
-       (keyword? (first expr))))
-
 (mr/def ::base-type
-  [:or
-   [:= ::type.unknown]
-   ::common/base-type])
+  [:multi {:dispatch (partial = ::type.unknown)}
+   [true  [:= ::type.unknown]]
+   [false [:ref ::common/base-type]]])
 
-(mu/defn type-of :- [:or
-                     ::base-type
-                     [:set {:min 2} ::base-type]]
+(mu/defn type-of :- [:multi
+                     {:dispatch set?}
+                     [true  [:set {:min 2} [:ref ::base-type]]]
+                     [false [:ref ::base-type]]]
   "Determine the type of an MBQL expression. Returns either a type keyword, or if the type is ambiguous, a set of
   possible types."
   [expr]
   (or
    ;; for MBQL clauses with `:effective-type` or `:base-type` in their options: ignore their dumb [[type-of-method]] methods
    ;; and return that type directly. Ignore everything else! Life hack!
-   (and (mbql-clause? expr)
+   (and (common/mbql-clause-tag expr)
         (map? (second expr))
         (or (:effective-type (second expr))
             (:base-type (second expr))))
@@ -90,13 +87,11 @@
   2. expression's [[type-of]] isa? `base-type`"
   [base-type description]
   [:and
-   [:or
-    [:fn
-     {:error/message "valid MBQL clause"
-      :error/fn      (fn [{:keys [value]} _]
-                       (str "invalid MBQL clause: " (pr-str value)))}
-     (complement mbql-clause?)]
-    [:ref :metabase.lib.schema.mbql-clause/clause]]
+   ;; vector = MBQL clause, anything else = not an MBQL clause
+   [:multi
+    {:dispatch vector?}
+    [true  [:ref :metabase.lib.schema.mbql-clause/clause]]
+    [false [:ref :metabase.lib.schema.literal/literal]]]
    [:fn
     {:error/message description}
     #(type-of? % base-type)]])
@@ -160,12 +155,13 @@
   ;; This typing of each input should be replaced with an alternative scheme that checks that it's plausible to compare
   ;; all the args to an `:=` clause. Eg. comparing `:type/*` and `:type/String` is cool. Comparing `:type/IPAddress` to
   ;; `:type/Boolean` should fail; we can prove it's the wrong thing to do.
-   #{:type/Boolean :type/Text :type/Number :type/Temporal :type/IPAddress :type/MongoBSONID :type/Array :type/*})
+  #{:type/Boolean :type/Text :type/Number :type/Temporal :type/IPAddress :type/MongoBSONID :type/Array :type/*})
+
+(derive :type/Text        ::emptyable)
+(derive :type/MongoBSONID ::emptyable)
 
 (mr/def ::emptyable
-  [:or
-   [:ref ::string]
-   (expression-schema :type/MongoBSONID "expression returning a BSONID")])
+  (expression-schema ::emptyable "expression returning something emptyable (e.g. a string or BSON ID)"))
 
 (mr/def ::equality-comparable
   [:maybe

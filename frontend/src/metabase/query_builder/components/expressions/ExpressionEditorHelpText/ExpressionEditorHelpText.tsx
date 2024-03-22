@@ -5,8 +5,8 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { getHelpDocsUrl } from "metabase-lib/expressions/helper-text-strings";
-import type { HelpText } from "metabase-lib/expressions/types";
+import { getHelpDocsUrl } from "metabase-lib/v1/expressions/helper-text-strings";
+import type { HelpText } from "metabase-lib/v1/expressions/types";
 
 import {
   ArgumentTitle,

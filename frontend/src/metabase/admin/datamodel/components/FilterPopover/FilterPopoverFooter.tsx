@@ -2,7 +2,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
-import type Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
 
 import FilterOptions from "./FilterOptions";
 
