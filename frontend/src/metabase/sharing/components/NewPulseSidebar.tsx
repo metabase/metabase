@@ -31,7 +31,7 @@ export function NewPulseSidebar({
       <div className={cx(CS.mt2, CS.pt2, CS.px4)}>
         <h4>{t`Create a dashboard subscription`}</h4>
       </div>
-      <div className="my1 mx4">
+      <div className={cx(CS.my1, CS.mx4)}>
         <ChannelCard
           flat
           className={cx("mt1 mb3", {

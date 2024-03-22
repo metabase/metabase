@@ -184,7 +184,6 @@
   margin-right: var(--margin-1);
 }
 
-:global(.my1),
 .my1 {
   margin-top: var(--margin-1);
   margin-bottom: var(--margin-1);
