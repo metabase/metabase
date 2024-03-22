@@ -119,7 +119,6 @@
   padding-bottom: var(--padding-3);
 }
 
-:global(.pl3),
 .pl3 {
   padding-left: var(--padding-3);
 }
