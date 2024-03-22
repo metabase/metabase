@@ -28,52 +28,27 @@
                                    "Basic between query on a time field with milliseconds in literal"
                                    ["08:00:00" "09:00:00"]}]
       (testing message
-        (is (= (if (= :sqlite driver/*driver*)
-                 [[1 "Plato Yeshua" "08:30:00"]
-                  [4 "Simcha Yan"   "08:30:00"]]
-
-                 [[1 "Plato Yeshua" "08:30:00Z"]
-                  [4 "Simcha Yan"   "08:30:00Z"]])
+        (is (= [[1 "Plato Yeshua" "08:30:00"]
+                [4 "Simcha Yan"   "08:30:00"]]
                (time-query :between start end)))))))
 
 (deftest ^:parallel greater-than-test
   (mt/test-drivers (normal-drivers-that-support-time-type)
-    (is (= (if (= :sqlite driver/*driver*)
-             [[3 "Kaneonuskatew Eiran" "16:15:00"]
-              [5 "Quentin Sören" "17:30:00"]
-              [10 "Frans Hevel" "19:30:00"]]
-
-             [[3 "Kaneonuskatew Eiran" "16:15:00Z"]
-              [5 "Quentin Sören" "17:30:00Z"]
-              [10 "Frans Hevel" "19:30:00Z"]])
+    (is (= [[3 "Kaneonuskatew Eiran" "16:15:00"]
+            [5 "Quentin Sören"       "17:30:00"]
+            [10 "Frans Hevel"        "19:30:00"]]
            (time-query :> "16:00:00Z")))))
 
 (deftest ^:parallel equals-test
   (mt/test-drivers (normal-drivers-that-support-time-type)
-    (is (= (if (= :sqlite driver/*driver*)
-             [[3 "Kaneonuskatew Eiran" "16:15:00"]]
-             [[3 "Kaneonuskatew Eiran" "16:15:00Z"]])
+    (is (= [[3 "Kaneonuskatew Eiran" "16:15:00"]]
            (time-query := "16:15:00Z")))))
 
 (deftest report-timezone-test
   (mt/test-drivers (normal-drivers-that-support-time-type)
     (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-      (is (= (cond
-               (= :sqlite driver/*driver*)
-               [[1 "Plato Yeshua" "08:30:00"]
-                [4 "Simcha Yan" "08:30:00"]]
-
-               ;; Databases like PostgreSQL ignore timezone information when
-               ;; using a time field, the result below is what happens when the
-               ;; 08:00 time is interpreted as UTC, then not adjusted to Pacific
-               ;; time by the DB
-               (qp.test-util/supports-report-timezone? driver/*driver*)
-               [[1 "Plato Yeshua" "08:30:00-08:00"]
-                [4 "Simcha Yan" "08:30:00-08:00"]]
-
-               :else
-               [[1 "Plato Yeshua" "08:30:00Z"]
-                [4 "Simcha Yan" "08:30:00Z"]])
+      (is (= [[1 "Plato Yeshua" "08:30:00"]
+              [4 "Simcha Yan"   "08:30:00"]]
              (apply time-query :between (if (qp.test-util/supports-report-timezone? driver/*driver*)
                                           ["08:00:00"       "09:00:00"]
                                           ["08:00:00-00:00" "09:00:00-00:00"])))))))

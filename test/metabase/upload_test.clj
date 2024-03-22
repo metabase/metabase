@@ -1446,8 +1446,8 @@
                 (is (some? (append-csv! {:file     file
                                          :table-id (:id table)})))
                 (testing "Check the data was uploaded into the table correctly"
-                  (is (= [[1 1000000 1.0 "some_text" false "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]
-                          [2 2000000 2.0 "some_text" true "2020-02-02T00:00:00Z" "2020-02-02T02:02:02Z" "2020-02-02T00:02:02Z"]]
+                  (is (= [[1 1000000 1.0 "some_text" false "2020-01-01" "2020-01-01T00:00:00" "2020-01-01T00:00:00Z"]
+                          [2 2000000 2.0 "some_text" true "2020-02-02" "2020-02-02T02:02:02" "2020-02-02T00:02:02Z"]]
                          (rows-for-table table))))
                 (io/delete-file file)))))))))
 

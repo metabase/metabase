@@ -41,9 +41,7 @@
    [metabase.util.regex :as u.regex]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
-   [toucan2.core :as t2])
-  (:import
-   (java.time LocalDate LocalDateTime)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -99,21 +97,31 @@
                                 :order-by [[:asc $id]]
                                 :limit    5}))))))))))))))
 
+(defn- do-with-sad-toucan-incidents-with-bucketing!
+  ([unit f]
+   (->> (mt/dataset sad-toucan-incidents
+          (let [query (mt/mbql-query incidents
+                        {:aggregation [[:count]]
+                         :breakout    [[:field %timestamp {:temporal-unit unit}]]
+                         :limit       10})]
+            (mt/with-native-query-testing-context query
+              (let [results (mt/format-rows-by [->long-if-number int]
+                              (mt/rows
+                               (qp/process-query query)))]
+                (f results)))))))
+
+  ([unit timezone-id f]
+   (mt/initialize-if-needed! :db)
+   (mt/with-report-timezone-id! (->timezone-id timezone-id)
+     (do-with-sad-toucan-incidents-with-bucketing! unit f))))
+
 (defn- sad-toucan-incidents-with-bucketing!
   "Returns 10 sad toucan incidents grouped by `unit`"
   ([unit]
-   (->> (mt/dataset sad-toucan-incidents
-          (mt/run-mbql-query incidents
-            {:aggregation [[:count]]
-             :breakout    [[:field %timestamp {:temporal-unit unit}]]
-             :limit       10}))
-        mt/rows
-        (mt/format-rows-by [->long-if-number int])))
+   (do-with-sad-toucan-incidents-with-bucketing! unit identity))
 
   ([unit timezone-id]
-   (mt/initialize-if-needed! :db)
-   (mt/with-report-timezone-id! (->timezone-id timezone-id)
-     (sad-toucan-incidents-with-bucketing! unit))))
+   (do-with-sad-toucan-incidents-with-bucketing! unit timezone-id identity)))
 
 (defn- default-timezone-parse-fn
   "Create a date formatter, interpretting the datestring as being in `tz`"
@@ -128,14 +136,6 @@
   (let [zone-id (-> results-timezone-id ->timezone-id t/zone-id)]
     (fn [t]
       (format-rows/format-value t zone-id))))
-
-(defn- date-without-time-format-fn
-  "sqlite returns dates that do not include their time, this formatter is useful for those DBs"
-  [t]
-  (condp instance? t
-    LocalDate     (t/format :iso-local-date t)
-    LocalDateTime (t/format :iso-local-date t)
-    (t/format :iso-offset-date t)))
 
 (def ^:private sad-toucan-dates
   "This is the first 10 sad toucan dates when converted from millis since epoch in the UTC timezone. The timezone is
@@ -310,19 +310,22 @@
 (deftest group-by-minute-test
   (testing "This dataset doesn't have multiple events in a minute, the results are the same as the default grouping"
     (mt/test-drivers (mt/normal-drivers)
-      (is (= (cond
-               (= :sqlite driver/*driver*)
-               (sad-toucan-result (default-timezone-parse-fn :utc) (comp u.date/format-sql t/local-date-time))
+      (do-with-sad-toucan-incidents-with-bucketing!
+       :minute :pacific
+       (fn [rows]
+         (is (= (cond
+                  (= :sqlite driver/*driver*)
+                  (sad-toucan-result (default-timezone-parse-fn :utc) (comp u.date/format-sql t/local-date-time))
 
-               (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
-               (sad-toucan-result (default-timezone-parse-fn :pacific) (format-in-timezone-fn :pacific))
+                  (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
+                  (sad-toucan-result (default-timezone-parse-fn :pacific) (format-in-timezone-fn :pacific))
 
-               (qp.test-util/supports-report-timezone? driver/*driver*)
-               (sad-toucan-result (default-timezone-parse-fn :utc) (format-in-timezone-fn :pacific))
+                  (qp.test-util/supports-report-timezone? driver/*driver*)
+                  (sad-toucan-result (default-timezone-parse-fn :utc) (format-in-timezone-fn :pacific))
 
-               :else
-               (sad-toucan-result (default-timezone-parse-fn :utc) (format-in-timezone-fn :utc)))
-             (sad-toucan-incidents-with-bucketing! :minute :pacific))))))
+                  :else
+                  (sad-toucan-result (default-timezone-parse-fn :utc) (format-in-timezone-fn :utc)))
+                rows)))))))
 
 (deftest group-by-minute-of-hour-test
   (testing "Grouping by minute of hour is not affected by timezones"
@@ -366,19 +369,22 @@
 ;; different depending on whether the database supports a report timezone and what timezone that database is in
 (deftest group-by-hour-test
   (mt/test-drivers (mt/normal-drivers)
-    (is (= (cond
-             (= :sqlite driver/*driver*)
-             (results-by-hour (default-timezone-parse-fn :utc) (comp u.date/format-sql t/local-date-time))
+    (do-with-sad-toucan-incidents-with-bucketing!
+     :hour :pacific
+     (fn [rows]
+       (is (= (cond
+                (= :sqlite driver/*driver*)
+                (results-by-hour (default-timezone-parse-fn :utc) (comp u.date/format-sql t/local-date-time))
 
-             (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
-             (results-by-hour (default-timezone-parse-fn :pacific) (format-in-timezone-fn :pacific))
+                (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
+                (results-by-hour (default-timezone-parse-fn :pacific) (format-in-timezone-fn :pacific))
 
-             (qp.test-util/supports-report-timezone? driver/*driver*)
-             (results-by-hour (default-timezone-parse-fn :utc) (format-in-timezone-fn :pacific))
+                (qp.test-util/supports-report-timezone? driver/*driver*)
+                (results-by-hour (default-timezone-parse-fn :utc) (format-in-timezone-fn :pacific))
 
-             :else
-             (results-by-hour (default-timezone-parse-fn :utc) (format-in-timezone-fn :utc)))
-           (sad-toucan-incidents-with-bucketing! :hour :pacific)))))
+                :else
+                (results-by-hour (default-timezone-parse-fn :utc) (format-in-timezone-fn :utc)))
+              rows))))))
 
 ;; The counts are affected by timezone as the times are shifted back by 7 hours. These count changes can be validated
 ;; by matching the first three results of the pacific results to the last three of the UTC results (i.e. pacific is 7
@@ -390,7 +396,10 @@
                       (qp.test-util/supports-report-timezone? driver/*driver*))
                [[0 8]  [1 9] [2 7] [3 10] [4 10] [5 9]  [6 6]  [7 5] [8 7] [9 7]]
                [[0 13] [1 8] [2 4] [3 7]  [4 5]  [5 13] [6 10] [7 8] [8 9] [9 7]])
-             (sad-toucan-incidents-with-bucketing! :hour-of-day :pacific))))
+             (sad-toucan-incidents-with-bucketing! :hour-of-day :pacific))))))
+
+(deftest group-by-hour-of-day-test-2
+  (mt/test-drivers (mt/normal-drivers)
     (testing "results in UTC"
       (is (= [[0 13] [1 8] [2 4] [3 7] [4 5] [5 13] [6 10] [7 8] [8 9] [9 7]]
              (sad-toucan-incidents-with-bucketing! :hour-of-day :utc))
@@ -433,35 +442,62 @@
                 (format "When shifting to %s timezone we should lose %d events and gain %d, for a net gain of %d"
                         timezone-id num-events-gained num-events-lost expected-net-gain))))))))
 
-(def ^:private sad-toucan-events-grouped-by-day
-  ["2015-06-01"
-   "2015-06-02"
-   "2015-06-03"
-   "2015-06-04"
-   "2015-06-05"
-   "2015-06-06"
-   "2015-06-07"
-   "2015-06-08"
-   "2015-06-09"
-   "2015-06-10"])
-
-(defn- results-by-day [parse-fn format-result-fn counts]
-  (map
-   (fn [s cnt]
-     [(-> s parse-fn format-result-fn) cnt])
-   sad-toucan-events-grouped-by-day
-   counts))
-
 (deftest group-by-day-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "\nUTC timezone"
-      (is (= (if (= :sqlite driver/*driver*)
-               (results-by-day u.date/parse date-without-time-format-fn  [6 10 4 9 9 8 8 9 7 9])
-               (results-by-day u.date/parse (format-in-timezone-fn :utc) [6 10 4 9 9 8 8 9 7 9]))
-             (sad-toucan-incidents-with-bucketing! :day :utc))))
+      (do-with-sad-toucan-incidents-with-bucketing!
+       :day :utc
+       (fn [rows]
+         (is (= [["2015-06-01" 6]
+                 ["2015-06-02" 10]
+                 ["2015-06-03" 4]
+                 ["2015-06-04" 9]
+                 ["2015-06-05" 9]
+                 ["2015-06-06" 8]
+                 ["2015-06-07" 8]
+                 ["2015-06-08" 9]
+                 ["2015-06-09" 7]
+                 ["2015-06-10" 9]]
+                rows)))))))
+
+(deftest group-by-day-test-2
+  (mt/test-drivers (mt/normal-drivers)
     (testing "\nPacific timezone"
-      (is (= (cond
-               (= :sqlite driver/*driver*)
+      (do-with-sad-toucan-incidents-with-bucketing!
+       :day
+       :pacific
+       (fn [rows]
+         (is (= (if (or (= :sqlite driver/*driver*)
+                        (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
+                        (not (qp.test-util/supports-report-timezone? driver/*driver*)))
+                  [["2015-06-01" 6]
+                   ["2015-06-02" 10]
+                   ["2015-06-03" 4]
+                   ["2015-06-04" 9]
+                   ["2015-06-05" 9]
+                   ["2015-06-06" 8]
+                   ["2015-06-07" 8]
+                   ["2015-06-08" 9]
+                   ["2015-06-09" 7]
+                   ["2015-06-10" 9]]
+                  [["2015-06-01" 8]
+                   ["2015-06-02" 9]
+                   ["2015-06-03" 9]
+                   ["2015-06-04" 4]
+                   ["2015-06-05" 11]
+                   ["2015-06-06" 8]
+                   ["2015-06-07" 6]
+                   ["2015-06-08" 10]
+                   ["2015-06-09" 6]
+                   ["2015-06-10" 10]])
+                rows)))))))
+
+(deftest group-by-day-test-3
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "\nEastern timezone"
+      (is (= (if (or (= :sqlite driver/*driver*)
+                     (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
+                     (not (qp.test-util/supports-report-timezone? driver/*driver*)))
                [["2015-06-01" 6]
                 ["2015-06-02" 10]
                 ["2015-06-03" 4]
@@ -472,63 +508,19 @@
                 ["2015-06-08" 9]
                 ["2015-06-09" 7]
                 ["2015-06-10" 9]]
+               [["2015-06-01" 7]
+                ["2015-06-02" 9]
+                ["2015-06-03" 7]
+                ["2015-06-04" 6]
+                ["2015-06-05" 12]
+                ["2015-06-06" 6]
+                ["2015-06-07" 7]
+                ["2015-06-08" 9]
+                ["2015-06-09" 8]
+                ["2015-06-10" 10]])
+             (sad-toucan-incidents-with-bucketing! :day :eastern))))))
 
-               (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
-               [["2015-06-01T00:00:00-07:00" 6]
-                ["2015-06-02T00:00:00-07:00" 10]
-                ["2015-06-03T00:00:00-07:00" 4]
-                ["2015-06-04T00:00:00-07:00" 9]
-                ["2015-06-05T00:00:00-07:00" 9]
-                ["2015-06-06T00:00:00-07:00" 8]
-                ["2015-06-07T00:00:00-07:00" 8]
-                ["2015-06-08T00:00:00-07:00" 9]
-                ["2015-06-09T00:00:00-07:00" 7]
-                ["2015-06-10T00:00:00-07:00" 9]]
-
-               (qp.test-util/supports-report-timezone? driver/*driver*)
-               [["2015-06-01T00:00:00-07:00" 8]
-                ["2015-06-02T00:00:00-07:00" 9]
-                ["2015-06-03T00:00:00-07:00" 9]
-                ["2015-06-04T00:00:00-07:00" 4]
-                ["2015-06-05T00:00:00-07:00" 11]
-                ["2015-06-06T00:00:00-07:00" 8]
-                ["2015-06-07T00:00:00-07:00" 6]
-                ["2015-06-08T00:00:00-07:00" 10]
-                ["2015-06-09T00:00:00-07:00" 6]
-                ["2015-06-10T00:00:00-07:00" 10]]
-
-               :else
-               [["2015-06-01T00:00:00Z" 6]
-                ["2015-06-02T00:00:00Z" 10]
-                ["2015-06-03T00:00:00Z" 4]
-                ["2015-06-04T00:00:00Z" 9]
-                ["2015-06-05T00:00:00Z" 9]
-                ["2015-06-06T00:00:00Z" 8]
-                ["2015-06-07T00:00:00Z" 8]
-                ["2015-06-08T00:00:00Z" 9]
-                ["2015-06-09T00:00:00Z" 7]
-                ["2015-06-10T00:00:00Z" 9]])
-             (sad-toucan-incidents-with-bucketing! :day :pacific))))
-    (testing "\nEastern timezone"
-      (is (= (cond
-               (= :sqlite driver/*driver*)
-               (results-by-day u.date/parse date-without-time-format-fn [6 10 4 9 9 8 8 9 7 9])
-
-               (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
-               (results-by-day (default-timezone-parse-fn :eastern)
-                               (format-in-timezone-fn :eastern)
-                               [6 10 4 9 9 8 8 9 7 9])
-
-               (qp.test-util/supports-report-timezone? driver/*driver*)
-               (results-by-day (default-timezone-parse-fn :eastern)
-                               (format-in-timezone-fn :eastern)
-                               [7 9 7 6 12 6 7 9 8 10])
-
-               :else
-               (results-by-day u.date/parse
-                               (format-in-timezone-fn :utc)
-                               [6 10 4 9 9 8 8 9 7 9]))
-             (sad-toucan-incidents-with-bucketing! :day :eastern)))))
+(deftest group-by-day-test-4
   (testing "\nWith JVM timezone set to Pacific time"
     ;; This tests out the JVM timezone's impact on the results. For databases supporting a report timezone, this should
     ;; have no affect on the results. When no report timezone is used it should convert dates to the JVM's timezone
@@ -542,25 +534,30 @@
     ;;
     ;; TIMEZONE FIXME
     (mt/test-drivers (mt/normal-drivers-with-feature :test/jvm-timezone-setting)
-      (is (= (cond
-               (= :sqlite driver/*driver*)
-               (results-by-day u.date/parse date-without-time-format-fn [6 10 4 9 9 8 8 9 7 9])
-
-               (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
-               (results-by-day (default-timezone-parse-fn :pacific)
-                               (format-in-timezone-fn :pacific)
-                               [6 10 4 9 9 8 8 9 7 9])
-
-               (qp.test-util/supports-report-timezone? driver/*driver*)
-               (results-by-day (default-timezone-parse-fn :pacific)
-                               (format-in-timezone-fn :pacific)
-                               [8 9 9 4 11 8 6 10 6 10])
-
-               :else
-               (results-by-day (default-timezone-parse-fn :utc)
-                               (format-in-timezone-fn :pacific)
-                               [6 10 4 9 9 8 8 9 7 9]))
-             (mt/with-system-timezone-id! (timezone :pacific)
+      (mt/with-system-timezone-id! (timezone :pacific)
+        (is (= (if (or (= :sqlite driver/*driver*)
+                       (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
+                       (not (qp.test-util/supports-report-timezone? driver/*driver*)))
+                 [["2015-06-01" 6]
+                  ["2015-06-02" 10]
+                  ["2015-06-03" 4]
+                  ["2015-06-04" 9]
+                  ["2015-06-05" 9]
+                  ["2015-06-06" 8]
+                  ["2015-06-07" 8]
+                  ["2015-06-08" 9]
+                  ["2015-06-09" 7]
+                  ["2015-06-10" 9]]
+                 [["2015-06-01" 8]
+                  ["2015-06-02" 9]
+                  ["2015-06-03" 9]
+                  ["2015-06-04" 4]
+                  ["2015-06-05" 11]
+                  ["2015-06-06" 8]
+                  ["2015-06-07" 6]
+                  ["2015-06-08" 10]
+                  ["2015-06-09" 6]
+                  ["2015-06-10" 10]])
                (sad-toucan-incidents-with-bucketing! :day :pacific)))))))
 
 (deftest group-by-day-of-week-test
@@ -570,7 +567,10 @@
                       (qp.test-util/supports-report-timezone? driver/*driver*))
                [[1 29] [2 36] [3 33] [4 29] [5 13] [6 38] [7 22]]
                [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]])
-             (sad-toucan-incidents-with-bucketing! :day-of-week :pacific))))
+             (sad-toucan-incidents-with-bucketing! :day-of-week :pacific))))))
+
+(deftest group-by-day-of-week-test-2
+  (mt/test-drivers (mt/normal-drivers)
     (testing "\nUTC timezone"
       (is (= [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]]
              (sad-toucan-incidents-with-bucketing! :day-of-week :utc))))))
@@ -582,7 +582,10 @@
                       (qp.test-util/supports-report-timezone? driver/*driver*))
                [[1 8] [2 9] [3 9] [4 4] [5 11] [6 8] [7 6] [8 10] [9 6] [10 10]]
                [[1 6] [2 10] [3 4] [4 9] [5  9] [6 8] [7 8] [8  9] [9 7] [10  9]])
-             (sad-toucan-incidents-with-bucketing! :day-of-month :pacific))))
+             (sad-toucan-incidents-with-bucketing! :day-of-month :pacific))))))
+
+(deftest group-by-day-of-month-test-2
+  (mt/test-drivers (mt/normal-drivers)
     (testing "\nUTC timezone"
       (is (= [[1 6] [2 10] [3 4] [4 9] [5  9] [6 8] [7 8] [8  9] [9 7] [10  9]]
              (sad-toucan-incidents-with-bucketing! :day-of-month :utc))))))
@@ -594,7 +597,10 @@
                       (qp.test-util/supports-report-timezone? driver/*driver*))
                [[152 8] [153 9]  [154 9] [155 4] [156 11] [157 8]  [158 6] [159 10] [160 6] [161 10]]
                [[152 6] [153 10] [154 4] [155 9] [156  9] [157  8] [158 8] [159  9] [160 7] [161  9]])
-             (sad-toucan-incidents-with-bucketing! :day-of-year :pacific))))
+             (sad-toucan-incidents-with-bucketing! :day-of-year :pacific))))))
+
+(deftest group-by-day-of-year-test-2
+  (mt/test-drivers (mt/normal-drivers)
     (testing "\nUTC timezone"
       (is (= [[152 6] [153 10] [154 4] [155 9] [156  9] [157  8] [158 8] [159  9] [160 7] [161  9]]
              (sad-toucan-incidents-with-bucketing! :day-of-year :utc))))))
@@ -630,80 +636,59 @@
                 (format "When shifting to %s timezone we should lose %d events and gain %d, for a net gain of %d"
                         timezone-id num-events-gained num-events-lost expected-net-gain))))))))
 
-(defn- results-by-week [parse-fn format-result-fn counts]
-  (map
-   (fn [s cnt]
-     [(-> s parse-fn format-result-fn) cnt])
-   ["2015-05-31"
-    "2015-06-07"
-    "2015-06-14"
-    "2015-06-21"
-    "2015-06-28"]
-   counts))
-
 ;; Sad toucan incidents by week. Databases in UTC that don't support report timezones will be the same as the UTC test
 ;; above. Databases that support report timezone will have different counts as the week starts and ends 7 hours
 ;; earlier
 (deftest group-by-week-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "\nUTC timezone"
-      (is (= (if (= :sqlite driver/*driver*)
-               (results-by-week u.date/parse
-                                date-without-time-format-fn
-                                [46 47 40 60 7])
-               (results-by-week u.date/parse
-                                (format-in-timezone-fn :utc)
-                                [46 47 40 60 7]))
-             (sad-toucan-incidents-with-bucketing! :week :utc))))
+      (is (= [["2015-05-31" 46]
+              ["2015-06-07" 47]
+              ["2015-06-14" 40]
+              ["2015-06-21" 60]
+              ["2015-06-28" 7]]
+             (sad-toucan-incidents-with-bucketing! :week :utc))))))
+
+(deftest group-by-week-test-2
+  (mt/test-drivers (mt/normal-drivers)
     (testing "\nPacific timezone"
-      (is (= (cond
-               (= :sqlite driver/*driver*)
-               (results-by-week u.date/parse
-                                date-without-time-format-fn
-                                [46 47 40 60 7])
+      (is (= (if (or (= :sqlite driver/*driver*)
+                     (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
+                     (not (qp.test-util/supports-report-timezone? driver/*driver*)))
+               [["2015-05-31" 46]
+                ["2015-06-07" 47]
+                ["2015-06-14" 40]
+                ["2015-06-21" 60]
+                ["2015-06-28" 7]]
+               [["2015-05-31" 49]
+                ["2015-06-07" 47]
+                ["2015-06-14" 39]
+                ["2015-06-21" 58]
+                ["2015-06-28" 7]])
+             (sad-toucan-incidents-with-bucketing! :week :pacific))))))
 
-               (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
-               (results-by-week (default-timezone-parse-fn :pacific)
-                                (format-in-timezone-fn :pacific)
-                                [46 47 40 60 7])
-
-               (qp.test-util/supports-report-timezone? driver/*driver*)
-               (results-by-week (default-timezone-parse-fn :pacific)
-                                (format-in-timezone-fn :pacific)
-                                [49 47 39 58 7])
-
-               :else
-               (results-by-week u.date/parse
-                                (format-in-timezone-fn :utc)
-                                [46 47 40 60 7]))
-
-             (sad-toucan-incidents-with-bucketing! :week :pacific))))
+(deftest group-by-week-test-3
+  (mt/test-drivers (mt/normal-drivers)
     ;; Tests eastern timezone grouping by week, UTC databases don't change, databases with reporting timezones need to
     ;; account for the 4-5 hour difference
     (testing "\nEastern timezone"
       (mt/test-drivers (mt/normal-drivers)
-        (is (= (cond
-                 (= :sqlite driver/*driver*)
-                 (results-by-week u.date/parse
-                                  date-without-time-format-fn
-                                  [46 47 40 60 7])
+        (is (= (if (or (= :sqlite driver/*driver*)
+                       (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
+                       (not (qp.test-util/supports-report-timezone? driver/*driver*)))
+                 [["2015-05-31" 46]
+                  ["2015-06-07" 47]
+                  ["2015-06-14" 40]
+                  ["2015-06-21" 60]
+                  ["2015-06-28" 7]]
+                 [["2015-05-31" 47]
+                  ["2015-06-07" 48]
+                  ["2015-06-14" 39]
+                  ["2015-06-21" 59]
+                  ["2015-06-28" 7]])
+               (sad-toucan-incidents-with-bucketing! :week :eastern)))))))
 
-                 (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
-                 (results-by-week (default-timezone-parse-fn :eastern)
-                                  (format-in-timezone-fn :eastern)
-                                  [46 47 40 60 7])
-
-                 (qp.test-util/supports-report-timezone? driver/*driver*)
-                 (results-by-week (default-timezone-parse-fn :eastern)
-                                  (format-in-timezone-fn :eastern)
-                                  [47 48 39 59 7])
-
-                 :else
-                 (results-by-week u.date/parse
-                                  (format-in-timezone-fn :utc)
-                                  [46 47 40 60 7]))
-
-               (sad-toucan-incidents-with-bucketing! :week :eastern))))))
+(deftest group-by-week-test-4
   ;; Setting database timezone id will change how the datetime results are displayed, unless report timezone is set.
   ;; If so, the report timezone takes precedence and result values are formatted according to that. Overriding
   ;; database timezone id has no impact on beginning/end of week during calculation.
@@ -712,27 +697,19 @@
   ;; timezone (TIMEZONE FIXME)
   (testing "Database timezone override set to Pacific"
     (mt/test-drivers (mt/normal-drivers-except #{:sparksql})
-      (is (= (cond
-               (= :sqlite driver/*driver*)
-               (results-by-week u.date/parse
-                                date-without-time-format-fn
-                                [46 47 40 60 7])
-
-               ;; TODO - these results are the same as the `:else` results
-               (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
-               (results-by-week (default-timezone-parse-fn :pacific)
-                                (format-in-timezone-fn :pacific)
-                                [46 47 40 60 7])
-
-               (qp.test-util/supports-report-timezone? driver/*driver*)
-               (results-by-week (default-timezone-parse-fn :pacific)
-                                (format-in-timezone-fn :pacific)
-                                [49 47 39 58 7])
-
-               :else
-               (results-by-week u.date/parse
-                                (format-in-timezone-fn :pacific)
-                                [46 47 40 60 7]))
+      (is (= (if (or (= :sqlite driver/*driver*)
+                     (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
+                     (not (qp.test-util/supports-report-timezone? driver/*driver*)))
+               [["2015-05-31" 46]
+                ["2015-06-07" 47]
+                ["2015-06-14" 40]
+                ["2015-06-21" 60]
+                ["2015-06-28" 7]]
+               [["2015-05-31" 49]
+                ["2015-06-07" 47]
+                ["2015-06-14" 39]
+                ["2015-06-21" 58]
+                ["2015-06-28" 7]])
              (mt/with-database-timezone-id (timezone :pacific)
                (sad-toucan-incidents-with-bucketing! :week :pacific)))))))
 
@@ -749,7 +726,7 @@
     (int x)))
 
 (deftest week-of-year-and-week-count-should-be-consistent-test
-  (testing "consistent break out between weeks and week-of-year #4910"
+  (testing "consistent break out between weeks and week-of-year (#4910)"
     (mt/test-drivers (mt/normal-drivers)
       ;; 2019-01-01 is Tuesday, so set start-of-week to tuesday so
       ;; breakout by week-of-year will have first row is the 1st week of year
@@ -770,9 +747,7 @@
                           (map second)
                           (take 3)))))
             (testing "make sure all drivers returns the same week column"
-              (is (= (case driver/*driver*
-                       :sqlite ["2019-01-01 00:00:00" "2019-01-08 00:00:00" "2019-01-15 00:00:00"]
-                       ["2019-01-01T00:00:00Z" "2019-01-08T00:00:00Z" "2019-01-15T00:00:00Z"])
+              (is (= ["2019-01-01" "2019-01-08" "2019-01-15"]
                      (->> (test-break-out :week)
                           (map first)
                           (take 3)))))
@@ -786,31 +761,14 @@
 ;; difference is how the beginning of hte month is represented, since we always return times with our dates
 (deftest group-by-month-test
   (mt/test-drivers (mt/normal-drivers)
-    (testing "\nPacific timezone"
-      (is (= [[(cond
-                 (= :sqlite driver/*driver*)
-                 "2015-06-01"
-
-                 (qp.test-util/supports-report-timezone? driver/*driver*)
-                 "2015-06-01T00:00:00-07:00"
-
-                 :else
-                 "2015-06-01T00:00:00Z")
-               200]]
-             (sad-toucan-incidents-with-bucketing! :month :pacific))))
-    (testing "\nEastern timezone"
-      (mt/test-drivers (mt/normal-drivers)
-        (is (= [[(cond
-                   (= :sqlite driver/*driver*)
-                   "2015-06-01"
-
-                   (qp.test-util/supports-report-timezone? driver/*driver*)
-                   "2015-06-01T00:00:00-04:00"
-
-                   :else
-                   "2015-06-01T00:00:00Z")
-                 200]]
-               (sad-toucan-incidents-with-bucketing! :month :eastern)))))))
+    (doseq [timezone [:pacific :eastern]]
+      (testing (format "timezone = %s" timezone)
+        (mt/test-drivers (mt/normal-drivers)
+          (do-with-sad-toucan-incidents-with-bucketing!
+           :month timezone
+           (fn [rows]
+             (is (= [["2015-06-01" 200]]
+                    rows)))))))))
 
 (deftest group-by-month-of-year-test
   (mt/test-drivers (mt/normal-drivers)
@@ -819,28 +777,10 @@
 
 (deftest group-by-quarter-test
   (mt/test-drivers (mt/normal-drivers)
-    (testing "\nPacific timezone"
-      (is (= [[(cond (= :sqlite driver/*driver*)
-                     "2015-04-01"
-
-                     (qp.test-util/supports-report-timezone? driver/*driver*)
-                     "2015-04-01T00:00:00-07:00"
-
-                     :else
-                     "2015-04-01T00:00:00Z")
-               200]]
-             (sad-toucan-incidents-with-bucketing! :quarter :pacific))))
-    (testing "\nEastern timezone"
-      (is (= [[(cond (= :sqlite driver/*driver*)
-                     "2015-04-01"
-
-                     (qp.test-util/supports-report-timezone? driver/*driver*)
-                     "2015-04-01T00:00:00-04:00"
-
-                     :else
-                     "2015-04-01T00:00:00Z")
-               200]]
-             (sad-toucan-incidents-with-bucketing! :quarter :eastern))))))
+    (doseq [timezone [:pacific :eastern]]
+      (testing (format "timezone = %s" timezone)
+        (is (= [["2015-04-01" 200]]
+               (sad-toucan-incidents-with-bucketing! :quarter timezone)))))))
 
 (deftest group-by-quarter-of-year-test
   (mt/test-drivers (mt/normal-drivers)
@@ -858,28 +798,20 @@
 
 (deftest group-by-year-test
   (mt/test-drivers (mt/normal-drivers)
-    (is (= [[(cond
-               (= :sqlite driver/*driver*)
-               "2015-01-01"
+    (is (= [["2015-01-01" 200]]
+           (sad-toucan-incidents-with-bucketing! :year :pacific)))))
 
-               (qp.test-util/supports-report-timezone? driver/*driver*)
-               "2015-01-01T00:00:00-08:00"
-               :else
-               "2015-01-01T00:00:00Z")
-             200]]
-           (sad-toucan-incidents-with-bucketing! :year :pacific)))
-
-    (is (= (if (= :sqlite driver/*driver*)
-             [["2013-01-01" 235]
-              ["2014-01-01" 498]
-              ["2015-01-01" 267]]
-             [["2013-01-01T00:00:00Z" 235]
-              ["2014-01-01T00:00:00Z" 498]
-              ["2015-01-01T00:00:00Z" 267]])
-           (mt/formatted-rows [str int]
-             (mt/run-mbql-query checkins
-               {:aggregation [[:count]]
-                :breakout    [!year.date]}))))))
+(deftest group-by-year-test-2
+  (mt/test-drivers (mt/normal-drivers)
+    (let [query (mt/mbql-query checkins
+                  {:aggregation [[:count]]
+                   :breakout    [!year.date]})]
+      (mt/with-native-query-testing-context query
+        (is (= [["2013-01-01" 235]
+                ["2014-01-01" 498]
+                ["2015-01-01" 267]]
+               (mt/formatted-rows [str int]
+                 (qp/process-query query))))))))
 
 ;; RELATIVE DATES
 (p.types/deftype+ ^:private TimestampDatasetDef [intervalSeconds]
@@ -1178,37 +1110,51 @@
 (deftest ^:parallel legacy-default-datetime-bucketing-test
   (testing (str ":type/Date or :type/DateTime fields that don't have `:temporal-unit` clauses should get default `:day` "
                 "bucketing for legacy reasons. See #9014")
-    (is (= (str "SELECT COUNT(*) AS \"count\" "
-                "FROM \"PUBLIC\".\"CHECKINS\" "
-                "WHERE ("
-                "\"PUBLIC\".\"CHECKINS\".\"DATE\" >= CAST(NOW() AS date)) "
-                "AND "
-                "(\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(DATEADD('day', CAST(1 AS long), CAST(NOW() AS datetime)) AS date)"
-                ")")
-           (:query
-            (qp.compile/compile
-             (mt/mbql-query checkins
-               {:aggregation [[:count]]
-                :filter      [:= $date [:relative-datetime :current]]})))))))
+    (is (=? {:query ["SELECT"
+                     "  COUNT(*) AS \"count\""
+                     "FROM"
+                     "  \"PUBLIC\".\"CHECKINS\""
+                     "WHERE"
+                     "  \"PUBLIC\".\"CHECKINS\".\"DATE\" = CAST(NOW() AS date)"]}
+            (-> (qp.compile/compile
+                 (mt/mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:= $date [:relative-datetime :current]]}))
+                (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))
 
 (deftest ^:parallel compile-time-interval-test
   (testing "Make sure time-intervals work the way they're supposed to."
     (testing "[:time-interval $date -4 :month] should give us something like Oct 01 2020 - Feb 01 2021 if today is Feb 17 2021"
-      (is (= (str "SELECT CHECKINS.DATE AS DATE "
-                  "FROM CHECKINS "
-                  "WHERE ("
-                  "CHECKINS.DATE >= DATE_TRUNC('month', DATEADD('month', CAST(-4 AS long), CAST(NOW() AS datetime))))"
-                  " AND "
-                  "(CHECKINS.DATE < DATE_TRUNC('month', NOW())) "
-                  "GROUP BY CHECKINS.DATE "
-                  "ORDER BY CHECKINS.DATE ASC "
-                  "LIMIT 1048575")
-             (sql.qp-test-util/pretty-sql
-              (:query
-               (qp.compile/compile
-                (mt/mbql-query checkins
-                  {:filter   [:time-interval $date -4 :month]
-                   :breakout [!day.date]})))))))))
+      (is (= ["SELECT"
+              "  CHECKINS.DATE AS DATE"
+              "FROM"
+              "  CHECKINS"
+              "WHERE"
+              "  ("
+              "    CHECKINS.DATE >= CAST("
+              "      DATE_TRUNC("
+              "        'month',"
+              "        DATEADD('month', CAST(-4 AS long), CAST(NOW() AS datetime))"
+              "      ) AS date"
+              "    )"
+              "  )"
+              "  AND ("
+              "    CHECKINS.DATE < CAST(DATE_TRUNC('month', NOW()) AS date)"
+              "  )"
+              "GROUP BY"
+              "  CHECKINS.DATE"
+              "ORDER BY"
+              "  CHECKINS.DATE ASC"
+              "LIMIT"
+              "  1048575"]
+             (->> (qp.compile/compile
+                   (mt/mbql-query checkins
+                     {:filter   [:time-interval $date -4 :month]
+                      :breakout [!day.date]}))
+                  :query
+                  sql.qp-test-util/pretty-sql
+                  (driver/prettify-native-form :h2)
+                  str/split-lines))))))
 
 (deftest ^:parallel native-query-datetime-filter-test
   (testing "Field Filters with datetime values should behave like gui questions (#33492)"

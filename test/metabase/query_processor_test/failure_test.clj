@@ -33,7 +33,7 @@
 
 (def ^:private bad-query-native-schema
   [:map
-   [:query  [:= (str "SELECT DATE_TRUNC('month', \"PUBLIC\".\"VENUES\".\"ID\") AS \"ID\" "
+   [:query  [:= (str "SELECT CAST(DATE_TRUNC('month', \"PUBLIC\".\"VENUES\".\"ID\") AS date) AS \"ID\" "
                      "FROM \"PUBLIC\".\"VENUES\" "
                      "LIMIT 1048575")]]
    [:params :nil]])

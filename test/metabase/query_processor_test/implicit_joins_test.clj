@@ -164,10 +164,10 @@
                        :expressions {:pivot-grouping [:abs 0]}
                        :limit       5})]
           (mt/with-native-query-testing-context query
-            (is (= [["Doohickey" "Facebook" "2020-01-01T00:00:00Z" 0 89]
-                    ["Doohickey" "Google"   "2020-01-01T00:00:00Z" 0 100]
-                    ["Gizmo"     "Facebook" "2020-01-01T00:00:00Z" 0 113]
-                    ["Gizmo"     "Google"   "2020-01-01T00:00:00Z" 0 101]]
+            (is (= [["Doohickey" "Facebook" "2020-01-01" 0 89]
+                    ["Doohickey" "Google"   "2020-01-01" 0 100]
+                    ["Gizmo"     "Facebook" "2020-01-01" 0 113]
+                    ["Gizmo"     "Google"   "2020-01-01" 0 101]]
                    (mt/formatted-rows [str str str int int]
                                       (qp/process-query query))))))))))
 

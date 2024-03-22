@@ -61,22 +61,22 @@
 (deftest ^:parallel basic-sql-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a basic query with a SQL source-query"
-      (is (= {:rows [[1 -165.374  4 3 "Red Medicine"                 10.0646]
-                     [2 -118.329 11 2 "Stout Burgers & Beers"        34.0996]
-                     [3 -118.428 11 2 "The Apple Pan"                34.0406]
-                     [4 -118.465 29 2 "Wurstküche"                   33.9997]
-                     [5 -118.261 20 2 "Brite Spot Family Restaurant" 34.0778]]
-              :cols (mapv (partial qp.test-util/native-query-col :venues)
-                          [:id :longitude :category_id :price :name :latitude])}
-             (mt/format-rows-by [int 4.0 int int str 4.0]
-               (let [native-query (compile-to-native
-                                   (mt/mbql-query venues
-                                     {:fields [$id $longitude $category_id $price $name $latitude]}))]
-                 (qp.test-util/rows-and-cols
-                  (mt/run-mbql-query venues
-                    {:source-query {:native native-query}
-                     :order-by     [[:asc *venues.id]]
-                     :limit        5})))))))))
+      (is (=? {:rows [[1 -165.374  4 3 "Red Medicine"                 10.0646]
+                      [2 -118.329 11 2 "Stout Burgers & Beers"        34.0996]
+                      [3 -118.428 11 2 "The Apple Pan"                34.0406]
+                      [4 -118.465 29 2 "Wurstküche"                   33.9997]
+                      [5 -118.261 20 2 "Brite Spot Family Restaurant" 34.0778]]
+               :cols (mapv (partial qp.test-util/native-query-col :venues)
+                           [:id :longitude :category_id :price :name :latitude])}
+              (mt/format-rows-by [int 4.0 int int str 4.0]
+                (let [native-query (compile-to-native
+                                    (mt/mbql-query venues
+                                      {:fields [$id $longitude $category_id $price $name $latitude]}))]
+                  (qp.test-util/rows-and-cols
+                   (mt/run-mbql-query venues
+                     {:source-query {:native native-query}
+                      :order-by     [[:asc *venues.id]]
+                      :limit        5})))))))))
 
 (defn breakout-results [& {:keys [has-source-metadata? native-source?]
                             :or   {has-source-metadata? true
@@ -258,7 +258,7 @@
                                                         :fields       [&RP.reviews.id &RP.products.id &RP.products.ean]
                                                         :condition    [:= $product_id &RP.products.id]}]})])
           (is (=? {:status :completed}
-                 (qp/process-query (query-with-source-card 2 :limit 1)))))))))
+                  (qp/process-query (query-with-source-card 2 :limit 1)))))))))
 
 (deftest ^:parallel source-card-id-test
   (testing "Make sure we can run queries using source table `card__id` format."
@@ -378,8 +378,8 @@
                       [:source.PRICE :PRICE]]
              :from   [[venues-source-honeysql :source]]
              :where  [:and
-                      [:>= [:raw "\"source\".\"BIRD.ID\""] (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
-                      [:< [:raw "\"source\".\"BIRD.ID\""]  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
+                      [:>= [:raw "\"source\".\"BIRD.ID\""] (t/local-date-time "2017-01-01T00:00")]
+                      [:< [:raw "\"source\".\"BIRD.ID\""]  (t/local-date-time "2017-01-08T00:00")]]
              :limit  [:inline 10]})
            (qp.compile/compile
             (mt/mbql-query venues
@@ -815,8 +815,8 @@
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries)
                          :vertica :sqlite :presto-jdbc :starburst)
     (testing "Do nested queries work with two of the same aggregation? (#9767)"
-      (is (= [["2014-02-01T00:00:00Z" 302 1804]
-              ["2014-03-01T00:00:00Z" 350 2362]]
+      (is (= [["2014-02-01" 302 1804]
+              ["2014-03-01" 350 2362]]
              (mt/formatted-rows [identity int int]
                (mt/run-mbql-query checkins
                  {:source-query
@@ -853,14 +853,16 @@
       ;; currently possible to cast a DateTime field to a year in MBQL, and then cast it a second time in an another
       ;; query using the first as a source. This is a side-effect of MBQL year bucketing coming back as values like
       ;; `2016` rather than timestamps
-      (is (= [[(if (= :sqlite driver/*driver*) "2013-01-01" "2013-01-01T00:00:00Z")]]
-             (mt/rows
-               (mt/run-mbql-query checkins
-                 {:source-query {:source-table $$checkins
-                                 :fields       [!year.date]
-                                 :order-by     [[:asc !year.date]]
-                                 :limit        1}
-                  :fields       [!year.*date]})))))))
+      (let [query (mt/mbql-query checkins
+                    {:source-query {:source-table $$checkins
+                                    :fields       [!year.date]
+                                    :order-by     [[:asc !year.date]]
+                                    :limit        1}
+                     :fields       [!year.*date]})]
+        (mt/with-native-query-testing-context query
+          ;; checkins.date is a DATE column. Truncating to year should return another DATE.
+          (is (= [["2013-01-01"]]
+                 (mt/rows (qp/process-query query)))))))))
 
 (deftest ^:parallel correctly-alias-duplicate-names-in-breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :foreign-keys)
@@ -874,9 +876,9 @@
                                                       :condition    [:= $category_id &c.categories.id]}]}
                        :filter       [:> [:field "count" {:base-type :type/Number}] 0]
                        :limit        3})]
-        (is (= [[ "20th Century Cafe" "Café" 1]
-                [ "25°" "Burger" 1]
-                [ "33 Taps" "Bar" 1]]
+        (is (= [["20th Century Cafe" "Café"   1]
+                ["25°"               "Burger" 1]
+                ["33 Taps"           "Bar"    1]]
                (mt/formatted-rows [str str int]
                  results)))
         (is (= (mt/$ids venues
@@ -1099,11 +1101,11 @@
                                     :breakout     [!month.created_at !month.product_id->products.created_at]}
                      :limit        5})]
         (mt/with-native-query-testing-context query
-          (is (= [["2016-06-01T00:00:00Z" "2016-05-01T00:00:00Z" 13]
-                  ["2016-07-01T00:00:00Z" "2016-05-01T00:00:00Z" 16]
-                  ["2016-07-01T00:00:00Z" "2016-06-01T00:00:00Z" 10]
-                  ["2016-07-01T00:00:00Z" "2016-07-01T00:00:00Z" 7]
-                  ["2016-08-01T00:00:00Z" "2016-05-01T00:00:00Z" 12]]
+          (is (= [["2016-06-01" "2016-05-01" 13]
+                  ["2016-07-01" "2016-05-01" 16]
+                  ["2016-07-01" "2016-06-01" 10]
+                  ["2016-07-01" "2016-07-01" 7]
+                  ["2016-08-01" "2016-05-01" 12]]
                  (mt/rows (qp/process-query query)))))))))
 
 (deftest ^:parallel nested-queries-with-joins-with-old-metadata-test
@@ -1288,7 +1290,8 @@
                                       "FROM \"PUBLIC\".\"ORDERS\" "
                                       "WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ?)"
                                       " AND (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?)")
-                         :params [#t "2020-02-01T00:00Z[UTC]" #t "2020-03-01T00:00Z[UTC]"]}]
+                         :params [(t/offset-date-time #t "2020-02-01T00:00Z")
+                                  (t/offset-date-time #t "2020-03-01T00:00Z")]}]
           (testing "original query"
             (when (= driver/*driver* :h2)
               (is (= q1-native
@@ -1352,8 +1355,8 @@
                                           :display-name "#1"
                                           :type         :card
                                           :card-id      1}}})]
-            (is (= [["2016-04-01T00:00:00Z" 1]
-                    ["2016-05-01T00:00:00Z" 5]]
+            (is (= [["2016-04-01" 1]
+                    ["2016-05-01" 5]]
                    (mt/formatted-rows [str int]
                      (qp/process-query query))))))))))
 
@@ -1409,7 +1412,7 @@
                          :breakout     [*created_at/DateTimeWithLocalTZ]
                          :limit        1})]
             (mt/with-native-query-testing-context query
-              (is (= [["2016-04-01T00:00:00Z" 175]]
+              (is (= [["2016-04-01" 175]]
                      (mt/formatted-rows [str int]
                        (qp/process-query query)))))))))))
 

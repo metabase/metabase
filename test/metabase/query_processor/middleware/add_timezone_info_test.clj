@@ -2,8 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.query-processor.middleware.add-timezone-info
-    :as add-timezone-info]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.query-processor.middleware.add-timezone-info :as add-timezone-info]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
 (driver/register! ::timezone-driver, :abstract? true)
@@ -15,7 +16,8 @@
 (defmethod driver/database-supports? [::no-timezone-driver :set-timezone] [_driver _feature _db] false)
 
 (defn- add-timezone-info [metadata]
-  ((add-timezone-info/add-timezone-info {} identity) metadata))
+  (qp.store/with-metadata-provider meta/metadata-provider
+    ((add-timezone-info/add-timezone-info {} identity) metadata)))
 
 (deftest post-processing-test
   (doseq [[driver timezone->expected] {::timezone-driver    {"US/Pacific" {:results_timezone   "US/Pacific"
@@ -29,5 +31,5 @@
       (mt/with-temporary-setting-values [report-timezone timezone]
         (driver/with-driver driver
           (mt/with-database-timezone-id nil
-            (is (= expected
-                   (add-timezone-info {})))))))))
+            (is (=? expected
+                    (add-timezone-info {})))))))))

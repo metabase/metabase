@@ -62,11 +62,11 @@
     (testing "standard deviation aggregations"
       (let [query (mt/mbql-query venues {:aggregation [[:stddev $latitude]]})]
         (mt/with-native-query-testing-context query
-          (is (= {:cols [(qp.test-util/aggregate-col :stddev :venues :latitude)]
-                  :rows [[3.4]]}
-                 (qp.test-util/rows-and-cols
-                  (mt/format-rows-by [1.0]
-                    (mt/process-query query))))))))))
+          (is (=? {:cols [(qp.test-util/aggregate-col :stddev :venues :latitude)]
+                   :rows [[3.4]]}
+                  (qp.test-util/rows-and-cols
+                   (mt/format-rows-by [1.0]
+                     (mt/process-query query))))))))))
 
 (deftest ^:parallel standard-deviation-unsupported-test
   (mt/test-drivers (mt/normal-drivers-without-feature :standard-deviation-aggregations)
@@ -223,12 +223,12 @@
   (mt/test-drivers (mt/normal-drivers)
     (testing "cumulative count aggregations"
       (testing "w/o breakout should be treated the same as count"
-        (is (= {:rows [[15]]
-                :cols [(qp.test-util/aggregate-col :cum-count :users :id)]}
-               (qp.test-util/rows-and-cols
-                (mt/format-rows-by [int]
-                  (mt/run-mbql-query users
-                    {:aggregation [[:cum-count $id]]})))))))))
+        (is (=? {:rows [[15]]
+                 :cols [(qp.test-util/aggregate-col :cum-count :users :id)]}
+                (qp.test-util/rows-and-cols
+                 (mt/format-rows-by [int]
+                   (mt/run-mbql-query users
+                     {:aggregation [[:cum-count $id]]})))))))))
 
 (deftest ^:parallel cumulative-count-with-breakout-test
   (mt/test-drivers (mt/normal-drivers)
@@ -277,10 +277,10 @@
     (tu/with-temp-vals-in-db Field (data/id :venues :price) {:settings {:is_priceless false}}
       (let [results (mt/run-mbql-query venues
                       {:aggregation [[:sum $price]]})]
-        (is (= (assoc (qp.test-util/aggregate-col :sum :venues :price)
-                      :settings {:is_priceless false})
-               (or (-> results mt/cols first)
-                   results)))))))
+        (is (=? (assoc (qp.test-util/aggregate-col :sum :venues :price)
+                       :settings {:is_priceless false})
+                (or (-> results mt/cols first)
+                    results)))))))
 
 (deftest semantic-type-for-aggregate-fields-test
   (testing "Does `:semantic-type` show up for aggregate Fields? (#38022)"

@@ -13,19 +13,19 @@
                              {:order-by [[:asc $id]]
                               :limit    5})]
     (testing "PKs become strings when middleware enabled"
-      (is (= [["1" "Plato Yeshua"        "2014-04-01T08:30:00Z"]
-              ["2" "Felipinho Asklepios" "2014-12-05T15:15:00Z"]
-              ["3" "Kaneonuskatew Eiran" "2014-11-06T16:15:00Z"]
-              ["4" "Simcha Yan"          "2014-01-01T08:30:00Z"]
-              ["5" "Quentin Sören"       "2014-10-03T17:30:00Z"]]
+      (is (= [["1" "Plato Yeshua"        "2014-04-01T08:30:00"]
+              ["2" "Felipinho Asklepios" "2014-12-05T15:15:00"]
+              ["3" "Kaneonuskatew Eiran" "2014-11-06T16:15:00"]
+              ["4" "Simcha Yan"          "2014-01-01T08:30:00"]
+              ["5" "Quentin Sören"       "2014-10-03T17:30:00"]]
              (mt/rows
               (qp/process-query (assoc query :middleware {:js-int-to-string? true}))))))
     (testing "PKs are left alone when middleware disabled (default)"
-      (is (= [[1 "Plato Yeshua"        "2014-04-01T08:30:00Z"]
-              [2 "Felipinho Asklepios" "2014-12-05T15:15:00Z"]
-              [3 "Kaneonuskatew Eiran" "2014-11-06T16:15:00Z"]
-              [4 "Simcha Yan"          "2014-01-01T08:30:00Z"]
-              [5 "Quentin Sören"       "2014-10-03T17:30:00Z"]]
+      (is (= [[1 "Plato Yeshua"        "2014-04-01T08:30:00"]
+              [2 "Felipinho Asklepios" "2014-12-05T15:15:00"]
+              [3 "Kaneonuskatew Eiran" "2014-11-06T16:15:00"]
+              [4 "Simcha Yan"          "2014-01-01T08:30:00"]
+              [5 "Quentin Sören"       "2014-10-03T17:30:00"]]
              (mt/rows
               (qp/process-query (assoc query :middleware {}))))))))
 

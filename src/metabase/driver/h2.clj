@@ -330,7 +330,7 @@
   [:timestampadd
    (h2x/literal unit-str)
    expr
-   [:raw "timestamp '1970-01-01T00:00:00Z'"]])
+   [:raw "timestamp with time zone '1970-01-01T00:00:00Z'"]])
 
 (defmethod sql.qp/unix-timestamp->honeysql [:h2 :seconds] [_ _ expr]
   (add-to-1970 expr "second"))
@@ -365,11 +365,11 @@
 (defmethod sql.qp/date [:h2 :day]              [_ _ expr] (h2x/->date expr))
 (defmethod sql.qp/date [:h2 :day-of-month]     [_ _ expr] (extract-integer :day expr))
 (defmethod sql.qp/date [:h2 :day-of-year]      [_ _ expr] (extract-integer :doy expr))
-(defmethod sql.qp/date [:h2 :month]            [_ _ expr] (date-trunc :month expr))
+(defmethod sql.qp/date [:h2 :month]            [_ _ expr] (h2x/->date (date-trunc :month expr)))
 (defmethod sql.qp/date [:h2 :month-of-year]    [_ _ expr] (extract-integer :month expr))
-(defmethod sql.qp/date [:h2 :quarter]          [_ _ expr] (date-trunc :quarter expr))
+(defmethod sql.qp/date [:h2 :quarter]          [_ _ expr] (h2x/->date (date-trunc :quarter expr)))
 (defmethod sql.qp/date [:h2 :quarter-of-year]  [_ _ expr] (extract-integer :quarter expr))
-(defmethod sql.qp/date [:h2 :year]             [_ _ expr] (date-trunc :year expr))
+(defmethod sql.qp/date [:h2 :year]             [_ _ expr] (h2x/->date (date-trunc :year expr)))
 (defmethod sql.qp/date [:h2 :year-of-era]      [_ _ expr] (extract-integer :year expr))
 
 (defmethod sql.qp/date [:h2 :day-of-week]
@@ -378,9 +378,10 @@
 
 (defmethod sql.qp/date [:h2 :week]
   [_ _ expr]
-  (sql.qp/add-interval-honeysql-form :h2 (sql.qp/date :h2 :day expr)
-                                     (h2x/- 1 (sql.qp/date :h2 :day-of-week expr))
-                                     :day))
+  (h2x/->date
+   (sql.qp/add-interval-honeysql-form :h2 (sql.qp/date :h2 :day expr)
+                                      (h2x/- 1 (sql.qp/date :h2 :day-of-week expr))
+                                      :day)))
 
 (defmethod sql.qp/date [:h2 :week-of-year-iso] [_ _ expr] (extract :iso_week expr))
 

@@ -2,7 +2,6 @@
   "Functions for fetching the timezone for the current query."
   (:require
    [java-time.api :as t]
-   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
@@ -40,8 +39,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn report-timezone-id-if-supported
-  "Timezone ID for the report timezone, if the current driver and database supports it. (If the current driver supports it, this is
-  bound by the `bind-effective-timezone` middleware.)"
+  "Timezone ID for the report timezone, if the current driver and database supports it. (If the current driver supports
+  it, this is bound by the `bind-effective-timezone` middleware.)"
   (^String []
    (report-timezone-id-if-supported driver/*driver* (lib.metadata/database (qp.store/metadata-provider))))
 
@@ -99,12 +98,8 @@
         ;;       GH issues: #2282, #2035
         (system-timezone-id)))))
 
-(def ^ZonedDateTime now
+(def ^ZonedDateTime ^{:arglists '([] [database] [driver database & opts])} now
   "Get the current moment in time adjusted to the results timezone ID, e.g. for relative datetime calculations."
   (comp (fn [timezone-id]
           (t/with-zone-same-instant (t/zoned-date-time) (t/zone-id timezone-id)))
         results-timezone-id))
-
-;; normally I'd do this inline with the `def` form above but it busts Eastwood
-(when config/is-dev?
-  (alter-meta! #'now assoc :arglists (:arglists (meta #'results-timezone-id))))

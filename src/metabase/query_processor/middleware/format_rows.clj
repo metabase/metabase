@@ -9,7 +9,7 @@
    [metabase.util.log :as log]
    [potemkin.types :as p.types])
   (:import
-   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneId)))
+   (java.time Instant OffsetDateTime OffsetTime ZonedDateTime ZoneId)))
 
 (p.types/defprotocol+ FormatValue
   "Protocol for determining how QP results of various classes are serialized. Drivers can add implementations to support
@@ -19,28 +19,20 @@
 
 (extend-protocol FormatValue
   nil
-  (format-value [_ _]
+  (format-value [_v _timezone-id]
     nil)
 
   Object
-  (format-value [v _]
+  (format-value [v _timezone-id]
     v)
 
-  LocalTime
-  (format-value [t timezone-id]
-    (t/format :iso-offset-time (u.date/with-time-zone-same-instant t timezone-id)))
+  java.time.temporal.Temporal
+  (format-value [t _timezone-id]
+    (u.date/format t))
 
   OffsetTime
   (format-value [t timezone-id]
     (t/format :iso-offset-time (u.date/with-time-zone-same-instant t timezone-id)))
-
-  LocalDate
-  (format-value [t timezone-id]
-    (t/format :iso-offset-date-time (u.date/with-time-zone-same-instant t timezone-id)))
-
-  LocalDateTime
-  (format-value [t timezone-id]
-    (t/format :iso-offset-date-time (u.date/with-time-zone-same-instant t timezone-id)))
 
   ;; convert to a ZonedDateTime
   Instant
@@ -48,7 +40,7 @@
     (format-value (t/zoned-date-time t (t/zone-id "UTC")) timezone-id))
 
   OffsetDateTime
-  (format-value [t, ^ZoneId timezone-id]
+  (format-value [t timezone-id]
     (t/format :iso-offset-date-time (u.date/with-time-zone-same-instant t timezone-id)))
 
   ZonedDateTime
