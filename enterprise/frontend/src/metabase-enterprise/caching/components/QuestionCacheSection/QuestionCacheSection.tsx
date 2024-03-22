@@ -1,15 +1,10 @@
 import { t } from "ttag";
 
 import { getRelativeTime } from "metabase/lib/time";
+import type { QuestionCacheSectionProps } from "metabase/plugins";
 import { Stack, Text } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 
 import CacheSection from "../CacheSection";
-
-export interface QuestionCacheSectionProps {
-  question: Question;
-  onSave: (cache_ttl: number | null) => Promise<Question>;
-}
 
 const QuestionCacheSection = ({
   question,
