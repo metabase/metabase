@@ -55,7 +55,14 @@ function _PulsesListSidebar({
           <Tooltip tooltip={t`Set up a new schedule`}>
             <Icon
               name="add"
-              className="text-brand bg-light-hover rounded p1 cursor-pointer mr1"
+              className={cx(
+                CS.textBrand,
+                "bg-light-hover",
+                CS.rounded,
+                CS.p1,
+                CS.cursorPointer,
+                CS.mr1,
+              )}
               size={18}
               onClick={createSubscription}
             />
@@ -63,7 +70,13 @@ function _PulsesListSidebar({
           <Tooltip tooltip={t`Close`}>
             <Icon
               name="close"
-              className="text-light bg-light-hover rounded p1 cursor-pointer"
+              className={cx(
+                CS.textLight,
+                "bg-light-hover",
+                CS.rounded,
+                CS.p1,
+                CS.cursorPointer,
+              )}
               size={22}
               onClick={onCancel}
             />

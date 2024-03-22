@@ -80,7 +80,7 @@ function ApiKeysTable({
                 <Group spacing="md">
                   <Icon
                     name="pencil"
-                    className="cursor-pointer"
+                    className={CS.cursorPointer}
                     onClick={() => {
                       setActiveApiKey(apiKey);
                       setModal("edit");
@@ -88,7 +88,7 @@ function ApiKeysTable({
                   />
                   <Icon
                     name="trash"
-                    className="cursor-pointer"
+                    className={CS.cursorPointer}
                     onClick={() => {
                       setActiveApiKey(apiKey);
                       setModal("delete");

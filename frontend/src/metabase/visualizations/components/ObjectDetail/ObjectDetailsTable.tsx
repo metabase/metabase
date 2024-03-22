@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
@@ -110,7 +111,7 @@ export function DetailsTableCell({
       <span
         className={cx(
           {
-            "cursor-pointer": onVisualizationClick,
+            [CS.cursorPointer]: onVisualizationClick,
             link: isClickable && isLink,
           },
           className,

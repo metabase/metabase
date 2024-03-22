@@ -4,6 +4,7 @@ import { createRef, Component } from "react";
 import { t } from "ttag";
 
 import Popover from "metabase/components/Popover";
+import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
 import AlertListPopoverContent from "../AlertListPopoverContent";
@@ -51,7 +52,7 @@ export default class QuestionAlertWidget extends Component {
         <span onClick={this.open} ref={this.rootRef}>
           <Icon
             name="bell"
-            className={cx(className, "text-brand cursor-pointer")}
+            className={cx(className, CS.textBrand, CS.cursorPointer)}
           />
           <Popover
             target={this.rootRef.current}

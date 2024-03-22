@@ -44,7 +44,10 @@ export const AddRow = forwardRef(function AddRow(
         onKeyDown={onKeyDown}
         onChange={onChange}
       />
-      <span className="link no-decoration cursor-pointer" onClick={onCancel}>
+      <span
+        className={cx("link", CS.noDecoration, CS.cursorPointer)}
+        onClick={onCancel}
+      >
         {t`Cancel`}
       </span>
       <button

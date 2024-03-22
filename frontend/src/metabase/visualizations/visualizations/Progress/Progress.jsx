@@ -212,7 +212,7 @@ export default class Progress extends Component {
           </div>
           <div
             ref={this.barRef}
-            className={cx("relative", { "cursor-pointer": isClickable })}
+            className={cx(CS.relative, { [CS.cursorPointer]: isClickable })}
             style={{
               backgroundColor: restColor,
               borderRadius: BORDER_RADIUS,
