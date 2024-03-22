@@ -6,6 +6,6 @@
   overflow: hidden;
 }
 
-:global(.overflow-y-scroll) {
+.overflowYScroll {
   overflow-y: scroll;
 }
