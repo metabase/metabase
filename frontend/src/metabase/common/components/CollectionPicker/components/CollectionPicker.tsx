@@ -1,5 +1,5 @@
-import type React from "react";
-import { useState, forwardRef, useImperativeHandle, useCallback } from "react";
+import type { Ref } from "react";
+import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
@@ -7,20 +7,22 @@ import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
+import type { SearchListQuery } from "metabase-types/api";
 
-import type { PickerState, CollectionPickerItem } from "../../types";
-import type { EntityPickerModalOptions } from "../EntityPickerModal";
-import { LoadingSpinner } from "../LoadingSpinner";
-import { NestedItemPicker } from "../NestedItemPicker";
+import {
+  LoadingSpinner,
+  NestedItemPicker,
+  type PickerState,
+} from "../../EntityPicker";
+import type { CollectionPickerItem, CollectionPickerOptions } from "../types";
+import {
+  generateKey,
+  getCollectionIdPath,
+  getStateFromIdPath,
+  isFolder,
+} from "../utils";
 
 import { CollectionItemPickerResolver } from "./CollectionItemPickerResolver";
-import { getStateFromIdPath, getCollectionIdPath, isFolder } from "./utils";
-
-export type CollectionPickerOptions = EntityPickerModalOptions & {
-  showPersonalCollections?: boolean;
-  showRootCollection?: boolean;
-  namespace?: "snippets";
-};
 
 const defaultOptions: CollectionPickerOptions = {
   showPersonalCollections: true,
@@ -39,9 +41,11 @@ export const CollectionPickerInner = (
     initialValue,
     options = defaultOptions,
   }: CollectionPickerProps,
-  ref: React.Ref<unknown>,
+  ref: Ref<unknown>,
 ) => {
-  const [path, setPath] = useState<PickerState<CollectionPickerItem>>(() =>
+  const [path, setPath] = useState<
+    PickerState<CollectionPickerItem, SearchListQuery>
+  >(() =>
     getStateFromIdPath({
       idPath: ["root"],
       namespace: options.namespace,
@@ -122,6 +126,7 @@ export const CollectionPickerInner = (
       itemName={t`collection`}
       isFolder={isFolder}
       options={options}
+      generateKey={generateKey}
       onFolderSelect={onFolderSelect}
       onItemSelect={onItemSelect}
       path={path}

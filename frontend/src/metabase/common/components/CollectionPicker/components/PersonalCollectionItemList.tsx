@@ -3,27 +3,15 @@ import { useMemo } from "react";
 import { useCollectionListQuery } from "metabase/common/hooks";
 import type { Collection } from "metabase-types/api";
 
-import type {
-  TypeWithModel,
-  TisFolder,
-  CollectionPickerItem,
-} from "../../types";
+import { ItemList } from "../../EntityPicker";
+import type { CollectionItemListProps, CollectionPickerItem } from "../types";
 
-import { ItemList } from "./ItemList";
-
-interface PersonalCollectionsItemListProps<TItem extends TypeWithModel> {
-  onClick: (val: TItem) => void;
-  selectedItem: TItem | null;
-  isFolder: TisFolder<TItem>;
-  isCurrentLevel: boolean;
-}
-
-export const PersonalCollectionsItemList = <TItem extends TypeWithModel>({
+export const PersonalCollectionsItemList = ({
   onClick,
   selectedItem,
   isFolder,
   isCurrentLevel,
-}: PersonalCollectionsItemListProps<TItem>) => {
+}: CollectionItemListProps) => {
   const {
     data: collections,
     error,
@@ -33,8 +21,7 @@ export const PersonalCollectionsItemList = <TItem extends TypeWithModel>({
   });
 
   const topLevelPersonalCollections = useMemo(
-    () =>
-      getSortedTopLevelPersonalCollections(collections) as unknown as TItem[],
+    () => getSortedTopLevelPersonalCollections(collections),
     [collections],
   );
 

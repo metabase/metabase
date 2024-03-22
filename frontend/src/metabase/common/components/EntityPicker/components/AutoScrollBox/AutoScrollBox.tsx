@@ -2,7 +2,7 @@ import type React from "react";
 import { useRef, useEffect } from "react";
 import { usePrevious } from "react-use";
 
-import { HorizontalScrollBox } from "./NestedItemPicker.styled";
+import { HorizontalScrollBox } from "./AutoScrollBox.styled";
 
 const scrollRight = (
   container: HTMLDivElement | null,
