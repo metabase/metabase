@@ -32,11 +32,6 @@
   padding-top: 0;
 }
 
-:global(.pb0),
-.pb0 {
-  padding-bottom: 0;
-}
-
 :global(.pl0),
 .pl0 {
   padding-left: 0;
