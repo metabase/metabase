@@ -10,7 +10,7 @@ import {
 import {
   type CollectionPickerOptions,
   CollectionPickerModal,
-} from "metabase/common/components/EntityPicker";
+} from "metabase/common/components/CollectionPicker";
 import CollectionName from "metabase/containers/CollectionName";
 import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";

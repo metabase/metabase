@@ -1,12 +1,10 @@
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 
-import type { CollectionPickerItem, EntityPickerOptions } from "../../types";
-import {
-  RootItemList,
-  PersonalCollectionsItemList,
-  EntityItemList,
-  type EntityItemListProps,
-} from "../ItemList";
+import type { CollectionItemListProps } from "../types";
+
+import { PersonalCollectionsItemList } from "./PersonalCollectionItemList";
+import { RootItemList } from "./RootItemList";
+import { SearchItemList } from "./SearchItemList";
 
 export const CollectionItemPickerResolver = ({
   onClick,
@@ -15,9 +13,7 @@ export const CollectionItemPickerResolver = ({
   query,
   isFolder,
   isCurrentLevel,
-}: EntityItemListProps<CollectionPickerItem> & {
-  options: EntityPickerOptions;
-}) => {
+}: CollectionItemListProps) => {
   if (!query) {
     return (
       <RootItemList
@@ -37,17 +33,19 @@ export const CollectionItemPickerResolver = ({
         selectedItem={selectedItem}
         isFolder={isFolder}
         isCurrentLevel={isCurrentLevel}
+        options={options}
       />
     );
   }
 
   return (
-    <EntityItemList
+    <SearchItemList
       query={query}
       onClick={onClick}
       selectedItem={selectedItem}
       isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
+      options={options}
     />
   );
 };
