@@ -1,14 +1,22 @@
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
+import type { SearchModelType } from "metabase-types/api";
 
-import type { QuestionPickerItem, EntityTab } from "../../types";
-import { NewCollectionDialog } from "../CollectionPicker/NewCollectionDialog";
-import { EntityPickerModal, defaultOptions } from "../EntityPickerModal";
+import { NewCollectionDialog } from "../../CollectionPicker/components/NewCollectionDialog";
+import type { EntityTab } from "../../EntityPicker";
+import {
+  EntityPickerModal,
+  defaultOptions as defaultEntityPickerOptions,
+} from "../../EntityPicker";
+import type { QuestionPickerItem, QuestionPickerOptions } from "../types";
 
-import { QuestionPicker, type QuestionPickerOptions } from "./QuestionPicker";
+import {
+  QuestionPicker,
+  defaultOptions as defaultQuestionPickerOptions,
+} from "./QuestionPicker";
 
 interface QuestionPickerModalProps {
   title?: string;
@@ -19,11 +27,22 @@ interface QuestionPickerModalProps {
 }
 
 const canSelectItem = (item: QuestionPickerItem | null): boolean => {
-  return !!item && item?.can_write !== false;
+  return !!item && (item.model === "card" || item.model === "dataset");
+};
+
+const searchFilter = (
+  searchResults: QuestionPickerItem[],
+): QuestionPickerItem[] => {
+  return searchResults;
+};
+
+const defaultOptions: QuestionPickerOptions = {
+  ...defaultEntityPickerOptions,
+  ...defaultQuestionPickerOptions,
 };
 
 export const QuestionPickerModal = ({
-  title = t`Choose a question`,
+  title = t`Choose a collection`,
   onChange,
   onClose,
   value,
@@ -66,16 +85,13 @@ export const QuestionPickerModal = ({
       miw="21rem"
       onClick={openCreateDialog}
       leftIcon={<Icon name="add" />}
-      disabled={
-        ["card", "dataset"].includes(selectedItem?.model ?? "collection") ===
-        false
-      }
+      disabled={selectedItem?.can_write === false}
     >
       {t`Create a new collection`}
     </Button>,
   ];
 
-  const tabs: [EntityTab] = [
+  const tabs: [EntityTab<SearchModelType>, ...EntityTab<SearchModelType>[]] = [
     {
       displayName: t`Questions`,
       model: "card",
@@ -85,6 +101,21 @@ export const QuestionPickerModal = ({
           onItemSelect={handleItemSelect}
           initialValue={value}
           options={options}
+          models={["card"]}
+          ref={pickerRef}
+        />
+      ),
+    },
+    {
+      displayName: t`Models`,
+      model: "dataset",
+      icon: "model",
+      element: (
+        <QuestionPicker
+          onItemSelect={handleItemSelect}
+          initialValue={value}
+          options={options}
+          models={["dataset"]}
           ref={pickerRef}
         />
       ),
@@ -106,6 +137,7 @@ export const QuestionPickerModal = ({
         selectedItem={selectedItem}
         tabs={tabs}
         options={options}
+        searchResultFilter={searchFilter}
         actionButtons={modalActions}
         trapFocus={!isCreateDialogOpen}
       />

@@ -1,5 +1,5 @@
-import type React from "react";
-import { useState, forwardRef, useImperativeHandle, useCallback } from "react";
+import type { Ref } from "react";
+import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
@@ -7,22 +7,24 @@ import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
+import type { SearchListQuery, SearchModelType } from "metabase-types/api";
 
-import type { PickerState, QuestionPickerItem } from "../../types";
-import type { EntityPickerModalOptions } from "../EntityPickerModal";
-import { LoadingSpinner } from "../LoadingSpinner";
-import { NestedItemPicker } from "../NestedItemPicker";
+import {
+  LoadingSpinner,
+  NestedItemPicker,
+  type PickerState,
+} from "../../EntityPicker";
+import type { QuestionPickerItem, QuestionPickerOptions } from "../types";
+import {
+  generateKey,
+  getCollectionIdPath,
+  getStateFromIdPath,
+  isFolder,
+} from "../utils";
 
 import { QuestionItemPickerResolver } from "./QuestionItemPickerResolver";
-import { getStateFromIdPath, getCollectionIdPath, isFolder } from "./utils";
 
-export type QuestionPickerOptions = EntityPickerModalOptions & {
-  showPersonalCollections?: boolean;
-  showRootCollection?: boolean;
-  namespace?: "snippets";
-};
-
-const defaultOptions: QuestionPickerOptions = {
+export const defaultOptions: QuestionPickerOptions = {
   showPersonalCollections: true,
   showRootCollection: true,
 };
@@ -31,20 +33,23 @@ interface QuestionPickerProps {
   onItemSelect: (item: QuestionPickerItem) => void;
   initialValue?: Partial<QuestionPickerItem>;
   options?: QuestionPickerOptions;
+  models?: SearchModelType[];
 }
 
 export const QuestionPickerInner = (
   {
     onItemSelect,
     initialValue,
-    options = defaultOptions,
+    options,
+    models = ["dataset", "card"],
   }: QuestionPickerProps,
-  ref: React.Ref<unknown>,
+  ref: Ref<unknown>,
 ) => {
-  const [path, setPath] = useState<PickerState<QuestionPickerItem>>(() =>
+  const [path, setPath] = useState<
+    PickerState<QuestionPickerItem, SearchListQuery>
+  >(() =>
     getStateFromIdPath({
       idPath: ["root"],
-      namespace: options.namespace,
     }),
   );
 
@@ -63,25 +68,25 @@ export const QuestionPickerInner = (
     ({ folder }: { folder: QuestionPickerItem }) => {
       const newPath = getStateFromIdPath({
         idPath: getCollectionIdPath(folder, userPersonalCollectionId),
-        namespace: options.namespace,
+        models,
       });
       setPath(newPath);
       onItemSelect(folder);
     },
-    [setPath, onItemSelect, options.namespace, userPersonalCollectionId],
+    [setPath, onItemSelect, userPersonalCollectionId, models],
   );
 
   const handleItemSelect = (item: QuestionPickerItem) => {
     // set selected item at the correct level
     const pathLevel = path.findIndex(
-      level => level?.query?.collection === (item?.collection_id ?? 'root')
+      level => level?.query?.collection === (item?.collection_id ?? "root"),
     );
 
     const newPath = path.slice(0, pathLevel + 1);
     newPath[newPath.length - 1].selectedItem = item;
     setPath(newPath);
     onItemSelect(item);
-  }
+  };
 
   // Exposing onFolderSelect so that parent can select newly created
   // folder
@@ -105,7 +110,6 @@ export const QuestionPickerInner = (
             },
             userPersonalCollectionId,
           ),
-          namespace: options.namespace,
         });
         setPath(newPath);
 
@@ -118,7 +122,7 @@ export const QuestionPickerInner = (
         }
       }
     },
-    [currentCollection, options.namespace, userPersonalCollectionId],
+    [currentCollection, userPersonalCollectionId],
   );
 
   if (error) {
@@ -134,6 +138,7 @@ export const QuestionPickerInner = (
       itemName={t`question`}
       isFolder={isFolder}
       options={options}
+      generateKey={generateKey}
       onFolderSelect={onFolderSelect}
       onItemSelect={handleItemSelect}
       path={path}
