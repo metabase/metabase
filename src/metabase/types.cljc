@@ -136,7 +136,7 @@
 
 ;; Semantic types deriving from `:type/Category` should be marked as 'category' Fields during sync, i.e. they
 ;; should have their FieldValues cached and synced. See
-;; `metabase.sync.analyze.classifiers.category/field-should-be-category?`
+;; `metabase.analyze.classifiers.category/field-should-be-category?`
 (derive :type/Category :Semantic/*)
 (derive :type/Enum :Semantic/*)
 

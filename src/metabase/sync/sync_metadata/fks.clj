@@ -5,6 +5,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -81,7 +82,7 @@
 
 (mu/defn ^:private mark-fk!
   "Updates the `fk_target_field_id` of a Field. Returns 1 if the Field was successfully updated, 0 otherwise."
-  [database :- i/DatabaseInstance
+  [database :- (mi/InstanceOf :model/Database)
    metadata :- i/FKMetadataEntry]
   (u/prog1 (t2/query-one (mark-fk-sql (:id database) metadata))
   (when (= <> 1)
@@ -95,7 +96,7 @@
 
 (mu/defn sync-fks-for-db!
   "Sync the foreign keys for a `database`."
-  [database :- i/DatabaseInstance]
+  [database :- (mi/InstanceOf :model/Database)]
   (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging database))
     (let [schema-names (sync-util/db->sync-schemas database)
           fk-metadata  (fetch-metadata/fk-metadata database :schema-names schema-names)]
@@ -115,11 +116,11 @@
 
 (mu/defn sync-fks-for-table!
   "Sync the foreign keys for a specific `table`."
-  ([table :- i/TableInstance]
+  ([table :- (mi/InstanceOf :model/Table)]
    (sync-fks-for-table! (table/database table) table))
 
-  ([database :- i/DatabaseInstance
-    table    :- i/TableInstance]
+  ([database :- (mi/InstanceOf :model/Database)
+    table    :- (mi/InstanceOf :model/Table)]
    (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging table))
      (let [fk-metadata (fetch-metadata/table-fk-metadata database table)]
        {:total-fks   (count fk-metadata)
@@ -132,7 +133,7 @@
   If the driver supports the `:describe-fks` feature, [[metabase.driver/describe-fks]] is used to fetch the FK metadata.
 
   This function also sets all the tables that should be synced to have `initial-sync-status=complete` once the sync is done."
-  [database :- i/DatabaseInstance]
+  [database :- (mi/InstanceOf :model/Database)]
   (u/prog1 (if (driver/database-supports? (driver.u/database->driver database) :describe-fks database)
              (sync-fks-for-db! database)
              (reduce (fn [update-info table]

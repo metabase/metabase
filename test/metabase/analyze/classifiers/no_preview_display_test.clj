@@ -1,10 +1,10 @@
-(ns metabase.sync.analyze.classifiers.no-preview-display-test
+(ns metabase.analyze.classifiers.no-preview-display-test
   "Tests for the category classifier."
   (:require
    [clojure.test :refer :all]
+   [metabase.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
    [metabase.models.field :refer [Field]]
-   [metabase.models.interface :as mi]
-   [metabase.sync.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]))
+   [metabase.models.interface :as mi]))
 
 (def ^:private long-text-field
   (mi/instance Field

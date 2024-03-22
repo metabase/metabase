@@ -1,4 +1,4 @@
-(ns metabase.sync.analyze.fingerprint.fingerprinters
+(ns metabase.analyze.fingerprint.fingerprinters
   "Non-identifying fingerprinters for various field types."
   (:require
    [bigml.histogram.core :as hist]
@@ -6,7 +6,7 @@
    [kixi.stats.core :as stats]
    [kixi.stats.math :as math]
    [medley.core :as m]
-   [metabase.sync.analyze.classifiers.name :as classifiers.name]
+   [metabase.analyze.classifiers.name :as classifiers.name]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]

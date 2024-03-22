@@ -1,14 +1,14 @@
-(ns metabase.sync.analyze.query-results-test
+(ns metabase.analyze.query-results-test
   (:require
    [clojure.test :refer :all]
+   [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
+   [metabase.analyze.fingerprint.insights :as insights]
+   [metabase.analyze.query-results :as qr]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
-   [metabase.sync.analyze.fingerprint.insights :as insights]
-   [metabase.sync.analyze.query-results :as qr]
    [metabase.test :as mt]
    [metabase.test.sync :as test.sync]
    [metabase.test.util :as tu]
