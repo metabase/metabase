@@ -1,7 +1,7 @@
 import type { TableId } from "metabase-types/api";
 
 import { Api } from "./api";
-import { FIELD_VALUES_LIST_TAG } from "./tags";
+import { FIELD_VALUES_TAG } from "./tags";
 
 export const tableApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -10,14 +10,14 @@ export const tableApi = Api.injectEndpoints({
         method: "POST",
         url: `/api/table/${tableId}/rescan_values`,
       }),
-      invalidatesTags: [FIELD_VALUES_LIST_TAG],
+      invalidatesTags: [FIELD_VALUES_TAG],
     }),
     discardTableFieldValues: builder.mutation<void, TableId>({
       query: tableId => ({
         method: "POST",
         url: `/api/table/${tableId}/discard_values`,
       }),
-      invalidatesTags: [FIELD_VALUES_LIST_TAG],
+      invalidatesTags: [FIELD_VALUES_TAG],
     }),
   }),
 });

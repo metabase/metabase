@@ -6,7 +6,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { FIELD_VALUES_TAG, getListItemTags } from "./tags";
+import { FIELD_VALUES_TAG } from "./tags";
 
 export const fieldApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -15,8 +15,9 @@ export const fieldApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/field/${fieldId}/values`,
       }),
-      providesTags: (result, error, fieldId) =>
-        getListItemTags(FIELD_VALUES_TAG, result && [fieldId]),
+      providesTags: (result, error, fieldId) => [
+        { type: FIELD_VALUES_TAG, id: fieldId },
+      ],
     }),
     searchFieldValues: builder.query<FieldValue[], FieldSearchInput>({
       query: ({ fieldId, searchFieldId, ...body }) => ({
@@ -24,24 +25,27 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${fieldId}/search/${searchFieldId}`,
         body,
       }),
-      providesTags: (result, error, { fieldId }) =>
-        getListItemTags(FIELD_VALUES_TAG, result && [fieldId]),
+      providesTags: (result, error, { fieldId }) => [
+        { type: FIELD_VALUES_TAG, id: fieldId },
+      ],
     }),
     rescanFieldValues: builder.mutation<void, FieldId>({
       query: fieldId => ({
         method: "POST",
         url: `/api/field/${fieldId}/rescan_values`,
       }),
-      invalidatesTags: (result, error, fieldId) =>
-        getListItemTags(FIELD_VALUES_TAG, [fieldId]),
+      invalidatesTags: (result, error, fieldId) => [
+        { type: FIELD_VALUES_TAG, id: fieldId },
+      ],
     }),
     discardFieldValues: builder.mutation<void, FieldId>({
       query: fieldId => ({
         method: "POST",
         url: `/api/field/${fieldId}/discard_values`,
       }),
-      invalidatesTags: (result, error, fieldId) =>
-        getListItemTags(FIELD_VALUES_TAG, [fieldId]),
+      invalidatesTags: (result, error, fieldId) => [
+        { type: FIELD_VALUES_TAG, id: fieldId },
+      ],
     }),
   }),
 });
