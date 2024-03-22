@@ -571,7 +571,7 @@ export function AlertEditSchedule({ alertType, schedule, onScheduleChange }) {
         How often should we check for results?
       </h3>
 
-      <div className="bordered rounded mb2">
+      <div className={cx(CS.bordered, CS.rounded, CS.mb2)}>
         {alertType === ALERT_TYPE_ROWS && <RawDataAlertTip />}
         <div className={cx(CS.p3, "bg-light")}>
           <SchedulePicker
@@ -610,7 +610,7 @@ class AlertEditChannelsInner extends Component {
     return (
       <div className={cx(CS.mt4, CS.pt2)}>
         <h3 className="text-dark mb3">{jt`Where do you want to send these alerts?`}</h3>
-        <div className="mb2">
+        <div className={CS.mb2}>
           <PulseEditChannels
             pulse={alert}
             pulseId={alert.id}

@@ -14,6 +14,7 @@
 }
 
 .header {
+  /* TODO FIGURE OUT WHAT TO DO WITH THIS */
   composes: mt4 mb2 from "style";
   flex-direction: row;
   display: flex;
@@ -23,6 +24,7 @@
 }
 
 .headerBody {
+  /* TODO FIGURE OUT WHAT TO DO WITH THIS */
   composes: border-bottom from "style";
   flex: 1 0 auto;
   display: flex;

@@ -84,7 +84,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
               [t`SAML`],
             ]}
           />
-          <h2 className="mb2">{t`Set up SAML-based SSO`}</h2>
+          <h2 className={CS.mb2}>{t`Set up SAML-based SSO`}</h2>
           <SAMLFormCaption>
             {jt`Use the settings below to configure your SSO via SAML. If you have any questions, check out our ${(
               <ExternalLink

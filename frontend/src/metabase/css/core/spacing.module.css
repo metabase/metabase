@@ -225,7 +225,6 @@
   margin-top: var(--margin-2);
 }
 
-:global(.mb2),
 .mb2 {
   margin-bottom: var(--margin-2);
 }

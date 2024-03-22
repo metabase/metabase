@@ -23,7 +23,7 @@ import {
 const TaskList = ({ tasks }) => (
   <ol>
     {tasks.map((task, index) => (
-      <li className="mb2" key={index}>
+      <li className={CS.mb2} key={index}>
         <Task {...task} />
       </li>
     ))}

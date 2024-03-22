@@ -69,10 +69,10 @@ interface HelpLinkProps {
 }
 
 const HelpLink = ({ title, description, link }: HelpLinkProps) => (
-  <li className="mb2">
+  <li className={CS.mb2}>
     <HelpExternalLink href={link} target="_blank">
       <div>
-        <h3 className="text-brand">{title}</h3>
+        <h3 className={CS.textBrand}>{title}</h3>
         <p className={cx(CS.m0, CS.mt1)}>{description}</p>
       </div>
     </HelpExternalLink>
@@ -107,7 +107,7 @@ export const Help = () => {
 
   return (
     <HelpRoot>
-      <AdminHeader title={t`Help`} className="mb2" />
+      <AdminHeader title={t`Help`} className={CS.mb2} />
       <HelpLinks>
         <ol>
           <HelpLink
@@ -128,7 +128,7 @@ export const Help = () => {
       </HelpLinks>
 
       <HelpBody>
-        <AdminHeader title={t`Diagnostic Info`} className="mb2" />
+        <AdminHeader title={t`Diagnostic Info`} className={CS.mb2} />
         <p>{t`Please include these details in support requests. Thank you!`}</p>
         <InfoBlock>{detailString}</InfoBlock>
         <div

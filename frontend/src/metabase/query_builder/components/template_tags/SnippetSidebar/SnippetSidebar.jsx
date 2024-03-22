@@ -100,7 +100,7 @@ class SnippetSidebarInner extends React.Component {
           <div className={cx(CS.px3, CS.flex, CS.flexColumn, CS.alignCenter)}>
             <svg
               viewBox="0 0 10 10"
-              className="mb2"
+              className={CS.mb2}
               style={{ width: "25%", marginTop: 120 }}
             >
               <path
