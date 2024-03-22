@@ -1,0 +1,18 @@
+.separator {
+  flex: 0 0 auto;
+}
+
+.column {
+  flex: 1;
+}
+
+.remove {
+  flex: 0 0 auto;
+  border-color: transparent !important;
+}
+
+.wrapper {
+  &:not(:only-child) {
+    margin-top: 0;
+  }
+}

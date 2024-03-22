@@ -1,4 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
+import type { RowValue, RowValues } from "metabase-types/api";
 
 import type {
   AggregationClause,
@@ -97,5 +98,17 @@ export function diagnoseExpression(
     expressionMode,
     mbql,
     expressionPosition,
+  );
+}
+
+export function previewExpression(
+  _query: Query,
+  _stageIndex: number,
+  _expressionClause: ExpressionClause,
+  queryResults: RowValues[],
+): RowValue[] {
+  // TODO: remove this mock
+  return queryResults.map(
+    () => `https://www.example.com/${Math.floor(1000 * Math.random())}`,
   );
 }
