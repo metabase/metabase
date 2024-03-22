@@ -1051,15 +1051,20 @@
   (binding [upload/*sync-synchronously?* true]
     (upload/update-csv! options)))
 
+(defn- update-csv!
+  "Shorthand for synchronously updating a CSV"
+  [action options]
+  (update-csv-synchronously! (assoc options :action action)))
+
 (defn- append-csv!
   "Shorthand for synchronously appending to a CSV"
   [options]
-  (update-csv-synchronously! (assoc options :action ::upload/append)))
+  (update-csv! ::upload/append options))
 
 (defn- replace-csv!
   "Shorthand for synchronously replacing a CSV"
   [options]
-  (update-csv-synchronously! (assoc options :action ::upload/replace)))
+  (update-csv! ::upload/replace options))
 
 (deftest create-csv-upload!-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
@@ -1283,9 +1288,9 @@
      (~macro-fn ~@body)
      ~@body))
 
-(defn append-csv-with-defaults!
+(defn update-csv-with-defaults!
   "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden."
-  [& {:keys [uploads-enabled user-id file table-id is-upload]
+  [action & {:keys [uploads-enabled user-id file table-id is-upload]
       :or {uploads-enabled true
            user-id         (mt/user->id :crowberto)
            file            (csv-file-with
@@ -1301,14 +1306,18 @@
                           (create-upload-table!))
               table-id (or table-id (:id new-table))]
           (t2/update! :model/Table table-id {:is_upload is-upload})
-          (try (append-csv! {:table-id table-id
-                             :file     file})
+          (try (update-csv! action {:table-id table-id, :file file})
                (finally
                  ;; Drop the table in the testdb if a new one was created.
                  (when new-table
                    (driver/drop-table! driver/*driver*
                                        (mt/id)
                                        (#'upload/table-identifier new-table))))))))))
+
+(defn append-csv-with-defaults!
+  "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden."
+  [& options]
+  (update-csv-with-defaults! ::upload/append options))
 
 (defn catch-ex-info* [f]
   (try
@@ -1942,11 +1951,12 @@
                         "1  , 1.0"]
               file     (csv-file-with csv-rows (mt/random-name))]
           (is (some? (replace-csv! {:file file, :table-id (:id table)})))
-          ;; For MySQL the primary key incrementer will be reset, but for Postgres and H2 it will not.
-          (let [pk-offset (case driver/*driver* :mysql -1 0)]
-            (is (= [[(+ pk-offset 2) 1 1]
-                    [(+ pk-offset 3) 1 1]]
-                   (rows-for-table table))))
+          (let [table-rows (rows-for-table table)
+                ;; For MySQL the primary key incrementer will be reset, but for Postgres and H2 it will not.
+                first-pk   (ffirst table-rows)]
+            (is (= [[first-pk 1 1]
+                    [(inc first-pk) 1 1]]
+                   table-rows)))
 
           (io/delete-file file))))))
 
