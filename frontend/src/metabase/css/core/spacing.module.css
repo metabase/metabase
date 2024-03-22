@@ -280,7 +280,6 @@
   margin-right: var(--margin-4);
 }
 
-:global(.my4),
 .my4 {
   margin-top: var(--margin-4);
   margin-bottom: var(--margin-4);
