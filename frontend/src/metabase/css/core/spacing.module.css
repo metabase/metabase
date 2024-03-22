@@ -106,7 +106,6 @@
   padding-right: var(--padding-3);
 }
 
-:global(.py3),
 .py3 {
   padding-top: var(--padding-3);
   padding-bottom: var(--padding-3);
