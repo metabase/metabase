@@ -65,7 +65,6 @@
 
 /* 2 */
 
-:global(.p2),
 .p2 {
   padding: var(--padding-2);
 }

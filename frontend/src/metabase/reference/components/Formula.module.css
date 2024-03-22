@@ -1,4 +1,5 @@
 .formula {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: bordered rounded from "style";
   background-color: var(--color-bg-light);
   cursor: pointer;
@@ -12,11 +13,13 @@
 }
 
 .formulaTitle {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: ml2 from "style";
   font-size: 16px;
 }
 
 .formulaDefinitionInner {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: p2 from "style";
 }
 

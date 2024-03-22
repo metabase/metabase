@@ -255,7 +255,7 @@ const SuggestionsList = ({ suggestions, section }) => (
               to={item.url}
               className="hover-parent hover--visibility"
             >
-              <Card className="p2" hoverable>
+              <Card className={CS.p2} hoverable>
                 <ItemContent>
                   <Icon
                     name={RELATED_CONTENT[s].icon}

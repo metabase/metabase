@@ -291,7 +291,7 @@ class ArchivedSnippetsInner extends React.Component {
     return (
       <SidebarContent>
         <SidebarHeader
-          className="p2"
+          className={CS.p2}
           title={t`Archived snippets`}
           onBack={onBack}
         />

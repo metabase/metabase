@@ -6,6 +6,7 @@ import _ from "underscore";
 
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { Icon } from "metabase/ui";
@@ -87,8 +88,8 @@ const VisualizationPreview = ({ rawSeries, result }) => {
     <Visualization
       rawSeries={rawSeries}
       error={result && result.error}
-      className={cx("bordered shadowed rounded bg-white", {
-        p2: result && result.error,
+      className={cx(CS.bordered, CS.shadowed, CS.rounded, CS.bgWhite, {
+        [CS.p2]: result && result.error,
       })}
       style={{
         height: open
