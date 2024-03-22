@@ -360,6 +360,9 @@
   (and (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
 
+;;; yes, this is supposed to return a TIMESTAMP, not a TIMESTAMP WITH TIME ZONE, because changing the time zone of a
+;;; TIMESTAMP WITH TIME ZONE in Postgres is meaningless, since they're all normalized to UTC. But this behavior seems
+;;; wrong and buggy. See https://metaboat.slack.com/archives/C04DN5VRQM6/p1711123111123319
 (defmethod sql.qp/->honeysql [:postgres :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
