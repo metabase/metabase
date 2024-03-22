@@ -58,7 +58,7 @@
       (let [driver (driver.u/database->driver database)
             {db-tables :tables} (driver/describe-database driver database)]
         (if-let [table (some (fn [table-in-db]
-                               (when (and (= schema_name (:schema table-in-db)))
+                               (when (and (= schema_name (:schema table-in-db))
                                           (= table_name (:name table-in-db)))
                                  table-in-db))
                              db-tables)]
