@@ -400,7 +400,7 @@ const EditMap = ({
           CS.rounded,
           CS.flex,
           CS.my4,
-          "overflow-hidden",
+          CS.overflowHidden,
         )}
       >
         {geoJson || geoJsonLoading || geoJsonError ? (

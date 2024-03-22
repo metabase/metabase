@@ -2,7 +2,7 @@
   overflow: auto;
 }
 
-:global(.overflow-hidden) {
+.overflowHidden {
   overflow: hidden;
 }
 
