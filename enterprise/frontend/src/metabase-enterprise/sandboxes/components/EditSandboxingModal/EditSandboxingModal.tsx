@@ -122,7 +122,7 @@ const EditSandboxingModal = ({
           <div className="pb3">
             {t`When users in this group view this table they'll see a version of it that's filtered by their user attributes, or a custom view of it based on a saved question.`}
           </div>
-          <h4 className="pb1">
+          <h4 className={CS.pb1}>
             {t`How do you want to filter this table for users in this group?`}
           </h4>
           <Radio
@@ -185,7 +185,7 @@ const EditSandboxingModal = ({
 
       <div className="p3">
         {isValid && (
-          <div className="pb1">
+          <div className={CS.pb1}>
             <PolicySummary policy={normalizedPolicy} />
           </div>
         )}

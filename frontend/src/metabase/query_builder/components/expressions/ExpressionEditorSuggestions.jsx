@@ -4,6 +4,7 @@ import { Component, Fragment } from "react";
 import _ from "underscore";
 
 import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isObscured } from "metabase/lib/dom";
 import { DelayGroup, Icon } from "metabase/ui";
@@ -103,7 +104,7 @@ export default class ExpressionEditorSuggestions extends Component {
           content={
             <ExpressionList
               data-testid="expression-suggestions-list"
-              className="pb1"
+              className={CS.pb1}
             >
               {suggestions.map((suggestion, i) => (
                 <Fragment key={`$suggestion-${i}`}>

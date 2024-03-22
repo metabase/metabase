@@ -135,7 +135,7 @@ export const MappingEditor = ({
           });
           return (
             <tr key={index}>
-              <td className="pb1" style={{ verticalAlign: "bottom" }}>
+              <td className={CS.pb1} style={{ verticalAlign: "bottom" }}>
                 {!swapKeyAndValue ? keyInput : valueInput}
               </td>
               <td
@@ -144,11 +144,11 @@ export const MappingEditor = ({
               >
                 {divider}
               </td>
-              <td className="pb1" style={{ verticalAlign: "bottom" }}>
+              <td className={CS.pb1} style={{ verticalAlign: "bottom" }}>
                 {!swapKeyAndValue ? valueInput : keyInput}
               </td>
               {canDelete && (
-                <td className="pb1" style={{ verticalAlign: "bottom" }}>
+                <td className={CS.pb1} style={{ verticalAlign: "bottom" }}>
                   <Button
                     leftIcon={<Icon name="close" />}
                     variant="subtle"

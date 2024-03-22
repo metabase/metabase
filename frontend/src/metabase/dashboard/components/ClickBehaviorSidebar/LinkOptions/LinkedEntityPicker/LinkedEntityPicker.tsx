@@ -248,7 +248,7 @@ export function LinkedEntityPicker({
 
   return (
     <div>
-      <div className="pb1">
+      <div className={CS.pb1}>
         <ModalWithTrigger
           triggerElement={
             <PickerControl

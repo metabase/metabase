@@ -77,7 +77,7 @@ function _AddEditSlackSidebar({
             onChannelScheduleChange(newSchedule, changedProp)
           }
         />
-        <div className="pt2 pb1">
+        <div className={cx(CS.pt2, CS.pb1)}>
           <SendTestPulse
             channel={channel}
             channelSpecs={formInput.channels}

@@ -1,5 +1,8 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
+
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
 const Warnings = ({ warnings, className = "", size = 16 }) => {
@@ -7,9 +10,9 @@ const Warnings = ({ warnings, className = "", size = 16 }) => {
     return null;
   }
   const tooltip = (
-    <ul className="px2 pt2 pb1" style={{ maxWidth: 350 }}>
+    <ul className={cx(CS.px2, CS.pt2, CS.pb1)} style={{ maxWidth: 350 }}>
       {warnings.map(warning => (
-        <li className="pb1" key={warning}>
+        <li className={CS.pb1} key={warning}>
           {warning}
         </li>
       ))}

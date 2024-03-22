@@ -5,6 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Select, { Option } from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
 
 import { LogsContainer, LogsContent } from "./Logs.styled";
 import { usePollingLogsQuery, useTailLogs } from "./hooks";
@@ -38,7 +39,7 @@ export const Logs = ({ pollingDurationMs = 1000 }: LogsProps) => {
   return (
     <LogsContainer loading={!loaded} error={error}>
       {processUUIDs.length > 1 && (
-        <div className="pb1">
+        <div className={CS.pb1}>
           <label>{t`Select Metabase process:`}</label>
           <Select
             defaultValue="ALL"
