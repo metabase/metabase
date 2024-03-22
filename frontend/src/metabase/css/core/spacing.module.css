@@ -239,7 +239,6 @@
 
 /* 3 */
 
-:global(.m3),
 .m3 {
   margin: var(--margin-3);
 }
