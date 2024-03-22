@@ -311,7 +311,7 @@
 }
 
 @media screen and (--breakpoint-min-xl) {
-  :global(.xl-py3) {
+  .xlPy3 {
     padding-top: var(--padding-3);
     padding-bottom: var(--padding-3);
   }
