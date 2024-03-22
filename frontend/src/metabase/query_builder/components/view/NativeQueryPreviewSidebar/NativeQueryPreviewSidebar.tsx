@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useCallback } from "react";
 import AceEditor from "react-ace";
 import { t } from "ttag";
@@ -14,6 +15,7 @@ import { getQuestion } from "metabase/query_builder/selectors";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import SB from "./NativeQueryPreviewSidebar.module.css";
 import { createDatasetQuery } from "./utils";
 
 const TITLE = {
@@ -56,10 +58,9 @@ export const NativeQueryPreviewSidebar = (): JSX.Element => {
 
   return (
     <Flex
+      className={cx(SB.container)}
       role="complementary"
       direction="column"
-      miw={480}
-      maw="40%"
       style={{ borderLeft: borderStyle }}
     >
       <Box
@@ -96,6 +97,8 @@ export const NativeQueryPreviewSidebar = (): JSX.Element => {
               width="100%"
               fontSize={12}
               style={{ backgroundColor: color("bg-light") }}
+              showPrintMargin={false}
+              wrapEnabled={true}
             />
           </NativeQueryEditorRoot>
         )}
