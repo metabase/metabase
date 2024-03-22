@@ -297,7 +297,6 @@
   margin-left: var(--margin-4);
 }
 
-:global(.mr4),
 .mr4 {
   margin-right: var(--margin-4);
 }
