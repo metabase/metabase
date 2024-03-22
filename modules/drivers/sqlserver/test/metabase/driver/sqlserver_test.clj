@@ -440,7 +440,7 @@
                       (is (= expected-result
                              (-> filter-query qp/process-query mt/rows))))))))))))))
 
-(deftest filter-by-datetime-against-localdate-time-test
+(deftest ^:parallel filter-by-datetime-against-localdate-time-test
   (mt/test-driver :sqlserver
     (testing "Filtering datetime fields by localdatetime objects should work"
       (mt/dataset attempted-murders
