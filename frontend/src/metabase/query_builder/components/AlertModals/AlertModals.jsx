@@ -199,7 +199,7 @@ export class AlertEducationalScreen extends Component {
       <div
         className={cx(CS.pt2, CS.pb4, CS.mlAuto, CS.mrAuto, CS.textCentered)}
       >
-        <div className="pt4">
+        <div className={CS.pt4}>
           <h1 className="mb1 text-dark">{t`The wide world of alerts`}</h1>
           <h3 className="mb4 text-normal text-dark">{t`There are a few different kinds of alerts you can get`}</h3>
         </div>

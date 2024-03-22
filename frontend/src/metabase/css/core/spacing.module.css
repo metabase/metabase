@@ -143,7 +143,6 @@
   padding-bottom: var(--padding-4);
 }
 
-:global(.pt4),
 .pt4 {
   padding-top: var(--padding-4);
 }

@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -9,6 +10,7 @@ import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import User from "metabase/entities/users";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -73,7 +75,7 @@ const PasswordSuccess = ({ user, temporaryPassword }) => (
     <PasswordReveal password={temporaryPassword} />
     <div
       style={{ paddingLeft: "5em", paddingRight: "5em" }}
-      className="pt4 text-centered"
+      className={cx(CS.pt4, CS.textCentered)}
     >
       {jt`If you want to be able to send email invites, just go to the ${(
         <Link to="/admin/settings/email" className="link text-bold">
