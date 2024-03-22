@@ -58,8 +58,8 @@
       (let [driver (driver.u/database->driver database)
             {db-tables :tables} (driver/describe-database driver database)]
         (if-let [table (some (fn [table-in-db]
-                               (when (= (select-keys table-in-db [:schema :name])
-                                        {:schema schema_name :name table_name})
+                               (when (and (= schema_name (:schema table-in-db)))
+                                          (= table_name (:name table-in-db)))
                                  table-in-db))
                              db-tables)]
           (let [created (sync-tables/create-or-reactivate-table! database table)]
