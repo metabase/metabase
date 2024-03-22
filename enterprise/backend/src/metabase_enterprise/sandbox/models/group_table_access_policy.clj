@@ -81,7 +81,7 @@
   "Merges a single sandboxing policy into the permissions graph. Adjusts permissions at the database or schema level,
   ensuring table-level permissions are set appropriately."
   [graph group-id table-id db-id schema]
-  (let [db-perm (get-in graph [group-id db-id :data :schemas])
+  (let [db-perm (get-in graph [group-id db-id :view-data])
         schema-perm (get db-perm schema)
         default-table-perm (if (keyword? db-perm)
                              db-perm
@@ -97,24 +97,24 @@
         ;; Remove the overarching database or schema permission so that we can add the granular table-level permissions
         graph (cond
                 (and tables (keyword? db-perm))
-                (m/dissoc-in graph [group-id db-id :data :schemas])
+                (m/dissoc-in graph [group-id db-id :view-data])
 
                 (and tables (keyword? schema-perm))
-                (m/dissoc-in graph [group-id db-id :data :schemas (or schema "")])
+                (m/dissoc-in graph [group-id db-id :view-data (or schema "")])
 
                 :else
                 graph)
         ;; Apply granular permissions to each table
         granular-graph (if tables
                          (reduce (fn [g {:keys [id schema]}]
-                                   (assoc-in g [group-id db-id :data :schemas (or schema "") id] default-table-perm))
+                                   (assoc-in g [group-id db-id :view-data (or schema "") id] default-table-perm))
                                  graph
                                  tables)
                          graph)]
     ;; Set `:segmented` (aka sandboxed) permissions for the target table
-    (assoc-in granular-graph
-              [group-id db-id :data :schemas (or schema "") table-id]
-              {:query :segmented, :read :all})))
+    (-> granular-graph
+       (assoc-in [group-id db-id :view-data (or schema "") table-id]
+                 :sandboxed))))
 
 (defenterprise add-sandboxes-to-permissions-graph
   "Augments a provided permissions graph with active sandboxing policies."

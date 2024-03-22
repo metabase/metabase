@@ -44,12 +44,12 @@
 
 (def Permissions
   "Permissions which apply to individual databases or tables"
-  {:perms/data-access           {:model :model/Table :values [:unrestricted :no-self-service :block]}
+  {:perms/view-data             {:model :model/Table :values [:unrestricted :legacy-no-self-service :blocked]}
+   :perms/data-access           {:model :model/Table :values [:unrestricted :no-self-service :block]}
    :perms/download-results      {:model :model/Table :values [:one-million-rows :ten-thousand-rows :no]}
    :perms/manage-table-metadata {:model :model/Table :values [:yes :no]}
    :perms/create-queries        {:model :model/Table :values [:query-builder-and-native :query-builder :no]}
 
-   :perms/view-data             {:model :model/Database :values [:unrestricted :legacy-no-self-service :blocked]}
    :perms/native-query-editing  {:model :model/Database :values [:yes :no]}
    :perms/manage-database       {:model :model/Database :values [:yes :no]}})
 
@@ -556,9 +556,6 @@
 
 (defn- assert-valid-permission
   [{:keys [perm_type perm_value] :as permission}]
-  (when (= perm_value :legacy-no-self-service)
-    (throw (ex-info (tru "Permission value {0} is deprecated and can not be set." :legacy-no-self-service)
-                    permission)))
   (when-not (mc/validate PermissionType perm_type)
     (throw (ex-info (str/join (mu/explain PermissionType perm_type)) permission)))
   (assert-value-matches-perm-type perm_type perm_value))

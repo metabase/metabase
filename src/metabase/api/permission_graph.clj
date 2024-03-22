@@ -55,7 +55,7 @@
 
 (def ^:private TablePerms
   [:or
-   [:enum :all :segmented :none :full :limited :unrestricted :query-builder :no]
+   [:enum :all :segmented :none :full :limited :unrestricted :sandboxed :query-builder :no]
    [:map
     [:read {:optional true} [:enum :all :none]]
     [:query {:optional true} [:enum :all :none :segmented]]]])
@@ -82,6 +82,7 @@
     :limited
     :impersonated
     :unrestricted
+    :sandboxed
     :legacy-no-self-service
     :query-builder-and-native
     :query-builder
@@ -114,8 +115,7 @@
      [:data-model {:optional true} "DataPerms"]
      ;; We use :yes and :no instead of booleans for consistency with the application perms graph, and
      ;; consistency with the language used on the frontend.
-     [:details {:optional true} [:enum :yes :no]]
-     [:execute {:optional true} [:enum :all :none]]]]])
+     [:details {:optional true} [:enum :yes :no]]]]])
 
 (def StrictDbGraph
   "like db-graph, but if you have write access for native queries, you must have data access to all schemas."
@@ -129,8 +129,7 @@
      [:data-model {:optional true} "StrictDataPerms"]
      ;; We use :yes and :no instead of booleans for consistency with the application perms graph, and
      ;; consistency with the language used on the frontend.
-     [:details {:optional true} [:enum :yes :no]]
-     [:execute {:optional true} [:enum :all :none]]]]])
+     [:details {:optional true} [:enum :yes :no]]]]])
 
 (def DataPermissionsGraph
   "Used to transform, and verify data permissions graph"
