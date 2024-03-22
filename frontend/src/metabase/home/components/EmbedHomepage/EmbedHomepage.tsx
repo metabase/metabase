@@ -1,6 +1,10 @@
+import { useMemo } from "react";
+
 import { useSetting } from "metabase/common/hooks";
+import { getPlan } from "metabase/common/utils/plan";
 import { useSelector } from "metabase/lib/redux";
-import { getDocsUrl } from "metabase/selectors/settings";
+import { isEEBuild } from "metabase/lib/utils";
+import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 
 import { EmbedHomepageView } from "./EmbedHomepageView";
 
@@ -30,12 +34,25 @@ export const EmbedHomepage = () => {
     getDocsUrl(state, { page: "embedding/static-embedding" }),
   );
 
+  const plan = useSelector(state =>
+    getPlan(getSetting(state, "token-features")),
+  );
+
+  const defaultTab = useMemo(() => {
+    // we want to show the interactive tab for EE builds
+    // unless it's a starter cloud plan, which is EE build but doesn't have interactive embedding
+    if (isEEBuild()) {
+      return plan === "starter" ? "static" : "interactive";
+    }
+    return "static";
+  }, [plan]);
+
   return (
     <EmbedHomepageView
       exampleDashboardId={exampleDashboardId}
       embeddingAutoEnabled={embeddingAutoEnabled}
       licenseActiveAtSetup={licenseActiveAtSetup}
-      plan="oss-starter"
+      defaultTab={defaultTab}
       interactiveEmbeddingQuickstartUrl={interactiveEmbeddingQuickStartUrl}
       embeddingDocsUrl={embeddingDocsUrl}
       // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
