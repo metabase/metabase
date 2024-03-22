@@ -285,7 +285,6 @@
   margin-bottom: var(--margin-4);
 }
 
-:global(.mt4),
 .mt4 {
   margin-top: var(--margin-4);
 }

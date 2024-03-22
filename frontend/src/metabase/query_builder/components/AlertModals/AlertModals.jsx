@@ -272,7 +272,7 @@ export class AlertEducationalScreen extends Component {
         </div>
         <Button
           primary
-          className="mt4"
+          className={CS.mt4}
           onClick={onProceed}
         >{t`Set up an alert`}</Button>
       </div>

@@ -554,7 +554,7 @@ const RuleEditor = ({
           )}
         </div>
       ) : null}
-      <div className="mt4">
+      <div className={CS.mt4}>
         {rule.columns.length === 0 ? (
           <Button primary onClick={onRemove}>
             {isNew ? t`Cancel` : t`Delete`}

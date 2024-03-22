@@ -226,7 +226,7 @@ const MetricDetail = props => {
                   </li>
                 )}
                 {!isEditing && (
-                  <li className="relative mt4">
+                  <li className={cx(CS.relative, CS.mt4)}>
                     <FieldsToGroupBy
                       fields={table.fields
                         .map(fieldId => metadataFields[fieldId])
