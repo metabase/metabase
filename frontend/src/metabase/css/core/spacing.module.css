@@ -151,7 +151,6 @@
   padding-bottom: var(--padding-4);
 }
 
-:global(.pl4),
 .pl4 {
   padding-left: var(--padding-4);
 }
