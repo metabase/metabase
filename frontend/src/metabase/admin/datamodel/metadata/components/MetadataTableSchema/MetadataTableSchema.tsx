@@ -27,8 +27,8 @@ const MetadataTableSchema = ({ table }: MetadataTableSchemaProps) => {
   }, [table]);
 
   return (
-    <div className="mt3 full">
-      <table className="mt2 full">
+    <div className={cx(CS.mt3, CS.full)}>
+      <table className={cx(CS.mt2, CS.full)}>
         <thead className={cx(CS.textUppercase, CS.textMedium, CS.py1)}>
           <tr>
             <HeaderCell>{t`Column`}</HeaderCell>

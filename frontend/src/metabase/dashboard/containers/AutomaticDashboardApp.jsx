@@ -247,7 +247,7 @@ const RELATED_CONTENT = {
 const SuggestionsList = ({ suggestions, section }) => (
   <ListRoot>
     {Object.keys(suggestions).map((s, i) => (
-      <li key={i} className="my2">
+      <li key={i} className={CS.my2}>
         <SuggestionSectionHeading>
           {RELATED_CONTENT[s].title}
         </SuggestionSectionHeading>

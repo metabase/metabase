@@ -44,7 +44,7 @@ const TablePane = ({ table, onItemClick, onBack, onClose }: TablePaneProps) => (
             <EmptyDescription>{t`No description`}</EmptyDescription>
           )}
         </div>
-        <div className="my2">
+        <div className={CS.my2}>
           {table.fields?.length ? (
             <>
               <FieldList

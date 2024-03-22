@@ -226,19 +226,19 @@ const SortableRuleList = ({ rules, cols, onEdit, onRemove, onMove }) => {
 const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => (
   <div>
     <h3>{t`Conditional formatting`}</h3>
-    <div className="mt2">
+    <div className={CS.mt2}>
       {t`You can add rules to make the cells in this table change color if
     they meet certain conditions.`}
     </div>
-    <div className="mt2">
+    <div className={CS.mt2}>
       <Button borderless icon="add" onClick={onAdd}>
         {t`Add a rule`}
       </Button>
     </div>
     {rules.length > 0 ? (
-      <div className="mt2">
+      <div className={CS.mt2}>
         <h3>{t`Rules will be applied in this order`}</h3>
-        <div className="mt2">{t`Click and drag to reorder.`}</div>
+        <div className={CS.mt2}>{t`Click and drag to reorder.`}</div>
         <SortableRuleList
           rules={rules}
           cols={cols}
@@ -254,7 +254,14 @@ const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => (
 
 const RulePreview = ({ rule, cols, onClick, onRemove }) => (
   <div
-    className="my2 bordered rounded shadowed cursor-pointer bg-white"
+    className={cx(
+      CS.my2,
+      CS.bordered,
+      CS.rounded,
+      CS.shadowed,
+      CS.cursorPointer,
+      CS.bgWhite,
+    )}
     onClick={onClick}
     data-testid="formatting-rule-preview"
   >

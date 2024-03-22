@@ -34,6 +34,7 @@
 }
 
 .schemaSeparator {
+  /* TODO FIGURE OUT WHAT TO DO WITH THIS */
   composes: text-light mt2 from "style";
   margin-left: var(--icon-width);
   font-size: 18px;
@@ -122,6 +123,7 @@
 }
 
 .guideEditHeader {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: text-body my4 from "style";
   width: 100%;
   max-width: 550px;
@@ -129,11 +131,13 @@
 }
 
 .guideEditHeaderTitle {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: text-bold mb2 from "style";
   font-size: 24px;
 }
 
 .guideEditCards {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: mt2 mb4 from "style";
 }
 
@@ -169,6 +173,7 @@
 }
 
 .guideEditAddButton {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: my2 pl4 from "style";
   width: 100%;
   display: flex;

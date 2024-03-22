@@ -216,13 +216,11 @@
   margin-right: var(--margin-2);
 }
 
-:global(.my2),
 .my2 {
   margin-top: var(--margin-2);
   margin-bottom: var(--margin-2);
 }
 
-:global(.mt2),
 .mt2 {
   margin-top: var(--margin-2);
 }
