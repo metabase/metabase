@@ -74,7 +74,6 @@
   padding-right: var(--padding-2);
 }
 
-:global(.py2),
 .py2 {
   padding-top: var(--padding-2);
   padding-bottom: var(--padding-2);

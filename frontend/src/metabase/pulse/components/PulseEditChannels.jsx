@@ -163,7 +163,7 @@ export default class PulseEditChannels extends Component {
       this.props.pulseIsValid && channelIsValid(channel, channelSpec);
 
     return (
-      <li key={index} className="py2">
+      <li key={index} className={CS.py2}>
         {channelSpec.error && (
           <div className="pb2 text-bold text-error">{channelSpec.error}</div>
         )}

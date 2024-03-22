@@ -1,4 +1,5 @@
 .sidebar {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: py2 from "style";
   width: 30%;
   max-width: 500px;

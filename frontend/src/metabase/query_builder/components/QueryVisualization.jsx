@@ -146,7 +146,7 @@ export const VisualizationDirtyState = ({
     )}
   >
     <RunButtonWithTooltip
-      className="py2 px3 shadowed"
+      className={cx(CS.py2, CS.px3, CS.shadowed)}
       circular
       compact
       result={result}

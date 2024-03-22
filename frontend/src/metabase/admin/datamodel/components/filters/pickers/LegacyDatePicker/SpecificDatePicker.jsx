@@ -124,7 +124,7 @@ export default class SpecificDatePicker extends Component {
         )}
 
         {!hideTimeSelectors && (
-          <div className={cx({ py2: calendar }, { mb3: !calendar })}>
+          <div className={cx({ [CS.py2]: calendar }, { [CS.mb3]: !calendar })}>
             {hours == null || minutes == null ? (
               <TimeLabel
                 onClick={() =>
