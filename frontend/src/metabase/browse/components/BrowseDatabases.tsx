@@ -3,6 +3,7 @@ import { t } from "ttag";
 import NoResults from "assets/img/no_results.svg";
 import type { useDatabaseListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 import { Box, Icon, Title } from "metabase/ui";
@@ -38,7 +39,7 @@ export const BrowseDatabases = ({
               <Icon
                 name="database"
                 color={color("accent2")}
-                className="mb3"
+                className={CS.mb3}
                 size={32}
               />
               <Title order={2} size="1rem" lh="1rem" color="inherit">

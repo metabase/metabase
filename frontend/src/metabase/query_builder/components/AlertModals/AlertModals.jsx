@@ -567,7 +567,7 @@ export const AlertSettingToggle = ({
 export function AlertEditSchedule({ alertType, schedule, onScheduleChange }) {
   return (
     <div>
-      <h3 className="mt4 mb3 text-dark">
+      <h3 className={cx(CS.mt4, CS.mb3, CS.textDark)}>
         How often should we check for results?
       </h3>
 
@@ -609,7 +609,9 @@ class AlertEditChannelsInner extends Component {
     const { alert, user, users, formInput } = this.props;
     return (
       <div className={cx(CS.mt4, CS.pt2)}>
-        <h3 className="text-dark mb3">{jt`Where do you want to send these alerts?`}</h3>
+        <h3
+          className={cx(CS.textDark, CS.mb3)}
+        >{jt`Where do you want to send these alerts?`}</h3>
         <div className={CS.mb2}>
           <PulseEditChannels
             pulse={alert}

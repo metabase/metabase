@@ -257,7 +257,6 @@
   margin-top: var(--margin-3);
 }
 
-:global(.mb3),
 .mb3 {
   margin-bottom: var(--margin-3);
 }
