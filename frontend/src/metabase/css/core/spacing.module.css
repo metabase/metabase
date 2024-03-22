@@ -248,7 +248,6 @@
   margin-right: var(--margin-3);
 }
 
-:global(.my3),
 .my3 {
   margin-top: var(--padding-3);
   margin-bottom: var(--padding-3);
