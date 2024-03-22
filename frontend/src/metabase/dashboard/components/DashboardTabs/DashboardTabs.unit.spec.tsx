@@ -114,7 +114,9 @@ async function selectTabMenuItem(
     hidden: true,
   });
   await userEvent.click(dropdownIcons[num - 1]);
-  (await screen.findByRole("option", { name, hidden: true })).click();
+  await userEvent.click(
+    await screen.findByRole("option", { name, hidden: true }),
+  );
 }
 
 async function deleteTab(num: number) {
@@ -128,6 +130,7 @@ async function renameTab(num: number, name: string) {
     name: `Tab ${num}`,
     hidden: true,
   });
+  await userEvent.clear(inputEl);
   await userEvent.type(inputEl, `${name}{enter}`);
 }
 
@@ -369,6 +372,7 @@ describe("DashboardTabs", () => {
           name: "Tab 1",
           hidden: true,
         });
+        await userEvent.clear(inputEl);
         await userEvent.type(inputEl, `${name}{enter}`);
 
         expect(queryTab(name)).toBeInTheDocument();

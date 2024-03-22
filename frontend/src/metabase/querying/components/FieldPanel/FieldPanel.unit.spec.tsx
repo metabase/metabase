@@ -105,7 +105,9 @@ describe("QueryColumnPicker", () => {
     expect(orderGroup).toBeChecked();
     expect(orderGroup).toBeDisabled();
 
-    otherColumns.forEach(column => userEvent.click(column));
+    for (const column of otherColumns) {
+      await userEvent.click(column);
+    }
     expect(firstColumn).toBeChecked();
     expect(firstColumn).toBeDisabled();
     expect(orderGroup).toBeEnabled();

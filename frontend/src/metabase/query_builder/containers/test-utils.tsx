@@ -322,9 +322,6 @@ export const startNewNotebookModel = async () => {
   await userEvent.click(within(popover).getByText("Sample Database"));
   await waitForLoaderToBeRemoved();
   await userEvent.click(within(popover).getByText("Orders"));
-  await userEvent.click(
-    within(screen.getByTestId("popover")).getByText("Orders"),
-  );
 
   expect(screen.getByRole("button", { name: "Get Answer" })).toBeEnabled();
 };

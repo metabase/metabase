@@ -72,8 +72,8 @@ describe("Static Embed Setup phase", () => {
     });
 
     describe("Overview tab", () => {
-      it("should render content", () => {
-        setup({
+      it("should render content", async () => {
+        await setup({
           props: {
             resourceType,
           },
@@ -111,8 +111,8 @@ describe("Static Embed Setup phase", () => {
       });
 
       if (resourceType === "dashboard") {
-        it("should render dashboard-specific content", () => {
-          setup({
+        it("should render dashboard-specific content", async () => {
+          await setup({
             props: {
               resourceType,
             },
@@ -128,7 +128,7 @@ describe("Static Embed Setup phase", () => {
       }
 
       it("should select proper client code language on server code option change", async () => {
-        setup({
+        await setup({
           props: {
             resourceType,
           },
@@ -148,8 +148,8 @@ describe("Static Embed Setup phase", () => {
     });
 
     describe("Parameters tab", () => {
-      it("should render Code preview mode by default", () => {
-        setup({
+      it("should render Code preview mode by default", async () => {
+        await setup({
           props: {
             resourceType,
             resource: getMockResource(resourceType),
@@ -165,7 +165,7 @@ describe("Static Embed Setup phase", () => {
       });
 
       it("should render preview iframe in Preview mode", async () => {
-        setup({
+        await setup({
           props: {
             resourceType,
             resource: getMockResource(resourceType),
@@ -178,8 +178,8 @@ describe("Static Embed Setup phase", () => {
         expect(screen.getByTestId("embed-preview-iframe")).toBeVisible();
       });
 
-      it("should render message if there are no parameters", () => {
-        setup({
+      it("should render message if there are no parameters", async () => {
+        await setup({
           props: {
             resourceType,
             resource: getMockResource(resourceType),
@@ -195,8 +195,8 @@ describe("Static Embed Setup phase", () => {
       });
 
       if (resourceType === "dashboard") {
-        it("should render unsaved parameters", () => {
-          setup({
+        it("should render unsaved parameters", async () => {
+          await setup({
             props: {
               resourceParameters: [
                 {
@@ -216,8 +216,8 @@ describe("Static Embed Setup phase", () => {
           );
         });
 
-        it("should render saved parameters", () => {
-          setup({
+        it("should render saved parameters", async () => {
+          await setup({
             props: {
               resource: {
                 ...createMockDashboard(),
@@ -248,8 +248,8 @@ describe("Static Embed Setup phase", () => {
           ).toHaveTextContent("Locked");
         });
 
-        it("should only render valid parameters", () => {
-          setup({
+        it("should only render valid parameters", async () => {
+          await setup({
             props: {
               resource: {
                 ...createMockDashboard(),
@@ -318,7 +318,7 @@ describe("Static Embed Setup phase", () => {
         });
 
         it("should highlight changed code on parameters change", async () => {
-          setup({
+          await setup({
             props: {
               resourceType,
               resource: getMockResource(resourceType),
@@ -345,7 +345,7 @@ describe("Static Embed Setup phase", () => {
         });
 
         it("should highlight changed code on locked parameter value change", async () => {
-          setup({
+          await setup({
             props: {
               resourceType,
               resource: {
@@ -381,8 +381,8 @@ describe("Static Embed Setup phase", () => {
     });
 
     describe("Appearance tab", () => {
-      it("should render link to documentation", () => {
-        setup({
+      it("should render link to documentation", async () => {
+        await setup({
           props: {
             resourceType,
           },
@@ -403,9 +403,9 @@ describe("Static Embed Setup phase", () => {
         );
       });
 
-      it("should render Code mode by default", () => {
+      it("should render Code mode by default", async () => {
         const resource = getMockResource(resourceType);
-        setup({
+        await setup({
           props: {
             resourceType,
             resource,
@@ -421,7 +421,7 @@ describe("Static Embed Setup phase", () => {
       });
 
       it("should render preview iframe in Preview mode", async () => {
-        setup({
+        await setup({
           props: {
             resourceType,
           },
@@ -434,7 +434,7 @@ describe("Static Embed Setup phase", () => {
       });
 
       it("should highlight changed code on settings change", async () => {
-        setup({
+        await setup({
           props: {
             resourceType,
           },
@@ -462,8 +462,8 @@ describe("Static Embed Setup phase", () => {
         );
       });
 
-      it("should not render Font selector", () => {
-        setup({
+      it("should not render Font selector", async () => {
+        await setup({
           props: {
             resourceType,
           },
@@ -488,8 +488,8 @@ describe("Static Embed Setup phase", () => {
         );
       });
 
-      it('should render "Powered by Metabase" banner caption', () => {
-        setup({
+      it('should render "Powered by Metabase" banner caption', async () => {
+        await setup({
           props: {},
           activeTab: "Appearance",
         });
@@ -521,7 +521,7 @@ describe("Static Embed Setup phase", () => {
   });
 
   it("should preserve selected preview mode selection on tabs navigation", async () => {
-    setup({
+    await setup({
       props: {},
       activeTab: "Parameters",
     });
@@ -556,7 +556,7 @@ describe("Static Embed Setup phase", () => {
   });
 
   it("should preserve selected code language selection on tabs navigation", async () => {
-    setup({
+    await setup({
       props: {},
       activeTab: "Overview",
     });
@@ -587,7 +587,7 @@ describe("Static Embed Setup phase", () => {
   });
 
   it("should preserve highlighted code on tabs navigation", async () => {
-    setup({
+    await setup({
       props: {
         resource: createMockDashboard(),
         resourceParameters: [DATE_PARAMETER_MOCK],
@@ -637,7 +637,7 @@ describe("Static Embed Setup phase", () => {
   });
 
   it("should not display changes after parameters reset to initial values", async () => {
-    setup({
+    await setup({
       props: {
         resource: {
           ...createMockDashboard({

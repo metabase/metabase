@@ -391,10 +391,10 @@ describe("StringFilterPicker", () => {
       it("should update a filter", async () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup(opts);
 
-        await userEvent.type(
-          screen.getByDisplayValue("abc"),
-          "{selectall}{backspace}foo",
-        );
+        const input = screen.getByRole("textbox", { name: "Filter value" });
+        await userEvent.clear(input);
+
+        await userEvent.type(input, "foo");
         await userEvent.click(screen.getByLabelText("Case sensitive"));
         await userEvent.click(screen.getByText("Update filter"));
 

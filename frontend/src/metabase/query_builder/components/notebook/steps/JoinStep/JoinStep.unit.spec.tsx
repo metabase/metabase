@@ -202,7 +202,9 @@ describe("Notebook Editor > Join Step", () => {
   it("should open the source query database in RHS table picker", async () => {
     setup();
 
-    await userEvent.click(screen.getByLabelText("Right table"));
+    await userEvent.click(
+      within(screen.getByLabelText("Right table")).getByRole("button"),
+    );
     const popover = await screen.findByTestId("popover");
 
     expect(within(popover).getByText("Sample Database")).toBeInTheDocument();
@@ -214,7 +216,9 @@ describe("Notebook Editor > Join Step", () => {
   it("should not allow picking a right table from another database", async () => {
     setup();
 
-    await userEvent.click(screen.getByLabelText("Right table"));
+    await userEvent.click(
+      within(screen.getByLabelText("Right table")).getByRole("button"),
+    );
     const popover = await screen.findByTestId("popover");
 
     // Go back to the database list
@@ -229,7 +233,9 @@ describe("Notebook Editor > Join Step", () => {
   it("should open the LHS column picker after right table is selected and the RHS picker after it", async () => {
     setup();
 
-    await userEvent.click(screen.getByLabelText("Right table"));
+    await userEvent.click(
+      within(screen.getByLabelText("Right table")).getByRole("button"),
+    );
     const tablePicker = await screen.findByTestId("popover");
     await userEvent.click(await within(tablePicker).findByText("Reviews"));
 
@@ -352,7 +358,9 @@ describe("Notebook Editor > Join Step", () => {
   it("shouldn't allow removing an incomplete condition", async () => {
     setup();
 
-    await userEvent.click(screen.getByLabelText("Right table"));
+    await userEvent.click(
+      within(screen.getByLabelText("Right table")).getByRole("button"),
+    );
     const tablePicker = await screen.findByTestId("popover");
     await userEvent.click(await within(tablePicker).findByText("Reviews"));
 
@@ -614,7 +622,9 @@ describe("Notebook Editor > Join Step", () => {
 
       expect(screen.queryByLabelText("Add condition")).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByLabelText("Right table"));
+      await userEvent.click(
+        within(screen.getByLabelText("Right table")).getByRole("button"),
+      );
       const popover = await screen.findByTestId("popover");
       await userEvent.click(await within(popover).findByText("Reviews"));
 

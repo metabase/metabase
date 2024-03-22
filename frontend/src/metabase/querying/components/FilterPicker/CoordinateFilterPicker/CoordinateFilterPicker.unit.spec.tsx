@@ -388,9 +388,10 @@ describe("CoordinateFilterPicker", () => {
           const { getNextFilterParts, getNextFilterColumnNames } = setup(opts);
 
           await setOperator("Greater than");
+          await userEvent.clear(screen.getByPlaceholderText("Enter a number"));
           await userEvent.type(
             screen.getByPlaceholderText("Enter a number"),
-            `{selectall}{backspace}${value}`,
+            `${value}`,
           );
           await userEvent.click(screen.getByText("Update filter"));
 
@@ -442,13 +443,12 @@ describe("CoordinateFilterPicker", () => {
           await setOperator("Between");
           const leftInput = screen.getByPlaceholderText("Min");
           const rightInput = screen.getByPlaceholderText("Max");
-          await userEvent.type(leftInput, `{selectall}{backspace}${leftValue}`);
+          await userEvent.clear(leftInput);
+          await userEvent.type(leftInput, `${leftValue}`);
           expect(updateButton).toBeEnabled();
 
-          await userEvent.type(
-            rightInput,
-            `{selectall}{backspace}${rightValue}`,
-          );
+          await userEvent.clear(rightInput);
+          await userEvent.type(rightInput, `${rightValue}`);
           await userEvent.click(updateButton);
 
           const filterParts = getNextFilterParts();
@@ -492,22 +492,17 @@ describe("CoordinateFilterPicker", () => {
         const { getNextFilterParts, getNextFilterColumnNames } = setup(opts);
 
         await setOperator("Inside");
-        await userEvent.type(
-          screen.getByLabelText("Upper latitude"),
-          "{selectall}{backspace}90",
-        );
-        await userEvent.type(
-          screen.getByLabelText("Lower latitude"),
-          "{selectall}{backspace}-90",
-        );
-        await userEvent.type(
-          screen.getByLabelText("Left longitude"),
-          "{selectall}{backspace}-180",
-        );
-        await userEvent.type(
-          screen.getByLabelText("Right longitude"),
-          "{selectall}{backspace}180",
-        );
+        await userEvent.clear(screen.getByLabelText("Upper latitude"));
+        await userEvent.type(screen.getByLabelText("Upper latitude"), "90");
+
+        await userEvent.clear(screen.getByLabelText("Lower latitude"));
+        await userEvent.type(screen.getByLabelText("Lower latitude"), "-90");
+
+        await userEvent.clear(screen.getByLabelText("Left longitude"));
+        await userEvent.type(screen.getByLabelText("Left longitude"), "-180");
+
+        await userEvent.clear(screen.getByLabelText("Right longitude"));
+        await userEvent.type(screen.getByLabelText("Right longitude"), "180");
         await userEvent.click(screen.getByText("Update filter"));
 
         const filterParts = getNextFilterParts();
