@@ -3,11 +3,7 @@ import { t } from "ttag";
 
 import type { EntityPickerOptions, EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
-import type {
-  NotebookDataPickerItem,
-  NotebookDataPickerModel,
-  Value,
-} from "../types";
+import type { NotebookDataPickerItem, Value } from "../types";
 
 import { TablePicker } from "./TablePicker";
 
@@ -51,8 +47,8 @@ export const NotebookDataPickerModal = ({
   };
 
   const tabs: [
-    EntityTab<NotebookDataPickerModel>,
-    ...EntityTab<NotebookDataPickerModel>[],
+    EntityTab<NotebookDataPickerItem["model"]>,
+    ...EntityTab<NotebookDataPickerItem["model"]>[],
   ] = [
     // {
     //   displayName: t`Models`,

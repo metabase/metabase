@@ -42,19 +42,16 @@ export type ModelItem = {
   model: "dataset";
 };
 
-// TODO: add QuestionPickerItem
-// TODO: add ModelPickerItem if question is insufficient
-export type NotebookDataPickerItem =
+export type NotebookDataPickerFolderItem =
   | CollectionItem
   | DatabaseItem
-  | SchemaItem
-  | TableItem
-  | QuestionItem
-  | ModelItem;
+  | SchemaItem;
 
 export type NotebookDataPickerValueItem = TableItem | QuestionItem | ModelItem;
 
-export type NotebookDataPickerId = NotebookDataPickerItem["id"];
+export type NotebookDataPickerItem =
+  | NotebookDataPickerFolderItem
+  | NotebookDataPickerValueItem;
 
 export type NotebookDataPickerModel = NotebookDataPickerItem["model"];
 

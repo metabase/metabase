@@ -35,18 +35,20 @@ interface Props {
 }
 
 const getStateFromIdPath = (
-  folder: DatabaseItem,
+  idPath: DatabaseItem['id'],
 ): PickerState<NotebookDataPickerItem, NotebookDataPickerQuery> => {
-  const { id, model } = folder;
-  const path: PickerState<NotebookDataPickerItem, NotebookDataPickerQuery> = [
-    {
-      selectedItem: null,
-    },
-    {
-      selectedItem: null,
-    },
-  ];
-  return path;
+
+    const statePath: PickerState<CollectionPickerItem, SearchListQuery> = [
+      {
+        selectedItem: {
+          name: "",
+          model: "collection",
+          id: idPath[0],
+        },
+      },
+    ];
+
+  return statePath;
 };
 
 export const TablePicker = forwardRef(function TablePicker(
@@ -55,7 +57,12 @@ export const TablePicker = forwardRef(function TablePicker(
 ) {
   const [path, setPath] = useState<
     PickerState<NotebookDataPickerItem, NotebookDataPickerQuery>
-  >([]);
+  >(
+    getStateFromIdPath({
+      idPath: ["root"],
+      namespace: options.namespace,
+    }),
+  );
 
   const onFolderSelect = useCallback(
     ({ folder }: { folder: NotebookDataPickerItem }) => {

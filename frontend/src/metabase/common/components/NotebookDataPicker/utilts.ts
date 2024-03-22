@@ -1,14 +1,10 @@
 import type { IsFolder } from "../EntityPicker";
 
-import type {
-  NotebookDataPickerId,
-  NotebookDataPickerItem,
-  NotebookDataPickerModel,
-} from "./types";
+import type { NotebookDataPickerItem } from "./types";
 
 export const isFolder: IsFolder<
-  NotebookDataPickerId,
-  NotebookDataPickerModel,
+  NotebookDataPickerItem["id"],
+  NotebookDataPickerItem["model"],
   NotebookDataPickerItem
 > = item => {
   return (
