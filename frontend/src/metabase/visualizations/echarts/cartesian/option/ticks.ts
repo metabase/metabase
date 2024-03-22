@@ -33,7 +33,6 @@ export const getTicksOptions = (
   let minInterval: number | undefined;
   let maxInterval: number | undefined;
 
-  const dataInterval = xAxisModel.interval;
   const xDomain: ContinuousDomain = [range[0].valueOf(), range[1].valueOf()];
   const isSingleItem = xDomain[0] === xDomain[1];
   const padding = getPadding(xAxisModel.intervalsCount);
@@ -51,11 +50,14 @@ export const getTicksOptions = (
     chartWidth,
     xAxisModel.formatter,
   );
-  const largestInterval = getLargestInterval([computedInterval, dataInterval]);
+  const largestInterval = getLargestInterval([
+    computedInterval,
+    xAxisModel.interval,
+  ]);
 
   // If the data interval is week but due to available space and the range of the chart
   // we decide to show monthly, yearly or even larger ticks, we should format ticks values as months.
-  if (dataInterval.unit === "week" && largestInterval.unit !== "week") {
+  if (xAxisModel.interval.unit === "week" && largestInterval.unit !== "week") {
     formatter = value => {
       return xAxisModel.formatter(value, "month");
     };

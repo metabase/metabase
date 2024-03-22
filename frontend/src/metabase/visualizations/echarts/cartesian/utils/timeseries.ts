@@ -177,8 +177,11 @@ function timeseriesTicksInterval(
       continue;
     }
 
+    // finding an interval that produces less than maxTicksCount ticks
     if (intervalTicksCount <= maxTickCount) {
+      // check if the interval produces less ticks than minTickCount
       const isTooSparse = intervalTicksCount < minTickCount;
+      // if the interval produces too few ticks select the previous interval
       intervalIndex = isTooSparse ? Math.max(i - 1, 0) : i;
       break;
     }
@@ -215,7 +218,7 @@ export function computeTimeseriesTicksInterval(
   xDomain: ContinuousDomain,
   xInterval: TimeSeriesInterval,
   chartWidth: number,
-  tickFormat: Formatter,
+  tickFormat: (value: RowValue) => string,
 ) {
   return timeseriesTicksInterval(
     xInterval,
