@@ -10,6 +10,7 @@
    [java-time.api :as t]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Field]]
@@ -98,6 +99,10 @@
   "Exectute the body with local_infile off"
   [& body]
   `(do-with-mysql-local-infile-off (fn [] ~@body)))
+
+(defn- format-schema [schema-name]
+  (when (driver/database-supports? driver/*driver* :schemas nil)
+    (ddl.i/format-name driver/*driver* schema-name)))
 
 (defn sync-upload-test-table!
   "Creates a table in the app db and syncs it synchronously, setting is_upload=true. Returns the table instance.
@@ -475,7 +480,7 @@
     (mt/with-current-user user-id
       (let [db                (t2/select-one :model/Database db-id)
             schema-name       (if (contains? args :schema-name)
-                                (:schema-name args)
+                                (format-schema (:schema-name args))
                                 (sql.tx/session-schema driver/*driver*))
             file              (csv-file-with
                                ["id, name"
@@ -654,8 +659,8 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (mt/with-dynamic-redefs [driver/db-default-timezone (constantly "Z")
-                      upload/current-database    (constantly (mt/db))]
-          (let [table-name (mt/random-name)
+                                 upload/current-database    (constantly (mt/db))]
+          (let [table-name     (mt/random-name)
                 datetime-pairs [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
                                 ["2022-01-01T12:00:00-07:00" "2022-01-01T19:00:00Z"]
                                 ["2022-01-01T12:00:00-07:30" "2022-01-01T19:30:00Z"]
@@ -1191,7 +1196,7 @@
                 :model    "Table"
                 :model_id pos?
                 :details  {:db-id       pos?
-                           :schema-name "PUBLIC"
+                           :schema-name (format-schema "public")
                            :table-name  string?
                            :model-id    pos?
                            :stats       {:num-rows          2
@@ -1247,6 +1252,7 @@
                                                                  patterns-type-prop "public"))})
         (testing "Upload should fail if table can't be found after sync, for example because of schema filters"
           (try (upload-example-csv! {:schema-name "public"})
+               (is (false? :should-not-be-reached))
                (catch Exception e
                  (is (= {:status-code 422}
                         (ex-data e)))
@@ -1256,7 +1262,7 @@
           (is (false? (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
                         (-> (jdbc/query (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                                         ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public')"])
-                            first :exists)))))))))
+                            first vals first)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           append-csv!                                                          |
@@ -1627,7 +1633,7 @@
                    :model    "Table"
                    :model_id (:id table)
                    :details  {:db-id       pos?
-                              :schema-name "PUBLIC"
+                              :schema-name (format-schema "public")
                               :table-name  string?
                               :stats       {:num-rows          1
                                             :num-columns       1
