@@ -283,6 +283,53 @@ describeEE("formatting > whitelabel", () => {
           cy.findByTestId("unsubscribe-page-illustration").should("not.exist");
         });
       });
+
+      describe("landing page illustration", () => {
+        it("should allow display the selected illustration on the landing page", () => {
+          cy.visit("/admin/settings/whitelabel/conceal-metabase");
+
+          cy.findByRole("searchbox", { name: "Landing page" }).should(
+            "have.value",
+            "Lighthouse",
+          );
+
+          cy.findByRole("searchbox", { name: "Landing page" }).click();
+          mantinePopover().findByText("Custom").click();
+
+          cy.findByTestId("landing-page-illustration-setting").within(() => {
+            cy.findByTestId("file-input").selectFile(
+              {
+                contents: "e2e/support/assets/logo.jpeg",
+                mimeType: "image/jpeg",
+              },
+              { force: true },
+            );
+            cy.findByText("logo.jpeg").should("be.visible");
+          });
+          undoToast().findByText("Changes saved").should("be.visible");
+
+          cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
+            logo_data => {
+              const backgroundImage = `url("data:image/jpeg;base64,${logo_data}")`;
+              cy.visit("/");
+              cy.findByTestId("landing-page-illustration").should(
+                "have.css",
+                "background-image",
+                backgroundImage,
+              );
+            },
+          );
+
+          cy.log("test no illustration");
+          cy.visit("/admin/settings/whitelabel/conceal-metabase");
+
+          cy.findByLabelText("Landing page").click();
+          mantinePopover().findByText("No illustration").click();
+
+          cy.visit("/");
+          cy.findByTestId("landing-page-illustration").should("not.exist");
+        });
+      });
     });
   });
 

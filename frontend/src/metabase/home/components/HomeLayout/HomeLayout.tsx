@@ -35,6 +35,7 @@ export const HomeLayout = ({
     <LayoutRoot data-testid="home-page">
       {landingPageIllustration && (
         <LayoutIllustration
+          data-testid="landing-page-illustration"
           backgroundImageSrc={landingPageIllustration.src}
           isDefault={landingPageIllustration.isDefault}
         />
