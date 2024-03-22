@@ -298,7 +298,7 @@ describeEE("formatting > whitelabel", () => {
         .clear()
         .type("/test-1")
         .blur();
-      undoToast().findByText("Changes saved").should("be.visible");
+      undoToast().findByText("Saved").should("be.visible");
 
       cy.findByTestId("landing-page-error").should("not.exist");
       cy.findByRole("navigation").findByText("Exit admin").click();
@@ -311,7 +311,7 @@ describeEE("formatting > whitelabel", () => {
         .clear()
         .type("/test-2")
         .blur();
-      undoToast().findByText("Changes saved").should("be.visible");
+      undoToast().findByText("Saved").should("be.visible");
 
       // set to valid value then test invalid value is not persisted
       cy.findByTestId("landing-page")
