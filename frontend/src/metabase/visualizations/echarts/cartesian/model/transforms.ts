@@ -10,6 +10,10 @@ export function signedSquareRoot(value: number) {
   return getSign(value) * Math.sqrt(Math.abs(value));
 }
 
+export function signedLog(value: number) {
+  return getSign(value) * Math.log10(Math.abs(value));
+}
+
 export function getAxisTransforms(
   scale: NumericScale | undefined,
   stackType?: StackType,
@@ -41,7 +45,7 @@ export function getAxisTransforms(
         if (stackType != null) {
           return value;
         }
-        return Math.log10(Math.abs(value)) * getSign(value);
+        return signedLog(value);
       },
       fromEChartsAxisValue: value => {
         return Math.pow(10, Math.abs(value)) * getSign(value);

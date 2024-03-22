@@ -34,7 +34,7 @@ import {
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import { isMetric } from "metabase-lib/types/utils/isa";
 import { isCategoryAxis, isNumericAxis } from "./guards";
-import { signedSquareRoot } from "./transforms";
+import { signedLog, signedSquareRoot } from "./transforms";
 
 /**
  * Sums two metric column values.
@@ -312,7 +312,10 @@ const getStackedAreasInterpolateTransform = (
   };
 };
 
-function getStackedPowerTransform(seriesDataKeys: DataKey[]): TransformFn {
+function getStackedValueTransformFunction(
+  seriesDataKeys: DataKey[],
+  valueTransform: (value: number) => number,
+): TransformFn {
   return (datum: Datum) => {
     const transformedSeriesValues: Record<DataKey, number> = {};
 
@@ -339,12 +342,12 @@ function getStackedPowerTransform(seriesDataKeys: DataKey[]): TransformFn {
       const rawTotal = rawBelowTotal + getNumberOrZero(datum[seriesDataKey]);
 
       // 2. Transform this total
-      const transformedTotal = signedSquareRoot(rawTotal);
+      const transformedTotal = valueTransform(rawTotal);
 
       // 3. Subtract the transformed total of the already stacked values (not
       //    including the value we are currently stacking)
       transformedSeriesValues[seriesDataKey] =
-        transformedTotal - signedSquareRoot(rawBelowTotal);
+        transformedTotal - valueTransform(rawBelowTotal);
     }
 
     seriesDataKeys.forEach(seriesDataKey => {
@@ -355,6 +358,28 @@ function getStackedPowerTransform(seriesDataKeys: DataKey[]): TransformFn {
     });
 
     return { ...datum, ...transformedSeriesValues };
+  };
+}
+
+function getStackedValueTransfom(
+  settings: ComputedVisualizationSettings,
+  seriesDataKeys: DataKey[],
+): ConditionalTransform {
+  const isPow = settings["graph.y_axis.scale"] === "pow";
+  const isLog = settings["graph.y_axis.scale"] === "log";
+
+  // In `getStackedValueTransformFunction`, each iteration of the loop ends with
+  // `transformedTotal - valueTransform(rawBelowTotal)`. However, in the first
+  // iteration `rawBelowTotal` will 0 because nothing is stacked yet, so to
+  // handle this case we want the `valueTransform` function to just return 0.
+  const logValueTransform = (value: number) =>
+    value === 0 ? value : signedLog(value);
+
+  const valueTransform = isPow ? signedSquareRoot : logValueTransform;
+
+  return {
+    condition: (isPow || isLog) && settings["stackable.stack_type"] != null,
+    fn: getStackedValueTransformFunction(seriesDataKeys, valueTransform),
   };
 }
 
@@ -494,12 +519,7 @@ export const applyVisualizationSettingsDataTransformations = (
     getKeyBasedDatasetTransform(seriesDataKeys, value =>
       yAxisScaleTransforms.toEChartsAxisValue(value),
     ),
-    {
-      condition:
-        settings["graph.y_axis.scale"] === "pow" &&
-        settings["stackable.stack_type"] != null,
-      fn: getStackedPowerTransform(seriesDataKeys),
-    },
+    getStackedValueTransfom(settings, seriesDataKeys),
     {
       condition: isCategoryAxis(xAxisModel),
       fn: getKeyBasedDatasetTransform([X_AXIS_DATA_KEY], value => {
