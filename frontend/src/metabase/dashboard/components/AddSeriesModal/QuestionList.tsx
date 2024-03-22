@@ -116,7 +116,7 @@ export const QuestionList = memo(function QuestionList({
         />
       </SearchContainer>
       <QuestionListWrapper
-        className={cx(CS.flex, CS.flexFull, "overflow-auto")}
+        className={cx(CS.flex, CS.flexFull, CS.overflowAuto)}
         error={error}
         noBackground
       >

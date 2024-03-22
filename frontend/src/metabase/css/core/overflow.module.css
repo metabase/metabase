@@ -1,4 +1,4 @@
-:global(.overflow-auto) {
+.overflowAuto {
   overflow: auto;
 }
 
