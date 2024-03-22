@@ -5,12 +5,11 @@
             [malli.provider :as mp]
             [malli.transform :as mtx]
             [malli.util :as mut]
+            [metabase.test :as mt]
             [metabase.util.malli :as mu]
             [metabase.util.malli.describe :as umd]
             [metabase.util.malli.schema :as ms]
-            [toucan2.core :as t2]
-            [metabase.test :as mt]
-            [clojure.test.check.generators :as gen]))
+            [toucan2.core :as t2]))
 
 (comment
   ;; Make a snippet of this to use when hacking with schemas:
