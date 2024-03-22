@@ -93,7 +93,7 @@ export default class LegendItem extends Component {
           </Tooltip>
         )}
         {showTitle && (
-          <div className={cx(CS.flex, CS.alignCenter, "overflow-hidden")}>
+          <div className={cx(CS.flex, CS.alignCenter, CS.overflowHidden)}>
             <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified>
             {description && (
               <div

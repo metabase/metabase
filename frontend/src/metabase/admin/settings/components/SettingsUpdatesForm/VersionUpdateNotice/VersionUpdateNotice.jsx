@@ -108,7 +108,14 @@ function NewVersionAvailable({ currentVersion }) {
       </NewVersionContainer>
 
       <div
-        className="text-medium bordered rounded p2 mt2 overflow-y-scroll"
+        className={cx(
+          CS.textMedium,
+          CS.bordered,
+          CS.rounded,
+          CS.p2,
+          CS.mt2,
+          CS.overflowYScroll,
+        )}
         style={{ height: 330 }}
       >
         <h3 className="pb3 text-uppercase">{t`What's Changed:`}</h3>

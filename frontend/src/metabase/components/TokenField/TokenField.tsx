@@ -632,7 +632,13 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     const optionsList =
       filteredOptions.length === 0 ? null : (
         <ul
-          className={cx(optionsClassName, "overflow-auto pl1 my1 scroll-hide")}
+          className={cx(
+            optionsClassName,
+            CS.overflowAuto,
+            CS.pl1,
+            CS.my1,
+            "scroll-hide",
+          )}
           style={{ maxHeight: 300, ...optionsStyle }}
           onMouseEnter={() => this.setState({ listIsHovered: true })}
           onMouseLeave={() => this.setState({ listIsHovered: false })}

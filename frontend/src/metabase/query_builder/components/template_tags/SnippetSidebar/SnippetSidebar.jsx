@@ -124,9 +124,9 @@ class SnippetSidebarInner extends React.Component {
               <div className={CS.flexFull}>
                 <div
                   /* Hide the search input by collapsing dimensions rather than `display: none`.
-                                                         This allows us to immediately focus on it when showSearch is set to true.*/
+                                                                           This allows us to immediately focus on it when showSearch is set to true.*/
                   style={showSearch ? {} : { width: 0, height: 0 }}
-                  className="text-heavy h3 overflow-hidden"
+                  className={cx("text-heavy", CS.h3, CS.overflowHidden)}
                 >
                   <input
                     className={cx(CS.input, CS.inputBorderless, CS.p0)}

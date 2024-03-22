@@ -69,7 +69,16 @@ class SnippetRowInner extends Component {
           <div className="px3 pb2 pt1">
             {description && <p className="text-medium mt0">{description}</p>}
             <pre
-              className="bg-light bordered rounded p1 text-monospace text-small text-pre-wrap overflow-auto"
+              className={cx(
+                "bg-light",
+                CS.bordered,
+                CS.rounded,
+                CS.p1,
+                CS.textMonospace,
+                "text-small",
+                "text-pre-wrap",
+                CS.overflowAuto,
+              )}
               style={{ maxHeight: 320 }}
             >
               {content}
