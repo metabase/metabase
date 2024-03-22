@@ -5,6 +5,7 @@ title: Driver interface changelog
 # Driver Interface Changelog
 
 ## Metabase 0.50.0
+
 - The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to
   use these namespaces in your driver, but if you did, please update them.
 
