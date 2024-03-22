@@ -341,15 +341,13 @@
                 "  \"PUBLIC\".\"ATTEMPTS\""
                 "WHERE"
                 "  ("
-                "    \"PUBLIC\".\"ATTEMPTS\".\"DATETIME\" >= CAST("
-                "      DATE_TRUNC("
-                "        'month',"
-                "        DATEADD('month', CAST(-1 AS long), CAST(NOW() AS datetime))"
-                "      ) AS date"
+                "    \"PUBLIC\".\"ATTEMPTS\".\"DATETIME\" >= DATE_TRUNC("
+                "      'month',"
+                "      DATEADD('month', CAST(-1 AS long), CAST(NOW() AS datetime))"
                 "    )"
                 "  )"
                 "  AND ("
-                "    \"PUBLIC\".\"ATTEMPTS\".\"DATETIME\" < CAST(DATE_TRUNC('month', NOW()) AS date)"
+                "    \"PUBLIC\".\"ATTEMPTS\".\"DATETIME\" < DATE_TRUNC('month', NOW())"
                 "  )"]
                (->> (qp.compile/compile
                      (mt/mbql-query attempts

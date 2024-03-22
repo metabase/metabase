@@ -806,9 +806,9 @@
                         preprocessed))))
             (testing "Results: should return correct rows"
               (let [results (qp/process-query query)]
-                (is (= [[629 "2014-05-08"]
-                        [733 "2014-05-08"]
-                        [813 "2014-05-08"]]
+                (is (= [[629 "2014-05-08T00:00:00-07:00"]
+                        [733 "2014-05-08T00:00:00-07:00"]
+                        [813 "2014-05-08T00:00:00-07:00"]]
                        ;; WRONG => [[991 "2014-05-09T00:00:00-07:00"]]
                        (mt/formatted-rows [int str]
                          results)))))))))))
