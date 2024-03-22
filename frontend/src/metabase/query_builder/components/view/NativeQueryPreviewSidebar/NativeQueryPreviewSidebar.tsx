@@ -82,7 +82,7 @@ export const NativeQueryPreviewSidebar = (): JSX.Element => {
             <Box mt="sm">{getErrorMessage(error)}</Box>
           </Flex>
         )}
-        {query && (
+        {!error && query && (
           <AceEditor
             value={query}
             mode={aceMode}
