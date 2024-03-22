@@ -9,6 +9,7 @@ import { getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { updateQuestion, setUIControls } from "metabase/query_builder/actions";
+import { NativeQueryEditorRoot } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -57,7 +58,8 @@ export const NativeQueryPreviewSidebar = (): JSX.Element => {
     <Flex
       role="complementary"
       direction="column"
-      w={480}
+      miw={480}
+      maw="40%"
       style={{ borderLeft: borderStyle }}
     >
       <Box
@@ -83,17 +85,19 @@ export const NativeQueryPreviewSidebar = (): JSX.Element => {
           </Flex>
         )}
         {!error && query && (
-          <AceEditor
-            value={query}
-            mode={aceMode}
-            readOnly
-            height="100%"
-            highlightActiveLine={false}
-            navigateToFileEnd={false}
-            width="100%"
-            fontSize={12}
-            style={{ backgroundColor: color("bg-light") }}
-          />
+          <NativeQueryEditorRoot style={{ height: "100%", flex: 1 }}>
+            <AceEditor
+              value={query}
+              mode={aceMode}
+              readOnly
+              height="100%"
+              highlightActiveLine={false}
+              navigateToFileEnd={false}
+              width="100%"
+              fontSize={12}
+              style={{ backgroundColor: color("bg-light") }}
+            />
+          </NativeQueryEditorRoot>
         )}
       </Box>
       <Box ta="end" p="1.5rem">
