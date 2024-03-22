@@ -7,13 +7,14 @@ import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import S from "metabase/components/Sidebar.module.css";
 import SidebarItem from "metabase/components/SidebarItem";
+import CS from "metabase/css/core/index.css";
 import MetabaseSettings from "metabase/lib/settings";
 
 const TableSidebar = ({ database, table, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <div>
       <Breadcrumbs
-        className="py4 ml3"
+        className={cx(CS.py4, CS.ml3)}
         crumbs={[
           [t`Databases`, "/reference/databases"],
           [database.name, `/reference/databases/${database.id}`],

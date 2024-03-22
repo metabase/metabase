@@ -169,7 +169,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
 
   return (
     <DatabaseEditRoot>
-      <Breadcrumbs className="py4" crumbs={crumbs} />
+      <Breadcrumbs className={CS.py4} crumbs={crumbs} />
 
       <DatabaseEditMain>
         <ErrorBoundary errorComponent={GenericError as ComponentType}>

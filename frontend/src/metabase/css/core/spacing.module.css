@@ -138,7 +138,6 @@
   padding-right: var(--padding-4);
 }
 
-:global(.py4),
 .py4 {
   padding-top: var(--padding-4);
   padding-bottom: var(--padding-4);
