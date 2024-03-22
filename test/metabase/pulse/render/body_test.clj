@@ -635,7 +635,7 @@
      {:field-name "count", :base-type :type/Quantity}]
     funnel-rows]])
 
-(deftest render-funnel-text-row-labels-test-2
+(deftest render-funnel-with-row-keys-test
   (testing "Static-viz Funnel Chart with text keys in viz-settings and text in returned
             rows renders without error and in the order specified by the viz-settings (#39743)."
     (mt/dataset funnel-data
