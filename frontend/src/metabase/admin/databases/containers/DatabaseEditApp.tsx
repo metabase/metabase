@@ -15,6 +15,7 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { GenericError } from "metabase/components/ErrorPages";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import title from "metabase/hoc/Title";
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
@@ -173,7 +174,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
       <DatabaseEditMain>
         <ErrorBoundary errorComponent={GenericError as ComponentType}>
           <div>
-            <div className="pt0">
+            <div className={CS.pt0}>
               <LoadingAndErrorWrapper
                 loading={!database}
                 error={initializeError}

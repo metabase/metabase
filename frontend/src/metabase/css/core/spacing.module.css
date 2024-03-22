@@ -24,12 +24,10 @@
 /* padding */
 
 /* 0 */
-:global(.p0),
 .p0 {
   padding: 0;
 }
 
-:global(.pt0),
 .pt0 {
   padding-top: 0;
 }
