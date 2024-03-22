@@ -5,12 +5,12 @@ import type {
 } from "metabase/common/hooks/use-entity-query";
 import { useEntityQuery } from "metabase/common/hooks/use-entity-query";
 import Fields from "metabase/entities/fields";
-import type { FieldId, FieldValuesResponse } from "metabase-types/api";
+import type { FieldId, FieldValuesResult } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 export const useFieldValuesQuery = (
   props: UseEntityQueryProps<FieldId>,
-): UseEntityQueryResult<FieldValuesResponse> => {
+): UseEntityQueryResult<FieldValuesResult> => {
   return useEntityQuery(props, {
     fetch: Fields.actions.fetchFieldValues,
     getObject,
@@ -23,7 +23,7 @@ export const useFieldValuesQuery = (
 function getObject(
   state: State,
   options: EntityQueryOptions<FieldId>,
-): FieldValuesResponse | undefined {
+): FieldValuesResult | undefined {
   const field = Fields.selectors.getObject(state, options);
   if (field) {
     const { id, values, has_more_values } = field;

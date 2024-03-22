@@ -120,7 +120,7 @@ export interface Field {
   updated_at: string;
 }
 
-export interface FieldValuesResponse {
+export interface FieldValuesResult {
   field_id: FieldId;
   values: FieldValue[];
   has_more_values: boolean;

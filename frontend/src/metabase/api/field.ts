@@ -2,14 +2,14 @@ import type {
   FieldId,
   FieldSearchInput,
   FieldValue,
-  FieldValuesResponse,
+  FieldValuesResult,
 } from "metabase-types/api";
 
 import { Api } from "./api";
 
 export const fieldApi = Api.injectEndpoints({
   endpoints: builder => ({
-    getFieldValues: builder.query<FieldValuesResponse, FieldId>({
+    getFieldValues: builder.query<FieldValuesResult, FieldId>({
       query: fieldId => ({
         method: "GET",
         url: `/api/field/${fieldId}/values`,
@@ -37,4 +37,9 @@ export const fieldApi = Api.injectEndpoints({
   }),
 });
 
-export const { useGetFieldValuesQuery, useSearchFieldValuesQuery } = fieldApi;
+export const {
+  useGetFieldValuesQuery,
+  useSearchFieldValuesQuery,
+  useRescanFieldValuesMutation,
+  useDiscardFieldValuesMutation,
+} = fieldApi;

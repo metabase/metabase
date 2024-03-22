@@ -3,7 +3,7 @@ import type {
   DatasetColumn,
   Field,
   FieldDimensionOption,
-  FieldValuesResponse,
+  FieldValuesResult,
   Table,
 } from "metabase-types/api";
 import {
@@ -76,13 +76,13 @@ export const REVIEWS = {
 // Field values are not included in the field object in the API response
 // Please use `setupFieldValuesEndpoints` utility from `__support__/server-mocks`
 
-export const ORDER_QUANTITY_VALUES: FieldValuesResponse = {
+export const ORDER_QUANTITY_VALUES: FieldValuesResult = {
   field_id: ORDERS.QUANTITY,
   values: Array.from({ length: 101 }, (_, i) => [i]),
   has_more_values: false,
 };
 
-export const PRODUCT_TITLE_VALUES: FieldValuesResponse = {
+export const PRODUCT_TITLE_VALUES: FieldValuesResult = {
   field_id: PRODUCTS.TITLE,
   values: [
     ["Aerodynamic Bronze Hat"],
@@ -109,7 +109,7 @@ export const PRODUCT_TITLE_VALUES: FieldValuesResponse = {
   has_more_values: false,
 };
 
-export const PRODUCT_EAT_VALUES: FieldValuesResponse = {
+export const PRODUCT_EAT_VALUES: FieldValuesResult = {
   field_id: PRODUCTS.EAN,
   values: [
     ["0001664425970"],
@@ -131,31 +131,31 @@ export const PRODUCT_EAT_VALUES: FieldValuesResponse = {
   has_more_values: false,
 };
 
-export const PRODUCT_CATEGORY_VALUES: FieldValuesResponse = {
+export const PRODUCT_CATEGORY_VALUES: FieldValuesResult = {
   field_id: PRODUCTS.CATEGORY,
   values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
   has_more_values: false,
 };
 
-export const PRODUCT_VENDOR_VALUES: FieldValuesResponse = {
+export const PRODUCT_VENDOR_VALUES: FieldValuesResult = {
   field_id: PRODUCTS.VENDOR,
   values: [["Vendor 1"], ["Vendor 2"], ["Vendor 3"], ["Vendor 4"]],
   has_more_values: true,
 };
 
-export const PRODUCT_RATING_VALUES: FieldValuesResponse = {
+export const PRODUCT_RATING_VALUES: FieldValuesResult = {
   field_id: PRODUCTS.RATING,
   values: [[1], [2], [3], [4], [5]],
   has_more_values: false,
 };
 
-export const PEOPLE_SOURCE_VALUES: FieldValuesResponse = {
+export const PEOPLE_SOURCE_VALUES: FieldValuesResult = {
   field_id: PEOPLE.SOURCE,
   values: [["Affiliate"], ["Facebook"], ["Google"], ["Organic"], ["Twitter"]],
   has_more_values: false,
 };
 
-export const PEOPLE_STATE_VALUES: FieldValuesResponse = {
+export const PEOPLE_STATE_VALUES: FieldValuesResult = {
   field_id: PEOPLE.STATE,
   values: [
     ["AK"],
