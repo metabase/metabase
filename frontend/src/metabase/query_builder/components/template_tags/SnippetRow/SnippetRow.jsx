@@ -67,7 +67,9 @@ class SnippetRowInner extends Component {
         </div>
         {isOpen && (
           <div className={cx(CS.px3, CS.pb2, CS.pt1)}>
-            {description && <p className="text-medium mt0">{description}</p>}
+            {description && (
+              <p className={cx(CS.textMedium, CS.mt0)}>{description}</p>
+            )}
             <pre
               className={cx(
                 "bg-light",

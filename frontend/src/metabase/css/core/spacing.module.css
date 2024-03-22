@@ -166,7 +166,6 @@
   margin: 0;
 }
 
-:global(.mt0),
 .mt0 {
   margin-top: 0;
 }
