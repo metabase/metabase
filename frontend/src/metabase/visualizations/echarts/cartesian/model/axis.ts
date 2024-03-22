@@ -517,11 +517,14 @@ export function getTimeSeriesXAxisModel(
     dimensionModel,
   );
   const { interval: dataTimeSeriesInterval } = timeSeriesInfo;
-
   const formatter = (value: RowValue, unit?: DateTimeAbsoluteUnit) => {
     const formatUnit =
-      unit ?? dimensionColumn.unit ?? dataTimeSeriesInterval.unit;
-    const column = {
+      unit ??
+      dimensionColumn.unit ??
+      (isAbsoluteDateTimeUnit(dataTimeSeriesInterval.unit)
+        ? dataTimeSeriesInterval.unit
+        : undefined);
+    const column: DatasetColumn = {
       ...dimensionColumn,
       unit: formatUnit,
     };
