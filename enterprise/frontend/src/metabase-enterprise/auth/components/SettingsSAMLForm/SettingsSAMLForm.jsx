@@ -76,9 +76,9 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
       enableReinitialize
     >
       {({ dirty }) => (
-        <Form className="mx2">
+        <Form className={CS.mx2}>
           <Breadcrumbs
-            className="mb3"
+            className={CS.mb3}
             crumbs={[
               [t`Authentication`, "/admin/settings/authentication"],
               [t`SAML`],

@@ -211,7 +211,6 @@
   margin: var(--margin-2);
 }
 
-:global(.mx2),
 .mx2 {
   margin-left: var(--margin-2);
   margin-right: var(--margin-2);
