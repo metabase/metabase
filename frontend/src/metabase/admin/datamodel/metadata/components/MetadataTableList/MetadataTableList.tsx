@@ -198,7 +198,7 @@ const TableBreadcrumbs = ({ schemaId, onBack }: TableBreadcrumbsProps) => {
         <Icon name="chevronleft" size={10} />
         {t`Schemas`}
       </BackIconContainer>
-      <span className="mx1">/</span>
+      <span className={CS.mx1}>/</span>
       <span>{getSchemaName(schemaId)}</span>
     </h4>
   );

@@ -179,7 +179,6 @@
   margin: var(--margin-1);
 }
 
-:global(.mx1),
 .mx1 {
   margin-left: var(--margin-1);
   margin-right: var(--margin-1);

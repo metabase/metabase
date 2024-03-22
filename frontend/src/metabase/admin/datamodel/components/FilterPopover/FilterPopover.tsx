@@ -202,7 +202,10 @@ export function FilterPopover({
         style={{ minWidth: MIN_WIDTH, overflowY: "auto", ...style }}
       >
         {fieldPickerTitle && (
-          <SidebarHeader className="mx1 my2" title={fieldPickerTitle} />
+          <SidebarHeader
+            className={cx(CS.mx1, CS.my2)}
+            title={fieldPickerTitle}
+          />
         )}
         <DimensionList
           style={{ color: color("filter") }}

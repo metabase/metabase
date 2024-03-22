@@ -302,7 +302,7 @@ interface MetadataTabSectionProps {
 
 const TableTabSection = ({ tab, onChangeTab }: MetadataTabSectionProps) => {
   return (
-    <div className="mx1 border-bottom">
+    <div className={cx(CS.mx1, CS.borderBottom)}>
       <Radio
         colorScheme="default"
         value={tab}
