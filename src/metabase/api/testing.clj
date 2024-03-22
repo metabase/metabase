@@ -113,6 +113,7 @@
   nil)
 
 (api/defendpoint POST "/echo"
+  "Simple echo hander. Fails when you POST {\"fail\": true}."
   [fail :as {:keys [body]}]
   {fail ms/BooleanValue}
   (if fail

@@ -244,7 +244,7 @@ export default class Gauge extends Component {
     return (
       <div className={cx(className, CS.relative)}>
         <div
-          className={cx(CS.absolute, "overflow-hidden")}
+          className={cx(CS.absolute, CS.overflowHidden)}
           style={{
             width: svgWidth * expandWidthFactor,
             height: svgHeight,

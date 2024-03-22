@@ -3,11 +3,12 @@
   (:require
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.params :as params]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.malli :as mu]))
@@ -25,14 +26,14 @@
 
 (defn- field-type
   [field-clause]
-  (mbql.u/match-one field-clause
+  (lib.util.match/match-one field-clause
     [:field (id :guard integer?) _]  ((some-fn :effective-type :base-type)
                                       (lib.metadata.protocols/field (qp.store/metadata-provider) id))
     [:field (_ :guard string?) opts] (:base-type opts)))
 
 (defn- expression-type
   [query expression-clause]
-  (mbql.u/match-one expression-clause
+  (lib.util.match/match-one expression-clause
     [:expression (expression-name :guard string?)]
     (lib/type-of (lib/query (qp.store/metadata-provider) (lib.convert/->pMBQL query))
                  (lib.convert/->pMBQL &match))))

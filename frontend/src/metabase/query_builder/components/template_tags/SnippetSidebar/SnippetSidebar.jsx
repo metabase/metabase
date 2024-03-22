@@ -9,6 +9,7 @@ import _ from "underscore";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import Search from "metabase/entities/search";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
@@ -96,7 +97,7 @@ class SnippetSidebarInner extends React.Component {
         {!showSearch &&
         displayedItems.length === 0 &&
         snippetCollection.id === "root" ? (
-          <div className="px3 flex flex-column align-center">
+          <div className={cx(CS.px3, CS.flex, CS.flexColumn, CS.alignCenter)}>
             <svg
               viewBox="0 0 10 10"
               className="mb2"
@@ -117,18 +118,18 @@ class SnippetSidebarInner extends React.Component {
         ) : (
           <div>
             <div
-              className="flex align-center pl3 pr2"
+              className={cx(CS.flex, CS.alignCenter, CS.pl3, CS.pr2)}
               style={{ paddingTop: 10, paddingBottom: 11 }}
             >
-              <div className="flex-full">
+              <div className={CS.flexFull}>
                 <div
                   /* Hide the search input by collapsing dimensions rather than `display: none`.
-                     This allows us to immediately focus on it when showSearch is set to true.*/
+                                                                           This allows us to immediately focus on it when showSearch is set to true.*/
                   style={showSearch ? {} : { width: 0, height: 0 }}
-                  className="text-heavy h3 overflow-hidden"
+                  className={cx("text-heavy", CS.h3, CS.overflowHidden)}
                 >
                   <input
-                    className="input input--borderless p0"
+                    className={cx(CS.input, CS.inputBorderless, CS.p0)}
                     ref={e => (this.searchBox = e)}
                     onChange={e =>
                       this.setState({ searchString: e.target.value })
@@ -166,7 +167,15 @@ class SnippetSidebarInner extends React.Component {
                   )}
                 </span>
               </div>
-              <div className="flex-align-right flex align-center text-medium no-decoration">
+              <div
+                className={cx(
+                  CS.flexAlignRight,
+                  CS.flex,
+                  CS.alignCenter,
+                  CS.textMedium,
+                  CS.noDecoration,
+                )}
+              >
                 {[
                   ...PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map(f =>
                     f(this, { className: "mr2" }),
@@ -193,7 +202,7 @@ class SnippetSidebarInner extends React.Component {
                     }
                     placement="bottom-end"
                     popoverContent={({ closePopover }) => (
-                      <div className="flex flex-column">
+                      <div className={cx(CS.flex, CS.flexColumn)}>
                         {[
                           {
                             icon: "snippet",
@@ -231,7 +240,7 @@ class SnippetSidebarInner extends React.Component {
                 />
               </div>
             </div>
-            <div className="flex-full">
+            <div className={CS.flexFull}>
               {displayedItems.length > 0
                 ? displayedItems.map(item => (
                     <Row

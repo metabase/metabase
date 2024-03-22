@@ -70,7 +70,8 @@
    [potemkin :as p]
    [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]
-   [toucan2.pipeline :as t2.pipeline]))
+   [toucan2.pipeline :as t2.pipeline]
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
@@ -212,7 +213,7 @@
   first arg:
 
     (dev/query-jdbc-db
-     [:sqlserver 'test-data-with-time]
+     [:sqlserver 'time-test-data]
      [\"SELECT * FROM dbo.users WHERE dbo.users.last_login_time > ?\" (java-time/offset-time \"16:00Z\")])"
   {:arglists '([driver sql]            [[driver dataset] sql]
                [driver honeysql-form]  [[driver dataset] honeysql-form]
@@ -296,6 +297,27 @@
   (let [{:keys [query params]} (binding [t2.connection/*current-connectable* nil]
                                  (qp.compile/compile built-query))]
     (into [query] params)))
+
+(methodical/defmethod t2.hydrate/hydrate-with-strategy :around ::t2.hydrate/multimethod-simple
+  "Throws an error if do simple hydrations that make DB call on a sequence."
+  [model strategy k instances]
+  (if (or config/is-prod?
+          (< (count instances) 2)
+          ;; we skip checking these keys because most of the times its call count
+          ;; are from deferencing metabase.api.common/*current-user-permissions-set*
+          (#{:can_write :can_read} k))
+    (next-method model strategy k instances)
+    (t2/with-call-count [call-count]
+      (let [res (next-method model strategy k instances)
+            ;; if it's a lazy-seq then we need to realize it so call-count is counted
+            res (if (instance? clojure.lang.LazySeq res)
+                  (doall res)
+                  res)]
+        ;; only throws an exception if the simple hydration makes a DB call
+        (when (pos-int? (call-count))
+          (throw (ex-info (format "N+1 hydration detected!!! Model %s, key %s]" (pr-str model) k)
+                          {:model model :strategy strategy :k k :items-count (count instances) :db-calls (call-count)})))
+        res))))
 
 (defn app-db-as-data-warehouse
   "Add the application database as a Database. Currently only works if your app DB uses broken-out details!"

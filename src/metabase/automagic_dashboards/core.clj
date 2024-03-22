@@ -157,12 +157,12 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.automagic-dashboards.util :as magic.util]
    [metabase.db.query :as mdb.query]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :refer [Metric]]
+   [metabase.models.metric :refer [LegacyMetric]]
    [metabase.models.query :refer [Query]]
    [metabase.models.segment :refer [Segment]]
    [metabase.models.table :refer [Table]]
@@ -185,7 +185,7 @@
     :arglists '([entity])}
   linked-metrics mi/model)
 
-(defmethod linked-metrics :model/Metric [{metric-name :name :keys [definition]}]
+(defmethod linked-metrics :model/LegacyMetric [{metric-name :name :keys [definition]}]
   [{:metric-name       metric-name
     :metric-title      metric-name
     :metric-definition definition
@@ -194,7 +194,7 @@
 (defmethod linked-metrics :model/Table [{table-id :id}]
   (mapcat
    linked-metrics
-   (t2/select :model/Metric :table_id table-id)))
+   (t2/select :model/LegacyMetric :table_id table-id)))
 
 (defmethod linked-metrics :default [_] [])
 
@@ -229,7 +229,7 @@
      :url                        (format "%ssegment/%s" public-endpoint (u/the-id segment))
      :dashboard-templates-prefix ["table"]}))
 
-(defmethod ->root Metric
+(defmethod ->root LegacyMetric
   [metric]
   (let [table (->> metric :table_id (t2/select-one Table :id))]
     {:entity                     metric
@@ -692,7 +692,7 @@
               :zoom-out [up]
               :related  [sideways sideways]
               :compare  [compare compare]})
-   Metric  (let [down     [[:drilldown-fields]]
+   LegacyMetric  (let [down     [[:drilldown-fields]]
                  sideways [[:metrics :segments]]
                  up       [[:table]]
                  compare  [[:compare]]]
@@ -805,20 +805,20 @@
   [segment opts]
   (automagic-dashboard (merge (->root segment) opts)))
 
-(defmethod automagic-analysis Metric
+(defmethod automagic-analysis LegacyMetric
   [metric opts]
   (automagic-dashboard (merge (->root metric) opts)))
 
-(mu/defn ^:private collect-metrics :- [:maybe [:sequential (ms/InstanceOf Metric)]]
+(mu/defn ^:private collect-metrics :- [:maybe [:sequential (ms/InstanceOf LegacyMetric)]]
   [root question]
   (map (fn [aggregation-clause]
          (if (-> aggregation-clause
                  first
                  qp.util/normalize-token
                  (= :metric))
-           (->> aggregation-clause second (t2/select-one Metric :id))
+           (->> aggregation-clause second (t2/select-one LegacyMetric :id))
            (let [table-id (table-id question)]
-             (mi/instance Metric {:definition {:aggregation  [aggregation-clause]
+             (mi/instance LegacyMetric {:definition {:aggregation  [aggregation-clause]
                                                :source-table table-id}
                                   :name       (names/metric->description root aggregation-clause)
                                   :table_id   table-id}))))

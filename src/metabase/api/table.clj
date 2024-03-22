@@ -505,15 +505,14 @@
    field_order [:sequential ms/PositiveInt]}
   (-> (t2/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
 
-(mu/defn ^:private append-csv!
+(mu/defn ^:private update-csv!
   "This helper function exists to make testing the POST /api/table/:id/append-csv endpoint easier."
-  [{:keys [id file]}
-   :- [:map
-       [:id ms/PositiveInt]
-       [:file (ms/InstanceOfClass java.io.File)]]]
+  [options :- [:map
+               [:table-id ms/PositiveInt]
+               [:file (ms/InstanceOfClass java.io.File)]
+               [:action upload/update-action-schema]]]
   (try
-    (let [model (upload/append-csv! {:table-id id
-                                     :file     file})]
+    (let [model (upload/update-csv! options)]
       {:status 200
        :body   (:id model)})
     (catch Throwable e
@@ -521,12 +520,22 @@
                    500)
        :body   {:message (or (ex-message e)
                              (tru "There was an error uploading the file"))}})
-    (finally (io/delete-file file :silently))))
+    (finally (io/delete-file (:file options) :silently))))
 
 (api/defendpoint ^:multipart POST "/:id/append-csv"
   "Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by uploading a CSV file."
   [id :as {raw-params :params}]
   {id ms/PositiveInt}
-  (append-csv! {:id id, :file (get-in raw-params ["file" :tempfile])}))
+  (update-csv! {:table-id id
+                :file     (get-in raw-params ["file" :tempfile])
+                :action   ::upload/append}))
+
+(api/defendpoint ^:multipart POST "/:id/replace-csv"
+  "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have been created by uploading a CSV file."
+  [id :as {raw-params :params}]
+  {id ms/PositiveInt}
+  (update-csv! {:table-id id
+                :file     (get-in raw-params ["file" :tempfile])
+                :action   ::upload/replace}))
 
 (api/define-routes)

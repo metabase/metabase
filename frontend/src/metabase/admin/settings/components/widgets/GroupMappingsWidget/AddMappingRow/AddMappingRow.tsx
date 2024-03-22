@@ -1,9 +1,11 @@
+import cx from "classnames";
 import type * as React from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
 import type { MappingsType } from "metabase/admin/types";
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 
 type AddMappingRowProps = {
   mappings: MappingsType;
@@ -43,10 +45,22 @@ function AddMappingRow({
   return (
     <tr>
       <td colSpan={3} style={{ padding: 0 }}>
-        <div className="m2 p1 bordered border-brand justify-between rounded relative flex align-center">
+        <div
+          className={cx(
+            CS.m2,
+            CS.p1,
+            CS.bordered,
+            CS.borderBrand,
+            CS.justifyBetween,
+            CS.rounded,
+            CS.relative,
+            CS.flex,
+            CS.alignCenter,
+          )}
+        >
           <input
             aria-label="new-group-mapping-name-input"
-            className="input--borderless h3 ml1 flex-full"
+            className={cx(CS.inputBorderless, CS.h3, CS.ml1, CS.flexFull)}
             type="text"
             value={value}
             placeholder={placeholder}

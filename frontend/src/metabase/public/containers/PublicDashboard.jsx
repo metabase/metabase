@@ -8,6 +8,7 @@ import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
 import * as dashboardActions from "metabase/dashboard/actions";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
@@ -25,6 +26,7 @@ import {
 import { isActionDashCard } from "metabase/dashboard/utils";
 import title from "metabase/hoc/Title";
 import { isWithinIframe } from "metabase/lib/dom";
+import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -177,14 +179,15 @@ class PublicDashboard extends Component {
         setParameterValueToDefault={setParameterValueToDefault}
         enableParameterRequiredBehavior
         actionButtons={
-          buttons.length > 0 && <div className="flex">{buttons}</div>
+          buttons.length > 0 && <div className={CS.flex}>{buttons}</div>
         }
         dashboardTabs={<DashboardTabs location={this.props.location} />}
       >
         <LoadingAndErrorWrapper
           className={cx({
-            "Dashboard--fullscreen": isFullscreen,
-            "Dashboard--night": isNightMode,
+            [DashboardS.DashboardFullscreen]: isFullscreen,
+            [DashboardS.DashboardNight]: isNightMode,
+            [ParametersS.DashboardNight]: isNightMode,
           })}
           loading={!dashboard}
         >
