@@ -163,7 +163,9 @@ function HostingCTA() {
           <Icon name="cloud" size={24} />
         </HostingCTAIconContainer>
         <div>
-          <Text className="text-brand mb0">{t`Want to have upgrades taken care of for you?`}</Text>
+          <Text
+            className={cx(CS.textBrand, CS.mb0)}
+          >{t`Want to have upgrades taken care of for you?`}</Text>
           <Text className="text-brand text-bold">{t`Migrate to Metabase Cloud.`}</Text>
         </div>
       </HostingCTAContent>

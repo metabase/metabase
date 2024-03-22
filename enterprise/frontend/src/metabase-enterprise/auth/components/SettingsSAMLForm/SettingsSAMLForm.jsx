@@ -102,7 +102,9 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
             />
           </Stack>
           <SAMLFormSection>
-            <h3 className="mb0">{t`Configure your identity provider (IdP)`}</h3>
+            <h3
+              className={CS.mb0}
+            >{t`Configure your identity provider (IdP)`}</h3>
             {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
             <p className="mb4 mt1 text-medium">{t`Your identity provider will need the following info about Metabase.`}</p>
 
@@ -138,10 +140,14 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           </SAMLFormSection>
 
           <SAMLFormSection>
-            {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
-            <h3 className="mb0">{t`Tell Metabase about your identity provider`}</h3>
-            {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
-            <p className="mb4 mt1 text-medium">{t`Metabase will need the following info about your provider.`}</p>
+            <h3 className={CS.mb0}>
+              {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+              {t`Tell Metabase about your identity provider`}
+            </h3>
+            <p className="mb4 mt1 text-medium">
+              {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+              {t`Metabase will need the following info about your provider.`}
+            </p>
             <Stack gap="md">
               <FormTextInput
                 {...fields["saml-identity-provider-uri"]}
@@ -188,7 +194,9 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           </SAMLFormSection>
 
           <SAMLFormSection wide>
-            <h3 className="mb0">{t`Synchronize group membership with your SSO`}</h3>
+            <h3
+              className={CS.mb0}
+            >{t`Synchronize group membership with your SSO`}</h3>
             <p className="mb4 mt1 text-medium">
               {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
               {t`To enable this, you'll need to create mappings to tell Metabase which group(s) your users should
