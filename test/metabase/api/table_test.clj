@@ -808,7 +808,7 @@
 
       (testing "time columns"
         (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers))
-          (mt/dataset test-data-with-time
+          (mt/dataset time-test-data
             (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users)))]
               (is (= @#'api.table/time-dimension-indexes
                      (dimension-options-for-field response "last_login_time"))))))))))

@@ -11,7 +11,7 @@
 
 (defn- time-query [filter-type & filter-args]
   (mt/formatted-rows [int identity identity]
-    (mt/dataset test-data-with-time
+    (mt/dataset time-test-data
       (mt/run-mbql-query users
         {:fields   [$id $name $last_login_time]
          :order-by [[:asc $id]]
