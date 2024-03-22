@@ -300,10 +300,12 @@ class SettingsBatchForm extends Component {
         )}
 
         {formErrors && formErrors.message && (
-          <div className="m2 text-error text-bold">{formErrors.message}</div>
+          <div className={cx(CS.m2, CS.textError, CS.textBold)}>
+            {formErrors.message}
+          </div>
         )}
 
-        <div className="m2 mb4">
+        <div className={cx(CS.m2, CS.mb4)}>
           {renderSubmitButton ? (
             renderSubmitButton({
               valid,

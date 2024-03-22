@@ -207,7 +207,6 @@
 
 /* 2 */
 
-:global(.m2),
 .m2 {
   margin: var(--margin-2);
 }
