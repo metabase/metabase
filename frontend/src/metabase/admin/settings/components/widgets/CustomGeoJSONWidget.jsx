@@ -298,7 +298,7 @@ const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
 const SettingContainer = ({
   name,
   description,
-  className = "py1",
+  className = CS.py1,
   children,
 }) => (
   <div className={className}>

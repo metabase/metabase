@@ -42,7 +42,6 @@
   padding-right: var(--padding-1);
 }
 
-:global(.py1),
 .py1 {
   padding-top: var(--padding-1);
   padding-bottom: var(--padding-1);

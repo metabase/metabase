@@ -5,6 +5,7 @@
 }
 
 .formulaHeader {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: text-brand py1 px2 from "style";
   align-items: center;
   display: flex;

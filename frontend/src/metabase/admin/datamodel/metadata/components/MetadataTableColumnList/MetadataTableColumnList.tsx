@@ -93,8 +93,8 @@ const MetadataTableColumnList = ({
 
   return (
     <div id="ColumnsList" className={cx("mt3", { disabled: isHidden })}>
-      <div className="text-uppercase text-medium py1">
-        <div className="relative">
+      <div className={cx(CS.textUppercase, CS.textMedium, CS.py1)}>
+        <div className={CS.relative}>
           <div
             style={{ minWidth: 420 }}
             className={cx(CS.floatLeft, CS.px1)}

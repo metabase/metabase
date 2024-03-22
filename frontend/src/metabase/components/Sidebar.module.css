@@ -11,13 +11,10 @@
 }
 
 .item {
-  composes: py1 mb1 from "style";
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
+  composes: py1 mb1 rounded pl2 from "style";
   align-items: center;
   display: flex;
-}
-
-.item {
-  composes: rounded pl2 from "style";
   font-size: 1em;
   color: var(--color-text-light);
 }

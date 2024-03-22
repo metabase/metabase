@@ -88,7 +88,7 @@ class PartialQueryBuilder extends Component {
     const previewUrl = Urls.serializedQuestion(question.card());
 
     return (
-      <div className="py1">
+      <div className={CS.py1}>
         <GuiQueryEditor
           features={features}
           legacyQuery={legacyQuery}

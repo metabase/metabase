@@ -145,7 +145,7 @@ export default class Calendar extends Component<CalendarProps, State> {
     const days = getDayOfWeekOptions();
 
     return (
-      <div className="Calendar-day-names Calendar-week py1">
+      <div className={cx("Calendar-day-names Calendar-week", CS.py1)}>
         {days.map(({ shortName }) => (
           <span
             key={shortName}
