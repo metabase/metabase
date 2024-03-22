@@ -3,25 +3,25 @@ import _ from "underscore";
 
 import { reloadSettings } from "metabase/admin/settings/settings";
 import api from "metabase/lib/api";
+import { useDispatch } from "metabase/lib/redux";
 import { refreshCurrentUser } from "metabase/redux/user";
 import registerVisualizations from "metabase/visualizations/register";
 
-import type { SDKConfigType } from "../../config";
+import type { SDKConfigType } from "../../types";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
 
-type InitDataLoaderProps = {
-  store: any;
+interface InitDataLoaderParameters {
   config: SDKConfigType;
-};
+}
 
 export const useInitData = ({
-  store,
   config,
-}: InitDataLoaderProps): {
+}: InitDataLoaderParameters): {
   isLoggedIn: boolean;
   isInitialized: boolean;
 } => {
+  const dispatch = useDispatch();
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
@@ -40,13 +40,13 @@ export const useInitData = ({
     }
 
     Promise.all([
-      store.dispatch(refreshCurrentUser()),
-      store.dispatch(reloadSettings()),
+      dispatch(refreshCurrentUser()),
+      dispatch(reloadSettings()),
     ]).then(() => {
       setIsInitialized(true);
       setIsLoggedIn(true);
     });
-  }, [config, store]);
+  }, [config, dispatch]);
 
   return {
     isLoggedIn,

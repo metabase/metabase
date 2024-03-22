@@ -16,7 +16,7 @@ import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMo
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, Dataset } from "metabase-types/api";
 
-import { useEmbeddingContext } from "../../hooks";
+import { useEmbeddingContext } from "../../context";
 
 interface QueryVisualizationProps {
   questionId: CardId;
@@ -37,7 +37,7 @@ export const QueryVisualizationSdk = (
 
   const { questionId } = props;
 
-  const [state, setState] = useState<State>({
+  const [{ loading, card, result }, setState] = useState<State>({
     loading: false,
     card: null,
     result: null,
@@ -85,12 +85,10 @@ export const QueryVisualizationSdk = (
     loadCardData({ questionId });
   }, [isInitialized, isLoggedIn, questionId]);
 
-  const { card, result } = state;
-
   const changeVisualization = (newQuestion: Question) => {
     setState({
       card: newQuestion.card(),
-      result: state.result,
+      result: result,
       loading: false,
     });
   };
@@ -108,10 +106,12 @@ export const QueryVisualizationSdk = (
     );
   }
 
+  const isLoading = loading || !result;
+
   return (
     <LoadingAndErrorWrapper
       className="flex-full full-width"
-      loading={!result}
+      loading={isLoading}
       error={typeof result === "string" ? result : null}
       noWrapper
     >
@@ -140,7 +140,7 @@ export const QueryVisualizationSdk = (
               className="flex full-width"
               question={question}
               rawSeries={[{ card, data: result && result.data }]}
-              isRunning={state.loading}
+              isRunning={isLoading}
               isObjectDetail={false}
               isResultDirty={false}
               isNativeEditorOpen={false}
