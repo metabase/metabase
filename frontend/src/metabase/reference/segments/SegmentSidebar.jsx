@@ -21,7 +21,7 @@ const SegmentSidebar = ({ segment, user, style, className }) => (
           placeholder={t`Data Reference`}
         />
       </div>
-      <ol className="mx3">
+      <ol className={CS.mx3}>
         <SidebarItem
           key={`/reference/segments/${segment.id}`}
           href={`/reference/segments/${segment.id}`}

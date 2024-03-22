@@ -24,7 +24,7 @@ const TableSidebar = ({ database, table, style, className }) => (
         placeholder={t`Data Reference`}
       />
     </div>
-    <ol className="mx3">
+    <ol className={CS.mx3}>
       <SidebarItem
         key={`/reference/databases/${database.id}/tables/${table.id}`}
         href={`/reference/databases/${database.id}/tables/${table.id}`}

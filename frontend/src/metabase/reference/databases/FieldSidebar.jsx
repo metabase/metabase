@@ -28,7 +28,7 @@ const FieldSidebar = ({ database, table, field, style, className }) => (
           placeholder={t`Data Reference`}
         />
       </div>
-      <ol className="mx3">
+      <ol className={CS.mx3}>
         <SidebarItem
           key={`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`}
           href={`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`}

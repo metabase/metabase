@@ -21,7 +21,7 @@ const MetricSidebar = ({ metric, user, style, className }) => (
           placeholder={t`Data Reference`}
         />
       </div>
-      <ol className="mx3">
+      <ol className={CS.mx3}>
         <SidebarItem
           key={`/reference/metrics/${metric.id}`}
           href={`/reference/metrics/${metric.id}`}

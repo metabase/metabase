@@ -19,7 +19,7 @@ const BaseSidebar = ({ style, className }) => (
         placeholder={t`Data Reference`}
       />
     </div>
-    <ol className="mx3">
+    <ol className={CS.mx3}>
       <SidebarItem
         key="/reference/metrics"
         href="/reference/metrics"

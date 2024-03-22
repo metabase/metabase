@@ -243,7 +243,6 @@
   margin: var(--margin-3);
 }
 
-:global(.mx3),
 .mx3 {
   margin-left: var(--margin-3);
   margin-right: var(--margin-3);
