@@ -206,7 +206,7 @@ export class AlertEducationalScreen extends Component {
         {
           // @mazameli: needed to do some negative margin spacing to match the designs
         }
-        <div className="text-normal pt3">
+        <div className={cx(CS.textNormal, CS.pt3)}>
           <div
             className={cx(CS.relative, CS.flex, CS.alignCenter, CS.pr4)}
             style={{ marginLeft: -80 }}

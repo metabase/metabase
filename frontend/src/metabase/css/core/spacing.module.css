@@ -111,7 +111,6 @@
   padding-bottom: var(--padding-3);
 }
 
-:global(.pt3),
 .pt3 {
   padding-top: var(--padding-3);
 }
