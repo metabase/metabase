@@ -3,6 +3,8 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 
+import CS from "metabase/css/core/index.css";
+
 /*
    Creates a bordered container for an <Icon /> component
    based on the <Icon /> component's size.
@@ -53,7 +55,7 @@ export default class IconBorder extends Component {
     };
 
     return (
-      <div className={cx("flex layout-centered", className)} style={styles}>
+      <div className={cx(CS.flex, CS.layoutCentered, className)} style={styles}>
         {children}
       </div>
     );

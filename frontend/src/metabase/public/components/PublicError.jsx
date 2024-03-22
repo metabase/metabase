@@ -15,14 +15,16 @@ const mapStateToProps = (state, props) => ({
 
 const PublicError = ({ message = t`An error occurred` }) => (
   <EmbedFrame className={CS.spread}>
-    <div className="flex layout-centered flex-full flex-column">
+    <div className={cx(CS.flex, CS.layoutCentered, CS.flexFull, CS.flexColumn)}>
       <div
         className={cx(
           QueryBuilderS.QueryErrorImage,
           QueryBuilderS.QueryErrorImageNoRows,
         )}
       />
-      <div className="mt1 h4 sm-h3 md-h2 text-bold">{message}</div>
+      <div className={cx(CS.mt1, CS.h4, "sm-h3 md-h2", CS.textBold)}>
+        {message}
+      </div>
     </div>
   </EmbedFrame>
 );

@@ -598,7 +598,11 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
                 }}
                 onMouseDown={e => e.preventDefault()}
               >
-                <Icon name="close" className="flex align-center" size={12} />
+                <Icon
+                  name="close"
+                  className={cx(CS.flex, CS.alignCenter)}
+                  size={12}
+                />
               </TokenFieldAddon>
             )}
           </TokenFieldItem>
