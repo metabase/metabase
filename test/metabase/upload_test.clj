@@ -1153,9 +1153,8 @@
                 (:name new-field)
                 (:display_name new-field))))))))
 
-(deftest csv-upload-snowplow-test
-  ;; Just test with h2 because snowplow should be independent of the driver
-  (mt/test-driver :h2
+(deftest ^:mb/once csv-upload-snowplow-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (snowplow-test/with-fake-snowplow-collector
       (with-upload-table! [_table (card->table (upload-example-csv!))]
         (testing "Successfully creating a CSV Upload publishes statistics to Snowplow"
@@ -1182,9 +1181,8 @@
                     :user-id (str (mt/user->id :rasta))}
                    (last (snowplow-test/pop-event-data-and-user-id!))))))))))
 
-(deftest csv-upload-audit-log-test
-  ;; Just test with h2 because these events are independent of the driver
-  (mt/test-driver :h2
+(deftest ^:mb/once csv-upload-audit-log-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-premium-features #{:audit-app}
       (with-upload-table!
        [_table (card->table (upload-example-csv!))]
@@ -1203,9 +1201,8 @@
                                          :upload-seconds    pos?}}}
                (last-audit-event :upload-create)))))))
 
-(deftest create-csv-upload!-failure-test
-  ;; Just test with postgres because failure should be independent of the driver
-  (mt/test-driver :postgres
+(deftest ^:mb/once create-csv-upload!-failure-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-empty-db
       (testing "Uploads must be enabled"
         (doseq [uploads-enabled-value [false nil]]
@@ -1222,7 +1219,7 @@
         (mt/with-dynamic-redefs [driver/database-supports? (constantly false)]
           (is (thrown-with-msg?
                 java.lang.Exception
-                #"^Uploads are not supported on Postgres databases\."
+                #"^Uploads are not supported on \w+ databases\."
                 (upload-example-csv! :schema-name "public", :table-prefix "uploaded_magic_")))))
       (testing "User must have write permissions on the collection"
         (mt/with-non-admin-groups-no-root-collection-perms
@@ -1236,9 +1233,8 @@
                    (= :schema-filters (keyword (:type conn-prop))))
                  (driver/connection-properties driver))))
 
-(deftest create-csv-upload!-schema-does-not-sync-test
-  ;; Just test with postgres because failure should be independent of the driver
-  (mt/test-driver :postgres
+(deftest ^:mb/once create-csv-upload!-schema-does-not-sync-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-empty-db
       (let [driver             (driver.u/database->driver (mt/db))
             schema-filter-prop (find-schema-filters-prop driver)
@@ -1578,9 +1574,8 @@
                    (rows-for-table table))))
           (io/delete-file file))))))
 
-(deftest csv-append-snowplow-test
-  ;; Just test with h2 because snowplow should be independent of the driver
-  (mt/test-driver :h2
+(deftest ^:mb/once csv-append-snowplow-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (snowplow-test/with-fake-snowplow-collector
 
      (with-upload-table! [table (create-upload-table!)]
@@ -1618,9 +1613,8 @@
                    :user-id (str (mt/user->id :crowberto))}
                   (last (snowplow-test/pop-event-data-and-user-id!))))))))))
 
-(deftest csv-append-audit-log-test
-  ;; Just test with h2 because these events are independent of the driver
-  (mt/test-driver :h2
+(deftest ^:mb/once csv-append-audit-log-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-premium-features #{:audit-app}
       (with-upload-table! [table (create-upload-table!)]
         (let [csv-rows ["name" "Luke Skywalker"]
