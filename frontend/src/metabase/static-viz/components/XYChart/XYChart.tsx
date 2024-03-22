@@ -131,14 +131,11 @@ export const XYChart = ({
 
   const defaultYScale = yScaleLeft || yScaleRight;
 
-  const legendRows = calculateLegendRows(
-    series.map(series => ({ name: series.name, color: series.color })),
-    width - CHART_PADDING * 2,
-    0,
-    style.legend.lineHeight,
-    style.legend.fontSize,
-    style.legend.fontWeight,
-  );
+  const legendRows = calculateLegendRows({
+    items: series.map(series => ({ name: series.name, color: series.color })),
+    width: width - CHART_PADDING * 2,
+    ...style.legend,
+  });
 
   const legendHeight =
     legendRows != null ? legendRows.height + CHART_PADDING : 0;

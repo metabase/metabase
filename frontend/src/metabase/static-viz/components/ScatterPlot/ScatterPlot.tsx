@@ -38,9 +38,17 @@ export function ScatterPlot({
     renderingContext,
   );
 
-  const legendItems = getLegendItems(chartModel, computedVisualizationSettings);
+  const { legendItems } = getLegendItems(
+    chartModel,
+    computedVisualizationSettings,
+  );
   const { height: legendHeight, items: legendLayoutItems } =
-    calculateLegendRows(legendItems, width, LEGEND_PADDING, LEGEND_PADDING);
+    calculateLegendRows({
+      items: legendItems,
+      width,
+      horizontalPadding: LEGEND_PADDING,
+      verticalPadding: LEGEND_PADDING,
+    });
 
   const chartMeasurements = getChartMeasurements(
     chartModel,
