@@ -1,8 +1,10 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 
 import L from "metabase/components/List/List.module.css";
+import CS from "metabase/css/core/index.css";
 import { fetchTableMetadata } from "metabase/redux/metadata";
 import D from "metabase/reference/components/Detail.module.css";
 import FieldToGroupBy from "metabase/reference/components/FieldToGroupBy";
@@ -36,7 +38,7 @@ class FieldsToGroupBy extends Component {
               Object.values(fields).map((field, index, fields) => (
                 <FieldToGroupBy
                   key={field.id}
-                  className="px1 mb1 rounded bg-light-hover"
+                  className={cx(CS.px1, CS.mb1, CS.rounded, "bg-light-hover")}
                   iconClass={L.icon}
                   field={field}
                   metric={metric}

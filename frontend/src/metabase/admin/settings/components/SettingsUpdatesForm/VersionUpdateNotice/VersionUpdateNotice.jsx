@@ -139,7 +139,16 @@ NewVersionAvailable.propTypes = {
 
 function HostingCTA() {
   return (
-    <HostingCTARoot className="rounded bg-light mt4 text-brand py2 px1">
+    <HostingCTARoot
+      className={cx(
+        CS.rounded,
+        "bg-light",
+        CS.mt4,
+        CS.textBrand,
+        CS.py2,
+        CS.px1,
+      )}
+    >
       <HostingCTAContent>
         <HostingCTAIconContainer
           className={cx(

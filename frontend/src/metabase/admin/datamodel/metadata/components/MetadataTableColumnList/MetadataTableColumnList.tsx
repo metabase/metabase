@@ -97,7 +97,7 @@ const MetadataTableColumnList = ({
         <div className="relative">
           <div
             style={{ minWidth: 420 }}
-            className="float-left px1"
+            className={cx(CS.floatLeft, CS.px1)}
           >{t`Column`}</div>
           <div className={CS.flex}>
             <div className={cx(CS.flexHalf, CS.pl3)}>{t`Visibility`}</div>

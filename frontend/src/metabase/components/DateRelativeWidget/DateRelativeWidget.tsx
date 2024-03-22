@@ -174,7 +174,7 @@ export class DateRelativeWidget extends Component<DateRelativeWidgetProps> {
   render() {
     const { value, setValue, onClose } = this.props;
     return (
-      <div className="px1" style={{ maxWidth: 300 }}>
+      <div className={CS.px1} style={{ maxWidth: 300 }}>
         <PredefinedRelativeDatePicker
           filter={
             DATE_MBQL_FILTER_MAPPING[value]

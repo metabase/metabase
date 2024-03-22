@@ -37,7 +37,6 @@
   padding: var(--padding-1);
 }
 
-:global(.px1),
 .px1 {
   padding-left: var(--padding-1);
   padding-right: var(--padding-1);

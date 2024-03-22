@@ -237,7 +237,15 @@ interface PolicySummaryProps {
 const PolicySummary = ({ policy }: PolicySummaryProps) => {
   return (
     <div>
-      <div className="px1 pb2 text-uppercase text-small text-grey-4">
+      <div
+        className={cx(
+          CS.px1,
+          CS.pb2,
+          CS.textUppercase,
+          "text-small",
+          "text-grey-4",
+        )}
+      >
         {t`Summary`}
       </div>
       <SummaryRow

@@ -25,8 +25,10 @@ export default class MetricItem extends Component {
             <span className="text-dark text-bold">{metric.name}</span>
           </span>
         </td>
-        <td className="px1 py1 text-wrap">{metric.definition_description}</td>
-        <td className="px1 py1 text-centered">
+        <td className={cx(CS.px1, CS.py1, "text-wrap")}>
+          {metric.definition_description}
+        </td>
+        <td className={cx(CS.px1, CS.py1, CS.textCentered)}>
           <ObjectActionSelect
             object={metric}
             objectType="metric"

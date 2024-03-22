@@ -161,7 +161,7 @@ class AutomaticDashboardAppInner extends Component {
 
           <div className={cx(CS.wrapper, "pb4")}>
             {parameters && parameters.length > 0 && (
-              <div className="px1 pt1">
+              <div className={cx(CS.px1, CS.pt1)}>
                 <FixedWidthContainer
                   data-testid="fixed-width-filters"
                   isFixedWidth={dashboard?.width === "fixed"}

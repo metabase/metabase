@@ -326,7 +326,7 @@ export function FilterPopover({
                 <>
                   <FilterPopoverSeparator data-testid="filter-popover-separator" />
                   <FilterPopoverPicker
-                    className="px1 pt1 pb1"
+                    className={cx(CS.px1, CS.pt1, CS.pb1)}
                     filter={filter}
                     onFilterChange={handleFilterChange}
                     onCommit={handleCommit}
@@ -341,7 +341,7 @@ export function FilterPopover({
             </>
           )}
           <FilterPopoverFooter
-            className="px1 pb1"
+            className={cx(CS.px1, CS.pb1)}
             filter={filter}
             onFilterChange={handleFilterChange}
             onCommit={!noCommitButton ? handleCommit : null}

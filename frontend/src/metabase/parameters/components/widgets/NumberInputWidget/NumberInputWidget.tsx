@@ -93,7 +93,7 @@ export function NumberInputWidget({
               placeholder={placeholder}
             />
             {infixText && i !== arity - 1 && (
-              <span className="px1">{infixText}</span>
+              <span className={CS.px1}>{infixText}</span>
             )}
           </div>
         ))
