@@ -432,7 +432,7 @@ const EditMap = ({
       </div>
     </div>
     <div className={cx(CS.py1, CS.flex)}>
-      <div className="ml-auto">
+      <div className={CS.mlAuto}>
         <button
           className={ButtonsS.Button}
           onClick={onCancel}

@@ -294,7 +294,7 @@ export function FilterPopover({
             data-ui-tag="add-filter"
             primaryColor={primaryColor}
             disabled={!filter.isValid()}
-            className="ml-auto"
+            className={CS.mlAuto}
             onClick={() => handleCommit()}
           >
             {isNew ? t`Add filter` : t`Update filter`}

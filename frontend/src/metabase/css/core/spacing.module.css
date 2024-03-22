@@ -9,8 +9,7 @@
   --margin-4: 2rem;
 }
 
-:global(.ml-auto),
-.ml-auto {
+.mlAuto {
   margin-left: auto;
 }
 

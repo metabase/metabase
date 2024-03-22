@@ -47,7 +47,7 @@ export default class ObjectRetireModal extends Component {
             />
           </div>
 
-          <div className="Form-actions ml-auto">
+          <div className={cx("Form-actions", CS.mlAuto)}>
             <a className={ButtonsS.Button} onClick={this.props.onClose}>
               {t`Cancel`}
             </a>

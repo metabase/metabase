@@ -155,7 +155,7 @@ class CreateAlertModalContentInner extends Component {
     return (
       <ModalContent onClose={onCancel}>
         <div
-          className="PulseEdit ml-auto mr-auto mb4"
+          className={cx(CS.mlAuto, CS.mrAuto, CS.mb4)}
           style={{ maxWidth: "550px" }}
         >
           <AlertModalTitle text={t`Let's set up your alert`} />
@@ -196,7 +196,9 @@ export class AlertEducationalScreen extends Component {
     const { onProceed } = this.props;
 
     return (
-      <div className="pt2 pb4 ml-auto mr-auto text-centered">
+      <div
+        className={cx(CS.pt2, CS.pb4, CS.mlAuto, CS.mrAuto, CS.textCentered)}
+      >
         <div className="pt4">
           <h1 className="mb1 text-dark">{t`The wide world of alerts`}</h1>
           <h3 className="mb4 text-normal text-dark">{t`There are a few different kinds of alerts you can get`}</h3>
@@ -320,7 +322,7 @@ class UpdateAlertModalContentInner extends Component {
     return (
       <ModalContent onClose={onCancel} data-testid="alert-edit">
         <div
-          className="PulseEdit ml-auto mr-auto mb4"
+          className={cx(CS.mlAuto, CS.mrAuto, CS.mb4)}
           style={{ maxWidth: "550px" }}
         >
           <AlertModalTitle text={title} />
@@ -435,9 +437,9 @@ export class DeleteAlertSection extends Component {
 }
 
 const AlertModalTitle = ({ text }) => (
-  <div className="ml-auto mr-auto my4 pb2 text-centered">
+  <div className={cx(CS.mlAuto, CS.mrAuto, CS.my4, CS.pb2, CS.textCentered)}>
     <img
-      className="mb3"
+      className={CS.mb3}
       src="app/assets/img/alerts/alert-bell-confetti-illustration.png"
       srcSet="
         app/assets/img/alerts/alert-bell-confetti-illustration.png    1x,

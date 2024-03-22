@@ -7,6 +7,7 @@ import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import DashboardPicker from "metabase/containers/DashboardPicker";
 import QuestionPicker from "metabase/containers/QuestionPicker";
+import CS from "metabase/css/core/index.css";
 import {
   ClickMappingsConnected,
   clickTargetObjectType,
@@ -79,7 +80,7 @@ function PickerControl({
         <SelectedEntityPickerIcon name={pickerIcon} />
         <SelectedEntityPickerContent>
           {renderLabel()}
-          <Icon name="chevrondown" size={12} className="ml-auto" />
+          <Icon name="chevrondown" size={12} className={CS.mlAuto} />
         </SelectedEntityPickerContent>
       </LinkTargetEntityPickerContent>
       <SidebarItem.CloseIcon onClick={onCancel} />

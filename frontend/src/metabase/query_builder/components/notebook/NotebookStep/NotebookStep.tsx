@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import ExpandingContent from "metabase/components/ExpandingContent";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { color as c } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
@@ -118,7 +119,11 @@ function NotebookStep({
           {title}
           {canRevert && (
             <IconButtonWrapper
-              className="ml-auto text-light text-medium-hover hover-child"
+              className={cx(
+                CS.mlAuto,
+                CS.textLight,
+                "text-medium-hover hover-child",
+              )}
               onClick={handleClickRevert}
             >
               <Icon

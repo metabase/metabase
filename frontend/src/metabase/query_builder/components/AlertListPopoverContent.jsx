@@ -180,7 +180,7 @@ class AlertListItemInner extends Component {
               <AlertCreatorTitle alert={alert} user={user} />
             </div>
             <div
-              className="ml-auto text-bold text-small"
+              className={cx(CS.mlAuto, CS.textBold, "text-small")}
               style={{
                 transform: `translateY(4px)`,
               }}

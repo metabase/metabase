@@ -267,7 +267,7 @@ function TargetWithSource({
           </div>
         </div>
         <div
-          className="cursor-pointer ml-auto"
+          className={cx(CS.cursorPointer, CS.mlAuto)}
           onClick={() =>
             updateSettings(dissocIn(clickBehavior, ["parameterMapping", id]))
           }
