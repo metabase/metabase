@@ -570,7 +570,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -619,7 +619,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -654,7 +654,7 @@
                                 ["2022-01-01T12:00:00+07:30" "2022-01-01T04:30:00Z"]]]
             (testing "Fields exists after sync"
               (with-upload-table!
-                [table (do (@#'upload/load-from-csv!
+                [table (do (@#'upload/create-from-csv!
                             driver/*driver*
                             (mt/id)
                             table-name
@@ -674,7 +674,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -719,7 +719,7 @@
         (is (pos? length-limit) "driver/table-name-length-limit has been set")
         (with-mysql-local-infile-on-and-off
           (with-upload-table!
-            [table (do (@#'upload/load-from-csv!
+            [table (do (@#'upload/create-from-csv!
                         driver/*driver*
                         (mt/id)
                         table-name
@@ -742,7 +742,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-upload-table!
         [table (let [table-name (mt/random-name)]
-                 (@#'upload/load-from-csv!
+                 (@#'upload/create-from-csv!
                   driver/*driver*
                   (mt/id)
                   table-name
@@ -760,7 +760,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -779,7 +779,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -802,7 +802,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -827,7 +827,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -851,7 +851,7 @@
         (with-mysql-local-infile-on-and-off
           (with-upload-table!
             [table (let [table-name (mt/random-name)]
-                     (@#'upload/load-from-csv!
+                     (@#'upload/create-from-csv!
                       driver/*driver*
                       (mt/id)
                       table-name
@@ -870,7 +870,7 @@
         (with-mysql-local-infile-on-and-off
           (with-upload-table!
             [table (let [table-name (mt/random-name)]
-                     (@#'upload/load-from-csv!
+                     (@#'upload/create-from-csv!
                       driver/*driver*
                       (mt/id)
                       table-name
@@ -889,7 +889,7 @@
         (with-mysql-local-infile-on-and-off
           (with-upload-table!
             [table (let [table-name (mt/random-name)]
-                     (@#'upload/load-from-csv!
+                     (@#'upload/create-from-csv!
                       driver/*driver*
                       (mt/id)
                       table-name
@@ -910,7 +910,7 @@
       (testing "Can upload a CSV with missing values"
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -931,7 +931,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -952,7 +952,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -973,7 +973,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -993,7 +993,7 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (let [table-name (mt/random-name)]
-                   (@#'upload/load-from-csv!
+                   (@#'upload/create-from-csv!
                     driver/*driver*
                     (mt/id)
                     table-name
@@ -1014,7 +1014,7 @@
     (mt/test-drivers [:postgres]
       (with-upload-table!
         [table (let [table-name (mt/random-name)]
-                 (@#'upload/load-from-csv!
+                 (@#'upload/create-from-csv!
                   driver/*driver*
                   (mt/id)
                   table-name
@@ -1158,7 +1158,7 @@
                   (last (snowplow-test/pop-event-data-and-user-id!)))))
 
         (testing "Failures when creating a CSV Upload will publish statistics to Snowplow"
-          (mt/with-dynamic-redefs [upload/load-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+          (mt/with-dynamic-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
             (try (upload-example-csv!)
                  (catch Throwable _
                    nil))
@@ -1589,7 +1589,7 @@
            (io/delete-file file)))
 
        (testing "Failures when appending to CSV Uploads will publish statistics to Snowplow"
-         (mt/with-dynamic-redefs [upload/load-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+         (mt/with-dynamic-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
            (let [csv-rows ["mispelled_name, unexpected_column" "Duke Cakewalker, r2dj"]
                  file     (csv-file-with csv-rows (mt/random-name))]
              (try
@@ -1901,7 +1901,7 @@
       (with-mysql-local-infile-on-and-off
        (with-upload-table!
          [table (let [table-name (mt/random-name)]
-                  (@#'upload/load-from-csv!
+                  (@#'upload/create-from-csv!
                    driver/*driver*
                    (mt/id)
                    table-name
@@ -1952,7 +1952,7 @@
               file     (csv-file-with csv-rows (mt/random-name))]
           (is (some? (replace-csv! {:file file, :table-id (:id table)})))
           (let [table-rows (rows-for-table table)
-                ;; For MySQL the primary key incrementer will be reset, but for Postgres and H2 it will not.
+                ;; Some drivers may reset the primary key on truncate, so we only test that they are ascending
                 first-pk   (ffirst table-rows)]
             (is (= [[first-pk 1 1]
                     [(inc first-pk) 1 1]]

@@ -718,11 +718,11 @@
                                   action
                                   :table-id (:id table-a)
                                   :user-id (mt/user->id :rasta))]
-                (doseq [[schema-perms can-append? test-string]
-                        [[:all true "Data permissions on schema should succeed"]
-                         [:none false "No permissions on schema should fail"]
-                         [{(:id table-a) :all} true "Data permissions on table should succeed"]
-                         [{(:id table-b) :all} false "Data permissions only on another table in the same schema should fail"]]]
+                (doseq [[schema-perms          can-append? test-string]
+                        [[:all                 true        "Data permissions on schema should succeed"]
+                         [:none                false       "No permissions on schema should fail"]
+                         [{(:id table-a) :all} true        "Data permissions on table should succeed"]
+                         [{(:id table-b) :all} false       "Data permissions only on another table in the same schema should fail"]]]
                   (testing test-string
                     (mt/with-all-users-data-perms-graph! {db-id {:data {:native :none, :schemas {(or schema-name "") schema-perms}}}}
                       (if can-append?
