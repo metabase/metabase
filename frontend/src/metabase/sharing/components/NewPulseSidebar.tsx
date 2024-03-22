@@ -40,7 +40,7 @@ export function NewPulseSidebar({
           isConfigured={emailConfigured}
           onClick={onNewEmailPulse}
         >
-          <div className="px3 pt3 pb2">
+          <div className={cx(CS.px3, CS.pt3, CS.pb2)}>
             <div className={cx(CS.flex, CS.alignCenter)}>
               <Icon
                 name="mail"
@@ -80,7 +80,7 @@ export function NewPulseSidebar({
           isConfigured={slackConfigured}
           onClick={onNewSlackPulse}
         >
-          <div className="px3 pt3 pb2">
+          <div className={cx(CS.px3, CS.pt3, CS.pb2)}>
             <div className={cx(CS.flex, CS.alignCenter, CS.mb1)}>
               <Icon
                 name={slackConfigured ? "slack_colorized" : "slack"}

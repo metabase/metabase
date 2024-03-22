@@ -82,8 +82,10 @@ export const ParameterOptionsSection = ({ section, onClick }) => (
 );
 
 export const ParameterOptionsSectionsPane = ({ sections, onSelectSection }) => (
-  <PopoverBody className="pb2">
-    <h3 className="pb2 pt3 px3">{t`What do you want to filter?`}</h3>
+  <PopoverBody className={CS.pb2}>
+    <h3
+      className={cx(CS.pb2, CS.pt3, CS.px3)}
+    >{t`What do you want to filter?`}</h3>
     <ul>
       {sections.map(section => (
         <ParameterOptionsSection
@@ -106,8 +108,8 @@ export const ParameterOptionItem = ({ option, onClick }) => (
 );
 
 export const ParameterOptionsPane = ({ options, onSelectOption }) => (
-  <PopoverBody className="pb2">
-    <h3 className="pb2 pt3 px3">{t`What kind of filter?`}</h3>
+  <PopoverBody className={CS.pb2}>
+    <h3 className={cx(CS.pb2, CS.pt3, CS.px3)}>{t`What kind of filter?`}</h3>
     <ul>
       {options &&
         options.map(option => (

@@ -165,7 +165,9 @@ export default class PulseEditChannels extends Component {
     return (
       <li key={index} className={CS.py2}>
         {channelSpec.error && (
-          <div className="pb2 text-bold text-error">{channelSpec.error}</div>
+          <div className={cx(CS.pb2, CS.textBold, CS.textError)}>
+            {channelSpec.error}
+          </div>
         )}
         {channelSpec.recipients && (
           <div>

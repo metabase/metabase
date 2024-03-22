@@ -107,8 +107,10 @@ function ProfileLink({ adminItems, onLogout }) {
       />
       {modalOpen === "about" ? (
         <Modal small onClose={closeModal}>
-          <div className="px4 pt4 pb2 text-centered relative">
-            <div className="text-brand pb2">
+          <div
+            className={cx(CS.px4, CS.pt4, CS.pb2, CS.textCentered, CS.relative)}
+          >
+            <div className={cx(CS.textBrand, CS.pb2)}>
               <LogoIcon height={48} />
             </div>
             <h2

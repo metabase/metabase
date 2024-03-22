@@ -83,7 +83,6 @@
   padding-top: var(--padding-2);
 }
 
-:global(.pb2),
 .pb2 {
   padding-bottom: var(--padding-2);
 }

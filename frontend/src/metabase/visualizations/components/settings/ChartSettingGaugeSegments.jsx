@@ -72,7 +72,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                 </td>
               </tr>
               <tr>
-                <td colSpan={3} className="pb2">
+                <td colSpan={3} className={CS.pb2}>
                   <input
                     type="text"
                     className={cx(CS.full, CS.input)}

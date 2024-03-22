@@ -142,7 +142,7 @@ const EditSandboxingModal = ({
         </div>
         {shouldUseSavedQuestion && (
           <div className="px3 pb3">
-            <div className="pb2">
+            <div className={CS.pb2}>
               {t`Pick a saved question that returns the custom view of this table that these users should see.`}
             </div>
             <QuestionPicker
@@ -156,7 +156,7 @@ const EditSandboxingModal = ({
           (hasAttributesOptions || hasValidMappings ? (
             <div className={cx(CS.p3, CS.borderTop, CS.borderBottom)}>
               {shouldUseSavedQuestion && (
-                <div className="pb2">
+                <div className={CS.pb2}>
                   {t`You can optionally add additional filters here based on user attributes. These filters will be applied on top of any filters that are already in this saved question.`}
                 </div>
               )}
