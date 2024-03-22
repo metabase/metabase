@@ -291,7 +291,7 @@ class FieldRemappingSettings extends Component {
         {hasChanged && hasFKMappingValue && <RemappingNamingTip />}
         {mappingType === MAP_OPTIONS.custom &&
           (isFieldsAccessRestricted ? (
-            <div className="pt2 text-error">
+            <div className={cx(CS.pt2, CS.textError)}>
               {t`You need unrestricted data access on this table to map custom display values.`}
             </div>
           ) : (

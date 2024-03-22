@@ -79,7 +79,6 @@
   padding-bottom: var(--padding-2);
 }
 
-:global(.pt2),
 .pt2 {
   padding-top: var(--padding-2);
 }

@@ -213,7 +213,7 @@ export default class PulseEditChannels extends Component {
           />
         )}
         {this.props.testPulse && (
-          <div className="pt2">
+          <div className={CS.pt2}>
             <ActionButton
               actionFn={this.onTestPulseChannel.bind(this, channel)}
               disabled={

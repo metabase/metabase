@@ -604,7 +604,7 @@ class AlertEditChannelsInner extends Component {
   render() {
     const { alert, user, users, formInput } = this.props;
     return (
-      <div className="mt4 pt2">
+      <div className={cx(CS.mt4, CS.pt2)}>
         <h3 className="text-dark mb3">{jt`Where do you want to send these alerts?`}</h3>
         <div className="mb2">
           <PulseEditChannels

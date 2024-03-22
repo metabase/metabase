@@ -11,6 +11,7 @@ import { settingToFormField } from "metabase/admin/settings/utils";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { FormSection } from "metabase/containers/FormikForm";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import CS from "metabase/css/core/index.css";
 import {
   Form,
   FormErrorMessage,
@@ -113,7 +114,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
               label={t`URL the IdP should redirect back to`}
             />
 
-            <h4 className="pt2">{t`SAML attributes`}</h4>
+            <h4 className={CS.pt2}>{t`SAML attributes`}</h4>
             <p className="mb3 mt1 text-medium">{t`In most IdPs, you'll need to put each of these in an input box labeled
                         "Name" in the attribute statements section.`}</p>
 

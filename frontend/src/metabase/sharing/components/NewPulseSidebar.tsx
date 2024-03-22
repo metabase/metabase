@@ -28,7 +28,7 @@ export function NewPulseSidebar({
   const applicationName = useSelector(getApplicationName);
   return (
     <Sidebar onCancel={onCancel}>
-      <div className="mt2 pt2 px4">
+      <div className={cx(CS.mt2, CS.pt2, CS.px4)}>
         <h4>{t`Create a dashboard subscription`}</h4>
       </div>
       <div className="my1 mx4">

@@ -115,7 +115,7 @@ function ProfileLink({ adminItems, onLogout }) {
               style={{ fontSize: "1.75em" }}
               className="text-dark"
             >{t`Thanks for using ${applicationName}!`}</h2>
-            <div className="pt2">
+            <div className={CS.pt2}>
               <h3 className="text-dark mb1">
                 {t`You're on version`} {tag}
               </h3>
