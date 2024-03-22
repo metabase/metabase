@@ -61,6 +61,13 @@ export function getGoalLineSeriesOption(
         type: [5, 5],
         width: 2,
       },
+      emphasis: {
+        lineStyle: {
+          color: renderingContext.getColor("text-medium"),
+          type: [5, 5],
+          width: 2,
+        },
+      },
       blur: {
         lineStyle: {
           opacity: 1,
