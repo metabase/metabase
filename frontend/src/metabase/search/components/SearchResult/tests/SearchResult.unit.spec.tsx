@@ -3,6 +3,7 @@ import { Route } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
+  setupUserRecipientsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
@@ -35,12 +36,15 @@ const TEST_RESULT_INDEXED_ENTITY = createWrappedSearchResult({
   model_index_id: 1,
 });
 
+const USER = createMockUser();
+
 const setup = ({ result }: { result: WrappedResult }) => {
   setupCollectionByIdEndpoint({
     collections: [TEST_REGULAR_COLLECTION],
   });
 
-  setupUsersEndpoints([createMockUser()]);
+  setupUsersEndpoints([USER]);
+  setupUserRecipientsEndpoint({ users: [USER] });
 
   const { history } = renderWithProviders(
     <Route path="*" component={() => <SearchResult result={result} />} />,

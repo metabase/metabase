@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { getIcon } from "__support__/ui";
@@ -67,8 +67,8 @@ describe("TabButton", () => {
 
     const newLabel = "A new label";
     const inputEl = screen.getByRole("textbox");
-    await userEvent.type(inputEl, newLabel);
-    fireEvent.keyPress(inputEl, { key: "Enter", charCode: 13 });
+    await userEvent.clear(inputEl);
+    await userEvent.type(inputEl, `${newLabel}{enter}`);
 
     expect(onRename).toHaveBeenCalledWith(newLabel);
     expect(await screen.findByDisplayValue(newLabel)).toBeInTheDocument();
@@ -81,8 +81,8 @@ describe("TabButton", () => {
 
     const newLabel = "A new label";
     const inputEl = screen.getByRole("textbox");
-    await userEvent.type(inputEl, newLabel);
-    fireEvent.keyPress(inputEl, { key: "Enter", charCode: 13 });
+    await userEvent.clear(inputEl);
+    await userEvent.type(inputEl, `${newLabel}{enter}`);
 
     expect(onRename).toHaveBeenCalledWith(newLabel);
     expect(await screen.findByDisplayValue(newLabel)).toBeInTheDocument();
@@ -98,8 +98,8 @@ describe("TabButton", () => {
     const expectedLabel = newLabel.slice(0, 75);
 
     const inputEl = screen.getByRole("textbox");
-    await userEvent.type(inputEl, newLabel);
-    await userEvent.type(inputEl, "{enter}");
+    await userEvent.clear(inputEl);
+    await userEvent.type(inputEl, `${newLabel}{enter}`);
 
     expect(onRename).toHaveBeenCalledWith(expectedLabel);
     expect(await screen.findByDisplayValue(expectedLabel)).toBeInTheDocument();

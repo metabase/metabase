@@ -100,7 +100,7 @@ export async function setup(
 
   if (activeTab && activeTab !== "Overview") {
     await userEvent.click(
-      screen.getByRole("tab", {
+      await screen.findByRole("tab", {
         name: activeTab,
       }),
     );

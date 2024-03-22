@@ -95,7 +95,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       await userEvent.click(await screen.findByText("Yes"));
 
       expect(
-        await screen.findByText("You've made changes to permissions."),
+        screen.queryByText("You've made changes to permissions."),
       ).not.toBeInTheDocument();
 
       expect(await screen.findAllByText("View")).toHaveLength(2);

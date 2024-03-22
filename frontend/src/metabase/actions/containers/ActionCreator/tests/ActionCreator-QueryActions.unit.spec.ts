@@ -56,14 +56,14 @@ describe("ActionCreator > Query Actions", () => {
 
         // put query into textbox
         const view = screen.getByTestId("mock-native-query-editor");
-        within(view).getByRole("textbox").click();
+        await userEvent.click(within(view).getByRole("textbox"));
         await userEvent.paste("select * from orders where {{paramNane}}");
 
         await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
         // form is rendered
         expect(
-          screen.getByPlaceholderText("My new fantastic action"),
+          await screen.findByPlaceholderText("My new fantastic action"),
         ).toBeInTheDocument();
         expect(screen.getByTestId("select-button-content")).toHaveTextContent(
           "Select a model",
@@ -80,7 +80,7 @@ describe("ActionCreator > Query Actions", () => {
 
         // put query into textbox
         const view = screen.getByTestId("mock-native-query-editor");
-        within(view).getByRole("textbox").click();
+        await userEvent.click(within(view).getByRole("textbox"));
         await userEvent.paste("select * from orders where {{paramNane}}");
 
         await userEvent.click(screen.getByRole("button", { name: "Save" }));

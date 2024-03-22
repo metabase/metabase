@@ -319,11 +319,10 @@ describe("NumberFilterPicker", () => {
             }),
           );
 
+          const input = screen.getByPlaceholderText("Enter a number");
           await setOperator("Greater than");
-          await userEvent.type(
-            screen.getByPlaceholderText("Enter a number"),
-            `{selectall}{backspace}${value}`,
-          );
+          await userEvent.clear(input);
+          await userEvent.type(input, `${value}`);
           await userEvent.click(screen.getByText("Update filter"));
 
           const filterParts = getNextFilterParts();
@@ -376,13 +375,12 @@ describe("NumberFilterPicker", () => {
           await setOperator("Between");
           const leftInput = screen.getByPlaceholderText("Min");
           const rightInput = screen.getByPlaceholderText("Max");
-          await userEvent.type(leftInput, `{selectall}{backspace}${leftValue}`);
+          await userEvent.clear(leftInput);
+          await userEvent.type(leftInput, `${leftValue}`);
           expect(updateButton).toBeEnabled();
 
-          await userEvent.type(
-            rightInput,
-            `{selectall}{backspace}${rightValue}`,
-          );
+          await userEvent.clear(rightInput);
+          await userEvent.type(rightInput, `${rightValue}`);
           await userEvent.click(updateButton);
 
           const filterParts = getNextFilterParts();

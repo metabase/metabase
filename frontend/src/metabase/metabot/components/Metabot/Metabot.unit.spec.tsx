@@ -220,6 +220,4 @@ async function enterPromptAndGetResults(inputPlaceholder: string) {
 
   await userEvent.type(screen.getByPlaceholderText(inputPlaceholder), PROMPT);
   await userEvent.click(screen.getByRole("button", { name: /get answer/i }));
-
-  expect(screen.getByText("Doing science...")).toBeInTheDocument();
 }

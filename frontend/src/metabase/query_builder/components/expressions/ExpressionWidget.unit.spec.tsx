@@ -139,7 +139,7 @@ describe("ExpressionWidget", () => {
       expect(onChangeExpression).toHaveBeenCalledTimes(0);
 
       // The name must not be empty
-      await userEvent.type(expressionNameInput, "");
+      await userEvent.clear(expressionNameInput);
       expect(doneButton).toBeDisabled();
 
       // The name must not consist of spaces or tabs only.

@@ -104,14 +104,10 @@ describe("TimeFilterEditor", () => {
 
       await userEvent.click(screen.getByText("before"));
       await userEvent.click(await screen.findByText("Between"));
-      await userEvent.type(
-        screen.getByPlaceholderText("Min"),
-        "{selectall}10:15",
-      );
-      await userEvent.type(
-        screen.getByPlaceholderText("Max"),
-        "{selectall}20:40",
-      );
+      await userEvent.clear(screen.getByPlaceholderText("Min"));
+      await userEvent.type(screen.getByPlaceholderText("Min"), "10:15");
+      await userEvent.clear(screen.getByPlaceholderText("Max"));
+      await userEvent.type(screen.getByPlaceholderText("Max"), "20:40");
       await userEvent.tab();
 
       expect(getNextFilterName()).toBe("Time is 10:15 AM – 8:40 PM");
