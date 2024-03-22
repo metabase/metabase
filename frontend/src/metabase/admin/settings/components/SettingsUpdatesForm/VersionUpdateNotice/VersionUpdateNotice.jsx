@@ -167,7 +167,7 @@ function HostingCTA() {
           <Text className="text-brand text-bold">{t`Migrate to Metabase Cloud.`}</Text>
         </div>
       </HostingCTAContent>
-      <div className="pr1">
+      <div className={CS.pr1}>
         <HostingInfoLink text={t`Learn more`} />
       </div>
     </HostingCTARoot>

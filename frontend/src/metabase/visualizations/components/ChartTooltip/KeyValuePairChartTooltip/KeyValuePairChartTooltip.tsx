@@ -53,7 +53,7 @@ export interface TooltipRowProps {
 const TooltipRow = ({ name, value, column, settings }: TooltipRowProps) => (
   <tr>
     {name ? (
-      <TooltipTableCell className="text-light text-right pr1">
+      <TooltipTableCell className={cx(CS.textLight, CS.textRight, CS.pr1)}>
         {name}:
       </TooltipTableCell>
     ) : (

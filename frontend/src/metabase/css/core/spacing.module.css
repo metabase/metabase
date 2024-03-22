@@ -59,7 +59,6 @@
   padding-left: var(--padding-1);
 }
 
-:global(.pr1),
 .pr1 {
   padding-right: var(--padding-1);
 }
