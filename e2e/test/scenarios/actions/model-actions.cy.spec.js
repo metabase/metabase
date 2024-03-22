@@ -239,6 +239,7 @@ describe(
       // to test database picker behavior in the action editor
       setActionsEnabledForDB(SAMPLE_DB_ID);
 
+      setTokenFeatures("all");
       cy.updatePermissionsGraph({
         [USER_GROUPS.ALL_USERS_GROUP]: {
           [WRITABLE_DB_ID]: {
@@ -814,9 +815,14 @@ describe(
         {
           [USER_GROUPS.ALL_USERS_GROUP]: {
             [WRITABLE_DB_ID]: {
-              data: { schemas: "all", native: "write" },
-              "view-data": "unrestricted",
+              "view-data": "impersonated",
               "create-queries": "query-builder-and-native",
+            },
+          },
+          // By default, all groups get `unrestricted` access that will override the impersonation.
+          [USER_GROUPS.COLLECTION_GROUP]: {
+            [WRITABLE_DB_ID]: {
+              "view-data": "blocked",
             },
           },
         },

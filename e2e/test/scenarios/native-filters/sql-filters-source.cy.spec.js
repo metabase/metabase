@@ -349,7 +349,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
 describeEE("scenarios > filters > sql filters > values source", () => {
   beforeEach(() => {
-    restore();
+    restore("default-ee");
     cy.signInAsAdmin();
     setTokenFeatures("all");
     cy.intercept("POST", "/api/dataset/parameter/values").as("parameterValues");
@@ -362,7 +362,6 @@ describeEE("scenarios > filters > sql filters > values source", () => {
     cy.updatePermissionsGraph({
       [COLLECTION_GROUP]: {
         [SAMPLE_DB_ID]: {
-          data: { schemas: "all" },
           "view-data": "unrestricted",
           "create-queries": "query-builder",
         },

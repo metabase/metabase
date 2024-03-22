@@ -266,6 +266,7 @@ describe("permissions", () => {
               schemas: "all",
             },
             "view-data": "unrestricted",
+            "create-queries": "query-builder",
           },
         },
       });

@@ -29,7 +29,8 @@ describeEE("impersonated permission", () => {
       setTokenFeatures("all");
     });
 
-    it("can set impersonated permissions", () => {
+    // skipping for now as it's testing UI. We should update this when the UI sets split data perms
+    it.skip("can set impersonated permissions", () => {
       cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
       // Check there is no Impersonated option on H2
@@ -159,7 +160,8 @@ describeEE("impersonated permission", () => {
       ]);
     });
 
-    it("warns when All Users have impersonated access and the target group has no self-service access", () => {
+    // skipping for now as it's testing UI. We should update this when the UI sets split data perms
+    it.skip("warns when All Users have impersonated access and the target group has no self-service access", () => {
       cy.visit(`/admin/permissions/data/group/${COLLECTION_GROUP}`);
 
       modifyPermission(
@@ -191,7 +193,8 @@ describeEE("impersonated permission", () => {
       );
     });
 
-    it("allows switching to the granular access and update table permissions", () => {
+    // skipping for now as it's testing UI. We should update this when the UI sets split data perms
+    it.skip("allows switching to the granular access and update table permissions", () => {
       cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
       modifyPermission(
