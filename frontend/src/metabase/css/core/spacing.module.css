@@ -306,27 +306,6 @@
 @media screen and (--breakpoint-min-sm) {
   /* padding */
 
-  /* 0 */
-  :global(.sm-p0) {
-    padding: 0;
-  }
-
-  :global(.sm-pt0) {
-    padding-top: 0;
-  }
-
-  :global(.sm-pb0) {
-    padding-bottom: 0;
-  }
-
-  :global(.sm-pl0) {
-    padding-left: 0;
-  }
-
-  :global(.sm-pr0) {
-    padding-right: 0;
-  }
-
   /* 1 */
   :global(.sm-p1) {
     padding: var(--padding-1);
