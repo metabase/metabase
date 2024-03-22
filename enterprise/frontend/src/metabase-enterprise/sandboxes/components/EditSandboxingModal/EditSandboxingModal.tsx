@@ -119,7 +119,7 @@ const EditSandboxingModal = ({
 
       <div>
         <div className={cx(CS.px3, CS.pb3)}>
-          <div className="pb3">
+          <div className={CS.pb3}>
             {t`When users in this group view this table they'll see a version of it that's filtered by their user attributes, or a custom view of it based on a saved question.`}
           </div>
           <h4 className={CS.pb1}>

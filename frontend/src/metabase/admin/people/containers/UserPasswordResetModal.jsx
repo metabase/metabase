@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
@@ -39,7 +40,9 @@ class UserPasswordResetModal extends Component {
         footer={<Button primary onClick={this.handleClose}>{t`Done`}</Button>}
         onClose={this.handleClose}
       >
-        <span className="pb3 block">{t`Here’s a temporary password they can use to log in and then change their password.`}</span>
+        <span
+          className={cx(CS.pb3, CS.block)}
+        >{t`Here’s a temporary password they can use to log in and then change their password.`}</span>
 
         <PasswordReveal password={temporaryPassword} />
       </ModalContent>

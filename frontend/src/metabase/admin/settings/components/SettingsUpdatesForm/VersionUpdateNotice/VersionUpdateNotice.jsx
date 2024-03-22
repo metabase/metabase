@@ -118,7 +118,7 @@ function NewVersionAvailable({ currentVersion }) {
         )}
         style={{ height: 330 }}
       >
-        <h3 className="pb3 text-uppercase">{t`What's Changed:`}</h3>
+        <h3 className={cx(CS.pb3, CS.textUppercase)}>{t`What's Changed:`}</h3>
 
         <Version version={versionInfo.latest} />
 
@@ -180,7 +180,7 @@ function Version({ version }) {
   }
 
   return (
-    <div className="pb3">
+    <div className={CS.pb3}>
       <h3 className="text-medium">
         {formatVersion(version.version)}{" "}
         {version.patch ? "(" + t`patch release` + ")" : null}
