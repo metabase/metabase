@@ -212,7 +212,7 @@ export default class Calendar extends Component<CalendarProps, State> {
     );
   }
 
-  renderCalender(current?: Moment, side?: "left" | "right") {
+  renderCalendar(current?: Moment, side?: "left" | "right") {
     return (
       <div
         data-testid="calendar"
@@ -233,7 +233,7 @@ export default class Calendar extends Component<CalendarProps, State> {
 
   render() {
     const { current } = this.state;
-    return this.renderCalender(current);
+    return this.renderCalendar(current);
   }
 }
 

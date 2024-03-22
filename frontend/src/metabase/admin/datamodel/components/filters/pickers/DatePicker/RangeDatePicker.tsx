@@ -106,7 +106,7 @@ export const BetweenPicker = ({
           selected={startValue && moment(startValue)}
           selectedEnd={endValue && moment(endValue)}
           onChangeDate={handleDateClick}
-          noContext={true}
+          noContext
         />
       </div>
     </div>

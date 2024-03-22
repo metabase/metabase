@@ -78,7 +78,7 @@ const MultiDatePicker = ({
         onChange={(startValue, endValue) =>
           onFilterChange([op, field, startValue, endValue])
         }
-        noContext={true}
+        noContext
       />
     </div>
   </div>
