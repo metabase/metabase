@@ -14,8 +14,8 @@
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
-   [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Database]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
@@ -429,7 +429,7 @@
   (/ (.length ^File csv-file) 1048576.0))
 
 (defn- create-from-csv!
-  "Loads a table from a CSV file. If the table already exists, it will throw an error.
+  "Creates a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
   [driver db-id table-name ^File csv-file]
   (with-open [reader (bom/bom-reader csv-file)]
@@ -536,9 +536,10 @@
   [file]
   (with-open [reader (bom/bom-reader file)]
     (let [rows (csv/read-csv reader)]
-      {:size-mb     (file-size-mb file)
-       :num-columns (count (first rows))
-       :num-rows    (count (rest rows))})))
+      {:size-mb           (file-size-mb file)
+       :num-columns       (count (first rows))
+       :num-rows          (count (rest rows))
+       :generated-columns 0})))
 
 (mu/defn create-csv-upload!
   "Main entry point for CSV uploading.
@@ -714,8 +715,7 @@
            (field->db-type driver field->new-type)
             args)))
 
-(defn- append-csv!*
-  [database table file]
+(defn- update-with-csv! [database table file & {:keys [replace-rows?]}]
   (try
     (with-open [reader (bom/bom-reader file)]
       (let [timer              (start-timer)
@@ -753,6 +753,8 @@
                                 :upload-seconds    (since-ms timer)}]
 
         (try
+          (when replace-rows?
+            (driver/truncate! driver (:id database) (table-identifier table)))
           (driver/insert-into! driver (:id database) (table-identifier table) normed-header parsed-rows)
           (catch Throwable e
             (throw (ex-info (ex-message e) {:status-code 422}))))
@@ -784,7 +786,7 @@
       (snowplow/track-event! ::snowplow/csv-append-failed api/*current-user-id* (fail-stats file))
       (throw e))))
 
-(defn- can-append-error
+(defn- can-update-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
   [db table]
   (or (can-use-uploads-error db)
@@ -797,33 +799,39 @@
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403}))))
 
-(defn- check-can-append
+(defn- check-can-update
   "Throws an error if the user cannot upload to the given database and schema."
   [db table]
-  (when-let [error (can-append-error db table)]
+  (when-let [error (can-update-error db table)]
     (throw error)))
 
 (defn can-upload-to-table?
   "Returns true if the user can upload to the given database and table, and false otherwise."
   [db table]
-  (nil? (can-append-error db table)))
+  (nil? (can-update-error db table)))
 
 ;;; +--------------------------------------------------
-;;; |  public interface for appending to uploaded table
+;;; |  public interface for updating an uploaded table
 ;;; +--------------------------------------------------
 
-(mu/defn append-csv!
-  "Main entry point for appending to uploaded tables with a CSV file.
+(def update-action-schema
+  "The :action values supported by [[update-csv!]]"
+  [:enum ::append ::replace])
+
+(mu/defn update-csv!
+  "Main entry point for updating an uploaded table with a CSV file.
   This will create an auto-incrementing primary key (auto-pk) column in the table for drivers that supported uploads
-  before auto-pk columns were introduced by metabase#36249."
-  [{:keys [^File file table-id]}
+  before auto-pk columns were introduced by metabase#36249, if it does not already exist."
+  [{:keys [^File file table-id action]}
    :- [:map
        [:table-id ms/PositiveInt]
-       [:file (ms/InstanceOfClass File)]]]
+       [:file (ms/InstanceOfClass File)]
+       [:action update-action-schema]]]
   (let [table    (api/check-404 (t2/select-one :model/Table :id table-id))
-        database (table/database table)]
-    (check-can-append database table)
-    (append-csv!* database table file)))
+        database (table/database table)
+        replace? (= ::replace action)]
+    (check-can-update database table)
+    (update-with-csv! database table file :replace-rows? replace?)))
 
 ;;; +--------------------------------
 ;;; |  hydrate based_on_upload for FE

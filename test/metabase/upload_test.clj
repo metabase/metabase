@@ -1045,11 +1045,26 @@
                           first
                           :value))))))))
 
-(defn append-csv!
-  "Wraps [[upload/append-csv!]] setting [[upload/*sync-synchronously?*]] to `true` for test purposes."
-  [& args]
+(defn- update-csv-synchronously!
+  "Wraps [[upload/upload-csv!]] setting [[upload/*sync-synchronously?*]] to `true` for test purposes."
+  [options]
   (binding [upload/*sync-synchronously?* true]
-    (apply upload/append-csv! args)))
+    (upload/update-csv! options)))
+
+(defn- update-csv!
+  "Shorthand for synchronously updating a CSV"
+  [action options]
+  (update-csv-synchronously! (assoc options :action action)))
+
+(defn- append-csv!
+  "Shorthand for synchronously appending to a CSV"
+  [options]
+  (update-csv! ::upload/append options))
+
+(defn- replace-csv!
+  "Shorthand for synchronously replacing a CSV"
+  [options]
+  (update-csv! ::upload/replace options))
 
 (deftest create-csv-upload!-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
@@ -1132,13 +1147,13 @@
     (snowplow-test/with-fake-snowplow-collector
       (with-upload-table! [_table (card->table (upload-example-csv!))]
         (testing "Successfully creating a CSV Upload publishes statistics to Snowplow"
-          (is (=? {:data    {"model_id"          pos?
+          (is (=? {:data    {"event"             "csv_upload_successful"
+                             "model_id"          pos?
                              "size_mb"           3.910064697265625E-5
                              "num_columns"       2
                              "num_rows"          2
                              "generated_columns" 1
-                             "upload_seconds"    pos?
-                             "event"             "csv_upload_successful"}
+                             "upload_seconds"    pos?}
                    :user-id (str (mt/user->id :rasta))}
                   (last (snowplow-test/pop-event-data-and-user-id!)))))
 
@@ -1147,10 +1162,11 @@
             (try (upload-example-csv!)
                  (catch Throwable _
                    nil))
-            (is (= {:data    {"size_mb"     3.910064697265625E-5
-                              "num_columns" 2
-                              "num_rows"    2
-                              "event"       "csv_upload_failed"}
+            (is (= {:data    {"event"             "csv_upload_failed"
+                              "size_mb"           3.910064697265625E-5
+                              "num_columns"       2
+                              "num_rows"          2
+                              "generated_columns" 0}
                     :user-id (str (mt/user->id :rasta))}
                    (last (snowplow-test/pop-event-data-and-user-id!))))))))))
 
@@ -1272,9 +1288,9 @@
      (~macro-fn ~@body)
      ~@body))
 
-(defn append-csv-with-defaults!
+(defn update-csv-with-defaults!
   "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden."
-  [& {:keys [uploads-enabled user-id file table-id is-upload]
+  [action & {:keys [uploads-enabled user-id file table-id is-upload]
       :or {uploads-enabled true
            user-id         (mt/user->id :crowberto)
            file            (csv-file-with
@@ -1290,14 +1306,18 @@
                           (create-upload-table!))
               table-id (or table-id (:id new-table))]
           (t2/update! :model/Table table-id {:is_upload is-upload})
-          (try (append-csv! {:table-id table-id
-                             :file     file})
+          (try (update-csv! action {:table-id table-id, :file file})
                (finally
                  ;; Drop the table in the testdb if a new one was created.
                  (when new-table
                    (driver/drop-table! driver/*driver*
                                        (mt/id)
                                        (#'upload/table-identifier new-table))))))))))
+
+(defn append-csv-with-defaults!
+  "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden."
+  [& {:as options}]
+  (update-csv-with-defaults! ::upload/append options))
 
 (defn catch-ex-info* [f]
   (try
@@ -1557,12 +1577,12 @@
                file     (csv-file-with csv-rows (mt/random-name))]
            (append-csv! {:file file, :table-id (:id table)})
 
-           (is (=? {:data    {"size_mb"           1.811981201171875E-5
+           (is (=? {:data    {"event"             "csv_append_successful"
+                              "size_mb"           1.811981201171875E-5
                               "num_columns"       1
                               "num_rows"          1
                               "generated_columns" 0
-                              "upload_seconds"    pos?
-                              "event"             "csv_append_successful"}
+                              "upload_seconds"    pos?}
                     :user-id (str (mt/user->id :crowberto))}
                    (last (snowplow-test/pop-event-data-and-user-id!))))
 
@@ -1578,10 +1598,11 @@
                (finally
                  (io/delete-file file))))
 
-           (is (= {:data    {"size_mb"     5.245208740234375E-5
-                             "num_columns" 2
-                             "num_rows"    1
-                             "event"       "csv_append_failed"}
+           (is (= {:data    {"event"             "csv_append_failed"
+                             "size_mb"           5.245208740234375E-5
+                             "num_columns"       2
+                             "num_rows"          1
+                             "generated_columns" 0}
                    :user-id (str (mt/user->id :crowberto))}
                   (last (snowplow-test/pop-event-data-and-user-id!))))))))))
 
@@ -1912,6 +1933,30 @@
                   [2 1 1]
                   [3 1 1]]
                  (rows-for-table table)))
+
+          (io/delete-file file))))))
+
+(deftest replace-from-csv-int-and-float-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "Append should handle a mix of int and float-or-int values being appended to an int column"
+      (with-upload-table! [table (create-upload-table!
+                                  :col->upload-type (ordered-map/ordered-map
+                                                     :_mb_row_id ::upload/auto-incrementing-int-pk
+                                                     :number_1 ::upload/int
+                                                     :number_2 ::upload/int)
+                                  :rows [[1, 1]])]
+
+        (let [csv-rows ["number-1, number-2"
+                        "1.0, 1"
+                        "1  , 1.0"]
+              file     (csv-file-with csv-rows (mt/random-name))]
+          (is (some? (replace-csv! {:file file, :table-id (:id table)})))
+          (let [table-rows (rows-for-table table)
+                ;; Some drivers may reset the primary key on truncate, so we only test that they are ascending
+                first-pk   (ffirst table-rows)]
+            (is (= [[first-pk 1 1]
+                    [(inc first-pk) 1 1]]
+                   table-rows)))
 
           (io/delete-file file))))))
 

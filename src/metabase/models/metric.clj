@@ -6,6 +6,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -13,7 +14,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
@@ -99,7 +100,7 @@
                              :metadata/metric
                              (map #(lib.metadata.jvm/instance->metadata % :metadata/metric)
                                   metrics)))
-        segment-ids       (into #{} (mbql.u/match (map :definition metrics)
+        segment-ids       (into #{} (lib.util.match/match (map :definition metrics)
                                       [:segment (id :guard integer?) & _]
                                       id))
         segments          (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/segment segment-ids)

@@ -1,9 +1,10 @@
 (ns metabase.query-processor.middleware.desugar
   (:require
    [medley.core :as m]
-   [metabase.mbql.predicates :as mbql.preds]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.predicates :as mbql.preds]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli :as mu]))
 
 (mu/defn desugar :- mbql.s/Query
@@ -12,7 +13,7 @@
   drivers need to support. Clauses replaced by this middleware are marked `^:sugar` in the MBQL schema."
   [query]
   (m/update-existing query :query (fn [query]
-                                    (mbql.u/replace query
+                                    (lib.util.match/replace query
                                       (filter-clause :guard mbql.preds/Filter?)
                                       (mbql.u/desugar-filter-clause filter-clause)
 

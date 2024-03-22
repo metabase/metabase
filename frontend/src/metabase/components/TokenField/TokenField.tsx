@@ -599,7 +599,11 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
                 }}
                 onMouseDown={e => e.preventDefault()}
               >
-                <Icon name="close" className="flex align-center" size={12} />
+                <Icon
+                  name="close"
+                  className={cx(CS.flex, CS.alignCenter)}
+                  size={12}
+                />
               </TokenFieldAddon>
             )}
           </TokenFieldItem>
@@ -629,7 +633,13 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     const optionsList =
       filteredOptions.length === 0 ? null : (
         <ul
-          className={cx(optionsClassName, "overflow-auto pl1 my1 scroll-hide")}
+          className={cx(
+            optionsClassName,
+            CS.overflowAuto,
+            CS.pl1,
+            CS.my1,
+            "scroll-hide",
+          )}
           style={{ maxHeight: 300, ...optionsStyle }}
           onMouseEnter={() => this.setState({ listIsHovered: true })}
           onMouseLeave={() => this.setState({ listIsHovered: false })}

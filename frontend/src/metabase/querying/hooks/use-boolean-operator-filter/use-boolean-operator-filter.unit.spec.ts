@@ -17,13 +17,13 @@ import { useBooleanOperatorFilter } from "./use-boolean-operator-filter";
 interface CreateFilterCase {
   operator: Lib.BooleanFilterOperatorName;
   values: boolean[];
-  displayName: string;
+  expectedDisplayName: string;
 }
 
 interface UpdateFilterCase {
   expression: Lib.ExpressionClause;
   operator: Lib.BooleanFilterOperatorName;
-  displayName: string;
+  expectedDisplayName: string;
 }
 
 interface ValidateFilterCase {
@@ -66,26 +66,26 @@ describe("useBooleanOptionFilter", () => {
     {
       operator: "=",
       values: [true],
-      displayName: "Is trial is true",
+      expectedDisplayName: "Is trial is true",
     },
     {
       operator: "=",
       values: [false],
-      displayName: "Is trial is false",
+      expectedDisplayName: "Is trial is false",
     },
     {
       operator: "is-null",
       values: [],
-      displayName: "Is trial is empty",
+      expectedDisplayName: "Is trial is empty",
     },
     {
       operator: "not-null",
       values: [],
-      displayName: "Is trial is not empty",
+      expectedDisplayName: "Is trial is not empty",
     },
   ])(
     'should allow to create a filter for "$operator" operator',
-    ({ operator: newOperator, values: newValues, displayName }) => {
+    ({ operator: newOperator, values: newValues, expectedDisplayName }) => {
       const { result } = renderHook(() =>
         useBooleanOperatorFilter({
           query: defaultQuery,
@@ -105,7 +105,7 @@ describe("useBooleanOptionFilter", () => {
       expect(
         Lib.displayInfo(defaultQuery, stageIndex, newFilter),
       ).toMatchObject({
-        displayName,
+        displayName: expectedDisplayName,
       });
     },
   );
@@ -118,11 +118,11 @@ describe("useBooleanOptionFilter", () => {
         values: [true],
       }),
       operator: "is-null",
-      displayName: "Is trial is empty",
+      expectedDisplayName: "Is trial is empty",
     },
   ])(
     'should allow to update a filter for "$operator" operator',
-    ({ expression, operator: newOperator, displayName }) => {
+    ({ expression, operator: newOperator, expectedDisplayName }) => {
       const query = Lib.filter(defaultQuery, stageIndex, expression);
       const [filter] = Lib.filters(query, stageIndex);
 
@@ -144,7 +144,7 @@ describe("useBooleanOptionFilter", () => {
       const { operator, values, getFilterClause } = result.current;
       const newFilter = checkNotNull(getFilterClause(operator, values));
       expect(Lib.displayInfo(query, stageIndex, newFilter)).toMatchObject({
-        displayName,
+        displayName: expectedDisplayName,
       });
     },
   );
