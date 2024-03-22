@@ -21,10 +21,6 @@
   margin-top: auto;
 }
 
-:global(.mb-auto) {
-  margin-bottom: auto;
-}
-
 /* padding */
 
 /* 0 */
