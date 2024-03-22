@@ -40,6 +40,7 @@ export type DatabaseFeature =
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
+  description: string;
   is_saved_questions: boolean;
   features: DatabaseFeature[];
   creator_id?: number;
@@ -60,7 +61,6 @@ export interface Database extends DatabaseData {
 export interface DatabaseData {
   id?: DatabaseId;
   name: string;
-  description: string;
   engine: string | undefined;
   details: Record<string, unknown>;
   schedules: DatabaseSchedules;

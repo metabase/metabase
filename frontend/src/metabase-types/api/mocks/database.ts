@@ -27,6 +27,7 @@ export const COMMON_DATABASE_FEATURES: DatabaseFeature[] = [
 export const createMockDatabase = (opts?: Partial<Database>): Database => ({
   ...createMockDatabaseData(opts),
   id: 1,
+  description: "Some example data for you to play around with.",
   engine: "H2",
   can_upload: false,
   is_sample: false,
@@ -44,7 +45,6 @@ export const createMockDatabaseData = (
   opts?: Partial<DatabaseData>,
 ): DatabaseData => ({
   name: "Database",
-  description: "Some example data for you to play around with.",
   engine: "H2",
   details: {},
   schedules: {},
