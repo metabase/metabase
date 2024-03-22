@@ -91,7 +91,6 @@
   padding-left: var(--padding-2);
 }
 
-:global(.pr2),
 .pr2 {
   padding-right: var(--padding-2);
 }
