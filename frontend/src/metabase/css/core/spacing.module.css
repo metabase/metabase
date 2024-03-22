@@ -174,11 +174,6 @@
   margin-bottom: 0;
 }
 
-:global(.ml0),
-.ml0 {
-  margin-left: 0;
-}
-
 :global(.mr0),
 .mr0 {
   margin-right: 0;
