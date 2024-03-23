@@ -444,9 +444,11 @@
                         ;; Create a separate reader per separator, as the line-breaking behaviour depends on the parser.
                         (with-open [reader (bom/bom-reader file)]
                           (->> (csv/read-csv reader :separator s)
-                               (map count)
+                               ;; we only consider the header row and the first data row
                                (take 2)
-                               vec)))]
+                               (map count)
+                               ;; realise the list before the reader closes
+                               doall)))]
     (->> (map (juxt identity count-columns) separators)
          ;; We cannot have more data columns than header columns
          ;; We currently support files without any data rows, and these get a free pass.
