@@ -4,7 +4,6 @@
    [clj-bom.core :as bom]
    [clojure.data :as data]
    [clojure.data.csv :as csv]
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
@@ -37,7 +36,7 @@
    [metabase.util.ordered-hierarchy :as ordered-hierarchy :refer [make-hierarchy]]
    [toucan2.core :as t2])
   (:import
-   (java.io BufferedReader File)))
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 
@@ -441,24 +440,27 @@
   Our heuristic is to use the separator that gives us the most number of columns.
   Exclude separators which give incompatible column counts between the header and the first row."
   [^File file]
-  (let [[header row] (with-open [rdr (io/reader file)]
-                       [(.readLine ^BufferedReader rdr)
-                        (.readLine ^BufferedReader rdr)])
-        count-columns (fn [line s]
-                        (when line
-                          (-> line (csv/read-csv :separator s) first count)))
-        header-columns (partial count-columns header)
-        data-columns (partial count-columns row)]
-    (->> separators
+  (let [count-columns (fn [s]
+                        ;; Create a separate reader per separator, as the line-breaking behaviour depends on the parser.
+                        (with-open [reader (bom/bom-reader file)]
+                          (->> (csv/read-csv reader :separator s)
+                               (map count)
+                               (take 2)
+                               vec)))]
+    (->> (map (juxt identity count-columns) separators)
          ;; We cannot have more data columns than header columns
          ;; We currently support files without any data rows, and these get a free pass.
-         (remove (fn [s] (when row
-                           (> (data-columns s)
-                              (header-columns s)))))
-         ;; Prefer the separator which creates the most columns.
-         ;; Break ties according to the order we defined them.
-         (sort-by header-columns u/reverse-compare)
-         first
+         (remove (fn [[_s [header-columns data-columns]]]
+                   (when data-columns
+                     (> data-columns header-columns))))
+         ;; Prefer separators which create a consistent number of columns, as we will fail on a mismatch.
+         ;; Given consistency, prefer the separator which creates the most header columns.
+         ;; Break ties according to the order we defined the separators.
+         (sort-by (fn [[_ [header-columns data-columns]]]
+                    [(= header-columns data-columns)
+                     header-columns])
+                  u/reverse-compare)
+         ffirst
          assert-inferred-separator)))
 
 (defn- infer-parser
