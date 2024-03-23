@@ -151,7 +151,7 @@
                (sandboxes/add-sandboxes-to-permissions-graph
                 {(u/the-id (perms-group/all-users))
                  {(mt/id)
-                  {:data {:schemas :all}}}})))))
+                  {:view-data :unrestricted}}})))))
 
       (testing "When perms are set at the schema level, incorporating a sandbox breaks them out to table-level"
         (mt/with-temp [GroupTableAccessPolicy _gtap {:table_id (mt/id :venues)
@@ -165,4 +165,4 @@
                (sandboxes/add-sandboxes-to-permissions-graph
                 {(u/the-id (perms-group/all-users))
                  {(mt/id)
-                  {:view-data {"PUBLIC" :all}}}}))))))))
+                  {:view-data :unrestricted}}}))))))))
