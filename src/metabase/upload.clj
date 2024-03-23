@@ -455,11 +455,15 @@
          (remove (fn [[_s [header-column-count data-column-count]]]
                    (when data-column-count
                      (> data-column-count header-column-count))))
-         ;; Prefer separators which create a consistent number of columns, as we will fail on a mismatch.
-         ;; Given consistency, prefer the separator which creates the most header columns.
-         ;; Break ties according to the order we defined the separators.
+         ;; Prefer separators according to the follow criteria, in order:
+         ;; - Splitting the header at least once
+         ;; - Giving a consistent column split for the first two lines of the file
+         ;; - The number of fields in the header
+         ;; - The precedence order in how we define them, e.g.. bia towards comma
          (sort-by (fn [[_ [header-column-count data-column-count]]]
-                    [(= header-column-count data-column-count)
+                    [(when header-column-count
+                       (> header-column-count 1))
+                     (= header-column-count data-column-count)
                      header-column-count])
                   u/reverse-compare)
          ffirst
