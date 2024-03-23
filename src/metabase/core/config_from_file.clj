@@ -3,6 +3,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util.log :as log]))
 
+;; Dummy comment to trigger CI
 (defn init-from-file-if-code-available!
   "Shim for running the config-from-file code, used by [[metabase.core]]. The config-from-file code only ships in the
   Enterprise Edition™ JAR, so this checks whether the namespace exists, and if it does,
