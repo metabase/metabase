@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [malli.error :as me]
-   [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.dispatch :as lib.dispatch]

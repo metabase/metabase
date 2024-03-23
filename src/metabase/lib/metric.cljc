@@ -22,13 +22,11 @@
 (mu/defn ^:private metric-definition :- [:maybe ::lib.schema/stage.mbql]
   [{:keys [definition], :as _metric-metadata} :- lib.metadata/LegacyMetricMetadata]
   (when definition
-    (if (:mbql/type definition)
-      definition
-      ;; legacy; needs conversion
-      (-> definition
-          mbql.normalize/normalize
-          lib.convert/->pMBQL
-          (lib.util/query-stage -1)))))
+    (let [normalized-definition (cond-> definition
+                                  (not (contains? definition :lib/type))
+                                  ;; legacy; needs conversion
+                                  (-> mbql.normalize/normalize lib.convert/->pMBQL))]
+      (lib.util/query-stage normalized-definition -1))))
 
 (defmethod lib.ref/ref-method :metadata/metric
   [{:keys [id], :as metric-metadata}]

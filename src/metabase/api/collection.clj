@@ -17,7 +17,6 @@
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.core :as lib]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection.graph :as graph]
@@ -467,8 +466,8 @@
 
 (defn- fully-parameterized-query? [row]
   (let [parsed-query (-> row :dataset_query json/parse-string)
-        ;; TODO BT: handle pMBQL native queries
-        native-query (when (= (lib/normalized-query-type parsed-query) :native)
+        ;; TODO TB handle pMBQL native queries
+        native-query (when (contains? parsed-query "native")
                        (-> parsed-query mbql.normalize/normalize :native))]
     (if-let [template-tags (:template-tags native-query)]
       (fully-parameterized-text? (:query native-query) template-tags)

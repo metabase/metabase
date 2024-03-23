@@ -461,9 +461,10 @@
                              {:metrics  [{:id          100
                                           :name        "Sum of Cans"
                                           :table-id    (meta/id :venues)
-                                          :definition  {:source-table (meta/id :venues)
-                                                        :aggregation  [[:sum [:field (meta/id :venues :price) nil]]]
-                                                        :filter       [:= [:field (meta/id :venues :price) nil] 4]}
+                                          :definition  (-> lib.tu/venues-query
+                                                           (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
+                                                           (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
+                                                           (dissoc :lib/metadata))
                                           :description "Number of toucans plus number of pelicans"}]})
           query (-> (lib/query metadata-provider (meta/table-metadata :venues))
                     (lib/aggregate (lib/count)))]

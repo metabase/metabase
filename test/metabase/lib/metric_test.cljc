@@ -12,9 +12,9 @@
 (def ^:private metric-id 100)
 
 (def ^:private metric-definition
-  {:source-table (meta/id :venues)
-   :aggregation  [[:sum [:field (meta/id :venues :price) nil]]]
-   :filter       [:= [:field (meta/id :venues :price) nil] 4]})
+  (-> lib.tu/venues-query
+      (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
+      (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))))
 
 (def ^:private metrics-db
   {:metrics [{:id          metric-id
