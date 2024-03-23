@@ -452,15 +452,15 @@
     (->> (map (juxt identity count-columns) separators)
          ;; We cannot have more data columns than header columns
          ;; We currently support files without any data rows, and these get a free pass.
-         (remove (fn [[_s [header-columns data-columns]]]
-                   (when data-columns
-                     (> data-columns header-columns))))
+         (remove (fn [[_s [header-column-count data-column-count]]]
+                   (when data-column-count
+                     (> data-column-count header-column-count))))
          ;; Prefer separators which create a consistent number of columns, as we will fail on a mismatch.
          ;; Given consistency, prefer the separator which creates the most header columns.
          ;; Break ties according to the order we defined the separators.
-         (sort-by (fn [[_ [header-columns data-columns]]]
-                    [(= header-columns data-columns)
-                     header-columns])
+         (sort-by (fn [[_ [header-column-count data-column-count]]]
+                    [(= header-column-count data-column-count)
+                     header-column-count])
                   u/reverse-compare)
          ffirst
          assert-inferred-separator)))
