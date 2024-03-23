@@ -17,98 +17,107 @@ import {
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describe("scenarios > question > notebook > native query preview sidebar", () => {
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
-  });
-
-  it("smoke test: should show the preview sidebar, update it, persist it and close it", () => {
-    const defaultRowLimit = 1048575;
-    const queryLimit = 2;
-
-    cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
-
-    openReviewsTable({ mode: "notebook", limit: queryLimit });
-    cy.findByLabelText("View the SQL").click();
-    cy.wait("@nativeDataset");
-    cy.findByTestId("native-query-preview-sidebar").within(() => {
-      cy.findByText("SQL for this question").should("exist");
-      cy.get(".ace_content")
-        .should("contain", "SELECT")
-        .and("contain", queryLimit);
-      cy.button("Convert this question to SQL").should("exist");
+describe(
+  "scenarios > question > notebook > native query preview sidebar",
+  // CI somehow doesn't respect the default width of 1280px set in the config.
+  // It narrows it down so much that it triggeres small screen behavior (< 960px).
+  // We need to explicitly increase the viewport width to avoid this.
+  { viewportWidth: 1600 },
+  () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
     });
 
-    cy.log(
-      "Sidebar state should be persisted when navigating away from the notebook",
-    );
-    visualize();
-    cy.findAllByTestId("header-cell").should("contain", "Rating");
-    cy.findByTestId("native-query-preview-sidebar")
-      .should("exist")
-      .and("not.be.visible");
+    it("smoke test: should show the preview sidebar, update it, persist it and close it", () => {
+      const defaultRowLimit = 1048575;
+      const queryLimit = 2;
 
-    openNotebook();
-    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
+      cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
 
-    cy.log("Modifying GUI query should update the SQL preview");
-    cy.findByTestId("step-limit-0-0").icon("close").click({ force: true });
-    cy.wait("@nativeDataset");
-    cy.findByTestId("native-query-preview-sidebar")
-      .get(".ace_content")
-      .should("contain", "SELECT")
-      .and("contain", defaultRowLimit)
-      .and("not.contain", queryLimit);
-
-    cy.log("It should be possible to close the sidebar");
-    cy.findByLabelText("Hide the SQL").click();
-    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
-  });
-
-  it("should not offer the sidebar preview for a user without native permissions", () => {
-    cy.signIn("nosql");
-    openReviewsTable({ mode: "notebook" });
-    cy.findByTestId("qb-header-action-panel")
-      .find(".Icon")
-      .should("have.length", 1);
-    cy.findByLabelText("View the SQL").should("not.exist");
-    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
-    cy.get("code").should("not.exist");
-  });
-
-  it(
-    "should work on small screens",
-    { viewportWidth: 480, viewportHeight: 800 },
-    () => {
-      openReviewsTable({ mode: "notebook", limit: 1 });
-      cy.location("pathname").should("eq", "/question/notebook");
-
-      cy.log("Opening a preview sidebar should completely cover the notebook");
+      openReviewsTable({ mode: "notebook", limit: queryLimit });
       cy.findByLabelText("View the SQL").click();
-      cy.location("pathname").should("eq", "/question/notebook");
-      cy.log(
-        "It shouldn't be possible to click on any of the notebook elements",
-      );
-      cy.button("Visualize").click({ timeout: 500 }); // no need to wait four seconds
-
-      /**
-       * The only reliable way to test that the button is not clickable because it is covered by another element.
-       * Sources:
-       *  - https://stackoverflow.com/a/52142935/8815185
-       *  - https://github.com/cypress-io/cypress/discussions/21150#discussioncomment-2620947
-       */
-      cy.once("fail", err => {
-        expect(err.message).to.include(
-          "`cy.click()` failed because this element",
-        );
-        expect(err.message).to.include("is being covered by another element");
-        // returning false here prevents Cypress from failing the test
-        return false;
+      cy.wait("@nativeDataset");
+      cy.findByTestId("native-query-preview-sidebar").within(() => {
+        cy.findByText("SQL for this question").should("exist");
+        cy.get(".ace_content")
+          .should("contain", "SELECT")
+          .and("contain", queryLimit);
+        cy.button("Convert this question to SQL").should("exist");
       });
-    },
-  );
-});
+
+      cy.log(
+        "Sidebar state should be persisted when navigating away from the notebook",
+      );
+      visualize();
+      cy.findAllByTestId("header-cell").should("contain", "Rating");
+      cy.findByTestId("native-query-preview-sidebar")
+        .should("exist")
+        .and("not.be.visible");
+
+      openNotebook();
+      cy.findByTestId("native-query-preview-sidebar").should("be.visible");
+
+      cy.log("Modifying GUI query should update the SQL preview");
+      cy.findByTestId("step-limit-0-0").icon("close").click({ force: true });
+      cy.wait("@nativeDataset");
+      cy.findByTestId("native-query-preview-sidebar")
+        .get(".ace_content")
+        .should("contain", "SELECT")
+        .and("contain", defaultRowLimit)
+        .and("not.contain", queryLimit);
+
+      cy.log("It should be possible to close the sidebar");
+      cy.findByLabelText("Hide the SQL").click();
+      cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+    });
+
+    it("should not offer the sidebar preview for a user without native permissions", () => {
+      cy.signIn("nosql");
+      openReviewsTable({ mode: "notebook" });
+      cy.findByTestId("qb-header-action-panel")
+        .find(".Icon")
+        .should("have.length", 1);
+      cy.findByLabelText("View the SQL").should("not.exist");
+      cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+      cy.get("code").should("not.exist");
+    });
+
+    it(
+      "should work on small screens",
+      { viewportWidth: 480, viewportHeight: 800 },
+      () => {
+        openReviewsTable({ mode: "notebook", limit: 1 });
+        cy.location("pathname").should("eq", "/question/notebook");
+
+        cy.log(
+          "Opening a preview sidebar should completely cover the notebook",
+        );
+        cy.findByLabelText("View the SQL").click();
+        cy.location("pathname").should("eq", "/question/notebook");
+        cy.log(
+          "It shouldn't be possible to click on any of the notebook elements",
+        );
+        cy.button("Visualize").click({ timeout: 500 }); // no need to wait four seconds
+
+        /**
+         * The only reliable way to test that the button is not clickable because it is covered by another element.
+         * Sources:
+         *  - https://stackoverflow.com/a/52142935/8815185
+         *  - https://github.com/cypress-io/cypress/discussions/21150#discussioncomment-2620947
+         */
+        cy.once("fail", err => {
+          expect(err.message).to.include(
+            "`cy.click()` failed because this element",
+          );
+          expect(err.message).to.include("is being covered by another element");
+          // returning false here prevents Cypress from failing the test
+          return false;
+        });
+      },
+    );
+  },
+);
 
 describe("converting question to SQL (metabase#12651, metabase#21615, metabase#32121, metabase#40422)", () => {
   beforeEach(() => {
