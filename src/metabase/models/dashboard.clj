@@ -38,7 +38,7 @@
    [toucan2.realize :as t2.realize]))
 
 (def Dashboard
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
    We'll keep this till we replace all the Dashboard symbol in our codebase."
   :model/Dashboard)
 
