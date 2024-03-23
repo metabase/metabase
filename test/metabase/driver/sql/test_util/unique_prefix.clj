@@ -41,7 +41,7 @@
   ([local-date]
    {:pre [(instance? java.time.LocalDate local-date)]}
    (-> (format "%s_%s_" local-date (public-settings/site-uuid))
-       (str/replace  #"-" "_"))))
+         (str/replace  #"-" "_"))))
 
 (def ^{:arglists '([])} unique-prefix
   "Unique prefix for test datasets for this instance. Format is `<current-date-utc>_<site-uuid>_`. See comments above.
