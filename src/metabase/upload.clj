@@ -445,7 +445,8 @@
                        [(.readLine ^BufferedReader rdr)
                         (.readLine ^BufferedReader rdr)])
         count-columns (fn [line s]
-                        (-> line (csv/read-csv :separator s) first count))
+                        (when line
+                          (-> line (csv/read-csv :separator s) first count)))
         header-columns (partial count-columns header)
         data-columns (partial count-columns row)]
     (->> separators
