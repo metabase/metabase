@@ -431,15 +431,34 @@
 
 (def ^:private separators ",;\t")
 
+(defn- assert-inferred-separator [maybe-s]
+  (or maybe-s
+      (throw (ex-info (tru "Unable to recognise file separator")
+                      {:status-code 422}))))
+
 (defn- infer-separator
   "Guess at what symbol is being used as a separator in the given CSV-like file.
-  Our heuristic is to use the separator that gives us the most number of columns."
+  Our heuristic is to use the separator that gives us the most number of columns.
+  Exclude separators which give incompatible column counts between the header and the first row."
   [^File file]
-  (let [first-line (with-open [rdr (io/reader file)]
-                     (.readLine ^BufferedReader rdr))
-        count-columns (fn [s] (-> first-line (csv/read-csv :separator s) first count))]
-    ;; Idea: sanity check by splitting the second line and comparing. Prefer consistent options.
-    (first (sort-by count-columns u/reverse-compare separators))))
+  (let [[header row] (with-open [rdr (io/reader file)]
+                       [(.readLine ^BufferedReader rdr)
+                        (.readLine ^BufferedReader rdr)])
+        count-columns (fn [line s]
+                        (-> line (csv/read-csv :separator s) first count))
+        header-columns (partial count-columns header)
+        data-columns (partial count-columns row)]
+    (->> separators
+         ;; We cannot have more data columns than header columns
+         ;; We currently support files without any data rows, and these get a free pass.
+         (remove (fn [s] (when row
+                           (> (data-columns s)
+                              (header-columns s)))))
+         ;; Prefer the separator which creates the most columns.
+         ;; Break ties according to the order we defined them.
+         (sort-by header-columns u/reverse-compare)
+         first
+         assert-inferred-separator)))
 
 (defn- infer-parser
   "Currently this only infers the separator, but in future it may also handle different quoting options."
