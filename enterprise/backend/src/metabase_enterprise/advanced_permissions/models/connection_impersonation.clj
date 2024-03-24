@@ -30,7 +30,9 @@
                                             (when group-id [:= :group_id group-id])
                                             (when-not audit-db? [:not [:= :db_id config/audit-db-id]])]})]
      (reduce (fn [acc {:keys [db_id group_id]}]
-               (assoc-in acc [group_id db_id] {:data {:schemas :impersonated}}))
+               (-> acc
+                  (assoc-in [group_id db_id :view-data] :impersonated)
+                  (assoc-in [group_id db_id :data] {:schemas :impersonated})))
              {}
              impersonations))))
 
@@ -55,16 +57,16 @@
     (log/debugf "Group %d %s for Database %d, deleting all Connection Impersonations for this DB"
                 group-id
                 (case changes
-                  :none  "no longer has any perms"
-                  :all   "now has full data perms"
-                  :block "is now BLOCKED from all non-data-perms access")
+                  :unrestricted "now has full data perms"
+                  :blocked      "is now BLOCKED from all non-data-perms access"
+                  "now has granular (sandboxed) data access")
                 database-id)
     (t2/delete! :model/ConnectionImpersonation :group_id group-id :db_id database-id)))
 
 (defn- delete-impersonations-for-group! [{:keys [group-id]} changes]
   (log/debugf "Deleting unneeded Connection Impersonation policies for Group %d. Graph changes: %s" group-id (pr-str changes))
   (doseq [database-id (set (keys changes))]
-    (when-let [data-perm-changes (get-in changes [database-id :data :schemas])]
+    (when-let [data-perm-changes (get-in changes [database-id :view-data])]
       (delete-impersonations-for-group-database!
        {:group-id group-id, :database-id database-id}
        data-perm-changes))))
