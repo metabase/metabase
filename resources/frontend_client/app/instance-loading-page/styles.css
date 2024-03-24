@@ -69,7 +69,7 @@ body {
   height: 40px;
   margin-top: 80px;
   border: 4px solid transparent;
-  border-top-color: #509ee3;
+  border-top-color: #f97316;
   border-radius: 20px;
 
   animation: rotation 1.3s infinite
@@ -84,7 +84,7 @@ body {
   box-sizing: inherit;
   width: inherit;
   height: inherit;
-  border: 4px solid #509ee3;
+  border: 4px solid #f97316;
   border-radius: 20px;
 
   opacity: 0.25;

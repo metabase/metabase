@@ -88,6 +88,7 @@
   border: var(--border-size) var(--border-style) transparent;
   border-radius: var(--default-border-radius);
   margin-bottom: 0.25em;
+  color: #232323;
 }
 
 :global(.AdminList-item.selected) {
