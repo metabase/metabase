@@ -44,12 +44,12 @@
 
 (def Permissions
   "Permissions which apply to individual databases or tables"
-  {:perms/data-access           {:model :model/Table :values [:unrestricted :no-self-service :block]}
+  {:perms/view-data             {:model :model/Table :values [:unrestricted :legacy-no-self-service :blocked]}
+   :perms/data-access           {:model :model/Table :values [:unrestricted :no-self-service :block]}
    :perms/download-results      {:model :model/Table :values [:one-million-rows :ten-thousand-rows :no]}
    :perms/manage-table-metadata {:model :model/Table :values [:yes :no]}
    :perms/create-queries        {:model :model/Table :values [:query-builder-and-native :query-builder :no]}
 
-   :perms/view-data             {:model :model/Database :values [:unrestricted :block]}
    :perms/native-query-editing  {:model :model/Database :values [:yes :no]}
    :perms/manage-database       {:model :model/Database :values [:yes :no]}})
 
@@ -577,7 +577,7 @@
   "Sets a single permission to a specified value for a given group and database. If a permission value already exists
   for the specified group and object, it will be updated to the new value.
 
-  Block permissions (i.e. :perms/data-access :block) can only be set at the database-level, despite :perms/data-access
+  Block permissions (i.e. :perms/view-data :blocked) can only be set at the database-level, despite :perms/view-data
   being a table-level permission."
   [group-or-id :- TheIdable
    db-or-id    :- TheIdable
@@ -591,6 +591,9 @@
                                           :group_id   group-id
                                           :perm_value value
                                           :db_id      db-id})
+      (when (= [:perms/view-data :blocked] [perm-type value])
+        (set-database-permission! group-or-id db-or-id :perms/create-queries :no)
+        (set-database-permission! group-or-id db-or-id :perms/download-results :no))
       (when (= [:perms/data-access :block] [perm-type value])
         (set-database-permission! group-or-id db-or-id :perms/native-query-editing :no)
         (set-database-permission! group-or-id db-or-id :perms/download-results :no)))))

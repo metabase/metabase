@@ -25,15 +25,22 @@
 
 ;; See also: [[data-perms/Permissions]]
 (def ^:private ->api-keys
-  {:perms/data-access           :data
+  {:perms/view-data             :view-data
+   :perms/create-queries        :create-queries
+   :perms/data-access           :data
    :perms/download-results      :download
    :perms/manage-table-metadata :data-model
-
    :perms/native-query-editing  :native
    :perms/manage-database       :details})
 
 (def ^:private ->api-vals
-  {:perms/data-access           {:unrestricted    :all
+  {:perms/view-data             {:unrestricted           :unrestricted
+                                 :legacy-no-self-service :legacy-no-self-service
+                                 :blocked                :blocked}
+   :perms/create-queries        {:query-builder-and-native :query-builder-and-native
+                                 :query-builder            :query-builder
+                                 :no                       :no}
+   :perms/data-access           {:unrestricted    :all
                                  :no-self-service nil
                                  :block           :block}
    :perms/download-results      {:one-million-rows  :full
@@ -113,14 +120,15 @@
   [perm-map]
   (let [granular-keys [:perms/native-query-editing :perms/data-access
                        :perms/download-results :perms/manage-table-metadata
-                       ;; remove the new perms for now
                        :perms/view-data :perms/create-queries]]
     (m/deep-merge
      (into {} (keep rename-or-ellide-kv (apply dissoc perm-map granular-keys)))
      (granular-perm-rename perm-map :perms/data-access [:data :schemas])
      (granular-perm-rename perm-map :perms/native-query-editing [:data :native])
      (granular-perm-rename perm-map :perms/download-results [:download :schemas])
-     (granular-perm-rename perm-map :perms/manage-table-metadata [:data-model :schemas]))))
+     (granular-perm-rename perm-map :perms/manage-table-metadata [:data-model :schemas])
+     (granular-perm-rename perm-map :perms/view-data [:view-data])
+     (granular-perm-rename perm-map :perms/create-queries [:create-queries]))))
 
 (defn- rename-perms [graph]
   (update-vals graph
@@ -131,7 +139,9 @@
    {:data {:native :write, :schemas :all},
     :download {:schemas :full},
     :data-model {:schemas :all},
-    :details :yes})
+    :details :yes
+    :view-data :unrestricted
+    :create-queries :query-builder-and-native})
 
 (defn- add-admin-perms-to-permissions-graph
   "These are not stored in the data-permissions table, but the API expects them to be there (for legacy reasons), so here we populate it.
@@ -183,7 +193,6 @@
                   (add-sandboxes-to-permissions-graph opts)
                   (add-impersonations-to-permissions-graph opts)
                   (add-admin-perms-to-permissions-graph opts))})))
-
 
 ;;; ---------------------------------------- Updating permissions -----------------------------------------------------
 
@@ -351,9 +360,48 @@
   [group-id db-id value]
   (data-perms/set-database-permission! group-id db-id :perms/manage-database value))
 
+(defn- update-table-level-create-queries-permissions!
+  [group-id db-id schema new-table-perms]
+  (let [new-table-perms (update-keys
+                         new-table-perms
+                         (fn [table-id] {:id table-id :db_id db-id :schema schema}))]
+    (data-perms/set-table-permissions! group-id :perms/create-queries new-table-perms)))
+
+(defn- update-schema-level-create-queries-permissions!
+  [group-id db-id schema new-schema-perms]
+  (if (map? new-schema-perms)
+    (update-table-level-create-queries-permissions! group-id db-id schema new-schema-perms)
+    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
+      (when (seq tables)
+        (data-perms/set-table-permissions! group-id :perms/create-queries (zipmap tables (repeat new-schema-perms)))))))
+
+(defn- update-db-level-create-queries-permissions!
+  [group-id db-id new-db-perms]
+  (if (map? new-db-perms)
+    (doseq [[schema new-schema-perms] new-db-perms]
+      (update-schema-level-create-queries-permissions! group-id db-id schema new-schema-perms))
+    (when new-db-perms
+      (data-perms/set-database-permission! group-id db-id :perms/create-queries new-db-perms))))
+
+(defn- update-db-level-view-data-permissions!
+  [group-id db-id new-db-perms]
+  (if (map? new-db-perms)
+    ;; view-data is only set granularly when some tables are sandboxed, but sandboxes are stored in the `sandboxes`
+    ;; table, so we treat the DB as unrestricted in `data_permissions` and apply sandboxing policies separately
+    (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+    (case new-db-perms
+      (:unrestricted :impersonated)
+      (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+
+      :blocked
+      (do
+        (when-not (premium-features/has-feature? :advanced-permissions)
+          (throw (ee-permissions-exception :blocked)))
+        (data-perms/set-database-permission! group-id db-id :perms/view-data :blocked)))))
+
 (defn check-audit-db-permissions
   "Check that the changes coming in does not attempt to change audit database permission. Admins should
-  change these permissions in application monitoring permissions."
+  change these permissions implicitly via collection permissions."
   [changes]
   (let [changes-ids (->> changes
                          vals
@@ -407,10 +455,12 @@
      (doseq [[db-id db-changes] group-changes
              [perm-type new-perms] db-changes]
        (case perm-type
-         :data       (update-db-level-data-access-permissions! group-id db-id new-perms)
-         :download   (update-db-level-download-permissions! group-id db-id new-perms)
-         :data-model (update-db-level-metadata-permissions! group-id db-id new-perms)
-         :details    (update-details-perms! group-id db-id new-perms)))))
+         :view-data      (update-db-level-view-data-permissions! group-id db-id new-perms)
+         :create-queries (update-db-level-create-queries-permissions! group-id db-id new-perms)
+         :data           (update-db-level-data-access-permissions! group-id db-id new-perms)
+         :download       (update-db-level-download-permissions! group-id db-id new-perms)
+         :data-model     (update-db-level-metadata-permissions! group-id db-id new-perms)
+         :details        (update-details-perms! group-id db-id new-perms)))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]
