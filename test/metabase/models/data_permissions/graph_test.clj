@@ -10,6 +10,119 @@
    [metabase.util :as u]
    [toucan2.core :as db]))
 
+(deftest update-db-level-view-data-permissions!-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
+                   :model/Database         {database-id-1 :id}   {}
+                   :model/Table            {table-id-1 :id}      {:db_id database-id-1
+                                                                  :schema "PUBLIC"}]
+      ;; Clear default perms for the group
+      (db/delete! :model/DataPermissions :group_id group-id-1)
+      (testing "data-access permissions can be updated via API-style graph"
+        (are [api-graph db-graph] (= db-graph
+                                     (do
+                                       (data-perms.graph/update-data-perms-graph!* api-graph)
+                                       (data-perms/data-permissions-graph :group-id group-id-1)))
+          {group-id-1
+           {database-id-1
+            {:view-data :unrestricted}}}
+          {group-id-1
+           {database-id-1
+            {:perms/view-data :unrestricted}}}
+
+          {group-id-1
+           {database-id-1
+            {:view-data :impersonated}}}
+          {group-id-1
+           {database-id-1
+            {:perms/view-data :unrestricted}}}
+
+          {group-id-1
+           {database-id-1
+            {:view-data {"PUBLIC" {table-id-1 :sandboxed}}}}}
+          {group-id-1
+           {database-id-1
+            {:perms/view-data :unrestricted}}}
+
+          ;; Setting block permissions for the database also removes query access and download access
+          {group-id-1
+           {database-id-1
+            {:view-data :blocked}}}
+          {group-id-1
+           {database-id-1
+            {:perms/view-data :blocked
+             :perms/create-queries :no
+             :perms/download-results :no}}})))))
+
+(deftest update-db-level-create-queries-permissions!-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
+                   :model/Database         {database-id-1 :id}   {}
+                   :model/Table            {table-id-1 :id}      {:db_id database-id-1
+                                                                  :schema "PUBLIC"}]
+      ;; Clear default perms for the group
+      (db/delete! :model/DataPermissions :group_id group-id-1)
+      (testing "data-access permissions can be updated via API-style graph"
+        (are [api-graph db-graph] (= db-graph
+                                     (do
+                                       (data-perms.graph/update-data-perms-graph!* api-graph)
+                                       (data-perms/data-permissions-graph :group-id group-id-1)))
+          {group-id-1
+           {database-id-1
+            {:create-queries :query-builder-and-native}}}
+          {group-id-1
+           {database-id-1
+            {:perms/create-queries :query-builder-and-native}}}
+
+          {group-id-1
+           {database-id-1
+            {:create-queries :query-builder}}}
+          {group-id-1
+           {database-id-1
+            {:perms/create-queries :query-builder}}}
+
+          {group-id-1
+           {database-id-1
+            {:create-queries :no}}}
+          {group-id-1
+           {database-id-1
+            {:perms/create-queries :no}}}
+
+          {group-id-1
+           {database-id-1
+            {:create-queries :no}}}
+          {group-id-1
+           {database-id-1
+            {:perms/create-queries :no}}}
+
+          {group-id-1
+           {database-id-1
+            {:create-queries {"PUBLIC" :query-builder}}}}
+          {group-id-1
+           {database-id-1
+            {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder}}}}}
+
+          {group-id-1
+           {database-id-1
+            {:create-queries {"PUBLIC" :no}}}}
+          {group-id-1
+           {database-id-1
+            {:perms/create-queries {"PUBLIC" {table-id-1 :no}}}}}
+
+          {group-id-1
+           {database-id-1
+            {:create-queries {"PUBLIC" {table-id-1 :query-builder}}}}}
+          {group-id-1
+           {database-id-1
+            {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder}}}}}
+
+          {group-id-1
+           {database-id-1
+            {:create-queries {"PUBLIC" {table-id-1 :no}}}}}
+          {group-id-1
+           {database-id-1
+            {:perms/create-queries {"PUBLIC" {table-id-1 :no}}}}})))))
+
 (deftest update-db-level-data-access-permissions!-test
   (mt/with-premium-features #{:advanced-permissions}
     (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
