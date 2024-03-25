@@ -90,6 +90,9 @@ import { addUndo } from "metabase/redux/undo";
 
 const EMPTY_ENTITY_QUERY = {};
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export function createEntity(def) {
   const entity = { ...def };
 

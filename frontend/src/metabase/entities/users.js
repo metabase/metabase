@@ -24,6 +24,9 @@ function loadMemberships() {
 const getUserList = GET("/api/user");
 const getRecipientsList = GET("/api/user/recipients");
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Users = createEntity({
   name: "users",
   nameOne: "user",

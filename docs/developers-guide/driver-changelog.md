@@ -151,7 +151,7 @@ title: Driver interface changelog
 
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in
   schemas (also known as namespaces) or not. Most databases have schemas so this feature is on by default.
-  An implemention of the multimethod `metabase.driver/database-supports?` for `:schemas` is required only if the
+  An implementation of the multimethod `metabase.driver/database-supports?` for `:schemas` is required only if the
   database doesn't store tables in schemas.
 
 - Another driver feature has been added: `:uploads`. The `:uploads` feature signals whether the database supports

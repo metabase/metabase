@@ -21,6 +21,9 @@ import {
 
 import forms from "./questions/forms";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Questions = createEntity({
   name: "questions",
   nameOne: "question",
