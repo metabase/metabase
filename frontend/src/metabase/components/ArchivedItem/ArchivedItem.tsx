@@ -41,7 +41,7 @@ export const ArchivedItem = ({
       CS.alignCenter,
       CS.p2,
       CS.hoverParent,
-      "hover--visibility",
+      CS.hoverVisibility,
       CS.borderBottom,
       "bg-light-hover",
     )}

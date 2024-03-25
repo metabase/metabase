@@ -247,7 +247,7 @@ const EntityItem = ({
 
   return (
     <EntityItemWrapper
-      className={cx(CS.hoverParent, "hover--visibility", {
+      className={cx(CS.hoverParent, CS.hoverVisibility, {
         "bg-light-hover": variant === "list",
       })}
       variant={variant}

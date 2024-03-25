@@ -112,7 +112,7 @@ function NotebookStep({
   return (
     <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
       <StepRoot
-        className={cx(CS.hoverParent, "hover--visibility")}
+        className={cx(CS.hoverParent, CS.hoverVisibility)}
         data-testid={step.testID}
       >
         <StepHeader color={color}>

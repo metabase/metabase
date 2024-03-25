@@ -566,7 +566,7 @@ class TableInteractive extends Component {
         className={cx(
           "TableInteractive-cellWrapper text-dark",
           CS.hoverParent,
-          "hover--visibility",
+          CS.hoverVisibility,
           {
             "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
             padLeft: columnIndex === 0 && !showDetailShortcut,

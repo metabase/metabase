@@ -64,7 +64,7 @@ const PinnedQuestionCard = ({
     <CardRoot
       to={item.getUrl()}
       isPreview={isPreview}
-      className={cx(CS.hoverParent, "hover--visibility")}
+      className={cx(CS.hoverParent, CS.hoverVisibility)}
     >
       {!isPreview && positionedActionMenu}
       {isPreview ? (

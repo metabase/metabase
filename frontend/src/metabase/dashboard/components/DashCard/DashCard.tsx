@@ -269,7 +269,7 @@ function DashCardInner({
           CS.flex,
           CS.flexColumn,
           CS.hoverParent,
-          "hover--visibility",
+          CS.hoverVisibility,
         )}
         hasHiddenBackground={hasHiddenBackground}
         shouldForceHiddenBackground={shouldForceHiddenBackground}
