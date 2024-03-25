@@ -26,6 +26,27 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.signInAsAdmin();
   });
 
+  it("should show empty sidebar when no data source is selcted", () => {
+    cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
+    openReviewsTable({ mode: "notebook", limit: 1 });
+    cy.findByLabelText("View the SQL").click();
+    cy.wait("@nativeDataset");
+
+    cy.findByTestId("app-bar").findByLabelText("New").click();
+    popover().findByTextEnsureVisible("Question").click();
+    cy.wait("@nativeDataset");
+    cy.findByTestId("data-step-cell").should(
+      "have.text",
+      "Pick your starting data",
+    );
+
+    cy.findByTestId("native-query-preview-sidebar").within(() => {
+      cy.findByText("SQL for this question").should("exist");
+      cy.get(".ace_content").should("not.exist");
+      cy.button("Convert this question to SQL").should("not.exist");
+    });
+  });
+
   it(
     "smoke test: should show the preview sidebar, update it, persist it and close it",
     // Replay Chromium does not respect a media query for the sidebar, which crashes this test.
