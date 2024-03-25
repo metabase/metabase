@@ -41,11 +41,17 @@ const Databases = createEntity({
   nameMany: "databases",
 
   api: {
-    list: (input, dispatch) =>
+    list: (entityQuery, dispatch) =>
       entityCompatibleQuery(
+        entityQuery,
         dispatch,
         databaseApi.endpoints.getDatabases,
-        input,
+      ),
+    get: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        databaseApi.endpoints.getDatabase,
       ),
   },
 

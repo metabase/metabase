@@ -84,7 +84,8 @@ export interface DatabaseUsageInfo {
   segment: number;
 }
 
-export interface DatabaseQuery {
+export interface DatabaseRequest {
+  id: DatabaseId;
   include?: "tables" | "tables.fields";
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;

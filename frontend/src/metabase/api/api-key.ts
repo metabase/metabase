@@ -16,14 +16,14 @@ export const apiKeyApi = Api.injectEndpoints({
       query: () => `/api/api-key`,
       providesTags: [API_KEY_TAG],
     }),
-    countApiKey: builder.query<number, void>({
+    countApiKeys: builder.query<number, void>({
       query: () => `/api/api-key/count`,
     }),
     createApiKey: builder.mutation<CreateApiKeyResponse, CreateApiKeyRequest>({
-      query: input => ({
+      query: body => ({
         method: "POST",
         url: `/api/api-key`,
-        body: input,
+        body,
       }),
       invalidatesTags: [API_KEY_TAG],
     }),
@@ -48,7 +48,7 @@ export const apiKeyApi = Api.injectEndpoints({
 
 export const {
   useGetApiKeysQuery,
-  useCountApiKeyQuery,
+  useCountApiKeysQuery,
   useCreateApiKeyMutation,
   useRegenerateApiKeyMutation,
   useUpdateApiKeyMutation,

@@ -668,9 +668,9 @@ export const notify = (opts = {}, subject, verb) =>
 export const undo = (opts = {}, subject, verb) =>
   merge({ notify: { subject, verb, undo: true } }, opts || {});
 
-export async function entityCompatibleQuery(dispatch, endpoint, entityQuery) {
+export async function entityCompatibleQuery(entityQuery, dispatch, endpoint) {
   const request = entityQuery === EMPTY_ENTITY_QUERY ? undefined : entityQuery;
-  const action = dispatch(endpoint.initiate(request, { forceRefetch: true }));
+  const action = dispatch(endpoint.initiate(request));
   try {
     return await action.unwrap();
   } finally {
