@@ -91,13 +91,6 @@
   white-space: pre-wrap;
 }
 
-:global(.text-code-plain) {
-  font-family: monospace;
-  color: var(--color-text-dark);
-  line-height: 1.4em;
-  white-space: pre-wrap;
-}
-
 :global(.text-monospace),
 .text-monospace {
   font-family: Monaco, monospace;
