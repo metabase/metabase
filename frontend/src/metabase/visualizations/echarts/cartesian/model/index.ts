@@ -23,6 +23,7 @@ import {
   getYAxesModels,
 } from "metabase/visualizations/echarts/cartesian/model/axis";
 import { getScatterPlotDataset } from "metabase/visualizations/echarts/cartesian/scatter/model";
+import { getTrendLineModelAndDatasets } from "./trend-line";
 
 const SUPPORTED_AUTO_SPLIT_TYPES = ["line", "area", "bar", "combo"];
 
@@ -127,6 +128,14 @@ export const getCartesianChartModel = (
     renderingContext,
   );
 
+  const { trendLinesSeries, trendLinesDataset } = getTrendLineModelAndDatasets(
+    seriesModels,
+    dataset,
+    insights,
+    settings,
+    renderingContext,
+  );
+
   return {
     dataset,
     transformedDataset,
@@ -137,6 +146,8 @@ export const getCartesianChartModel = (
     xAxisModel,
     leftAxisModel,
     rightAxisModel,
+    trendLinesDataset,
+    trendLinesSeries,
     bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset),
   };
 };

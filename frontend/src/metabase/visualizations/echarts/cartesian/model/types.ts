@@ -13,6 +13,7 @@ import type {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   ORIGINAL_INDEX_DATA_KEY,
+  TREND_LINE_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { OptionsType } from "metabase/lib/formatting/types";
 
@@ -84,7 +85,7 @@ export type Datum = Record<DataKey, RowValue> & {
   [X_AXIS_DATA_KEY]: RowValue;
   [ORIGINAL_INDEX_DATA_KEY]?: number;
 };
-export type ChartDataset = Datum[];
+export type ChartDataset<D extends Datum = Datum> = D[];
 export type Extent = [number, number];
 export type SeriesExtents = Record<DataKey, Extent>;
 export type AxisFormatter = (value: RowValue, options?: OptionsType) => string;
@@ -163,12 +164,17 @@ export type YAxisModel = {
   formatter: AxisFormatter;
 };
 
+export type TrendDataset = ChartDataset<
+  Datum & { [TREND_LINE_DATA_KEY]: number }
+>;
+
 export type BaseCartesianChartModel = {
   dimensionModel: DimensionModel;
   seriesModels: SeriesModel[];
   dataset: ChartDataset;
   transformedDataset: ChartDataset;
-
+  trendLinesDataset: TrendDataset;
+  trendLinesSeries: SeriesModel[];
   leftAxisModel: YAxisModel | null;
   rightAxisModel: YAxisModel | null;
   xAxisModel: XAxisModel;
