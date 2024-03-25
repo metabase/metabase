@@ -37,7 +37,7 @@
 (defsetting embedding-homepage
   (deferred-tru "Embedding homepage status, indicating if it's visible, hidden or has been dismissed")
   :type       :keyword
-  :default    "hidden"
+  :default    :hidden
   :export?    true
   :visibility :admin)
 
