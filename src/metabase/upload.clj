@@ -459,7 +459,7 @@
          ;; - Splitting the header at least once
          ;; - Giving a consistent column split for the first two lines of the file
          ;; - The number of fields in the header
-         ;; - The precedence order in how we define them, e.g.. bia towards comma
+         ;; - The precedence order in how we define them, e.g.. bias towards comma
          (sort-by (fn [[_ [header-column-count data-column-count]]]
                     [(when header-column-count
                        (> header-column-count 1))
