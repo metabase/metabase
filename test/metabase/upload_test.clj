@@ -1926,6 +1926,25 @@
                    [2 1.0 1.0]]
                   (rows-for-table table)))))))))
 
+(deftest create-from-csv-int-and-non-integral-float-test
+  (testing "Creation should handle a mix of int and float values in any order"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+       (with-upload-table!
+         [table (let [table-name (mt/random-name)]
+                  (@#'upload/create-from-csv!
+                   driver/*driver*
+                   (mt/id)
+                   table-name
+                   (csv-file-with ["float-1,float-2"
+                                   "1,   1.1"
+                                   "1.1, 1"]))
+                  (sync-upload-test-table! :database (mt/db) :table-name table-name))]
+         (testing "Check the data was uploaded into the table correctly"
+           (is (= [[1 1.0 1.1]
+                   [2 1.1 1.0]]
+                  (rows-for-table table)))))))))
+
 (deftest append-from-csv-int-and-float-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "Append should handle a mix of int and float-or-int values being appended to an int column"

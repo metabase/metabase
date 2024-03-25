@@ -175,7 +175,9 @@
                    number-regex
                    "\\s*" upload-parsing/currency-regex "?")))
 
-(defn- int-regex [number-separators]
+(defn- int-regex
+  "Matches numbers which do not have a decimal separator."
+  [number-separators]
   (with-parens
     (with-currency
       (case number-separators
@@ -184,7 +186,9 @@
         ", " #"\d[\d \u00A0]*"
         ".’" #"\d[\d’]*"))))
 
-(defn- float-or-int-regex [number-separators]
+(defn- float-or-int-regex
+  "Matches integral numbers, even if they have a decimal separator - e.g. 2 or 2.0"
+  [number-separators]
   (with-parens
    (with-currency
     (case number-separators
@@ -193,14 +197,16 @@
       ", " #"\d[\d \u00A0]*(\,[0.]+)?"
       ".’" #"\d[\d’]*(\.[0.]+)?"))))
 
-(defn- float-regex [number-separators]
+(defn- float-regex
+  "Matches numbers, regardless of whether they have a decimal separator - e.g. 2, 2.0, or 2.2"
+  [number-separators]
   (with-parens
     (with-currency
       (case number-separators
-        ("." ".,") #"\d[\d,]*\.\d+"
-        ",." #"\d[\d.]*\,[\d]+"
-        ", " #"\d[\d \u00A0]*\,[\d.]+"
-        ".’" #"\d[\d’]*\.[\d.]+"))))
+        ("." ".,") #"\d[\d,]*(\.\d+)?"
+        ",." #"\d[\d.]*(\,[\d]+)?"
+        ", " #"\d[\d \u00A0]*(\,[\d.]+)?"
+        ".’" #"\d[\d’]*(\.[\d.]+)?"))))
 
 (defmacro does-not-throw?
   "Returns true if the given body does not throw an exception."
@@ -246,17 +252,17 @@
 
 (mu/defn ^:private settings->type->check :- type->check-schema
   [{:keys [number-separators] :as _settings}]
-  (let [int?          (regex-matcher (int-regex number-separators))
+  (let [int-string?   (regex-matcher (int-regex number-separators))
         float-or-int? (regex-matcher (float-or-int-regex number-separators))
-        float?        (regex-matcher (float-regex number-separators))]
+        float-string? (regex-matcher (float-regex number-separators))]
     {::*boolean-int*   boolean-int-string?
      ::boolean         boolean-string?
      ::offset-datetime offset-datetime-string?
      ::date            date-string?
      ::datetime        datetime-string?
-     ::int             int?
+     ::int             int-string?
      ::*float-or-int*  float-or-int?
-     ::float           float?
+     ::float           float-string?
      ::varchar-255     varchar-255?
      ::text            (constantly true)}))
 
