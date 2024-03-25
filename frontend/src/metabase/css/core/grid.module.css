@@ -10,7 +10,7 @@
   flex: 1;
 }
 
-:global(.Grid--1of2 > .Grid-cell) {
+.Grid1of2 > .GridCell {
   flex: 0 0 50%;
 }
 
