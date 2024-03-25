@@ -237,11 +237,11 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
     const enableEmbeddingSetByEnv = adminSettings.find(
       (setting: { key: string }) => setting.key === "enable-embedding",
     )?.is_env_setting;
+
     const interestedInEmbedding =
       usageReason === "embedding" || usageReason === "both";
     const isLicenseActive =
-      tokenFeatures &&
-      Object.values(tokenFeatures).some(value => value === true);
+      tokenFeatures && Object.values(tokenFeatures).some(Boolean);
 
     const settingsToChange: Partial<Settings> = {};
 
