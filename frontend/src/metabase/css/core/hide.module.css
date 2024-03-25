@@ -2,10 +2,6 @@
   display: none !important;
 }
 
-:global(.hidden) {
-  visibility: hidden;
-}
-
 :global(.sm-show),
 :global(.md-show),
 :global(.lg-show),
