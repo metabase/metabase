@@ -5,6 +5,7 @@ import { t, jt } from "ttag";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import FormS from "metabase/css/components/form.module.css";
 import CS from "metabase/css/core/index.css";
 import { validateCronExpression } from "metabase/lib/cron";
 
