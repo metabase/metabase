@@ -18,49 +18,66 @@ export const isRestrictivePermission = (value: string) =>
   value === "block" || value === "none";
 
 // util to ease migration of perms attributes into a flatter structure
-function getDataPermissionPath(
+function getPermissionPath(
+  groupId: number,
   databaseId: number,
   permission: DataPermission,
   nestedPath?: Array<string | number>,
 ) {
-  if (permission === "view-data" || permission === "create-queries") {
-    return [databaseId, permission, ...(nestedPath || [])];
-  } else {
-    return [databaseId, permission, "schemas", ...(nestedPath || [])];
+  const isFlatPermValue = ["view-data", "create-queries"].includes(permission);
+  if (isFlatPermValue) {
+    return [groupId, databaseId, permission, ...(nestedPath || [])];
   }
+  return [groupId, databaseId, permission, "schemas", ...(nestedPath || [])];
 }
 
-export function getPermission(
-  permissions: GroupsPermissions,
-  groupId: number,
-  path: Array<number | string>,
-  isControlledType = false,
-) {
-  const value = getIn(permissions, [groupId, ...path]);
-  if (isControlledType) {
-    if (!value) {
-      return "none";
-    } else if (typeof value === "object") {
-      return "controlled";
-    } else {
-      return value;
-    }
-  } else if (value) {
-    return value;
-  } else {
-    return "none";
-  }
+// TODO: add better typing
+const elludedDefaultValues: Record<DataPermission, string | undefined> = {
+  "view-data": "blocked",
+  "create-queries": "no",
+};
+
+function getElludedPermissionValue(permission: DataPermission) {
+  return elludedDefaultValues[permission] ?? "none";
 }
+
+interface GetPermissionParams {
+  permissions: GroupsPermissions;
+  groupId: number;
+  databaseId: number;
+  permission: string; // TODO: add better typing
+  path?: Array<number | string>;
+  isControlledType?: boolean;
+}
+
+const getPermission = ({
+  permissions,
+  groupId,
+  databaseId,
+  permission,
+  path,
+  isControlledType = false,
+}: GetPermissionParams) => {
+  const valuePath = getPermissionPath(groupId, databaseId, permission, path);
+  const value = getIn(permissions, valuePath);
+  if (isControlledType && typeof value === "object") {
+    return "controlled";
+  }
+  return value ? value : getElludedPermissionValue(permission);
+};
 
 export function updatePermission(
   permissions: GroupsPermissions,
   groupId: number,
+  databaseId: number,
+  permission: string, // TODO: add better typing
   path: Array<number | string>,
   value: string | undefined,
   entityIds?: any[],
 ) {
-  const fullPath = [groupId, ...path];
+  const fullPath = getPermissionPath(groupId, databaseId, permission, path);
   const current = getIn(permissions, fullPath);
+
   if (
     current === value ||
     (current && typeof current === "object" && value === "controlled")
@@ -92,20 +109,21 @@ export const getSchemasPermission = (
   { databaseId }: DatabaseEntityId,
   permission: DataPermission,
 ) => {
-  return getPermission(
+  return getPermission({
     permissions,
+    databaseId,
     groupId,
-    getDataPermissionPath(databaseId, permission),
-    true,
-  );
+    permission,
+    isControlledType: true,
+  });
 };
 
 export const getNativePermission = (
   permissions: GroupsPermissions,
   groupId: number,
-  { databaseId }: DatabaseEntityId,
+  entityId: DatabaseEntityId,
 ) => {
-  return getPermission(permissions, groupId, [databaseId, "data", "native"]);
+  return getFieldsPermission(permissions, groupId, entityId, "create-queries");
 };
 
 export const getTablesPermission = (
@@ -123,12 +141,15 @@ export const getTablesPermission = (
     permission,
   );
   if (schemas === "controlled") {
-    return getPermission(
+    return getPermission({
       permissions,
+      databaseId,
       groupId,
-      getDataPermissionPath(databaseId, permission, [schemaName || ""]),
-      true,
-    );
+      databaseId,
+      permission,
+      path: _.compact([schemaName]),
+      isControlledType: true,
+    });
   } else {
     return schemas;
   }
@@ -150,15 +171,14 @@ export const getFieldsPermission = (
     permission,
   );
   if (tables === "controlled") {
-    return getPermission(
+    return getPermission({
       permissions,
       groupId,
-      getDataPermissionPath(databaseId, permission, [
-        schemaName ?? "",
-        tableId,
-      ]),
-      true,
-    );
+      databaseId,
+      permission,
+      path: _.compact([schemaName, tableId]),
+      isControlledType: true,
+    });
   } else {
     return tables;
   }
@@ -348,7 +368,9 @@ export function updateFieldsPermission(
   permissions = updatePermission(
     permissions,
     groupId,
-    getDataPermissionPath(databaseId, permission, [schemaName, tableId]),
+    databaseId,
+    permission,
+    [schemaName, tableId],
     ((PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE as any)[
       value
     ] as any) || value,
@@ -381,7 +403,9 @@ export function updateTablesPermission(
   permissions = updatePermission(
     permissions,
     groupId,
-    getDataPermissionPath(databaseId, permission, [schemaName || ""]),
+    databaseId,
+    permission,
+    [schemaName || ""],
     value,
     tableIds,
   );
@@ -420,7 +444,9 @@ export function updateSchemasPermission(
   return updatePermission(
     permissions,
     groupId,
-    getDataPermissionPath(databaseId, permission),
+    databaseId,
+    permission,
+    [],
     value,
     schemaNamesOrNoSchema,
   );
@@ -449,7 +475,9 @@ export function updateNativePermission(
   return updatePermission(
     permissions,
     groupId,
-    [databaseId, permission, "native"],
+    databaseId,
+    permission,
+    [],
     value,
   );
 }

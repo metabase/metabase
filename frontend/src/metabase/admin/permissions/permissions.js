@@ -91,7 +91,7 @@ export const GRANULATE_DATABASE_TABLE_PERMISSIONS =
   "metabase/admin/permissions/GRANULATE_DATABASE_TABLE_PERMISSIONS";
 export const granulateDatabasePermissions = createThunkAction(
   GRANULATE_DATABASE_TABLE_PERMISSIONS,
-  (groupId, entityId, value) => dispatch => {
+  (groupId, entityId, permission, value, defaultValue) => dispatch => {
     // HACK: updatePermission fn sets entities of controlled values (schemas in this case
     // to the previously set value of the parent (database in this case). if the db perm
     // value is set to something other than restrictied before changing to controlled, the
@@ -100,21 +100,14 @@ export const granulateDatabasePermissions = createThunkAction(
       dispatch(
         updateDataPermission({
           groupId,
-          permission: { type: "access", permission: "view-data" },
-          value: "unrestricted",
+          permission,
+          value: defaultValue,
           entityId,
         }),
       );
     }
 
-    dispatch(
-      updateDataPermission({
-        groupId,
-        permission: { type: "access", permission: "view-data" },
-        value,
-        entityId,
-      }),
-    );
+    dispatch(updateDataPermission({ groupId, permission, value, entityId }));
 
     dispatch(push(getGroupFocusPermissionsUrl(groupId, entityId)));
   },
@@ -153,7 +146,7 @@ export const updateDataPermission = createThunkAction(
       trackPermissionChange(
         entityId,
         permissionInfo.permission,
-        permissionInfo.type === "native",
+        permissionInfo.type === "create-queries",
         value,
       );
 
@@ -282,7 +275,7 @@ const dataPermissions = handleActions(
           );
         }
 
-        if (permissionInfo.type === "native") {
+        if (permissionInfo.type === "create-queries") {
           const updateFn =
             PLUGIN_DATA_PERMISSIONS.updateNativePermission ??
             updateNativePermission;
