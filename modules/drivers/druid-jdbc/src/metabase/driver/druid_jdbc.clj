@@ -1,13 +1,19 @@
 (ns metabase.driver.druid-jdbc
   (:require
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.lib.field :as lib.field]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util.honey-sql-2 :as h2x])
   (:import
    (java.sql ResultSet Types)
@@ -22,6 +28,9 @@
                               :expression-aggregations true}]
   (defmethod driver/database-supports? [:druid feature] [_driver _feature _db] supported?))
 
+;; TODO: Clean up!
+(defmethod driver/database-supports? [:druid-jdbc :nested-field-columns] [& _] true)
+#_(defmethod driver/database-supports? (:engine database) :nested-field-columns database)
 
 ;; TODO: Double check this driver does not have to implement the following method.
 #_(defmethod driver/describe-database :druid-jdbc
@@ -48,7 +57,8 @@
     :FLOAT                :type/Float
     :REAL                 :type/Float
     :DOUBLE               :type/Float
-    :BIGINT               :type/BigInteger}
+    :BIGINT               :type/BigInteger
+    :COMPLEX<json>        :type/JSON}
    database-type
    :type/*))
 
@@ -108,6 +118,7 @@
   [_ hsql-form amount unit]
   [:TIMESTAMPADD (h2x/identifier :type-name unit) (h2x/->integer amount) hsql-form])
 
+;; TODO: Instead of this, use varchar typing when doing group by
 (defmethod driver/field-values-compatible? :druid-jdbc
   [_driver {:keys [database_type] :as _field}]
   (not (re-find #"COMPLEX<" (str database_type))))
@@ -123,3 +134,42 @@
 (defmethod unprepare/unprepare-value [:druid-jdbc ZonedDateTime]
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss" t)))
+
+;; TODO: Cleanup!
+(defmethod sql.qp/json-query :druid-jdbc
+  [_driver unwrapped-identifier nfc-field]
+  (assert (h2x/identifier? unwrapped-identifier)
+          (format "Invalid identifier: %s" (pr-str unwrapped-identifier)))
+  (let [#_#_field-type        (doto (:database-type nfc-field)
+                            #_(as-> $ (tap> ["jsoon-q type" nfc-field])))
+        nfc-path          (:nfc-path nfc-field)
+        parent-identifier (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier nfc-field)]
+    (if (isa? (:base-type nfc-field) :type/Array)
+      [::json_query parent-identifier [:raw "'" (str  (str/join "." (into ["$"] (rest nfc-path)))) "'"]]
+      [::json_value parent-identifier [:raw "'" (str  (str/join "." (into ["$"] (rest nfc-path)))) "'"]])
+    #_[::json-query parent-identifier field-type (rest nfc-path)]))
+
+(defmethod sql.qp/->honeysql [:druid-jdbc :field]
+  [driver [_ id-or-name opts :as clause]]
+  (let [stored-field  (when (integer? id-or-name)
+                        (lib.metadata/field (qp.store/metadata-provider) id-or-name))
+        parent-method (get-method sql.qp/->honeysql [:sql :field])
+        identifier    (parent-method driver clause)]
+    (if-not (lib.field/json-field? stored-field)
+      identifier
+      (if (or (::sql.qp/forced-alias opts)
+              (= ::add/source (::add/source-table opts)))
+        (keyword (::add/source-alias opts))
+        (walk/postwalk #(if (h2x/identifier? %)
+                          (sql.qp/json-query :druid-jdbc % stored-field)
+                          %)
+                       identifier)))))
+
+;; TODO: Cleanup
+(defmethod sql-jdbc.sync/column->semantic-type :druid-jdbc
+  [_driver database-type _column-name]
+  #_(when (re-find #"json" (name database-type))
+    (def dddd database-type))
+  (case database-type
+    "COMPLEX<json>"  :type/SerializedJSON
+    nil))
