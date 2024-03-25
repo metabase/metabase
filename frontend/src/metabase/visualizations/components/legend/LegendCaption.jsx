@@ -65,7 +65,7 @@ const LegendCaption = ({
             maxWidth="22em"
           >
             <LegendDescriptionIcon
-              className={cx(CS.hoverChild, "hover-child--smooth")}
+              className={cx(CS.hoverChild, CS.hoverChildSmooth)}
             />
           </Tooltip>
         )}

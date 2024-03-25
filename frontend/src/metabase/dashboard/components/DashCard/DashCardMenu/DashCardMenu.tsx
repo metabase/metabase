@@ -117,9 +117,7 @@ const DashCardMenu = ({
       renderTrigger={({ open, onClick }: TriggerProps) => (
         <Icon
           name="ellipsis"
-          className={
-            !open ? cx(CS.hoverChild, "hover-child--smooth") : undefined
-          }
+          className={!open ? cx(CS.hoverChild, CS.hoverChildSmooth) : undefined}
           data-testid="dashcard-menu"
           onClick={onClick}
         />
