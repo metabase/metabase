@@ -37,10 +37,8 @@
   display: inline-block;
 }
 
-:global(.full),
-:global(.full-width),
 .full,
-.full-width {
+.fullWidth {
   width: 100%;
 }
 
