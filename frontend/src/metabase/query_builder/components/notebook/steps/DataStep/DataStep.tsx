@@ -29,7 +29,7 @@ export const DataStep = ({
   const tableId = Lib.sourceTableOrCardId(query);
   const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : null;
 
-  const [isDataPickerOpen, setIsDataPickerOpen] = useState(false);
+  const [isDataPickerOpen, setIsDataPickerOpen] = useState(!table);
 
   const pickerLabel = table
     ? Lib.displayInfo(query, stageIndex, table).displayName
