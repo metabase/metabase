@@ -16,6 +16,7 @@ describe("issue 9357", () => {
 
     // Drag the firstparameter to last position
     cy.get("fieldset")
+      .findAllByRole("listitem")
       .first()
       .trigger("pointerdown", 0, 0, { force: true, isPrimary: true, button: 0 })
       .wait(200)

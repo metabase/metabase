@@ -5,6 +5,8 @@ import { memo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
+
 import S from "./Detail.module.css";
 
 const Detail = ({
@@ -18,7 +20,7 @@ const Detail = ({
   field,
 }) => (
   <div className={cx(S.detail)}>
-    <div className={isEditing ? cx(S.detailBody, "flex-full") : S.detailBody}>
+    <div className={isEditing ? cx(S.detailBody, CS.flexFull) : S.detailBody}>
       <div className={S.detailTitle}>
         {url ? <Link to={url}>{name}</Link> : <span>{name}</span>}
       </div>

@@ -4,7 +4,8 @@
   overflow-y: auto;
 }
 
-:global(.scroll-x) {
+:global(.scroll-x),
+.scrollX {
   overflow-x: auto;
 }
 

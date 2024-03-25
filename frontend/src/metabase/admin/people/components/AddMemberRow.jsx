@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import UserAvatar from "metabase/components/UserAvatar";
+import CS from "metabase/css/core/index.css";
 import Typeahead from "metabase/hoc/Typeahead";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
@@ -64,7 +65,15 @@ export default function AddMemberRow({ users, excludeIds, onCancel, onDone }) {
           {Array.from(selectedUsersById.values()).map(user => (
             <div
               key={user.id}
-              className="bg-medium p1 px2 mr1 rounded flex align-center"
+              className={cx(
+                "bg-medium",
+                CS.p1,
+                CS.px2,
+                CS.mr1,
+                CS.rounded,
+                CS.flex,
+                CS.alignCenter,
+              )}
             >
               {user.common_name}
               <Icon
