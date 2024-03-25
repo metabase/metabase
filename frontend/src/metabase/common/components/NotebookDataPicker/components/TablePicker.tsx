@@ -15,7 +15,7 @@ import type {
   PathEntry,
   Value,
 } from "../types";
-import { generateKey, isFolder } from "../utilts";
+import { generateKey, isFolder } from "../utils";
 
 import { NotebookDataItemPickerResolver } from "./NotebookDataItemPickerResolver";
 // import { getCollectionIdPath, isFolder } from "./utils";
