@@ -141,10 +141,11 @@ describe("setup (OSS)", () => {
 
       screen.getByText("Finish").click();
 
-      expect(await getLastSettingsPutPayload()).toMatchObject({
+      expect(await getLastSettingsPutPayload()).toEqual({
         "embedding-homepage": "visible",
         "enable-embedding": true,
         "setup-embedding-autoenabled": true,
+        "setup-license-active-at-setup": false,
       });
     });
 
@@ -189,12 +190,10 @@ describe("setup (OSS)", () => {
 
       const flags = await getLastSettingsPutPayload();
 
-      expect(flags).toMatchObject({
+      expect(flags).toEqual({
         "embedding-homepage": "visible",
+        "setup-license-active-at-setup": false,
       });
-
-      expect(flags["enable-embedding"]).toBeUndefined();
-      expect(flags["setup-embedding-autoenabled"]).toBeUndefined();
     });
   });
 });

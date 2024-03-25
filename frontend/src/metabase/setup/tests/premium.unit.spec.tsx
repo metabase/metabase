@@ -57,7 +57,7 @@ describe("setup (EE, hosting and embedding feature)", () => {
 
     screen.getByText("Finish").click();
 
-    expect(await getLastSettingsPutPayload()).toMatchObject({
+    expect(await getLastSettingsPutPayload()).toEqual({
       "embedding-homepage": "visible",
       "enable-embedding": true,
       "setup-embedding-autoenabled": true,
