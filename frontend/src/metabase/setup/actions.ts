@@ -4,8 +4,7 @@ import { t } from "ttag";
 import { createDatabase } from "metabase/admin/databases/database";
 import { getSettings } from "metabase/admin/settings/selectors";
 import {
-  refreshSettingsList,
-  reloadSettings,
+  initializeSettings,
   updateSetting,
   updateSettings,
 } from "metabase/admin/settings/settings";
@@ -121,8 +120,7 @@ export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
     MetabaseSettings.set("setup-token", null);
     dispatch(goToNextStep());
     //  load the settings after the user is logged, needed later by setEmbeddingHomepageFlags
-    dispatch(reloadSettings());
-    dispatch(refreshSettingsList()); // admin settings, with .is_env_var
+    dispatch(initializeSettings());
   },
 );
 
