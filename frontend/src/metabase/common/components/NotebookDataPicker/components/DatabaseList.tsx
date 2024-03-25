@@ -1,5 +1,4 @@
 import { useDatabaseListQuery } from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import type { DatabaseListQuery } from "metabase-types/api";
 
 import { ItemList, type IsFolder } from "../../EntityPicker";
@@ -37,12 +36,9 @@ export const DatabaseList = ({
     name: database.displayName(),
   }));
 
-  if (error) {
-    return <LoadingAndErrorWrapper error={error} />;
-  }
-
   return (
     <ItemList
+      error={error}
       isCurrentLevel={isCurrentLevel}
       isFolder={isFolder}
       isLoading={isLoading}

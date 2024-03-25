@@ -1,5 +1,4 @@
 import { useSchemaListQuery } from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import type { SchemaListQuery } from "metabase-types/api";
 
 import { ItemList, type IsFolder } from "../../EntityPicker";
@@ -36,12 +35,9 @@ export const SchemaList = ({
     name: table.displayName() ?? table.name,
   }));
 
-  if (error) {
-    return <LoadingAndErrorWrapper error={error} />;
-  }
-
   return (
     <ItemList
+      error={error}
       isCurrentLevel={isCurrentLevel}
       isFolder={isFolder}
       isLoading={isLoading}
