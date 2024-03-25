@@ -4,34 +4,8 @@
 }
 
 /* center */
-:global(.text-centered),
-.text-centered,
 .textCentered {
   text-align: center;
-}
-
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-text-centered) {
-    text-align: center;
-  }
-}
-
-@media screen and (--breakpoint-min-md) {
-  :global(.md-text-centered) {
-    text-align: center;
-  }
-}
-
-@media screen and (--breakpoint-min-lg) {
-  :global(.lg-text-centered) {
-    text-align: center;
-  }
-}
-
-@media screen and (--breakpoint-min-xl) {
-  :global(.xl-text-centered) {
-    text-align: center;
-  }
 }
 
 :global(.text-left),

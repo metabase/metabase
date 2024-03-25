@@ -55,7 +55,9 @@ class ClickMappings extends Component {
 
     if (unsetTargetsWithSourceOptions.length === 0 && setTargets.length === 0) {
       return (
-        <p className="text-centered text-medium">{t`No available targets`}</p>
+        <p
+          className={cx(CS.textCentered, "text-medium")}
+        >{t`No available targets`}</p>
       );
     }
     return (

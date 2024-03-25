@@ -196,7 +196,7 @@ export class AlertEducationalScreen extends Component {
     const { onProceed } = this.props;
 
     return (
-      <div className="pt2 pb4 ml-auto mr-auto text-centered">
+      <div className={cx("pt2", "pb4", "ml-auto", "mr-auto", CS.textCentered)}>
         <div className="pt4">
           <h1 className="mb1 text-dark">{t`The wide world of alerts`}</h1>
           <h3 className="mb4 text-normal text-dark">{t`There are a few different kinds of alerts you can get`}</h3>
@@ -435,7 +435,7 @@ export class DeleteAlertSection extends Component {
 }
 
 const AlertModalTitle = ({ text }) => (
-  <div className="ml-auto mr-auto my4 pb2 text-centered">
+  <div className={cx("ml-auto", "mr-auto", "my4", "pb2", CS.textCentered)}>
     <img
       className="mb3"
       src="app/assets/img/alerts/alert-bell-confetti-illustration.png"

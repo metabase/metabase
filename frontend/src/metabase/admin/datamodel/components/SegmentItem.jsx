@@ -26,7 +26,7 @@ export default class SegmentItem extends Component {
           </span>
         </td>
         <td className="px1 py1 text-wrap">{segment.definition_description}</td>
-        <td className="px1 py1 text-centered">
+        <td className={cx("px1 py1", CS.textCentered)}>
           <ObjectActionSelect
             object={segment}
             objectType="segment"
