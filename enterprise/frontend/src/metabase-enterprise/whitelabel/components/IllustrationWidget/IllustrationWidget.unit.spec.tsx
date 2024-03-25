@@ -7,6 +7,7 @@ import { IllustrationWidget } from "./IllustrationWidget";
 
 interface SetupOpts {
   setting: StringSetting;
+  defaultPreviewType: "lighthouse" | "sailboat";
   defaultIllustrationLabel: string;
   customIllustrationSetting:
     | "login-page-illustration-custom"
@@ -16,6 +17,7 @@ interface SetupOpts {
 }
 function setup({
   setting,
+  defaultPreviewType,
   defaultIllustrationLabel,
   customIllustrationSetting,
 }: SetupOpts) {
@@ -30,6 +32,7 @@ function setup({
       defaultIllustrationLabel={defaultIllustrationLabel}
       customIllustrationSetting={customIllustrationSetting}
       errorMessageContainerId="does-not-matter-in-unit-tests"
+      defaultPreviewType={defaultPreviewType}
     />,
   );
 
@@ -43,12 +46,14 @@ describe("IllustrationWidget", () => {
     default: "default",
   } as const;
   const defaultIllustrationLabel = "Lighthouse";
+  const defaultPreviewType = "lighthouse";
   const customIllustrationSetting = "login-page-illustration-custom";
 
   describe("select options", () => {
     it("should render default value", () => {
       setup({
         setting: defaultSetting,
+        defaultPreviewType,
         defaultIllustrationLabel,
         customIllustrationSetting,
       });
@@ -60,6 +65,7 @@ describe("IllustrationWidget", () => {
     it("should render options", () => {
       setup({
         setting: defaultSetting,
+        defaultPreviewType,
         defaultIllustrationLabel,
         customIllustrationSetting,
       });
@@ -77,6 +83,7 @@ describe("IllustrationWidget", () => {
 
       const { onChange } = setup({
         setting: defaultSetting,
+        defaultPreviewType,
         defaultIllustrationLabel,
         customIllustrationSetting,
       });
@@ -90,6 +97,7 @@ describe("IllustrationWidget", () => {
 
       const { onChange } = setup({
         setting: defaultSetting,
+        defaultPreviewType,
         defaultIllustrationLabel,
         customIllustrationSetting,
       });
@@ -116,6 +124,7 @@ describe("IllustrationWidget", () => {
 
       const { onChange, onChangeSetting } = setup({
         setting,
+        defaultPreviewType,
         defaultIllustrationLabel,
         customIllustrationSetting,
       });
@@ -139,6 +148,7 @@ describe("IllustrationWidget", () => {
 
       const { onChange, onChangeSetting } = setup({
         setting,
+        defaultPreviewType,
         defaultIllustrationLabel,
         customIllustrationSetting,
       });
@@ -158,6 +168,7 @@ describe("IllustrationWidget", () => {
 
       const { onChange, onChangeSetting } = setup({
         setting,
+        defaultPreviewType,
         defaultIllustrationLabel,
         customIllustrationSetting,
       });
@@ -178,6 +189,7 @@ describe("IllustrationWidget", () => {
     it("should not call callbacks when selecting the default option twice", () => {
       const { onChange, onChangeSetting } = setup({
         setting: defaultSetting,
+        defaultPreviewType,
         defaultIllustrationLabel,
         customIllustrationSetting,
       });
@@ -199,6 +211,7 @@ describe("IllustrationWidget", () => {
       } as const;
       const { onChange, onChangeSetting } = setup({
         setting,
+        defaultPreviewType,
         defaultIllustrationLabel,
         customIllustrationSetting,
       });
@@ -218,6 +231,7 @@ describe("IllustrationWidget", () => {
       } as const;
       const { onChange, onChangeSetting } = setup({
         setting,
+        defaultPreviewType,
         defaultIllustrationLabel,
         customIllustrationSetting,
       });
