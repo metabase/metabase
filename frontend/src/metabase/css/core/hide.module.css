@@ -9,7 +9,7 @@
 /* small */
 
 @media screen and (--breakpoint-min-sm) {
-  :global(.sm-show) {
+  .smShow {
     display: inherit !important;
   }
 }
