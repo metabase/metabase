@@ -256,7 +256,7 @@ export class DimensionList extends Component {
         onChange={this.handleChange}
         itemIsSelected={this.itemIsSelected}
         renderItemExtra={this.renderItemExtra}
-        getItemClassName={() => "hover-parent hover--display"}
+        getItemClassName={() => cx(CS.hoverParent, "hover--display")}
       />
     );
   }

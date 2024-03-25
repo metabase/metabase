@@ -35,7 +35,7 @@ export function NewPulseSidebar({
         <ChannelCard
           flat
           className={cx("mt1 mb3", {
-            "hover-parent hover--inherit": emailConfigured,
+            [cx(CS.hoverParent, "hover--inherit")]: emailConfigured,
           })}
           isConfigured={emailConfigured}
           onClick={onNewEmailPulse}
@@ -75,7 +75,7 @@ export function NewPulseSidebar({
         <ChannelCard
           flat
           className={cx({
-            "hover-parent hover--inherit": slackConfigured,
+            [cx(CS.hoverParent, "hover--inherit")]: slackConfigured,
           })}
           isConfigured={slackConfigured}
           onClick={onNewSlackPulse}

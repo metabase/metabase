@@ -237,7 +237,8 @@ export function FilterPopover({
                 CS.py2,
                 CS.flex,
                 CS.alignCenter,
-                "hover-parent hover--opacity",
+                CS.hoverParent,
+                "hover--opacity",
                 CS.cursorPointer,
               )}
             >

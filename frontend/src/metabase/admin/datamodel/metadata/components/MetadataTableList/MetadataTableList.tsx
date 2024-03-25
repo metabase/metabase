@@ -278,7 +278,7 @@ const TableRow = ({
   }, [table, onSelectTable]);
 
   return (
-    <li className="hover-parent hover--visibility">
+    <li className={cx(CS.hoverParent, "hover--visibility")}>
       <AdminListItem
         disabled={!isSyncCompleted(table)}
         onClick={handleSelect}

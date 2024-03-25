@@ -253,7 +253,7 @@ const SuggestionsList = ({ suggestions, section }) => (
             <ItemLink
               key={itemIndex}
               to={item.url}
-              className="hover-parent hover--visibility"
+              className={cx(CS.hoverParent, "hover--visibility")}
             >
               <Card className="p2" hoverable>
                 <ItemContent>

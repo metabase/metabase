@@ -67,7 +67,7 @@ export const AccordionListCell = ({
             CS.py2,
             CS.flex,
             CS.alignCenter,
-            "hover-parent",
+            CS.hoverParent,
             "hover--opacity",
             {
               "List-section-header--cursor": hasCursor,

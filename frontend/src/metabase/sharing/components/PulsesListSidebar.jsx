@@ -85,7 +85,7 @@ function _PulsesListSidebar({
               }
             >
               <div
-                className={cx("px3 py2 hover-parent hover--inherit", {
+                className={cx("px3 py2", CS.hoverParent, "hover--inherit", {
                   "text-white-hover": canEdit,
                 })}
               >

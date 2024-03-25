@@ -38,7 +38,7 @@ class SnippetRowInner extends Component {
             CS.justifyBetween,
             CS.py2,
             CS.px3,
-            "hover-parent",
+            CS.hoverParent,
             "hover--display",
           )}
           onClick={() => this.setState({ isOpen: !isOpen })}

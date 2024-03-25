@@ -40,7 +40,7 @@ export const ArchivedItem = ({
       CS.flex,
       CS.alignCenter,
       CS.p2,
-      "hover-parent",
+      CS.hoverParent,
       "hover--visibility",
       CS.borderBottom,
       "bg-light-hover",
