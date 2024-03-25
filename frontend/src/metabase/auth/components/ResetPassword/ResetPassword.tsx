@@ -1,17 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
+import { useGetPasswordResetTokenStatusQuery } from "metabase/api";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
+import type { PasswordResetTokenStatus } from "metabase-types/api";
 
-import {
-  resetPassword,
-  validatePassword,
-  validatePasswordToken,
-} from "../../actions";
+import { resetPassword, validatePassword } from "../../actions";
 import type { ResetPasswordData } from "../../types";
 import { AuthLayout } from "../AuthLayout";
 import { ResetPasswordForm } from "../ResetPasswordForm";
@@ -32,17 +30,9 @@ export const ResetPassword = ({
   params,
 }: ResetPasswordProps): JSX.Element | null => {
   const { token } = params;
-  const [view, setView] = useState<ViewType>("none");
   const dispatch = useDispatch();
-
-  const handleLoad = useCallback(async () => {
-    try {
-      await validatePasswordToken(token);
-      setView("form");
-    } catch (error) {
-      setView("expired");
-    }
-  }, [token]);
+  const { data: status, error } = useGetPasswordResetTokenStatusQuery(token);
+  const view = getViewType(status, error);
 
   const handlePasswordSubmit = useCallback(
     async ({ password }: ResetPasswordData) => {
@@ -52,10 +42,6 @@ export const ResetPassword = ({
     },
     [token, dispatch],
   );
-
-  useEffect(() => {
-    handleLoad();
-  }, [handleLoad]);
 
   return (
     <AuthLayout>
@@ -83,3 +69,14 @@ const ResetPasswordExpired = (): JSX.Element => {
     </InfoBody>
   );
 };
+
+function getViewType(
+  status?: PasswordResetTokenStatus,
+  error?: unknown,
+): ViewType {
+  if (!status && !error) {
+    return "none";
+  } else {
+    return status?.valid ? "form" : "expired";
+  }
+}
