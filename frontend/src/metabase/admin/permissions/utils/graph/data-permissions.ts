@@ -187,7 +187,6 @@ export function downgradeNativePermissionsIfNeeded(
   groupId: number,
   { databaseId }: DatabaseEntityId,
   value: any,
-  database: Database,
   permission: DataPermission,
 ) {
   const currentSchemas = getSchemasPermission(
@@ -319,7 +318,6 @@ export function inferAndUpdateEntityPermissions(
         groupId,
         { databaseId },
         schemasPermissionValue,
-        database,
         permission,
       );
     }
@@ -418,7 +416,6 @@ export function updateSchemasPermission(
       groupId,
       { databaseId },
       value,
-      database,
       permission,
     );
   }

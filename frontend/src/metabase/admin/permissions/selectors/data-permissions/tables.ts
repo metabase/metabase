@@ -113,11 +113,7 @@ const buildNativePermission = (
     ),
     isHighlighted: isAdmin,
     value: getNativePermission(permissions, groupId, entityId),
-    options: [
-      DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
-      DATA_PERMISSION_OPTIONS.queryBuilder,
-      DATA_PERMISSION_OPTIONS.no,
-    ],
+    options: [DATA_PERMISSION_OPTIONS.queryBuilder, DATA_PERMISSION_OPTIONS.no],
   };
 };
 
