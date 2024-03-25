@@ -93,7 +93,10 @@ export function DatabaseTrigger({ database }: { database: Database }) {
 
 export function TableTrigger({ table }: { table: Table }) {
   return table ? (
-    <span className="text-wrap text-grey no-decoration">
+    <span
+      className="text-wrap text-grey no-decoration"
+      data-testid="selected-table"
+    >
       {table.display_name || table.name}
     </span>
   ) : (

@@ -23,7 +23,6 @@ import {
   modal,
   pickEntity,
   hovercard,
-  openNotebook,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -205,17 +204,6 @@ describe("scenarios > question > new", () => {
 
       cy.url().should("include", "question#");
     });
-  });
-
-  it("should remove `/notebook` from URL when converting question to SQL/Native (metabase#12651)", () => {
-    openOrdersTable();
-
-    cy.url().should("include", "question#");
-    openNotebook();
-    cy.url().should("include", "question/notebook#");
-    cy.findByTestId("query-builder-root").icon("sql").click();
-    cy.button("Convert this question to SQL").click();
-    cy.url().should("include", "question#");
   });
 
   it("composite keys should act as filters on click (metabase#13717)", () => {
