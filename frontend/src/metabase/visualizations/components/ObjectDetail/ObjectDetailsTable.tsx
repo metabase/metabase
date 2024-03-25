@@ -201,7 +201,7 @@ export function DetailsTable({
                     CS.textBold,
                     "text-dark",
                     CS.textSpaced,
-                    "text-wrap",
+                    CS.textWrap,
                   )}
                   onVisualizationClick={onVisualizationClick}
                   visualizationIsClickable={visualizationIsClickable}

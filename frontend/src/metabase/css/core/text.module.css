@@ -71,7 +71,8 @@
   text-overflow: ellipsis;
 }
 
-:global(.text-wrap) {
+:global(.text-wrap),
+.textWrap {
   overflow-wrap: anywhere;
   word-break: break-word;
   word-wrap: anywhere;

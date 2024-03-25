@@ -284,7 +284,7 @@ const TableRow = ({
         onClick={handleSelect}
         data-testid="admin-metadata-table-list-item"
         className={cx(
-          "text-wrap",
+          CS.textWrap,
           CS.justifyBetween,
           CS.flex,
           CS.alignCenter,

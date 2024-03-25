@@ -260,7 +260,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
   >
     <div className="p1 border-bottom relative bg-light">
       <div className={cx(CS.px1, CS.flex, CS.alignCenter, CS.relative)}>
-        <span className={cx(CS.h4, CS.flexAuto, CS.textDark, "text-wrap")}>
+        <span className={cx(CS.h4, CS.flexAuto, CS.textDark, CS.textWrap)}>
           {rule.columns.length > 0 ? (
             rule.columns
               .map(

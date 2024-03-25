@@ -91,7 +91,9 @@ export const AccordionListCell = ({
               {icon}
             </span>
           )}
-          {name && <h3 className="List-section-title text-wrap">{name}</h3>}
+          {name && (
+            <h3 className={cx("List-section-title", CS.textWrap)}>{name}</h3>
+          )}
           {showSpinner(section) && (
             <Box ml="0.5rem">
               <LoadingSpinner size={16} borderWidth={2} />
@@ -179,9 +181,11 @@ export const AccordionListCell = ({
             </span>
           )}
           <div className="List-item-content">
-            {name && <h4 className="List-item-title ml1 text-wrap">{name}</h4>}
+            {name && (
+              <h4 className={cx("List-item-title ml1", CS.textWrap)}>{name}</h4>
+            )}
             {description && (
-              <p className="List-item-description ml1 text-wrap">
+              <p className={cx("List-item-description ml1", CS.textWrap)}>
                 {description}
               </p>
             )}

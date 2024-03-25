@@ -19,13 +19,15 @@ export default class SegmentItem extends Component {
 
     return (
       <tr className="mt1 mb3">
-        <td className="px1 py1 text-wrap">
+        <td className={cx("px1 py1", CS.textWrap)}>
           <span className={cx(CS.flex, CS.alignCenter)}>
             <Icon name="segment" className="mr1 text-medium" />
             <span className={cx("text-dark", CS.textBold)}>{segment.name}</span>
           </span>
         </td>
-        <td className="px1 py1 text-wrap">{segment.definition_description}</td>
+        <td className={cx("px1 py1", CS.textWrap)}>
+          {segment.definition_description}
+        </td>
         <td className={cx("px1 py1", CS.textCentered)}>
           <ObjectActionSelect
             object={segment}
