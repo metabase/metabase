@@ -50,13 +50,13 @@ h1,
 }
 
 @media screen and (--breakpoint-min-sm) {
-  :global(.sm-h3) {
+  .smH3 {
     font-size: 1.17em;
   }
 }
 
 @media screen and (--breakpoint-min-md) {
-  :global(.md-h2) {
+  .mdH2 {
     font-size: 1.5em;
   }
 }
