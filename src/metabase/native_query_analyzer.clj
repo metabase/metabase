@@ -56,16 +56,23 @@
     (catch JSQLParserException e
       (log/error e "Error parsing native query"))))
 
-(defn- field-ids-for-card
-  "Returns a list of field IDs that (may) be referenced in the given cards's query. Errs on the side of optimism:
+(defn field-ids-for-card
+  "Returns a `{:direct #{...} :indirect #{...}}` map with field IDs that (may) be referenced in the given cards's query. Errs on the side of optimism:
   i.e., it may return fields that are *not* in the query, and is unlikely to fail to return fields that are in the
   query.
 
   Returns `nil` (and logs the error) if there was a parse error."
   [card]
   (let [{native-query :native
-         db-id        :database} (:dataset_query card)]
-    (field-ids-for-query (:query native-query) db-id)))
+         db-id        :database} (:dataset_query card)
+        parsed-query             (mac/query->components (mac/parsed-query (:query native-query)))
+        direct-ids               (direct-field-ids-for-query parsed-query db-id)
+        indirect-ids             (set/difference
+                                  (indirect-field-ids-for-query parsed-query db-id)
+                                  direct-ids)]
+    {:direct   direct-ids
+     :indirect indirect-ids
+     :raw-parse parsed-query}))
 
 (defn update-query-fields-for-card!
   "Clears QueryFields associated with this card and creates fresh, up-to-date-ones.

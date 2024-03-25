@@ -61,6 +61,7 @@ import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import { BrowseRedirect } from "./browse/components/BrowseRedirect";
+import { DevDebug } from "./DevDebug";
 import {
   CanAccessMetabot,
   CanAccessSettings,
@@ -108,6 +109,7 @@ export const getRoutes = store => {
           }
         }}
       >
+        <Route path="/dev_debug" component={DevDebug} />
         {/* AUTH */}
         <Route path="/auth">
           <IndexRedirect to="/auth/login" />
