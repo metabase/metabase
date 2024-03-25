@@ -6,7 +6,7 @@
   padding: 0;
 }
 
-:global(.Grid-cell) {
+.GridCell {
   flex: 1;
 }
 

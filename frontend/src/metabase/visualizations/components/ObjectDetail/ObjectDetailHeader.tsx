@@ -41,7 +41,7 @@ export function ObjectDetailHeader({
 }: ObjectDetailHeaderProps): JSX.Element {
   return (
     <ObjectDetailHeaderWrapper className={CS.Grid}>
-      <div className="Grid-cell">
+      <div className={CS.GridCell}>
         <h2 className="p3">
           {objectName}
           {objectId !== null && <ObjectIdLabel> {objectId}</ObjectIdLabel>}
