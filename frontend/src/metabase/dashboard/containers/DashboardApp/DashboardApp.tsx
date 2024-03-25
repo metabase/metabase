@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { Location } from "history";
 import type { ReactNode } from "react";
 import { useCallback, useEffect } from "react";
@@ -9,6 +10,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
+import CS from "metabase/css/core/index.css";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import Dashboards from "metabase/entities/dashboards";
 import favicon from "metabase/hoc/Favicon";
@@ -29,9 +31,9 @@ import {
   canManageSubscriptions,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import type Database from "metabase-lib/metadata/Database";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type { UiParameter } from "metabase-lib/parameters/types";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Dashboard as IDashboard,
   DashboardId,
@@ -244,7 +246,7 @@ const DashboardApp = (props: DashboardAppProps) => {
   });
 
   return (
-    <div className="shrink-below-content-size full-height">
+    <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
       <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
 
       <Dashboard

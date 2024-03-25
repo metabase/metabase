@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { isValidTimeInterval } from "metabase/lib/time";
-import type Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
   formatStartingFrom,
   getRelativeDatetimeInterval,
@@ -14,7 +14,7 @@ import {
   setRelativeDatetimeValue,
   setStartingFrom,
   toTimeInterval,
-} from "metabase-lib/queries/utils/query-time";
+} from "metabase-lib/v1/queries/utils/query-time";
 
 import {
   GridContainer,

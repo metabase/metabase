@@ -10,14 +10,9 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
-(mu/defn ^:private query-type :- [:enum #_pMBQL :mbql/query #_legacy :query :native #_audit :internal]
-  "Query type from a not-yet-normalized query map."
-  [query]
-  (keyword (some #(get query %) [:lib/type "lib/type" :type "type"])))
-
 (defmulti ^:private normalize*
   {:arglists '([query])}
-  query-type)
+  lib/normalized-query-type)
 
 (defn- normalize-legacy-query [query]
   (lib/query (qp.store/metadata-provider) query))
@@ -55,7 +50,7 @@
                                                  (some-fn :lib/type :type)]]
   "Preprocessing middleware. Normalize a query, meaning do things like convert keys and MBQL clause tags to kebab-case
   keywords. Convert query to pMBQL if needed."
-  [query :- :map]
+  [query :- [:map [:database ::lib.schema.id/database]]]
   (try
     (u/prog1 (normalize* query)
       (log/tracef "Normalized query:\n%s\n=>\n%s" (u/pprint-to-str query) (u/pprint-to-str <>)))

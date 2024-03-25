@@ -1,8 +1,10 @@
+import cx from "classnames";
 import type { ChangeEvent } from "react";
 
 import { CopyButton } from "metabase/components/CopyButton";
 import AceEditor from "metabase/components/TextEditor";
 import Select, { Option } from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
 import type { CodeSampleOption } from "metabase/public/lib/types";
 
 import { CopyButtonContainer } from "./CodeSample.styled";
@@ -37,7 +39,7 @@ export const CodeSample = ({
   return (
     <div className={className} data-testid={dataTestId}>
       {(title || languageOptions.length > 1) && (
-        <div className="flex align-center">
+        <div className={cx(CS.flex, CS.alignCenter)}>
           {title && <h4>{title}</h4>}
           {languageOptions.length > 1 ? (
             <Select
@@ -61,7 +63,7 @@ export const CodeSample = ({
       )}
       <div className="bordered rounded shadowed relative mt2">
         <AceEditor
-          className="z1"
+          className={CS.z1}
           value={source}
           mode={textHighlightMode}
           theme="ace/theme/metabase"

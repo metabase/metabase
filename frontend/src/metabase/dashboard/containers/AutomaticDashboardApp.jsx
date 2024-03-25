@@ -11,6 +11,7 @@ import Card from "metabase/components/Card";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import { DashboardData } from "metabase/dashboard/hoc/DashboardData";
 import { getIsHeaderVisible, getTabs } from "metabase/dashboard/selectors";
@@ -24,7 +25,7 @@ import * as Urls from "metabase/lib/urls";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Icon } from "metabase/ui";
-import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
+import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { FixedWidthContainer } from "../components/Dashboard/Dashboard.styled";
 import { DashboardTabs } from "../components/DashboardTabs";
@@ -76,7 +77,7 @@ class AutomaticDashboardAppInner extends Component {
     );
     invalidateCollections();
     triggerToast(
-      <div className="flex align-center">
+      <div className={cx(CS.flex, CS.alignCenter)}>
         {t`Your dashboard was saved`}
         <Link className="link text-bold ml1" to={Urls.dashboard(newDashboard)}>
           {t`See it`}
@@ -123,12 +124,12 @@ class AutomaticDashboardAppInner extends Component {
               className="bg-white border-bottom"
               data-testid="automatic-dashboard-header"
             >
-              <div className="wrapper">
+              <div className={CS.wrapper}>
                 <FixedWidthContainer
                   data-testid="fixed-width-dashboard-header"
                   isFixedWidth={dashboard?.width === "fixed"}
                 >
-                  <div className="flex align-center py2">
+                  <div className={cx(CS.flex, CS.alignCenter, CS.py2)}>
                     <XrayIcon name="bolt" size={24} />
                     <div>
                       <h2 className="text-wrap mr2">
@@ -149,7 +150,7 @@ class AutomaticDashboardAppInner extends Component {
                     )}
                   </div>
                   {this.props.tabs.length > 1 && (
-                    <div className="wrapper flex align-center">
+                    <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
                       <DashboardTabs location={this.props.location} />
                     </div>
                   )}
@@ -158,7 +159,7 @@ class AutomaticDashboardAppInner extends Component {
             </div>
           )}
 
-          <div className="wrapper pb4">
+          <div className={cx(CS.wrapper, "pb4")}>
             {parameters && parameters.length > 0 && (
               <div className="px1 pt1">
                 <FixedWidthContainer
@@ -179,7 +180,7 @@ class AutomaticDashboardAppInner extends Component {
             <Dashboard isXray {...this.props} />
           </div>
           {more && (
-            <div className="flex justify-end px4 pb4">
+            <div className={cx(CS.flex, CS.justifyEnd, CS.px4, CS.pb4)}>
               <Link
                 to={more}
                 className="ml2"
@@ -196,7 +197,9 @@ class AutomaticDashboardAppInner extends Component {
           )}
         </div>
         {hasSidebar && (
-          <SuggestionsSidebarWrapper className="absolute top right bottom">
+          <SuggestionsSidebarWrapper
+            className={cx(CS.absolute, CS.top, CS.right, CS.bottom)}
+          >
             <SuggestionsSidebar related={related} />
           </SuggestionsSidebarWrapper>
         )}

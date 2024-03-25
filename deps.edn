@@ -77,6 +77,7 @@
   io.github.eerohele/pp                     {:git/tag "2023-11-25.47"           ; super fast pretty-printing library
                                              :git/sha "d3210d3"
                                              :git/url "https://github.com/eerohele/pp"}
+  io.github.metabase/macaw                  {:mvn/version "0.1.21"}             ; Parse native SQL queries
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1"}              ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
@@ -488,6 +489,7 @@
                                    "resources/frontend_client"
                                    "resources/frontend_shared"
                                    "resources/html-entities.edn"
+                                   "resources/openapi/.*"
                                    "frontend/src/cljs"
                                    "frontend/test/metabase/lib/urls\\.unit\\.spec\\.js$"
                                    "frontend/test/metabase/lib/formatting\\.unit\\.spec\\.js$"
@@ -682,7 +684,7 @@
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
                       metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
 
-  ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.mbql` code, and the QP
+  ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/mbql
   :test/mbql

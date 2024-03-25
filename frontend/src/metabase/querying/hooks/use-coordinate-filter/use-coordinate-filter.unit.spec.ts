@@ -10,20 +10,20 @@ import { useCoordinateFilter } from "./use-coordinate-filter";
 interface CreateFilterCase {
   operator: Lib.CoordinateFilterOperatorName;
   values: number[];
-  displayName: string;
+  expectedDisplayName: string;
 }
 
 interface UpdateFilterCase {
   operator: Lib.CoordinateFilterOperatorName;
   expression: Lib.ExpressionClause;
   values: number[];
-  displayName: string;
+  expectedDisplayName: string;
 }
 
 interface CoerceFilterCase {
   operator: Lib.CoordinateFilterOperatorName;
   values: (number | "")[];
-  displayName: string;
+  expectedDisplayName: string;
 }
 
 interface ValidateFilterCase {
@@ -48,21 +48,21 @@ describe("useCoordinateFilter", () => {
     {
       operator: "=",
       values: [10, 20],
-      displayName: "Latitude is equal to 2 selections",
+      expectedDisplayName: "Latitude is equal to 2 selections",
     },
     {
       operator: "!=",
       values: [10],
-      displayName: "Latitude is not equal to 10",
+      expectedDisplayName: "Latitude is not equal to 10",
     },
     {
       operator: ">",
       values: [10],
-      displayName: "Latitude is greater than 10",
+      expectedDisplayName: "Latitude is greater than 10",
     },
   ])(
     'should allow to create a filter for "$operator" operator',
-    ({ operator: newOperator, values: newValues, displayName }) => {
+    ({ operator: newOperator, values: newValues, expectedDisplayName }) => {
       const { result } = renderHook(() =>
         useCoordinateFilter({
           query: defaultQuery,
@@ -84,7 +84,7 @@ describe("useCoordinateFilter", () => {
       expect(
         Lib.displayInfo(defaultQuery, stageIndex, newFilter),
       ).toMatchObject({
-        displayName,
+        displayName: expectedDisplayName,
       });
     },
   );
@@ -99,11 +99,11 @@ describe("useCoordinateFilter", () => {
       }),
       operator: "=",
       values: [20],
-      displayName: "Latitude is equal to 20",
+      expectedDisplayName: "Latitude is equal to 20",
     },
   ])(
     'should allow to update a filter for "$operator" operator',
-    ({ expression, values: newValues, displayName }) => {
+    ({ expression, values: newValues, expectedDisplayName }) => {
       const query = Lib.filter(defaultQuery, stageIndex, expression);
       const [filter] = Lib.filters(query, stageIndex);
 
@@ -126,7 +126,7 @@ describe("useCoordinateFilter", () => {
         getFilterClause(operator, longitudeColumn, values),
       );
       expect(Lib.displayInfo(query, stageIndex, newFilter)).toMatchObject({
-        displayName,
+        displayName: expectedDisplayName,
       });
     },
   );
@@ -135,27 +135,27 @@ describe("useCoordinateFilter", () => {
     {
       operator: "between",
       values: [20, 10],
-      displayName: "Latitude is between 10 and 20",
+      expectedDisplayName: "Latitude is between 10 and 20",
     },
     {
       operator: "between",
       values: [10, ""],
-      displayName: "Latitude is greater than or equal to 10",
+      expectedDisplayName: "Latitude is greater than or equal to 10",
     },
     {
       operator: "between",
       values: ["", 10],
-      displayName: "Latitude is less than or equal to 10",
+      expectedDisplayName: "Latitude is less than or equal to 10",
     },
     {
       operator: "inside",
       values: [-90, 180, 90, -180],
-      displayName:
+      expectedDisplayName:
         "Latitude is between -90 and 90 and Longitude is between -180 and 180",
     },
   ])(
     'should allow to coerce a filter for "$operator" operator',
-    ({ operator, values, displayName }) => {
+    ({ operator, values, expectedDisplayName }) => {
       const { result } = renderHook(() =>
         useCoordinateFilter({
           query: defaultQuery,
@@ -171,7 +171,7 @@ describe("useCoordinateFilter", () => {
       expect(
         Lib.displayInfo(defaultQuery, stageIndex, newFilter),
       ).toMatchObject({
-        displayName,
+        displayName: expectedDisplayName,
       });
     },
   );
@@ -247,5 +247,18 @@ describe("useCoordinateFilter", () => {
     expect(Lib.displayInfo(defaultQuery, stageIndex, newFilter)).toMatchObject({
       displayName: "Latitude is not equal to 10",
     });
+  });
+
+  it('should use "between" operator for new filters', () => {
+    const { result } = renderHook(() =>
+      useCoordinateFilter({
+        query: defaultQuery,
+        stageIndex,
+        column: latitudeColumn,
+      }),
+    );
+
+    const { operator } = result.current;
+    expect(operator).toBe("between");
   });
 });

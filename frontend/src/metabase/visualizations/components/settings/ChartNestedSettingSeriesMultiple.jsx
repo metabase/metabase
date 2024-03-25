@@ -1,8 +1,10 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 
 import IconWrapper from "metabase/components/IconWrapper";
 import ColorSelector from "metabase/core/components/ColorSelector";
+import CS from "metabase/css/core/index.css";
 import { getAccentColors } from "metabase/lib/colors/groups";
 
 import {
@@ -36,9 +38,15 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
             return (
               <div
                 key={key}
-                className="px4 pt2 mt2 border-top align-self-stretch"
+                className={cx(
+                  CS.px4,
+                  CS.pt2,
+                  CS.mt2,
+                  CS.borderTop,
+                  CS.alignSelfStretch,
+                )}
               >
-                <div className="flex align-center">
+                <div className={cx(CS.flex, CS.alignCenter)}>
                   <ColorSelector
                     value={settings.color}
                     colors={getAccentColors()}
@@ -47,7 +55,7 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
                     }
                   />
                   <SeriesNameInput
-                    className="flex-full ml1 align-self-stretch"
+                    className={cx(CS.flexFull, CS.ml1, CS.alignSelfStretch)}
                     // set vertical padding to 0 and use align-self-stretch to match siblings
                     style={{ paddingTop: 0, paddingBottom: 0 }}
                     aria-label="series-name-input"

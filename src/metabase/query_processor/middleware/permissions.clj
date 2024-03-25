@@ -3,6 +3,7 @@
   (:require
    [metabase.api.common
     :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.data-permissions :as data-perms]
@@ -12,7 +13,6 @@
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.util.tag-referenced-cards :as qp.u.tag-referenced-cards]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -103,7 +103,8 @@
         (do
           (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true)
           ;; check perms for any Cards referenced by this query (if it is a native query)
-          (doseq [{query :dataset-query} (qp.u.tag-referenced-cards/tags-referenced-cards outer-query)]
+          (doseq [{query :dataset-query} (lib/template-tags-referenced-cards
+                                          (lib/query (qp.store/metadata-provider) outer-query))]
             (check-query-permissions* query)))))))
 
 (defn check-query-permissions

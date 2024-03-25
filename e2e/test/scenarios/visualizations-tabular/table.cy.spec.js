@@ -17,7 +17,8 @@ import {
   getTable,
   leftSidebar,
   sidebar,
-  moveDnDKitColumnVertical,
+  moveDnDKitElement,
+  selectFilterOperator,
 } from "e2e/support/helpers";
 
 describe("scenarios > visualizations > table", () => {
@@ -215,16 +216,16 @@ describe("scenarios > visualizations > table", () => {
         },
       ],
     ].forEach(([column, test]) => {
-      cy.get(".cellData").contains(column).realHover();
+      cy.get(".cellData").contains(column).trigger("mouseover");
 
       // Add a delay here because there can be two popovers active for a very short time.
-      cy.wait(200);
+      cy.wait(250);
 
       hovercard().within(() => {
         test();
       });
 
-      cy.get(".cellData").contains(column).trigger("mouseleave");
+      cy.get(".cellData").contains(column).trigger("mouseout");
     });
 
     summarize();
@@ -233,15 +234,16 @@ describe("scenarios > visualizations > table", () => {
 
     cy.wait("@dataset");
 
-    cy.get(".cellData").contains("Count").realHover();
+    cy.get(".cellData").contains("Count").trigger("mouseover");
     hovercard().within(() => {
       cy.contains("Quantity");
       cy.findByText("No description");
     });
+    cy.get(".cellData").contains("Count").trigger("mouseout");
 
     // Make sure new table results loaded with Custom column and Count columns
-    cy.get(".cellData").contains(ccName).realHover();
-    cy.wait(200);
+    cy.get(".cellData").contains(ccName).trigger("mouseover");
+    cy.wait(250);
 
     hovercard().within(() => {
       cy.contains("No special type");
@@ -252,7 +254,7 @@ describe("scenarios > visualizations > table", () => {
   it("should show the field metadata popover for a foreign key field (metabase#19577)", () => {
     openOrdersTable({ limit: 2 });
 
-    cy.get(".cellData").contains("Product ID").realHover();
+    cy.get(".cellData").contains("Product ID").trigger("mouseover");
 
     hovercard().within(() => {
       cy.contains("Foreign Key");
@@ -315,15 +317,36 @@ describe("scenarios > visualizations > table", () => {
     openPeopleTable();
     headerCells().filter(":contains('Password')").click();
 
+    popover().findByText("Filter by this column").click();
+    selectFilterOperator("Is");
     popover().within(() => {
-      cy.findByText("Filter by this column").click();
-      cy.findByPlaceholderText("Search by Password").type("e").blur();
+      cy.findByPlaceholderText("Search by Password").type("e");
       cy.wait("@findSuggestions");
+      cy.findByPlaceholderText("Search by Password").blur();
     });
 
     popover().then($popover => {
       expect(isScrollableHorizontally($popover[0])).to.be.false;
     });
+  });
+
+  it("should show the slow loading text when the query is taking too long", () => {
+    openOrdersTable({ mode: "notebook" });
+
+    cy.intercept("POST", "/api/dataset", req => {
+      req.on("response", res => {
+        res.setDelay(10000);
+      });
+    });
+
+    cy.button("Visualize").click();
+
+    cy.clock();
+    cy.tick(1000);
+    cy.findByTestId("query-builder-main").findByText("Doing science...");
+
+    cy.tick(5000);
+    cy.findByTestId("query-builder-main").findByText("Waiting for results...");
   });
 });
 
@@ -411,10 +434,9 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
         .first()
         .should("contain.text", "is less than 20");
 
-      moveDnDKitColumnVertical(
-        cy.findAllByTestId("formatting-rule-preview").eq(2),
-        -300,
-      );
+      moveDnDKitElement(cy.findAllByTestId("formatting-rule-preview").eq(2), {
+        vertical: -300,
+      });
 
       cy.findAllByTestId("formatting-rule-preview")
         .first()

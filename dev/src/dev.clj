@@ -12,6 +12,8 @@
 ;;
 ;; - [Getting started with backend development](https://github.com/metabase/metabase/blob/master/docs/developers-guide/devenv.md#backend-development)
 ;; - [Additional notes on using tools.deps](https://github.com/metabase/metabase/wiki/Migrating-from-Leiningen-to-tools.deps)
+;; - [Use the dev-scripts repo to run various local DBs](https://github.com/metabase/dev-scripts)
+;; - [If you're on mac and need a VM to run Windows, Linux.. etc checkout UTM](https://mac.getutm.app/)
 ;; - [Other tips](https://github.com/metabase/metabase/wiki/Metabase-Backend-Dev-Secrets)
 ;;
 ;; ## Important Parts of the Codebase
@@ -48,9 +50,8 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.core :as mbc]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.db.env :as mdb.env]
-   [metabase.db.setup :as mdb.setup]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -69,7 +70,8 @@
    [potemkin :as p]
    [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]
-   [toucan2.pipeline :as t2.pipeline]))
+   [toucan2.pipeline :as t2.pipeline]
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
@@ -211,7 +213,7 @@
   first arg:
 
     (dev/query-jdbc-db
-     [:sqlserver 'test-data-with-time]
+     [:sqlserver 'time-test-data]
      [\"SELECT * FROM dbo.users WHERE dbo.users.last_login_time > ?\" (java-time/offset-time \"16:00Z\")])"
   {:arglists '([driver sql]            [[driver dataset] sql]
                [driver honeysql-form]  [[driver dataset] honeysql-form]
@@ -249,8 +251,8 @@
   ([]
    (migrate! :up))
   ([direction & [version]]
-   (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source)
-                       direction version)))
+   (mdb/migrate! (mdb/db-type) (mdb/data-source)
+                 direction version)))
 
 (methodical/defmethod t2.connection/do-with-connection :model/Database
   "Support running arbitrary queries against data warehouse DBs for easy REPL debugging. Only works for SQL+JDBC drivers
@@ -296,6 +298,27 @@
                                  (qp.compile/compile built-query))]
     (into [query] params)))
 
+(methodical/defmethod t2.hydrate/hydrate-with-strategy :around ::t2.hydrate/multimethod-simple
+  "Throws an error if do simple hydrations that make DB call on a sequence."
+  [model strategy k instances]
+  (if (or config/is-prod?
+          (< (count instances) 2)
+          ;; we skip checking these keys because most of the times its call count
+          ;; are from deferencing metabase.api.common/*current-user-permissions-set*
+          (#{:can_write :can_read} k))
+    (next-method model strategy k instances)
+    (t2/with-call-count [call-count]
+      (let [res (next-method model strategy k instances)
+            ;; if it's a lazy-seq then we need to realize it so call-count is counted
+            res (if (instance? clojure.lang.LazySeq res)
+                  (doall res)
+                  res)]
+        ;; only throws an exception if the simple hydration makes a DB call
+        (when (pos-int? (call-count))
+          (throw (ex-info (format "N+1 hydration detected!!! Model %s, key %s]" (pr-str model) k)
+                          {:model model :strategy strategy :k k :items-count (count instances) :db-calls (call-count)})))
+        res))))
+
 (defn app-db-as-data-warehouse
   "Add the application database as a Database. Currently only works if your app DB uses broken-out details!"
   []
@@ -303,11 +326,11 @@
     (or (t2/select-one Database :name "Application Database")
         #_:clj-kondo/ignore
         (let [details (#'metabase.db.env/broken-out-details
-                       (mdb.connection/db-type)
+                       (mdb/db-type)
                        @#'metabase.db.env/env)
               app-db  (first (t2/insert-returning-instances! Database
                                                              {:name    "Application Database"
-                                                              :engine  (mdb.connection/db-type)
+                                                              :engine  (mdb/db-type)
                                                               :details details}))]
           (sync/sync-database! app-db)
           app-db))))

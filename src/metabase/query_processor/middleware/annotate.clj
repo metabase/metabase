@@ -5,19 +5,18 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.driver.common :as driver.common]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.mbql.util.match :as mbql.match]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.humanization :as humanization]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.escape-join-aliases
-    :as escape-join-aliases]
+   [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
@@ -57,8 +56,8 @@
 (defmethod column-info :default
   [{query-type :type, :as query} _]
   (throw (ex-info (tru "Unknown query type {0}" (pr-str query-type))
-           {:type  qp.error-type/invalid-query
-            :query query})))
+                  {:type  qp.error-type/invalid-query
+                   :query query})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Adding :cols info for native queries                                      |
@@ -132,7 +131,7 @@
 (defn- datetime-arithmetics?
   "Helper for [[infer-expression-type]]. Returns true if a given clause returns a :type/DateTime type."
   [clause]
-  (mbql.match/match-one clause
+  (lib.util.match/match-one clause
     #{:datetime-add :datetime-subtract :relative-datetime}
     true
 
@@ -305,7 +304,7 @@
   "Return results column metadata for a `:field` or `:expression` clause, in the format that gets returned by QP results"
   [inner-query :- :map
    clause      :- mbql.s/Field]
-  (mbql.u/match-one clause
+  (lib.util.match/match-one clause
     :expression
     (col-info-for-expression inner-query &match)
 
@@ -476,7 +475,7 @@
       source-query
       (flow-field-metadata (cols-for-source-query inner-query results) cols model?)
 
-      (every? #(mbql.u/match-one % [:field (field-name :guard string?) _] field-name) fields)
+      (every? #(lib.util.match/match-one % [:field (field-name :guard string?) _] field-name) fields)
       (maybe-merge-source-metadata source-metadata cols)
 
       :else
@@ -486,7 +485,7 @@
   [{aggregations :aggregation breakouts :breakout :as inner-query} replaced-indices]
   (let [offset   (count breakouts)
         restored (reduce (fn [aggregations index]
-                           (mbql.u/replace-in aggregations [(- index offset)]
+                           (lib.util.match/replace-in aggregations [(- index offset)]
                              [:count]       [:cum-count]
                              [:count field] [:cum-count field]
                              [:sum field]   [:cum-sum field]))

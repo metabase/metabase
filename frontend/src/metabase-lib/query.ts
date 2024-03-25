@@ -81,10 +81,23 @@ export function replaceClause(
   return ML.replace_clause(query, stageIndex, targetClause, newClause);
 }
 
+export function swapClauses(
+  query: Query,
+  stageIndex: number,
+  sourceClause: Clause,
+  targetClause: Clause,
+): Query {
+  return ML.swap_clauses(query, stageIndex, sourceClause, targetClause);
+}
+
 export function sourceTableOrCardId(query: Query): TableId | null {
   return ML.source_table_or_card_id(query);
 }
 
 export function canRun(query: Query): boolean {
   return ML.can_run(query);
+}
+
+export function canSave(query: Query): boolean {
+  return ML.can_save(query);
 }

@@ -1,7 +1,7 @@
 import type { IconName } from "metabase/ui";
-import { getIconForField } from "metabase-lib/metadata/utils/fields";
-import { findColumnSettingIndexesForColumns } from "metabase-lib/queries/utils/dataset";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
+import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
@@ -13,31 +13,16 @@ import type { ColumnItem } from "./types";
 
 export function getColumnItems(
   columns: DatasetColumn[],
-  originalSettings: TableColumnOrderSetting[],
+  columnSettings: TableColumnOrderSetting[],
 ): ColumnItem[] {
-  const originalIndexes = findColumnSettingIndexesForColumns(
+  const columnIndexes = findColumnIndexesForColumnSettings(
     columns,
-    originalSettings,
+    columnSettings,
   );
 
-  const updatedIndexes = [...originalIndexes];
-  const updatedSettings = [...originalSettings];
-  columns.forEach((column, columnIndex) => {
-    const columnSettingIndex = originalIndexes[columnIndex];
-    if (columnSettingIndex < 0) {
-      updatedIndexes[columnIndex] = updatedSettings.length;
-      updatedSettings.push({
-        name: column.name,
-        key: getColumnKey(column),
-        fieldRef: column.field_ref,
-        enabled: false,
-      });
-    }
-  });
-
-  const columnItems = columns.map((column, columnIndex) => {
-    const columnSettingIndex = updatedIndexes[columnIndex];
-    const columnSetting = updatedSettings[columnSettingIndex];
+  return columnSettings.map((columnSetting, columnSettingIndex) => {
+    const columnIndex = columnIndexes[columnSettingIndex];
+    const column = columns[columnIndex];
 
     return {
       name: column.name,
@@ -48,8 +33,6 @@ export function getColumnItems(
       columnSetting,
     };
   });
-
-  return columnItems.sort((a, b) => a.index - b.index);
 }
 
 export function toggleColumnInSettings(

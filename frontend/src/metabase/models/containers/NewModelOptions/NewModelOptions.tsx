@@ -1,8 +1,10 @@
+import cx from "classnames";
 import type { Location } from "history";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { Grid } from "metabase/components/Grid";
+import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
@@ -12,7 +14,7 @@ import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesE
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 
 import {
   OptionsGridItem,
@@ -47,7 +49,9 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
 
   if (!hasDataAccess && !hasNativeWrite) {
     return (
-      <div className="full-height flex align-center justify-center">
+      <div
+        className={cx(CS.fullHeight, CS.flex, CS.alignCenter, CS.justifyCenter)}
+      >
         <NoDatabasesEmptyState />
       </div>
     );
@@ -58,7 +62,7 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
 
   return (
     <OptionsRoot data-testid="new-model-options">
-      <Grid className="justifyCenter">
+      <Grid>
         {hasDataAccess && (
           <OptionsGridItem itemsCount={itemsCount}>
             <NewModelOption

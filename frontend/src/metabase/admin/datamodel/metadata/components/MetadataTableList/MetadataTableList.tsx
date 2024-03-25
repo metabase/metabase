@@ -8,13 +8,15 @@ import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import Tooltip from "metabase/core/components/Tooltip";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
 import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Icon } from "metabase/ui";
-import type Table from "metabase-lib/metadata/Table";
-import { getSchemaName } from "metabase-lib/metadata/utils/schema";
+import type Table from "metabase-lib/v1/metadata/Table";
+import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   DatabaseId,
   SchemaId,
@@ -105,7 +107,10 @@ const MetadataTableList = ({
   }, [selectedDatabaseId, onSelectDatabase]);
 
   return (
-    <aside className="MetadataEditor-table-list AdminList flex-no-shrink">
+    <aside
+      data-testid="admin-metadata-table-list"
+      className={cx(CS.flexNoShrink, AdminS.AdminList)}
+    >
       <TableSearch searchText={searchText} onChangeSearchText={setSearchText} />
       {canGoBack && (
         <TableBreadcrumbs
@@ -113,7 +118,7 @@ const MetadataTableList = ({
           onBack={handleSelectDatabase}
         />
       )}
-      <ul className="AdminList-items">
+      <ul>
         {visibleTables.length > 0 && (
           <TableHeader
             tables={visibleTables}
@@ -168,10 +173,10 @@ const TableSearch = ({ searchText, onChangeSearchText }: TableSearchProps) => {
   );
 
   return (
-    <div className="AdminList-search">
-      <Icon name="search" size={16} />
+    <div className={AdminS.AdminListSearch}>
+      <Icon className={AdminS.Icon} name="search" size={16} />
       <input
-        className="AdminInput pl4 border-bottom"
+        className={cx(AdminS.AdminInput, CS.pl4, CS.borderBottom)}
         type="text"
         placeholder={t`Find a table`}
         value={searchText}
@@ -193,7 +198,7 @@ const TableBreadcrumbs = ({ schemaId, onBack }: TableBreadcrumbsProps) => {
         <Icon name="chevronleft" size={10} />
         {t`Schemas`}
       </BackIconContainer>
-      <span className="mx1">-</span>
+      <span className="mx1">/</span>
       <span>{getSchemaName(schemaId)}</span>
     </h4>
   );
@@ -226,7 +231,14 @@ const TableHeader = ({
       );
 
   return (
-    <div className="AdminList-section flex justify-between align-center">
+    <div
+      className={cx(
+        CS.flex,
+        CS.justifyBetween,
+        CS.alignCenter,
+        AdminS.AdminListSection,
+      )}
+    >
       {title}
       <ToggleVisibilityButton
         tables={tables}
@@ -238,7 +250,7 @@ const TableHeader = ({
 };
 
 const TableEmptyState = () => {
-  return <div className="AdminList-section">{t`0 Tables`}</div>;
+  return <div className={AdminS.AdminListSection}>{t`0 Tables`}</div>;
 };
 
 interface TableRowProps {
@@ -270,9 +282,15 @@ const TableRow = ({
       <AdminListItem
         disabled={!isSyncCompleted(table)}
         onClick={handleSelect}
+        data-testid="admin-metadata-table-list-item"
         className={cx(
-          "AdminList-item flex align-center no-decoration text-wrap justify-between",
-          { selected: isSelected },
+          "text-wrap",
+          CS.justifyBetween,
+          CS.flex,
+          CS.alignCenter,
+          CS.noDecoration,
+          AdminS.AdminListItem,
+          { [AdminS.selected]: isSelected },
         )}
       >
         {table.displayName()}

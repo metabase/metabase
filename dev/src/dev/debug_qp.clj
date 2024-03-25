@@ -5,10 +5,11 @@
    [clojure.walk :as walk]
    [lambdaisland.deep-diff2 :as ddiff]
    [medley.core :as m]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.util :as u]
@@ -116,7 +117,7 @@
                        (symbol (format "#_\"%s.%s\"" field-name table-name)))))
                  (field-id->name-form [field-id]
                    (list 'do (add-name-to-field-id field-id) field-id))]
-           (mbql.u/replace form
+           (lib.util.match/replace form
              [:field (id :guard pos-int?) opts]
              [:field id (add-name-to-field-id id) (cond-> opts
                                                     (pos-int? (:source-field opts))
@@ -255,7 +256,7 @@
         coll))
 
 (defn- can-symbolize? [x]
-  (mbql.u/match-one x
+  (lib.util.match/match-one x
     (_ :guard string?)
     (not (re-find #"\s+" x))
 
@@ -283,7 +284,7 @@
 
 (defn- expand [form table]
   (try
-    (mbql.u/replace form
+    (lib.util.match/replace form
       ([:field (id :guard pos-int?) nil] :guard can-symbolize?)
       (let [[table-name field-name] (field-and-table-name id)
             field-name              (some-> field-name u/lower-case-en)
@@ -339,10 +340,10 @@
                       e)))))
 
 (defn- no-$ [x]
-  (mbql.u/replace x [::$ & args] (into [::no-$] args)))
+  (lib.util.match/replace x [::$ & args] (into [::no-$] args)))
 
 (defn- symbolize [form]
-  (mbql.u/replace form
+  (lib.util.match/replace form
     [::-> x y]
     (symbol (format "%s->%s" (symbolize x) (str/replace (symbolize y) #"^\$" "")))
 
@@ -389,7 +390,7 @@
 (defn pprint-sql
   "Pretty print a SQL string."
   ([sql]
-   (pprint-sql (mdb.connection/db-type) sql))
+   (pprint-sql (mdb/db-type) sql))
   ([driver sql]
    #_{:clj-kondo/ignore [:discouraged-var]}
    (println (driver/prettify-native-form driver sql))))

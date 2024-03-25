@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type * as React from "react";
 import { useState } from "react";
 import { useAsyncFn } from "react-use";
@@ -9,6 +10,7 @@ import QuestionLoader from "metabase/containers/QuestionLoader";
 import QuestionPicker from "metabase/containers/QuestionPicker";
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
+import CS from "metabase/css/core/index.css";
 import { EntityName } from "metabase/entities/containers/EntityName";
 import { GTAPApi } from "metabase/services";
 import type { IconName } from "metabase/ui";
@@ -19,7 +21,7 @@ import type {
 } from "metabase-enterprise/sandboxes/types";
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
 
 import AttributeMappingEditor, {
@@ -152,7 +154,7 @@ const EditSandboxingModal = ({
         )}
         {(!shouldUseSavedQuestion || policy.card_id != null) &&
           (hasAttributesOptions || hasValidMappings ? (
-            <div className="p3 border-top border-bottom">
+            <div className={cx(CS.p3, CS.borderTop, CS.borderBottom)}>
               {shouldUseSavedQuestion && (
                 <div className="pb2">
                   {t`You can optionally add additional filters here based on user attributes. These filters will be applied on top of any filters that are already in this saved question.`}
@@ -188,7 +190,7 @@ const EditSandboxingModal = ({
           </div>
         )}
 
-        <div className="flex align-center justify-end">
+        <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd)}>
           <Button onClick={onCancel}>{t`Cancel`}</Button>
           <ActionButton
             error={error}
@@ -201,7 +203,7 @@ const EditSandboxingModal = ({
           </ActionButton>
         </div>
         {error && (
-          <div className="flex align-center my2 text-error">
+          <div className={cx(CS.flex, CS.alignCenter, CS.my2, CS.textError)}>
             {typeof error === "string"
               ? error
               : // @ts-expect-error provide correct type for error
@@ -222,8 +224,8 @@ interface SummaryRowProps {
 }
 
 const SummaryRow = ({ icon, content }: SummaryRowProps) => (
-  <div className="flex align-center">
-    <Icon className="p1" name={icon} />
+  <div className={cx(CS.flex, CS.alignCenter)}>
+    <Icon className={CS.p1} name={icon} />
     <span>{content}</span>
   </div>
 );

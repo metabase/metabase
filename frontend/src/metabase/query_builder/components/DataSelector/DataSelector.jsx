@@ -11,6 +11,7 @@ import ListSearchField from "metabase/components/ListSearchField";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DATA_BUCKET, getDataTypes } from "metabase/containers/DataPicker";
+import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Schemas from "metabase/entities/schemas";
@@ -23,8 +24,8 @@ import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
-} from "metabase-lib/metadata/utils/saved-questions";
-import { getSchemaName } from "metabase-lib/metadata/utils/schema";
+} from "metabase-lib/v1/metadata/utils/saved-questions";
+import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 
 import {
   EmptyStateContainer,
@@ -455,7 +456,12 @@ export class UnconnectedDataSelector extends Component {
       await this.switchToStep(DATABASE_STEP);
     } else if (this.state.selectedTableId && steps.includes(FIELD_STEP)) {
       await this.switchToStep(FIELD_STEP);
-    } else if (this.state.selectedSchemaId && steps.includes(TABLE_STEP)) {
+    } else if (
+      // Schema id is explicitly set when going through the New > Question/Model flow,
+      // whereas we have to obtain it from the state when opening a saved question.
+      (this.state.selectedSchemaId || this.state.selectedSchema?.id) &&
+      steps.includes(TABLE_STEP)
+    ) {
       await this.switchToStep(TABLE_STEP);
     } else if (this.state.selectedDatabaseId && steps.includes(SCHEMA_STEP)) {
       await this.switchToStep(SCHEMA_STEP);
@@ -618,6 +624,8 @@ export class UnconnectedDataSelector extends Component {
       [TABLE_STEP]: () => {
         if (this.state.selectedSchemaId != null) {
           return this.props.fetchSchemaTables(this.state.selectedSchemaId);
+        } else if (this.state.selectedSchema?.id != null) {
+          return this.props.fetchSchemaTables(this.state.selectedSchema?.id);
         }
       },
       [FIELD_STEP]: () => {
@@ -778,7 +786,9 @@ export class UnconnectedDataSelector extends Component {
 
   getTriggerClasses() {
     const { readOnly, triggerClasses } = this.props;
-    return cx(triggerClasses ?? "flex align-center", { disabled: readOnly });
+    return cx(triggerClasses ?? cx(CS.flex, CS.alignCenter), {
+      disabled: readOnly,
+    });
   }
 
   handleSavedEntityPickerClose = () => {

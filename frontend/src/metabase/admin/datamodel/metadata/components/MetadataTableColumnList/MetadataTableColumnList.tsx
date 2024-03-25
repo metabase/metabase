@@ -12,10 +12,11 @@ import Grabber from "metabase/components/Grabber";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import AccordionList from "metabase/core/components/AccordionList";
 import { SortableList } from "metabase/core/components/Sortable";
+import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
 import { Icon } from "metabase/ui";
-import type Field from "metabase-lib/metadata/Field";
-import type Table from "metabase-lib/metadata/Table";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type { FieldId, SchemaId, TableFieldOrder } from "metabase-types/api";
 
 import MetadataTableColumn from "../MetadataTableColumn";
@@ -98,9 +99,9 @@ const MetadataTableColumnList = ({
             style={{ minWidth: 420 }}
             className="float-left px1"
           >{t`Column`}</div>
-          <div className="flex">
-            <div className="flex-half pl3">{t`Visibility`}</div>
-            <div className="flex-half">
+          <div className={CS.flex}>
+            <div className={cx(CS.flexHalf, CS.pl3)}>{t`Visibility`}</div>
+            <div className={CS.flexHalf}>
               <span>{t`Type`}</span>
             </div>
           </div>

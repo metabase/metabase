@@ -38,7 +38,7 @@
   (testing "[[sql.qp/sql-source-query]] should throw Exceptions if you pass in invalid nonsense"
     (doseq [params [nil [1000]]]
       (testing (format "Params = %s" (pr-str params))
-        (is (= [::sql.qp/sql-source-query "SELECT *" params]
+        (is (= {::sql.qp/sql-source-query ["SELECT *" params]}
                (sql.qp/sql-source-query "SELECT *" params)))))
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -408,6 +408,7 @@
                                      ORDERS.CREATED_AT                  AS CREATED_AT
                                      ABS (0)                            AS pivot-grouping
                                      ;; TODO -- I'm not sure if the order here is deterministic
+                                     ;; Tech debt issue: #39396
                                      PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
                                      PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE
                                      PRODUCTS__via__PRODUCT_ID.ID       AS PRODUCTS__via__PRODUCT_ID__ID
@@ -1079,6 +1080,7 @@
 
       ;; String containing semicolon followed by double dash followed by THE _comment or semicolon or end of input_.
       ;; TODO: Enable when better sql parsing solution is found in the [[sql.qp/make-nestable-sql]]].
+      ;; Tech debt issue: #39401
       #_#_
       "SELECT 'string with \n ; -- ending on the same line';"
       "(SELECT 'string with \n ; -- ending on the same line')"

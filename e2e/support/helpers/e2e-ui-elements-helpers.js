@@ -15,7 +15,7 @@ export function mantinePopover() {
 const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']:visible";
 
 export function hovercard() {
-  cy.get(HOVERCARD_ELEMENT).should("be.visible");
+  cy.get(HOVERCARD_ELEMENT, { timeout: 6000 }).should("be.visible");
   return cy.get(HOVERCARD_ELEMENT);
 }
 
@@ -46,7 +46,7 @@ export function sidebar() {
 }
 
 export function rightSidebar() {
-  return cy.findAllByTestId("sidebar-right");
+  return cy.findByTestId("sidebar-right");
 }
 
 export function leftSidebar() {
@@ -168,8 +168,11 @@ export const moveColumnDown = (column, distance) => {
     .trigger("mouseup", 0, distance * 50, { force: true });
 };
 
-export const moveDnDKitColumnVertical = (column, distance) => {
-  column
+export const moveDnDKitElement = (
+  element,
+  { horizontal = 0, vertical = 0 } = {},
+) => {
+  element
     .trigger("pointerdown", 0, 0, {
       force: true,
       isPrimary: true,
@@ -182,13 +185,13 @@ export const moveDnDKitColumnVertical = (column, distance) => {
       button: 0,
     })
     .wait(200)
-    .trigger("pointermove", 0, distance, {
+    .trigger("pointermove", horizontal, vertical, {
       force: true,
       isPrimary: true,
       button: 0,
     })
     .wait(200)
-    .trigger("pointerup", 0, distance, {
+    .trigger("pointerup", horizontal, vertical, {
       force: true,
       isPrimary: true,
       button: 0,

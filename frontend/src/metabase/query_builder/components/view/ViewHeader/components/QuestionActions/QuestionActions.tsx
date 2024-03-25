@@ -22,11 +22,11 @@ import { uploadFile } from "metabase/redux/uploads";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import {
   checkCanBeModel,
   checkDatabaseCanPersistDatasets,
-} from "metabase-lib/metadata/utils/models";
+} from "metabase-lib/v1/metadata/utils/models";
 
 import { canUploadToQuestion } from "../../../../../selectors";
 import { ViewHeaderIconButtonContainer } from "../../ViewHeader.styled";

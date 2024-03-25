@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import type { IconName } from "metabase/ui";
-import type { UiParameter } from "metabase-lib/parameters/types";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   QuestionDashboardCard,
   ArbitraryCustomDestinationClickBehavior,

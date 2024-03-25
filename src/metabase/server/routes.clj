@@ -2,14 +2,13 @@
   "Main Compojure routes tables. See https://github.com/weavejester/compojure/wiki/Routes-In-Detail for details about
    how these work. `/api/` routes are in `metabase.api.routes`."
   (:require
-   [compojure.core :refer [context defroutes GET]]
+   [compojure.core :refer [context defroutes GET OPTIONS]]
    [compojure.route :as route]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.routes :as api]
    [metabase.config :as config]
    [metabase.core.initialization-status :as init-status]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
+   [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
@@ -53,14 +52,17 @@
   ;; ^/api/health -> Health Check Endpoint
   (GET "/api/health" []
        (if (init-status/complete?)
-         (try (if (or (mdb.connection-pool-setup/recent-activity?)
-                      (sql-jdbc.conn/can-connect-with-spec? {:datasource (mdb.connection/data-source)}))
+         (try (if (or (mdb/recent-activity?)
+                      (sql-jdbc.conn/can-connect-with-spec? {:datasource (mdb/data-source)}))
                 {:status 200, :body {:status "ok"}}
                 {:status 503 :body {:status "Unable to get app-db connection"}})
               (catch Exception e
                 (log/warn e (trs "Error in api/health database check"))
                 {:status 503 :body {:status "Error getting app-db connection"}}))
          {:status 503, :body {:status "initializing", :progress (init-status/progress)}}))
+
+  (OPTIONS "/api/*" [] {:status 200 :body ""})
+
   ;; ^/api/ -> All other API routes
   (context "/api" [] (fn [& args]
                        ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete

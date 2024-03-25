@@ -6,14 +6,15 @@
    [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
@@ -217,6 +218,7 @@
     (-> (lib.util/pipeline m)
         (update :stages (fn [stages]
                           (mapv ->pMBQL stages)))
+        lib.normalize/normalize
         (assoc :lib.convert/converted? true)
         clean)
     (update-vals m ->pMBQL)))
@@ -232,7 +234,7 @@
   [[_tag value opts]]
   ;; `:value` uses `:snake_case` keys in legacy MBQL for some insane reason (actually this was to match the shape of
   ;; the keys in Field metadata), at least for the three type keys enumerated below.
-  ;; See [[metabase.mbql.schema/ValueTypeInfo]].
+  ;; See [[metabase.legacy-mbql.schema/ValueTypeInfo]].
   (let [opts (set/rename-keys opts {:base_type     :base-type
                                     :semantic_type :semantic-type
                                     :database_type :database-type})
@@ -276,9 +278,13 @@
   (let [[tag opts & args] (->pMBQL aggregation)]
     (into [tag (merge opts options)] args)))
 
+(defmethod ->pMBQL :time-interval
+  [[_tag field n unit options]]
+  (lib.options/ensure-uuid [:time-interval (or options {}) (->pMBQL field) n unit]))
+
 (defn legacy-query-from-inner-query
   "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff
-  like [[metabase.mbql.normalize/normalize]], and then probably to [[->pMBQL]]."
+  like [[metabase.legacy-mbql.normalize/normalize]], and then probably to [[->pMBQL]]."
   [database-id inner-query]
   (merge {:database database-id, :type :query}
          (if (:native inner-query)

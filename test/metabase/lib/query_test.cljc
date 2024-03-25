@@ -92,6 +92,7 @@
                                                 [:expression
                                                  {}
                                                  ;; TODO Fill these in?
+                                                 ;; tech debt issue: #39376
                                                  #_{:base-type :type/Integer}
                                                  "CC"]]]}]}]}
 
@@ -106,21 +107,21 @@
                   (lib/aggregate (lib/count)))]
     (is (=? {:stages [{:lib/stage-metadata {:columns [{:field-ref [:expression "BirthMonth" {:base-type :type/Integer}]} {}]}} {}]}
           (lib/query meta/metadata-provider (assoc-in (lib.convert/->pMBQL (lib.convert/->legacy-MBQL query))
-                                                        [:stages 0 :lib/stage-metadata]
-                                                        {:columns [{:base-type :type/Float,
-                                                                    :display-name "BirthMonth",
-                                                                    :field-ref [:expression
-                                                                                "BirthMonth"
-                                                                                {:base-type :type/Integer}],
-                                                                    :name "BirthMonth",
-                                                                    :lib/type :metadata/column}
-                                                                   {:base-type :type/Integer,
-                                                                    :display-name "Count",
-                                                                    :field-ref [:aggregation 0],
-                                                                    :name "count",
-                                                                    :semantic-type :type/Quantity,
-                                                                    :lib/type :metadata/column}],
-                                                         :lib/type :metadata/results}))))))
+                                                      [:stages 0 :lib/stage-metadata]
+                                                      {:columns [{:base-type :type/Float,
+                                                                  :display-name "BirthMonth",
+                                                                  :field-ref [:expression
+                                                                              "BirthMonth"
+                                                                              {:base-type :type/Integer}],
+                                                                  :name "BirthMonth",
+                                                                  :lib/type :metadata/column}
+                                                                 {:base-type :type/Integer,
+                                                                  :display-name "Count",
+                                                                  :field-ref [:aggregation 0],
+                                                                  :name "count",
+                                                                  :semantic-type :type/Quantity,
+                                                                  :lib/type :metadata/column}],
+                                                       :lib/type :metadata/results}))))))
 
 (deftest ^:parallel stage-count-test
   (is (= 1 (lib/stage-count lib.tu/venues-query)))
@@ -186,3 +187,12 @@
             :lib.convert/converted? true}
            (lib.query/query meta/metadata-provider
              {:database 74001, :type :query, :query {:source-table 74040}})))))
+
+(deftest ^:parallel can-save-test
+  (mu/disable-enforcement
+    (are [can-save? query]
+      (= can-save?  (lib.query/can-save query))
+      true lib.tu/venues-query
+      false (assoc lib.tu/venues-query :database nil)           ; database unknown - no permissions
+      true (lib/native-query meta/metadata-provider "SELECT")
+      false (lib/native-query meta/metadata-provider ""))))

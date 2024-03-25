@@ -1,8 +1,11 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
-import type Question from "metabase-lib/Question";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
+import type Question from "metabase-lib/v1/Question";
 
 interface Props {
   isShowingNewbModal: boolean;
@@ -40,8 +43,11 @@ export const SavedQuestionIntroModal = ({
     <Modal isOpen={isShowingNewbModal}>
       <ModalContent title={title} className="Modal-content text-centered py2">
         <div className="px2 pb2 text-paragraph">{message}</div>
-        <div className="Form-actions flex justify-center py1">
-          <button className="Button Button--primary" onClick={onClose}>
+        <div className={cx("Form-actions", CS.flex, CS.justifyCenter, CS.py1)}>
+          <button
+            className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
+            onClick={onClose}
+          >
             {t`Okay`}
           </button>
         </div>

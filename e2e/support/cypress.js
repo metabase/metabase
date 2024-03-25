@@ -14,8 +14,6 @@ if (runWithReplay) {
   require("@replayio/cypress/support");
 }
 
-require("cy-verify-downloads").addCustomCommand();
-
 Cypress.on("uncaught:exception", (err, runnable) => false);
 
 Cypress.on("test:before:run", () => {

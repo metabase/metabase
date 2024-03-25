@@ -1,18 +1,20 @@
+import cx from "classnames";
 import type * as React from "react";
 import { useState, useEffect } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import { Icon } from "metabase/ui";
-import type { FieldDimension } from "metabase-lib/Dimension";
-import { isExpression } from "metabase-lib/expressions";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import Filter from "metabase-lib/queries/structured/Filter";
-import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
+import type { FieldDimension } from "metabase-lib/v1/Dimension";
+import { isExpression } from "metabase-lib/v1/expressions";
+import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
+import Filter from "metabase-lib/v1/queries/structured/Filter";
+import { isStartingFrom } from "metabase-lib/v1/queries/utils/query-time";
 import type { Expression } from "metabase-types/api";
 
 import { DimensionList } from "../DimensionList";
@@ -228,8 +230,25 @@ export function FilterPopover({
             className="List-section List-section--togglable"
             onClick={() => setEditingFilter(true)}
           >
-            <div className="List-section-header mx2 py2 flex align-center hover-parent hover--opacity cursor-pointer">
-              <span className="List-section-icon mr1 flex align-center">
+            <div
+              className={cx(
+                "List-section-header",
+                CS.mx2,
+                CS.py2,
+                CS.flex,
+                CS.alignCenter,
+                "hover-parent hover--opacity",
+                CS.cursorPointer,
+              )}
+            >
+              <span
+                className={cx(
+                  "List-section-icon",
+                  CS.mr1,
+                  CS.flex,
+                  CS.alignCenter,
+                )}
+              >
                 <Icon name="filter" />
               </span>
               <h3 className="List-section-title text-wrap">

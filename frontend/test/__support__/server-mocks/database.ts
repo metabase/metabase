@@ -2,7 +2,7 @@ import fetchMock from "fetch-mock";
 import _ from "underscore";
 
 import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
-import { isTypeFK } from "metabase-lib/types/utils/isa";
+import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
 import type { Database, DatabaseUsageInfo } from "metabase-types/api";
 
 import { PERMISSION_ERROR } from "./constants";
@@ -10,6 +10,8 @@ import { setupTableEndpoints } from "./table";
 
 export function setupDatabaseEndpoints(db: Database) {
   fetchMock.get(`path:/api/database/${db.id}`, db);
+  fetchMock.post(`path:/api/database/${db.id}/rescan_values`, {});
+  fetchMock.post(`path:/api/database/${db.id}/discard_values`, {});
   setupSchemaEndpoints(db);
   setupDatabaseIdFieldsEndpoints(db);
   db.tables?.forEach(table => setupTableEndpoints(table));
@@ -21,7 +23,7 @@ export function setupDatabaseEndpoints(db: Database) {
   });
 }
 
-export function setupDatabaseUsageInfo(
+export function setupDatabaseUsageInfoEndpoint(
   db: Database,
   usageInfo: DatabaseUsageInfo,
 ) {

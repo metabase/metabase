@@ -21,6 +21,8 @@
    [metabase.util.malli.schema :as ms]
    [weavejester.dependency :as dep]))
 
+;;; TODO -- consider whether [[normalize-card-query]] should be moved into [[metabase.lib.card]], seems like it would
+;;; make sense but it would involve teasing out some QP-specific stuff to make it work.
 (defn- fix-mongodb-first-stage
   "MongoDB native queries consist of a collection and a pipelne (query).
 
@@ -38,9 +40,10 @@
                                            :query       x}))))]
     (cons first-stage more)))
 
-(defn- normalize-card-query
+(mu/defn normalize-card-query :- ::lib.schema.metadata/card
   "Convert Card's query (`:datasaet-query`) to pMBQL as needed; splice in stage metadata and some extra keys."
-  [metadata-providerable {card-id :id, :as card}]
+  [metadata-providerable   :- ::lib.schema.metadata/metadata-providerable
+   {card-id :id, :as card} :- ::lib.schema.metadata/card]
   (let [persisted-info (:lib/persisted-info card)
         persisted?     (qp.persisted/can-substitute? card persisted-info)]
     (when persisted?
@@ -92,7 +95,7 @@
 (mu/defn ^:private resolve-source-cards-in-stage :- [:maybe ::lib.schema/stages]
   [query     :- ::lib.schema/query
    stage     :- ::lib.schema/stage
-   dep-graph :- (ms/InstanceOfClass clojure.lang.Atom)]
+   dep-graph :- (ms/InstanceOfClass clojure.lang.Volatile)]
   (when (and (= (:lib/type stage) :mbql.stage/mbql)
              (:source-card stage))
     ;; make sure nested queries are enabled before resolving them.
@@ -103,10 +106,10 @@
     ;; dependency of the previously-resolved source card on the one we're about to resolve. We can check for circular
     ;; dependencies this way.
     (when (:qp/stage-is-from-source-card stage)
-      (u/prog1 (swap! dep-graph
-                      dep/depend
-                      (tru "Card {0}" (:qp/stage-is-from-source-card stage))
-                      (tru "Card {0}" (:source-card stage)))
+      (u/prog1 (vswap! dep-graph
+                       dep/depend
+                       (tru "Card {0}" (:qp/stage-is-from-source-card stage))
+                       (tru "Card {0}" (:source-card stage)))
         ;; This will throw if there's a cycle
         (dep/topo-sort <>)))
     (let [card         (card query (:source-card stage))
@@ -149,7 +152,7 @@
   "If a stage has a `:source-card`, fetch the Card and prepend its underlying stages to the pipeline."
   [query :- ::lib.schema/query]
   (let [query (dissoc query :source-card-id :qp/source-card-id)] ; `:source-card-id` was the old key
-    (resolve-source-cards* query 0 (atom (dep/graph)))))
+    (resolve-source-cards* query 0 (volatile! (dep/graph)))))
 
 (defn add-dataset-info
   "Post-processing middleware that adds `:model` and `:dataset` (for historic reasons) `true` or `false` to queries with

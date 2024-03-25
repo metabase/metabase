@@ -17,6 +17,7 @@ import { createMockFieldValues } from "metabase-types/api/mocks";
 import {
   ORDERS,
   PEOPLE,
+  PEOPLE_STATE_VALUES,
   PRODUCT_CATEGORY_VALUES,
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
@@ -56,7 +57,7 @@ async function setupStringPicker({
     setupFieldSearchValuesEndpoints(result.field_id, value, result.values);
   });
 
-  renderWithProviders(
+  const { rerender } = renderWithProviders(
     <StringFilterValuePicker
       query={query}
       stageIndex={stageIndex}
@@ -71,7 +72,7 @@ async function setupStringPicker({
 
   await waitForLoaderToBeRemoved();
 
-  return { onChange, onFocus, onBlur };
+  return { rerender, onChange, onFocus, onBlur };
 }
 
 async function setupNumberPicker({
@@ -90,7 +91,7 @@ async function setupNumberPicker({
     setupFieldValuesEndpoints(fieldValues);
   }
 
-  renderWithProviders(
+  const { rerender } = renderWithProviders(
     <NumberFilterValuePicker
       query={query}
       stageIndex={stageIndex}
@@ -105,7 +106,7 @@ async function setupNumberPicker({
 
   await waitForLoaderToBeRemoved();
 
-  return { onChange, onFocus, onBlur };
+  return { rerender, onChange, onFocus, onBlur };
 }
 
 describe("StringFilterValuePicker", () => {
@@ -154,6 +155,24 @@ describe("StringFilterValuePicker", () => {
 
       userEvent.click(screen.getByText("Gadget"));
       expect(onChange).toHaveBeenCalledWith(["Gadget"]);
+    });
+
+    it("should allow to search the list of values in compact mode", async () => {
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column: findColumn("PEOPLE", "STATE"),
+        values: [],
+        compact: true,
+        fieldValues: PEOPLE_STATE_VALUES,
+      });
+
+      userEvent.type(screen.getByPlaceholderText("Search the list"), "CA");
+      expect(screen.getByText("CA")).toBeInTheDocument();
+      expect(screen.queryByText("GA")).not.toBeInTheDocument();
+
+      userEvent.click(screen.getByText("CA"));
+      expect(onChange).toHaveBeenCalledWith(["CA"]);
     });
 
     it("should allow to update selected values", async () => {
@@ -221,6 +240,99 @@ describe("StringFilterValuePicker", () => {
 
       userEvent.click(screen.getByText("In-progress"));
       expect(onChange).toHaveBeenCalledWith(["t", "p"]);
+    });
+
+    it("should elevate selected field values on initial render", async () => {
+      await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: ["p"],
+        fieldValues: createMockFieldValues({
+          field_id: PRODUCTS.CATEGORY,
+          values: [
+            ["t", "To-do"],
+            ["p", "In-progress"],
+            ["c", "Completed"],
+          ],
+        }),
+      });
+
+      const checkboxes = screen.getAllByRole("checkbox");
+      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
+      expect(checkboxes[0]).toBeChecked();
+      expect(checkboxes[1]).toHaveAccessibleName("To-do");
+      expect(checkboxes[1]).not.toBeChecked();
+      expect(checkboxes[2]).toHaveAccessibleName("Completed");
+      expect(checkboxes[2]).not.toBeChecked();
+    });
+
+    it("should not elevate selected field values after checking an item", async () => {
+      const { rerender, onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: ["p"],
+        fieldValues: createMockFieldValues({
+          field_id: PRODUCTS.CATEGORY,
+          values: [
+            ["t", "To-do"],
+            ["p", "In-progress"],
+            ["c", "Completed"],
+          ],
+        }),
+      });
+
+      rerender(
+        <StringFilterValuePicker
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
+          values={["p", "c"]}
+          onChange={onChange}
+        />,
+      );
+      const checkboxes = screen.getAllByRole("checkbox");
+      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
+      expect(checkboxes[0]).toBeChecked();
+      expect(checkboxes[1]).toHaveAccessibleName("To-do");
+      expect(checkboxes[1]).not.toBeChecked();
+      expect(checkboxes[2]).toHaveAccessibleName("Completed");
+      expect(checkboxes[2]).toBeChecked();
+    });
+
+    it("should not elevate selected field values after unchecking an item", async () => {
+      const { rerender, onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: ["p", "c"],
+        fieldValues: createMockFieldValues({
+          field_id: PRODUCTS.CATEGORY,
+          values: [
+            ["t", "To-do"],
+            ["p", "In-progress"],
+            ["c", "Completed"],
+          ],
+        }),
+      });
+
+      rerender(
+        <StringFilterValuePicker
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
+          values={["c"]}
+          onChange={onChange}
+        />,
+      );
+      const checkboxes = screen.getAllByRole("checkbox");
+      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
+      expect(checkboxes[0]).not.toBeChecked();
+      expect(checkboxes[1]).toHaveAccessibleName("Completed");
+      expect(checkboxes[1]).toBeChecked();
+      expect(checkboxes[2]).toHaveAccessibleName("To-do");
+      expect(checkboxes[2]).not.toBeChecked();
     });
 
     it("should handle empty field values", async () => {
@@ -386,8 +498,6 @@ describe("StringFilterValuePicker", () => {
       });
 
       userEvent.type(screen.getByPlaceholderText("Search by Email"), "a@b.com");
-      userEvent.hover(screen.getByText("a@b.com"));
-      userEvent.click(screen.getByText("a@b.com"));
       expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
     });
 
@@ -406,28 +516,28 @@ describe("StringFilterValuePicker", () => {
       });
 
       userEvent.type(screen.getByLabelText("Filter value"), "a@b.com");
-      expect(screen.getByText("a@b.com")).toBeInTheDocument();
-      expect(onChange).not.toHaveBeenCalled();
+      expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
     });
 
-    it("should not allow to create a value when there is the exact match in search results", async () => {
+    it("should not show free-form input in search results", async () => {
       const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
         values: ["a@b.com"],
         searchValues: {
-          "a@b.com": createMockFieldValues({
+          "a@b": createMockFieldValues({
             field_id: PEOPLE.EMAIL,
             values: [["a@b.com"]],
           }),
         },
       });
 
-      userEvent.type(screen.getByLabelText("Filter value"), "a@b.com");
+      userEvent.type(screen.getByLabelText("Filter value"), "a@b");
       act(() => jest.advanceTimersByTime(1000));
       expect(screen.getByText("a@b.com")).toBeInTheDocument();
-      expect(onChange).not.toHaveBeenCalled();
+      expect(screen.queryByText("a@b")).not.toBeInTheDocument();
+      expect(onChange).toHaveBeenLastCalledWith(["a@b.com", "a@b"]);
     });
   });
 
@@ -589,6 +699,31 @@ describe("NumberFilterValuePicker", () => {
 
       userEvent.click(screen.getByText("In-progress"));
       expect(onChange).toHaveBeenCalledWith([10, 20]);
+    });
+
+    it("should elevate selected field values on initial render", async () => {
+      await setupNumberPicker({
+        query,
+        stageIndex,
+        column,
+        values: [20],
+        fieldValues: createMockFieldValues({
+          field_id: ORDERS.QUANTITY,
+          values: [
+            [10, "To-do"],
+            [20, "In-progress"],
+            [30, "Completed"],
+          ],
+        }),
+      });
+
+      const checkboxes = screen.getAllByRole("checkbox");
+      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
+      expect(checkboxes[0]).toBeChecked();
+      expect(checkboxes[1]).toHaveAccessibleName("To-do");
+      expect(checkboxes[1]).not.toBeChecked();
+      expect(checkboxes[2]).toHaveAccessibleName("Completed");
+      expect(checkboxes[2]).not.toBeChecked();
     });
   });
 

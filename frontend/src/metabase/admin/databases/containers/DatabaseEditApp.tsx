@@ -12,15 +12,15 @@ import _ from "underscore";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import { GenericError } from "metabase/components/ErrorPages";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { GenericError } from "metabase/containers/ErrorPages";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import title from "metabase/hoc/Title";
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import Database from "metabase-lib/metadata/Database";
+import Database from "metabase-lib/v1/metadata/Database";
 import type {
   Database as DatabaseType,
   DatabaseData,
@@ -35,8 +35,6 @@ import {
   updateDatabase,
   syncDatabaseSchema,
   dismissSyncSpinner,
-  rescanDatabaseFields,
-  discardSavedFieldValues,
   deleteDatabase,
   selectEngine,
 } from "../database";
@@ -57,8 +55,6 @@ interface DatabaseEditAppProps {
   initializeDatabase: (databaseId: DatabaseId) => void;
   syncDatabaseSchema: (databaseId: DatabaseId) => Promise<void>;
   dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
-  rescanDatabaseFields: (databaseId: DatabaseId) => Promise<void>;
-  discardSavedFieldValues: (databaseId: DatabaseId) => Promise<void>;
   deleteDatabase: (
     databaseId: DatabaseId,
     isDetailView: boolean,
@@ -94,8 +90,6 @@ const mapDispatchToProps = {
   updateDatabase,
   syncDatabaseSchema,
   dismissSyncSpinner,
-  rescanDatabaseFields,
-  discardSavedFieldValues,
   deleteDatabase,
   selectEngine,
   onChangeLocation: push,
@@ -115,9 +109,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
     database,
     deleteDatabase,
     updateDatabase,
-    discardSavedFieldValues,
     initializeError,
-    rescanDatabaseFields,
     syncDatabaseSchema,
     dismissSyncSpinner,
     isAdmin,
@@ -202,8 +194,6 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
             isModelPersistenceEnabled={isModelPersistenceEnabled}
             updateDatabase={updateDatabase}
             deleteDatabase={deleteDatabase}
-            discardSavedFieldValues={discardSavedFieldValues}
-            rescanDatabaseFields={rescanDatabaseFields}
             syncDatabaseSchema={syncDatabaseSchema}
             dismissSyncSpinner={dismissSyncSpinner}
           />

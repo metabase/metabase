@@ -27,6 +27,7 @@ import {
   getDashboardCard,
   saveDashboard,
   getNotebookStep,
+  selectFilterOperator,
 } from "e2e/support/helpers";
 import { questionInfoButton } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
@@ -304,9 +305,8 @@ describe("scenarios > models", () => {
       popover().within(() => {
         cy.findByText("Product").click();
         cy.findByText("Price").click();
-        cy.findByDisplayValue("Equal to").click();
       });
-      cy.findByRole("listbox").findByText("Less than").click();
+      selectFilterOperator("Less than");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("50");
         cy.button("Add filter").click();

@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -6,16 +7,17 @@ import { AdminLayout } from "metabase/components/AdminLayout";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import Fields from "metabase/entities/fields";
 import Schemas from "metabase/entities/schemas";
 import Tables from "metabase/entities/tables";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import type Database from "metabase-lib/metadata/Database";
-import type Field from "metabase-lib/metadata/Field";
-import type Schema from "metabase-lib/metadata/Schema";
-import type Table from "metabase-lib/metadata/Table";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Schema from "metabase-lib/v1/metadata/Schema";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type { State } from "metabase-types/store";
 
 import FieldFormattingSettings from "../FieldFormattingSettings";
@@ -105,7 +107,7 @@ const MetadataFieldSettings = ({
         />
       }
     >
-      <div className="wrapper">
+      <div className={CS.wrapper}>
         <FieldBreadcrumbs
           database={database}
           schema={schema}
@@ -143,7 +145,7 @@ const FieldSidebar = ({
 
   return (
     <div>
-      <div className="flex align-center mb2">
+      <div className={cx(CS.flex, CS.alignCenter, CS.mb2)}>
         <MetadataBackButton
           selectedDatabaseId={database.id}
           selectedSchemaId={schema.id}

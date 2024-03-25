@@ -31,6 +31,7 @@ export * from "./store";
 export * from "./table";
 export * from "./timeline";
 export * from "./user";
+export * from "./util";
 export * from "./parameters";
 export * from "./search";
 export * from "./visualization-settings";

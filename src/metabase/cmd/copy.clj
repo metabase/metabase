@@ -8,7 +8,7 @@
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
    [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.db.setup :as mdb.setup]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
@@ -53,8 +53,8 @@
     :model/Field
     :model/FieldValues
     :model/Segment
-    :model/Metric
-    :model/MetricImportantField
+    :model/LegacyMetric
+    :model/LegacyMetricImportantField
     :model/ModerationReview
     :model/Revision
     :model/ViewLog
@@ -70,7 +70,6 @@
     :model/BookmarkOrdering
     :model/DashboardCard
     :model/DashboardCardSeries
-    :model/Activity
     :model/Pulse
     :model/PulseCard
     :model/PulseChannel
@@ -111,7 +110,7 @@
   ;; should be ok now that #16344 is resolved -- we might be able to remove this code entirely now. Quoting identifiers
   ;; is still a good idea tho.)
   (let [source-keys (keys (first objs))
-        quote-fn    (partial mdb.setup/quote-for-application-db (mdb.connection/quoting-style target-db-type))
+        quote-fn    (partial mdb.setup/quote-for-application-db (mdb/quoting-style target-db-type))
         dest-keys   (for [k source-keys]
                       (quote-fn (name k)))]
     {:cols dest-keys

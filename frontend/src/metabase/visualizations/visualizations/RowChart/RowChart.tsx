@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
+import CS from "metabase/css/core/index.css";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
 import {
@@ -48,7 +49,7 @@ import {
   getLegendClickData,
 } from "metabase/visualizations/visualizations/RowChart/utils/events";
 import { getChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
-import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import {
@@ -289,7 +290,7 @@ const RowChartVisualization = ({
         onSelectSeries={handleSelectSeries}
       >
         <RowChartRenderer
-          className="flex-full"
+          className={CS.flexFull}
           data={groupedData}
           trimData={trimData}
           series={series}

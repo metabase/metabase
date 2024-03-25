@@ -1,9 +1,11 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
-import { TYPE } from "metabase-lib/types/constants";
+import { TYPE } from "metabase-lib/v1/types/constants";
 
 const SETTING_TYPES = [
   {
@@ -45,14 +47,14 @@ class FormattingWidget extends Component {
     const { setting, onChange } = this.props;
     const value = setting.value || setting.default;
     return (
-      <div className="mt2">
+      <div className={CS.mt2}>
         {SETTING_TYPES.map(({ type, name, column, settings }) => (
           <div
             key={type}
-            className="border-bottom pb2 mb4 flex-full"
+            className={cx(CS.borderBottom, CS.pb2, CS.mb4, CS.flexFull)}
             style={{ minWidth: 400 }}
           >
-            <h3 className="mb3">{name}</h3>
+            <h3 className={CS.mb3}>{name}</h3>
             <ColumnSettings
               value={value[type]}
               onChange={settings => onChange({ ...value, [type]: settings })}

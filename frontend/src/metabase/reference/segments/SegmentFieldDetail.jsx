@@ -6,6 +6,7 @@ import { t } from "ttag";
 
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import * as metadataActions from "metabase/redux/metadata";
 import S from "metabase/reference/Reference.module.css";
 import Detail from "metabase/reference/components/Detail";
@@ -161,7 +162,7 @@ const SegmentFieldDetail = props => {
         error={loadingError}
       >
         {() => (
-          <div className="wrapper">
+          <div className={CS.wrapper}>
             <div className="pl3 py2 mb4 bg-white bordered">
               <List>
                 <li className="relative">

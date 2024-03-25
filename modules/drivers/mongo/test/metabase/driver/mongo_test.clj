@@ -14,7 +14,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -248,12 +248,12 @@
          (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :indexed))))
          (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :not-indexed)))))
 
-        (testing "compount index"
-          (mongo.connection/with-mongo-database [db (mt/db)]
-            (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map "first" 1 "second" 1)))
-          (sync/sync-database! (mt/db))
-          (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :first))))
-          (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :second)))))
+       (testing "compount index"
+         (mongo.connection/with-mongo-database [db (mt/db)]
+           (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map "first" 1 "second" 1)))
+         (sync/sync-database! (mt/db))
+         (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :first))))
+         (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :second)))))
 
        (testing "multi key index"
          (mongo.connection/with-mongo-database [db (mt/db)]
@@ -557,7 +557,7 @@
   (mt/test-driver :mongo
     (testing "make sure x-rays don't use features that the driver doesn't support"
       (is (empty?
-           (mbql.u/match-one (->> (magic/automagic-analysis (t2/select-one Field :id (mt/id :venues :price)) {})
+           (lib.util.match/match-one (->> (magic/automagic-analysis (t2/select-one Field :id (mt/id :venues :price)) {})
                                   :dashcards
                                   (mapcat (comp :breakout :query :dataset_query :card)))
              [:field _ (_ :guard :binning)]))))))
@@ -671,14 +671,14 @@
   (mt/test-driver :mongo
     (testing "Negative values in versionArray are ignored (#29678)"
       (with-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
-                                                       "versionArray" [4 0 29 -100]})]
+                                                        "versionArray" [4 0 29 -100]})]
         (is (= {:version "4.0.28-23"
                 :semantic-version [4 0 29]}
                (driver/dbms-version :mongo (mt/db))))))
 
     (testing "Any values after rubbish in versionArray are ignored"
       (with-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
-                                                       "versionArray" [4 0 "NaN" 29]})]
+                                                        "versionArray" [4 0 "NaN" 29]})]
         (is (= {:version "4.0.28-23"
                 :semantic-version [4 0]}
                (driver/dbms-version :mongo (mt/db))))))))

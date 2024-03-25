@@ -1,9 +1,11 @@
 :global(.scroll-y),
-.scroll-y {
+.scroll-y,
+.scrollY {
   overflow-y: auto;
 }
 
-:global(.scroll-x) {
+:global(.scroll-x),
+.scrollX {
   overflow-x: auto;
 }
 

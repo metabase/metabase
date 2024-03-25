@@ -6,6 +6,8 @@ import { findDOMNode } from "react-dom";
 import _ from "underscore";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import FormS from "metabase/css/components/form.module.css";
+import CS from "metabase/css/core/index.css";
 import { isObscured } from "metabase/lib/dom";
 import {
   KEYCODE_ESCAPE,
@@ -597,7 +599,11 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
                 }}
                 onMouseDown={e => e.preventDefault()}
               >
-                <Icon name="close" className="flex align-center" size={12} />
+                <Icon
+                  name="close"
+                  className={cx(CS.flex, CS.alignCenter)}
+                  size={12}
+                />
               </TokenFieldAddon>
             )}
           </TokenFieldItem>
@@ -607,7 +613,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
             <input
               ref={this.inputRef}
               style={{ ...defaultStyleValue, ...valueStyle }}
-              className={cx("full no-focus borderless px1")}
+              className={cx(CS.full, FormS.noFocus, CS.borderless, CS.px1)}
               // set size to be small enough that it fits in a parameter.
               size={10}
               placeholder={placeholder}
@@ -627,7 +633,13 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     const optionsList =
       filteredOptions.length === 0 ? null : (
         <ul
-          className={cx(optionsClassName, "overflow-auto pl1 my1 scroll-hide")}
+          className={cx(
+            optionsClassName,
+            CS.overflowAuto,
+            CS.pl1,
+            CS.my1,
+            "scroll-hide",
+          )}
           style={{ maxHeight: 300, ...optionsStyle }}
           onMouseEnter={() => this.setState({ listIsHovered: true })}
           onMouseLeave={() => this.setState({ listIsHovered: false })}

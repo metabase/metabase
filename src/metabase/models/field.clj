@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.data-permissions :as data-perms]
@@ -28,8 +28,6 @@
 
 (set! *warn-on-reflection* true)
 
-(comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
-
 ;;; ------------------------------------------------- Type Mappings --------------------------------------------------
 
 (def visibility-types
@@ -44,7 +42,7 @@
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (def Field
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]]; now it's a reference to the toucan2 model name.
   We'll keep this till we replace all the Field symbol in our codebase."
   :model/Field)
 
@@ -318,7 +316,7 @@
 
 (def ^{:arglists '([field-id])} field-id->table-id
   "Return the ID of the Table this Field belongs to."
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn [field-id]
      {:pre [(integer? field-id)]}
      (t2/select-one-fn :table_id Field, :id field-id))))

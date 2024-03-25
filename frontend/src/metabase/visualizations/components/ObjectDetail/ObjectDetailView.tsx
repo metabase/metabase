@@ -8,16 +8,16 @@ import {
   useActionListQuery,
   useDatabaseListQuery,
 } from "metabase/common/hooks";
+import { NotFound } from "metabase/components/ErrorPages";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
-import { NotFound } from "metabase/containers/ErrorPages";
 import { useDispatch } from "metabase/lib/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi, MetabaseApi } from "metabase/services";
 import * as Lib from "metabase-lib";
-import type ForeignKey from "metabase-lib/metadata/ForeignKey";
-import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
-import { isPK } from "metabase-lib/types/utils/isa";
+import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
+import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ConcreteTableId,
   DatasetColumn,

@@ -4,6 +4,7 @@ import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { WithVizSettingsData } from "metabase/dashboard/hoc/WithVizSettingsData";
 import {
   getVirtualCardType,
@@ -14,8 +15,8 @@ import type { IconName, IconProps } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import Visualization from "metabase/visualizations/components/Visualization";
-import Question from "metabase-lib/Question";
-import type Metadata from "metabase-lib/metadata/Metadata";
+import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Dashboard,
   DashCardId,
@@ -231,7 +232,7 @@ export function DashCardVisualization({
 
   return (
     <WrappedVisualization
-      className={cx("flex-full overflow-hidden", {
+      className={cx(CS.flexFull, CS.overflowHidden, {
         "pointer-events-none": isEditingDashboardLayout,
       })}
       classNameWidgets={cx({

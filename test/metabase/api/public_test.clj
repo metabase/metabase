@@ -21,6 +21,7 @@
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [metabase.util :as u]
    [throttle.core :as throttle]
@@ -352,7 +353,7 @@
                                                           :type  "number"
                                                           :value 2}])))))
 
-      ;; see longer explanation in [[metabase.mbql.schema/parameter-types]]
+      ;; see longer explanation in [[metabase.legacy-mbql.schema/parameter-types]]
       (testing "If the FE client is incorrectly passing in the parameter as a `:category` type, allow it for now"
         (with-temp-public-card [{uuid :public_uuid} {:dataset_query {:database (mt/id)
                                                                      :type     :native
@@ -549,15 +550,16 @@
                 (fetch-public-dashboard (t2/select-one :model/Dashboard :id dashboard-id)))))))))
 
 (deftest public-dashboard-logs-view-test
-  (testing "Viewing a public dashboard logs the correct view log event."
-    (mt/with-temporary-setting-values [enable-public-sharing true]
-      (with-temp-public-dashboard-and-card [dash _]
-        (fetch-public-dashboard dash)
-        (is (partial=
-             {:model      "dashboard"
-              :model_id   (:id dash)
-              :has_access true}
-             (view-log-test/latest-view nil (:id dash))))))))
+  (when (premium-features/log-enabled?)
+    (testing "Viewing a public dashboard logs the correct view log event."
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-dashboard-and-card [dash _]
+          (fetch-public-dashboard dash)
+          (is (partial=
+               {:model      "dashboard"
+                :model_id   (:id dash)
+                :has_access true}
+               (view-log-test/latest-view nil (:id dash)))))))))
 
 (deftest public-dashboard-with-implicit-action-only-expose-unhidden-fields
   (mt/with-temporary-setting-values [enable-public-sharing true]

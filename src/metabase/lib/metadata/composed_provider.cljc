@@ -5,10 +5,8 @@
    [clojure.datafy :as datafy]
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.lib.metadata.protocols :as metadata.protocols]
-   [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.util.malli :as mu]))
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as metadata.protocols]))
 
 (defn- cached-providers [providers]
   (filter #(satisfies? metadata.protocols/CachedMetadataProvider %)
@@ -27,24 +25,7 @@
          (m/distinct-by :id))
         metadata-providers))
 
-(mu/defn fetch-bulk-metadata-with-non-bulk-provider :- [:maybe [:sequential :map]]
-  "Call a non-bulk metadata provider repeatedly to fetch multiple metadatas of the same type."
-  [provider      :- ::lib.schema.metadata/metadata-provider
-   metadata-type :- [:enum :metadata/card :metadata/column :metadata/metric :metadata/segment :metadata/table]
-   ids           :- [:maybe
-                     [:or
-                      [:set ::lib.schema.common/positive-int]
-                      [:sequential ::lib.schema.common/positive-int]]]]
-  (let [f (case metadata-type
-            :metadata/card    metadata.protocols/card
-            :metadata/column  metadata.protocols/field
-            :metadata/metric  metadata.protocols/metric
-            :metadata/segment metadata.protocols/segment
-            :metadata/table   metadata.protocols/table)]
-    (into []
-          (keep (fn [id]
-                  (f provider id)))
-          ids)))
+
 
 (defn- bulk-metadata [providers metadata-type ids]
   (loop [[provider & more-providers] providers, unfetched-ids (set ids), fetched []]
@@ -56,9 +37,7 @@
       fetched
 
       :else
-      (let [newly-fetched     (if (satisfies? metadata.protocols/BulkMetadataProvider provider)
-                                (metadata.protocols/bulk-metadata provider metadata-type unfetched-ids)
-                                (fetch-bulk-metadata-with-non-bulk-provider provider metadata-type unfetched-ids))
+      (let [newly-fetched     (lib.metadata/bulk-metadata provider metadata-type unfetched-ids)
             newly-fetched-ids (into #{} (map :id) newly-fetched)
             unfetched-ids     (set/difference unfetched-ids newly-fetched-ids)]
         (recur more-providers

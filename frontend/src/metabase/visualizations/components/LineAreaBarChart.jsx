@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import "./LineAreaBarChart.module.css";
 
+import CS from "metabase/css/core/index.css";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
@@ -19,7 +20,7 @@ import {
 } from "metabase/visualizations/lib/settings/validation";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
-import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import CardRenderer from "./CardRenderer";
 import {
@@ -295,7 +296,7 @@ export default class LineAreaBarChart extends Component {
             {...this.props}
             series={orderedSeries}
             settings={this.getSettings()}
-            className="renderer flex-full"
+            className={cx("renderer", CS.flexFull)}
             maxSeries={MAX_SERIES}
             renderer={this.constructor.renderer}
           />

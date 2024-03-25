@@ -33,6 +33,7 @@
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.segment :as lib.segment]
    [metabase.lib.stage :as lib.stage]
+   [metabase.lib.swap :as lib.swap]
    [metabase.lib.table :as lib.table]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
@@ -248,18 +249,20 @@
  [lib.metric
   available-metrics]
  [lib.native
+  engine
+  extract-template-tags
+  has-write-permission
+  native-extras
   native-query
   raw-native-query
-  with-native-query
-  template-tags
-  engine
-  with-template-tags
   required-native-extras
-  native-extras
-  with-native-extras
+  template-tag-card-ids
+  template-tags-referenced-cards
+  template-tags
   with-different-database
-  has-write-permission
-  extract-template-tags]
+  with-native-extras
+  with-native-query
+  with-template-tags]
  [lib.order-by
   change-direction
   order-by
@@ -270,6 +273,7 @@
   normalize]
  [lib.query
   can-run
+  can-save
   query
   stage-count
   uses-metric?
@@ -290,6 +294,8 @@
   drop-stage
   drop-empty-stages
   has-clauses?]
+ [lib.swap
+  swap-clauses]
  [lib.temporal-bucket
   describe-temporal-unit
   describe-temporal-interval
@@ -298,4 +304,5 @@
   temporal-bucket
   with-temporal-bucket]
  [lib.util
+  normalized-query-type
   source-table-id])

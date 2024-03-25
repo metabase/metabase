@@ -5,16 +5,17 @@ import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
-import { findColumnIndexesForColumnSettings } from "metabase-lib/queries/utils/dataset";
-import { TYPE } from "metabase-lib/types/constants";
+import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   isa,
   isID,
   isImageURL,
   isAvatarURL,
-} from "metabase-lib/types/utils/isa";
+} from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import {
@@ -67,10 +68,14 @@ export function DetailsTableCell({
       } catch (e) {
         formattedJson = value;
       }
-      cellValue = <pre className="ObjectJSON">{formattedJson}</pre>;
+      cellValue = (
+        <pre className={QueryBuilderS.ObjectJSON}>{formattedJson}</pre>
+      );
     } else if (typeof value === "object") {
       const formattedJson = JSON.stringify(value, null, 2);
-      cellValue = <pre className="ObjectJSON">{formattedJson}</pre>;
+      cellValue = (
+        <pre className={QueryBuilderS.ObjectJSON}>{formattedJson}</pre>
+      );
     } else {
       cellValue = formatValue(value, {
         ...columnSettings,

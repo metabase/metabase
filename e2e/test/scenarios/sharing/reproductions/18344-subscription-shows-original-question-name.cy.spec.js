@@ -26,7 +26,7 @@ describe("issue 18344", { tags: "@external" }, () => {
     editDashboard();
 
     // Open visualization options
-    cy.get(".Card").realHover();
+    cy.findByTestId("dashcard").realHover();
     cy.icon("palette").click();
 
     cy.get(".Modal").within(() => {

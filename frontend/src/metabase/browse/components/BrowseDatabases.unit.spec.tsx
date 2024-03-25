@@ -1,5 +1,5 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
 import { BrowseDatabases } from "./BrowseDatabases";

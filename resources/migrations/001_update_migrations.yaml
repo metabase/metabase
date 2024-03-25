@@ -5824,6 +5824,237 @@ databaseChangeLog:
             sql: >-
               DROP VIEW IF EXISTS v_content;
 
+  - changeSet:
+      id: v50.2024-02-29T15:06:43
+      author: tsmacdonald
+      comment: Add the query_field join table
+      changes:
+        - createTable:
+            tableName: query_field
+            remarks: Fields used by a card's query
+            columns:
+              - column:
+                  name: id
+                  remarks: PK
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  remarks: referenced card
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_field_card_id
+                    deleteCascade: true
+              - column:
+                  name: field_id
+                  remarks: referenced field
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_field_field_id
+                    deleteCascade: true
+
+  - changeSet:
+      id: v50.2024-02-29T15:07:43
+      author: tsmacdonald
+      comment: Index query_field.card_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: query_field
+            columns:
+              - column:
+                  name: card_id
+            indexName: idx_query_field_card_id
+
+  - changeSet:
+      id: v50.2024-02-29T15:08:43
+      author: tsmacdonald
+      comment: Index query_field.field_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: query_field
+            columns:
+              - column:
+                  name: field_id
+            indexName: idx_query_field_field_id
+
+  - changeSet:
+      id: v50.2024-03-12T17:16:38
+      author: noahmoss
+      comment: Drops the `activity` table which is now unused
+      changes:
+        - dropTable:
+            tableName: activity
+      rollback:
+        - createTable:
+            tableName: activity
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: topic
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: timestamp
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_activity_ref_user_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: model
+                  type: varchar(16)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: model_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: database_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: custom_id
+                  type: varchar(48)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: details
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+        - sql:
+            dbms: mysql
+            sql: >
+              CREATE index idx_activity_entity_qualified_id ON activity (
+                (
+                  CASE
+                    WHEN model = 'Dataset' THEN (concat('card_', model_id))
+                    WHEN model_id IS NULL THEN NULL
+                    ELSE (concat(lower(model), '_', model_id))
+                  END
+                )
+              );
+
+  - changeSet:
+      id: v50.2024-03-18T16:00:00
+      author: piranha
+      comment: 'Effective caching #36847'
+      changes:
+        - createTable:
+            tableName: cache_config
+            remarks: Cache Configuration
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model
+                  remarks: Name of an entity model
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  remarks: ID of the said entity
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  remarks: Timestamp when the config was inserted
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: Timestamp when the config was updated
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: strategy
+                  remarks: caching strategy name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: config
+                  remarks: caching strategy configuration
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: state
+                  remarks: state for strategies needing to keep some data between runs
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: invalidated_at
+                  remarks: indicates when a cache was invalidated last time for schedule-based strategies
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: next_run_at
+                  remarks: keeps next time to run for schedule-based strategies
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-03-18T16:00:01
+      author: piranha
+      comment: 'Effective caching #36847'
+      rollback: # will be removed with the table
+      changes:
+        - addUniqueConstraint:
+            remarks: Unique config for cache_config (model, model_id)
+            tableName: cache_config
+            constraintName: idx_cache_config_unique_model
+            columnNames: model, model_id
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

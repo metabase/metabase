@@ -36,10 +36,10 @@
     :model/HTTPAction
     :model/ImplicitAction
     :model/QueryAction
-    :model/Activity
     :model/ApplicationPermissionsRevision
     :model/AuditLog
     :model/BookmarkOrdering
+    :model/CacheConfig
     :model/CardBookmark
     :model/CollectionBookmark
     :model/DashboardBookmark
@@ -48,7 +48,7 @@
     :model/DashboardCardSeries
     :model/LoginHistory
     :model/FieldValues
-    :model/MetricImportantField
+    :model/LegacyMetricImportantField
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
@@ -64,6 +64,7 @@
     :model/Query
     :model/QueryCache
     :model/QueryExecution
+    :model/QueryField
     :model/RecentViews
     :model/Revision
     :model/Secret

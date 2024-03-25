@@ -5,7 +5,7 @@ import api from "metabase/lib/api";
 import * as Urls from "metabase/lib/urls";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
 import { getCardKey } from "metabase/visualizations/lib/utils";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type {
   DashboardId,
   DashCardId,

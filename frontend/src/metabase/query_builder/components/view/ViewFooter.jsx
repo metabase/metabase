@@ -3,6 +3,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import ButtonBar from "metabase/components/ButtonBar";
+import CS from "metabase/css/core/index.css";
 import { EmbedMenu } from "metabase/dashboard/components/EmbedMenu";
 import { ResourceEmbedButton } from "metabase/public/components/ResourceEmbedButton";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
@@ -52,11 +53,11 @@ const ViewFooter = ({
 
   return (
     <ViewFooterRoot
-      className={cx(className, "text-medium border-top")}
+      className={cx(className, CS.textMedium, CS.borderTop)}
       data-testid="view-footer"
     >
       <ButtonBar
-        className="flex-full"
+        className={CS.flexFull}
         left={[
           !hideChartSettings && (
             <FooterButtonGroup>

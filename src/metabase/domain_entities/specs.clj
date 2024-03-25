@@ -3,8 +3,8 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.util.yaml :as yaml]))
 
 (def MBQL
@@ -59,7 +59,7 @@
   (partial m/map-kv-vals (fn [k v]
                            (assoc v :name k))))
 
-(def ^:private Metrics
+(def ^:private LegacyMetrics
   [:map-of
    {:decode/domain-entity-spec add-name-from-key}
    Identifier
@@ -87,7 +87,7 @@
    [:required_attributes Attributes]
    [:description         {:optional true} Description]
    [:optional_attributes {:optional true} Attributes]
-   [:metrics             {:optional true} Metrics]
+   [:metrics             {:optional true} LegacyMetrics]
    [:segments            {:optional true} Segments]
    [:breakout_dimensions {:optional true} BreakoutDimensions]])
 

@@ -8,14 +8,15 @@ import { t } from "ttag";
 
 import S from "metabase/components/List/List.module.css";
 import Select from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
 import * as MetabaseCore from "metabase/lib/core";
 import { Icon } from "metabase/ui";
-import { isTypeFK } from "metabase-lib/types/utils/isa";
+import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
 
 import F from "./Field.module.css";
 
 const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
-  <div className={cx(S.item, "pt1", "border-top")}>
+  <div className={cx(S.item, CS.pt1, CS.borderTop)}>
     <div className={S.itemBody} style={{ maxWidth: "100%", borderTop: "none" }}>
       <div className={F.field}>
         <div className={cx(S.itemTitle, F.fieldName)}>
@@ -58,7 +59,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
               optionSectionFn={o => o.section}
             />
           ) : (
-            <div className="flex">
+            <div className={CS.flex}>
               <div className={S.leftIcons}>
                 {icon && <Icon className={S.chartIcon} name={icon} size={20} />}
               </div>

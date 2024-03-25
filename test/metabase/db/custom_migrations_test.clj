@@ -12,9 +12,10 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.schema-migrations-test.impl :as impl]
+   [metabase.driver :as driver]
    [metabase.models :refer [User]]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
@@ -286,14 +287,15 @@
                                     :where  [:= :id card-id]})
                      :visualization_settings
                      json/parse-string))))
-        (migrate! :down 46)
-        (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
-          (is (= visualization-settings
-                 (-> (t2/query-one {:select [:visualization_settings]
-                                    :from   [:report_card]
-                                    :where  [:= :id card-id]})
-                     :visualization_settings
-                     json/parse-string))))))))
+        (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+          (migrate! :down 46)
+          (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
+            (is (= visualization-settings
+                   (-> (t2/query-one {:select [:visualization_settings]
+                                      :from   [:report_card]
+                                      :where  [:= :id card-id]})
+                       :visualization_settings
+                       json/parse-string)))))))))
 
 (deftest downgrade-dashboard-tabs-test
   (testing "Migrations v47.00-029: downgrade dashboard tab test"
@@ -1505,13 +1507,13 @@
 (defn- table-and-column-of-type
   [ttype]
   (->> (t2/query
-        [(case (mdb.connection/db-type)
+        [(case (mdb/db-type)
            :postgres
            (format "SELECT table_name, column_name, is_nullable FROM information_schema.columns WHERE data_type = '%s' AND table_schema = 'public';"
                    ttype)
            :mysql
            (format "SELECT table_name, column_name, is_nullable FROM information_schema.columns WHERE data_type = '%s' AND table_schema = '%s';"
-                   ttype (-> (mdb.connection/data-source) .getConnection .getCatalog))
+                   ttype (-> (mdb/data-source) .getConnection .getCatalog))
            :h2
            (format "SELECT table_name, column_name, is_nullable FROM information_schema.columns WHERE data_type = '%s';"
                    ttype))])
@@ -1521,7 +1523,7 @@
 
 (deftest unify-type-of-time-columns-test
   (impl/test-migrations ["v49.00-054"] [migrate!]
-    (let [db-type       (mdb.connection/db-type)
+    (let [db-type       (mdb/db-type)
           datetime-type (case db-type
                           :postgres "timestamp without time zone"
                           :h2       "TIMESTAMP"

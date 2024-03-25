@@ -1,4 +1,4 @@
-import type Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/v1/metadata/Field";
 import type {
   ActionFormOption,
   FieldSettings as BaseFieldSettings,

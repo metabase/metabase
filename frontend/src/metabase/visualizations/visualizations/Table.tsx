@@ -3,6 +3,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import * as DataGrid from "metabase/lib/data_grid";
 import { formatColumn } from "metabase/lib/formatting";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
@@ -24,9 +25,9 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import { isNative } from "metabase-lib/queries/utils/card";
-import { findColumnIndexesForColumnSettings } from "metabase-lib/queries/utils/dataset";
+import Question from "metabase-lib/v1/Question";
+import { isNative } from "metabase-lib/v1/queries/utils/card";
+import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import {
   isMetric,
   isDimension,
@@ -35,7 +36,7 @@ import {
   isEmail,
   isImageURL,
   isAvatarURL,
-} from "metabase-lib/types/utils/isa";
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   DatasetData,
@@ -412,7 +413,13 @@ class Table extends Component<TableProps, TableState> {
       return (
         <div
           className={cx(
-            "flex-full px1 pb1 text-centered flex flex-column layout-centered",
+            CS.flexFull,
+            CS.px1,
+            CS.pb1,
+            CS.textCentered,
+            CS.flex,
+            CS.flexColumn,
+            CS.layoutCentered,
             { "text-slate-light": isDashboard, "text-slate": !isDashboard },
           )}
         >

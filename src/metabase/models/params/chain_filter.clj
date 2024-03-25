@@ -66,11 +66,11 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql :as sql]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
-   [metabase.db.util :as mdb.u]
    [metabase.driver.common.parameters.dates :as params.dates]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models :refer [Field FieldValues Table]]
    [metabase.models.database :as database]
    [metabase.models.field :as field]
@@ -81,6 +81,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.setup :as qp.setup]
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -91,9 +92,6 @@
 
 ;; so the hydration method for name_field is loaded
 (comment params/keep-me)
-
-;; for [[memoize/ttl]] keys
-(comment mdb.connection/keep-me)
 
 (def Constraint
   "Schema for a constraint on a field."
@@ -122,7 +120,7 @@
   the DB too much since this is unlike to change often, if ever."
   (memoize/ttl
    ^{::memoize/args-fn (fn [[field-id]]
-                         [(mdb.connection/unique-identifier) field-id])}
+                         [(mdb/unique-identifier) field-id])}
    (fn [field-id]
      (types/temporal-field? (t2/select-one [Field :base_type :semantic_type] :id field-id)))
    :ttl/threshold (u/minutes->ms 10)))
@@ -232,7 +230,7 @@
   the implementation of `find-joins` below."
   (memoize/ttl
    ^{::memoize/args-fn (fn [[database-id enable-reverse-joins?]]
-                         [(mdb.connection/unique-identifier) database-id enable-reverse-joins?])}
+                         [(mdb/unique-identifier) database-id enable-reverse-joins?])}
    database-fk-relationships*
    :ttl/threshold find-joins-cache-duration-ms))
 
@@ -296,7 +294,7 @@
       :rhs {:table <country>, :field <country.id>}}]"
   (let [f (memoize/ttl
            ^{::memoize/args-fn (fn [[database-id source-table-id other-table-id enable-reverse-joins?]]
-                                 [(mdb.connection/unique-identifier)
+                                 [(mdb/unique-identifier)
                                   database-id
                                   source-table-id
                                   other-table-id
@@ -315,7 +313,7 @@
 (def ^:private ^{:arglists '([source-table other-table-ids enable-reverse-joins?])} find-all-joins*
   (memoize/ttl
    ^{::memoize/args-fn (fn [[source-table-id other-table-ids enable-reverse-joins?]]
-                         [(mdb.connection/unique-identifier) source-table-id other-table-ids enable-reverse-joins?])}
+                         [(mdb/unique-identifier) source-table-id other-table-ids enable-reverse-joins?])}
    (fn [source-table-id other-table-ids enable-reverse-joins?]
      (let [db-id     (database/table-id->database-id source-table-id)
            all-joins (mapcat #(find-joins db-id source-table-id % enable-reverse-joins?)
@@ -507,8 +505,8 @@
                                     [:metabase_field :dest] [:= :dest.table_id :table.id]]
                         :where     [:and
                                     [:= :source.id field-id]
-                                    (mdb.u/isa :source.semantic_type :type/PK)
-                                    (mdb.u/isa :dest.semantic_type :type/Name)]
+                                    (mdb.query/isa :source.semantic_type :type/PK)
+                                    (mdb.query/isa :dest.semantic_type :type/Name)]
                         :limit     1}]}
              :ids]]
    :limit  1})
@@ -530,9 +528,11 @@
 (defn- check-field-value-query-permissions
   "Check query permissions against the chain-filter-mbql-query (private #196)"
   [field-id constraints options]
-  (->> (chain-filter-mbql-query field-id constraints options)
-       qp.preprocess/preprocess
-       qp.perms/check-query-permissions*))
+  (let [query (chain-filter-mbql-query field-id constraints options)]
+    (qp.setup/with-qp-setup [query query]
+      (->> query
+           qp.preprocess/preprocess
+           qp.perms/check-query-permissions*))))
 
 (defn- cached-field-values [field-id constraints {:keys [limit]}]
   ;; TODO: why don't we remap the human readable values here?
@@ -720,5 +720,5 @@
                                               (for [id filter-field-ids]
                                                 {:field-id id :op := :value nil})
                                               nil)]
-      (set (mbql.u/match (-> mbql-query :query :filter)
+      (set (lib.util.match/match (-> mbql-query :query :filter)
              [:field (id :guard integer?) _] id)))))

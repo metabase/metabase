@@ -15,11 +15,23 @@ export type ApiKey = {
   };
 };
 
-export interface Log {
-  timestamp: string;
-  process_uuid: string;
-  fqns: string;
-  msg: string;
-  level: string;
-  exception: any;
-}
+export type CreateApiKeyInput = {
+  name: string;
+  group_id: string;
+};
+
+export type CreateApiKeyResponse = {
+  unmasked_key: string;
+};
+
+export type UpdateApiKeyInput = {
+  id: number;
+  group_id: string;
+  name: string;
+};
+
+export type UpdateApiKeyResponse = void;
+
+export type RegenerateApiKeyResponse = {
+  unmasked_key: string;
+};

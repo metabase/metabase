@@ -46,7 +46,7 @@
     ;; sending the message. It will block that thread, counting the number of messages. If it has reached it's goal,
     ;; it will deliver the promise
     (add-watch inbox ::inbox-watcher
-               (fn [_ _ _ new-value]
+               (fn [_key _ref _old-value new-value]
                  (let [num-msgs (count (apply concat (vals new-value)))]
                    (when (<= n num-msgs)
                      (deliver p num-msgs)))))

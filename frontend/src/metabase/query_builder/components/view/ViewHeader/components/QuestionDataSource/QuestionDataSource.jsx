@@ -13,8 +13,8 @@ import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
-} from "metabase-lib/metadata/utils/saved-questions";
-import * as ML_Urls from "metabase-lib/urls";
+} from "metabase-lib/v1/metadata/utils/saved-questions";
+import * as ML_Urls from "metabase-lib/v1/urls";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
 
@@ -260,7 +260,7 @@ function QuestionTableBadges({ tables, subHead, hasLink, isLast }) {
     >
       <span>
         {table.displayName()}
-        <TableInfoIcon table={table} alwaysVisible />
+        {!subHead && <TableInfoIcon table={table} />}
       </span>
     </HeadBreadcrumbs.Badge>
   ));

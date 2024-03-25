@@ -4,7 +4,7 @@
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.db.metadata-queries :as metadata-queries]
-   [metabase.db.util :as mdb.u]
+   [metabase.db.query :as mdb.query]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :as field :refer [Field]]
@@ -30,6 +30,10 @@
    (java.text NumberFormat)))
 
 (set! *warn-on-reflection* true)
+
+(comment
+  ;; idk why condo complains on this not being used when it is, in a keyword down there
+  lib.schema.metadata/used)
 
 ;;; --------------------------------------------- Basic CRUD Operations ----------------------------------------------
 
@@ -298,7 +302,7 @@
           update-map             {:values                (map first value-pairs)
                                   :human_readable_values (when human-readable-values?
                                                            (map second value-pairs))}
-          updated-pk             (mdb.u/update-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
+          updated-pk             (mdb.query/update-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
                                    (constantly update-map))]
       (api/check-500 (pos? updated-pk))))
   {:status :success})

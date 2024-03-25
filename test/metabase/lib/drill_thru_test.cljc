@@ -576,7 +576,9 @@
         (test-drill-applications query context)))))
 
 ;; TODO: Restore this test once zoom-in and underlying-records are checked properly.
-#_(deftest ^:parallel histogram-available-drill-thrus-test
+;; Tech debt issue: #39373
+#_
+(deftest ^:parallel histogram-available-drill-thrus-test
   (testing "histogram breakout view"
     (testing "broken out by state - click a state - underlying, zoom in, pivot (non-location), automatic insights, quick filter"
       (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :people))

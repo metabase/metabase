@@ -3,8 +3,8 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.db.util :as mdb.u]
+   [metabase.db :as mdb]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.util :as driver.u]
@@ -306,19 +306,33 @@
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
-(mi/define-simple-hydration-method tables
-  :tables
+;; only used in tests
+(defn tables
   "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
   ;; TODO - do we want to include tables that should be `:hidden`?
-  (t2/select 'Table, :db_id id, :active true, {:order-by [[:%lower.display_name :asc]]}))
+  (t2/select :model/Table :db_id id :active true {:order-by [[:%lower.display_name :asc]]}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :tables]
+  "Batch hydrate `Tables` for the given `Database`."
+  [_model k databases]
+  (mi/instances-with-hydrated-data
+   databases k
+   #(group-by :db_id
+              ;; TODO - do we want to include tables that should be `:hidden`?
+              (t2/select :model/Table
+                         :db_id  [:in (map :id databases)]
+                         :active true
+                         {:order-by [[:db_id :asc] [:%lower.display_name :asc]]}))
+   :id
+   {:default []}))
 
 (defn pk-fields
   "Return all the primary key `Fields` associated with this `database`."
   [{:keys [id]}]
   (let [table-ids (t2/select-pks-set 'Table, :db_id id, :active true)]
     (when (seq table-ids)
-      (t2/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.u/isa :type/PK)))))
+      (t2/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.query/isa :type/PK)))))
 
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
@@ -348,28 +362,34 @@
   [db json-generator]
   (next-method
    (let [db (if (not (mi/can-write? db))
-              (dissoc db :details)
-              (update db :details (fn [details]
-                                    (reduce
-                                     #(m/update-existing %1 %2 (constantly protected-password))
-                                     details
-                                     (sensitive-fields-for-db db)))))]
-     (update db :settings (fn [settings]
-                            (when (map? settings)
-                              (m/filter-keys
-                               (fn [setting-name]
-                                 (try
-                                  (setting/can-read-setting? setting-name
-                                                             (setting/current-user-readable-visibilities))
-                                  (catch Throwable e
-                                    ;; there is an known issue with exception is ignored when render API response (#32822)
-                                    ;; If you see this error, you probably need to define a setting for `setting-name`.
-                                    ;; But ideally, we should resovle the above issue, and remove this try/catch
-                                    (log/error e (format "Error checking the readability of %s setting. The setting will be hidden in API response." setting-name))
-                                    ;; let's be conservative and hide it by defaults, if you want to see it,
-                                    ;; you need to define it :)
-                                    false)))
-                               settings)))))
+              (do (log/debug "Fully redacting database details during json encoding.")
+                  (dissoc db :details))
+              (do (log/debug "Redacting sensitive fields within database details during json encoding.")
+                  (update db :details (fn [details]
+                                        (reduce
+                                         #(m/update-existing %1 %2 (constantly protected-password))
+                                         details
+                                         (sensitive-fields-for-db db))))))]
+     (update db :settings
+             (fn [settings]
+               (when (map? settings)
+                 (u/prog1
+                  (m/filter-keys
+                   (fn [setting-name]
+                     (try
+                       (setting/can-read-setting? setting-name
+                                                  (setting/current-user-readable-visibilities))
+                       (catch Throwable e
+                         ;; there is an known issue with exception is ignored when render API response (#32822)
+                         ;; If you see this error, you probably need to define a setting for `setting-name`.
+                         ;; But ideally, we should resovle the above issue, and remove this try/catch
+                         (log/error e (format "Error checking the readability of %s setting. The setting will be hidden in API response." setting-name))
+                         ;; let's be conservative and hide it by defaults, if you want to see it,
+                         ;; you need to define it :)
+                         false)))
+                   settings)
+                   (when (not= <> settings)
+                     (log/debug "Redacting non-user-readable database settings during json encoding.")))))))
    json-generator))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
@@ -423,7 +443,7 @@
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn [table-id]
      {:pre [(integer? table-id)]}
      (t2/select-one-fn :db_id :model/Table, :id table-id))))

@@ -1,9 +1,12 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import HostingInfoLink from "metabase/admin/settings/components/widgets/HostingInfoLink";
 import Text from "metabase/components/type/Text";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { getIsPaidPlan } from "metabase/selectors/settings";
@@ -71,13 +74,29 @@ function NewVersionAvailable({ currentVersion }) {
 
   return (
     <div>
-      <NewVersionContainer className="p2 bordered rounded border-success flex flex-row align-center justify-between">
+      <NewVersionContainer
+        className={cx(
+          CS.p2,
+          CS.bordered,
+          CS.rounded,
+          "border-success",
+          CS.flex,
+          CS.flexRow,
+          CS.alignCenter,
+          CS.justifyBetween,
+        )}
+      >
         <span className="text-white text-bold">
           {t`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
           {t`You're running ${currentVersion}`}
         </span>
         <ExternalLink
-          className="Button Button--white Button--medium borderless"
+          className={cx(
+            ButtonsS.Button,
+            ButtonsS.ButtonWhite,
+            ButtonsS.ButtonMedium,
+            CS.borderless,
+          )}
           href={
             "https://www.metabase.com/docs/" +
             latestVersion +
@@ -89,7 +108,14 @@ function NewVersionAvailable({ currentVersion }) {
       </NewVersionContainer>
 
       <div
-        className="text-medium bordered rounded p2 mt2 overflow-y-scroll"
+        className={cx(
+          CS.textMedium,
+          CS.bordered,
+          CS.rounded,
+          CS.p2,
+          CS.mt2,
+          CS.overflowYScroll,
+        )}
         style={{ height: 330 }}
       >
         <h3 className="pb3 text-uppercase">{t`What's Changed:`}</h3>
@@ -115,7 +141,16 @@ function HostingCTA() {
   return (
     <HostingCTARoot className="rounded bg-light mt4 text-brand py2 px1">
       <HostingCTAContent>
-        <HostingCTAIconContainer className="circular bg-medium align-center justify-center ml1 mr2">
+        <HostingCTAIconContainer
+          className={cx(
+            "circular",
+            "bg-medium",
+            CS.alignCenter,
+            CS.justifyCenter,
+            CS.ml1,
+            CS.mr2,
+          )}
+        >
           <Icon name="cloud" size={24} />
         </HostingCTAIconContainer>
         <div>

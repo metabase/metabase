@@ -13,6 +13,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 import CheckBox from "metabase/core/components/CheckBox";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Swapper from "metabase/core/components/Swapper";
+import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { Icon } from "metabase/ui";
 
@@ -74,7 +75,7 @@ function EntityIconCheckBox({
 function EntityItemName({ name, variant }) {
   return (
     <h3
-      className={cx("overflow-hidden", {
+      className={cx(CS.overflowHidden, {
         "text-list": variant === "list",
       })}
     >
@@ -106,26 +107,36 @@ function EntityItemMenu({
   const actions = useMemo(() => {
     const result = [];
 
-    const bookmarkAction = {
-      title: isBookmarked ? t`Remove from bookmarks` : t`Bookmark`,
-      icon: "bookmark",
-      action: onToggleBookmark,
-    };
+    const bookmarkAction = onToggleBookmark
+      ? {
+          title: isBookmarked ? t`Remove from bookmarks` : t`Bookmark`,
+          icon: "bookmark",
+          action: onToggleBookmark,
+        }
+      : null;
 
     if (isPinned) {
-      result.push({
-        title: t`Unpin`,
-        icon: "unpin",
-        action: onPin,
-      });
-      result.push(bookmarkAction);
+      if (onPin) {
+        result.push({
+          title: t`Unpin`,
+          icon: "unpin",
+          action: onPin,
+        });
+      }
+      if (bookmarkAction) {
+        result.push(bookmarkAction);
+      }
     } else {
-      result.push(bookmarkAction);
-      result.push({
-        title: t`Pin this`,
-        icon: "pin",
-        action: onPin,
-      });
+      if (bookmarkAction) {
+        result.push(bookmarkAction);
+      }
+      if (onPin) {
+        result.push({
+          title: t`Pin this`,
+          icon: "pin",
+          action: onPin,
+        });
+      }
     }
 
     if (isMetabotShown) {
@@ -253,7 +264,7 @@ const EntityItem = ({
         onToggleSelected={onToggleSelected}
       />
 
-      <div className="overflow-hidden">
+      <div className={CS.overflowHidden}>
         <EntityItemName name={name} />
         <div>{extraInfo && extraInfo}</div>
       </div>

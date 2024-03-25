@@ -11,7 +11,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_EMBEDDING,
-  PLUGIN_IS_EE_BUILD,
+  PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -691,9 +691,15 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   llm: {
     name: t`AI Features`,
-    getHidden: () => !PLUGIN_IS_EE_BUILD.isEEBuild(),
+    getHidden: () => !PLUGIN_LLM_AUTODESCRIPTION.isEnabled(),
     order: 131,
     settings: [
+      {
+        key: "ee-ai-features-enabled",
+        display_name: t`AI features enabled`,
+        note: t`You must supply an API key before AI features can be enabled.`,
+        type: "boolean",
+      },
       {
         key: "ee-openai-api-key",
         display_name: t`EE OpenAI API Key`,
@@ -704,7 +710,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
 };
 
-const getSectionsWithPlugins = _.once(() =>
+export const getSectionsWithPlugins = _.once(() =>
   updateSectionsWithPlugins(ADMIN_SETTINGS_SECTIONS),
 );
 

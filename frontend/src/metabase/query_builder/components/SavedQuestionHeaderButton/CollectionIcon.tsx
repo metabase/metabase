@@ -3,7 +3,7 @@ import {
   PLUGIN_MODERATION,
   PLUGIN_COLLECTION_COMPONENTS,
 } from "metabase/plugins";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { Collection } from "metabase-types/api";
 
 // sometimes we want to show an icon on the question

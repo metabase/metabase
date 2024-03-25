@@ -198,7 +198,8 @@ describe("binning related reproductions", () => {
     summarize();
 
     rightSidebar().within(() => {
-      cy.findByRole("listitem", { name: "Created At" })
+      cy.findAllByRole("listitem", { name: "Created At" })
+        .eq(0)
         .findByLabelText("Temporal bucket")
         .click();
     });
@@ -242,7 +243,7 @@ describe("binning related reproductions", () => {
       .click();
     cy.wait("@dataset");
 
-    cy.get(".Visualization").findByText("Count");
+    cy.findByTestId("query-visualization-root").findByText("Count");
 
     cy.findByTestId("sidebar-right")
       .findAllByText("Created At")
@@ -250,8 +251,8 @@ describe("binning related reproductions", () => {
       .click();
     cy.wait("@dataset");
 
-    cy.get(".Visualization").within(() => {
-      // ALl of these are implicit assertions and will fail if there's more than one string
+    cy.findByTestId("query-visualization-root").within(() => {
+      // All of these are implicit assertions and will fail if there's more than one string
       cy.findByText("Count");
       cy.findByText("Created At: Month");
       cy.findByText("June 2022");

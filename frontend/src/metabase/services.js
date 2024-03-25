@@ -2,11 +2,11 @@ import _ from "underscore";
 
 import api, { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import Question from "metabase-lib/Question";
-import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
-import { normalizeParameters } from "metabase-lib/parameters/utils/parameter-values";
-import { isNative } from "metabase-lib/queries/utils/card";
-import { getPivotColumnSplit } from "metabase-lib/queries/utils/pivot";
+import Question from "metabase-lib/v1/Question";
+import { injectTableMetadata } from "metabase-lib/v1/metadata/utils/tables";
+import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
+import { isNative } from "metabase-lib/v1/queries/utils/card";
+import { getPivotColumnSplit } from "metabase-lib/v1/queries/utils/pivot";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
@@ -342,8 +342,6 @@ export const MetabaseApi = {
   ),
   db_sync_schema: POST("/api/database/:dbId/sync_schema"),
   db_dismiss_sync_spinner: POST("/api/database/:dbId/dismiss_spinner"),
-  db_rescan_values: POST("/api/database/:dbId/rescan_values"),
-  db_discard_values: POST("/api/database/:dbId/discard_values"),
   db_persist: POST("/api/database/:dbId/persist"),
   db_unpersist: POST("/api/database/:dbId/unpersist"),
   db_usage_info: GET("/api/database/:dbId/usage_info"),
@@ -357,9 +355,6 @@ export const MetabaseApi = {
     "/api/table/:tableId/query_metadata",
     injectTableMetadata,
   ),
-  // table_sync_metadata:        POST("/api/table/:tableId/sync"),
-  table_rescan_values: POST("/api/table/:tableId/rescan_values"),
-  table_discard_values: POST("/api/table/:tableId/discard_values"),
   tableAppendCSV: POST("/api/table/:tableId/append-csv", {
     formData: true,
     fetch: true,
@@ -371,8 +366,6 @@ export const MetabaseApi = {
   field_update: PUT("/api/field/:id"),
   field_dimension_update: POST("/api/field/:fieldId/dimension"),
   field_dimension_delete: DELETE("/api/field/:fieldId/dimension"),
-  field_rescan_values: POST("/api/field/:fieldId/rescan_values"),
-  field_discard_values: POST("/api/field/:fieldId/discard_values"),
   field_search: GET("/api/field/:fieldId/search/:searchFieldId"),
   field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
@@ -426,11 +419,11 @@ export const SegmentApi = {
 };
 
 export const MetricApi = {
-  list: GET("/api/metric"),
-  create: POST("/api/metric"),
-  get: GET("/api/metric/:metricId"),
-  update: PUT("/api/metric/:id"),
-  delete: DELETE("/api/metric/:metricId"),
+  list: GET("/api/legacy-metric"),
+  create: POST("/api/legacy-metric"),
+  get: GET("/api/legacy-metric/:metricId"),
+  update: PUT("/api/legacy-metric/:id"),
+  delete: DELETE("/api/legacy-metric/:metricId"),
 };
 
 export const RevisionApi = {
@@ -488,10 +481,8 @@ export const PersistedModelsApi = {
 
 export const SetupApi = {
   create: POST("/api/setup"),
-  validate_db: POST("/api/setup/validate"),
   admin_checklist: GET("/api/setup/admin_checklist"),
   user_defaults: GET("/api/setup/user_defaults"),
-  validate_token: GET("/api/setup/token-check"),
 };
 
 export const UserApi = {

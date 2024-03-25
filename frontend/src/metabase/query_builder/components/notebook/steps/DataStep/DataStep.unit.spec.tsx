@@ -6,12 +6,12 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
 import {
   columnFinder,
   createQuery,
   findAggregationOperator,
 } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import {
   createSampleDatabase,
   SAMPLE_DB_ID,
