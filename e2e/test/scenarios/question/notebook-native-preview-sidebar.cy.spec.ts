@@ -15,6 +15,7 @@ import {
   visitQuestion,
   createQuestion,
   saveSavedQuestion,
+  withDatabase,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -174,6 +175,7 @@ describe(
   { tags: "@mongo" },
   () => {
     const MONGO_DB_NAME = "QA Mongo";
+    const MONGO_DB_ID = 2;
 
     beforeEach(() => {
       restore("mongo-5");
@@ -234,6 +236,50 @@ describe(
         cy.findByTestId("selected-table").should("have.text", "Products");
         cy.get(".cellData").should("contain", "Small Marble Shoes");
       });
+    });
+
+    it.skip("should work for a nested GUI question (metabase#40557)", () => {
+      withDatabase(MONGO_DB_ID, ({ PRODUCTS_ID }: { PRODUCTS_ID: number }) => {
+        createQuestion({
+          name: "Mongo Source",
+          query: {
+            "source-table": PRODUCTS_ID,
+            limit: 1,
+          },
+          database: MONGO_DB_ID,
+        }).then(({ body: { id: sourceId } }) => {
+          createQuestion(
+            {
+              name: "Mongo Nested",
+              query: {
+                "source-table": `card__${sourceId}`,
+              },
+              database: MONGO_DB_ID,
+            },
+            { visitQuestion: true },
+          );
+        });
+      });
+
+      cy.get(".cellData").should("contain", "Small Marble Shoes");
+      openNotebook();
+      cy.findByLabelText("View the native query").click();
+
+      cy.findByTestId("native-query-preview-sidebar").within(() => {
+        cy.findByText("Native query for this question").should("exist");
+        cy.get(".ace_content")
+          .should("contain", "$project")
+          .and("contain", "$limit")
+          .and("not.contain", "BsonString")
+          .and("not.contain", "BsonInt32");
+
+        cy.button("Convert this question to a native query").click();
+      });
+
+      cy.log("Database and table should be pre-selected (metabase#40557)");
+      cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
+      cy.findByTestId("selected-table").should("have.text", "Products");
+      cy.get(".cellData").should("contain", "Small Marble Shoes");
     });
   },
 );
