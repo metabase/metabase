@@ -4,22 +4,16 @@
 
 h1,
 .h1,
-:global(.h1),
 h2,
 .h2,
-:global(.h2),
 h3,
 .h3,
-:global(.h3),
 h4,
 .h4,
-:global(.h4),
 h5,
 .h5,
-:global(.h5),
 h6,
-.h6,
-:global(.h6) {
+.h6 {
   font-weight: 700;
   margin-top: var(--default-header-margin);
   margin-bottom: var(--default-header-margin);
@@ -30,31 +24,28 @@ h6,
  * `article` contexts in Chrome, Firefox, and Safari.
  * https://github.com/necolas/normalize.css/blob/fc091cc/normalize.css#L40
  */
-h1 {
+h1,
+.h1 {
   font-size: 2em;
 }
 
-:global(.h1) {
-  font-size: 2em;
-}
-
-:global(.h2) {
+.h2 {
   font-size: 1.5em;
 }
 
-:global(.h3) {
+.h3 {
   font-size: 1.17em;
 }
 
-:global(.h4) {
+.h4 {
   font-size: 1.12em;
 }
 
-:global(.h5) {
+.h5 {
   font-size: 0.83em;
 }
 
-:global(.h6) {
+.h6 {
   font-size: 0.75em;
 }
 
