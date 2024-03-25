@@ -32,7 +32,9 @@ export function FieldSet({
             "h5",
             CS.textBold,
             CS.textUppercase,
-            "px1 text-nowrap text-medium",
+            "px1",
+            CS.textNoWrap,
+            "text-medium",
           )}
         >
           {legend}

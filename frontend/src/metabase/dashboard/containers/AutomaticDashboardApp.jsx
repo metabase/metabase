@@ -143,7 +143,7 @@ class AutomaticDashboardAppInner extends Component {
                       <Button className="ml-auto" disabled>{t`Saved`}</Button>
                     ) : (
                       <ActionButton
-                        className="ml-auto text-nowrap"
+                        className={cx("ml-auto", CS.textNoWrap)}
                         success
                         borderless
                         actionFn={this.save}

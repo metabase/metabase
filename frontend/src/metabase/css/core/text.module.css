@@ -71,14 +71,13 @@
   text-overflow: ellipsis;
 }
 
-:global(.text-wrap),
 .textWrap {
   overflow-wrap: anywhere;
   word-break: break-word;
   word-wrap: anywhere;
 }
 
-:global(.text-nowrap) {
+.textNoWrap {
   white-space: nowrap;
 }
 
