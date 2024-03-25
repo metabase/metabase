@@ -67,18 +67,6 @@
   font-size: 0.8em;
 }
 
-:global(.text-current) {
-  color: currentColor;
-}
-
-:global(.text-underline) {
-  text-decoration: underline;
-}
-
-:global(.text-underline-hover:hover) {
-  text-decoration: underline;
-}
-
 :global(.text-ellipsis) {
   text-overflow: ellipsis;
 }
