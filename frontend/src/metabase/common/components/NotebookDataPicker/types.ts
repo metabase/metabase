@@ -47,6 +47,8 @@ export type NotebookDataPickerFolderItem =
   | DatabaseItem
   | SchemaItem;
 
+export type TablePickerFolderItem = DatabaseItem | SchemaItem;
+
 export type NotebookDataPickerValueItem = TableItem | QuestionItem | ModelItem;
 
 export type NotebookDataPickerItem =
