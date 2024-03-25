@@ -26,7 +26,7 @@ export interface NestedItemPickerProps<
   generateKey: (query?: Query) => string;
   itemName: string;
   options: Options;
-  path: PickerState<Item, Query>;
+  path: PickerState<Model, Item, Query>;
   isFolder: IsFolder<Id, Model, Item>;
   listResolver: ComponentType<ListProps<Id, Model, Item, Query, Options>>;
 }
@@ -61,7 +61,7 @@ export function NestedItemPicker<
     >
       <Flex h="100%" w="fit-content">
         {path.map((level, index) => {
-          const { query, selectedItem } = level;
+          const { model, query, selectedItem } = level;
 
           return (
             <ListBox
@@ -70,6 +70,7 @@ export function NestedItemPicker<
             >
               <ErrorBoundary>
                 <ListResolver
+                  model={model}
                   query={query}
                   selectedItem={selectedItem}
                   options={options}

@@ -44,7 +44,11 @@ export const CollectionPickerInner = (
   ref: Ref<unknown>,
 ) => {
   const [path, setPath] = useState<
-    PickerState<CollectionPickerItem, SearchListQuery>
+    PickerState<
+      CollectionPickerItem["model"],
+      CollectionPickerItem,
+      SearchListQuery
+    >
   >(() =>
     getStateFromIdPath({
       idPath: ["root"],

@@ -1,23 +1,26 @@
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import type { DatabaseListQuery } from "metabase-types/api";
 
 import { ItemList, type IsFolder } from "../../EntityPicker";
 import type { NotebookDataPickerItem } from "../types";
 
 interface Props {
-  selectedItem: NotebookDataPickerItem | null;
+  isCurrentLevel: boolean;
   isFolder: IsFolder<
     NotebookDataPickerItem["id"],
     NotebookDataPickerItem["model"],
     NotebookDataPickerItem
   >;
-  isCurrentLevel: boolean;
+  query: DatabaseListQuery;
+  selectedItem: NotebookDataPickerItem | null;
   onClick: (val: NotebookDataPickerItem) => void;
 }
 
 export const DatabaseList = ({
   isCurrentLevel,
   isFolder,
+  query,
   selectedItem,
   onClick,
 }: Props) => {
@@ -25,9 +28,7 @@ export const DatabaseList = ({
     data: databases = [],
     error,
     isLoading,
-  } = useDatabaseListQuery({
-    query: { saved: false }, // saved questions are fetched in a separate tab
-  });
+  } = useDatabaseListQuery({ query });
 
   const items: NotebookDataPickerItem[] = databases.map(database => ({
     description: database.description,

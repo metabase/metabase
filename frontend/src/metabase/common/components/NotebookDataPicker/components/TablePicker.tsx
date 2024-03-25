@@ -11,6 +11,7 @@ import type {
   NotebookDataPickerItem,
   NotebookDataPickerQuery,
   NotebookDataPickerValueItem,
+  PathEntry,
   Value,
 } from "../types";
 import { generateKey, isFolder } from "../utilts";
@@ -35,25 +36,64 @@ interface Props {
   onItemSelect: (item: NotebookDataPickerValueItem) => void;
 }
 
+const getFolderPath = (
+  path: PathEntry,
+  folder: NotebookDataPickerItem,
+): PathEntry => {
+  const [root, database, schema] = path;
+
+  if (folder.model === "database") {
+    return [
+      root,
+      {
+        model: "schema",
+        selectedItem: folder,
+        query: { dbId: folder.id },
+      },
+    ];
+  }
+
+  if (folder.model === "schema") {
+    return [
+      root,
+      schema,
+      {
+        model: "table",
+        selectedItem: folder,
+        query: {},
+      },
+    ];
+  }
+
+  return [
+    database,
+    schema,
+    {
+      selectedItem: folder,
+      model: folder.model,
+      query: {},
+      // query:
+    },
+  ];
+};
+
 export const TablePicker = forwardRef(function TablePicker(
   { onItemSelect, initialValue, options = defaultOptions }: Props,
   ref: Ref<unknown>,
 ) {
-  const [path, setPath] = useState<
-    PickerState<NotebookDataPickerItem, NotebookDataPickerQuery>
-  >([
+  const [path, setPath] = useState<PathEntry>([
     {
+      model: "database",
+      query: { saved: false }, // saved questions are fetched in a separate tab
       selectedItem: null,
     },
   ]);
 
   const onFolderSelect = useCallback(
     ({ folder }: { folder: NotebookDataPickerItem }) => {
-      // const newPath = getStateFromIdPath(folder);
-      // setPath(newPath);
-      // onItemSelect(folder);
+      setPath(path => getFolderPath(path, folder));
     },
-    [setPath, onItemSelect],
+    [setPath],
   );
 
   // Exposing onFolderSelect so that parent can select newly created
@@ -99,7 +139,7 @@ export const TablePicker = forwardRef(function TablePicker(
   // }
 
   // if (isLoading) {
-  //   return <LoadingSpinner />;
+  //   return <LoadingSpnner />;
   // }
 
   return (

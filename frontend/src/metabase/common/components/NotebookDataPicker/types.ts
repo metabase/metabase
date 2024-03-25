@@ -2,9 +2,14 @@ import type {
   Card,
   Collection,
   Database,
+  DatabaseListQuery,
   NormalizedSchema,
+  SchemaListQuery,
   Table,
+  TableListQuery,
 } from "metabase-types/api";
+
+import type { PickerState } from "../EntityPicker";
 
 export type CollectionItem = {
   id: Collection["id"];
@@ -59,7 +64,26 @@ export type NotebookDataPickerModel = NotebookDataPickerItem["model"];
 
 export type Value = Pick<NotebookDataPickerItem, "id" | "model">;
 
+export type PathEntry<Model extends NotebookDataPickerFolderItem["model"]> =
+  PickerState<Model, NotebookDataPickerItem, NotebookDataPickerQuery<Model>>;
+
 // TODO
-export type NotebookDataPickerQuery = {
-  model: NotebookDataPickerItem["model"];
-};
+export type NotebookDataPickerQuery<Model> = Model extends "database"
+  ? DatabaseListQuery
+  : Model extends "schema"
+  ? SchemaListQuery
+  : TableListQuery;
+
+// export type NotebookDataPickerQuery =
+//   | {
+//       model: "table";
+//       query: TableListQuery;
+//     }
+//   | {
+//       model: "schema";
+//       query: SchemaListQuery;
+//     }
+//   | {
+//       model: "database";
+//       query: DatabaseListQuery;
+//     };

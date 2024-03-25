@@ -1,5 +1,5 @@
 import type { EntityPickerOptions, ListProps } from "../../EntityPicker";
-import type { NotebookDataPickerItem } from "../types";
+import type { NotebookDataPickerItem, NotebookDataPickerQuery } from "../types";
 
 import { DatabaseList } from "./DatabaseList";
 import { SchemaList } from "./SchemaList";
@@ -8,6 +8,7 @@ import { TableList } from "./TableList";
 export const NotebookDataItemPickerResolver = ({
   isCurrentLevel,
   isFolder,
+  model,
   query,
   selectedItem,
   onClick,
@@ -15,39 +16,44 @@ export const NotebookDataItemPickerResolver = ({
   NotebookDataPickerItem["id"],
   NotebookDataPickerItem["model"],
   NotebookDataPickerItem,
-  Query, // TODO NotebokDataPickerQuery
+  NotebookDataPickerQuery<NotebookDataPickerItem["model"]>,
   EntityPickerOptions
 >) => {
-  if (!query) {
+  if (model === "card" || model === "collection") {
+    throw new Error("Not implemented");
+  }
+
+  if (model === "database") {
     return (
       <DatabaseList
         isCurrentLevel={isCurrentLevel}
         isFolder={isFolder}
+        query={query}
         selectedItem={selectedItem}
         onClick={onClick}
       />
     );
   }
 
-  if (query.model === "schema") {
+  if (model === "schema") {
     return (
       <SchemaList
-        query={query}
-        onClick={onClick}
-        selectedItem={selectedItem}
-        isFolder={isFolder}
         isCurrentLevel={isCurrentLevel}
+        isFolder={isFolder}
+        query={query}
+        selectedItem={selectedItem}
+        onClick={onClick}
       />
     );
   }
 
   return (
     <TableList
-      query={query}
-      onClick={onClick}
-      selectedItem={selectedItem}
-      isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
+      isFolder={isFolder}
+      query={query}
+      selectedItem={selectedItem}
+      onClick={onClick}
     />
   );
 };
