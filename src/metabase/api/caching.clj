@@ -39,7 +39,8 @@
        x))
    schema))
 
-;; TODO: declaring schema as defenterprise will make OpenAPI docs invalid for an EE version
+;; TODO: figure out how to combine `defenterprise` and `defendpoint` - right now OpenAPI only "sees" OSS version of
+;; the schema, so docs for enterprise version won't be correct until we figure out the way to support this
 (defenterprise CacheStrategy
   "Schema for a caching strategy"
   metabase-enterprise.caching.strategies
@@ -65,7 +66,7 @@
 (defn- assert-valid-models [model ids premium?]
   (cond
     (= model "root")
-    (when-not (= ids [0])
+    (when-not (some zero? ids)
       (throw (ex-info (tru "Root configuration is only valid with model_id = 0") {:status-code 404
                                                                                   :model_id    (first ids)})))
 
