@@ -54,7 +54,7 @@ const MultiDatePicker = ({
   hideTimeSelectors,
 }) => (
   <div className={className}>
-    <div className="Grid Grid--1of2 Grid--gutters">
+    <div className={cx(CS.Grid, "Grid--1of2 Grid--gutters")}>
       <div className="Grid-cell">
         <SpecificDatePicker
           value={startValue}
