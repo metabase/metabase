@@ -63,7 +63,6 @@
   top: 0;
 }
 
-:global(.right),
 .right {
   right: 0;
 }
