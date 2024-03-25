@@ -1,4 +1,4 @@
-:global(.hide) {
+.hide {
   display: none !important;
 }
 
