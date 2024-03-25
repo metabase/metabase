@@ -5,7 +5,7 @@ import _ from "underscore";
 import { databaseApi } from "metabase/api";
 import Schemas from "metabase/entities/schemas";
 import { color } from "metabase/lib/colors";
-import { createEntity } from "metabase/lib/entities";
+import { createEntity, rtkApiRequest } from "metabase/lib/entities";
 import {
   fetchData,
   createThunkAction,
@@ -41,18 +41,8 @@ const Databases = createEntity({
   nameMany: "databases",
 
   api: {
-    list: async (input, dispatch) => {
-      const action = dispatch(
-        databaseApi.endpoints.getDatabases.initiate(input, {
-          forceRefetch: true,
-        }),
-      );
-      try {
-        return await action.unwrap();
-      } finally {
-        action.unsubscribe();
-      }
-    },
+    list: (input, dispatch) =>
+      rtkApiRequest(dispatch, databaseApi.endpoints.getDatabases, input),
   },
 
   // ACTION CREATORS

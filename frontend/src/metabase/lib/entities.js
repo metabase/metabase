@@ -665,3 +665,17 @@ export const notify = (opts = {}, subject, verb) =>
 
 export const undo = (opts = {}, subject, verb) =>
   merge({ notify: { subject, verb, undo: true } }, opts || {});
+
+// makes entity framework-compatible api requests
+export async function rtkApiRequest(dispatch, endpoint, input) {
+  const action = dispatch(
+    endpoint.initiate(input, {
+      forceRefetch: true,
+    }),
+  );
+  try {
+    return await action.unwrap();
+  } finally {
+    action.unsubscribe();
+  }
+}
