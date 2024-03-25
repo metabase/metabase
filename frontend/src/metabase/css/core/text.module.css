@@ -16,30 +16,6 @@
   text-align: right;
 }
 
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-text-right) {
-    text-align: right;
-  }
-}
-
-@media screen and (--breakpoint-min-md) {
-  :global(.md-text-right) {
-    text-align: right;
-  }
-}
-
-@media screen and (--breakpoint-min-lg) {
-  :global(.lg-text-right) {
-    text-align: right;
-  }
-}
-
-@media screen and (--breakpoint-min-xl) {
-  :global(.xl-text-right) {
-    text-align: right;
-  }
-}
-
 :global(.text-uppercase),
 .text-uppercase,
 .textUppercase {
