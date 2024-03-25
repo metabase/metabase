@@ -46,7 +46,7 @@
   color: var(--color-text-medium); /* TODO - is this bad? */
 }
 
-:global(.text-list) {
+.textList {
   font-size: 1em;
 }
 
