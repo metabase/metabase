@@ -13,7 +13,7 @@ const getEventPrefix = (permission: DataPermission) => {
 
 const getEventName = (entityId: Partial<TableEntityId>, isNative: boolean) => {
   if (isNative) {
-    return "native";
+    return "create-queries";
   }
   if (entityId.tableId != null) {
     return "fields";

@@ -89,13 +89,14 @@ const buildAccessPermission = (
       database,
     ),
     postActions: {
-      controlled: (_, __, ___, accessPermissionValue) => {
-        return granulateDatabasePermissions(
+      controlled: (_, __, ___, accessPermissionValue) =>
+        granulateDatabasePermissions(
           groupId,
           entityId,
+          { type: "access", permission: "view-data" },
           accessPermissionValue,
-        );
-      },
+          DATA_PERMISSION_OPTIONS.all.value,
+        ),
       ...PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
     },
     actions: PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
@@ -146,7 +147,7 @@ const buildNativePermission = (
   );
 
   return {
-    permission: "data",
+    permission: "create-queries",
     type: "native",
     isDisabled: disabledTooltip != null,
     disabledTooltip,
@@ -154,7 +155,22 @@ const buildNativePermission = (
     value: nativePermissionValue,
     warning: nativePermissionWarning,
     confirmations: nativePermissionConfirmations,
-    options: [DATA_PERMISSION_OPTIONS.write, DATA_PERMISSION_OPTIONS.none],
+    options: [
+      DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
+      DATA_PERMISSION_OPTIONS.controlled,
+      DATA_PERMISSION_OPTIONS.queryBuilder,
+      DATA_PERMISSION_OPTIONS.no,
+    ],
+    postActions: {
+      controlled: (_, __, ___, accessPermissionValue) =>
+        granulateDatabasePermissions(
+          groupId,
+          entityId,
+          { type: "native", permission: "create-queries" },
+          accessPermissionValue,
+          DATA_PERMISSION_OPTIONS.queryBuilderAndNative.value,
+        ),
+    },
   };
 };
 

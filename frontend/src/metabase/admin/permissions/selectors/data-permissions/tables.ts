@@ -104,7 +104,7 @@ const buildNativePermission = (
   accessPermissionValue: string,
 ) => {
   return {
-    permission: "data",
+    permission: "create-queries",
     type: "native",
     isDisabled: true,
     disabledTooltip: getNativePermissionDisabledTooltip(
@@ -113,7 +113,11 @@ const buildNativePermission = (
     ),
     isHighlighted: isAdmin,
     value: getNativePermission(permissions, groupId, entityId),
-    options: [DATA_PERMISSION_OPTIONS.write, DATA_PERMISSION_OPTIONS.none],
+    options: [
+      DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
+      DATA_PERMISSION_OPTIONS.queryBuilder,
+      DATA_PERMISSION_OPTIONS.no,
+    ],
   };
 };
 

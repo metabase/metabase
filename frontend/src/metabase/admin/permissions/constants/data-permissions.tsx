@@ -31,15 +31,27 @@ export const DATA_PERMISSION_OPTIONS = {
     icon: "eye",
     iconColor: "accent5",
   },
-  none: {
+  no: {
     label: t`No`,
-    value: "none",
+    value: "no",
     icon: "close",
     iconColor: "danger",
   },
   write: {
     label: t`Yes`,
     value: "write",
+    icon: "check",
+    iconColor: "success",
+  },
+  queryBuilder: {
+    label: t`Query builder only`,
+    value: "query-builder",
+    icon: "permissions_limited",
+    iconColor: "warning",
+  },
+  queryBuilderAndNative: {
+    label: t`Query builder and native`,
+    value: "query-builder-and-native",
     icon: "check",
     iconColor: "success",
   },
