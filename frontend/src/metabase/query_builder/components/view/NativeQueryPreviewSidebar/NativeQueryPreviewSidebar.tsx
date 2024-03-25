@@ -35,11 +35,16 @@ export const NativeQueryPreviewSidebar = (): JSX.Element => {
   const engine = question.database()?.engine;
   const engineType = getEngineNativeType(engine);
 
-  const payload = Lib.toLegacyQuery(question.query());
+  const sourceQuery = question.query();
+  const canRun = Lib.canRun(sourceQuery);
+  const payload = Lib.toLegacyQuery(sourceQuery);
   const { data, error, isLoading } = useGetNativeDatasetQuery(payload);
-  const query = data?.query;
 
-  const formattedQuery = formatNativeQuery(query, engine);
+  const showError = canRun && error;
+  const showQuery = canRun && !error;
+  const showEmptySidebar = !canRun;
+
+  const formattedQuery = formatNativeQuery(data?.query, engine);
 
   const handleConvertClick = useCallback(() => {
     if (!formattedQuery) {
@@ -81,14 +86,15 @@ export const NativeQueryPreviewSidebar = (): JSX.Element => {
         style={{ flex: 1, borderTop: borderStyle, borderBottom: borderStyle }}
       >
         {isLoading && <DelayedLoadingSpinner delay={1000} />}
-        {error && (
+        {showEmptySidebar}
+        {showError && (
           <Flex align="center" justify="center" h="100%" direction="column">
             <Icon name="warning" size="2rem" color={color("error")} />
             {t`Error generating the query.`}
             <Box mt="sm">{getErrorMessage(error)}</Box>
           </Flex>
         )}
-        {!error && query && (
+        {showQuery && (
           <NativeQueryEditorRoot style={{ height: "100%", flex: 1 }}>
             <AceEditor
               value={formattedQuery}
@@ -107,7 +113,7 @@ export const NativeQueryPreviewSidebar = (): JSX.Element => {
         )}
       </Box>
       <Box ta="end" p="1.5rem">
-        {query && (
+        {showQuery && (
           <Button variant="subtle" p={0} onClick={handleConvertClick}>
             {BUTTON_TITLE[engineType]}
           </Button>
