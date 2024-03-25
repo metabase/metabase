@@ -1,3 +1,4 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Fragment } from "react";
 import { t } from "ttag";
@@ -25,8 +26,11 @@ export default function PaginationControls({
     total != null ? isLastPage(page, pageSize, total) : !onNextPage;
 
   return (
-    <div className="flex align-center text-bold" aria-label="pagination">
-      <span className="mr1">
+    <div
+      className={cx(CS.flex, CS.alignCenter, CS.textBold)}
+      aria-label="pagination"
+    >
+      <span className={CS.mr1}>
         {page * pageSize + 1} - {page * pageSize + itemsLength}
         {showTotal && (
           <Fragment>

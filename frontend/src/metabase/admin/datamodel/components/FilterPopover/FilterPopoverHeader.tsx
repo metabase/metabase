@@ -45,13 +45,13 @@ export function FilterPopoverHeader({
   return showHeader ? (
     <div
       className={cx(className, CS.textMedium, CS.p1, {
-        "flex align-center": !showOperatorSelectorOnOwnRow,
+        [cx(CS.flex, CS.alignCenter)]: !showOperatorSelectorOnOwnRow,
       })}
     >
       {showFieldPicker && (
         <SidebarHeader
           className={cx(CS.textDefault, CS.py1, {
-            pr2: !showOperatorSelectorOnOwnRow,
+            [CS.pr2]: !showOperatorSelectorOnOwnRow,
           })}
           title={field.displayName({ includeTable: true })}
           onBack={onBack}
@@ -59,9 +59,9 @@ export function FilterPopoverHeader({
       )}
       {showOperatorSelector && (
         <OperatorSelector
-          className={cx("flex-no-shrink block", {
-            "ml-auto": !showOperatorSelectorOnOwnRow,
-            my1: showOperatorSelectorOnOwnRow,
+          className={cx(CS.flexNoShrink, CS.block, {
+            [CS.mlAuto]: !showOperatorSelectorOnOwnRow,
+            [CS.my1]: showOperatorSelectorOnOwnRow,
           })}
           operator={operator}
           operators={filter.filterOperators(operator)}

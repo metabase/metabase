@@ -32,7 +32,7 @@ export default class NewModelOption extends Component {
         onMouseLeave={() => this.setState({ hover: false })}
       >
         <div
-          className="flex align-center layout-centered"
+          className={cx(CS.flex, CS.alignCenter, CS.layoutCentered)}
           style={{ height: "160px" }}
         >
           <img

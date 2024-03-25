@@ -266,7 +266,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
     data-testid="formatting-rule-preview"
   >
     <div className={cx(CS.p1, CS.borderBottom, CS.relative, CS.bgLight)}>
-      <div className="px1 flex align-center relative">
+        <div className={cx(CS.px1, CS.flex, CS.alignCenter, CS.relative)}>
         <span className={cx(CS.h4, CS.flexAuto, CS.textDark, CS.textWrap)}>
           {rule.columns.length > 0 ? (
             rule.columns
@@ -291,10 +291,10 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
         />
       </div>
     </div>
-    <div className="p2 flex align-center">
+    <div className={cx(CS.p2, CS.flex, CS.alignCenter)}>
       <RuleBackground
         rule={rule}
-        className={cx("mr2 flex-no-shrink rounded", {
+        className={cx(CS.mr2, CS.flexNoShrink, CS.rounded, {
           bordered: rule.type === "range",
         })}
         style={{ width: 40, height: 40 }}

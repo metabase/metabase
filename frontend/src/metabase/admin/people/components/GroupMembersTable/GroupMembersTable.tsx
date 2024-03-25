@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -126,7 +127,7 @@ function GroupMembersTable({
         })}
       </AdminContentTable>
       {hasMembers && (
-        <div className="flex align-center justify-end p2">
+        <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd, CS.p2)}>
           <PaginationControls
             page={page}
             pageSize={pageSize}
@@ -138,7 +139,7 @@ function GroupMembersTable({
         </div>
       )}
       {!hasMembers && (
-        <div className="mt4 pt4 flex layout-centered">
+        <div className={cx(CS.mt4, CS.pt4, CS.flex, CS.layoutCentered)}>
           <h2
             className={CS.textMedium}
           >{t`A group is only as good as its members.`}</h2>

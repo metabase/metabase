@@ -99,9 +99,9 @@ const MetadataTableColumnList = ({
             style={{ minWidth: 420 }}
             className="float-left px1"
           >{t`Column`}</div>
-          <div className="flex">
-            <div className="flex-half pl3">{t`Visibility`}</div>
-            <div className="flex-half">
+          <div className={CS.flex}>
+            <div className={cx(CS.flexHalf, CS.pl3)}>{t`Visibility`}</div>
+            <div className={CS.flexHalf}>
               <span>{t`Type`}</span>
             </div>
           </div>

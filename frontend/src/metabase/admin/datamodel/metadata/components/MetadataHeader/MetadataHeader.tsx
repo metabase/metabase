@@ -62,12 +62,20 @@ const MetadataHeader = ({
   }, [databases, selectedDatabaseId, onSelectDatabase]);
 
   return (
-    <div className="MetadataEditor-header flex align-center flex-no-shrink py4">
+    <div
+      className={cx(
+        "MetadataEditor-header",
+        CS.flex,
+        CS.alignCenter,
+        CS.flexNoShrink,
+        CS.py4,
+      )}
+    >
       <Icon
         className={cx(CS.flex, CS.alignCenter, CS.flexNoShrink, CS.textMedium)}
         name="database"
       />
-      <div className="MetadataEditor-headerSection h2">
+      <div className={cx("MetadataEditor-headerSection", CS.h2)}>
         <DatabaseDataSelector
           databases={databases}
           selectedDatabaseId={selectedDatabaseId}
@@ -76,8 +84,16 @@ const MetadataHeader = ({
         />
       </div>
       {selectedDatabaseId && selectedSchemaId && selectedTableId && (
-        <div className="MetadataEditor-headerSection flex flex-align-right align-center flex-no-shrink">
-          <span className="ml4 mr3">
+        <div
+          className={cx(
+            "MetadataEditor-headerSection",
+            CS.flex,
+            CS.flexAlignRight,
+            CS.alignCenter,
+            CS.flexNoShrink,
+          )}
+        >
+          <span className={cx(CS.ml4, CS.mr3)}>
             <TableSettingsLink
               aria-label={t`Settings`}
               to={Urls.dataModelTableSettings(

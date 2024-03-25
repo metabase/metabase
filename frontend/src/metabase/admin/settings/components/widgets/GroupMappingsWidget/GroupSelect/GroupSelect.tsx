@@ -59,7 +59,7 @@ export const GroupSelect = ({
   emptyListMessage = t`No groups`,
 }: GroupSelectProps) => {
   const triggerElement = (
-    <div className="flex align-center">
+    <div className={cx(CS.flex, CS.alignCenter)}>
       <span className={cx(CS.mr1, CS.textMedium)}>
         <GroupSummary groups={groups} selectedGroupIds={selectedGroupIds} />
       </span>
@@ -70,7 +70,7 @@ export const GroupSelect = ({
   if (groups.length === 0) {
     return (
       <PopoverWithTrigger triggerElement={triggerElement}>
-        <span className="p1">{emptyListMessage}</span>
+        <span className={CS.p1}>{emptyListMessage}</span>
       </PopoverWithTrigger>
     );
   }

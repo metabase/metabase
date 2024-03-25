@@ -53,7 +53,13 @@ const TaskDescription = ({ description }) => (
 
 const CompletionBadge = ({ completed }) => (
   <div
-    className="mr2 flex align-center justify-center flex-no-shrink"
+    className={cx(
+      CS.mr2,
+      CS.flex,
+      CS.alignCenter,
+      CS.justifyCenter,
+      CS.flexNoShrink,
+    )}
     style={{
       borderWidth: 1,
       borderStyle: "solid",

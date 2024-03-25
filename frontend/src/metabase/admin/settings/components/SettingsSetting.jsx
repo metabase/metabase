@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-use";
+import scrollIntoView from "scroll-into-view-if-needed";
 import { jt } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -44,10 +45,12 @@ export const SettingsSetting = props => {
 
   useEffect(() => {
     if (hash === `#${setting.key}` && thisRef.current) {
-      thisRef.current.scrollIntoView({
+      scrollIntoView(thisRef.current, {
         behavior: "smooth",
         block: "center",
+        scrollMode: "if-needed",
       });
+
       thisRef.current.focus();
 
       setFancyStyle({

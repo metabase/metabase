@@ -68,7 +68,7 @@ export const MembershipSelect = ({
 }: MembershipSelectProps) => {
   const selectedGroupIds = Array.from(memberships.keys());
   const triggerElement = (
-    <div className="flex align-center" aria-label="group-summary">
+    <div className={cx(CS.flex, CS.alignCenter)} aria-label="group-summary">
       <span className={cx(CS.mr1, CS.textMedium)}>
         <GroupSummary groups={groups} selectedGroupIds={selectedGroupIds} />
       </span>

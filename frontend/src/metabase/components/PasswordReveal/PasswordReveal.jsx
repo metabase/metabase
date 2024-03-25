@@ -48,7 +48,14 @@ export default class PasswordReveal extends Component {
     return (
       <div
         style={{ borderWidth: 2 }}
-        className="bordered rounded flex align-center p3 relative"
+        className={cx(
+          CS.bordered,
+          CS.rounded,
+          CS.flex,
+          CS.alignCenter,
+          CS.p3,
+          CS.relative,
+        )}
       >
         <Label />
 
@@ -62,14 +69,14 @@ export default class PasswordReveal extends Component {
             }
           />
         ) : (
-          <span style={styles.input} className="mr3">
+          <span style={styles.input} className={CS.mr3}>
             &#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;
           </span>
         )}
 
-        <div className="ml-auto flex align-center">
+        <div className={cx(CS.mlAuto, CS.flex, CS.alignCenter)}>
           <a
-            className="link text-bold mr2"
+            className={cx("link", CS.textBold, CS.mr2)}
             onClick={() => this.setState({ visible: !visible })}
           >
             {visible ? t`Hide` : t`Show`}

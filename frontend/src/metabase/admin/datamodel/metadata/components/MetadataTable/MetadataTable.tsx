@@ -163,7 +163,7 @@ const TableTitleSection = ({
   );
 
   return (
-    <div className={cx(CS.bgWhite, CS.flex, "flex-column")}>
+    <div className={cx(CS.bgWhite, CS.flex, CS.flexColumn)}>
       {tab === "columns" ? (
         <>
           <TableNameInput
@@ -233,7 +233,7 @@ const TableVisibilitySection = ({
         CS.textMedium,
       )}
     >
-      <span className="mx1 text-uppercase">{t`Visibility`}</span>
+      <span className={cx(CS.mx1, CS.textUppercase)}>{t`Visibility`}</span>
       <span id="VisibilityTypes">
         <MetadataVisibilityBadge
           isChecked={table.visibility_type == null}

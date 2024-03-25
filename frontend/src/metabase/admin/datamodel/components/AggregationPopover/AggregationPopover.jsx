@@ -356,14 +356,14 @@ export class AggregationPopover extends Component {
             className={cx(
               CS.textMedium,
               CS.p1,
-              CS.py1,
+              CS.py2,
               CS.borderBottom,
               CS.flex,
               CS.alignCenter,
             )}
           >
             <a
-              className="cursor-pointer flex align-center"
+              className={cx(CS.cursorPointer, CS.flex, CS.alignCenter)}
               onClick={this.onClearAggregation}
             >
               <Icon name="chevronleft" size={18} />

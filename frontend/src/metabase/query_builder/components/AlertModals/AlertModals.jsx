@@ -210,7 +210,7 @@ export class AlertEducationalScreen extends Component {
         }
         <div className="text-normal pt3">
           <div
-            className="relative flex align-center pr4"
+            className={cx(CS.relative, CS.flex, CS.alignCenter, CS.pr4)}
             style={{ marginLeft: -80 }}
           >
             <img
@@ -228,7 +228,13 @@ export class AlertEducationalScreen extends Component {
             )}`}</p>
           </div>
           <div
-            className="relative flex align-center flex-reverse pl4"
+            className={cx(
+              CS.relative,
+              CS.flex,
+              CS.alignCenter,
+              CS.flexReverse,
+              CS.pl4,
+            )}
             style={{ marginTop: -50, marginRight: -80 }}
           >
             <img
@@ -246,7 +252,7 @@ export class AlertEducationalScreen extends Component {
             )}`}</p>
           </div>
           <div
-            className="relative flex align-center"
+            className={cx(CS.relative, CS.flex, CS.alignCenter)}
             style={{ marginTop: -60, marginLeft: -55 }}
           >
             <img
@@ -404,7 +410,7 @@ export class DeleteAlertSection extends Component {
         >{jt`Danger Zone`}</h3>
         <div className="ml1">
           <h4 className="text-bold mb1">{jt`Delete this alert`}</h4>
-          <div className="flex">
+          <div className={CS.flex}>
             <p className="h4 pr2">{jt`Stop delivery and delete this alert. There's no undo, so be careful.`}</p>
             <ModalWithTrigger
               ref={ref => (this.deleteModal = ref)}
@@ -413,7 +419,7 @@ export class DeleteAlertSection extends Component {
                 ButtonsS.ButtonDanger,
                 CS.flexAlignRight,
                 CS.flexNoShrink,
-                "align-self-end",
+                CS.alignSelfEnd,
               )}
               triggerElement={t`Delete this alert`}
             >

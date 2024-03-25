@@ -48,6 +48,9 @@ export const getDocsUrl = createSelector(
   (version, page, anchor) => getDocsUrlForVersion(version, page, anchor),
 );
 
+export const getDocsSearchUrl = (query: Record<string, string>) =>
+  `https://www.metabase.com/search?${new URLSearchParams(query)}`;
+
 // should be private, but exported until there are usages of deprecated MetabaseSettings.docsUrl
 export const getDocsUrlForVersion = (
   version: Version | undefined,

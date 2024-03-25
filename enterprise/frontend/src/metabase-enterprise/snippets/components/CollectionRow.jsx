@@ -30,7 +30,9 @@ class CollectionRow extends Component {
         {...(collection.archived ? undefined : { onClick: onSelectCollection })}
       >
         <Icon name="folder" size={ICON_SIZE} style={{ opacity: 0.25 }} />
-        <span className="flex-full ml1 text-bold">{collection.name}</span>
+        <span className={cx(CS.flexFull, CS.ml1, CS.textBold)}>
+          {collection.name}
+        </span>
         <CollectionOptionsButton {...this.props} collection={collection} />
       </div>
     );

@@ -59,7 +59,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
               optionSectionFn={o => o.section}
             />
           ) : (
-            <div className="flex">
+            <div className={CS.flex}>
               <div className={S.leftIcons}>
                 {icon && <Icon className={S.chartIcon} name={icon} size={20} />}
               </div>

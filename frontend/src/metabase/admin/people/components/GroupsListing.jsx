@@ -213,7 +213,7 @@ function GroupRow({
       <td>
         <Link
           to={"/admin/people/groups/" + group.id}
-          className="link no-decoration flex align-center"
+          className={cx("link", CS.noDecoration, CS.flex, CS.alignCenter)}
         >
           <span className={CS.textWhite}>
             <UserAvatar

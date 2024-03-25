@@ -27,7 +27,7 @@ const HoursMinutesInput = ({
   onClear,
   is24HourMode = has24HourModeSetting(),
 }: Props) => (
-  <div className="flex align-center">
+  <div className={cx(CS.flex, CS.alignCenter)}>
     <NumericInput
       style={{ height: 36 }}
       size={2}
@@ -56,7 +56,7 @@ const HoursMinutesInput = ({
       onChange={(value: number) => onChangeMinutes(value)}
     />
     {!is24HourMode && (
-      <div className="flex align-center pl1">
+      <div className={cx(CS.flex, CS.alignCenter, CS.pl1)}>
         {hours < 12 ? (
           <AmPmLabel
             isSelected={hours < 12}

@@ -59,7 +59,7 @@ export const createAlert = alert => {
     dispatch(
       addUndo({
         message: () => (
-          <div className="flex align-center text-bold">
+          <div className={cx(CS.flex, CS.alignCenter, CS.textBold)}>
             <Icon
               name="alert_confirm"
               size="19"
@@ -103,7 +103,7 @@ export const updateAlert = alert => {
     dispatch(
       addUndo({
         message: () => (
-          <div className="flex align-center text-bold">
+          <div className={cx(CS.flex, CS.alignCenter, CS.textBold)}>
             <Icon
               name="alert_confirm"
               size="19"
@@ -155,7 +155,7 @@ export const deleteAlert = alertId => {
     dispatch(
       addUndo({
         message: () => (
-          <div className="flex align-center text-bold">
+          <div className={cx(CS.flex, CS.alignCenter, CS.textBold)}>
             <Icon
               name="alert_confirm"
               size="19"

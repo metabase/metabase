@@ -397,13 +397,21 @@ class ValueRemappings extends Component {
 
     return (
       <FieldMappingRoot>
-        <div className="flex align-center my1 pb2 border-bottom">
+        <div
+          className={cx(
+            CS.flex,
+            CS.alignCenter,
+            CS.my1,
+            CS.pb2,
+            CS.borderBottom,
+          )}
+        >
           <h3>{t`Original value`}</h3>
-          <h3 className="ml-auto">{t`Mapped value`}</h3>
+          <h3 className={CS.mlAuto}>{t`Mapped value`}</h3>
         </div>
         <ol>
           {[...editingRemappings].map(([original, mapped]) => (
-            <li key={original} className="mb1">
+            <li key={original} className={CS.mb1}>
               <FieldValueMapping
                 original={original}
                 mapped={mapped}
@@ -414,9 +422,9 @@ class ValueRemappings extends Component {
             </li>
           ))}
         </ol>
-        <div className="flex align-center">
+        <div className={cx(CS.flex, CS.alignCenter)}>
           <ButtonWithStatus
-            className="ml-auto"
+            className={CS.mlAuto}
             disabled={!this.customValuesAreNonEmpty()}
             onClickOperation={this.onSaveClick}
           >
@@ -436,10 +444,10 @@ class FieldValueMapping extends Component {
   render() {
     const { original, mapped } = this.props;
     return (
-      <div className="flex align-center">
+      <div className={cx(CS.flex, CS.alignCenter)}>
         <h3>{original}</h3>
         <FieldValueMappingInput
-          className="ml-auto"
+          className={CS.mlAuto}
           value={mapped}
           onChange={this.onInputChange}
           placeholder={t`Enter value`}

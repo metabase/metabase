@@ -95,7 +95,7 @@ class LegendHeader extends Component {
           />,
         ])}
         {actionButtons && (
-          <span className="flex-no-shrink flex-align-right relative">
+          <span className={cx(CS.flexNoShrink, CS.flexAlignRight, CS.relative)}>
             {actionButtons}
           </span>
         )}

@@ -51,8 +51,8 @@ export function SearchResults({
                   CS.textCentered,
                 )}
               >
-                <div className="my4">
-                  <Icon name="search" className="mb1" size={32} />
+                <div className={CS.my4}>
+                  <Icon name="search" className={CS.mb1} size={32} />
                   <h3 className={CS.textLight}>{t`No results found`}</h3>
                 </div>
               </div>

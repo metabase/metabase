@@ -50,7 +50,7 @@ const PeopleListRow = ({
 
   return (
     <tr key={user.id}>
-      <td className="flex align-center">
+      <td className={cx(CS.flex, CS.alignCenter)}>
         <span className={cx(CS.textWhite, CS.inlineBlock)}>
           <UserAvatar
             bg={user.is_superuser ? color("accent2") : color("brand")}

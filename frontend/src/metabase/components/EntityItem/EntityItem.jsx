@@ -75,7 +75,7 @@ function EntityIconCheckBox({
 function EntityItemName({ name, variant }) {
   return (
     <h3
-      className={cx("overflow-hidden", {
+      className={cx(CS.overflowHidden, {
         "text-list": variant === "list",
       })}
     >
@@ -264,7 +264,7 @@ const EntityItem = ({
         onToggleSelected={onToggleSelected}
       />
 
-      <div className="overflow-hidden">
+      <div className={CS.overflowHidden}>
         <EntityItemName name={name} />
         <div>{extraInfo && extraInfo}</div>
       </div>

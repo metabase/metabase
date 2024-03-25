@@ -704,47 +704,52 @@
             (mt/with-all-users-data-perms-graph! {db-id {:data {:native :write, :schemas :all}}}
               (is (some? (upload-csv!))))))))))
 
-(deftest append-csv-data-perms-test
+(deftest update-csv-data-perms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (testing "CSV appends should be blocked without data access to the schema"
-      (let [schema-name (sql.tx/session-schema driver/*driver*)]
-        (upload-test/with-upload-table!
-          [table-a (upload-test/create-upload-table! :schema-name schema-name)]
+    (doseq [action [:metabase.upload/append :metabase.upload/replace]]
+      (testing (format "CSV %s should be blocked without data access to the schema" action)
+        (let [schema-name (sql.tx/session-schema driver/*driver*)]
           (upload-test/with-upload-table!
-            [table-b (upload-test/create-upload-table! :schema-name schema-name)]
-            (let [db-id       (u/the-id (mt/db))
-                  append-csv! #(upload-test/append-csv-with-defaults!
-                                :table-id (:id table-a)
-                                :user-id (mt/user->id :rasta))]
-              (doseq [[schema-perms          can-append? test-string]
-                      [[:all                 true        "Data permissions on schema should succeed"]
-                       [:none                false       "No permissions on schema should fail"]
-                       [{(:id table-a) :all} true        "Data permissions on table should succeed"]
-                       [{(:id table-b) :all} false       "Data permissions only on another table in the same schema should fail"]]]
-                (testing test-string
-                  (mt/with-all-users-data-perms-graph! {db-id {:data {:native :none, :schemas {(or schema-name "") schema-perms}}}}
-                    (if can-append?
-                      (is (some? (append-csv!)))
-                      (is (thrown-with-msg?
-                           clojure.lang.ExceptionInfo
-                           #"You don't have permissions to do that\."
-                           (append-csv!))))))))))))))
+            [table-a (upload-test/create-upload-table! :schema-name schema-name)]
+            (upload-test/with-upload-table!
+              [table-b (upload-test/create-upload-table! :schema-name schema-name)]
+              (let [db-id       (u/the-id (mt/db))
+                    append-csv! #(upload-test/update-csv-with-defaults!
+                                  action
+                                  :table-id (:id table-a)
+                                  :user-id (mt/user->id :rasta))]
+                (doseq [[schema-perms          can-append? test-string]
+                        [[:all                 true        "Data permissions on schema should succeed"]
+                         [:none                false       "No permissions on schema should fail"]
+                         [{(:id table-a) :all} true        "Data permissions on table should succeed"]
+                         [{(:id table-b) :all} false       "Data permissions only on another table in the same schema should fail"]]]
+                  (testing test-string
+                    (mt/with-all-users-data-perms-graph! {db-id {:data {:native :none, :schemas {(or schema-name "") schema-perms}}}}
+                      (if can-append?
+                        (is (some? (append-csv!)))
+                        (is (thrown-with-msg?
+                             clojure.lang.ExceptionInfo
+                             #"You don't have permissions to do that\."
+                             (append-csv!)))))))))))))))
 
-(deftest append-csv-block-perms-test
+(deftest update-csv-block-perms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (testing "Appends should be blocked if the user has blocked data access to the database, unless they have native query editing perms too"
-      (upload-test/with-upload-table!
-        [table-a (upload-test/create-upload-table!)]
-        (let [db-id       (u/the-id (mt/db))
-              append-csv! #(upload-test/append-csv-with-defaults!
-                            :table-id (:id table-a)
-                            :user-id (mt/user->id :rasta))]
-          (testing "With blocked perms it should fail"
-            (mt/with-all-users-data-perms-graph! {db-id {:data {:native :none, :schemas :block}}}
-              (is (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"You don't have permissions to do that\."
-                   (append-csv!))))))))))
+    (doseq [action [:metabase.upload/append :metabase.upload/replace]]
+      (testing (format "We will block %s if the user has blocked data access to the database, even if they have native query editing"
+                       action)
+        (upload-test/with-upload-table!
+          [table-a (upload-test/create-upload-table!)]
+          (let [db-id       (u/the-id (mt/db))
+                append-csv! #(upload-test/update-csv-with-defaults!
+                              action
+                              :table-id (:id table-a)
+                              :user-id (mt/user->id :rasta))]
+            (testing "With blocked perms it should fail"
+              (mt/with-all-users-data-perms-graph! {db-id {:data {:native :none, :schemas :block}}}
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"You don't have permissions to do that\."
+                     (append-csv!)))))))))))
 
 (deftest get-database-can-upload-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)

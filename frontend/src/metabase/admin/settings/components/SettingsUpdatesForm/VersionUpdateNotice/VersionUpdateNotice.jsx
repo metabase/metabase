@@ -74,7 +74,18 @@ function NewVersionAvailable({ currentVersion }) {
 
   return (
     <div>
-      <NewVersionContainer className="p2 bordered rounded border-success flex flex-row align-center justify-between">
+      <NewVersionContainer
+        className={cx(
+          CS.p2,
+          CS.bordered,
+          CS.rounded,
+          "border-success",
+          CS.flex,
+          CS.flexRow,
+          CS.alignCenter,
+          CS.justifyBetween,
+        )}
+      >
         <span className={cx(CS.textWhite, CS.textBold)}>
           {t`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
           {t`You're running ${currentVersion}`}
@@ -103,7 +114,7 @@ function NewVersionAvailable({ currentVersion }) {
           CS.rounded,
           CS.p2,
           CS.mt2,
-          "overflow-y-scroll",
+          CS.overflowYScroll,
         )}
         style={{ height: 330 }}
       >

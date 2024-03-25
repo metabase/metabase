@@ -253,8 +253,10 @@ export default class PulseEditChannels extends Component {
         this.renderChannel(channel, index, channelSpec),
       );
     return (
-      <li key={channelSpec.type} className="border-row-divider">
-        <div className="flex align-center p3 border-row-divider">
+      <li key={channelSpec.type} className={CS.borderRowDivider}>
+        <div
+          className={cx(CS.flex, CS.alignCenter, CS.p3, CS.borderRowDivider)}
+        >
           {CHANNEL_ICONS[channelSpec.type] && (
             <Icon
               className={cx(CS.mr1, CS.textLight)}
@@ -264,7 +266,7 @@ export default class PulseEditChannels extends Component {
           )}
           <h2>{channelSpec.name}</h2>
           <Toggle
-            className="flex-align-right"
+            className={CS.flexAlignRight}
             value={channels.length > 0}
             onChange={this.toggleChannel.bind(this, channelSpec.type)}
           />

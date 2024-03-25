@@ -19,8 +19,8 @@ export default class MetricItem extends Component {
 
     return (
       <tr>
-        <td className="px1 py1 text-wrap">
-          <span className="flex align-center">
+        <td className={cx(CS.px1, CS.py1, "text-wrap")}>
+          <span className={cx(CS.flex, CS.alignCenter)}>
             <Icon name="sum" className={cx(CS.mr1, CS.textMedium)} />
             <span className={cx(CS.textDark, CS.textBold)}>{metric.name}</span>
           </span>

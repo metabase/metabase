@@ -64,8 +64,8 @@ export const ParametersSettings = ({
           <Text>{t`Parameters are disabled by default, which also makes them hidden from end-users. Make them editable so that end-users can see and modify them. Make them locked so that they are hidden from end-users but you can set their values from your app.`}</Text>
 
           {resourceParameters.map(parameter => (
-            <div key={parameter.id} className="flex align-center">
-              <Icon name={getIconForParameter(parameter)} className="mr2" />
+            <div key={parameter.id} className={cx(CS.flex, CS.alignCenter)}>
+              <Icon name={getIconForParameter(parameter)} className={CS.mr2} />
               <h3>
                 {parameter.name}
                 {parameter.required && (

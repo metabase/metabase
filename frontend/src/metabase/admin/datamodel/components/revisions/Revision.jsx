@@ -65,22 +65,22 @@ export default class Revision extends Component {
     }
 
     return (
-      <li className="flex flex-row">
-        <div className="flex flex-column align-center mr2">
+      <li className={cx(CS.flex, CS.flexRow)}>
+        <div className={cx(CS.flex, CS.flexColumn, CS.alignCenter, CS.mr2)}>
           <div className={CS.textWhite}>
             <UserAvatar user={revision.user} bg={userColor} />
           </div>
           <div
-            className="flex-full my1 border-left"
+            className={cx(CS.flexFull, CS.my1, "border-left")}
             style={{ borderWidth: 2 }}
           />
         </div>
-        <div className="flex-full mt1 mb4">
+        <div className={cx(CS.flexFull, CS.mt1, CS.mb4)}>
           <div className={cx(CS.flex, CS.mb1, CS.textMedium)}>
-            <span className="">
+            <span>
               <strong>{this.getName()}</strong> {this.getAction()}
             </span>
-            <span className="flex-align-right h5">
+            <span className={cx(CS.flexAlignRight, CS.h5)}>
               {moment(revision.timestamp).format("MMMM DD, YYYY")}
             </span>
           </div>

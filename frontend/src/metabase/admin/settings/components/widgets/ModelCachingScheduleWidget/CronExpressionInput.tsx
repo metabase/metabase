@@ -73,7 +73,7 @@ function Input({
     <StyledInput
       {...props}
       className={cx(
-        "Form-input",
+        FormS.FormInput,
         {
           [cx(CS.borderError, CS.bgErrorInput)]: hasError,
         },

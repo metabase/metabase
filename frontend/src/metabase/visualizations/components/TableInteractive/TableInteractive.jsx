@@ -573,8 +573,8 @@ class TableInteractive extends Component {
             "TableInteractive-cellWrapper--lastColumn":
               columnIndex === cols.length - 1,
             "TableInteractive-emptyCell": value == null,
-            "cursor-pointer": isClickable,
-            "justify-end": isColumnRightAligned(column),
+            [CS.cursorPointer]: isClickable,
+            [CS.justifyEnd]: isColumnRightAligned(column),
             "Table-ID": value != null && isID(column),
             "Table-FK": value != null && isFK(column),
             link: isClickable && isID(column),
@@ -776,8 +776,8 @@ class TableInteractive extends Component {
                 columnIndex === cols.length - 1,
               "TableInteractive-cellWrapper--active": isDragging,
               "TableInteractive-headerCellData--sorted": isSorted,
-              "cursor-pointer": isClickable,
-              "justify-end": isRightAligned,
+              [CS.cursorPointer]: isClickable,
+              [CS.justifyEnd]: isRightAligned,
             },
           )}
           role="columnheader"

@@ -5,6 +5,7 @@ import { createRef, Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { color } from "metabase/lib/colors";
 import { getColorsForValues } from "metabase/lib/colors/charts";
@@ -554,7 +555,7 @@ export default class PieChart extends Component {
           </div>
           <div
             ref={this.chartContainer}
-            className={cx(styles.Chart, "layout-centered")}
+            className={cx(styles.Chart, CS.layoutCentered)}
           >
             <svg
               data-testid="pie-chart"

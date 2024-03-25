@@ -118,7 +118,7 @@ function Relationship({
           </h5>
         </div>
         {fkClickable && (
-          <IconBorder className="flex-align-right">
+          <IconBorder className={CS.flexAlignRight}>
             <Icon name="chevronright" size={10} />
           </IconBorder>
         )}

@@ -86,7 +86,13 @@ class AlertListPopoverContent extends Component {
         {(!hasOwnAlerts || hasJustUnsubscribedFromOwnAlert) && (
           <div className={cx(CS.borderTop, CS.p2, CS.bgLightBlue)}>
             <a
-              className="link flex align-center text-bold text-small"
+              className={cx(
+                "link",
+                CS.flex,
+                CS.alignCenter,
+                CS.textBold,
+                "text-small",
+              )}
               onClick={this.onAdd}
             >
               <Icon name="add" style={{ marginLeft: 9, marginRight: 17 }} />{" "}
@@ -169,7 +175,7 @@ class AlertListItemInner extends Component {
       >
         <Icon name="alert" size="20" />
         <div className="full ml2">
-          <div className="flex align-top">
+          <div className={cx(CS.flex, "align-top")}>
             <div>
               <AlertCreatorTitle alert={alert} user={user} />
             </div>
@@ -197,8 +203,8 @@ class AlertListItemInner extends Component {
           {
             // To-do: @kdoh wants to look into overall alignment
           }
-          <ul className="flex mt2 text-small">
-            <li className="flex align-center">
+          <ul className={cx(CS.flex, CS.mt2, "text-small")}>
+            <li className={cx(CS.flex, CS.alignCenter)}>
               <Icon name="clock" size="12" className="mr1" />{" "}
               <AlertScheduleText
                 schedule={alert.channels[0]}
@@ -206,14 +212,14 @@ class AlertListItemInner extends Component {
               />
             </li>
             {isAdmin && emailEnabled && (
-              <li className="ml3 flex align-center">
-                <Icon name="mail" className="mr1" />
+              <li className={cx(CS.ml3, CS.flex, CS.alignCenter)}>
+                <Icon name="mail" className={CS.mr1} />
                 {emailChannel.recipients.length}
               </li>
             )}
             {isAdmin && slackEnabled && (
-              <li className="ml3 flex align-center">
-                <Icon name="slack" size={16} className="mr1" />
+              <li className={cx(CS.ml3, CS.flex, CS.alignCenter)}>
+                <Icon name="slack" size={16} className={CS.mr1} />
                 {(slackChannel.details &&
                   slackChannel.details.channel.replace("#", "")) ||
                   t`No channel`}
@@ -242,7 +248,15 @@ export const AlertListItem = connect(state => ({ user: getUser(state) }), {
 })(AlertListItemInner);
 
 export const UnsubscribedListItem = () => (
-  <li className="border-bottom flex align-center py4 text-bold">
+  <li
+    className={cx(
+      CS.borderBottom,
+      CS.flex,
+      CS.alignCenter,
+      CS.py4,
+      CS.textBold,
+    )}
+  >
     <div
       className={cx(
         "circle",
@@ -250,11 +264,11 @@ export const UnsubscribedListItem = () => (
         CS.alignCenter,
         CS.justifyCenter,
         CS.p1,
-        CS.bgLight,
+          CS.bgLight,
         CS.ml2,
       )}
     >
-      <Icon name="check" className={cx(CS.textSuccess)} />
+      <Icon name="check" className={CS.textSuccess} />
     </div>
     <h3
       className={CS.textDark}

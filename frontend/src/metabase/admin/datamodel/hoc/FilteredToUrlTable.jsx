@@ -83,7 +83,7 @@ class TableSelectorInner extends Component {
                   className={cx(
                     CS.flex,
                     CS.alignCenter,
-                    "justify-between",
+                    CS.justifyBetween,
                     CS.flexFull,
                     CS.textBrand,
                     CS.textBold,

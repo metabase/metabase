@@ -129,7 +129,7 @@ const SemanticTypeAndTargetPicker = ({
         >
           {currency.map(([_, c]: CurrencyOption[]) => (
             <Option name={c.name} value={c.code} key={c.code}>
-              <span className="flex full align-center">
+              <span className={cx(CS.flex, CS.full, CS.alignCenter)}>
                 <span>{c.name}</span>
                 <span className={cx(CS.textBold, CS.textLight, CS.ml1)}>
                   {c.symbol}

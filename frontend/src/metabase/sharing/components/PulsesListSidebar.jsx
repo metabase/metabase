@@ -40,7 +40,15 @@ function _PulsesListSidebar({
 }) {
   return (
     <Sidebar>
-      <div className="px4 pt3 flex justify-between align-center">
+      <div
+        className={cx(
+          CS.px4,
+          CS.pt3,
+          CS.flex,
+          CS.justifyBetween,
+          CS.alignCenter,
+        )}
+      >
         <Subhead>{t`Subscriptions`}</Subhead>
 
         <SidebarActions>
@@ -93,7 +101,13 @@ function _PulsesListSidebar({
                   [CS.textWhiteHover]: canEdit,
                 })}
               >
-                <div className="flex align-center hover-child hover--inherit">
+                <div
+                  className={cx(
+                    CS.flex,
+                    CS.alignCenter,
+                    "hover-child hover--inherit",
+                  )}
+                >
                   <Icon
                     name={
                       pulse.channels[0].channel_type === "email"
@@ -187,14 +201,20 @@ function PulseDetails({ pulse, parameters }) {
   return (
     <div className={cx(CS.textMedium, "hover-child")}>
       <ul
-        className="flex flex-column scroll-x scroll-y text-unspaced"
+        className={cx(
+          CS.flex,
+          CS.flexColumn,
+          CS.scrollX,
+          CS.scrollY,
+          CS.textUnspaced,
+        )}
         style={{ maxHeight: 130 }}
       >
         {recipientText && (
           <li
             className={cx(
               CS.flex,
-              "align-start",
+              CS.alignStart,
               CS.mr1,
               CS.textBold,
               CS.textMedium,
@@ -222,7 +242,7 @@ function PulseDetails({ pulse, parameters }) {
           <li
             className={cx(
               CS.flex,
-              "align-start",
+              CS.alignStart,
               CS.mt1,
               CS.mr1,
               CS.textBold,

@@ -179,7 +179,7 @@ const PeopleList = ({
   };
 
   return (
-    <section className="pb4">
+    <section className={CS.pb4}>
       <table
         data-testid="admin-people-list-table"
         className={cx(AdminS.ContentTable, CS.borderBottom)}
@@ -226,7 +226,7 @@ const PeopleList = ({
 
       {hasUsers && (
         <div
-          className="flex align-center justify-between p2"
+          className={cx(CS.flex, CS.alignCenter, CS.justifyBetween, CS.p2)}
           data-testid="people-list-footer"
         >
           <div className={cx(CS.textMedium, CS.textBold)}>
@@ -259,8 +259,8 @@ const PeopleList = ({
             CS.textCentered,
           )}
         >
-          <div className="my3">
-            <Icon name="search" className="mb1" size={32} />
+          <div className={CS.my3}>
+            <Icon name="search" className={CS.mb1} size={32} />
             <h3 className={CS.textLight}>{t`No results found`}</h3>
           </div>
         </div>

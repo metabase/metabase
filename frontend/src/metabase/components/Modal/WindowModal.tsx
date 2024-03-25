@@ -100,8 +100,16 @@ export class WindowModal extends Component<WindowModalProps> {
       enableTransition,
       "data-testid": dataTestId,
     } = this.props;
-    const backdropClassnames =
-      "flex justify-center align-center fixed top left bottom right";
+    const backdropClassnames = cx(
+      CS.flex,
+      CS.justifyCenter,
+      CS.alignCenter,
+      CS.fixed,
+      CS.top,
+      CS.left,
+      CS.bottom,
+      CS.right,
+    );
 
     return (
       <SandboxedPortal

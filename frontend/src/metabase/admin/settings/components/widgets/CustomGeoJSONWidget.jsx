@@ -143,8 +143,8 @@ export default class CustomGeoJSONWidget extends Component {
     }
 
     return (
-      <div className="flex-full">
-        <div className="flex justify-between">
+      <div className={CS.flexFull}>
+        <div className={cx(CS.flex, CS.justifyBetween)}>
           <SettingHeader setting={setting} />
           {!this.state.map && (
             <button
@@ -326,11 +326,11 @@ const EditMap = ({
   onSave,
 }) => (
   <div data-testid="edit-map-modal">
-    <div className="flex">
-      <div className="flex-no-shrink">
+    <div className={CS.flex}>
+      <div className={CS.flexNoShrink}>
         <h2>{!originalMap ? t`Add a new map` : t`Edit map`}</h2>
         <SettingContainer description={t`What do you want to call this map?`}>
-          <div className="flex">
+          <div className={CS.flex}>
             <input
               type="text"
               className={cx(
@@ -395,10 +395,21 @@ const EditMap = ({
           </SettingContainer>
         </div>
       </div>
-      <div className="flex-auto ml4 relative bordered rounded flex my4 overflow-hidden">
+      <div
+        className={cx(
+          CS.flexAuto,
+          CS.ml4,
+          CS.relative,
+          CS.bordered,
+          CS.rounded,
+          CS.flex,
+          CS.my4,
+          CS.overflowHidden,
+        )}
+      >
         {geoJson || geoJsonLoading || geoJsonError ? (
           <LoadingAndErrorWrapper
-            className="flex full-height full-width"
+            className={cx(CS.flex, CS.fullHeight, CS.fullWidth)}
             loading={geoJsonLoading}
             error={geoJsonError}
           >
@@ -424,7 +435,7 @@ const EditMap = ({
         )}
       </div>
     </div>
-    <div className="py1 flex">
+    <div className={cx(CS.py1, CS.flex)}>
       <div className="ml-auto">
         <button
           className={ButtonsS.Button}
