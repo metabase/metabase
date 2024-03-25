@@ -165,7 +165,7 @@ function EditingGroupRow({
       <td />
       <td className="text-right">
         <span
-          className="link no-decoration cursor-pointer"
+          className={cx("link", CS.noDecoration, "cursor-pointer")}
           onClick={onCancelClicked}
         >{t`Cancel`}</span>
         <button
