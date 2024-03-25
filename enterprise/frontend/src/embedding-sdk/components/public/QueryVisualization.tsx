@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { GET, POST } from "metabase/lib/api";
 import { useSelector } from "metabase/lib/redux";
 import {
   onCloseChartType,
@@ -11,7 +10,8 @@ import {
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import ChartTypeSidebar from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Button, Group, Text } from "metabase/ui";
+import { CardApi } from "metabase/services";
+import { Box, Group, Text } from "metabase/ui";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, Dataset } from "metabase-types/api";
@@ -29,13 +29,12 @@ type State = {
   result: Dataset | null;
 };
 
-export const QueryVisualizationSdk = (
-  props: QueryVisualizationProps,
-): JSX.Element | null => {
+export const QueryVisualizationSdk = ({
+  questionId,
+  showVisualizationSelector,
+}: QueryVisualizationProps): JSX.Element | null => {
   const { isInitialized, isLoggedIn } = useEmbeddingContext();
   const metadata = useSelector(getMetadata);
-
-  const { questionId } = props;
 
   const [{ loading, card, result }, setState] = useState<State>({
     loading: false,
@@ -50,8 +49,8 @@ export const QueryVisualizationSdk = (
     }));
 
     Promise.all([
-      GET("/api/card/:cardId")({ cardId: questionId }),
-      POST("/api/card/:cardId/query")({
+      CardApi.get({ cardId: questionId }),
+      CardApi.query({
         cardId: questionId,
       }),
     ])
@@ -101,7 +100,6 @@ export const QueryVisualizationSdk = (
     return (
       <div>
         <Text>You should be logged in to see this content.</Text>
-        <Button>Log in</Button>
       </div>
     );
   }
@@ -123,7 +121,7 @@ export const QueryVisualizationSdk = (
 
         return (
           <Group h="100%" pos="relative" align="flex-start">
-            {props.showVisualizationSelector && (
+            {showVisualizationSelector && (
               <Box w="355px">
                 <ChartTypeSidebar
                   question={question}

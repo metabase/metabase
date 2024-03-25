@@ -1,10 +1,7 @@
 import type * as React from "react";
-import { useEffect } from "react";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
-import { setOptions } from "metabase/redux/embed";
-
+import { DEFAULT_FONT } from "../../config";
 import { EmbeddingContext } from "../../context";
 import { useInitData } from "../../hooks";
 import type { SDKConfigType } from "../../types";
@@ -23,15 +20,6 @@ export const AppInitializeController = ({
   const { isLoggedIn, isInitialized } = useInitData({
     config,
   });
-  const dispatch = useDispatch();
-
-  const font = config.font ?? "Lato";
-
-  useEffect(() => {
-    if (font) {
-      dispatch(setOptions({ font }));
-    }
-  }, [dispatch, font]);
 
   return (
     <EmbeddingContext.Provider
@@ -40,7 +28,10 @@ export const AppInitializeController = ({
         isLoggedIn,
       }}
     >
-      <SdkContentWrapper data-elementid="sdk-content-wrapper" font={font}>
+      <SdkContentWrapper
+        data-elementid="sdk-content-wrapper"
+        font={config.font ?? DEFAULT_FONT}
+      >
         {!isInitialized ? <div>{t`Loading…`}</div> : children}
       </SdkContentWrapper>
     </EmbeddingContext.Provider>

@@ -34,21 +34,17 @@ export class Api extends EventEmitter {
   apiKey = "";
   sessionToken = "";
 
-  onBeforeRequest;
-
   GET;
   POST;
   PUT;
   DELETE;
 
-  constructor(basename) {
+  constructor() {
     super();
     this.GET = this._makeMethod("GET", { retry: true });
     this.DELETE = this._makeMethod("DELETE", {});
     this.POST = this._makeMethod("POST", { hasBody: true, retry: true });
     this.PUT = this._makeMethod("PUT", { hasBody: true });
-
-    this.basename = basename || "";
   }
 
   _makeMethod(method, creatorOptions = {}) {
@@ -64,10 +60,6 @@ export class Api extends EventEmitter {
       };
 
       return async (rawData, invocationOptions = {}) => {
-        if (this.onBeforeRequest) {
-          await this.onBeforeRequest();
-        }
-
         const options = { ...defaultOptions, ...invocationOptions };
         let url = urlTemplate;
         const data = { ...rawData };
@@ -100,7 +92,7 @@ export class Api extends EventEmitter {
         }
 
         if (this.apiKey) {
-          headers["x-api-key"] = this.apiKey;
+          headers["X-Api-Key"] = this.apiKey;
         }
 
         if (this.sessionToken) {
