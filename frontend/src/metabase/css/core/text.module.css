@@ -81,7 +81,7 @@
   white-space: nowrap;
 }
 
-:global(.text-code) {
+.textCode {
   font-family: monospace;
   color: var(--color-text-medium);
   background-color: var(--color-bg-medium);
