@@ -3,6 +3,7 @@ import cx from "classnames";
 import { Component } from "react";
 import { Link } from "react-router";
 
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 
 import S from "./NewModelOption.module.css";
@@ -31,7 +32,7 @@ export default class NewModelOption extends Component {
         onMouseLeave={() => this.setState({ hover: false })}
       >
         <div
-          className="flex align-center layout-centered"
+          className={cx(CS.flex, CS.alignCenter, CS.layoutCentered)}
           style={{ height: "160px" }}
         >
           <img

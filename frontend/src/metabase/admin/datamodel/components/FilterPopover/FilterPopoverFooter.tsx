@@ -2,6 +2,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 import type Filter from "metabase-lib/v1/queries/structured/Filter";
 
 import FilterOptions from "./FilterOptions";
@@ -24,7 +25,12 @@ export function FilterPopoverFooter({
   onCommit,
   className,
 }: Props) {
-  const containerClassName = cx(className, "flex align-center PopoverFooter");
+  const containerClassName = cx(
+    className,
+    CS.flex,
+    CS.alignCenter,
+    "PopoverFooter",
+  );
   return (
     <div className={containerClassName}>
       <FilterOptions

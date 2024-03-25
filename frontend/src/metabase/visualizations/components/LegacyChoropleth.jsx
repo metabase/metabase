@@ -41,7 +41,7 @@ const LegacyChoropleth = ({
       >
         {() => (
           <svg
-            className="flex-full m1"
+            className={cx(CS.flexFull, CS.m1)}
             viewBox={`${minX} ${minY} ${width} ${height}`}
           >
             {geoJson.features.map((feature, index) => (

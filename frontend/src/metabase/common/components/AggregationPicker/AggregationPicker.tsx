@@ -18,7 +18,6 @@ import {
   ColumnPickerHeaderContainer,
   ColumnPickerHeaderTitleContainer,
   ColumnPickerHeaderTitle,
-  InfoIconContainer,
 } from "./AggregationPicker.styled";
 
 interface AggregationPickerProps {
@@ -251,7 +250,6 @@ export function AggregationPicker({
         itemIsSelected={checkIsItemSelected}
         renderItemName={renderItemName}
         renderItemDescription={omitItemDescription}
-        renderItemExtra={renderItemExtra}
         // disable scrollbars inside the list
         style={{ overflow: "visible" }}
         maxHeight={Infinity}
@@ -282,17 +280,6 @@ function renderItemName(item: ListItem) {
 }
 
 function omitItemDescription() {
-  return null;
-}
-
-function renderItemExtra(item: ListItem) {
-  if (item.description) {
-    return (
-      <InfoIconContainer>
-        <Icon name="question" size={20} tooltip={item.description} />
-      </InfoIconContainer>
-    );
-  }
   return null;
 }
 

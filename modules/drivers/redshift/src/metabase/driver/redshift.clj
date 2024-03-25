@@ -439,29 +439,32 @@
   ;; KNOWN LIMITATION: this won't return privileges for external tables, calling has_table_privilege on an external table
   ;; result in an operation not supported error
   (->> (jdbc/query
-         conn-spec
-         (str/join
-           "\n"
-           ["with table_privileges as ("
-            " select"
-            "   NULL as role,"
-            "   t.schemaname as schema,"
-            "   t.objectname as table,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'UPDATE') as update,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'SELECT') as select,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'INSERT') as insert,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'DELETE') as delete"
-            " from ("
-            "   select schemaname, tablename as objectname from pg_catalog.pg_tables"
-            "   union"
-            "   select schemaname, viewname as objectname from pg_views"
-            " ) t"
-            " where t.schemaname !~ '^pg_'"
-            "   and t.schemaname <> 'information_schema'"
-            "   and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
-            ")"
-            "select t.*"
-            "from table_privileges t"]))
+        conn-spec
+        (str/join
+         "\n"
+         ["with table_privileges as ("
+          " select"
+          "   NULL as role,"
+          "   t.schemaname as schema,"
+          "   t.objectname as table,"
+          ;; if `has_table_privilege` is true `has_any_column_privilege` is false and vice versa, so we have to check both.
+          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\".\"' || t.objectname || '\"',  'SELECT')"
+          "     OR pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'SELECT') as select,"
+          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'UPDATE')"
+          "     OR pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'UPDATE') as update,"
+          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'INSERT') as insert,"
+          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'DELETE') as delete"
+          " from ("
+          "   select schemaname, tablename as objectname from pg_catalog.pg_tables"
+          "   union"
+          "   select schemaname, viewname as objectname from pg_views"
+          " ) t"
+          " where t.schemaname !~ '^pg_'"
+          "   and t.schemaname <> 'information_schema'"
+          "   and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
+          ")"
+          "select t.*"
+          "from table_privileges t"]))
        (filter #(or (:select %) (:update %) (:delete %) (:update %)))))
 
 
