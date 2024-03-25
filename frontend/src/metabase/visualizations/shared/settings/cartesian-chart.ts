@@ -182,14 +182,11 @@ export const isXAxisScaleValid = (
 ) => {
   const isWaterfall = series[0].card.display === "waterfall";
   const xAxisScale = settings["graph.x_axis.scale"];
-  if (
-    isWaterfall &&
-    xAxisScale != null &&
-    WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale)
-  ) {
-    return false;
-  }
-  return true;
+  return (
+    !isWaterfall ||
+    xAxisScale == null ||
+    !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale)
+  );
 };
 
 export const getDefaultGoalLabel = () => t`Goal`;
