@@ -334,7 +334,6 @@ export const buildMetricAxis = (
 
   return {
     type: "value",
-    min: Math.min(axisModel.extent[0], 0),
     ...range,
     ...getAxisNameDefaultOption(
       renderingContext,
