@@ -2,10 +2,7 @@
   display: none !important;
 }
 
-:global(.sm-show),
-:global(.md-show),
-:global(.lg-show),
-:global(.xl-show) {
+.smShow {
   display: none;
 }
 

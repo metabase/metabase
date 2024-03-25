@@ -483,13 +483,13 @@ function ViewTitleHeaderRightSide(props) {
       )}
       {FilterHeaderButton.shouldRender(props) && (
         <FilterHeaderButton
-          className={cx(CS.hide, "sm-show")}
+          className={cx(CS.hide, CS.smShow)}
           onOpenModal={onOpenModal}
         />
       )}
       {QuestionSummarizeWidget.shouldRender(props) && (
         <QuestionSummarizeWidget
-          className={cx(CS.hide, "sm-show")}
+          className={cx(CS.hide, CS.smShow)}
           isShowingSummarySidebar={isShowingSummarySidebar}
           onEditSummary={onEditSummary}
           onCloseSummary={onCloseSummary}
