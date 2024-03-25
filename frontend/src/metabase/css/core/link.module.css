@@ -20,7 +20,6 @@
   outline: none;
 }
 
-:global(.link--wrappable),
 .linkWrappable {
   word-break: break-all;
 }

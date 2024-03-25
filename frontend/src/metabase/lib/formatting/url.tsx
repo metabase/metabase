@@ -38,7 +38,7 @@ export function formatUrl(value: string, options: OptionsType = {}) {
   if (jsx && rich && url) {
     const text = getLinkText(value, options);
     return (
-      <ExternalLink className={cx(CS.link, "link--wrappable")} href={url}>
+      <ExternalLink className={cx(CS.link, CS.linkWrappable)} href={url}>
         {text}
       </ExternalLink>
     );

@@ -157,7 +157,7 @@ export function formatValueRaw(
     // Style this like a link if we're in a jsx context.
     // It's not actually a link since we handle the click differently for dashboard and question targets.
     return (
-      <div className={cx(CS.link, "link--wrappable")}>
+      <div className={cx(CS.link, CS.linkWrappable)}>
         {formatValueRaw(value, { ...options, jsx: false })}
       </div>
     );
