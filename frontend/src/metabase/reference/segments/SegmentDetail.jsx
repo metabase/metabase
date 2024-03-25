@@ -196,7 +196,7 @@ const SegmentDetail = props => {
                               className={cx(
                                 "text-brand",
                                 CS.textBold,
-                                "text-paragraph",
+                                CS.textParagraph,
                               )}
                               to={`/reference/databases/${table.db_id}/tables/${table.id}`}
                             >

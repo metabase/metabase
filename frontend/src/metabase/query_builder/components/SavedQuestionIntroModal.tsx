@@ -45,7 +45,7 @@ export const SavedQuestionIntroModal = ({
         title={title}
         className={cx("Modal-content", CS.textCentered, "py2")}
       >
-        <div className="px2 pb2 text-paragraph">{message}</div>
+        <div className={cx("px2 pb2", CS.textParagraph)}>{message}</div>
         <div className={cx("Form-actions", CS.flex, CS.justifyCenter, CS.py1)}>
           <button
             className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}

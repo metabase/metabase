@@ -17,7 +17,7 @@
 }
 
 .guideEmptyMessage {
-  composes: text-dark text-paragraph mt3 from "style";
+  composes: text-dark textParagraph mt3 from "style";
   text-align: center;
 }
 

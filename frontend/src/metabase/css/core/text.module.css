@@ -50,8 +50,7 @@
   font-size: 1em;
 }
 
-:global(.text-paragraph),
-.text-paragraph {
+.textParagraph {
   font-size: 1.143em;
   line-height: 1.5em;
 }
