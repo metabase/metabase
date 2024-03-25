@@ -1300,12 +1300,18 @@
                                      "CREATE SCHEMA \"dotted.schema\";"
                                      "CREATE TABLE \"dotted.schema\".bar (id INTEGER);"
                                      "CREATE TABLE \"dotted.schema\".\"dotted.table\" (id INTEGER);"
+                                     "CREATE TABLE \"dotted.schema\".\"dotted.partial_select\" (id INTEGER);"
+                                     "CREATE TABLE \"dotted.schema\".\"dotted.partial_update\" (id INTEGER);"
+                                     "CREATE TABLE \"dotted.schema\".\"dotted.partial_insert\" (id INTEGER, text TEXT);"
                                      "CREATE VIEW \"dotted.schema\".\"dotted.view\" AS SELECT 'hello world';"
                                      "CREATE MATERIALIZED VIEW \"dotted.schema\".\"dotted.materialized_view\" AS SELECT 'hello world';"
                                      "DROP ROLE IF EXISTS privilege_rows_test_example_role;"
                                      "CREATE ROLE privilege_rows_test_example_role WITH LOGIN;"
                                      "GRANT SELECT ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
                                      "GRANT UPDATE ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
+                                     "GRANT SELECT (id) ON \"dotted.schema\".\"dotted.partial_select\" TO privilege_rows_test_example_role;"
+                                     "GRANT UPDATE (id) ON \"dotted.schema\".\"dotted.partial_update\" TO privilege_rows_test_example_role;"
+                                     "GRANT INSERT (text) ON \"dotted.schema\".\"dotted.partial_insert\" TO privilege_rows_test_example_role;"
                                      "GRANT SELECT ON \"dotted.schema\".\"dotted.view\" TO privilege_rows_test_example_role;"
                                      "GRANT SELECT ON \"dotted.schema\".\"dotted.materialized_view\" TO privilege_rows_test_example_role;"))
            (testing "check that without USAGE privileges on the schema, nothing is returned"
@@ -1313,27 +1319,26 @@
                     (get-privileges))))
            (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
              (jdbc/execute! conn-spec "GRANT USAGE ON SCHEMA \"dotted.schema\" TO privilege_rows_test_example_role;")
-             (is (= #{{:role   nil
-                       :schema "dotted.schema"
-                       :table  "dotted.materialized_view"
-                       :update false
-                       :select true
-                       :insert false
-                       :delete false}
-                      {:role   nil
-                       :schema "dotted.schema"
-                       :table  "dotted.view"
-                       :update false
-                       :select true
-                       :insert false
-                       :delete false}
-                      {:role   nil
-                       :schema "dotted.schema"
-                       :table  "dotted.table"
-                       :select true
-                       :update true
-                       :insert false
-                       :delete false}}
+             (is (= (into #{}
+                          (map #(merge {:role   nil
+                                        :schema "dotted.schema"
+                                        :update false
+                                        :select false
+                                        :insert false
+                                        :delete false} %)
+                               [{:table  "dotted.materialized_view"
+                                 :select true}
+                                {:table "dotted.view"
+                                 :select true}
+                                {:table "dotted.table"
+                                 :select true
+                                 :update true}
+                                {:table "dotted.partial_select"
+                                 :select true}
+                                {:table "dotted.partial_update"
+                                 :update true}
+                                {:table "dotted.partial_insert"
+                                 :insert true}]))
                     (get-privileges))))
            (finally
             (doseq [stmt ["REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"dotted.schema\" FROM privilege_rows_test_example_role;"

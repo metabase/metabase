@@ -889,7 +889,7 @@
           ")"
           "select t.*"
           "from table_privileges t"]))
-       (filter #(or (:select %) (:update %) (:delete %) (:update %)))))
+       (filter #(or (:select %) (:update %) (:delete %) (:insert %)))))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
