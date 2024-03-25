@@ -71,7 +71,6 @@
   bottom: 0;
 }
 
-:global(.left),
 .left {
   left: 0;
 }
