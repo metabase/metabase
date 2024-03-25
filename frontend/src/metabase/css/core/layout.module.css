@@ -20,8 +20,6 @@
 }
 
 /* set height full relative to the parent */
-:global(.full-height),
-.full-height,
 .fullHeight {
   height: 100%;
 }
