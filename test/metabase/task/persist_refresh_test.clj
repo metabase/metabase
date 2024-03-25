@@ -117,7 +117,7 @@
 (deftest fault-tolerance-test
   (mt/with-model-cleanup [TaskHistory]
     (mt/with-temp [Database db {:settings {:persist-models-enabled true}}
-                   Card model {:type :model :database_id (u/the-id db)}
+                   Card model {:type "model" :database_id (u/the-id db)}
                    PersistedInfo persisted-info {:card_id (u/the-id model) :database_id (u/the-id db)}]
       (let [test-refresher (reify task.persist-refresh/Refresher
                              (refresh! [_ _database _definition _card]
