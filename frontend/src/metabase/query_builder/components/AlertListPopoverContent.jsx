@@ -264,7 +264,7 @@ export const UnsubscribedListItem = () => (
         CS.alignCenter,
         CS.justifyCenter,
         CS.p1,
-          CS.bgLight,
+        CS.bgLight,
         CS.ml2,
       )}
     >

@@ -266,7 +266,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
     data-testid="formatting-rule-preview"
   >
     <div className={cx(CS.p1, CS.borderBottom, CS.relative, CS.bgLight)}>
-        <div className={cx(CS.px1, CS.flex, CS.alignCenter, CS.relative)}>
+      <div className={cx(CS.px1, CS.flex, CS.alignCenter, CS.relative)}>
         <span className={cx(CS.h4, CS.flexAuto, CS.textDark, CS.textWrap)}>
           {rule.columns.length > 0 ? (
             rule.columns
