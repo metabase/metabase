@@ -169,13 +169,6 @@ describeEE("formatting > whitelabel", () => {
           ).should("be.visible");
           cy.findByText("big-file.jpg").should("not.exist");
 
-          /**
-           * 1. This doesn't actually open the file browser on Cypress,
-           * but I did this to simulate selecting an option because
-           * doing this would clear the error message.
-           *
-           * 2. For some reason, `cy.findByLabelText("Login page").click()` doesn't work here.
-           */
           cy.findByRole("searchbox", {
             name: "Login and unsubscribe pages",
           }).click();
