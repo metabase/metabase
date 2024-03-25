@@ -2,10 +2,6 @@
   display: none !important;
 }
 
-:global(.show) {
-  display: inherit;
-}
-
 :global(.hidden) {
   visibility: hidden;
 }
