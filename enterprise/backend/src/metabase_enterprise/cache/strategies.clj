@@ -1,8 +1,8 @@
-(ns metabase-enterprise.caching.strategies
+(ns metabase-enterprise.cache.strategies
   (:require
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.api.caching :as api.caching]
+   [metabase.api.cache :as api.cache]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :refer [defenterprise defenterprise-schema]]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
@@ -79,7 +79,7 @@
                 :limit    1}
           item (t2/select-one :model/CacheConfig :id q)]
       (if item
-        (-> (:strategy (api.caching/row->config item))
+        (-> (:strategy (api.cache/row->config item))
            (m/assoc-some :invalidated-at (:invalidated_at item)))
         (when-let [ttl (granular-duration-hours card dashboard-id)]
           {:type     :duration

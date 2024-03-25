@@ -1,10 +1,10 @@
-(ns metabase.api.caching-test
+(ns metabase.api.cache-test
   (:require
    [clojure.test :refer :all]
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]))
 
-;; the other part is in metabase-enterprise.caching.caching-test
+;; the other part is in `metabase-enterprise.cache.cache-test`
 (deftest cache-config-test
   (mt/discard-setting-changes [enable-query-caching]
     (public-settings/enable-query-caching! true)
@@ -12,22 +12,22 @@
       (mt/with-premium-features #{}
         (testing "Advanced caching requires premium token"
           (is (= "Granular Caching is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                 (mt/user-http-request :crowberto :put 402 "caching/"
+                 (mt/user-http-request :crowberto :put 402 "cache/"
                                        {:model    "question"
                                         :model_id 1
                                         :strategy {:type "nocache"}}))))
         (testing "Can operate on root settings though"
-          (is (mt/user-http-request :crowberto :put 200 "caching/"
+          (is (mt/user-http-request :crowberto :put 200 "cache/"
                                     {:model    "root"
                                      :model_id 0
                                      :strategy {:type "nocache" :name "root"}}))
           (is (=? {:data [{:model "root" :model_id 0}]}
-                  (mt/user-http-request :crowberto :get 200 "caching/"
+                  (mt/user-http-request :crowberto :get 200 "cache/"
                                         :model "root")))
-          (is (nil? (mt/user-http-request :crowberto :delete 204 "caching/"
+          (is (nil? (mt/user-http-request :crowberto :delete 204 "cache/"
                                           {:model "root" :model_id 0}))))
         (testing "But no advanced strategies can be used"
-          (is (:errors (mt/user-http-request :crowberto :put 400 "caching/"
+          (is (:errors (mt/user-http-request :crowberto :put 400 "cache/"
                                              {:model    "root"
                                               :model_id 0
                                               :strategy {:type     "schedule"

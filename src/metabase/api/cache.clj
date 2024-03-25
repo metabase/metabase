@@ -1,4 +1,4 @@
-(ns metabase.api.caching
+(ns metabase.api.cache
   (:require
    [clojure.walk :as walk]
    [compojure.core :refer [GET]]
@@ -30,7 +30,7 @@
    :config   (dissoc strategy :type)})
 
 (defn- drop-internal-fields
-  "See `metabase-enterprise.caching.strategies/CacheStrategy`"
+  "See `metabase-enterprise.cache.strategies/CacheStrategy`"
   [schema]
   (walk/prewalk
    (fn [x]
@@ -43,7 +43,7 @@
 ;; the schema, so docs for enterprise version won't be correct until we figure out the way to support this
 (defenterprise CacheStrategy
   "Schema for a caching strategy"
-  metabase-enterprise.caching.strategies
+  metabase-enterprise.cache.strategies
   []
   [:and
    [:map
@@ -82,7 +82,7 @@
 
 (defn- audit-caching-change! [id prev new]
   (events/publish-event!
-   :event/caching-update
+   :event/cache-config-update
    {:user-id  api/*current-user-id*
     :model    :model/CacheConfig
     :model-id id
