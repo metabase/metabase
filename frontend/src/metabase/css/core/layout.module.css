@@ -47,7 +47,6 @@
 }
 
 /* position utilities */
-:global(.fixed),
 .fixed {
   position: fixed;
 }
