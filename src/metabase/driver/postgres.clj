@@ -7,6 +7,8 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql :as sql]
+   [honey.sql.helpers :as sql.helpers]
+   [honey.sql.pg-ops :as sql.pg-ops]
    [java-time.api :as t]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
@@ -18,6 +20,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
@@ -50,7 +53,8 @@
 (comment
   ;; method impls live in these namespaces.
   postgres.actions/keep-me
-  postgres.ddl/keep-me)
+  postgres.ddl/keep-me
+  sql.pg-ops/keep-me)
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
@@ -208,6 +212,67 @@
                           "WHERE t.oid IN (SELECT DISTINCT enumtypid FROM pg_enum e)")])))
 
 (def ^:private ^:dynamic *enum-types* nil)
+
+(defn- get-tables-sql
+  [schemas table-names]
+  ;; Ref: https://github.com/davecramer/pgjdbc/blob/a714bfd/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L1272
+  (sql/format
+   (cond->  {:select    [[:n.nspname :schema]
+                         [:c.relname :name]
+                         [[:case-expr :c.relkind
+                           [:inline "r"] [:inline "TABLE"]
+                           [:inline "p"] [:inline "PARTITIONED TABLE"]
+                           [:inline "v"] [:inline "VIEW"]
+                           [:inline "f"] [:inline "FOREIGN TABLE"]
+                           [:inline "m"] [:inline "MATERIALIZED VIEW"]
+                           :else nil]
+                          :type]
+                         [:d.description :description]]
+             :from      [[:pg_catalog.pg_namespace :n]
+                         [:pg_catalog.pg_class :c]]
+             :left-join [[:pg_catalog.pg_description :d] [:and [:= :c.oid :d.objoid] [:= :d.objsubid 0] [:= :d.classoid [:raw "'pg_class'::regclass"]]]]
+             :where     [:and [:= :c.relnamespace :n.oid]
+                         ;; filter out system tables
+                         [(keyword "!~") :n.nspname "^pg_"] [:<> :n.nspname "information_schema"]
+                         ;; only get tables of type: TABLE, PARTITIONED TABLE, VIEW, FOREIGN TABLE, MATERIALIZED VIEW
+                         [:raw "c.relkind in ('r', 'p', 'v', 'f', 'm')"]]
+             :order-by  [:type :schema :name]}
+     (seq schemas)
+     (sql.helpers/where [:in :n.nspname schemas])
+
+     (seq table-names)
+     (sql.helpers/where [:in :c.relname table-names]))
+   {:dialect :ansi}))
+
+(defn- get-tables
+  ;; have it as its own method for ease of testing
+  [database schemas tables]
+  (sql-jdbc.execute/reducible-query database (get-tables-sql schemas tables)))
+
+(defn- describe-syncable-tables
+  [{driver :engine :as database}]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       database
+       nil
+       (fn [^Connection conn]
+         (reduce
+          rf
+          init
+          (when-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
+            (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn driver conn)]
+              (eduction
+               (comp (filter have-select-privilege?)
+                     (map #(dissoc % :type)))
+               (get-tables database syncable-schemas nil))))))))))
+
+(defmethod driver/describe-database :postgres
+  [_driver database]
+  ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
+  ;; memrory in a set like this
+  {:tables (into #{} (describe-syncable-tables database))})
 
 ;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
 ;; name, but first fetches database enum types so we have access to them. These are simply binded to the dynamic var
