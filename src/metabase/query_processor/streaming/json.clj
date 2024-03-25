@@ -31,12 +31,14 @@
         col-names          (volatile! nil)
         ordered-formatters (volatile! nil)]
     (reify qp.si/StreamingResultsWriter
-      (begin! [_ {{:keys [ordered-cols results_timezone]} :data} viz-settings]
+      (begin! [_ {{:keys [ordered-cols results_timezone format-export?]} :data} viz-settings]
         ;; TODO -- wouldn't it make more sense if the JSON downloads used `:name` preferentially? Seeing how JSON is
         ;; probably going to be parsed programmatically
         (vreset! col-names (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings)))
         (vreset! ordered-formatters (mapv (fn [col]
-                                            (formatter/create-formatter results_timezone col viz-settings))
+                                              (if format-export?
+                                                (formatter/create-formatter results_timezone col viz-settings)
+                                                identity))
                                           ordered-cols))
         (.write writer "[\n"))
 
