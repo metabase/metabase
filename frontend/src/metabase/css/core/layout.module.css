@@ -29,7 +29,6 @@
   display: block;
 }
 
-:global(.inline),
 .inline {
   display: inline;
 }
