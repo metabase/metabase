@@ -144,7 +144,13 @@ export class DimensionList extends Component {
           <Tooltip tooltip={t`Add grouping`}>
             <Icon
               name="add"
-              className="mx1 cursor-pointer hover-child faded fade-in-hover"
+              className={cx(
+                "mx1",
+                "cursor-pointer",
+                CS.hoverChild,
+                "faded",
+                "fade-in-hover",
+              )}
               onClick={e => {
                 e.stopPropagation();
                 this.handleAdd(item);

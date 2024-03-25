@@ -594,7 +594,7 @@ class TableInteractive extends Component {
         {isCollapsed && (
           <ExpandButton
             data-testid="expand-column"
-            className="hover-child"
+            className={CS.hoverChild}
             small
             borderless
             iconSize={10}

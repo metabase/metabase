@@ -56,13 +56,13 @@ class SnippetRowInner extends Component {
             <Icon name="snippet" className="hover-child--hidden text-light" />
             <Icon
               name={insertSnippet ? "arrow_left_to_line" : "snippet"}
-              className="hover-child"
+              className={CS.hoverChild}
             />
             <span className={cx(CS.flexFull, CS.ml1)}>{snippet.name}</span>
           </SnippetContent>
           <Icon
             name={isOpen ? "chevronup" : "chevrondown"}
-            className={cx({ "hover-child": !isOpen })}
+            className={cx({ [CS.hoverChild]: !isOpen })}
           />
         </div>
         {isOpen && (

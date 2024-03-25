@@ -72,7 +72,7 @@ export const ArchivedItem = ({
           >
             <ActionIcon
               onClick={onUnarchive}
-              className="hover-child"
+              className={CS.hoverChild}
               name="unarchive"
             />
           </Tooltip>
@@ -85,7 +85,7 @@ export const ArchivedItem = ({
           >
             <ActionIcon
               onClick={onDelete}
-              className="hover-child"
+              className={CS.hoverChild}
               name="trash"
             />
           </Tooltip>

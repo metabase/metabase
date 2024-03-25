@@ -263,7 +263,7 @@ const SuggestionsList = ({ suggestions, section }) => (
                     className="mr1"
                   />
                   <h4 className="text-wrap">{item.title}</h4>
-                  <ItemDescription className="hover-child">
+                  <ItemDescription className={CS.hoverChild}>
                     <Tooltip tooltip={item.description}>
                       <Icon name="info_outline" color={color("bg-dark")} />
                     </Tooltip>

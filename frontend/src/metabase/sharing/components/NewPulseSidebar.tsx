@@ -47,7 +47,8 @@ export function NewPulseSidebar({
                 className={cx(
                   "mr1",
                   {
-                    "text-brand hover-child hover--inherit": emailConfigured,
+                    [cx("text-brand", CS.hoverChild, "hover--inherit")]:
+                      emailConfigured,
                   },
                   { "text-light": !emailConfigured },
                 )}
@@ -58,7 +59,7 @@ export function NewPulseSidebar({
             </div>
             <Text
               className={cx("text-medium", {
-                "hover-child hover--inherit": emailConfigured,
+                [cx(CS.hoverChild, "hover--inherit")]: emailConfigured,
               })}
             >
               {!emailConfigured &&
@@ -87,7 +88,7 @@ export function NewPulseSidebar({
                 size={16}
                 className={cx("mr1", {
                   "text-light": !slackConfigured,
-                  "hover-child hover--inherit": slackConfigured,
+                  [cx(CS.hoverChild, "hover--inherit")]: slackConfigured,
                 })}
               />
               <h3
@@ -96,7 +97,7 @@ export function NewPulseSidebar({
             </div>
             <Text
               className={cx("text-medium", {
-                "hover-child hover--inherit": slackConfigured,
+                [cx(CS.hoverChild, "hover--inherit")]: slackConfigured,
               })}
             >
               {!slackConfigured &&

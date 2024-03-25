@@ -228,7 +228,7 @@ export default class PinMap extends Component {
             CS.z2,
             CS.flex,
             CS.flexColumn,
-            "hover-child",
+            CS.hoverChild,
           )}
         >
           {isEditing || !isDashboard ? (

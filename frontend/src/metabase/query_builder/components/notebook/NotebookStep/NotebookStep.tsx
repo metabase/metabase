@@ -119,7 +119,12 @@ function NotebookStep({
           {title}
           {canRevert && (
             <IconButtonWrapper
-              className="ml-auto text-light text-medium-hover hover-child"
+              className={cx(
+                "ml-auto",
+                "text-light",
+                "text-medium-hover",
+                CS.hoverChild,
+              )}
               onClick={handleClickRevert}
             >
               <Icon
