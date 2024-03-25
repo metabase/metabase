@@ -21,18 +21,6 @@
   letter-spacing: 0.06em;
 }
 
-:global(.text-lowercase) {
-  text-transform: lowercase;
-}
-
-:global(.text-capitalize) {
-  text-transform: capitalize;
-}
-
-:global(.text-transform-none) {
-  text-transform: none;
-}
-
 :global(.text-normal),
 .textNormal {
   font-weight: 400;
