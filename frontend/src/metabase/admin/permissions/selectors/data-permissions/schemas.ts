@@ -89,7 +89,7 @@ const buildAccessPermission = (
       database,
     ),
     postActions: {
-      controlled: (_, __, ___, accessPermissionValue) =>
+      controlled: (_: any, __: any, ___: any, accessPermissionValue: string) =>
         granulateDatabasePermissions(
           groupId,
           entityId,
@@ -162,13 +162,14 @@ const buildNativePermission = (
       DATA_PERMISSION_OPTIONS.no,
     ],
     postActions: {
-      controlled: (_, __, ___, accessPermissionValue) =>
+      // TODO: add better typing
+      controlled: (_: any, __: any, ___: any, accessPermissionValue: string) =>
         granulateDatabasePermissions(
           groupId,
           entityId,
           { type: "native", permission: "create-queries" },
           accessPermissionValue,
-          DATA_PERMISSION_OPTIONS.queryBuilderAndNative.value,
+          DATA_PERMISSION_OPTIONS.queryBuilder.value,
         ),
     },
   };

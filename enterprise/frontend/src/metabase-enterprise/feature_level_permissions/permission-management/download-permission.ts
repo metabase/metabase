@@ -104,7 +104,7 @@ export const buildDownloadPermission = (
   permissionSubject: PermissionSubject,
 ) => {
   const hasChildEntities = permissionSubject !== "fields";
-  const isBlockPermission = dataAccessPermissionValue === "block";
+  const isBlockPermission = dataAccessPermissionValue === "blocked";
 
   const value = isBlockPermission
     ? DOWNLOAD_PERMISSION_OPTIONS.none.value
