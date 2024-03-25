@@ -8,7 +8,6 @@
   text-align: center;
 }
 
-:global(.text-left),
 .text-left {
   text-align: left;
 }

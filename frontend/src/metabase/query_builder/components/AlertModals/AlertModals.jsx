@@ -217,7 +217,7 @@ export class AlertEducationalScreen extends Component {
               "
             />
             <p
-              className="ml2 text-left"
+              className={cx("ml2", CS.textLeft)}
               style={textStyle}
             >{jt`When a raw data question ${(
               <strong>{t`returns any results`}</strong>
@@ -259,7 +259,7 @@ export class AlertEducationalScreen extends Component {
               "
             />
             <p
-              className="ml2 text-left"
+              className={cx("ml2", CS.textLeft)}
               style={textStyle}
             >{jt`When a progress bar ${(
               <strong>{t`reaches its goal`}</strong>
