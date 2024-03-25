@@ -564,54 +564,66 @@
   [table]
   (mt/rows (query-table table)))
 
+(def ^:private example-files
+  {:comma      ["id    ,nulls,string ,bool ,number       ,date      ,datetime"
+                "2\t   ,,          a ,true ,1.1\t        ,2022-01-01,2022-01-01T00:00:00"
+                "\" 3\",,           b,false,\"$ 1,000.1\",2022-02-01,2022-02-01T00:00:00"]
+
+   :semi-colon ["id    ;nulls;string ;bool ;number       ;date      ;datetime"
+                "2\t   ;;          a ;true ;1.1\t        ;2022-01-01;2022-01-01T00:00:00"
+                "\" 3\";;           b;false;\"$ 1,000.1\";2022-02-01;2022-02-01T00:00:00"]
+
+   :tab        ["id    \tnulls\tstring \tbool \tnumber       \tdate      \tdatetime"
+                "2   \t\t          a \ttrue \t1.1        \t2022-01-01\t2022-01-01T00:00:00"
+                "\" 3\"\t\t           b\tfalse\t\"$ 1,000.1\"\t2022-02-01\t2022-02-01T00:00:00"]})
+
 (deftest create-from-csv-test
-  (testing "Upload a CSV file"
-    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-      (with-mysql-local-infile-on-and-off
-        (with-upload-table!
-          [table (let [table-name (mt/random-name)]
-                   (@#'upload/create-from-csv!
-                    driver/*driver*
-                    (mt/id)
-                    table-name
-                    (csv-file-with ["id    ,nulls,string ,bool ,number       ,date      ,datetime"
-                                    "2\t   ,,          a ,true ,1.1\t        ,2022-01-01,2022-01-01T00:00:00"
-                                    "\" 3\",,           b,false,\"$ 1,000.1\",2022-02-01,2022-02-01T00:00:00"]))
-                   (sync-upload-test-table! :database (mt/db) :table-name table-name))]
-          (testing "Table and Fields exist after sync"
-            (is (=? {:name          #"(?i)_mb_row_id"
-                     :semantic_type (if (= driver/*driver* :redshift)
-                                        ;; TODO: there is a bug in the redshift driver where the semantic_type is not set
-                                        ;; to type/PK even if the column is a PK
-                                      :type/Category
-                                      :type/PK)
-                     :base_type     :type/BigInteger}
-                    (t2/select-one Field :database_position 0 :table_id (:id table))))
-            (is (=? {:name          #"(?i)id"
-                     :semantic_type :type/PK
-                     :base_type     :type/BigInteger}
-                    (t2/select-one Field :database_position 1 :table_id (:id table))))
-            (is (=? {:name      #"(?i)nulls"
-                     :base_type :type/Text}
-                    (t2/select-one Field :database_position 2 :table_id (:id table))))
-            (is (=? {:name      #"(?i)string"
-                     :base_type :type/Text}
-                    (t2/select-one Field :database_position 3 :table_id (:id table))))
-            (is (=? {:name      #"(?i)bool"
-                     :base_type :type/Boolean}
-                    (t2/select-one Field :database_position 4 :table_id (:id table))))
-            (is (=? {:name      #"(?i)number"
-                     :base_type :type/Float}
-                    (t2/select-one Field :database_position 5 :table_id (:id table))))
-            (is (=? {:name      #"(?i)date"
-                     :base_type :type/Date}
-                    (t2/select-one Field :database_position 6 :table_id (:id table))))
-            (is (=? {:name      #"(?i)datetime"
-                     :base_type :type/DateTime}
-                    (t2/select-one Field :database_position 7 :table_id (:id table))))
-            (testing "Check the data was uploaded into the table"
-              (is (= 2
-                     (count (rows-for-table table)))))))))))
+  (doseq [[separator lines] example-files]
+    (testing (format "Upload a CSV file with %s separators." separator)
+      (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+        (with-mysql-local-infile-on-and-off
+         (with-upload-table!
+           [table (let [table-name (mt/random-name)]
+                    (@#'upload/create-from-csv!
+                     driver/*driver*
+                     (mt/id)
+                     table-name
+                     (csv-file-with lines))
+                    (sync-upload-test-table! :database (mt/db) :table-name table-name))]
+           (testing "Table and Fields exist after sync"
+             (is (=? {:name          #"(?i)_mb_row_id"
+                      :semantic_type (if (= driver/*driver* :redshift)
+                                       ;; TODO: there is a bug in the redshift driver where the semantic_type is not set
+                                       ;; to type/PK even if the column is a PK
+                                       :type/Category
+                                       :type/PK)
+                      :base_type     :type/BigInteger}
+                     (t2/select-one Field :database_position 0 :table_id (:id table))))
+             (is (=? {:name          #"(?i)id"
+                      :semantic_type :type/PK
+                      :base_type     :type/BigInteger}
+                     (t2/select-one Field :database_position 1 :table_id (:id table))))
+             (is (=? {:name      #"(?i)nulls"
+                      :base_type :type/Text}
+                     (t2/select-one Field :database_position 2 :table_id (:id table))))
+             (is (=? {:name      #"(?i)string"
+                      :base_type :type/Text}
+                     (t2/select-one Field :database_position 3 :table_id (:id table))))
+             (is (=? {:name      #"(?i)bool"
+                      :base_type :type/Boolean}
+                     (t2/select-one Field :database_position 4 :table_id (:id table))))
+             (is (=? {:name      #"(?i)number"
+                      :base_type :type/Float}
+                     (t2/select-one Field :database_position 5 :table_id (:id table))))
+             (is (=? {:name      #"(?i)date"
+                      :base_type :type/Date}
+                     (t2/select-one Field :database_position 6 :table_id (:id table))))
+             (is (=? {:name      #"(?i)datetime"
+                      :base_type :type/DateTime}
+                     (t2/select-one Field :database_position 7 :table_id (:id table))))
+             (testing "Check the data was uploaded into the table"
+               (is (= 2
+                      (count (rows-for-table table))))))))))))
 
 (deftest create-from-csv-date-test
   (testing "Upload a CSV file with a datetime column"
