@@ -79,7 +79,7 @@
       ;; limit to the named tables
       (seq table-wildcards)            (active-fields-from-tables table-wildcards))))
 
-(defn- field-ids-for-card
+(defn field-ids-for-card
   "Returns a `{:direct #{...} :indirect #{...}}` map with field IDs that (may) be referenced in the given cards's query. Errs on the side of optimism:
   i.e., it may return fields that are *not* in the query, and is unlikely to fail to return fields that are in the
   query.
@@ -94,7 +94,8 @@
                                   (indirect-field-ids-for-query parsed-query db-id)
                                   direct-ids)]
     {:direct   direct-ids
-     :indirect indirect-ids}))
+     :indirect indirect-ids
+     :raw-parse parsed-query}))
 
 (defn update-query-fields-for-card!
   "Clears QueryFields associated with this card and creates fresh, up-to-date-ones.

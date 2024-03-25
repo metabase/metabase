@@ -13,6 +13,7 @@
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.field-values :as params.field-values]
    [metabase.models.table :as table :refer [Table]]
+   [metabase.native-query-analyzer :as query-analyzer]
    [metabase.query-processor :as qp]
    [metabase.related :as related]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
@@ -449,5 +450,20 @@
   [id]
   {id ms/PositiveInt}
   (-> (t2/select-one Field :id id) api/read-check related/related))
+
+;;;; DELETE ME
+(api/defendpoint POST "/query_fields"
+  "Sets the dimension for the given field at ID"
+  [:as {{db-id :dbId query :query} :body}]
+  {db-id ms/PositiveInt
+   query :any}
+  ;; avert your eyes, this is throwaway code I'm not proud of
+  (let [raw-result (query-analyzer/field-ids-for-card {:dataset_query {:native {:query query} :database db-id}})
+        all-ids    (concat (:direct raw-result) (:indirect raw-result))
+        fields     (t2/select :model/Field :id (if (seq all-ids) [:in all-ids] [:= false]))
+        id->field  (update-vals (group-by :id fields) first)
+        inflate    (fn [field-id] [field-id (get-in id->field [field-id :name])])]
+    (assoc (assoc raw-result :direct (map inflate (:direct raw-result)))
+           :indirect (map inflate (:indirect raw-result)))))
 
 (api/define-routes)
