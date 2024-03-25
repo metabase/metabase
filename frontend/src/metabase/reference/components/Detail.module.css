@@ -15,7 +15,7 @@
 }
 
 .detailTitle {
-  composes: text-bold from "style";
+  composes: textBold from "style";
   display: inline-block;
   color: var(--title-color);
 }

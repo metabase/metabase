@@ -165,11 +165,13 @@ export default class PulseEditChannels extends Component {
     return (
       <li key={index} className="py2">
         {channelSpec.error && (
-          <div className="pb2 text-bold text-error">{channelSpec.error}</div>
+          <div className={cx("pb2", CS.textBold, "text-error")}>
+            {channelSpec.error}
+          </div>
         )}
         {channelSpec.recipients && (
           <div>
-            <div className="h4 text-bold mb1">
+            <div className={cx("h4", CS.textBold, "mb1")}>
               {this.props.emailRecipientText || t`To:`}
             </div>
             <RecipientPicker

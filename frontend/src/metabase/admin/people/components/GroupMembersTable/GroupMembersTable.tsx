@@ -191,7 +191,7 @@ const UserRow = ({
 
   return (
     <tr>
-      <td className="text-bold">{getName(user)}</td>
+      <td className={CS.textBold}>{getName(user)}</td>
       {canEditMembership(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell && (
         <PLUGIN_GROUP_MANAGERS.UserTypeCell
           isManager={groupMembership.is_group_manager}

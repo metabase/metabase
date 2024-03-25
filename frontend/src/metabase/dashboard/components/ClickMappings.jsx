@@ -255,7 +255,7 @@ function TargetWithSource({
         </svg>
         <div>
           <div>
-            <span className="text-bold text-dark">{source.name}</span>{" "}
+            <span className={cx(CS.textBold, "text-dark")}>{source.name}</span>{" "}
             {
               {
                 column: t`column`,
@@ -265,7 +265,8 @@ function TargetWithSource({
             }
           </div>
           <div style={{ marginTop: 9 }}>
-            <span className="text-brand text-bold">{name}</span> {targetName}
+            <span className={cx("text-brand", CS.textBold)}>{name}</span>{" "}
+            {targetName}
           </div>
         </div>
         <div

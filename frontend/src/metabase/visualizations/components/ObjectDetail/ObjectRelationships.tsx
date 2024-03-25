@@ -42,7 +42,7 @@ export function Relationships({
 
   return (
     <ObjectRelationships>
-      <div className="text-bold text-medium">
+      <div className={cx(CS.textBold, "text-medium")}>
         {jt`${(
           <span className="text-dark" key={objectName}>
             {objectName}

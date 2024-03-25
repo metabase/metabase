@@ -57,7 +57,7 @@ function _AddEditEmailSidebar({
         className={cx(CS.my2, CS.px4, CS.fullHeight, CS.flex, CS.flexColumn)}
       >
         <div>
-          <div className="text-bold mb1">{t`To:`}</div>
+          <div className={cx(CS.textBold, "mb1")}>{t`To:`}</div>
           <RecipientPicker
             isNewPulse={pulse.id == null}
             autoFocus={false}

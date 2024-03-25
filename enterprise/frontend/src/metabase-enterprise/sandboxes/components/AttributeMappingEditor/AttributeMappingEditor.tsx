@@ -87,7 +87,7 @@ const AttributeMappingEditor = ({
         </div>
       ) : null
     }
-    divider={<span className="px2 text-bold">{t`equals`}</span>}
+    divider={<span className={cx("px2", CS.textBold)}>{t`equals`}</span>}
     addText={t`Add a filter`}
     canAdd={attributesOptions.length > 0}
     canDelete={true}

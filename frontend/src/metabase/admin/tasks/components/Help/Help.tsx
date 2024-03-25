@@ -132,7 +132,7 @@ export const Help = () => {
         <p>{t`Please include these details in support requests. Thank you!`}</p>
         <InfoBlock>{detailString}</InfoBlock>
         <div
-          className={cx("text-medium text-bold", CS.textUppercase, "py2")}
+          className={cx("text-medium", CS.textBold, CS.textUppercase, "py2")}
         >{t`Advanced Details (click to download)`}</div>
         <ol>
           <HelpLink

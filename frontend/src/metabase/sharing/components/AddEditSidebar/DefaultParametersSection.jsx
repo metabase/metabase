@@ -22,7 +22,7 @@ function DefaultParametersSection({ className, parameters }) {
   const formattedParameterValues = formatDefaultParamValues(parameters);
 
   return (
-    <div className={cx(className, "text-bold")}>
+    <div className={cx(className, CS.textBold)}>
       <Heading>
         {t`Filter values`}
         <Icon

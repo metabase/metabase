@@ -31,7 +31,7 @@ const TaskList = ({ tasks }) => (
 );
 
 const TaskSectionHeader = ({ name }) => (
-  <h4 className={cx("text-medium text-bold", CS.textUppercase, "pb2")}>
+  <h4 className={cx("text-medium", CS.textBold, CS.textUppercase, "pb2")}>
     {name}
   </h4>
 );

@@ -79,7 +79,7 @@ const PasswordSuccess = ({ user, temporaryPassword }) => (
       className={cx("pt4", CS.textCentered)}
     >
       {jt`If you want to be able to send email invites, just go to the ${(
-        <Link to="/admin/settings/email" className="link text-bold">
+        <Link to="/admin/settings/email" className={cx("link", CS.textBold)}>
           Email Settings
         </Link>
       )} page.`}

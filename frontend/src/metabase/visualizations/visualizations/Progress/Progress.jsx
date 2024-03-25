@@ -188,7 +188,7 @@ export default class Progress extends Component {
         >
           <div
             ref={this.containerRef}
-            className="relative text-bold text-medium"
+            className={cx("relative", CS.textBold, "text-medium")}
             style={{ height: 20 }}
           >
             <div ref={this.labelRef} style={{ position: "absolute" }}>

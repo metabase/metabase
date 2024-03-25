@@ -407,7 +407,7 @@ export class DeleteAlertSection extends Component {
           style={{ marginTop: "-12px" }}
         >{jt`Danger Zone`}</h3>
         <div className="ml1">
-          <h4 className="text-bold mb1">{jt`Delete this alert`}</h4>
+          <h4 className={cx(CS.textBold, "mb1")}>{jt`Delete this alert`}</h4>
           <div className={CS.flex}>
             <p className="h4 pr2">{jt`Stop delivery and delete this alert. There's no undo, so be careful.`}</p>
             <ModalWithTrigger

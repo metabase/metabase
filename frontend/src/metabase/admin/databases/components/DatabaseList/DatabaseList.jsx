@@ -120,7 +120,7 @@ export default class DatabaseList extends Component {
                             )}
                             <Link
                               to={"/admin/databases/" + database.id}
-                              className="text-bold link"
+                              className={cx(CS.textBold, "link")}
                             >
                               {database.name}
                             </Link>

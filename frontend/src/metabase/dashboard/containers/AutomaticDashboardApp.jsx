@@ -79,7 +79,10 @@ class AutomaticDashboardAppInner extends Component {
     triggerToast(
       <div className={cx(CS.flex, CS.alignCenter)}>
         {t`Your dashboard was saved`}
-        <Link className="link text-bold ml1" to={Urls.dashboard(newDashboard)}>
+        <Link
+          className={cx("link", CS.textBold, "ml1")}
+          to={Urls.dashboard(newDashboard)}
+        >
           {t`See it`}
         </Link>
       </div>,

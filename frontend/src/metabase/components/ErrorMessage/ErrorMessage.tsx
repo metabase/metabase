@@ -37,7 +37,7 @@ export const ErrorMessage = ({
         })}
       />
       <div className={CS.textCentered}>
-        {title && <h1 className="text-bold">{title}</h1>}
+        {title && <h1 className={CS.textBold}>{title}</h1>}
         <p className={QueryBuilderS.QueryErrorMessageText}>{message}</p>
         {action}
       </div>

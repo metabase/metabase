@@ -303,7 +303,7 @@ const SettingContainer = ({
 }) => (
   <div className={className}>
     {name && (
-      <div className={cx("text-medium text-bold", CS.textUppercase, "my1")}>
+      <div className={cx("text-medium", CS.textBold, CS.textUppercase, "my1")}>
         {name}
       </div>
     )}

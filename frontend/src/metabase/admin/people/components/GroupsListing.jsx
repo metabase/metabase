@@ -221,7 +221,9 @@ function GroupRow({
               bg={backgroundColor}
             />
           </span>
-          <span className="ml2 text-bold">{getGroupNameLocalized(group)}</span>
+          <span className={cx("ml2", CS.textBold)}>
+            {getGroupNameLocalized(group)}
+          </span>
         </Link>
       </td>
       <td>

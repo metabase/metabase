@@ -1,4 +1,5 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
@@ -192,7 +193,11 @@ const SegmentDetail = props => {
                         {table && (
                           <div>
                             <Link
-                              className="text-brand text-bold text-paragraph"
+                              className={cx(
+                                "text-brand",
+                                CS.textBold,
+                                "text-paragraph",
+                              )}
                               to={`/reference/databases/${table.db_id}/tables/${table.id}`}
                             >
                               <span className="pt1">{table.display_name}</span>

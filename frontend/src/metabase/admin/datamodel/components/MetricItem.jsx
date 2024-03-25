@@ -22,7 +22,7 @@ export default class MetricItem extends Component {
         <td className={cx(CS.px1, CS.py1, "text-wrap")}>
           <span className={cx(CS.flex, CS.alignCenter)}>
             <Icon name="sum" className="mr1 text-medium" />
-            <span className="text-dark text-bold">{metric.name}</span>
+            <span className={cx("text-dark", CS.textBold)}>{metric.name}</span>
           </span>
         </td>
         <td className="px1 py1 text-wrap">{metric.definition_description}</td>
