@@ -23,6 +23,7 @@ import {
   moveOpenedCollectionTo,
   pickEntity,
   entityPickerModal,
+  openCollectionMenu,
 } from "e2e/support/helpers";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -36,6 +37,7 @@ describe("scenarios > collection defaults", () => {
     cy.signInAsAdmin();
     cy.intercept("GET", "/api/**/items?pinned_state*").as("getPinnedItems");
     cy.intercept("GET", "/api/collection/tree**").as("getTree");
+    cy.intercept("GET", "/api/collection/*/items?**").as("getCollectionItems");
   });
 
   describe("new collection modal", () => {
@@ -419,7 +421,29 @@ describe("scenarios > collection defaults", () => {
 
       visitCollection(SECOND_COLLECTION_ID);
 
-      moveOpenedCollectionTo("Our analytics");
+      openCollectionMenu();
+      popover().findByText("Move").click();
+
+      // we need to do this manually because we need to await the correct number of api requests to keep this from flaking
+      cy.wait([
+        "@getCollectionItems",
+        "@getCollectionItems",
+        "@getCollectionItems",
+      ]);
+      entityPickerModal().within(() => {
+        cy.findByTestId("loading-spinner").should("not.exist");
+        // make sure the first collection (current parent) is selected
+        findPickerItem("First collection").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+        // then click our analytics
+        cy.findByText("Our analytics").click();
+        cy.button("Move").click();
+      });
+
+      entityPickerModal().should("not.exist");
       cy.wait("@getTree");
 
       navigationSidebar().within(() => {
@@ -687,11 +711,8 @@ function visitRootCollection() {
 function ensureCollectionHasNoChildren(collection) {
   cy.findByText(collection)
     .closest("li")
-    .within(() => {
-      // We used should.not.exist previously, but
-      // this icon is now only hidden. It still exists in the DOM.
-      cy.icon("chevronright").should("be.hidden");
-    });
+    .icon("chevronright")
+    .should("be.hidden");
 }
 
 function ensureCollectionIsExpanded(collection, { children = [] } = {}) {
