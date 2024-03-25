@@ -469,21 +469,21 @@
                                      :select true}]))
                     (get-privileges))))
            (finally
-            #_(execute! (format
-                         (str
-                          "DROP TABLE IF EXISTS %2$s CASCADE;\n"
-                          "DROP VIEW IF EXISTS %3$s CASCADE;\n"
-                          "DROP MATERIALIZED VIEW IF EXISTS %4$s CASCADE;\n"
-                          "DROP TABLE IF EXISTS %5$s CASCADE;\n"
-                          "DROP TABLE IF EXISTS %6$s CASCADE;\n"
-                          "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%1$s\" FROM \"%7$s\";\n"
-                          "REVOKE ALL PRIVILEGES ON SCHEMA \"%1$s\" FROM \"%7$s\";\n"
-                          "REVOKE USAGE ON SCHEMA \"%1$s\" FROM \"%7$s\";\n"
-                          "DROP USER IF EXISTS \"%7$s\";")
-                         schema-name
-                         qual-tbl-name
-                         qual-view-name
-                         qual-mview-name
-                         qual-tbl-partial-select-name
-                         qual-tbl-partial-update-name
-                         username)))))))))
+            (execute! (format
+                       (str
+                        "DROP TABLE IF EXISTS %2$s CASCADE;\n"
+                        "DROP VIEW IF EXISTS %3$s CASCADE;\n"
+                        "DROP MATERIALIZED VIEW IF EXISTS %4$s CASCADE;\n"
+                        "DROP TABLE IF EXISTS %5$s CASCADE;\n"
+                        "DROP TABLE IF EXISTS %6$s CASCADE;\n"
+                        "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%1$s\" FROM \"%7$s\";\n"
+                        "REVOKE ALL PRIVILEGES ON SCHEMA \"%1$s\" FROM \"%7$s\";\n"
+                        "REVOKE USAGE ON SCHEMA \"%1$s\" FROM \"%7$s\";\n"
+                        "DROP USER IF EXISTS \"%7$s\";")
+                       schema-name
+                       qual-tbl-name
+                       qual-view-name
+                       qual-mview-name
+                       qual-tbl-partial-select-name
+                       qual-tbl-partial-update-name
+                       username)))))))))
