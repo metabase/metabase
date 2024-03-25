@@ -25,12 +25,12 @@ export function updateNativePermission(
     permission,
   );
 
-  if (value === "write" && schemasPermission !== "impersonated") {
+  if (value !== "no" && schemasPermission !== "impersonated") {
     permissions = updateSchemasPermission(
       permissions,
       groupId,
       { databaseId: entityId.databaseId },
-      "all",
+      "unrestricted",
       database,
       permission,
       false,
@@ -39,7 +39,9 @@ export function updateNativePermission(
   return updatePermission(
     permissions,
     groupId,
-    [entityId.databaseId, permission, "native"],
+    entityId.databaseId,
+    permission,
+    [],
     value,
   );
 }

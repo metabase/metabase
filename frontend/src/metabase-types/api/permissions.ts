@@ -58,7 +58,11 @@ export type DatabaseAccessPermissions = {
   schemas: SchemasPermissions;
 };
 
-export type NativePermissions = "write" | undefined;
+export type NativePermissions =
+  | "query-builder-and-native"
+  | "query-builder"
+  | "no"
+  | undefined;
 
 export type SchemasPermissions =
   | "all"

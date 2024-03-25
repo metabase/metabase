@@ -1,7 +1,6 @@
 import { getIn, setIn } from "icepick";
 import _ from "underscore";
 
-import { PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE } from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { GroupsPermissions, ConcreteTableId } from "metabase-types/api";
@@ -15,7 +14,7 @@ import type {
 } from "../../types";
 
 export const isRestrictivePermission = (value: string) =>
-  value === "block" || value === "none";
+  value === "blocked" || value === "no";
 
 // util to ease migration of perms attributes into a flatter structure
 function getPermissionPath(
@@ -31,8 +30,8 @@ function getPermissionPath(
   return [groupId, databaseId, permission, "schemas", ...(nestedPath || [])];
 }
 
-// TODO: add better typing
-const elludedDefaultValues: Record<DataPermission, string | undefined> = {
+// TODO: add better typing Record<DataPermission, string | undefined>
+const elludedDefaultValues: Record<string, string | undefined> = {
   "view-data": "blocked",
   "create-queries": "no",
 };
@@ -45,7 +44,7 @@ interface GetPermissionParams {
   permissions: GroupsPermissions;
   groupId: number;
   databaseId: number;
-  permission: string; // TODO: add better typing
+  permission: DataPermission; // TODO: add better typing
   path?: Array<number | string>;
   isControlledType?: boolean;
 }
@@ -70,7 +69,7 @@ export function updatePermission(
   permissions: GroupsPermissions,
   groupId: number,
   databaseId: number,
-  permission: string, // TODO: add better typing
+  permission: DataPermission, // TODO: add better typing
   path: Array<number | string>,
   value: string | undefined,
   entityIds?: any[],
@@ -121,7 +120,7 @@ export const getSchemasPermission = (
 export const getNativePermission = (
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: DatabaseEntityId,
+  entityId: any, // TODO: fix
 ) => {
   return getFieldsPermission(permissions, groupId, entityId, "create-queries");
 };
@@ -145,7 +144,6 @@ export const getTablesPermission = (
       permissions,
       databaseId,
       groupId,
-      databaseId,
       permission,
       path: _.compact([schemaName]),
       isControlledType: true,
@@ -206,28 +204,14 @@ export function downgradeNativePermissionsIfNeeded(
 
   if (isRestrictivePermission(value)) {
     // if changing schemas to none, downgrade native to none
-    return updateNativePermission(
-      permissions,
-      groupId,
-      { databaseId },
-      "none",
-      database,
-      permission,
-    );
+    return updateNativePermission(permissions, groupId, { databaseId }, "no");
   } else if (
     value === "controlled" &&
     currentSchemas === "all" &&
-    currentNative === "write"
+    currentNative !== "no"
   ) {
     // if changing schemas to controlled, downgrade native to none
-    return updateNativePermission(
-      permissions,
-      groupId,
-      { databaseId },
-      "none",
-      database,
-      permission,
-    );
+    return updateNativePermission(permissions, groupId, { databaseId }, "no");
   } else {
     return permissions;
   }
@@ -371,9 +355,7 @@ export function updateFieldsPermission(
     databaseId,
     permission,
     [schemaName, tableId],
-    ((PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE as any)[
-      value
-    ] as any) || value,
+    value,
   );
 
   return permissions;
@@ -452,31 +434,18 @@ export function updateSchemasPermission(
   );
 }
 
+// TODO: refactor
 export function updateNativePermission(
   permissions: GroupsPermissions,
   groupId: number,
   { databaseId }: DatabaseEntityId,
   value: any,
-  database: Database,
-  permission: DataPermission,
 ) {
-  // if enabling native query write access, give access to all schemas since they are equivalent
-  if (value === "write") {
-    permissions = updateSchemasPermission(
-      permissions,
-      groupId,
-      { databaseId },
-      "all",
-      database,
-      permission,
-      false,
-    );
-  }
   return updatePermission(
     permissions,
     groupId,
     databaseId,
-    permission,
+    "create-queries",
     [],
     value,
   );
