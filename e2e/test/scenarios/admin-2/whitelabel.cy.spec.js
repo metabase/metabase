@@ -152,7 +152,7 @@ describeEE("formatting > whitelabel", () => {
           /**
            * This makes sure we scroll to the component which sits at the bottom of the page.
            */
-          cy.findByLabelText("Login page").click();
+          cy.findByLabelText("Login and unsubscribe pages").click();
         });
         mantinePopover().findByText("Custom").click();
         cy.findByTestId("login-page-illustration-setting").within(() => {
@@ -176,7 +176,9 @@ describeEE("formatting > whitelabel", () => {
            *
            * 2. For some reason, `cy.findByLabelText("Login page").click()` doesn't work here.
            */
-          cy.findByRole("searchbox", { name: "Login page" }).click();
+          cy.findByRole("searchbox", {
+            name: "Login and unsubscribe pages",
+          }).click();
         });
         mantinePopover().findByText("Custom").click();
         cy.log("test uploading a corrupted file");
@@ -228,7 +230,7 @@ describeEE("formatting > whitelabel", () => {
 
         cy.log("test uploading a valid image file");
         cy.findByTestId("login-page-illustration-setting")
-          .findByRole("searchbox", { name: "Login page" })
+          .findByRole("searchbox", { name: "Login and unsubscribe pages" })
           .click();
         mantinePopover().findByText("Custom").click();
         cy.findByTestId("login-page-illustration-setting").within(() => {

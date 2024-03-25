@@ -209,7 +209,7 @@ if (hasPremiumFeature("whitelabel")) {
             tab: "conceal-metabase",
             display_name: (
               <IllustrationTitle
-                title={t`Login page`}
+                title={t`Login and unsubscribe pages`}
                 errorMessageContainerId="login-page-illustration-error-container"
               />
             ),
