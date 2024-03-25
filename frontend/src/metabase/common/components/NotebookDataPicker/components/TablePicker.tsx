@@ -8,11 +8,12 @@ import {
   type PickerState,
 } from "../../EntityPicker";
 import type {
-  DatabaseItem,
   NotebookDataPickerItem,
   NotebookDataPickerQuery,
+  NotebookDataPickerValueItem,
+  Value,
 } from "../types";
-import { isFolder } from "../utilts";
+import { generateKey, isFolder } from "../utilts";
 
 import { NotebookDataItemPickerResolver } from "./NotebookDataItemPickerResolver";
 // import { getCollectionIdPath, isFolder } from "./utils";
@@ -29,27 +30,10 @@ const defaultOptions: TablePickerOptions = {
 };
 
 interface Props {
-  onItemSelect: (item: NotebookDataPickerItem) => void;
-  initialValue?: Partial<NotebookDataPickerItem>;
+  initialValue: Value | null;
   options?: TablePickerOptions;
+  onItemSelect: (item: NotebookDataPickerValueItem) => void;
 }
-
-const getStateFromIdPath = (
-  idPath: DatabaseItem['id'],
-): PickerState<NotebookDataPickerItem, NotebookDataPickerQuery> => {
-
-    const statePath: PickerState<CollectionPickerItem, SearchListQuery> = [
-      {
-        selectedItem: {
-          name: "",
-          model: "collection",
-          id: idPath[0],
-        },
-      },
-    ];
-
-  return statePath;
-};
 
 export const TablePicker = forwardRef(function TablePicker(
   { onItemSelect, initialValue, options = defaultOptions }: Props,
@@ -57,12 +41,11 @@ export const TablePicker = forwardRef(function TablePicker(
 ) {
   const [path, setPath] = useState<
     PickerState<NotebookDataPickerItem, NotebookDataPickerQuery>
-  >(
-    getStateFromIdPath({
-      idPath: ["root"],
-      namespace: options.namespace,
-    }),
-  );
+  >([
+    {
+      selectedItem: null,
+    },
+  ]);
 
   const onFolderSelect = useCallback(
     ({ folder }: { folder: NotebookDataPickerItem }) => {
@@ -121,6 +104,7 @@ export const TablePicker = forwardRef(function TablePicker(
 
   return (
     <NestedItemPicker
+      generateKey={generateKey}
       isFolder={isFolder}
       itemName={t`table`}
       listResolver={NotebookDataItemPickerResolver}
@@ -128,7 +112,6 @@ export const TablePicker = forwardRef(function TablePicker(
       path={path}
       onFolderSelect={onFolderSelect}
       onItemSelect={onItemSelect}
-      generateKey={JSON.stringify} // TODO ?
     />
   );
 });
