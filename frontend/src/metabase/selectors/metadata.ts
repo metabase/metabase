@@ -41,21 +41,32 @@ type FieldSelectorOpts = {
 
 export type MetadataSelectorOpts = TableSelectorOpts & FieldSelectorOpts;
 
-const getApiNormalizedDatabases = createSelector(
-  (state: State) => databaseApi.endpoints.listDatabases.select()(state as any),
-  ({ data: databases = [] }): Record<string, NormalizedDatabase> => {
+const getApiDatabases = createSelector(
+  (state: State) => state,
+  (_state: State) => databaseApi.endpoints.listDatabases.select(),
+  (state, selector) => {
+    const { data } = selector(state as any);
+    return data?.data;
+  },
+);
+
+const getNormalizedApiDatabases = createSelector(
+  getApiDatabases,
+  (databases = []) => {
     const { entities } = normalize(databases, [DatabaseSchema]);
     return entities.databases as Record<string, NormalizedDatabase>;
   },
 );
 
 const getNormalizedDatabases = createSelector(
-  (state: State) => getApiNormalizedDatabases(state),
+  (state: State) => getNormalizedApiDatabases(state),
   (state: State) => state.entities.databases,
-  (apiDatabases, entityFrameworkDatabases) => ({
-    ...apiDatabases,
-    ...entityFrameworkDatabases,
-  }),
+  (apiDatabases, entityFrameworkDatabases) => {
+    return {
+      ...apiDatabases,
+      ...entityFrameworkDatabases,
+    };
+  },
 );
 
 const getNormalizedSchemas = (state: State) => state.entities.schemas;

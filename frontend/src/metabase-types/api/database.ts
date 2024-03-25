@@ -106,3 +106,8 @@ export interface SavedQuestionDatabase {
   name: "Saved Questions";
   is_saved_questions: true;
 }
+
+export interface DatabaseResult {
+  data: Database[];
+  total: number;
+}
