@@ -199,12 +199,14 @@ export class AlertEducationalScreen extends Component {
       <div className={cx("pt2", "pb4", "ml-auto", "mr-auto", CS.textCentered)}>
         <div className="pt4">
           <h1 className="mb1 text-dark">{t`The wide world of alerts`}</h1>
-          <h3 className="mb4 text-normal text-dark">{t`There are a few different kinds of alerts you can get`}</h3>
+          <h3
+            className={cx("mb4", CS.textNormal, "text-dark")}
+          >{t`There are a few different kinds of alerts you can get`}</h3>
         </div>
         {
           // @mazameli: needed to do some negative margin spacing to match the designs
         }
-        <div className="text-normal pt3">
+        <div className={cx(CS.textNormal, "pt3")}>
           <div
             className={cx(CS.relative, CS.flex, CS.alignCenter, CS.pr4)}
             style={{ marginLeft: -80 }}

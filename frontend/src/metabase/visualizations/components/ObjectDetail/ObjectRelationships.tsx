@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { inflect } from "inflection";
 import { jt, t } from "ttag";
 
@@ -94,7 +95,7 @@ function Relationship({
 
   const via =
     fkCount > 1 ? (
-      <span className="text-medium text-normal">
+      <span className={cx("text-medium", CS.textNormal)}>
         {" "}
         {t`via ${fk.origin?.displayName()}`}
       </span>
