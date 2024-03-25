@@ -6,6 +6,7 @@ import type {
   CardDisplayType,
   DatasetColumn,
   DatasetData,
+  RawSeries,
   SeriesOrderSetting,
 } from "metabase-types/api";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
@@ -172,6 +173,20 @@ export const getDefaultXAxisScale = (
     return "linear";
   }
   return "ordinal";
+};
+
+const WATERFALL_UNSUPPORTED_X_AXIS_SCALES = ["pow", "log"];
+export const isXAxisScaleValid = (
+  series: RawSeries,
+  settings: ComputedVisualizationSettings,
+) => {
+  const isWaterfall = series[0].card.display === "waterfall";
+  const xAxisScale = settings["graph.x_axis.scale"];
+  return (
+    !isWaterfall ||
+    xAxisScale == null ||
+    !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale)
+  );
 };
 
 export const getDefaultGoalLabel = () => t`Goal`;
