@@ -1105,9 +1105,9 @@
   at least some of its tables?)"
   [database-id schema-name]
   (or
-   (and (= :unrestricted (data-perms/database-permission-for-user api/*current-user-id*
-                                                                  :perms/view-data
-                                                                  database-id))
+   (and (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id*
+                                                                 :perms/view-data
+                                                                 database-id))
         (contains? #{:query-builder :query-builder-and-native}
                    (data-perms/schema-permission-for-user api/*current-user-id*
                                                           :perms/create-queries

@@ -173,7 +173,7 @@
           (throw (perms-exception {db-id {:perms/native-query-editing :yes}}))))
     (when (= (:perms/view-data required-perms) :unrestricted)
       (or (= (:perms/view-data gtap-perms) :unrestricted)
-          (data-perms/user-has-permission-for-database? api/*current-user-id* :perms/view-data :unrestricted db-id)
+          (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id* :perms/view-data db-id))
           (throw (perms-exception {db-id {:perms/view-data :unrestricted}}))))
     (when-let [table-id->perm (and (coll? (:perms/create-queries required-perms))
                                    (:perms/create-queries required-perms))]

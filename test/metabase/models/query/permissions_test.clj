@@ -251,7 +251,8 @@
     (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           venues            (lib.metadata/table metadata-provider (mt/id :venues))
           query             (lib/query metadata-provider venues)]
-      (is (= {:perms/data-access {(mt/id :venues) :unrestricted}}
+      (is (= {:perms/view-data :unrestricted
+              :perms/create-queries {(mt/id :venues) :query-builder}}
              (query-perms/required-perms query))))))
 
 (deftest ^:parallel pmbql-native-query-test
@@ -259,5 +260,6 @@
     (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           query             (lib/query metadata-provider {:lib/type :mbql.stage/native
                                                           :native   "SELECT *;"})]
-      (is (= {:perms/native-query-editing :yes}
+      (is (= {:perms/view-data :unrestricted
+              :perms/create-queries :query-builder-and-native}
              (query-perms/required-perms query))))))

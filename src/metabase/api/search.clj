@@ -355,11 +355,12 @@
   [_archived instance]
   ;; we've already filtered out tables w/o collection permissions in the query itself.
   (and
-   (data-perms/user-has-permission-for-database?
+   (data-perms/user-has-permission-for-table?
     api/*current-user-id*
     :perms/view-data
     :unrestricted
-    (database/table-id->database-id (:id instance)))
+    (database/table-id->database-id (:id instance))
+    (:id instance))
    (data-perms/user-has-permission-for-table?
     api/*current-user-id*
     :perms/create-queries
@@ -372,7 +373,8 @@
   (and
    (= :query-builder-and-native
       (data-perms/full-db-permission-for-user api/*current-user-id* :perms/create-queries (:database_id instance)))
-   (data-perms/user-has-permission-for-database? api/*current-user-id* :perms/view-data :unrestricted (:database_id instance))))
+   (= :unrestricted
+      (data-perms/full-db-permission-for-user api/*current-user-id* :perms/view-data (:database_id instance)))))
 
 (defmethod check-permissions-for-model :metric
   [archived? instance]

@@ -63,7 +63,7 @@
   ([_model pk]
    (if (should-read-audit-db? pk)
      false
-     (and (= :unrestricted (data-perms/database-permission-for-user
+     (and (= :unrestricted (data-perms/full-db-permission-for-user
                             api/*current-user-id*
                             :perms/view-data
                             pk))

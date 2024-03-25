@@ -94,11 +94,12 @@
 
 (defmethod mi/can-read? :model/Table
   ([instance]
-   (and (data-perms/user-has-permission-for-database?
+   (and (data-perms/user-has-permission-for-table?
          api/*current-user-id*
          :perms/view-data
          :unrestricted
-         (:db_id instance))
+         (:db_id instance)
+         (:id instance))
         (data-perms/user-has-permission-for-table?
          api/*current-user-id*
          :perms/create-queries

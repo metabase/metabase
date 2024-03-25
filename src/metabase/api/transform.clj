@@ -15,9 +15,9 @@
    schema         ms/NonBlankString
    transform-name ms/NonBlankString}
   (api/check-403
-   (and (= (data-perms/database-permission-for-user api/*current-user-id*
-                                                    :perms/view-data
-                                                    db-id)
+   (and (= (data-perms/full-db-permission-for-user api/*current-user-id*
+                                                   :perms/view-data
+                                                   db-id)
            :unrestricted)
         (contains? #{:query-builder-and-native :query-builder}
                    (data-perms/full-schema-permission-for-user api/*current-user-id*

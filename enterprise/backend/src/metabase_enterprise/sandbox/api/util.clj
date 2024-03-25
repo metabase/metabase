@@ -16,7 +16,11 @@
   [group-id->sandboxes {:as _sandbox :keys [group_id table_id] {:keys [db_id]} :table}]
   (let [group-id->sandboxes (dissoc group-id->sandboxes group_id)]
     (not-any? (fn [[other-group-id other-group-sandboxes]]
-                (and (data-perms/group-has-permission-for-database? other-group-id :perms/view-data :unrestricted db_id)
+                (and (data-perms/group-has-permission-for-table? other-group-id
+                                                                 :perms/view-data
+                                                                 :unrestricted
+                                                                 db_id
+                                                                 table_id)
                      (not-any? (fn [sandbox] (= (:table_id sandbox) table_id)) other-group-sandboxes)))
               group-id->sandboxes)))
 
