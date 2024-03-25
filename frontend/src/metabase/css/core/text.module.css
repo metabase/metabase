@@ -59,11 +59,6 @@
   line-height: 1.5em;
 }
 
-:global(.text-unspaced),
-.text-unspaced {
-  line-height: normal;
-}
-
 :global(.text-small) {
   font-size: 0.875em;
 }
