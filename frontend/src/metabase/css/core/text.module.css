@@ -103,6 +103,6 @@
   max-width: 620px;
 }
 
-:global(.break-anywhere) {
+.breakAnywhere {
   line-break: anywhere;
 }
