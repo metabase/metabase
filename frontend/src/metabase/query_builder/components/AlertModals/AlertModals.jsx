@@ -241,7 +241,7 @@ export class AlertEducationalScreen extends Component {
               "
             />
             <p
-              className="mr2 text-right"
+              className={cx("mr2", CS.textRight)}
               style={textStyle}
             >{jt`When a line or bar ${(
               <strong>{t`crosses a goal line`}</strong>

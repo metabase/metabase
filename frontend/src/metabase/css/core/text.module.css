@@ -12,7 +12,6 @@
   text-align: left;
 }
 
-:global(.text-right),
 .text-right {
   text-align: right;
 }

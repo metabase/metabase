@@ -103,7 +103,7 @@ const PeopleListRow = ({
           <td>
             {user.last_login ? moment(user.last_login).fromNow() : t`Never`}
           </td>
-          <td className="text-right">
+          <td className={CS.textRight}>
             {isAdmin && (
               <EntityMenu
                 triggerIcon="ellipsis"

@@ -163,7 +163,7 @@ function EditingGroupRow({
         />
       </td>
       <td />
-      <td className="text-right">
+      <td className={CS.textRight}>
         <span
           className="link no-decoration cursor-pointer"
           onClick={onCancelClicked}
@@ -228,7 +228,7 @@ function GroupRow({
         {group.member_count || 0}
         <ApiKeyCount apiKeys={apiKeys} />
       </td>
-      <td className="text-right">
+      <td className={CS.textRight}>
         {showActionsButton ? (
           <ActionsPopover
             group={group}
