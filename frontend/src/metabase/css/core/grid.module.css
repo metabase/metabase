@@ -14,10 +14,10 @@
   flex: 0 0 50%;
 }
 
-:global(.Grid--gutters) {
+.GridGutters {
   margin: -1em 0 1em -1em;
 }
 
-:global(.Grid--gutters > .Grid-cell) {
+.GridGutters > .GridCell {
   padding: 1em 0 0 1em;
 }
