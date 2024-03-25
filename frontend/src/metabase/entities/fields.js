@@ -44,6 +44,9 @@ export const ADD_REMAPPINGS = "metabase/entities/fields/ADD_REMAPPINGS";
 export const ADD_PARAM_VALUES = "metabase/entities/fields/ADD_PARAM_VALUES";
 export const ADD_FIELDS = "metabase/entities/fields/ADD_FIELDS";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Fields = createEntity({
   name: "fields",
   path: "/api/field",
