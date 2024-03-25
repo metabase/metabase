@@ -13,10 +13,10 @@ function LogoBadge({
   variant?: Variant;
 }) {
   const logoSize = variant === "large" ? 42 : 28;
-  const Metabase = (
+  const Torch = (
     // eslint-disable-next-line no-literal-metabase-strings -- This embedding badge which we don't want to show the whitelabeled name
     <MetabaseName key="metabase" isDark={dark} variant={variant}>
-      Metabase
+      Torch
     </MetabaseName>
   );
   return (
@@ -26,7 +26,7 @@ function LogoBadge({
       variant={variant}
     >
       <LogoIcon height={logoSize} dark={dark} />
-      <Message variant={variant}>{jt`Powered by ${Metabase}`}</Message>
+      <Message variant={variant}>{jt`Powered by ${Torch}`}</Message>
     </MetabaseLink>
   );
 }

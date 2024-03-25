@@ -12,11 +12,11 @@ export const BillingGoToStore = () => {
   return (
     <>
       <SectionHeader>{t`Billing`}</SectionHeader>
-      {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
-      <Text color="text-md">{t`Manage your Cloud account, including billing preferences, in your Metabase Store account.`}</Text>
+      {/* eslint-disable-next-line no-literal-metabase-strings -- Torch settings */}
+      <Text color="text-md">{t`Manage your Cloud account, including billing preferences, in your Torch Store account.`}</Text>
       <StoreButtonLink href={url}>
-        {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
-        {t`Go to the Metabase Store`}
+        {/* eslint-disable-next-line no-literal-metabase-strings -- Torch settings */}
+        {t`Go to the Torch Store`}
       </StoreButtonLink>
     </>
   );

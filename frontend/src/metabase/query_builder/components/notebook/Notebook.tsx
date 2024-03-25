@@ -64,7 +64,7 @@ const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
 
   // visualize switches the view to the question's visualization.
   async function visualize() {
-    // Only cleanup the question if it's dirty, otherwise Metabase
+    // Only cleanup the question if it's dirty, otherwise Torch
     // will incorrectly display the Save button, even though there are no changes to save.
     if (isDirty) {
       cleanupQuestion();

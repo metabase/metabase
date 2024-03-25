@@ -17,7 +17,7 @@ const DatabaseNameField = ({ engine }: DatabaseNameFieldProps): JSX.Element => {
       placeholder={t`Our ${name}`}
       rightIcon="info"
       // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
-      rightIconTooltip={t`Choose what this data will be called in Metabase.`}
+      rightIconTooltip={t`Choose what this data will be called in Torch.`}
     />
   );
 };

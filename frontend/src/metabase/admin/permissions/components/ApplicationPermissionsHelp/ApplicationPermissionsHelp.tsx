@@ -7,12 +7,12 @@ import { rem, Flex, Stack, Text, Title } from "metabase/ui";
 export const ApplicationPermissionsHelp = () => (
   <Flex direction="column" py={rem(22)} px="lg">
     <Title order={4}>{t`Applications permissions`}</Title>
-    <Text my="1rem">{t`People can be members of multiple groups, and Metabase grants them the most permissive level of access across all of a person's groups.`}</Text>
+    <Text my="1rem">{t`People can be members of multiple groups, and Torch grants them the most permissive level of access across all of a person's groups.`}</Text>
 
     <Title order={5}>{t`Applications permissions`}</Title>
 
     <Stack spacing={10} mt="sm">
-      <Text>{t`Application settings are useful for granting groups access to some, but not all, of Metabase’s administrative features.`}</Text>
+      <Text>{t`Application settings are useful for granting groups access to some, but not all, of Torch’s administrative features.`}</Text>
       <Text>
         {jt`${(
           <strong>{t`Settings:`}</strong>

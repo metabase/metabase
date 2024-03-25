@@ -39,7 +39,7 @@ export const Logs = ({ pollingDurationMs = 1000 }: LogsProps) => {
     <LogsContainer loading={!loaded} error={error}>
       {processUUIDs.length > 1 && (
         <div className="pb1">
-          <label>{t`Select Metabase process:`}</label>
+          <label>{t`Select Torch process:`}</label>
           <Select
             defaultValue="ALL"
             value={selectedProcessUUID}
@@ -50,7 +50,7 @@ export const Logs = ({ pollingDurationMs = 1000 }: LogsProps) => {
             className="inline-block ml1"
             width={400}
           >
-            <Option value="ALL" key="ALL">{t`All Metabase processes`}</Option>
+            <Option value="ALL" key="ALL">{t`All Torch processes`}</Option>
             {processUUIDs.map(uuid => (
               <Option key={uuid} value={uuid}>
                 <code>{uuid}</code>

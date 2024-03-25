@@ -1,6 +1,6 @@
 # #-#-#-#-#  metabase-backend.pot (1.0)  #-#-#-#-#
-# Copyright (C) 2022 Metabase <docs@metabase.com>
-# This file is distributed under the same license as the Metabase package
+# Copyright (C) 2022 Torch <docs@metabase.com>
+# This file is distributed under the same license as the Torch package
 #, fuzzy
 msgid ""
 msgstr ""
@@ -93,7 +93,7 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCacheTimeField/DatabaseCacheTimeField.tsx:52
 #, javascript-format
 msgid ""
-"How long to keep question results. By default, Metabase will use the value "
+"How long to keep question results. By default, Torch will use the value "
 "you supply on the {0}, but if this database has other factors that influence "
 "the freshness of data, it could make sense to set a custom duration. You can "
 "also choose custom durations on individual questions or dashboards to help "
@@ -152,7 +152,7 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/collections/components/CollectionInstanceAnalyticsIcon.tsx:37
 #, javascript-format
-msgid "This is a read-only Metabase Analytics {0}."
+msgid "This is a read-only Torch Analytics {0}."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/collections/components/FormCollectionAuthorityLevel.tsx:34
@@ -462,7 +462,7 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/settings/hooks/use-license.ts:10
 msgid ""
 "We're having trouble validating your token. Please double-check that your "
-"instance can connect to Metabase's servers."
+"instance can connect to Torch's servers."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/snippets/components/SnippetCollectionFormModal.tsx:25
@@ -568,7 +568,7 @@ msgid "Something went wrong"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/HelpLinkSettings/HelpLinkSettings.tsx:63
-msgid "Link to Metabase help"
+msgid "Link to Torch help"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/HelpLinkSettings/HelpLinkSettings.tsx:64
@@ -611,7 +611,7 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleDescription.tsx:18
 msgid ""
 "This affects all links in the product experience (outside of the admin "
-"panel) that point to Metabase.com URLs."
+"panel) that point to Torch.com URLs."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleDescription.tsx:39
@@ -629,7 +629,7 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleDescription.tsx:7
 #, javascript-format
 msgid ""
-"Control the visibility of links to Metabase documentation and Metabase "
+"Control the visibility of links to Torch documentation and Torch "
 "references in your instance. {0}"
 msgstr ""
 
@@ -1010,7 +1010,7 @@ msgid "Tired of manually managing people and groups?"
 msgstr ""
 
 #: frontend/src/metabase/admin/people/components/NudgeToPro.tsx:18
-msgid "Get single-sign on (SSO) via SAML, JWT, or LDAP with Metabase Pro"
+msgid "Get single-sign on (SSO) via SAML, JWT, or LDAP with Torch Pro"
 msgstr ""
 
 #: frontend/src/metabase/admin/app/reducers.ts:35
@@ -1039,7 +1039,7 @@ msgstr ""
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsHelp/CollectionPermissionsHelp.tsx:11
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx:20
 msgid ""
-"People can be members of multiple groups, and Metabase grants them the most "
+"People can be members of multiple groups, and Torch grants them the most "
 "permissive level of access across all of a person's groups."
 msgstr ""
 
@@ -1070,8 +1070,8 @@ msgstr ""
 
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx:50
 msgid ""
-"Impersonation associates a Metabase group with database-defined roles and "
-"their privileges. Metabase queries made by this group will respect the "
+"Impersonation associates a Torch group with database-defined roles and "
+"their privileges. Torch queries made by this group will respect the "
 "grants given to the database roles. You can use impersonation to give a "
 "group access to the native/SQL editor, while restricting the group's access "
 "to data based on a specific database role."
@@ -1278,7 +1278,7 @@ msgstr ""
 #: frontend/src/metabase/admin/permissions/constants/messages.ts:3
 msgid ""
 "Administrators always have the highest level of access to everything in "
-"Metabase."
+"Torch."
 msgstr ""
 
 #: frontend/src/metabase/admin/permissions/constants/messages.ts:4
@@ -1286,7 +1286,7 @@ msgid "Native query editor access requires full data access."
 msgstr ""
 
 #: frontend/src/metabase/admin/permissions/constants/messages.ts:7
-msgid "Only available in certain Metabase plans."
+msgid "Only available in certain Torch plans."
 msgstr ""
 
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsHelp/CollectionPermissionsHelp.tsx:10
@@ -1347,8 +1347,8 @@ msgstr ""
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:68
 #: frontend/src/metabase/admin/settings/auth/containers/GoogleAuthCard/GoogleAuthCard.tsx:19
 msgid ""
-"Allows users with existing Metabase accounts to login with a Google account "
-"that matches their email address in addition to their Metabase username and "
+"Allows users with existing Torch accounts to login with a Google account "
+"that matches their email address in addition to their Torch username and "
 "password."
 msgstr ""
 
@@ -2278,7 +2278,7 @@ msgstr ""
 
 #: frontend/src/metabase/databases/components/DatabaseCacheScheduleField/DatabaseCacheScheduleField.tsx:91
 msgid ""
-"When a user adds a new filter to a dashboard or a SQL question, Metabase "
+"When a user adds a new filter to a dashboard or a SQL question, Torch "
 "will scan the field(s) mapped to that filter in order to show the list of "
 "selectable values."
 msgstr ""
@@ -2331,12 +2331,12 @@ msgid "find it here"
 msgstr ""
 
 #: frontend/src/metabase/databases/components/DatabaseEngineWarning/DatabaseEngineWarning.tsx:110
-msgid "This is a community-developed driver and not supported by Metabase. "
+msgid "This is a community-developed driver and not supported by Torch. "
 msgstr ""
 
 #: frontend/src/metabase/databases/components/DatabaseEngineWarning/DatabaseEngineWarning.tsx:138
 msgid ""
-"This is a partner-developed driver. Though Metabase can’t provide support "
+"This is a partner-developed driver. Though Torch can’t provide support "
 "for it, if you need help you can contact the fine folks at "
 msgstr ""
 
@@ -2415,7 +2415,7 @@ msgstr ""
 
 #: frontend/src/metabase/databases/components/DatabaseSyncModal/DatabaseSyncModal.tsx:37
 msgid ""
-"Have a look around your Metabase in the meantime if you want to get a head "
+"Have a look around your Torch in the meantime if you want to get a head "
 "start."
 msgstr ""
 
@@ -2436,7 +2436,7 @@ msgid "An error occurred"
 msgstr ""
 
 #: frontend/src/metabase/home/components/EmbedMinimalHomepage/EmbedMinimalHomepage.tsx:36
-msgid "Get started with Embedding Metabase in your app"
+msgid "Get started with Embedding Torch in your app"
 msgstr ""
 
 #: frontend/src/metabase/home/components/EmbedMinimalHomepage/EmbedMinimalHomepage.tsx:40
@@ -2690,7 +2690,7 @@ msgid "Navigation bar"
 msgstr ""
 
 #: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:47
-msgid "Metabase Admin"
+msgid "Torch Admin"
 msgstr ""
 
 #: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:69
@@ -2707,7 +2707,7 @@ msgid "Open sidebar"
 msgstr ""
 
 #: frontend/src/metabase/nav/components/DatabasePromptBanner/DatabasePromptBanner.tsx:41
-msgid "Connect to your database to get the most from Metabase."
+msgid "Connect to your database to get the most from Torch."
 msgstr ""
 
 #: frontend/src/metabase/nav/components/DatabasePromptBanner/DatabasePromptBanner.tsx:48
@@ -2723,7 +2723,7 @@ msgid "Explore paid features"
 msgstr ""
 
 #: frontend/src/metabase/nav/components/WhatsNewNotification/WhatsNewNotification.tsx:65
-msgid "Metabase has been updated"
+msgid "Torch has been updated"
 msgstr ""
 
 #: frontend/src/metabase/nav/components/WhatsNewNotification/WhatsNewNotification.tsx:75
@@ -3098,7 +3098,7 @@ msgstr ""
 #: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/AppearanceSettings.tsx:193
 #, javascript-format
 msgid ""
-"This banner appears on all static embeds created with the Metabase open "
+"This banner appears on all static embeds created with the Torch open "
 "source version. You’ll need to upgrade to {0} to remove the banner."
 msgstr ""
 
@@ -3694,7 +3694,7 @@ msgid "You're all set up!"
 msgstr ""
 
 #: frontend/src/metabase/setup/components/CompletedStep/CompletedStep.tsx:33
-msgid "Take me to Metabase"
+msgid "Take me to Torch"
 msgstr ""
 
 #: frontend/src/metabase/search/components/filters/LastEditedByFilter.tsx:12
@@ -3707,7 +3707,7 @@ msgstr ""
 
 #: frontend/src/metabase/setup/components/DataUsageStep/DataUsageStep.tsx:67
 msgid ""
-"In order to help us improve Metabase, we'd like to collect certain data "
+"In order to help us improve Torch, we'd like to collect certain data "
 "about product usage."
 msgstr ""
 
@@ -3716,12 +3716,12 @@ msgid "Here's a full list of what we track and why."
 msgstr ""
 
 #: frontend/src/metabase/setup/components/DataUsageStep/DataUsageStep.tsx:82
-msgid "Allow Metabase to anonymously collect usage events"
+msgid "Allow Torch to anonymously collect usage events"
 msgstr ""
 
 #: frontend/src/metabase/setup/components/DataUsageStep/DataUsageStep.tsx:87
 #, javascript-format
-msgid "Metabase {0} collects anything about your data or question results."
+msgid "Torch {0} collects anything about your data or question results."
 msgstr ""
 
 #: frontend/src/metabase/lib/settings.ts:280
@@ -3852,7 +3852,7 @@ msgid "I'll activate my commercial license later"
 msgstr ""
 
 #: frontend/src/metabase/setup/components/NewsletterForm/NewsletterForm.tsx:47
-msgid "Metabase Newsletter"
+msgid "Torch Newsletter"
 msgstr ""
 
 #: frontend/src/metabase/setup/components/NewsletterForm/NewsletterForm.tsx:51
@@ -3864,7 +3864,7 @@ msgid "Subscribe"
 msgstr ""
 
 #: frontend/src/metabase/setup/components/NewsletterForm/NewsletterForm.tsx:74
-msgid "You're subscribed. Thanks for using Metabase!"
+msgid "You're subscribed. Thanks for using Torch!"
 msgstr ""
 
 #: frontend/src/metabase/setup/components/LanguageStep/LanguageStep.tsx:53
@@ -3878,7 +3878,7 @@ msgstr ""
 
 #: frontend/src/metabase/setup/components/LanguageStep/LanguageStep.tsx:65
 msgid ""
-"This language will be used throughout Metabase and will be the default for "
+"This language will be used throughout Torch and will be the default for "
 "new users."
 msgstr ""
 
@@ -3934,7 +3934,7 @@ msgid "Department of Awesome"
 msgstr ""
 
 #: frontend/src/metabase/setup/components/WelcomePage/WelcomePage.tsx:42
-msgid "Welcome to Metabase"
+msgid "Welcome to Torch"
 msgstr ""
 
 #: frontend/src/metabase/setup/components/WelcomePage/WelcomePage.tsx:44
@@ -4549,7 +4549,7 @@ msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidget.jsx:121
 msgid ""
-"Mappings allow Metabase to automatically add and remove users from groups "
+"Mappings allow Torch to automatically add and remove users from groups "
 "based on the membership information provided by the directory server. If a "
 "group isn‘t mapped, its membership won‘t be synced."
 msgstr ""
@@ -4949,11 +4949,11 @@ msgid ""
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx:62
-msgid "What should happen with the groups themselves in Metabase?"
+msgid "What should happen with the groups themselves in Torch?"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx:63
-msgid "What should happen with the group itself in Metabase?"
+msgid "What should happen with the group itself in Torch?"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx:68
@@ -5405,7 +5405,7 @@ msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:123
 #: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:16
-msgid "Migrate to Metabase Cloud."
+msgid "Migrate to Torch Cloud."
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/SettingToggle.jsx:28
@@ -5425,17 +5425,17 @@ msgstr ""
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:41
 #, javascript-format
 msgid ""
-"Metabase Cloud keeps your instance up-to-date. You're currently on version "
+"Torch Cloud keeps your instance up-to-date. You're currently on version "
 "{0}. Thanks for being a customer!"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:56
 #, javascript-format
-msgid "You're running Metabase {0} which is the latest and greatest!"
+msgid "You're running Torch {0} which is the latest and greatest!"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:76
-msgid "Metabase {0} is available."
+msgid "Torch {0} is available."
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:77
@@ -5639,7 +5639,7 @@ msgid "Visibility"
 msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:148
-msgid "Where this field will appear throughout Metabase"
+msgid "Where this field will appear throughout Torch"
 msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:170
@@ -5695,7 +5695,7 @@ msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:335
 msgid ""
-"Metabase can scan the values for this field to enable checkbox filters in "
+"Torch can scan the values for this field to enable checkbox filters in "
 "dashboards and questions."
 msgstr ""
 
@@ -6010,7 +6010,7 @@ msgstr ""
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:71
 #, javascript-format
 msgid ""
-"To allow users to sign in with Google you'll need to give Metabase a Google "
+"To allow users to sign in with Google you'll need to give Torch a Google "
 "Developers console application client ID. It only takes a few steps and "
 "instructions on how to create a key can be found {0}."
 msgstr ""
@@ -6046,7 +6046,7 @@ msgstr ""
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/EmbeddingOption.tsx:61
 #, javascript-format
 msgid ""
-"A \"powered by Metabase\" banner appears on static embeds. You can {0} to "
+"A \"powered by Torch\" banner appears on static embeds. You can {0} to "
 "remove it."
 msgstr ""
 
@@ -6200,7 +6200,7 @@ msgstr ""
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:51
 #: frontend/src/metabase/admin/settings/slack/components/SlackStatus/SlackStatus.tsx:54
-msgid "Metabase on Slack"
+msgid "Torch on Slack"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:55
@@ -6214,7 +6214,7 @@ msgid "upgrade to Slack Apps"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:61
-msgid "Bring the power of Metabase to your Slack #channels."
+msgid "Bring the power of Torch to your Slack #channels."
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:62
@@ -6228,7 +6228,7 @@ msgstr ""
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:103
 #, javascript-format
 msgid ""
-"First, {0} using the Metabase configuration. Once created, click “${ 1 }” to "
+"First, {0} using the Torch configuration. Once created, click “${ 1 }” to "
 "authorize it."
 msgstr ""
 
@@ -6342,7 +6342,7 @@ msgstr ""
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/InteractiveEmbeddingCTA/InteractiveEmbeddingCTA.tsx:34
 msgid ""
-"Give your customers the full power of Metabase in your own app, with SSO, "
+"Give your customers the full power of Torch in your own app, with SSO, "
 "advanced permissions, customization, and more."
 msgstr ""
 
@@ -6509,7 +6509,7 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/index.js:102
 msgid ""
-"When a user logs in via SAML, create a Metabase account for them "
+"When a user logs in via SAML, create a Torch account for them "
 "automatically if they don't have one."
 msgstr ""
 
@@ -6581,7 +6581,7 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/index.js:195
 msgid ""
-"When a user logs in via JWT, create a Metabase account for them "
+"When a user logs in via JWT, create a Torch account for them "
 "automatically if they don't have one."
 msgstr ""
 
@@ -6626,7 +6626,7 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:51
 msgid ""
 "Never allows cookies to be sent on a cross-site request. Warning: this will "
-"prevent users from following external links to Metabase."
+"prevent users from following external links to Torch."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:56
@@ -6728,7 +6728,7 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:65
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:131
-msgid "Conceal Metabase"
+msgid "Conceal Torch"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:76
@@ -6759,7 +6759,7 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:143
 msgid ""
-"Hide or customize pieces of the Metabase product to tailor the experience to "
+"Hide or customize pieces of the Torch product to tailor the experience to "
 "your brand and needs"
 msgstr ""
 
@@ -6774,7 +6774,7 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:157
 msgid ""
 "Control the display of homepage visuals and greeting message plus other "
-"Metabase elements such as links to Metabase documentation and Metabase "
+"Torch elements such as links to Torch documentation and Torch "
 "references in your instance."
 msgstr ""
 
@@ -6784,7 +6784,7 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:179
 #, javascript-format
-msgid "Show links and references to Metabase {0}"
+msgid "Show links and references to Torch {0}"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:193
@@ -7031,7 +7031,7 @@ msgid "Map tile server URL"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/selectors.js:304
-msgid "Metabase uses OpenStreetMaps by default."
+msgid "Torch uses OpenStreetMaps by default."
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/selectors.js:309
@@ -7225,7 +7225,7 @@ msgstr ""
 #, javascript-format
 msgid ""
 "Enabling cache will create tables for your models in a dedicated schema and "
-"Metabase will refresh them on a schedule. Questions based on your models "
+"Torch will refresh them on a schedule. Questions based on your models "
 "will query these tables. {0}."
 msgstr ""
 
@@ -7296,7 +7296,7 @@ msgid "Getting set up"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/setup/components/SetupCheckList/SetupCheckList.jsx:125
-msgid "A few things you can do to get the most out of Metabase."
+msgid "A few things you can do to get the most out of Torch."
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/setup/components/SetupCheckList/SetupCheckList.jsx:134
@@ -10139,13 +10139,13 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/BillingInfo/BillingGoToStore.tsx:16
 msgid ""
-"Manage your Cloud account, including billing preferences, in your Metabase "
+"Manage your Cloud account, including billing preferences, in your Torch "
 "Store account."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/hosting/components/SettingsCloudStoreLink/SettingsCloudStoreLink.tsx:16
 #: enterprise/frontend/src/metabase-enterprise/license/components/BillingInfo/BillingGoToStore.tsx:19
-msgid "Go to the Metabase Store"
+msgid "Go to the Torch Store"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/moderation/utils.ts:9
@@ -10409,7 +10409,7 @@ msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx:74
 msgid ""
-"We don't version the Metabase API. We rarely change API endpoints, and "
+"We don't version the Torch API. We rarely change API endpoints, and "
 "almost never remove them, but if you write code that relies on the API, "
 "there's a chance you might have to update your code in the future."
 msgstr ""
@@ -10906,7 +10906,7 @@ msgid "Our {0}"
 msgstr ""
 
 #: frontend/src/metabase/databases/components/DatabaseNameField/DatabaseNameField.tsx:20
-msgid "Choose what this data will be called in Metabase."
+msgid "Choose what this data will be called in Torch."
 msgstr ""
 
 #: frontend/src/metabase/databases/components/DatabaseSshDescription/DatabaseSshDescription.tsx:12
@@ -11222,11 +11222,11 @@ msgstr ""
 
 #: frontend/src/metabase/setup/components/UsageQuestionStep/UsageQuestionStep.tsx:44
 #: frontend/src/metabase/setup/components/UsageQuestionStep/UsageQuestionStep.tsx:57
-msgid "What will you use Metabase for?"
+msgid "What will you use Torch for?"
 msgstr ""
 
 #: frontend/src/metabase/setup/components/UsageQuestionStep/UsageQuestionStep.tsx:67
-msgid "Let us know your plans with Metabase so that we can best guide you"
+msgid "Let us know your plans with Torch so that we can best guide you"
 msgstr ""
 
 #: frontend/src/metabase/setup/components/UsageQuestionStep/UsageQuestionStep.tsx:73
@@ -12241,7 +12241,7 @@ msgid ""
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined "
-"in your Metabase localization settings."
+"in your Torch localization settings."
 msgstr ""
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:841
@@ -12578,7 +12578,7 @@ msgid "Server logs from the current user only"
 msgstr ""
 
 #: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:120
-msgid "Metabase instance version and settings"
+msgid "Torch instance version and settings"
 msgstr ""
 
 #: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:124
@@ -13283,7 +13283,7 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/UnsubscribeUserForm/UnsubscribeUserForm.jsx:48
 msgid ""
 "This does not affect email distribution lists that are managed outside of "
-"Metabase."
+"Torch."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:85
@@ -13302,7 +13302,7 @@ msgid "Configure your identity provider (IdP)"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:106
-msgid "Your identity provider will need the following info about Metabase."
+msgid "Your identity provider will need the following info about Torch."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:110
@@ -13338,11 +13338,11 @@ msgid "User's last name attribute"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:141
-msgid "Tell Metabase about your identity provider"
+msgid "Tell Torch about your identity provider"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:143
-msgid "Metabase will need the following info about your provider."
+msgid "Torch will need the following info about your provider."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:147
@@ -13363,7 +13363,7 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:193
 msgid ""
-"To enable this, you'll need to create mappings to tell Metabase which "
+"To enable this, you'll need to create mappings to tell Torch which "
 "group(s) your users should\n"
 "be added to based on the SSO group they're in."
 msgstr ""
@@ -13582,12 +13582,12 @@ msgstr ""
 msgid ""
 "All users belong to the {0} group and can't be removed from it. Setting "
 "permissions for this group is a great way to\n"
-"make sure you know what new Metabase users will be able to see."
+"make sure you know what new Torch users will be able to see."
 msgstr ""
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:41
 msgid ""
-"This is a special group whose members can see everything in the Metabase "
+"This is a special group whose members can see everything in the Torch "
 "instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people "
 "to this group with care."
@@ -13595,7 +13595,7 @@ msgstr ""
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:45
 msgid ""
-"To make sure you don't get locked out of Metabase, there always has to be at "
+"To make sure you don't get locked out of Torch, there always has to be at "
 "least one user in this group."
 msgstr ""
 
@@ -14036,7 +14036,7 @@ msgstr ""
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:47
 msgid ""
 "Trying to get to the bottom of something? This section shows logs of "
-"Metabase's background tasks, which can help shed light on what's going on."
+"Torch's background tasks, which can help shed light on what's going on."
 msgstr ""
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:66
@@ -14089,7 +14089,7 @@ msgstr ""
 
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:40
 msgid ""
-"When a user logs in via LDAP, create a Metabase account for them "
+"When a user logs in via LDAP, create a Torch account for them "
 "automatically if they don't have one."
 msgstr ""
 
@@ -14954,7 +14954,7 @@ msgid "quarter"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx:81
-msgid "Map a Metabase user attribute to database users"
+msgid "Map a Torch user attribute to database users"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx:82
@@ -14963,14 +14963,14 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx:86
 msgid ""
-"When the person runs a query (including native queries), Metabase will "
+"When the person runs a query (including native queries), Torch will "
 "impersonate the privileges of the database user you associate with the user "
 "attribute."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx:88
 msgid ""
-"When the person runs a query (including native queries), Metabase will "
+"When the person runs a query (including native queries), Torch will "
 "impersonate the privileges of the database role you associate with the user "
 "attribute."
 msgstr ""
@@ -14998,14 +14998,14 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:22
 msgid ""
 "Make sure the main database credential has access to everything different "
-"user groups may need access to. It's what Metabase uses to sync table "
+"user groups may need access to. It's what Torch uses to sync table "
 "information."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:25
 #, javascript-format
 msgid ""
-"You’re connecting Metabase to the {0} database using the credentials for the "
+"You’re connecting Torch to the {0} database using the credentials for the "
 "Redshift user {1}. For impersonation to work,  {2} must be a superuser in "
 "Redshift."
 msgstr ""
@@ -15013,9 +15013,9 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:40
 #, javascript-format
 msgid ""
-"{0} is the database user Metabase is using to connect to your  {1} database. "
-"Make sure that {2} has access to everything in {3} that all Metabase groups "
-"may need access to, as that database user account is what Metabase uses to "
+"{0} is the database user Torch is using to connect to your  {1} database. "
+"Make sure that {2} has access to everything in {3} that all Torch groups "
+"may need access to, as that database user account is what Torch uses to "
 "sync table information."
 msgstr ""
 
@@ -15045,7 +15045,7 @@ msgstr ""
 msgid ""
 "Determines whether or not cookies are allowed to be sent on cross-site "
 "requests. You’ll likely need to change this to None if your embedding "
-"application is hosted under a different domain than Metabase. Otherwise, "
+"application is hosted under a different domain than Torch. Otherwise, "
 "leave it set to Lax, as it's more secure."
 msgstr ""
 
@@ -15080,7 +15080,7 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/hosting/components/SettingsCloudStoreLink/SettingsCloudStoreLink.tsx:13
 msgid ""
 "Manage your Cloud account, including billing preferences and technical "
-"settings about this instance in your Metabase Store account."
+"settings about this instance in your Torch Store account."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/BillingInfo/BillingInfoNotStoreManaged.tsx:11
@@ -15494,7 +15494,7 @@ msgstr ""
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:108
 msgid ""
-"Metabase can scan the values in this table to enable checkbox filters in "
+"Torch can scan the values in this table to enable checkbox filters in "
 "dashboards and questions."
 msgstr ""
 
@@ -15616,8 +15616,8 @@ msgstr ""
 
 #: frontend/src/metabase/admin/settings/auth/containers/LdapAuthCard/LdapAuthCard.tsx:14
 msgid ""
-"Allows users within your LDAP directory to log in to Metabase with their "
-"LDAP credentials, and allows automatic mapping of LDAP groups to Metabase "
+"Allows users within your LDAP directory to log in to Torch with their "
+"LDAP credentials, and allows automatic mapping of LDAP groups to Torch "
 "groups."
 msgstr ""
 
@@ -15632,7 +15632,7 @@ msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:74
 msgid ""
-"Metabase will replace the existing API key with a new key. You won't be able "
+"Torch will replace the existing API key with a new key. You won't be able "
 "to recover the old key."
 msgstr ""
 
@@ -15737,7 +15737,7 @@ msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsLicense/SettingsLicense.tsx:33
 msgid ""
-"Metabase is open source and will be free forever – but by upgrading you can "
+"Torch is open source and will be free forever – but by upgrading you can "
 "have priority support, more tools to help you share your insights with your "
 "teams and powerful options to help you create seamless, interactive data "
 "experiences for your customers."
@@ -15850,7 +15850,7 @@ msgstr ""
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettings.tsx:296
 #, javascript-format
 msgid ""
-"Metabase currently supports {0} for uploads and needs a connection with "
+"Torch currently supports {0} for uploads and needs a connection with "
 "write privileges."
 msgstr ""
 
@@ -15860,7 +15860,7 @@ msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingSwitchWidget/EmbeddingSwitchWidget.tsx:16
 msgid ""
-"Embed dashboards, questions, or the entire Metabase app into your "
+"Embed dashboards, questions, or the entire Torch app into your "
 "application. Integrate with your server code to create a secure environment, "
 "limited to specific users or organizations."
 msgstr ""
@@ -15937,11 +15937,11 @@ msgid "There's nothing here, yet."
 msgstr ""
 
 #: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:42
-msgid "Select Metabase process:"
+msgid "Select Torch process:"
 msgstr ""
 
 #: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:53
-msgid "All Metabase processes"
+msgid "All Torch processes"
 msgstr ""
 
 #: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:45
@@ -16496,10 +16496,10 @@ msgstr ""
 
 #: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx:45
 msgid ""
-"When you embed charts or dashboards from Metabase in your own application "
+"When you embed charts or dashboards from Torch in your own application "
 "that application isn't subject to the Affero General Public License that "
-"covers the rest of Metabase, provided you keep the Metabase logo and the "
-"\"Powered by Metabase\" visible on those embeds."
+"covers the rest of Torch, provided you keep the Torch logo and the "
+"\"Powered by Torch\" visible on those embeds."
 msgstr ""
 
 #: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx:48
@@ -17374,7 +17374,7 @@ msgstr ""
 
 #: metabase/analytics/snowplow.clj:131
 msgid ""
-"The approximate timestamp at which this instance of Metabase was created, "
+"The approximate timestamp at which this instance of Torch was created, "
 "for inclusion in analytics."
 msgstr ""
 
@@ -17388,7 +17388,7 @@ msgstr ""
 #: metabase/analytics/snowplow.clj:82
 msgid ""
 "Unique identifier to be used in Snowplow analytics, to identify this "
-"instance of Metabase. This is a public setting since some analytics events "
+"instance of Torch. This is a public setting since some analytics events "
 "are sent prior to initial setup."
 msgstr ""
 
@@ -18047,7 +18047,7 @@ msgid "Token does not match the setup token."
 msgstr ""
 
 #: metabase/api/setup.clj:294 metabase/email/messages.clj:57
-msgid "Metabase"
+msgid "Torch"
 msgstr ""
 
 #: metabase/api/setup.clj:94
@@ -18415,7 +18415,7 @@ msgid "Cannot resolve Field {0} in automagic analysis context"
 msgstr ""
 
 #: metabase/cmd.clj:51
-msgid "The ''{0}'' command is only available in Metabase Enterprise Edition."
+msgid "The ''{0}'' command is only available in Torch Enterprise Edition."
 msgstr ""
 
 #: metabase/cmd.clj:185
@@ -18529,11 +18529,11 @@ msgid ""
 msgstr ""
 
 #: metabase/core.clj:99
-msgid "Starting Metabase version {0} ..."
+msgid "Starting Torch version {0} ..."
 msgstr ""
 
 #: metabase/core.clj:51
-msgid "Metabase Enterprise Edition extensions are PRESENT."
+msgid "Torch Enterprise Edition extensions are PRESENT."
 msgstr ""
 
 #: metabase/core.clj:55
@@ -18542,32 +18542,32 @@ msgstr ""
 
 #: metabase/core.clj:53
 msgid ""
-"Usage of Metabase Enterprise Edition features are subject to the Metabase "
+"Usage of Torch Enterprise Edition features are subject to the Torch "
 "Commercial License."
 msgstr ""
 
 #: metabase/core.clj:56
-msgid "Metabase Enterprise Edition extensions are NOT PRESENT."
+msgid "Torch Enterprise Edition extensions are NOT PRESENT."
 msgstr ""
 
 #: metabase/core.clj:147
-msgid "Metabase Initialization COMPLETE in {0}"
+msgid "Torch Initialization COMPLETE in {0}"
 msgstr ""
 
 #: metabase/core.clj:161
-msgid "Starting Metabase in STANDALONE mode"
+msgid "Starting Torch in STANDALONE mode"
 msgstr ""
 
 #: metabase/core.clj:89
-msgid "Metabase Shutdown COMPLETE"
+msgid "Torch Shutdown COMPLETE"
 msgstr ""
 
 #: metabase/core.clj:71
-msgid "Please use the following URL to setup your Metabase installation:"
+msgid "Please use the following URL to setup your Torch installation:"
 msgstr ""
 
 #: metabase/core.clj:85
-msgid "Metabase Shutting Down ..."
+msgid "Torch Shutting Down ..."
 msgstr ""
 
 #: metabase/core.clj:115
@@ -18576,12 +18576,12 @@ msgstr ""
 
 #: metabase/core.clj:110
 msgid ""
-"Setting up and migrating Metabase DB. Please sit tight, this may take a "
+"Setting up and migrating Torch DB. Please sit tight, this may take a "
 "minute..."
 msgstr ""
 
 #: metabase/core.clj:171
-msgid "Metabase Initialization FAILED"
+msgid "Torch Initialization FAILED"
 msgstr ""
 
 #: metabase/core.clj:184
@@ -18671,7 +18671,7 @@ msgstr ""
 
 #: metabase/db/setup.clj:45
 msgid ""
-"NOTICE: Your database requires updates to work with this version of Metabase."
+"NOTICE: Your database requires updates to work with this version of Torch."
 msgstr ""
 
 #: metabase/db/setup.clj:137
@@ -18702,7 +18702,7 @@ msgid "Successfully verified {0} {1} application database connection."
 msgstr ""
 
 #: metabase/db/setup.clj:115
-msgid "Unable to connect to Metabase {0} DB."
+msgid "Unable to connect to Torch {0} DB."
 msgstr ""
 
 #: metabase/db/setup.clj:43
@@ -18797,7 +18797,7 @@ msgstr ""
 
 #: metabase/driver/common.clj:141
 msgid ""
-"By default, Metabase does a lightweight hourly sync and an intensive daily "
+"By default, Torch does a lightweight hourly sync and an intensive daily "
 "scan of field values. If you have a large database, turn this on to make "
 "changes."
 msgstr ""
@@ -18810,7 +18810,7 @@ msgstr ""
 
 #: metabase/driver/common.clj:183
 msgid ""
-"This enables Metabase to scan for additional field values during syncs "
+"This enables Torch to scan for additional field values during syncs "
 "allowing smarter behavior, like improved auto-binning on your bar charts."
 msgstr ""
 
@@ -18820,10 +18820,10 @@ msgstr ""
 
 #: metabase/driver/common.clj:159
 msgid ""
-"Metabase can scan the values present in each field in this database to "
+"Torch can scan the values present in each field in this database to "
 "enable checkbox filters in dashboards and questions. This can be a somewhat "
 "resource-intensive process, particularly if you have a very large database. "
-"When should Metabase automatically scan and cache field values?"
+"When should Torch automatically scan and cache field values?"
 msgstr ""
 
 #: metabase/driver/common.clj:107
@@ -18860,7 +18860,7 @@ msgstr ""
 #: metabase/driver/common.clj:220
 msgid ""
 "If your database is behind a firewall, you may need to allow connections "
-"from our Metabase [Cloud IP addresses](https://www.metabase.com/cloud/docs/"
+"from our Torch [Cloud IP addresses](https://www.metabase.com/cloud/docs/"
 "ip-addresses-to-whitelist.html):"
 msgstr ""
 
@@ -19183,7 +19183,7 @@ msgstr ""
 
 #: metabase/driver/h2.clj:92
 msgid ""
-"The local path relative to where Metabase is running from. Your string "
+"The local path relative to where Torch is running from. Your string "
 "should not include the .mv.db extension."
 msgstr ""
 
@@ -19368,7 +19368,7 @@ msgstr ""
 
 #: metabase/driver/mysql.clj:131
 msgid ""
-"All Metabase features may not work properly when using an unsupported "
+"All Torch features may not work properly when using an unsupported "
 "version."
 msgstr ""
 
@@ -19380,7 +19380,7 @@ msgstr ""
 
 #: metabase/driver/mysql.clj:127
 msgid ""
-"WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
+"WARNING: Torch only officially supports MySQL {0}/MariaDB {1} and above."
 msgstr ""
 
 #: metabase/driver/mysql/actions.clj:112
@@ -19656,7 +19656,7 @@ msgid "Error setting prepared statement fetch size to fetch-size"
 msgstr ""
 
 #: metabase/driver/sql_jdbc/execute.clj:284
-msgid "{0} is deprecated in Metabase 0.47.0. Implement {1} instead."
+msgid "{0} is deprecated in Torch 0.47.0. Implement {1} instead."
 msgstr ""
 
 #: metabase/driver/sql_jdbc/execute.clj:521
@@ -19706,7 +19706,7 @@ msgid "Failed to connect to database"
 msgstr ""
 
 #: metabase/driver/util.clj:330
-msgid "Comma separated names of {0} that should NOT appear in Metabase"
+msgid "Comma separated names of {0} that should NOT appear in Torch"
 msgstr ""
 
 #: metabase/driver/util.clj:75
@@ -19777,7 +19777,7 @@ msgid "Invalid client SSL key - did you select the correct file?"
 msgstr ""
 
 #: metabase/driver/util.clj:323
-msgid "Comma separated names of {0} that should appear in Metabase"
+msgid "Comma separated names of {0} that should appear in Torch"
 msgstr ""
 
 #: metabase/driver/util.clj:98
@@ -19934,7 +19934,7 @@ msgid "User {0} does not exist"
 msgstr ""
 
 #: metabase/email/messages.clj:284
-msgid "We hope you''ve been enjoying Metabase."
+msgid "We hope you''ve been enjoying Torch."
 msgstr ""
 
 #: metabase/email/messages.clj:382
@@ -19998,14 +19998,14 @@ msgstr ""
 
 #: metabase/integrations/google.clj:26
 msgid ""
-"You'll need an administrator to create a Metabase account before you can use "
+"You'll need an administrator to create a Torch account before you can use "
 "Google to log in."
 msgstr ""
 
 #: metabase/integrations/google.clj:87
 msgid ""
 "Google Sign-In token appears to be incorrect. Double check that it matches "
-"in Google and Metabase."
+"in Google and Torch."
 msgstr ""
 
 #: metabase/integrations/google.clj:36
@@ -20087,7 +20087,7 @@ msgid "{0} is not a valid DN."
 msgstr ""
 
 #: metabase/integrations/ldap.clj:94
-msgid "JSON containing LDAP to Metabase group mappings."
+msgid "JSON containing LDAP to Torch group mappings."
 msgstr ""
 
 #: metabase/integrations/ldap.clj:46
@@ -20133,7 +20133,7 @@ msgstr ""
 
 #: metabase/integrations/slack.clj:22
 msgid ""
-"Deprecated Slack API token for connecting the Metabase Slack bot. Please use "
+"Deprecated Slack API token for connecting the Torch Slack bot. Please use "
 "a new Slack app integration instead."
 msgstr ""
 
@@ -20145,13 +20145,13 @@ msgstr ""
 
 #: metabase/integrations/slack.clj:77
 msgid ""
-"The name of the channel to which Metabase files should be initially uploaded"
+"The name of the channel to which Torch files should be initially uploaded"
 msgstr ""
 
 #: metabase/integrations/slack.clj:31
 msgid ""
-"Bot user OAuth token for connecting the Metabase Slack app. This should be "
-"used for all new Slack integrations starting in Metabase v0.42.0."
+"Bot user OAuth token for connecting the Torch Slack app. This should be "
+"used for all new Slack integrations starting in Torch v0.42.0."
 msgstr ""
 
 #: metabase/integrations/slack.clj:44
@@ -21118,7 +21118,7 @@ msgstr ""
 
 #: metabase/models/humanization.clj:79
 msgid ""
-"To make table and field names more human-friendly, Metabase will replace "
+"To make table and field names more human-friendly, Torch will replace "
 "dashes and underscores in them with spaces. We’ll capitalize each word while "
 "at it, so ‘last_visited_at’ will become ‘Last Visited At’."
 msgstr ""
@@ -21416,7 +21416,7 @@ msgid "Path"
 msgstr ""
 
 #: metabase/models/secret.clj:190
-msgid "{0} (a local file path) cannot be used in Metabase hosted environment"
+msgid "{0} (a local file path) cannot be used in Torch hosted environment"
 msgstr ""
 
 #: metabase/models/secret.clj:96
@@ -21451,7 +21451,7 @@ msgstr ""
 
 #: metabase/models/setting.clj:772
 msgid ""
-"Setting {0} is deprecated as of Metabase {1} and may be removed in a future "
+"Setting {0} is deprecated as of Torch {1} and may be removed in a future "
 "version."
 msgstr ""
 
@@ -21625,7 +21625,7 @@ msgstr ""
 
 #: metabase/plugins.clj:44
 msgid ""
-"You can change the directory Metabase uses for modules by setting the "
+"You can change the directory Torch uses for modules by setting the "
 "environment variable MB_PLUGINS_DIR."
 msgstr ""
 
@@ -21635,17 +21635,17 @@ msgstr ""
 
 #: metabase/plugins.clj:117
 msgid ""
-"spark-deps.jar is no longer needed by Metabase 0.32.0+. You can delete it "
+"spark-deps.jar is no longer needed by Torch 0.32.0+. You can delete it "
 "from the plugins directory."
 msgstr ""
 
 #: metabase/plugins.clj:34
-msgid "Metabase does not have permissions to write to plugins directory {0}"
+msgid "Torch does not have permissions to write to plugins directory {0}"
 msgstr ""
 
 #: metabase/plugins.clj:43
 msgid ""
-"Please make sure the directory exists and that Metabase has permission to "
+"Please make sure the directory exists and that Torch has permission to "
 "write to it."
 msgstr ""
 
@@ -21654,7 +21654,7 @@ msgid "Loading plugins in {0}..."
 msgstr ""
 
 #: metabase/plugins.clj:41
-msgid "Metabase cannot use the plugins directory {0}"
+msgid "Torch cannot use the plugins directory {0}"
 msgstr ""
 
 #: metabase/plugins.clj:168
@@ -21667,8 +21667,8 @@ msgstr ""
 
 #: metabase/plugins.clj:50
 msgid ""
-"Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a "
-"writable directory and restart Metabase."
+"Torch cannot write to temporary directory. Please set MB_PLUGINS_DIR to a "
+"writable directory and restart Torch."
 msgstr ""
 
 #: metabase/plugins/dependencies.clj:72
@@ -21691,7 +21691,7 @@ msgid "Class not found: {0}"
 msgstr ""
 
 #: metabase/plugins/dependencies.clj:29
-msgid "Plugin {0} declares a dependency that Metabase does not understand: {1}"
+msgid "Plugin {0} declares a dependency that Torch does not understand: {1}"
 msgstr ""
 
 #: metabase/plugins/dependencies.clj:65
@@ -21703,7 +21703,7 @@ msgid "{0} dependency {1} satisfied? {2}"
 msgstr ""
 
 #: metabase/plugins/dependencies.clj:51
-msgid "Metabase cannot initialize plugin {0} due to required dependencies."
+msgid "Torch cannot initialize plugin {0} due to required dependencies."
 msgstr ""
 
 #: metabase/plugins/init_steps.clj:21
@@ -21754,7 +21754,7 @@ msgstr ""
 
 #: metabase/public_settings.clj:356
 msgid ""
-"Metabase version for which a notice about usage of deprecated features has "
+"Torch version for which a notice about usage of deprecated features has "
 "been shown."
 msgstr ""
 
@@ -21784,7 +21784,7 @@ msgid "Failed setting `query-caching-max-kb` to {0}."
 msgstr ""
 
 #: metabase/public_settings.clj:80
-msgid "Indicates when Metabase last checked for new versions."
+msgid "Indicates when Torch last checked for new versions."
 msgstr ""
 
 #: metabase/public_settings.clj:533
@@ -21922,7 +21922,7 @@ msgid "Whether or not uploads are enabled"
 msgstr ""
 
 #: metabase/public_settings.clj:67
-msgid "Identify when new versions of Metabase are available."
+msgid "Identify when new versions of Torch are available."
 msgstr ""
 
 #: metabase/public_settings.clj:500
@@ -21942,7 +21942,7 @@ msgid ""
 msgstr ""
 
 #: metabase/public_settings.clj:492
-msgid "Whether or not to display Metabase links outside admin settings."
+msgid "Whether or not to display Torch links outside admin settings."
 msgstr ""
 
 #: metabase/public_settings.clj:634
@@ -21977,7 +21977,7 @@ msgstr ""
 
 #: metabase/public_settings.clj:371
 msgid ""
-"Choose the colors used in the user interface throughout Metabase and others "
+"Choose the colors used in the user interface throughout Torch and others "
 "specifically for the charts. You need to refresh your browser to see your "
 "changes take effect."
 msgstr ""
@@ -21988,7 +21988,7 @@ msgid ""
 msgstr ""
 
 #: metabase/public_settings.clj:412
-msgid "Upload a file to replace the Metabase logo on the top bar."
+msgid "Upload a file to replace the Torch logo on the top bar."
 msgstr ""
 
 #: metabase/public_settings.clj:559
@@ -22044,7 +22044,7 @@ msgid ""
 msgstr ""
 
 #: metabase/public_settings.clj:73
-msgid "Information about available versions of Metabase."
+msgid "Information about available versions of Torch."
 msgstr ""
 
 #: metabase/public_settings.clj:207
@@ -22081,7 +22081,7 @@ msgstr ""
 
 #: metabase/public_settings.clj:712
 msgid ""
-"Metabase Cloud gateway IP addresses, to configure connections to DBs behind "
+"Torch Cloud gateway IP addresses, to configure connections to DBs behind "
 "firewalls"
 msgstr ""
 
@@ -22265,7 +22265,7 @@ msgid "Down"
 msgstr ""
 
 #: metabase/pulse/render/body.clj:1103
-msgid "Please view this card in Metabase."
+msgid "Please view this card in Torch."
 msgstr ""
 
 #: metabase/pulse/render/body.clj:966
@@ -22289,7 +22289,7 @@ msgid "Error rendering Pulse"
 msgstr ""
 
 #: metabase/pulse/render/style.clj:112
-msgid "Error registering fonts: Metabase will not be able to send Pulses."
+msgid "Error registering fonts: Torch will not be able to send Pulses."
 msgstr ""
 
 #: metabase/pulse/render/style.clj:114
@@ -22713,7 +22713,7 @@ msgstr ""
 msgid ""
 "Sample database could not be extracted to the plugins directory,which may "
 "result in slow startup times. Please set MB_PLUGINS_DIR to a writable "
-"directory and restart Metabase."
+"directory and restart Torch."
 msgstr ""
 
 #: metabase/sample_data.clj:73
@@ -22790,7 +22790,7 @@ msgid "Failed to set site-url"
 msgstr ""
 
 #: metabase/server/middleware/misc.clj:50
-msgid "Setting Metabase site URL to {0}"
+msgid "Setting Torch site URL to {0}"
 msgstr ""
 
 #: metabase/server/middleware/offset_paging.clj:56
@@ -22875,7 +22875,7 @@ msgstr ""
 
 #: metabase/server/routes/index.clj:74
 msgid ""
-"Failed to load template ''{0}''. Did you remember to build the Metabase "
+"Failed to load template ''{0}''. Did you remember to build the Torch "
 "frontend?"
 msgstr ""
 
@@ -23117,7 +23117,7 @@ msgid "For more information, see"
 msgstr ""
 
 #: metabase/util/encryption.clj:45
-msgid "Saved credentials encryption is DISABLED for this Metabase instance."
+msgid "Saved credentials encryption is DISABLED for this Torch instance."
 msgstr ""
 
 #: metabase/util/encryption.clj:32
@@ -23125,7 +23125,7 @@ msgid "MB_ENCRYPTION_SECRET_KEY must be at least 16 characters."
 msgstr ""
 
 #: metabase/util/encryption.clj:44
-msgid "Saved credentials encryption is ENABLED for this Metabase instance."
+msgid "Saved credentials encryption is ENABLED for this Torch instance."
 msgstr ""
 
 #: metabase/util/files.clj:106
@@ -23349,7 +23349,7 @@ msgstr ""
 
 #: metabase_enterprise/advanced_config/file.clj:164
 msgid ""
-"Found config file at path {0}; Metabase will be initialized with values from "
+"Found config file at path {0}; Torch will be initialized with values from "
 "this file"
 msgstr ""
 
@@ -23359,7 +23359,7 @@ msgstr ""
 
 #: metabase_enterprise/advanced_config/file.clj:261
 msgid ""
-"Metabase config files require a Premium token with the :config-text-file "
+"Torch config files require a Premium token with the :config-text-file "
 "feature."
 msgstr ""
 
@@ -23541,7 +23541,7 @@ msgid "Enable AI features."
 msgstr ""
 
 #: metabase_enterprise/llm/settings.clj:13
-msgid "The OpenAI API Key used in Metabase Enterprise."
+msgid "The OpenAI API Key used in Torch Enterprise."
 msgstr ""
 
 #: metabase_enterprise/sandbox/api/gtap.clj:88
@@ -23608,7 +23608,7 @@ msgstr ""
 
 #: metabase_enterprise/serialization/cmd.clj:63
 msgid ""
-"Dump was produced using a different version of Metabase. Things may break!"
+"Dump was produced using a different version of Torch. Things may break!"
 msgstr ""
 
 #: metabase_enterprise/serialization/cmd.clj:80
@@ -23648,7 +23648,7 @@ msgid "END DUMP to {0} via user {1}"
 msgstr ""
 
 #: metabase_enterprise/serialization/cmd.clj:230
-msgid "Exporting Metabase to {0}"
+msgid "Exporting Torch to {0}"
 msgstr ""
 
 #: metabase_enterprise/serialization/cmd.clj:78
@@ -23827,7 +23827,7 @@ msgstr ""
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:26
 msgid ""
-"When we enable SAML user provisioning, we automatically create a Metabase "
+"When we enable SAML user provisioning, we automatically create a Torch "
 "account on SAML signin for users who\n"
 "don''t have one."
 msgstr ""
@@ -23894,7 +23894,7 @@ msgstr ""
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:34
 msgid ""
-"When we enable JWT user provisioning, we automatically create a Metabase "
+"When we enable JWT user provisioning, we automatically create a Torch "
 "account on JWT signin for users who\n"
 "don''t have one."
 msgstr ""
@@ -23927,7 +23927,7 @@ msgstr ""
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:42
 msgid ""
-"When we enable LDAP user provisioning, we automatically create a Metabase "
+"When we enable LDAP user provisioning, we automatically create a Torch "
 "account on LDAP signin for users who\n"
 "don''t have one."
 msgstr ""

@@ -31,7 +31,7 @@ const useCTAText = () => {
   return {
     showProBadge: true,
     // eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins
-    description: t`Give your customers the full power of Metabase in your own app, with SSO, advanced permissions, customization, and more.`,
+    description: t`Give your customers the full power of Torch in your own app, with SSO, advanced permissions, customization, and more.`,
     linkText: t`Learn more`,
     url: `https://www.metabase.com/product/embedded-analytics?utm_source=${plan}&utm_media=static-embed-popover`,
     target: "_blank",

@@ -33,7 +33,7 @@ export const EmbedMinimalHomepage = ({
         fw="bold"
         color="text-dark"
         // eslint-disable-next-line no-literal-metabase-strings -- this is only visible to admins
-      >{t`Get started with Embedding Metabase in your app`}</Text>
+      >{t`Get started with Embedding Torch in your app`}</Text>
       <Card px={40} py={32} maw={570}>
         <Stack spacing="lg">
           <Flex justify="space-between">

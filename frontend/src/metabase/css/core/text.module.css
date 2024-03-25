@@ -196,7 +196,7 @@
 
 :global(.text-code) {
   font-family: monospace;
-  color: var(--color-text-dark);
+  color: var(--color-text-medium);
   background-color: var(--color-bg-medium);
   border-radius: 2px;
   padding: 0.2em 0.4em;

@@ -33,8 +33,8 @@ export function CollectionInstanceAnalyticsIcon({
     <Icon
       {...iconProps}
       name={collectionType.icon}
-      // eslint-disable-next-line no-literal-metabase-strings -- Metabase analytics
-      tooltip={t`This is a read-only Metabase Analytics ${collectionIconTooltipNameMap[entity]}.`}
+      // eslint-disable-next-line no-literal-metabase-strings -- Torch analytics
+      tooltip={t`This is a read-only Torch Analytics ${collectionIconTooltipNameMap[entity]}.`}
       data-testid="instance-analytics-collection-marker"
     />
   );

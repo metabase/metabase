@@ -42,7 +42,7 @@ export const LegaleseStep = ({
           </Text>
           <Text>
             {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins */}
-            {t`When you embed charts or dashboards from Metabase in your own application that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the "Powered by Metabase" visible on those embeds.`}
+            {t`When you embed charts or dashboards from Torch in your own application that application isn't subject to the Affero General Public License that covers the rest of Torch, provided you keep the Torch logo and the "Powered by Torch" visible on those embeds.`}
           </Text>
           <Text>
             {t`You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature.`}

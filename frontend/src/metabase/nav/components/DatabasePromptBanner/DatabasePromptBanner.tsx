@@ -38,7 +38,7 @@ export function DatabasePromptBanner({ location }: DatabasePromptBannerProps) {
   return (
     <DatabasePromptBannerRoot role="banner">
       {/* eslint-disable-next-line no-literal-metabase-strings -- Only shows for admins*/}
-      <Prompt>{t`Connect to your database to get the most from Metabase.`}</Prompt>
+      <Prompt>{t`Connect to your database to get the most from Torch.`}</Prompt>
       <CallToActions>
         <GetHelpButton
           href={helpUrl.href}

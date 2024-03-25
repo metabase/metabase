@@ -60,13 +60,13 @@ export const AdminMobileNavBarItems = styled.ul`
 `;
 
 export const AdminExitLink = styled(Link)`
-  border: 1px solid ${alpha("black", 0.2)};
+  border: 1px solid ${alpha("white", 0.2)};
   padding: 12px 18px;
   border-radius: 5px;
   font-weight: 700;
   font-size: 13px;
   transition: all 200ms;
-  color: ${color("black")};
+  color: ${color("white")};
   white-space: nowrap;
   text-align: center;
 
@@ -88,7 +88,6 @@ export const AdminLogoContainer = styled.div`
 export const AdminLogoText = styled.div`
   margin-left: 1rem;
   font-weight: 700;
-  color: ${color("black")};
 
   ${breakpointMaxLarge} {
     display: none;

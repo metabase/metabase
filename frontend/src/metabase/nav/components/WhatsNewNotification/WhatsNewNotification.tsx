@@ -62,7 +62,7 @@ export function WhatsNewNotification() {
         </Flex>
 
         {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins */}
-        <Text weight="bold" size="sm">{t`Metabase has been updated`}</Text>
+        <Text weight="bold" size="sm">{t`Torch has been updated`}</Text>
 
         <Anchor
           size="sm"

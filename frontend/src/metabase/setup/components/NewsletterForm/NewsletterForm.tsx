@@ -44,7 +44,7 @@ export const NewsletterForm = (): JSX.Element => {
       <EmailFormLabel>
         <EmailFormLabelCard>
           <EmailFormLabelIcon name="mail" />
-          <EmailFormLabelText>{t`Metabase Newsletter`}</EmailFormLabelText>
+          <EmailFormLabelText>{t`Torch Newsletter`}</EmailFormLabelText>
         </EmailFormLabelCard>
       </EmailFormLabel>
       <EmailFormHeader>
@@ -71,7 +71,7 @@ export const NewsletterForm = (): JSX.Element => {
         <EmailFormSuccessContainer>
           <EmailFormSuccessIcon name="check" />
           <EmailFormSuccessText>
-            {t`You're subscribed. Thanks for using Metabase!`}
+            {t`You're subscribed. Thanks for using Torch!`}
           </EmailFormSuccessText>
         </EmailFormSuccessContainer>
       )}

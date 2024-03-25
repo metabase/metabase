@@ -17,7 +17,7 @@ const TEST_ENGINES: Record<string, Engine> = {
         name: "db",
         "display-name": "Connection String",
         "helper-text":
-          "The local path relative to where Metabase is running from. Your string should not include the .mv.db extension.",
+          "The local path relative to where Torch is running from. Your string should not include the .mv.db extension.",
         placeholder: "file:/Users/camsaul/bird_sightings/toucans",
         required: true,
       },
@@ -42,7 +42,7 @@ const TEST_ENGINES: Record<string, Engine> = {
         type: "boolean",
         "display-name": "Choose when syncs and scans happen",
         description:
-          "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.",
+          "By default, Torch does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.",
         "visible-if": {
           "advanced-options": true,
         },
@@ -61,7 +61,7 @@ const TEST_ENGINES: Record<string, Engine> = {
         name: "schedules.cache_field_values",
         "display-name": "Scanning for Filter Values",
         description:
-          "Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database. When should Metabase automatically scan and cache field values?",
+          "Torch can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database. When should Torch automatically scan and cache field values?",
         "visible-if": {
           "advanced-options": true,
           "let-user-control-scheduling": true,
@@ -72,7 +72,7 @@ const TEST_ENGINES: Record<string, Engine> = {
         type: "boolean",
         "display-name": "Periodically refingerprint tables",
         description:
-          "This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.",
+          "This enables Torch to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.",
         "visible-if": {
           "advanced-options": true,
         },

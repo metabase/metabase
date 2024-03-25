@@ -18,11 +18,11 @@ export const ImpersonationWarning = ({
   const databaseUser = database.details.user;
   const isRedshift = database.engine === "redshift";
 
-  // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
-  const emptyText = t`Make sure the main database credential has access to everything different user groups may need access to. It's what Metabase uses to sync table information.`;
+  // eslint-disable-next-line no-literal-metabase-strings -- Torch settings
+  const emptyText = t`Make sure the main database credential has access to everything different user groups may need access to. It's what Torch uses to sync table information.`;
 
-  // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
-  const redshiftWarning = jt`You’re connecting Metabase to the ${(
+  // eslint-disable-next-line no-literal-metabase-strings -- Torch settings
+  const redshiftWarning = jt`You’re connecting Torch to the ${(
     <BoldCode key="2" size={13}>
       {database.name}
     </BoldCode>
@@ -36,12 +36,12 @@ export const ImpersonationWarning = ({
     </BoldCode>
   )} must be a superuser in Redshift.`;
 
-  // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+  // eslint-disable-next-line no-literal-metabase-strings -- Torch settings
   const regularWarning = jt`${(
     <BoldCode key="1" size={13}>
       {databaseUser}
     </BoldCode>
-  )} is the database user Metabase is using to connect to your  ${(
+  )} is the database user Torch is using to connect to your  ${(
     <BoldCode key="2" size={13}>
       {database.name}
     </BoldCode>
@@ -53,7 +53,7 @@ export const ImpersonationWarning = ({
     <BoldCode key="4" size={13}>
       {database.name}
     </BoldCode>
-  )} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information.`;
+  )} that all Torch groups may need access to, as that database user account is what Torch uses to sync table information.`;
 
   const warningText = isRedshift ? redshiftWarning : regularWarning;
 

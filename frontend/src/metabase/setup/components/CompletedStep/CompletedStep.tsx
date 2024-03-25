@@ -35,7 +35,7 @@ export const CompletedStep = (): JSX.Element | null => {
           className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
           href={baseUrl}
         >
-          {t`Take me to Metabase`}
+          {t`Take me to Torch`}
         </a>
       </StepFooter>
     </StepRoot>

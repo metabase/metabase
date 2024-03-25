@@ -247,7 +247,7 @@ const EngineEmptyState = ({ isHosted }: EngineEmptyStateProps): JSX.Element => {
         <EngineEmptyText>{jt`Don’t see your database? Check out our ${(
           <ExternalLink
             key="link"
-            // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup
+            // eslint-disable-next-line no-unconditional-metabase-links-render -- Torch setup
             href={MetabaseSettings.docsUrl(
               "developers-guide/partner-and-community-drivers",
             )}

@@ -32,8 +32,8 @@ export function MetabaseLinksToggleDescription() {
       <Popover.Dropdown>
         <Stack p="md" spacing="sm" maw={420}>
           <Text size="sm">
-            {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
-            {t`This affects all links in the product experience (outside of the admin panel) that point to Metabase.com URLs.`}
+            {/* eslint-disable-next-line no-literal-metabase-strings -- Torch settings */}
+            {t`This affects all links in the product experience (outside of the admin panel) that point to Torch.com URLs.`}
           </Text>
           <Text size="sm">
             {t`When hidden, your users will lose the ability to troubleshoot and learn how to use features such as the Query and SQL Editors, among others.`}

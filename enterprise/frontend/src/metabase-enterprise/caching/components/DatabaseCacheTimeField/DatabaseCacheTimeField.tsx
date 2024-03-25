@@ -48,8 +48,8 @@ const DatabaseCacheTimeField = () => {
 const DatabaseCacheTimeDescription = (): JSX.Element => {
   return (
     <div>
-      {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
-      {jt`How long to keep question results. By default, Metabase will use the value you supply on the ${(
+      {/* eslint-disable-next-line no-literal-metabase-strings -- Torch settings */}
+      {jt`How long to keep question results. By default, Torch will use the value you supply on the ${(
         <Link key="link" to="/admin/settings/caching">
           {t`cache settings page`}
         </Link>

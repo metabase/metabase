@@ -62,7 +62,7 @@ export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   return (
     <ActiveStep title={t`What's your preferred language?`} label={stepLabel}>
       <StepDescription>
-        {t`This language will be used throughout Metabase and will be the default for new users.`}
+        {t`This language will be used throughout Torch and will be the default for new users.`}
       </StepDescription>
       <LocaleGroup role="radiogroup">
         {locales.map(item => (

@@ -58,7 +58,7 @@ export const StaticEmbeddingOptionCard = () => {
   );
   const shouldPromptToUpgrade = !PLUGIN_EMBEDDING.isEnabled();
 
-  const upgradeText = jt`A "powered by Metabase" banner appears on static embeds. You can ${(
+  const upgradeText = jt`A "powered by Torch" banner appears on static embeds. You can ${(
     <ExternalLink key="upgrade-link" href={upgradeUrl}>
       {t`upgrade to a paid plan`}
     </ExternalLink>

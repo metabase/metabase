@@ -4,7 +4,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: POEditor.com\n"
-"Project-Id-Version: Metabase\n"
+"Project-Id-Version: Torch\n"
 "Language: ko\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
@@ -52,7 +52,7 @@ msgid "Save"
 msgstr "저장"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:122
-msgid "To do some of its magic, Metabase needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below."
+msgid "To do some of its magic, Torch needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below."
 msgstr "Metabase가 제대로 동작하기 위해서는 데이터베이스 스캔이 필요합니다. 또, 메타데이터를 최신으로 유지하기 위해 주기적으로 재스캔해야 합니다. 재스캔 주기는 아래에서 설정할 수 있습니다."
 
 #: metabase/driver/common.clj:148
@@ -74,14 +74,14 @@ msgid "Scanning for Filter Values"
 msgstr "필터 값을 스캔 중"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:153
-msgid "Metabase can scan the values present in each\n"
+msgid "Torch can scan the values present in each\n"
 "field in this database to enable checkbox filters in dashboards and questions. This\n"
 "can be a somewhat resource-intensive process, particularly if you have a very large\n"
 "database."
 msgstr "Metabase는 대시보드와 질문 목록에 체크박스 필터를 활성화하기 위해 이 데이터베이스 내 각 필드에 존재하는 값들을 스캔할 수 있습니다. 특히 매우 큰 데이터베이스를 가졌다면, 다소 리소스가 많이 드는 작업일 수 있습니다."
 
 #: frontend/src/metabase/entities/databases/big-query-fields.js:167
-msgid "When should Metabase automatically scan and cache field values?"
+msgid "When should Torch automatically scan and cache field values?"
 msgstr "Metabase가 언제 자동으로 필터 값을 스캔하고 캐시해야 할까요?"
 
 #: frontend/src/metabase/databases/components/DatabaseCacheScheduleField/DatabaseCacheScheduleField.tsx:72
@@ -93,7 +93,7 @@ msgid "Only when adding a new filter widget"
 msgstr "새로운 필터 위젯을 추가하는 경우에만"
 
 #: frontend/src/metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget.jsx:55
-msgid "When a user adds a new filter to a dashboard or a SQL question, Metabase will\n"
+msgid "When a user adds a new filter to a dashboard or a SQL question, Torch will\n"
 "scan the field(s) mapped to that filter in order to show the list of selectable values."
 msgstr "사용자가 대시보드나 SQL 질문에 새로운 필터를 추가할 때, 선택할 수 있는 값의 목록을 보여주기 위해 해당 필터에 선택된 필드를 스캔하겠습니다."
 
@@ -680,7 +680,7 @@ msgid "{0} – Field Settings"
 msgstr "{0} - 필드 설정"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:145
-msgid "Where this field will appear throughout Metabase"
+msgid "Where this field will appear throughout Torch"
 msgstr "이 필드가 Metabase를 통해 표시될 곳"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:274
@@ -762,7 +762,7 @@ msgid "Cached field values"
 msgstr "캐시 된 필드 값"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:332
-msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
+msgid "Torch can scan the values for this field to enable checkbox filters in dashboards and questions."
 msgstr "Metabase가 대시보드나 질문목록의 체크박스 필터들을 활성화 하기 위해 이 필드의 값들을 스캔할 수 있습니다."
 
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:15
@@ -928,7 +928,7 @@ msgid "Settings"
 msgstr "세팅"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:106
-msgid "Metabase can scan the values in this table to enable checkbox filters in dashboards and questions."
+msgid "Torch can scan the values in this table to enable checkbox filters in dashboards and questions."
 msgstr "Metabase는 이 표의 값을 스캔하여 대시보드 및 질문에서 확인란 필터를 활성화할 수 있습니다."
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:111
@@ -975,16 +975,16 @@ msgstr "관리자 권한주기"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:31
 msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
-"make sure you know what new Metabase users will be able to see."
-msgstr "모든 사용자는 {0} 그룹에 속하며, 해당 그룹에서 삭제할 수 없습니다. 이 그룹의 권한을 설정해 새로운 Metabase 사용자의 열람 가능 범위를 확인할 수 있습니다."
+"make sure you know what new Torch users will be able to see."
+msgstr "모든 사용자는 {0} 그룹에 속하며, 해당 그룹에서 삭제할 수 없습니다. 이 그룹의 권한을 설정해 새로운 Torch 사용자의 열람 가능 범위를 확인할 수 있습니다."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:40
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid "This is a special group whose members can see everything in the Torch instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
-msgstr "이 특수한 그룹에 속한 멤버는 Metabase 인스턴스 내 모든 것을 볼 수 있을 뿐만 아니라, 관리자 패널에 접근해 권한 변경을 포함한 설정 변경을 할 수 있습니다! 이 그룹에 구성원을 추가할 때는 유의해주세요."
+msgstr "이 특수한 그룹에 속한 멤버는 Torch 인스턴스 내 모든 것을 볼 수 있을 뿐만 아니라, 관리자 패널에 접근해 권한 변경을 포함한 설정 변경을 할 수 있습니다! 이 그룹에 구성원을 추가할 때는 유의해주세요."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:44
-msgid "To make sure you don't get locked out of Metabase, there always has to be at least one user in this group."
+msgid "To make sure you don't get locked out of Torch, there always has to be at least one user in this group."
 msgstr "Metabase에서 잠기지 않도록 하려면 이 그룹에 항상 한 명 이상의 사용자가 있어야 합니다."
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:288
@@ -1372,15 +1372,15 @@ msgid "Sorry, an error occurred."
 msgstr "죄송합니다, 에러가 발생했습니다."
 
 #: frontend/src/metabase/admin/permissions/constants/messages.ts:3
-msgid "Administrators always have the highest level of access to everything in Metabase."
-msgstr "관리자는 항상 Metabase 전체에 대한 최고 수준의 접근 권한을 가집니다."
+msgid "Administrators always have the highest level of access to everything in Torch."
+msgstr "관리자는 항상 Torch 전체에 대한 최고 수준의 접근 권한을 가집니다."
 
 #: frontend/src/metabase/admin/permissions/selectors.js:70
-msgid "Every Metabase user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access."
-msgstr "모든 Metabase 사용자는 모든 사용자 그룹에 속합니다. 그룹의 접근을 제한하거나 차단하고자 한다면, 모든 사용자 그룹의 접근 권한이 같거나 더 낮은지 꼭 확인하세요."
+msgid "Every Torch user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access."
+msgstr "모든 Torch 사용자는 모든 사용자 그룹에 속합니다. 그룹의 접근을 제한하거나 차단하고자 한다면, 모든 사용자 그룹의 접근 권한이 같거나 더 낮은지 꼭 확인하세요."
 
 #: frontend/src/metabase/admin/permissions/selectors.js:72
-msgid "MetaBot is Metabase's Slack bot. You can choose what it has access to here."
+msgid "MetaBot is Torch's Slack bot. You can choose what it has access to here."
 msgstr "MetaBot은 Metabase의 Slack 봇입니다. 여기에서 액세스 할 수있는 항목을 선택할 수 있습니다."
 
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:63
@@ -1506,8 +1506,8 @@ msgstr "구글 계정으로 로그인"
 
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:65
 #: frontend/src/metabase/admin/settings/auth/containers/GoogleAuthCard/GoogleAuthCard.tsx:17
-msgid "Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
-msgstr "기존 Metabase 계정이 있는 사용자가 Metabase 사용자 이름 및 암호 외에도 이메일 주소와 일치하는 Google 계정으로 로그인할 수 있습니다."
+msgid "Allows users with existing Torch accounts to login with a Google account that matches their email address in addition to their Torch username and password."
+msgstr "기존 Torch 계정이 있는 사용자가 Torch 사용자 이름 및 암호 외에도 이메일 주소와 일치하는 Google 계정으로 로그인할 수 있습니다."
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/EmbeddingOption.tsx:130
 #: frontend/src/metabase/components/ChannelSetupMessage/ChannelSetupMessage.jsx:32
@@ -1520,8 +1520,8 @@ msgid "LDAP"
 msgstr "LDAP"
 
 #: frontend/src/metabase/admin/settings/auth/containers/LdapAuthCard/LdapAuthCard.tsx:12
-msgid "Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups."
-msgstr "LDAP 디렉터리 내의 사용자가 LDAP 자격 증명을 사용하여 Metabase에 로그인할 수 있도록 허용하고 LDAP 그룹을 Metabase 그룹에 자동으로 매핑할 수 있습니다."
+msgid "Allows users within your LDAP directory to log in to Torch with their LDAP credentials, and allows automatic mapping of LDAP groups to Torch groups."
+msgstr "LDAP 디렉터리 내의 사용자가 LDAP 자격 증명을 사용하여 Metabase에 로그인할 수 있도록 허용하고 LDAP 그룹을 Torch 그룹에 자동으로 매핑할 수 있습니다."
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:21
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:25
@@ -1594,7 +1594,7 @@ msgid "Getting set up"
 msgstr "설정하기"
 
 #: frontend/src/metabase/admin/settings/setup/components/SetupCheckList/SetupCheckList.jsx:124
-msgid "A few things you can do to get the most out of Metabase."
+msgid "A few things you can do to get the most out of Torch."
 msgstr "Metabase를 최대한 활용하기 위해 할 수 있는 몇가지 사항입니다."
 
 #: frontend/src/metabase/admin/settings/setup/components/SetupCheckList/SetupCheckList.jsx:133
@@ -1606,7 +1606,7 @@ msgid "Google Sign-In"
 msgstr "구글 로그인"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:123
-msgid "To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}"
+msgid "To allow users to sign in with Google you'll need to give Torch a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}"
 msgstr "사용자가 Google로 로그인할 수 있도록 하려면 Metabase에 Google 개발자 콘솔 애플리케이션 클라이언트 ID를 제공해야 합니다. 몇 단계만 거치면 키를 만드는 방법에 대한 지침을 찾을 수 있습니다 {0}"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:140
@@ -1626,16 +1626,16 @@ msgid "Create a Slack Bot User for MetaBot"
 msgstr "MetaBot을 위한 Slack Bot 생성"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:255
-msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Metabase needs this to upload graphs."
+msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Torch needs this to upload graphs."
 msgstr "도착하면 이름을 지정하고 {0}을(를) 클릭합니다. 그런 다음 Bot API 토큰을 복사하여 아래 항목에 붙여넣습니다. 완료되면 Slack에서 \"metabase_files\" 채널을 생성합니다. Metabase에서 그래프를 업로드하기 위해 필요한 작업입니다."
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:56
-msgid "You're running Metabase {0} which is the latest and greatest!"
-msgstr "당신이 사용 중인 Metabase {0}은(는) 가장 최신이며 뛰어난 버전입니다!"
+msgid "You're running Torch {0} which is the latest and greatest!"
+msgstr "당신이 사용 중인 Torch {0}은(는) 가장 최신이며 뛰어난 버전입니다!"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:100
-msgid "Metabase {0} is available.  You're running {1}"
-msgstr "Metabase {0} 이 사용가능합니다. 현재 {1}"
+msgid "Torch {0} is available.  You're running {1}"
+msgstr "Torch {0} 이 사용가능합니다. 현재 {1}"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditNotificationEditModal/AuditNotificationEditModal.jsx:76
 #: enterprise/frontend/src/metabase-enterprise/snippets/components/SnippetCollectionForm.tsx:152
@@ -1762,8 +1762,8 @@ msgid "By enabling embedding you're agreeing to the embedding license located at
 msgstr "임베드를 활성화하면 임베드 라이선스에 동의하게 됩니다."
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:23
-msgid "In plain English, when you embed charts or dashboards from Metabase in your own application, that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the \"Powered by Metabase\" visible on those embeds. You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
-msgstr "Metabase의 차트나 대시보드를 애플리케이션에 임베드할 때는 Metabase 로고와 Powered by Metabase 표시를 유지하는 한 Metabase의 다른 부분을 다루는 Affero General Public License에 귀속되지 않습니다. 다만 이 기능을 활성화할 때 동의하게 되는 실제 라이선스이므로, 위에 링크된 라이선스 텍스트를 반드시 읽어야 합니다.\n"
+msgid "In plain English, when you embed charts or dashboards from Torch in your own application, that application isn't subject to the Affero General Public License that covers the rest of Torch, provided you keep the Torch logo and the \"Powered by Torch\" visible on those embeds. You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
+msgstr "Metabase의 차트나 대시보드를 애플리케이션에 임베드할 때는 Torch 로고와 Powered by Torch 표시를 유지하는 한 Metabase의 다른 부분을 다루는 Affero General Public License에 귀속되지 않습니다. 다만 이 기능을 활성화할 때 동의하게 되는 실제 라이선스이므로, 위에 링크된 라이선스 텍스트를 반드시 읽어야 합니다.\n"
 ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese/EmbeddingLegalese.tsx:68
@@ -1775,12 +1775,12 @@ msgid "Premium embedding enabled"
 msgstr "프리미엄 임베딩이 활성화되었습니다"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:30
-msgid "Enter the token you bought from the Metabase Store"
-msgstr "Metabase 스토어에서 구매한 토큰을 입력하세요"
+msgid "Enter the token you bought from the Torch Store"
+msgstr "Torch 스토어에서 구매한 토큰을 입력하세요"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:57
-msgid "Premium embedding lets you disable \"Powered by Metabase\" on your embedded dashboards and questions."
-msgstr "프리미엄 임베딩으로 임베드된 대시보드와 질문에 표시되는 \"Powered by Metabase\"를 감출 수 있습니다."
+msgid "Premium embedding lets you disable \"Powered by Torch\" on your embedded dashboards and questions."
+msgstr "프리미엄 임베딩으로 임베드된 대시보드와 질문에 표시되는 \"Powered by Torch\"를 감출 수 있습니다."
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:64
 msgid "Buy a token"
@@ -1803,7 +1803,7 @@ msgid "Create a mapping"
 msgstr "매핑 생성"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:145
-msgid "Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the\n"
+msgid "Mappings allow Torch to automatically add and remove users from groups based on the membership information provided by the\n"
 "directory server. Membership to the Admin group can be granted through mappings, but will not be automatically removed as a\n"
 "failsafe measure."
 msgstr "매핑을 통해 Metabase는\n"
@@ -2080,7 +2080,7 @@ msgid "Map tile server URL"
 msgstr "맵 타일 서버 URL"
 
 #: frontend/src/metabase/admin/settings/selectors.js:308
-msgid "Metabase uses OpenStreetMaps by default."
+msgid "Torch uses OpenStreetMaps by default."
 msgstr "Metabase는 기본으로 OpenStreetMaps를 사용합니다."
 
 #: frontend/src/metabase/admin/settings/selectors.js:313
@@ -2112,8 +2112,8 @@ msgid "Embedding in other Applications"
 msgstr "다른 애플리케이션에 내장"
 
 #: frontend/src/metabase/admin/settings/selectors.js:332
-msgid "Enable Embedding Metabase in other Applications"
-msgstr "Metabase 임베디드 기능 활성화(다른 어플리케이션에서 화면 사용 가능)"
+msgid "Enable Embedding Torch in other Applications"
+msgstr "Torch 임베디드 기능 활성화(다른 어플리케이션에서 화면 사용 가능)"
 
 #: frontend/src/metabase/admin/settings/selectors.js:503
 msgid "Embedding secret key"
@@ -2173,12 +2173,12 @@ msgid "Back to login"
 msgstr "로그인 화면으로 돌아가기"
 
 #: frontend/src/metabase/auth/components/GoogleNoAccount.jsx:15
-msgid "No Metabase account exists for this Google account."
-msgstr "구글 계정에 Metabase 계정이 존재하지 않습니다."
+msgid "No Torch account exists for this Google account."
+msgstr "구글 계정에 Torch 계정이 존재하지 않습니다."
 
 #: metabase/integrations/google.clj:26
-msgid "You'll need an administrator to create a Metabase account before you can use Google to log in."
-msgstr "구글 계정으로 로그인하려면 먼저 관리자가 Metabase 계정을 만들어야 합니다"
+msgid "You'll need an administrator to create a Torch account before you can use Google to log in."
+msgstr "구글 계정으로 로그인하려면 먼저 관리자가 Torch 계정을 만들어야 합니다"
 
 #: frontend/src/metabase/auth/components/AuthProviderButton.jsx:24
 msgid "Sign in with {0}"
@@ -2193,8 +2193,8 @@ msgid "Forgot password"
 msgstr "암호 분실"
 
 #: frontend/src/metabase/auth/components/ForgotPasswordForm/ForgotPasswordForm.tsx:51
-msgid "The email you use for your Metabase account"
-msgstr "Metabase 계정 생성 시 사용한 이메일 주소"
+msgid "The email you use for your Torch account"
+msgstr "Torch 계정 생성 시 사용한 이메일 주소"
 
 #: frontend/src/metabase/auth/components/ForgotPasswordForm/ForgotPasswordForm.tsx:60
 msgid "Send password reset email"
@@ -2205,7 +2205,7 @@ msgid "Check your email for instructions on how to reset your password."
 msgstr "이메일을 확인하여 전달 된 암호 초기화 방법을 따르세요."
 
 #: frontend/src/metabase/auth/components/Login/Login.tsx:30
-msgid "Sign in to Metabase"
+msgid "Sign in to Torch"
 msgstr "Metabase에 로그인 합니다."
 
 #: frontend/src/metabase/auth/containers/LoginApp.jsx:165
@@ -2506,11 +2506,11 @@ msgstr "일부 데이터 베이스는 SSH 배스천 호스트를 통해서만 �
 "활성화 할 경우에는 직접 연결보다 종종 속도 저하가 발생할 수 있습니다."
 
 #: frontend/src/metabase/entities/databases/forms.js:349
-msgid "This is a large database, so let me choose when Metabase syncs and scans"
-msgstr "이 데이터베이스는 규모가 크므로 Metabase 동기화와 스캔 시기를 선택하겠습니다."
+msgid "This is a large database, so let me choose when Torch syncs and scans"
+msgstr "이 데이터베이스는 규모가 크므로 Torch 동기화와 스캔 시기를 선택하겠습니다."
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:296
-msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values.\n"
+msgid "By default, Torch does a lightweight hourly sync and an intensive daily scan of field values.\n"
 "If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
 msgstr "기본적으로 Metabase는 간단한 시간별 동기화와 일일 필드 값 검색을 수행합니다.\n"
 "데이터베이스가 큰 경우에 이 기능을 켜고 필드 값 검색이 언제, 얼마나 자주 발생하는지 검토하는 것이 좋습니다."
@@ -2537,7 +2537,7 @@ msgid "with Google Drive permissions"
 msgstr "구글 드라이브 권한과 함께 이용"
 
 #: frontend/src/metabase/entities/databases/forms.js:248
-msgid "To use Metabase with this data you must enable API access in the Google Developers Console."
+msgid "To use Torch with this data you must enable API access in the Google Developers Console."
 msgstr "이 데이터와 함께 Metabase를 사용하려면 Google Developers Console에서 API 액세스를 사용하도록 설정해야합니다."
 
 #: frontend/src/metabase/entities/databases/forms.js:249
@@ -2834,8 +2834,8 @@ msgid "Loading..."
 msgstr "로딩..."
 
 #: frontend/src/metabase/setup/components/NewsletterForm/NewsletterForm.tsx:44
-msgid "Metabase Newsletter"
-msgstr "Metabase 뉴스레터"
+msgid "Torch Newsletter"
+msgstr "Torch 뉴스레터"
 
 #: frontend/src/metabase/setup/components/NewsletterForm/NewsletterForm.tsx:48
 msgid "Get infrequent emails about new releases and feature updates."
@@ -2846,7 +2846,7 @@ msgid "Subscribe"
 msgstr "구독"
 
 #: frontend/src/metabase/setup/components/NewsletterForm/NewsletterForm.tsx:71
-msgid "You're subscribed. Thanks for using Metabase!"
+msgid "You're subscribed. Thanks for using Torch!"
 msgstr "구독하셨습니다. Metabase를 사용해주셔서 감사합니다!"
 
 #: frontend/src/metabase/containers/ErrorPages.tsx:35
@@ -2944,8 +2944,8 @@ msgid "Calendar Day"
 msgstr "달력 일자"
 
 #: frontend/src/metabase/components/SchedulePicker/SchedulePicker.tsx:235
-msgid "your Metabase timezone"
-msgstr "사용자 Metabase 시간대"
+msgid "your Torch timezone"
+msgstr "사용자 Torch 시간대"
 
 #: frontend/src/metabase/components/SearchHeader.jsx:21
 msgid "Filter this list..."
@@ -3411,7 +3411,7 @@ msgid "Hello World!"
 msgstr "안녕하세요!"
 
 #: frontend/src/metabase/home/components/Activity.jsx:264
-msgid "Metabase is up and running."
+msgid "Torch is up and running."
 msgstr "Metabase가 시작되어 실행 중입니다."
 
 #: frontend/src/metabase/home/components/Activity.jsx:270
@@ -3791,7 +3791,7 @@ msgid "Do Not Include"
 msgstr "포함하지 않습니다"
 
 #: frontend/src/metabase/lib/core.js:260
-msgid "Metabase will never retrieve this field. Use this for sensitive or irrelevant information."
+msgid "Torch will never retrieve this field. Use this for sensitive or irrelevant information."
 msgstr "Metabase는 이 필드를 검색하지 않습니다. 민감하거나 관련 없는 정보에 사용하세요."
 
 #: frontend/src/metabase-lib/operators/constants.js:323
@@ -4468,8 +4468,8 @@ msgid "Help"
 msgstr "도움말"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:75
-msgid "About Metabase"
-msgstr "Metabase 정보"
+msgid "About Torch"
+msgstr "Torch 정보"
 
 #: frontend/src/metabase/nav/components/ProfileLink/ProfileLink.jsx:77
 msgid "Sign out"
@@ -4496,8 +4496,8 @@ msgid "and is built with care in San Francisco, CA"
 msgstr "은(는) San Francisco, CA에서 제작됩니다"
 
 #: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:40
-msgid "Metabase Admin"
-msgstr "Metabase 관리자"
+msgid "Torch Admin"
+msgstr "Torch 관리자"
 
 #: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:111
 #: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:113
@@ -4822,8 +4822,8 @@ msgid "Public link"
 msgstr "공개 링크"
 
 #: frontend/src/metabase/public/components/widgets/SharingPane.tsx:119
-msgid "Share this {0} with people who don't have a Metabase account using the URL below:"
-msgstr "Metabase 계정이 없는 사람과 {0}을(를) 공유하려면 아래 URL을 사용하세요:"
+msgid "Share this {0} with people who don't have a Torch account using the URL below:"
+msgstr "Torch 계정이 없는 사람과 {0}을(를) 공유하려면 아래 URL을 사용하세요:"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:148
 msgid "Public embed"
@@ -5039,8 +5039,8 @@ msgid "Help everyone on your team stay in sync with your data."
 msgstr "다른 팀원들이 데이터와 동기화할 수 있도록 도와주세요"
 
 #: frontend/src/metabase/pulse/components/WhatsAPulse.jsx:31
-msgid "Pulses let you send data from Metabase to email or Slack on the schedule of your choice."
-msgstr "펄스로 Metabase 내 데이터를 원하는 일정대로 이메일이나 슬랙을 통해 보낼 수 있습니다."
+msgid "Pulses let you send data from Torch to email or Slack on the schedule of your choice."
+msgstr "펄스로 Torch 내 데이터를 원하는 일정대로 이메일이나 슬랙을 통해 보낼 수 있습니다."
 
 #: metabase/lib/fe_util.cljc:98
 msgid "After {0}"
@@ -6340,7 +6340,7 @@ msgstr "이 필드를 엑스레이"
 
 #: frontend/src/metabase/models/containers/NewModelOptions/NewModelOptions.tsx:104
 #: frontend/src/metabase/reference/databases/NoDatabasesEmptyState.jsx:7
-msgid "Metabase is no fun without any data"
+msgid "Torch is no fun without any data"
 msgstr "Metabase를 사용하려면 데이터가 필요합니다"
 
 #: frontend/src/metabase/reference/databases/NoDatabasesEmptyState.jsx:12
@@ -6480,8 +6480,8 @@ msgid "Contact {0}"
 msgstr "{0}에게 문의하기"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuideEditForm.jsx:253
-msgid "Help new Metabase users find their way around."
-msgstr "새로운 Metabase 사용자를 도와주세요"
+msgid "Help new Torch users find their way around."
+msgstr "새로운 Torch 사용자를 도와주세요"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuideEditForm.jsx:256
 msgid "The Getting Started guide highlights the dashboard, metrics, segments, and tables that matter most, and informs your users of important things they should know before digging into the data."
@@ -6696,7 +6696,7 @@ msgid "Connecting to {0}"
 msgstr "{0}와(과) 연결 중"
 
 #: frontend/src/metabase/setup/components/DatabaseConnectionStep.jsx:132
-msgid "You’ll need some info about your database, like the username and password. If you don’t have that right now, Metabase also comes with a sample dataset you can get started with."
+msgid "You’ll need some info about your database, like the username and password. If you don’t have that right now, Torch also comes with a sample dataset you can get started with."
 msgstr "사용자 이름 및 암호와 같은 데이터베이스에 대한 정보가 필요합니다. 지금 가지고 있지 않은 경우 Metabase에는 시작할 수 있는 샘플 데이터 세트도 함께 제공됩니다."
 
 #: frontend/src/metabase/databases/components/DatabaseForm/DatabaseForm.tsx:205
@@ -6720,19 +6720,19 @@ msgid "We won't collect any usage events"
 msgstr "어떤 사용 이벤트도 수집하지 않겠습니다"
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:90
-msgid "In order to help us improve Metabase, we'd like to collect certain data about usage through Google Analytics."
-msgstr "Metabase 개선 목적으로 Google Analytics를 통한 사용 데이터를 수집하고자 합니다."
+msgid "In order to help us improve Torch, we'd like to collect certain data about usage through Google Analytics."
+msgstr "Torch 개선 목적으로 Google Analytics를 통한 사용 데이터를 수집하고자 합니다."
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:95
 msgid "Here's a full list of everything we track and why."
 msgstr "우리가 추적하는 정보와 그 이유에 관한 전체 리스트입니다."
 
 #: frontend/src/metabase/setup/components/DataUsageStep/DataUsageStep.tsx:92
-msgid "Allow Metabase to anonymously collect usage events"
+msgid "Allow Torch to anonymously collect usage events"
 msgstr "Metabase가 사용 정보를 익명으로 수집하도록 허용"
 
 #: frontend/src/metabase/setup/components/DataUsageStep/DataUsageStep.tsx:97
-msgid "Metabase {0} collects anything about your data or question results."
+msgid "Torch {0} collects anything about your data or question results."
 msgstr "Metabase는 당신의 데이터 또는 질문 결과에 관해 {0} 수집하지 않습니다."
 
 #: frontend/src/metabase/lib/settings.ts:289
@@ -6761,7 +6761,7 @@ msgid "is just a click away."
 msgstr "클릭만 하면 됩니다."
 
 #: frontend/src/metabase/setup/components/WelcomePage/WelcomePage.tsx:39
-msgid "Welcome to Metabase"
+msgid "Welcome to Torch"
 msgstr "Metabase에 오신 것을 환영합니다"
 
 #: frontend/src/metabase/setup/components/Setup.jsx:132
@@ -6777,7 +6777,7 @@ msgid "You're all set up!"
 msgstr "모두 준비되었습니다!"
 
 #: frontend/src/metabase/setup/components/CompletedStep/CompletedStep.tsx:30
-msgid "Take me to Metabase"
+msgid "Take me to Torch"
 msgstr "Metabase로 가기"
 
 #: frontend/src/metabase/setup/components/UserStep/UserStep.tsx:72
@@ -6855,7 +6855,7 @@ msgstr "다음에서 데이터에 대한 몇 가지 흥미로운 탐색을 보�
 "몇 분만."
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:69
-msgid "This seems to be taking a while. In the meantime, you can check out one of these example explorations to see what Metabase can do for you."
+msgid "This seems to be taking a while. In the meantime, you can check out one of these example explorations to see what Torch can do for you."
 msgstr "시간이 좀 걸리는 것 같습니다. 그동안 이러한 예제 탐색 중 하나를 확인하여 Metabase가 무엇을 할 수 있는지 확인할 수 있습니다."
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:83
@@ -7997,8 +7997,8 @@ msgid "Email is not verified."
 msgstr "이메일이 인증되지 않았습니다."
 
 #: src/metabase/integrations/google.clj
-msgid "You''ll need an administrator to create a Metabase account before you can use Google to log in."
-msgstr "Google을 사용하여 로그인하려면 관리자가 Metabase 계정을 만들어야 합니다."
+msgid "You''ll need an administrator to create a Torch account before you can use Google to log in."
+msgstr "Google을 사용하여 로그인하려면 관리자가 Torch 계정을 만들어야 합니다."
 
 #: target/classes/metabase/integrations/google.clj
 msgid "Successfully authenticated Google Auth token for: {0} {1}"
@@ -8065,10 +8065,10 @@ msgstr "{0}에 저장된 질문이 많으신가요? 컬렉션을 만들어 질�
 
 #. This is the very first log message that will get printed.
 #. It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
-#. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+#. It shows up a solid 10-15 seconds before the "Starting Torch in STANDALONE mode" message because so many other namespaces need to get loaded
 #: metabase/api/setup.clj:290 metabase/email/messages.clj:55
-msgid "Metabase"
-msgstr "Metabase"
+msgid "Torch"
+msgstr "Torch"
 
 #: metabase/api/setup.clj:254
 msgid "Create metrics"
@@ -8457,20 +8457,20 @@ msgid "FAIL [[[{0}]]]"
 msgstr "실패 [[[{0}]]]"
 
 #: metabase/core.clj:71
-msgid "Please use the following URL to setup your Metabase installation:"
-msgstr "다음 URL을 사용하여 Metabase 설치를 설정하십시오."
+msgid "Please use the following URL to setup your Torch installation:"
+msgstr "다음 URL을 사용하여 Torch 설치를 설정하십시오."
 
 #: metabase/core.clj:85
-msgid "Metabase Shutting Down ..."
-msgstr "Metabase 종료 중..."
+msgid "Torch Shutting Down ..."
+msgstr "Torch 종료 중..."
 
 #: metabase/core.clj:91
-msgid "Metabase Shutdown COMPLETE"
-msgstr "Metabase 종료 완료"
+msgid "Torch Shutdown COMPLETE"
+msgstr "Torch 종료 완료"
 
 #: metabase/core.clj:101
-msgid "Starting Metabase version {0} ..."
-msgstr "Metabase 버전 {0} 시작 중..."
+msgid "Starting Torch version {0} ..."
+msgstr "Torch 버전 {0} 시작 중..."
 
 #: src/metabase/core.clj
 msgid "System timezone is ''{0}'' ..."
@@ -8478,16 +8478,16 @@ msgstr "시스템 시간대는 ''{0}''입니다..."
 
 #. startup database.  validates connection & runs any necessary migrations
 #: metabase/core.clj:112
-msgid "Setting up and migrating Metabase DB. Please sit tight, this may take a minute..."
-msgstr "Metabase DB 설정 및 마이그레이션. 1분 정도 걸릴 수 있습니다..."
+msgid "Setting up and migrating Torch DB. Please sit tight, this may take a minute..."
+msgstr "Torch DB 설정 및 마이그레이션. 1분 정도 걸릴 수 있습니다..."
 
 #: metabase/core.clj:127
 msgid "Looks like this is a new installation ... preparing setup wizard"
 msgstr "새로 설치하는 것 같습니다... 설정 마법사 준비 중"
 
 #: metabase/core.clj:137
-msgid "Metabase Initialization COMPLETE"
-msgstr "Metabase 초기화 \"완료\""
+msgid "Torch Initialization COMPLETE"
+msgstr "Torch 초기화 \"완료\""
 
 #: metabase/server.clj:49
 msgid "Launching Embedded Jetty Webserver with config:"
@@ -8498,12 +8498,12 @@ msgid "Shutting Down Embedded Jetty Webserver"
 msgstr "임베디드 Jetty 웹서버 종료"
 
 #: metabase/core.clj:163
-msgid "Starting Metabase in STANDALONE mode"
-msgstr "Metabase \"단독기동\" 모드로 시작합니다."
+msgid "Starting Torch in STANDALONE mode"
+msgstr "Torch \"단독기동\" 모드로 시작합니다."
 
 #: metabase/core.clj:173
-msgid "Metabase Initialization FAILED"
-msgstr "Metabase 초기화 \"실패\""
+msgid "Torch Initialization FAILED"
+msgstr "Torch 초기화 \"실패\""
 
 #: metabase/db/liquibase.clj:215
 msgid "Database has migration lock; cannot run migrations."
@@ -8663,8 +8663,8 @@ msgstr "JDBC에 metabase.driver.FixedHiveDriver를 성공적으로 등록했습�
 #. CONFIG
 #. TODO - smtp-port should be switched to type :integer
 #: src/metabase/email.clj target/classes/metabase/email.clj
-msgid "Email address you want to use as the sender of Metabase."
-msgstr "Metabase 발신자로 사용할 이메일 주소입니다."
+msgid "Email address you want to use as the sender of Torch."
+msgstr "Torch 발신자로 사용할 이메일 주소입니다."
 
 #: metabase/email.clj:58
 msgid "The address of the SMTP server that handles your emails."
@@ -8756,8 +8756,8 @@ msgstr "LDAP 디렉토리가 ''memberOf'' 오버레이를 제공하는 경우 �
 
 #. Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP groups and values are lists of MB groups IDs
 #: metabase/integrations/ldap.clj:93
-msgid "JSON containing LDAP to Metabase group mappings."
-msgstr "Metabase 그룹 매핑에 대한 LDAP를 포함하는 JSON."
+msgid "JSON containing LDAP to Torch group mappings."
+msgstr "Torch 그룹 매핑에 대한 LDAP를 포함하는 JSON."
 
 #. Define a setting which captures our Slack api token
 #: target/classes/metabase/integrations/slack.clj
@@ -8972,7 +8972,7 @@ msgid "Storing FieldValues for Field {0}..."
 msgstr "필드 {0}에 대한 FieldValues ​​저장 중..."
 
 #: src/metabase/models/humanization.clj
-msgid "Metabase can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
+msgid "Torch can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
 msgstr "Metabase는 테이블 및 필드 이름을 보다 합리적이고 사람이 읽을 수 있는 버전으로 변환하려고 시도할 수 있습니다. \"somehorriblename\"은 \"Some Horrible Name\"이 됩니다."
 
 #: src/metabase/models/humanization.clj
@@ -9124,11 +9124,11 @@ msgid "Loading plugin {0}... "
 msgstr "플러그인 {0} 로드 중..."
 
 #: src/metabase/plugins.clj
-msgid "It looks like you have some external dependencies in your Metabase plugins directory."
-msgstr "Metabase 플러그인 디렉토리에 일부 외부 종속성이 있는 것 같습니다."
+msgid "It looks like you have some external dependencies in your Torch plugins directory."
+msgstr "Torch 플러그인 디렉토리에 일부 외부 종속성이 있는 것 같습니다."
 
 #: src/metabase/plugins.clj
-msgid "With Java 9 or higher, Metabase cannot automatically add them to your classpath."
+msgid "With Java 9 or higher, Torch cannot automatically add them to your classpath."
 msgstr "Java 9 이상에서는 Metabase가 이를 클래스 경로에 자동으로 추가할 수 없습니다."
 
 #: src/metabase/plugins.clj
@@ -9140,28 +9140,28 @@ msgid "See https://metabase.com/docs/latest/operations-guide/start.html#java-ver
 msgstr "자세한 내용은 https://metabase.com/docs/latest/operations-guide/start.html#java-versions를 참조하세요."
 
 #: src/metabase/plugins.clj
-msgid "(If you're already running Metabase this way, you can ignore this message.)"
+msgid "(If you're already running Torch this way, you can ignore this message.)"
 msgstr "(이 방법으로 이미 Metabase를 실행 중인 경우 이 메시지를 무시해도 됩니다.)"
 
 #: metabase/public_settings.clj:67
-msgid "Identify when new versions of Metabase are available."
+msgid "Identify when new versions of Torch are available."
 msgstr "새 버전의 Metabase를 사용할 수 있는 시기를 식별합니다."
 
 #: metabase/public_settings.clj:73
-msgid "Information about available versions of Metabase."
-msgstr "사용 가능한 Metabase 버전에 대한 정보입니다."
+msgid "Information about available versions of Torch."
+msgstr "사용 가능한 Torch 버전에 대한 정보입니다."
 
 #: metabase/public_settings.clj:77
-msgid "The name used for this instance of Metabase."
-msgstr "이 Metabase 인스턴스에 사용되는 이름입니다."
+msgid "The name used for this instance of Torch."
+msgstr "이 Torch 인스턴스에 사용되는 이름입니다."
 
 #: src/metabase/public_settings.clj
-msgid "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"."
-msgstr "이 Metabase 인스턴스의 기본 URL입니다. \"http://metabase.my-company.com\"."
+msgid "The base URL of this Torch instance, e.g. \"http://metabase.my-company.com\"."
+msgstr "이 Torch 인스턴스의 기본 URL입니다. \"http://metabase.my-company.com\"."
 
 #: src/metabase/public_settings.clj
-msgid "The default language for this Metabase instance."
-msgstr "이 Metabase 인스턴스의 기본 언어입니다."
+msgid "The default language for this Torch instance."
+msgstr "이 Torch 인스턴스의 기본 언어입니다."
 
 #: src/metabase/public_settings.clj
 msgid "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."
@@ -9172,8 +9172,8 @@ msgid "The email address users should be referred to if they encounter a problem
 msgstr "이메일 주소 사용자는 문제가 발생할 경우 참조해야 합니다."
 
 #: metabase/public_settings.clj:195
-msgid "Enable the collection of anonymous usage data in order to help Metabase improve."
-msgstr "Metabase 개선을 위해 익명의 사용 데이터 수집을 허용합니다."
+msgid "Enable the collection of anonymous usage data in order to help Torch improve."
+msgstr "Torch 개선을 위해 익명의 사용 데이터 수집을 허용합니다."
 
 #: metabase/public_settings.clj:247
 msgid "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox."
@@ -9204,7 +9204,7 @@ msgid "The absolute maximum time to keep any cached query results, in seconds."
 msgstr "캐시된 쿼리 결과를 유지하는 절대 최대 시간(초)입니다."
 
 #: metabase/public_settings.clj:299
-msgid "Metabase will cache all saved questions with an average query execution time longer than this many seconds:"
+msgid "Torch will cache all saved questions with an average query execution time longer than this many seconds:"
 msgstr "Metabase는 평균 쿼리 실행 시간이 이 초보다 긴 모든 저장된 질문을 캐시합니다."
 
 #: src/metabase/public_settings.clj target/classes/metabase/public_settings.clj
@@ -9415,10 +9415,10 @@ msgstr "작업이 이미 있습니다:"
 
 #. This is the very first log message that will get printed.  It's here because this is one of the very first
 #. namespaces that gets loaded, and the first that has access to the logger It shows up a solid 10-15 seconds before
-#. the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+#. the "Starting Torch in STANDALONE mode" message because so many other namespaces need to get loaded
 #: src/metabase/util.clj
-msgid "Loading Metabase..."
-msgstr "Metabase 로딩 중..."
+msgid "Loading Torch..."
+msgstr "Torch 로딩 중..."
 
 #: src/metabase/util/date.clj
 msgid "Possible timezone conflict found on database {0}."
@@ -9441,12 +9441,12 @@ msgid "MB_ENCRYPTION_SECRET_KEY must be at least 16 characters."
 msgstr "MB_ENCRYPTION_SECRET_KEY는 16자 이상이어야 합니다."
 
 #: metabase/util/encryption.clj:44
-msgid "Saved credentials encryption is ENABLED for this Metabase instance."
-msgstr "이 Metabase 인스턴스에 대해 저장된 자격 증명 암호화가 활성화되었습니다."
+msgid "Saved credentials encryption is ENABLED for this Torch instance."
+msgstr "이 Torch 인스턴스에 대해 저장된 자격 증명 암호화가 활성화되었습니다."
 
 #: metabase/util/encryption.clj:45
-msgid "Saved credentials encryption is DISABLED for this Metabase instance."
-msgstr "이 Metabase 인스턴스에 대해 저장된 자격 증명 암호화가 비활성화되었습니다."
+msgid "Saved credentials encryption is DISABLED for this Torch instance."
+msgstr "이 Torch 인스턴스에 대해 저장된 자격 증명 암호화가 비활성화되었습니다."
 
 #: src/metabase/util/encryption.clj
 msgid "nFor more information, see"
@@ -9682,7 +9682,7 @@ msgid "No results"
 msgstr "결과 없음"
 
 #: frontend/src/metabase/home/containers/SearchApp.jsx:42
-msgid "Metabase couldn't find any results for your search."
+msgid "Torch couldn't find any results for your search."
 msgstr "Metabase에서 검색한 결과가 없습니다."
 
 #: frontend/src/metabase/new_query/containers/MetricSearch.jsx:115
@@ -10088,7 +10088,7 @@ msgid "Troubleshooting logs"
 msgstr "문제 해결 로그"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:47
-msgid "Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on."
+msgid "Trying to get to the bottom of something? This section shows logs of Torch's background tasks, which can help shed light on what's going on."
 msgstr "뭔가의 바닥에 도달하려고? 이 섹션에서는 진행 상황을 파악하는 데 도움이 되는 Metabase의 백그라운드 작업 로그를 보여줍니다."
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:66
@@ -11960,15 +11960,15 @@ msgid "We’d love your feedback."
 msgstr "의견을 보내 주시면 감사하겠습니다."
 
 #: metabase/email/messages.clj:106
-msgid "It looks like Metabase wasn’t quite a match for you."
+msgid "It looks like Torch wasn’t quite a match for you."
 msgstr "Metabase가 귀하와 잘 맞지 않는 것 같습니다."
 
 #: metabase/email/messages.clj:108
-msgid "Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"
-msgstr "Metabase 팀이 향후 왜 그 이유를 이해하고 개선 할 수 있도록 빠른 5 가지 질문 설문 조사에 참여 하시겠습니까?"
+msgid "Would you mind taking a fast 5 question survey to help the Torch team understand why and make things better in the future?"
+msgstr "Torch 팀이 향후 왜 그 이유를 이해하고 개선 할 수 있도록 빠른 5 가지 질문 설문 조사에 참여 하시겠습니까?"
 
 #: metabase/email/messages.clj:285
-msgid "We hope you''ve been enjoying Metabase."
+msgid "We hope you''ve been enjoying Torch."
 msgstr "Metabase를 즐기셨기를 바랍니다."
 
 #: metabase/email/messages.clj:113
@@ -11976,28 +11976,28 @@ msgid "Would you mind taking a fast 6 question survey to tell us how it’s goin
 msgstr "어떻게 진행되고 있는지 알려주기 위해 빠른 6 가지 질문 설문 조사를 하시겠습니까?"
 
 #: src/metabase/email/messages.clj
-msgid "{0} created a Metabase account"
-msgstr "{0}님이 Metabase 계정을 만들었습니다."
+msgid "{0} created a Torch account"
+msgstr "{0}님이 Torch 계정을 만들었습니다."
 
 #: src/metabase/email/messages.clj
-msgid "{0} accepted their Metabase invite"
-msgstr "{0}님이 Metabase 초대를 수락했습니다."
+msgid "{0} accepted their Torch invite"
+msgstr "{0}님이 Torch 초대를 수락했습니다."
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Password Reset Request"
-msgstr "[Metabase] 비밀번호 재설정 요청"
+msgid "[Torch] Password Reset Request"
+msgstr "[Torch] 비밀번호 재설정 요청"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Notification"
-msgstr "[Metabase] 알림"
+msgid "[Torch] Notification"
+msgstr "[Torch] 알림"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Help make Metabase better."
-msgstr "[Metabase] Metabase를 개선할 수 있도록 도와주세요."
+msgid "[Torch] Help make Torch better."
+msgstr "[Torch] Metabase를 개선할 수 있도록 도와주세요."
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Tell us how things are going."
-msgstr "[Metabase] 진행 상황을 알려주세요."
+msgid "[Torch] Tell us how things are going."
+msgstr "[Torch] 진행 상황을 알려주세요."
 
 #: metabase/mbql/util.cljc:374
 msgid "Error: query''s source query has not been resolved. You probably need to `preprocess` the query first."
@@ -12291,7 +12291,7 @@ msgid "You may need to add `?sslmode=require` to your application DB connection 
 msgstr "애플리케이션 DB 연결 문자열에 `?sslmode=require`를 추가해야 할 수도 있습니다."
 
 #: target/classes/metabase/db/env.clj
-msgid "If Metabase fails to launch, please add it and try again."
+msgid "If Torch fails to launch, please add it and try again."
 msgstr "Metabase가 시작되지 않으면 추가하고 다시 시도하십시오."
 
 #: target/classes/metabase/db/env.clj
@@ -12299,7 +12299,7 @@ msgid "See https://github.com/metabase/metabase/issues/8908 for more details."
 msgstr "자세한 내용은 https://github.com/metabase/metabase/issues/8908을 참조하세요."
 
 #: src/metabase/db.clj
-msgid "WARNING: Using Metabase with an H2 application database is not recomended for production deployments."
+msgid "WARNING: Using Torch with an H2 application database is not recomended for production deployments."
 msgstr "경고: 프로덕션 배포에는 Metabase를 H2 응용 프로그램 데이터베이스와 함께 사용하지 않는 것이 좋습니다."
 
 #: target/classes/metabase/db/env.clj
@@ -12315,8 +12315,8 @@ msgid "See https://metabase.com/docs/latest/operations-guide/start.html#migratin
 msgstr "자세한 내용은 https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres를 참조하십시오."
 
 #: metabase/db/setup.clj:110
-msgid "Unable to connect to Metabase {0} DB."
-msgstr "Metabase {0} DB에 연결할 수 없습니다."
+msgid "Unable to connect to Torch {0} DB."
+msgstr "Torch {0} DB에 연결할 수 없습니다."
 
 #: target/classes/metabase/db/data_migrations.clj
 msgid "Error adding legacy SQL directive to BigQuery saved Question"
@@ -12427,19 +12427,19 @@ msgid "Could not find matching Field ID for target:"
 msgstr "대상에 대해 일치하는 필드 ID를 찾을 수 없음:"
 
 #: metabase/plugins.clj:34
-msgid "Metabase does not have permissions to write to plugins directory {0}"
+msgid "Torch does not have permissions to write to plugins directory {0}"
 msgstr "Metabase에 플러그인 디렉토리 {0}에 쓸 수 있는 권한이 없습니다."
 
 #: metabase/plugins.clj:41
-msgid "Metabase cannot use the plugins directory {0}"
+msgid "Torch cannot use the plugins directory {0}"
 msgstr "Metabase는 플러그인 디렉토리 {0}을(를) 사용할 수 없습니다."
 
 #: metabase/plugins.clj:43
-msgid "Please make sure the directory exists and that Metabase has permission to write to it."
+msgid "Please make sure the directory exists and that Torch has permission to write to it."
 msgstr "디렉터리가 존재하고 Metabase에 쓰기 권한이 있는지 확인하십시오."
 
 #: metabase/plugins.clj:44
-msgid "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR."
+msgid "You can change the directory Torch uses for modules by setting the environment variable MB_PLUGINS_DIR."
 msgstr "MB_PLUGINS_DIR 환경 변수를 설정하여 Metabase가 모듈에 사용하는 디렉터리를 변경할 수 있습니다."
 
 #: metabase/plugins.clj:45
@@ -12447,12 +12447,12 @@ msgid "Falling back to a temporary directory for now."
 msgstr "지금은 임시 디렉토리로 대체합니다."
 
 #: metabase/plugins.clj:50
-msgid "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."
+msgid "Torch cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Torch."
 msgstr "Metabase는 임시 디렉터리에 쓸 수 없습니다. MB_PLUGINS_DIR을 쓰기 가능한 디렉토리로 설정하고 Metabase를 다시 시작하십시오."
 
 #: src/metabase/plugins.clj
-msgid "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory."
-msgstr "spark-deps.jar는 Metabase 1.0+에서 더 이상 필요하지 않습니다. 플러그인 디렉토리에서 삭제할 수 있습니다."
+msgid "spark-deps.jar is no longer needed by Torch 1.0+. You can delete it from the plugins directory."
+msgstr "spark-deps.jar는 Torch 1.0+에서 더 이상 필요하지 않습니다. 플러그인 디렉토리에서 삭제할 수 있습니다."
 
 #: metabase/plugins.clj:168
 msgid "Failied to initialize plugin {0}"
@@ -12483,7 +12483,7 @@ msgid "Added URL {0} to classpath"
 msgstr "URL {0}을 클래스 경로에 추가했습니다."
 
 #: metabase/plugins/dependencies.clj:29
-msgid "Plugin {0} declares a dependency that Metabase does not understand: {1}"
+msgid "Plugin {0} declares a dependency that Torch does not understand: {1}"
 msgstr "플러그인 {0}은(는) Metabase가 이해하지 못하는 종속성을 선언합니다: {1}"
 
 #: metabase/plugins/dependencies.clj:30
@@ -12491,7 +12491,7 @@ msgid "Refer to the plugin manifest reference for a complete list of valid plugi
 msgstr "유효한 플러그인 종속성의 전체 목록은 플러그인 매니페스트 참조를 참조하세요."
 
 #: metabase/plugins/dependencies.clj:51
-msgid "Metabase cannot initialize plugin {0} due to required dependencies."
+msgid "Torch cannot initialize plugin {0} due to required dependencies."
 msgstr "Metabase는 필수 종속성으로 인해 플러그인 {0}을(를) 초기화할 수 없습니다."
 
 #: metabase/plugins/dependencies.clj:60
@@ -12555,7 +12555,7 @@ msgstr "플러그인을 초기화할 수 없습니다: 필수 속성 `driver-nam
 msgid "Warning: plugin manifest for {0} does not include connection properties"
 msgstr "경고: {0}에 대한 플러그인 매니페스트에 연결 속성이 포함되어 있지 않습니다."
 
-#. finally, register the Metabase driver
+#. finally, register the Torch driver
 #: metabase/plugins/lazy_loaded_driver.clj:94
 msgid "Registering lazy loading driver {0}..."
 msgstr "지연 로드 드라이버 {0} 등록 중..."
@@ -12703,8 +12703,8 @@ msgid "Task history cleanup successful, no rows were deleted"
 msgstr "작업 기록 정리 성공, 삭제된 행 없음"
 
 #: metabase/task/upgrade_checks.clj:31
-msgid "Checking for new Metabase version info."
-msgstr "새 Metabase 버전 정보를 확인하는 중입니다."
+msgid "Checking for new Torch version info."
+msgstr "새 Torch 버전 정보를 확인하는 중입니다."
 
 #: src/metabase/task/upgrade_checks.clj
 msgid "Error fetching version info"
@@ -13043,7 +13043,7 @@ msgid "Request canceled before finishing."
 msgstr "완료되기 전에 요청이 취소되었습니다."
 
 #: src/metabase/middleware/json.clj
-msgid "Metabase only supports JSON requests."
+msgid "Torch only supports JSON requests."
 msgstr "Metabase는 JSON 요청만 지원합니다."
 
 #: src/metabase/middleware/json.clj
@@ -13051,8 +13051,8 @@ msgid "Make sure you set a 'Content-Type: application/json' header."
 msgstr "'Content-Type: application/json' 헤더를 설정했는지 확인하십시오."
 
 #: metabase/server/middleware/misc.clj:50
-msgid "Setting Metabase site URL to {0}"
-msgstr "Metabase 사이트 URL을 {0}(으)로 설정"
+msgid "Setting Torch site URL to {0}"
+msgstr "Torch 사이트 URL을 {0}(으)로 설정"
 
 #: metabase/models/database.clj:83
 msgid "Error scheduling tasks for DB"
@@ -13159,7 +13159,7 @@ msgid "Automatically run queries when doing simple filtering and summarizing"
 msgstr "간단한 필터링 및 요약을 수행할 때 자동으로 쿼리 실행"
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:320
-msgid "When this is on Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
+msgid "When this is on Torch will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
 msgstr "이것이 켜져 있으면 사용자가 테이블이나 차트를 볼 때 요약 및 필터 단추를 사용하여 간단한 탐색을 수행할 때 Metabase에서 자동으로 쿼리를 실행합니다. 이 데이터베이스 쿼리가 느린 경우 이 기능을 끌 수 있습니다. 이 설정은 드릴스루 또는 SQL 쿼리에 영향을 주지 않습니다."
 
 #: frontend/src/metabase/containers/Overworld.jsx:313
@@ -13515,11 +13515,11 @@ msgid "Request canceled, canceling future."
 msgstr "요청이 취소되었습니다. 향후 취소합니다."
 
 #: src/metabase/cmd/load_from_h2.clj
-msgid "Metabase can only transfer data from H2 to Postgres or MySQL/MariaDB."
+msgid "Torch can only transfer data from H2 to Postgres or MySQL/MariaDB."
 msgstr "Metabase는 H2에서 Postgres 또는 MySQL/MariaDB로만 데이터를 전송할 수 있습니다."
 
 #: target/classes/metabase/db/env.clj
-msgid "WARNING: Using Metabase with an H2 application database is not recommended for production deployments."
+msgid "WARNING: Using Torch with an H2 application database is not recommended for production deployments."
 msgstr "경고: 프로덕션 배포에는 Metabase를 H2 응용 프로그램 데이터베이스와 함께 사용하지 않는 것이 좋습니다."
 
 #: src/metabase/db.clj
@@ -13581,8 +13581,8 @@ msgid "Error saving task history"
 msgstr "작업 기록 저장 오류"
 
 #: metabase/plugins.clj:117
-msgid "spark-deps.jar is no longer needed by Metabase 0.32.0+. You can delete it from the plugins directory."
-msgstr "spark-deps.jar는 Metabase 0.32.0+에서 더 이상 필요하지 않습니다. 플러그인 디렉토리에서 삭제할 수 있습니다."
+msgid "spark-deps.jar is no longer needed by Torch 0.32.0+. You can delete it from the plugins directory."
+msgstr "spark-deps.jar는 Torch 0.32.0+에서 더 이상 필요하지 않습니다. 플러그인 디렉토리에서 삭제할 수 있습니다."
 
 #: src/metabase/plugins/classloader.clj
 msgid "Using NEWLY CREATED classloader as shared context classloader: {0}"
@@ -13614,7 +13614,7 @@ msgid "We were unable to display this Pulse."
 msgstr "이 펄스를 표시할 수 없습니다."
 
 #: metabase/pulse/render/body.clj:1077
-msgid "Please view this card in Metabase."
+msgid "Please view this card in Torch."
 msgstr "Metabase에서 이 카드를 확인하십시오."
 
 #: metabase/pulse/render/body.clj:53
@@ -13811,8 +13811,8 @@ msgid "Failed to fetch Field {0}: Field does not exist, or belongs to a differen
 msgstr "{0} 필드를 가져오지 못했습니다. 필드가 존재하지 않거나 다른 데이터베이스에 속합니다."
 
 #: metabase/server/routes/index.clj:74
-msgid "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?"
-msgstr "템플릿 ''{0}''을(를) 로드하지 못했습니다. Metabase 프런트엔드를 구축한 것을 기억하십니까?"
+msgid "Failed to load template ''{0}''. Did you remember to build the Torch frontend?"
+msgstr "템플릿 ''{0}''을(를) 로드하지 못했습니다. Torch 프런트엔드를 구축한 것을 기억하십니까?"
 
 #: target/classes/metabase/sample_data.clj
 msgid "Sample dataset DB file ''{0}'' cannot be found."
@@ -13863,13 +13863,13 @@ msgstr "데이터베이스 {0}에 대한 작업을 예약하지 못했습니다.
 msgid "All elements must be distinct."
 msgstr "모든 요소는 구별되어야 합니다."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "포함할 열을 선택합니다."
 
 #: frontend/src/metabase/entities/databases/forms.js:343
-msgid "When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
+msgid "When this is on, Torch will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
 msgstr "이 기능이 켜져 있으면 사용자가 테이블이나 차트를 볼 때 요약 및 필터 단추를 사용하여 간단한 탐색을 수행할 때 Metabase가 자동으로 쿼리를 실행합니다. 이 데이터베이스 쿼리가 느린 경우 이 기능을 끌 수 있습니다. 이 설정은 드릴스루 또는 SQL 쿼리에 영향을 주지 않습니다."
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/JoinStep/JoinStrategyPicker/JoinStrategyPicker.tsx:51
@@ -13912,12 +13912,12 @@ msgid "Diagnostic Info"
 msgstr "진단 정보"
 
 #: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:132
-msgid "Select Metabase process:"
-msgstr "Metabase 프로세스 선택:"
+msgid "Select Torch process:"
+msgstr "Torch 프로세스 선택:"
 
 #: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:145
-msgid "All Metabase processes"
-msgstr "모든 Metabase 프로세스"
+msgid "All Torch processes"
+msgstr "모든 Torch 프로세스"
 
 #: frontend/src/metabase/lib/auth.js:18
 msgid "The window was closed before completing Google Authentication."
@@ -13936,7 +13936,7 @@ msgid "Using this option requires that provided host is a FQDN.  If connecting t
 msgstr "이 옵션을 사용하려면 제공된 호스트가 FQDN이어야 합니다. Atlas 클러스터에 연결하는 경우 이 옵션을 활성화해야 할 수 있습니다. 이것이 의미하는 바를 모르는 경우 비활성화된 상태로 두십시오."
 
 #: frontend/src/metabase/entities/databases/forms.js:350
-msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
+msgid "By default, Torch does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
 msgstr "기본적으로 Metabase는 간단한 시간별 동기화와 필드 값에 대한 집중적인 일일 검색을 수행합니다. 대규모 데이터베이스가 있는 경우 이 기능을 켜고 필드 값 스캔이 발생하는 시기와 빈도를 검토하는 것이 좋습니다."
 
 #: frontend/src/metabase/home/homepage/components/XraySection/XraySection.tsx:45
@@ -14269,8 +14269,8 @@ msgid "Sending Alert ({0}: {1}) via email"
 msgstr "이메일을 통해 알림 보내기({0}: {1})"
 
 #: target/classes/metabase/pulse.clj
-msgid "Metabase alert: {0} has {1}"
-msgstr "Metabase 알림: {0}에 {1}이(가) 있습니다."
+msgid "Torch alert: {0} has {1}"
+msgstr "Torch 알림: {0}에 {1}이(가) 있습니다."
 
 #: metabase/pulse.clj:481
 msgid "Sending Alert ({0}: {1}) via Slack"
@@ -14354,7 +14354,7 @@ msgid "OK"
 msgstr "좋아요"
 
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:68
-msgid "To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}."
+msgid "To allow users to sign in with Google you'll need to give Torch a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}."
 msgstr "사용자가 Google로 로그인할 수 있도록 하려면 Metabase에 Google 개발자 콘솔 애플리케이션 클라이언트 ID를 제공해야 합니다. 몇 단계만 거치면 되며 키를 만드는 방법에 대한 지침은 {0}에서 찾을 수 있습니다."
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:134
@@ -14362,8 +14362,8 @@ msgid "Be sure to include the full client ID, including the apps.googleuserconte
 msgstr "apps.googleusercontent.com 접미사를 포함하여 전체 클라이언트 ID를 포함해야 합니다."
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:76
-msgid "Metabase {0} is available."
-msgstr "Metabase {0}을(를) 사용할 수 있습니다."
+msgid "Torch {0} is available."
+msgstr "Torch {0}을(를) 사용할 수 있습니다."
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:77
 msgid "You're running {0}"
@@ -14390,19 +14390,19 @@ msgid "No mappable groups"
 msgstr "매핑 가능한 그룹 없음"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:109
-msgid "Metabase Documentation"
-msgstr "Metabase 문서"
+msgid "Torch Documentation"
+msgstr "Torch 문서"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:110
 msgid "Includes a troubleshooting guide"
 msgstr "문제 해결 가이드 포함"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:114
-msgid "Post on the Metabase support forum"
-msgstr "Metabase 지원 포럼에 게시"
+msgid "Post on the Torch support forum"
+msgstr "Torch 지원 포럼에 게시"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:115
-msgid "A community forum for all things Metabase"
+msgid "A community forum for all things Torch"
 msgstr "Metabase에 관한 모든 것을 위한 커뮤니티 포럼"
 
 #: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:120
@@ -14479,7 +14479,7 @@ msgid "This is a lightweight process that checks for updates to this database’
 msgstr "이것은 이 데이터베이스의 스키마에 대한 업데이트를 확인하는 가벼운 프로세스입니다. 대부분의 경우 매시간 동기화하도록 이 설정을 그대로 두는 것이 좋습니다."
 
 #: frontend/src/metabase/entities/databases/big-query-fields.js:165
-msgid "Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database."
+msgid "Torch can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database."
 msgstr "Metabase는 이 데이터베이스의 각 필드에 있는 값을 스캔하여 대시보드 및 질문에서 확인란 필터를 활성화할 수 있습니다. 이는 특히 매우 큰 데이터베이스가 있는 경우 리소스를 많이 사용하는 프로세스일 수 있습니다."
 
 #: frontend/src/metabase/common/utils/model-names.ts:6
@@ -15011,7 +15011,7 @@ msgid "must be {0} characters or less"
 msgstr "{0}자 이하여야 합니다"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:121
-msgid "Thanks for using Metabase!"
+msgid "Thanks for using Torch!"
 msgstr "Metabase를 이용해 주셔서 감사합니다!"
 
 #: frontend/src/metabase/public/components/EmbedFrame/LogoBadge.tsx:26
@@ -15168,7 +15168,7 @@ msgstr "구글 인증 토큰이 잘못 되었습니다. "
 
 #: src/metabase/integrations/google.clj
 #: target/classes/metabase/integrations/google.clj
-msgid "Double check that it matches in Google and Metabase."
+msgid "Double check that it matches in Google and Torch."
 msgstr "구글 / Metabase에서 일치하는지 다시 확인하세요."
 
 #: metabase/api/table.clj:341
@@ -15184,7 +15184,7 @@ msgid "Database Upgrade Required"
 msgstr "데이터베이스 업그레이드 필요"
 
 #: metabase/db/setup.clj:46
-msgid "NOTICE: Your database requires updates to work with this version of Metabase."
+msgid "NOTICE: Your database requires updates to work with this version of Torch."
 msgstr "주의: 이 버전의 Metabase에서 사용하려면 데이터베이스 업그레이드가 필요합니다."
 
 #: metabase/db/setup.clj:48
@@ -15227,11 +15227,11 @@ msgid "The sub-query from referenced question #{0} failed with the following err
 msgstr "참조된 질문 #{0}의 하위 쿼리가 다음 오류로 인해 실패했습니다. {1}"
 
 #: metabase/driver/mysql.clj:127
-msgid "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
+msgid "WARNING: Torch only officially supports MySQL {0}/MariaDB {1} and above."
 msgstr "경고: Metabase는 공식적으로 MySQL {0}/MariaDB {1} 이상만 지원합니다."
 
 #: metabase/driver/mysql.clj:131
-msgid "All Metabase features may not work properly when using an unsupported version."
+msgid "All Torch features may not work properly when using an unsupported version."
 msgstr "지원되지 않는 버전을 사용할 시 모든 Metabase의 기능이 정상 작동하지 않을 수 있습니다."
 
 #: target/classes/metabase/driver/sql/parameters/substitute.clj
@@ -15525,7 +15525,7 @@ msgid "Service Accounts"
 msgstr "서비스 계정"
 
 #: frontend/src/metabase/entities/databases/big-query-fields.js:30
-msgid "Metabase connects to Big Query via {0}."
+msgid "Torch connects to Big Query via {0}."
 msgstr "Metabase는 {0}를 통해 BigQuery에 연결합니다."
 
 #: frontend/src/metabase/entities/databases/big-query-fields.js:33
@@ -15658,8 +15658,8 @@ msgid "What's your preferred language?"
 msgstr "선호하는 언어는 무엇입니까?"
 
 #: frontend/src/metabase/setup/components/LanguageStep/LanguageStep.tsx:66
-msgid "This language will be used throughout Metabase and will be the default for new users."
-msgstr "이 언어는 Metabase 전체에서 사용되며 신규 사용자의 기본값이 됩니다."
+msgid "This language will be used throughout Torch and will be the default for new users."
+msgstr "이 언어는 Torch 전체에서 사용되며 신규 사용자의 기본값이 됩니다."
 
 #: frontend/src/metabase/visualizations/components/PinMap.jsx:141
 msgid "We filtered out {0} row(s) containing null values."
@@ -15811,7 +15811,7 @@ msgid "Error fetching value of Setting"
 msgstr "설정 값을 가져오는 중에 오류가 발생했습니다."
 
 #: src/metabase/public_settings.clj
-msgid "The language that should be used for Metabase's UI, system emails, pulses, and alerts."
+msgid "The language that should be used for Torch's UI, system emails, pulses, and alerts."
 msgstr "Metabase의 UI, 시스템 전자 메일, 펄스 및 경고에 사용해야 하는 언어입니다."
 
 #: src/metabase/public_settings.clj
@@ -15831,7 +15831,7 @@ msgid "Cannot redirect requests to HTTPS unless `site-url` is HTTPS."
 msgstr "`site-url`이 HTTPS가 아니면 요청을 HTTPS로 리디렉션할 수 없습니다."
 
 #: metabase/pulse/render/style.clj:112
-msgid "Error registering fonts: Metabase will not be able to send Pulses."
+msgid "Error registering fonts: Torch will not be able to send Pulses."
 msgstr "글꼴 등록 오류: Metabase에서 펄스를 보낼 수 없습니다."
 
 #: metabase/pulse/render/style.clj:114
@@ -15967,7 +15967,7 @@ msgid "Configure your identity provider (IdP)"
 msgstr "IdP(ID 공급자) 구성"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:92
-msgid "Your identity provider will need the following info about Metabase."
+msgid "Your identity provider will need the following info about Torch."
 msgstr "ID 공급자는 Metabase에 대한 다음 정보가 필요합니다."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:99
@@ -16003,11 +16003,11 @@ msgid "User's last name attribute"
 msgstr "사용자의 성 속성"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:126
-msgid "Tell Metabase about your identity provider"
+msgid "Tell Torch about your identity provider"
 msgstr "ID 공급자에 대해 Metabase에 알리기"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:127
-msgid "Metabase will need the following info about your provider."
+msgid "Torch will need the following info about your provider."
 msgstr "Metabase는 공급자에 대한 다음 정보가 필요합니다."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:131
@@ -16052,7 +16052,7 @@ msgid "Synchronize group membership with your SSO"
 msgstr "그룹 구성원을 SSO와 동기화"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:176
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid "To enable this, you'll need to create mappings to tell Torch which group(s) your users should\n"
 "be added to based on the SSO group they're in."
 msgstr "이를 활성화하려면 사용자가 어떤 그룹을 사용해야 하는지 Metabase에 알려주는 매핑을 생성해야 합니다.\n"
 "속해 있는 SSO 그룹에 따라 추가됩니다."
@@ -16077,7 +16077,7 @@ msgid "Note:"
 msgstr "메모:"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:186
-msgid "If you change any of the settings of an existing SAML active setup, then you will need to restart Metabase for them to take effect."
+msgid "If you change any of the settings of an existing SAML active setup, then you will need to restart Torch for them to take effect."
 msgstr "기존 SAML 활성 설정의 설정을 변경하는 경우 적용하려면 Metabase를 다시 시작해야 합니다."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/SamlAuthCard/SamlAuthCard.tsx:12
@@ -16131,11 +16131,11 @@ msgid "String used by the JWT signing key"
 msgstr "JWT 서명 키에서 사용하는 문자열"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:27
-msgid "Embedding the entire Metabase app"
-msgstr "전체 Metabase 앱 포함"
+msgid "Embedding the entire Torch app"
+msgstr "전체 Torch 앱 포함"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:16
-msgid "If you want to embed all of Metabase, enter the origins of the websites or web apps where you want to allow embedding in an iframe, separated by a space. Here are the {0} for what can be entered."
+msgid "If you want to embed all of Torch, enter the origins of the websites or web apps where you want to allow embedding in an iframe, separated by a space. Here are the {0} for what can be entered."
 msgstr "모든 Metabase를 임베드하려면 iframe에 임베드를 허용하려는 웹사이트 또는 웹 앱의 출처를 공백으로 구분하여 입력합니다. 다음은 입력할 수 있는 {0}입니다."
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/EditSandboxingModal/EditSandboxingModal.tsx:116
@@ -16261,7 +16261,7 @@ msgid "We're having trouble validating your token"
 msgstr "토큰을 확인하는 데 문제가 있습니다."
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:89
-msgid "Please double-check that your instance can connect to Metabase's servers"
+msgid "Please double-check that your instance can connect to Torch's servers"
 msgstr "인스턴스가 Metabase의 서버에 연결할 수 있는지 다시 확인하십시오."
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:94
@@ -16269,11 +16269,11 @@ msgid "Get help"
 msgstr "도움 받기"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:101
-msgid "Get even more out of Metabase with the Enterprise Edition"
+msgid "Get even more out of Torch with the Enterprise Edition"
 msgstr "Enterprise Edition으로 Metabase를 최대한 활용하십시오."
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:103
-msgid "All the tools you need to quickly and easily provide reports for your customers, or to help you run and monitor Metabase in a large organization"
+msgid "All the tools you need to quickly and easily provide reports for your customers, or to help you run and monitor Torch in a large organization"
 msgstr "고객에게 빠르고 쉽게 보고서를 제공하거나 대규모 조직에서 Metabase를 실행 및 모니터링하는 데 필요한 모든 도구"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:115
@@ -16373,7 +16373,7 @@ msgid "White labeling"
 msgstr "화이트 라벨링"
 
 #: enterprise/frontend/src/metabase-enterprise/store/lib/features.js:17
-msgid "Match Metabase to your brand with custom colors, your own logo and more."
+msgid "Match Torch to your brand with custom colors, your own logo and more."
 msgstr "사용자 정의 색상, 고유한 로고 등을 사용하여 Metabase를 브랜드와 일치시키십시오."
 
 #: enterprise/frontend/src/metabase-enterprise/store/lib/features.js:26
@@ -16473,8 +16473,8 @@ msgid "at"
 msgstr "~에"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/utils.ts:29
-msgid "Open the Metabase actions menu"
-msgstr "Metabase 작업 메뉴 열기"
+msgid "Open the Torch actions menu"
+msgstr "Torch 작업 메뉴 열기"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/TableClickBehaviorView/TableClickBehaviorView.tsx:29
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/hooks.ts:18
@@ -17167,7 +17167,7 @@ msgid "Send it to Slack"
 msgstr "Slack으로 보내기"
 
 #: frontend/src/metabase/sharing/components/NewPulseSidebar.tsx:104
-msgid "Pick a channel and a schedule, and Metabase will do the rest."
+msgid "Pick a channel and a schedule, and Torch will do the rest."
 msgstr "채널과 일정을 선택하면 나머지는 Metabase가 알아서 처리합니다."
 
 #: frontend/src/metabase/sharing/components/AddEditSidebar/AddEditEmailSidebar.jsx:51
@@ -17225,24 +17225,24 @@ msgid "Invalid Slack token."
 msgstr "잘못된 Slack 토큰입니다."
 
 #: metabase/cmd.clj:51
-msgid "The ''{0}'' command is only available in Metabase Enterprise Edition."
-msgstr "''{0}'' 명령은 Metabase Enterprise Edition에서만 사용할 수 있습니다."
+msgid "The ''{0}'' command is only available in Torch Enterprise Edition."
+msgstr "''{0}'' 명령은 Torch Enterprise Edition에서만 사용할 수 있습니다."
 
 #: metabase/core.clj:51
-msgid "Metabase Enterprise Edition extensions are PRESENT."
-msgstr "Metabase Enterprise Edition 확장이 존재합니다."
+msgid "Torch Enterprise Edition extensions are PRESENT."
+msgstr "Torch Enterprise Edition 확장이 존재합니다."
 
 #: metabase/core.clj:53
-msgid "Usage of Metabase Enterprise Edition features are subject to the Metabase Commercial License."
-msgstr "Metabase Enterprise Edition 기능의 사용에는 Metabase Commercial License가 적용됩니다."
+msgid "Usage of Torch Enterprise Edition features are subject to the Torch Commercial License."
+msgstr "Torch Enterprise Edition 기능의 사용에는 Torch Commercial License가 적용됩니다."
 
 #: metabase/core.clj:55
 msgid "See {0} for details."
 msgstr "자세한 내용은 {0}을(를) 참조하세요."
 
 #: metabase/core.clj:56
-msgid "Metabase Enterprise Edition extensions are NOT PRESENT."
-msgstr "Metabase Enterprise Edition 확장은 존재하지 않습니다."
+msgid "Torch Enterprise Edition extensions are NOT PRESENT."
+msgstr "Torch Enterprise Edition 확장은 존재하지 않습니다."
 
 #: metabase/email/messages.clj:129
 msgid "You''re invited to join {0}''s {1}"
@@ -17397,8 +17397,8 @@ msgid "login attribute keys must be a keyword or string"
 msgstr "로그인 속성 키는 키워드 또는 문자열이어야 합니다."
 
 #: src/metabase/public_settings.clj target/classes/metabase/public_settings.clj
-msgid "The default language for all users across the Metabase UI, system emails, pulses, and alerts."
-msgstr "Metabase UI, 시스템 이메일, 펄스, 알림에 걸쳐 모든 사용자에게 적용되는 기본 언어."
+msgid "The default language for all users across the Torch UI, system emails, pulses, and alerts."
+msgstr "Torch UI, 시스템 이메일, 펄스, 알림에 걸쳐 모든 사용자에게 적용되는 기본 언어."
 
 #: src/metabase/public_settings.clj target/classes/metabase/public_settings.clj
 msgid "Users can individually override this default language from their own account settings."
@@ -17409,20 +17409,20 @@ msgid "Default page to show the user"
 msgstr "사용자를 표시하는 기본 페이지"
 
 #: metabase/public_settings.clj:238
-msgid "Allow this origin to embed the full Metabase application"
-msgstr "이 원본이 전체 Metabase 응용 프로그램을 포함하도록 허용"
+msgid "Allow this origin to embed the full Torch application"
+msgstr "이 원본이 전체 Torch 응용 프로그램을 포함하도록 허용"
 
 #: metabase/public_settings.clj:338
 msgid "Values greater than {0} ({1}) are not allowed."
 msgstr "{0}({1})보다 큰 값은 허용되지 않습니다."
 
 #: metabase/public_settings.clj:27
-msgid "This will replace the word \"Metabase\" wherever it appears."
-msgstr "이렇게 하면 \"Metabase\"라는 단어가 나타날 때마다 대체됩니다."
+msgid "This will replace the word \"Torch\" wherever it appears."
+msgstr "이렇게 하면 \"Torch\"라는 단어가 나타날 때마다 대체됩니다."
 
 #: metabase/public_settings.clj:337
-msgid "These are the primary colors used in charts and throughout Metabase. You might need to refresh your browser to see your changes take effect."
-msgstr "차트와 Metabase 전체에서 사용되는 기본 색상입니다. 변경 사항을 적용하려면 브라우저를 새로 고쳐야 할 수도 있습니다."
+msgid "These are the primary colors used in charts and throughout Torch. You might need to refresh your browser to see your changes take effect."
+msgstr "차트와 Torch 전체에서 사용되는 기본 색상입니다. 변경 사항을 적용하려면 브라우저를 새로 고쳐야 할 수도 있습니다."
 
 #: metabase/public_settings.clj:432
 msgid "For best results, use an SVG file with a transparent background."
@@ -17554,16 +17554,16 @@ msgid "Include User ID and query hash in queries"
 msgstr "쿼리에 사용자 ID 및 쿼리 해시 포함"
 
 #: frontend/src/metabase/entities/databases/forms.js:24
-msgid "When on, Metabase User ID and query hash get appended to queries on this database, which can be useful for auditing and debugging. However, this causes each query to look distinct, preventing BigQuery from returning cached results, which may increase your costs."
-msgstr "설정하면 Metabase 사용자 ID 및 쿼리 해시가 이 데이터베이스의 쿼리에 추가되어 감사 및 디버깅에 유용할 수 있습니다. 그러나 이로 인해 각 쿼리가 뚜렷하게 표시되어 BigQuery가 캐시된 결과를 반환하지 않아 비용이 증가할 수 있습니다."
+msgid "When on, Torch User ID and query hash get appended to queries on this database, which can be useful for auditing and debugging. However, this causes each query to look distinct, preventing BigQuery from returning cached results, which may increase your costs."
+msgstr "설정하면 Torch 사용자 ID 및 쿼리 해시가 이 데이터베이스의 쿼리에 추가되어 감사 및 디버깅에 유용할 수 있습니다. 그러나 이로 인해 각 쿼리가 뚜렷하게 표시되어 BigQuery가 캐시된 결과를 반환하지 않아 비용이 증가할 수 있습니다."
 
 #: metabase/driver/common.clj:182
 msgid "Periodically refingerprint tables"
 msgstr "주기적으로 지문 테이블"
 
 #: frontend/src/metabase/entities/databases/forms.js:357
-msgid "When syncing with this database, Metabase will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Metabase instance smarter."
-msgstr "이 데이터베이스와 동기화할 때 Metabase는 필드 값의 하위 집합을 스캔하여 차트에서 비닝 동작을 개선하고 일반적으로 Metabase 인스턴스를 더 스마트하게 만드는 통계를 수집합니다."
+msgid "When syncing with this database, Torch will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Torch instance smarter."
+msgstr "이 데이터베이스와 동기화할 때 Metabase는 필드 값의 하위 집합을 스캔하여 차트에서 비닝 동작을 개선하고 일반적으로 Torch 인스턴스를 더 스마트하게 만드는 통계를 수집합니다."
 
 #: frontend/src/metabase/lib/core.js:251
 msgid "Updated date"
@@ -17827,7 +17827,7 @@ msgid "invalid context seed value"
 msgstr "잘못된 컨텍스트 시드 값"
 
 #: metabase_enterprise/serialization/cmd.clj:62
-msgid "Dump was produced using a different version of Metabase. Things may break!"
+msgid "Dump was produced using a different version of Torch. Things may break!"
 msgstr "덤프는 다른 버전의 Metabase를 사용하여 생성되었습니다. 물건이 깨질 수 있습니다!"
 
 #: enterprise/backend/src/metabase_enterprise/serialization/cmd.clj
@@ -17989,7 +17989,7 @@ msgid "Password for opening the keystore"
 msgstr "키 저장소를 열기 위한 암호"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:63
-msgid "Alias for the key that Metabase should use for signing SAML requests"
+msgid "Alias for the key that Torch should use for signing SAML requests"
 msgstr "Metabase가 SAML 요청에 서명하는 데 사용해야 하는 키의 별칭"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:108
@@ -18014,8 +18014,8 @@ msgstr "그룹 동기화를 위한 SAML 속성"
 
 #. Should be in the form: {"groupName": [1, 2, 3]} where keys are SAML groups and values are lists of MB groups IDs
 #: metabase_enterprise/sso/integrations/sso_settings.clj:89
-msgid "JSON containing SAML to Metabase group mappings."
-msgstr "Metabase 그룹 매핑에 대한 SAML을 포함하는 JSON."
+msgid "JSON containing SAML to Torch group mappings."
+msgstr "Torch 그룹 매핑에 대한 SAML을 포함하는 JSON."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:102
 msgid "Enable JWT based authentication"
@@ -18051,8 +18051,8 @@ msgstr "JWT와 그룹 구성원 동기화를 활성화합니다."
 
 #. Should be in the form: {"groupName": [1, 2, 3]} where keys are JWT groups and values are lists of MB groups IDs
 #: metabase_enterprise/sso/integrations/sso_settings.clj:144
-msgid "JSON containing JWT to Metabase group mappings."
-msgstr "Metabase 그룹 매핑에 대한 JWT를 포함하는 JSON."
+msgid "JSON containing JWT to Torch group mappings."
+msgstr "Torch 그룹 매핑에 대한 JWT를 포함하는 JSON."
 
 #: metabase/integrations/common.clj:62
 msgid "Should new email notifications be sent to admins, for all new SSO users?"
@@ -18321,12 +18321,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "펄스가 단계적으로 제거되고 있습니다."
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "이제 대신 {0}를 설정할 수 있습니다. 향후 릴리스에서 Pulse를 제거하고 아직 가지고 있는 Pulse를 마이그레이션할 수 있도록 도와드리겠습니다."
@@ -18335,7 +18335,7 @@ msgstr "이제 대신 {0}를 설정할 수 있습니다. 향후 릴리스에서 
 msgid "dashboard subscriptions"
 msgstr "대시보드 구독"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "구독의 {0} 차트는 대시보드에서와 동일하게 보이지 않습니다. {1}"
 
@@ -18484,7 +18484,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "{0} 소스 데이터베이스 설정 및 마이그레이션 실행..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:387
 msgid "Set up {0} target database and run migrations..."
@@ -18530,12 +18530,12 @@ msgstr "당신을 위해 업그레이드를 원하십니까?"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:123
 #: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:16
-msgid "Migrate to Metabase Cloud."
+msgid "Migrate to Torch Cloud."
 msgstr "Go Cloud를 등록합니다."
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:50
-msgid "Manage Metabase Cloud"
-msgstr "Metabase 클라우드 관리"
+msgid "Manage Torch Cloud"
+msgstr "Torch 클라우드 관리"
 
 #: frontend/src/metabase/visualizations/visualizations/PivotTable/settings.ts:235
 msgid "Show totals"
@@ -18909,8 +18909,8 @@ msgid "Invalid cell format"
 msgstr "잘못된 셀 형식"
 
 #: metabase/search/config.clj:10
-msgid "Enable typeahead search in the Metabase navbar?"
-msgstr "Metabase 탐색 모음에서 미리 입력 검색을 활성화하시겠습니까?"
+msgid "Enable typeahead search in the Torch navbar?"
+msgstr "Torch 탐색 모음에서 미리 입력 검색을 활성화하시겠습니까?"
 
 #: target/classes/metabase/server/request/util.clj
 msgid "Login in request is missing device ID information"
@@ -19304,7 +19304,7 @@ msgstr "잘못된 필드 {0} {1}: {2}(으)로 폴백"
 
 #: src/metabase/models/humanization.clj
 #: target/classes/metabase/models/humanization.clj
-msgid "To make table and field names more human-friendly, Metabase will replace dashes and underscores in them with spaces."
+msgid "To make table and field names more human-friendly, Torch will replace dashes and underscores in them with spaces."
 msgstr "테이블 및 필드 이름을 더 인간에게 친숙하게 만들기 위해 Metabase는 대시와 밑줄을 공백으로 바꿉니다."
 
 #: src/metabase/models/humanization.clj
@@ -19318,7 +19318,7 @@ msgid "Setting names in would collide: {0} and {1}"
 msgstr "설정 이름 충돌: {0} 및 {1}"
 
 #: metabase/public_settings.clj:80
-msgid "Indicates when Metabase last checked for new versions."
+msgid "Indicates when Torch last checked for new versions."
 msgstr "Metabase가 마지막으로 새 버전을 확인한 시기를 나타냅니다."
 
 #: src/metabase/public_settings.clj target/classes/metabase/public_settings.clj
@@ -19418,8 +19418,8 @@ msgid "Enter the token you received from the store"
 msgstr "스토어에서 받은 토큰을 입력하세요."
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:41
-msgid "Metabase Cloud keeps your instance up-to-date. You're currently on version {0}. Thanks for being a customer!"
-msgstr "Metabase Cloud는 인스턴스를 최신 상태로 유지합니다. 현재 버전은 {0}입니다. 고객이 되어 주셔서 감사합니다!"
+msgid "Torch Cloud keeps your instance up-to-date. You're currently on version {0}. Thanks for being a customer!"
+msgstr "Torch Cloud는 인스턴스를 최신 상태로 유지합니다. 현재 버전은 {0}입니다. 고객이 되어 주셔서 감사합니다!"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:35
 msgid "No successful checks yet."
@@ -19574,13 +19574,13 @@ msgid "Make all sub-collections {0}, too."
 msgstr "모든 하위 컬렉션도 {0}로 만듭니다."
 
 #: enterprise/frontend/src/metabase-enterprise/hosting/components/SettingsCloudStoreLink/SettingsCloudStoreLink.tsx:10
-msgid "Manage your Cloud account, including billing preferences and technical settings about this instance in your Metabase Store account."
-msgstr "Metabase 저장소 계정에서 이 인스턴스에 대한 기술 설정 및 청구 기본 설정을 포함하여 클라우드 계정을 관리합니다."
+msgid "Manage your Cloud account, including billing preferences and technical settings about this instance in your Torch Store account."
+msgstr "Torch 저장소 계정에서 이 인스턴스에 대한 기술 설정 및 청구 기본 설정을 포함하여 클라우드 계정을 관리합니다."
 
 #: enterprise/frontend/src/metabase-enterprise/hosting/components/SettingsCloudStoreLink/SettingsCloudStoreLink.tsx:12
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:126
-msgid "Go to the Metabase Store"
-msgstr "Metabase 저장소로 이동"
+msgid "Go to the Torch Store"
+msgstr "Torch 저장소로 이동"
 
 #: metabase/driver/presto_jdbc.clj:567
 msgid "Running statement in describe-schema: {0}"
@@ -19702,8 +19702,8 @@ msgid "Ensure users can’t ever see the data from this database regardless of t
 msgstr "사용자가 컬렉션 수준의 권한에 관계없이 이 데이터베이스의 데이터를 볼 수 없도록 합니다. 사용자가 데이터 액세스 권한이 있는 다른 그룹에 속한 경우 해당 설정이 우선 적용되며 사용자의 액세스가 차단되지 않는다는 점에 유의하십시오."
 
 #: frontend/src/metabase/admin/permissions/constants/messages.ts:7
-msgid "Only available in certain Metabase plans."
-msgstr "특정 Metabase 플랜에서만 이용할 수 있습니다."
+msgid "Only available in certain Torch plans."
+msgstr "특정 Torch 플랜에서만 이용할 수 있습니다."
 
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.jsx:60
 msgid "Learn more about permissions"
@@ -19840,7 +19840,7 @@ msgid "Unsubscribe from all subscriptions / alerts"
 msgstr "모든 구독/알림 구독 취소"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCacheTimeField/DatabaseCacheTimeField.tsx:49
-msgid "How long to keep question results. By default, Metabase will use the value you supply on the {0}, but if this database has other factors that influence the freshness of data, it could make sense to set a custom duration. You can also choose custom durations on individual questions or dashboards to help improve performance."
+msgid "How long to keep question results. By default, Torch will use the value you supply on the {0}, but if this database has other factors that influence the freshness of data, it could make sense to set a custom duration. You can also choose custom durations on individual questions or dashboards to help improve performance."
 msgstr "질문 결과를 보관하는 기간입니다. 기본적으로 Metabase는 {0}에 제공한 값을 사용하지만 이 데이터베이스에 데이터의 최신성에 영향을 미치는 다른 요소가 있는 경우 맞춤 기간을 설정하는 것이 좋습니다. 개별 질문 또는 대시보드에서 사용자 정의 기간을 선택하여 성능을 향상시킬 수도 있습니다."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCacheTimeField/DatabaseCacheTimeField.tsx:51
@@ -20070,8 +20070,8 @@ msgid "This will delete any dashboard subscriptions or alerts {0} has created, a
 msgstr "이렇게 하면 {0}이(가) 생성한 모든 대시보드 구독 또는 알림이 삭제되고 다른 모든 구독 또는 알림에서 수신자로서 제거됩니다."
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/UnsubscribeUserForm/UnsubscribeUserForm.jsx:45
-msgid "This does not affect email distribution lists that are managed outside of Metabase."
-msgstr "이는 Metabase 외부에서 관리되는 전자 메일 배포 목록에는 영향을 미치지 않습니다."
+msgid "This does not affect email distribution lists that are managed outside of Torch."
+msgstr "이는 Torch 외부에서 관리되는 전자 메일 배포 목록에는 영향을 미치지 않습니다."
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditSidebar/AuditSidebar.jsx:36
 #: enterprise/frontend/src/metabase-enterprise/audit_app/pages/AuditUsers.jsx:11
@@ -20122,7 +20122,7 @@ msgid "Not seeing something listed here?"
 msgstr "여기에 나열된 항목이 보이지 않습니까?"
 
 #: frontend/src/metabase/account/notifications/components/HelpModal/HelpModal.jsx:29
-msgid "It’s possible you may also receive emails from Metabase if you’re a member of an email distribution list, like “team@mycompany.com” and that list is used as the recipient for an alert or dashboard subscription instead of your individual email."
+msgid "It’s possible you may also receive emails from Torch if you’re a member of an email distribution list, like “team@mycompany.com” and that list is used as the recipient for an alert or dashboard subscription instead of your individual email."
 msgstr "\"team@mycompany.com\"과 같은 이메일 배포 목록의 구성원이고 해당 목록이 개별 이메일 대신 경고 또는 대시보드 구독의 수신자로 사용되는 경우 Metabase에서 이메일을 받을 수도 있습니다."
 
 #: frontend/src/metabase/account/notifications/components/HelpModal/HelpModal.jsx:38
@@ -20134,7 +20134,7 @@ msgid "your instance administrator"
 msgstr "인스턴스 관리자"
 
 #: frontend/src/metabase/account/notifications/components/HelpModal/HelpModal.jsx:53
-msgid "Metabase doesn’t manage those lists, so we’d recommend contacting {0}. "
+msgid "Torch doesn’t manage those lists, so we’d recommend contacting {0}. "
 msgstr "Metabase는 이러한 목록을 관리하지 않으므로 {0}에 문의하는 것이 좋습니다."
 
 #: frontend/src/metabase/account/notifications/components/NotificationCard/NotificationCard.jsx:100
@@ -20400,7 +20400,7 @@ msgid "Navigation bar color"
 msgstr "내비게이션 바 색상"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:25
-msgid "The top nav bar of Metabase. Defaults to the Primary Color if not set."
+msgid "The top nav bar of Torch. Defaults to the Primary Color if not set."
 msgstr "Metabase의 상단 탐색 모음입니다. 설정하지 않은 경우 기본 색상이 기본값입니다."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:23
@@ -20453,7 +20453,7 @@ msgid "Service account JSON file"
 msgstr "서비스 계정 JSON 파일"
 
 #: frontend/src/metabase/entities/databases/big-query-fields.js:93
-msgid "This JSON file contains the credentials Metabase needs to read and query your dataset."
+msgid "This JSON file contains the credentials Torch needs to read and query your dataset."
 msgstr "이 JSON 파일은 Metabase가 데이터세트를 읽고 쿼리하는 데 필요한 자격을 포함합니다."
 
 #: metabase/driver/common.clj:130
@@ -20469,11 +20469,11 @@ msgid "Choose when syncs and scans happen"
 msgstr "동기화 및 스캔 발생 시기 선택"
 
 #: metabase/driver/common.clj:141
-msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes."
+msgid "By default, Torch does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes."
 msgstr "기본적으로 Metabase는 간단한 시간별 동기화와 필드 값에 대한 집중적인 일일 검색을 수행합니다. 큰 데이터베이스가 있는 경우 이 기능을 켜서 변경하십시오."
 
 #: metabase/driver/common.clj:183
-msgid "This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts."
+msgid "This enables Torch to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts."
 msgstr "이를 통해 Metabase는 동기화 중에 추가 필드 값을 검색하여 막대형 차트의 향상된 자동 비닝과 같은 보다 스마트한 동작을 허용합니다."
 
 #: frontend/src/metabase/setup/components/UserForm/UserForm.tsx:83
@@ -20592,7 +20592,7 @@ msgid "Our {0}"
 msgstr "우리의 {0}"
 
 #: frontend/src/metabase/databases/components/DatabaseNameField/DatabaseNameField.tsx:18
-msgid "Choose what this data will be called in Metabase."
+msgid "Choose what this data will be called in Torch."
 msgstr "Metabase에서 이 데이터를 호출할 대상을 선택하십시오."
 
 #: frontend/src/metabase/admin/settings/selectors.js:601
@@ -21015,8 +21015,8 @@ msgid "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and upd
 msgstr "DB {0}에 하드코딩된 dataset-id가 있습니다. 포함 패턴으로 변경 및 테이블 스키마 업데이트"
 
 #: src/metabase/analytics/snowplow.clj
-msgid "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase."
-msgstr "이 Metabase 인스턴스를 식별하기 위해 Snowplow 분석에서 사용되는 고유 식별자입니다."
+msgid "Unique identifier to be used in Snowplow analytics, to identify this instance of Torch."
+msgstr "이 Torch 인스턴스를 식별하기 위해 Snowplow 분석에서 사용되는 고유 식별자입니다."
 
 #: src/metabase/analytics/snowplow.clj
 msgid "This is a public setting since some analytics events are sent prior to initial setup."
@@ -21047,8 +21047,8 @@ msgid "Error sending Snowplow analytics event {0}"
 msgstr "Snowplow 분석 이벤트 {0} 전송 오류"
 
 #: metabase/analytics/snowplow.clj:126
-msgid "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics."
-msgstr "분석에 포함하기 위해 이 Metabase 인스턴스가 생성된 대략적인 타임스탬프입니다."
+msgid "The approximate timestamp at which this instance of Torch was created, for inclusion in analytics."
+msgstr "분석에 포함하기 위해 이 Torch 인스턴스가 생성된 대략적인 타임스탬프입니다."
 
 #: metabase/models/card.clj:859
 msgid "Unverified due to edit"
@@ -21167,8 +21167,8 @@ msgid "In most cases, you should be fine leaving this set to sync hourly."
 msgstr "대부분의 경우 매시간 동기화하도록 이 설정을 그대로 두는 것이 좋습니다."
 
 #: src/metabase/driver/common.clj
-msgid "If your database is behind a firewall, you may need to allow connections from our Metabase Cloud IP addresses:"
-msgstr "데이터베이스가 방화벽 뒤에 있는 경우 Metabase Cloud IP 주소에서 연결을 허용해야 할 수 있습니다."
+msgid "If your database is behind a firewall, you may need to allow connections from our Torch Cloud IP addresses:"
+msgstr "데이터베이스가 방화벽 뒤에 있는 경우 Torch Cloud IP 주소에서 연결을 허용해야 할 수 있습니다."
 
 #: metabase/driver/common.clj:334
 msgid "Error querying database {0} for current time: {1}"
@@ -21179,7 +21179,7 @@ msgid "Error: multiple values specified for parameter; non-Field Filter paramete
 msgstr "오류: 매개변수에 여러 값이 지정되었습니다. 필드 필터가 아닌 매개변수는 하나의 값만 가질 수 있습니다."
 
 #: metabase/driver/h2.clj:92
-msgid "The local path relative to where Metabase is running from. Your string should not include the .mv.db extension."
+msgid "The local path relative to where Torch is running from. Your string should not include the .mv.db extension."
 msgstr "Metabase가 실행되는 위치에 상대적인 로컬 경로입니다. 문자열에 .mv.db 확장자가 포함되어서는 안 됩니다."
 
 #: metabase/driver/postgres.clj:136
@@ -21274,7 +21274,7 @@ msgid "All except..."
 msgstr "빼고 다..."
 
 #: metabase/driver/util.clj:293
-msgid "Comma separated names of {0} that <strong>should</strong> appear in Metabase"
+msgid "Comma separated names of {0} that <strong>should</strong> appear in Torch"
 msgstr "Metabase에 <strong>나타나야 하는</strong> {0}의 쉼표로 구분된 이름"
 
 #: metabase/driver/util.clj:295 metabase/driver/util.clj:302
@@ -21282,7 +21282,7 @@ msgid "You can use patterns like <strong>auth*</strong> to match multiple {0}"
 msgstr "<strong>auth*</strong>와 같은 패턴을 사용하여 여러 {0}"
 
 #: metabase/driver/util.clj:300
-msgid "Comma separated names of {0} that <strong>should NOT</strong> appear in Metabase"
+msgid "Comma separated names of {0} that <strong>should NOT</strong> appear in Torch"
 msgstr "Metabase에 나타나지 <strong>안 되는</strong> {0}의 쉼표로 구분된 이름"
 
 #: metabase/email/messages.clj:674
@@ -21310,20 +21310,20 @@ msgid "Successfully authenticated Google Sign-In token for: {0} {1}"
 msgstr "성공적으로 인증된 Google 로그인 토큰: {0} {1}"
 
 #: src/metabase/integrations/slack.clj
-msgid "Deprecated Slack API token for connecting the Metabase Slack bot."
-msgstr "Metabase Slack 봇을 연결하기 위한 Slack API 토큰이 더 이상 사용되지 않습니다."
+msgid "Deprecated Slack API token for connecting the Torch Slack bot."
+msgstr "Torch Slack 봇을 연결하기 위한 Slack API 토큰이 더 이상 사용되지 않습니다."
 
 #: src/metabase/integrations/slack.clj
 msgid "Please use a new Slack app integration instead."
 msgstr "대신 새 Slack 앱 통합을 사용하세요."
 
 #: src/metabase/integrations/slack.clj
-msgid "Bot user OAuth token for connecting the Metabase Slack app."
-msgstr "Metabase Slack 앱을 연결하기 위한 봇 사용자 OAuth 토큰입니다."
+msgid "Bot user OAuth token for connecting the Torch Slack app."
+msgstr "Torch Slack 앱을 연결하기 위한 봇 사용자 OAuth 토큰입니다."
 
 #: src/metabase/integrations/slack.clj
-msgid "This should be used for all new Slack integrations starting in Metabase v0.42.0."
-msgstr "이것은 Metabase v0.42.0부터 모든 새로운 Slack 통합에 사용해야 합니다."
+msgid "This should be used for all new Slack integrations starting in Torch v0.42.0."
+msgstr "이것은 Torch v0.42.0부터 모든 새로운 Slack 통합에 사용해야 합니다."
 
 #: src/metabase/integrations/slack.clj
 msgid "Whether the current Slack app token, if set, is valid."
@@ -21334,8 +21334,8 @@ msgid "Set to 'false' if a Slack API request returns an auth error."
 msgstr "Slack API 요청이 인증 오류를 반환하는 경우 'false'로 설정합니다."
 
 #: metabase/integrations/slack.clj:77
-msgid "The name of the channel to which Metabase files should be initially uploaded"
-msgstr "Metabase 파일을 처음 업로드해야 하는 채널의 이름"
+msgid "The name of the channel to which Torch files should be initially uploaded"
+msgstr "Torch 파일을 처음 업로드해야 하는 채널의 이름"
 
 #: metabase/integrations/slack.clj:119
 msgid "🔒 Your Slack authorization token is invalid or has been revoked. Please update your integration in Admin Settings -> Slack."
@@ -21395,8 +21395,8 @@ msgid "{0} points to non-existent file: {1}"
 msgstr "존재하지 않는 파일을 가리키는 {0}: {1}"
 
 #: metabase/models/secret.clj:190
-msgid "{0} (a local file path) cannot be used in Metabase hosted environment"
-msgstr "{0}(로컬 파일 경로)는 Metabase 호스팅 환경에서 사용할 수 없습니다."
+msgid "{0} (a local file path) cannot be used in Torch hosted environment"
+msgstr "{0}(로컬 파일 경로)는 Torch 호스팅 환경에서 사용할 수 없습니다."
 
 #: metabase/models/setting.clj:587
 msgid "Error parsing Setting {0}: {1}"
@@ -21407,8 +21407,8 @@ msgid "Site-wide values are not allowed for Setting {0}"
 msgstr "{0} 설정에는 사이트 전체 값이 허용되지 않습니다."
 
 #: metabase/models/setting.clj:750
-msgid "Setting {0} is deprecated as of Metabase {1} and may be removed in a future version."
-msgstr "{0} 설정은 Metabase {1}부터 사용되지 않으며 향후 버전에서 제거될 수 있습니다."
+msgid "Setting {0} is deprecated as of Torch {1} and may be removed in a future version."
+msgstr "{0} 설정은 Torch {1}부터 사용되지 않으며 향후 버전에서 제거될 수 있습니다."
 
 #: metabase/models/setting.clj:980
 msgid "Setting name ''{0}'' is retired; use a different name instead"
@@ -21419,8 +21419,8 @@ msgid "Boolean indicating whether analytics data should be sent to Google Analyt
 msgstr "애널리틱스 데이터를 프런트엔드의 Google 애널리틱스로 전송해야 하는지 여부를 나타내는 부울"
 
 #: metabase/public_settings.clj:373
-msgid "Metabase version for which a notice about usage of deprecated features has been shown."
-msgstr "더 이상 사용되지 않는 기능 사용에 대한 알림이 표시된 Metabase 버전입니다."
+msgid "Torch version for which a notice about usage of deprecated features has been shown."
+msgstr "더 이상 사용되지 않는 기능 사용에 대한 알림이 표시된 Torch 버전입니다."
 
 #: metabase/public_settings.clj:589
 msgid "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data"
@@ -21439,12 +21439,12 @@ msgid " although it is used to set the WEEK_START session variable in Snowflake.
 msgstr "Snowflake에서 WEEK_START 세션 변수를 설정하는 데 사용되지만."
 
 #: metabase/public_settings.clj:680
-msgid "Error fetching Metabase Cloud gateway IP addresses:"
-msgstr "Metabase Cloud 게이트웨이 IP 주소를 가져오는 중 오류 발생:"
+msgid "Error fetching Torch Cloud gateway IP addresses:"
+msgstr "Torch Cloud 게이트웨이 IP 주소를 가져오는 중 오류 발생:"
 
 #: metabase/public_settings.clj:731
-msgid "Metabase Cloud gateway IP addresses, to configure connections to DBs behind firewalls"
-msgstr "방화벽 뒤에 있는 DB에 대한 연결을 구성하기 위한 Metabase 클라우드 게이트웨이 IP 주소"
+msgid "Torch Cloud gateway IP addresses, to configure connections to DBs behind firewalls"
+msgstr "방화벽 뒤에 있는 DB에 대한 연결을 구성하기 위한 Torch 클라우드 게이트웨이 IP 주소"
 
 #: src/metabase/public_settings.clj
 msgid "Whether an introductory modal should be shown after the next database connection is added."
@@ -21571,7 +21571,7 @@ msgid "This token doesn't seem to be valid. Double-check it, then contact suppor
 msgstr "이 토큰은 유효하지 않은 것 같습니다. 다시 한 번 확인한 다음 제대로 작동해야 한다고 생각되면 지원팀에 문의하세요."
 
 #: frontend/src/metabase/admin/settings/hooks/use-license.ts:8
-msgid "We're having trouble validating your token. Please double-check that your instance can connect to Metabase's servers."
+msgid "We're having trouble validating your token. Please double-check that your instance can connect to Torch's servers."
 msgstr "토큰을 확인하는 데 문제가 있습니다. 인스턴스가 Metabase의 서버에 연결할 수 있는지 다시 확인하십시오."
 
 #: frontend/src/metabase-lib/expressions/pratt/compiler.ts:44
@@ -21647,8 +21647,8 @@ msgid "Billing"
 msgstr "결제"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:119
-msgid "Manage your Cloud account, including billing preferences, in your Metabase Store account."
-msgstr "Metabase Store 계정에서 청구 기본 설정을 포함하여 클라우드 계정을 관리합니다."
+msgid "Manage your Cloud account, including billing preferences, in your Torch Store account."
+msgstr "Torch Store 계정에서 청구 기본 설정을 포함하여 클라우드 계정을 관리합니다."
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:133
 msgid "To manage your billing preferences, please email {0}"
@@ -21709,7 +21709,7 @@ msgid "Sample Database"
 msgstr "샘플 데이터베이스"
 
 #: frontend/src/metabase/databases/components/DatabaseSyncModal/DatabaseSyncModal.tsx:34
-msgid "Have a look around your Metabase in the meantime if you want to get a head start."
+msgid "Have a look around your Torch in the meantime if you want to get a head start."
 msgstr "그 동안 Metabase를 둘러보고 유리한 출발을 하십시오."
 
 #: frontend/src/metabase/databases/components/DatabaseSyncModal/DatabaseSyncModal.tsx:38
@@ -21788,7 +21788,7 @@ msgid "I'll invite a teammate to connect the database"
 msgstr "팀원을 초대하여 데이터베이스를 연결하겠습니다."
 
 #: frontend/src/metabase/setup/components/DataUsageStep/DataUsageStep.tsx:76
-msgid "In order to help us improve Metabase, we'd like to collect certain data about product usage."
+msgid "In order to help us improve Torch, we'd like to collect certain data about product usage."
 msgstr "Metabase를 개선하는 데 도움이 되도록 제품 사용에 대한 특정 데이터를 수집하고자 합니다."
 
 #: frontend/src/metabase/setup/components/DataUsageStep/DataUsageStep.tsx:82
@@ -21894,13 +21894,13 @@ msgid "Your Premium Embedding license is active until {0}."
 msgstr "Premium Embedding 라이선스는 {0}까지 유효합니다."
 
 #: frontend/src/metabase/admin/settings/containers/PremiumEmbeddingLicensePage/PremiumEmbeddingLicensePage.tsx:106
-msgid "Enter the token you bought from the Metabase Store below."
-msgstr "아래 Metabase 스토어에서 구입한 토큰을 입력하세요."
+msgid "Enter the token you bought from the Torch Store below."
+msgstr "아래 Torch 스토어에서 구입한 토큰을 입력하세요."
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationInfo.tsx:12
-msgid "Looking to remove the “Powered by Metabase” logo, customize colors\n"
+msgid "Looking to remove the “Powered by Torch” logo, customize colors\n"
 "and make it your own? {0}"
-msgstr "\"Powered by Metabase\" 로고 제거, 색상 사용자 지정\n"
+msgstr "\"Powered by Torch\" 로고 제거, 색상 사용자 지정\n"
 "그리고 그것을 당신의 것으로 만드시겠습니까? {0}"
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:23
@@ -21936,7 +21936,7 @@ msgid "invite a teammate"
 msgstr "동료를 초대하다"
 
 #: frontend/src/metabase/home/homepage/components/StartSection/StartSection.tsx:117
-msgid "Connect your data to get the most out of Metabase"
+msgid "Connect your data to get the most out of Torch"
 msgstr "데이터를 연결하여 Metabase를 최대한 활용하십시오."
 
 #: frontend/src/metabase/home/homepage/components/StartSection/StartSection.tsx:119
@@ -21989,7 +21989,7 @@ msgid "Use the tab key to navigate through settings and columns."
 msgstr "탭 키를 사용하여 설정 및 열을 탐색합니다."
 
 #: frontend/src/metabase/admin/settings/components/SettingsLicense/SettingsLicense.tsx:31
-msgid "Metabase is open source and will be free forever – but by upgrading you can have priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
+msgid "Torch is open source and will be free forever – but by upgrading you can have priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
 msgstr "Metabase는 오픈 소스이며 영원히 무료입니다. 하지만 업그레이드하면 우선 지원, 팀과 통찰력을 공유하는 데 도움이 되는 더 많은 도구, 고객을 위한 원활한 대화형 데이터 경험을 만드는 데 도움이 되는 강력한 옵션을 얻을 수 있습니다."
 
 #: frontend/src/metabase/admin/settings/components/SettingsLicense/SettingsLicense.tsx:33
@@ -22022,8 +22022,8 @@ msgstr "Slack 앱이 작동하지 않습니다."
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:49
 #: frontend/src/metabase/admin/settings/slack/components/SlackStatus/SlackStatus.tsx:51
-msgid "Metabase on Slack"
-msgstr "Slack의 Metabase"
+msgid "Torch on Slack"
+msgstr "Slack의 Torch"
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackStatus/SlackStatus.tsx:56
 msgid "Need help? {0}."
@@ -22051,7 +22051,7 @@ msgid "We recommend you {0}, see the instructions below:"
 msgstr "{0}을(를) 권장합니다. 아래 지침을 참조하세요."
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:59
-msgid "Bring the power of Metabase to your Slack #channels."
+msgid "Bring the power of Torch to your Slack #channels."
 msgstr "Slack #채널에 Metabase의 기능을 제공합니다."
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:60
@@ -22063,8 +22063,8 @@ msgid "1. Create your Slack App"
 msgstr "1. Slack 앱 만들기"
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:101
-msgid "To create your Metabase integration on Slack you’ll need to set up some things."
-msgstr "Slack에서 Metabase 통합을 생성하려면 몇 가지를 설정해야 합니다."
+msgid "To create your Torch integration on Slack you’ll need to set up some things."
+msgstr "Slack에서 Torch 통합을 생성하려면 몇 가지를 설정해야 합니다."
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:102
 msgid "First, go to {0}, hit “{1}” and pick “{2}”"
@@ -22083,8 +22083,8 @@ msgid "From an app manifest."
 msgstr "앱 매니페스트에서."
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:128
-msgid "2. Copy the Metabase manifest"
-msgstr "2. Metabase 매니페스트 복사"
+msgid "2. Copy the Torch manifest"
+msgstr "2. Torch 매니페스트 복사"
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:130
 msgid "Select your workspace and then copy our {0} below and paste it in to create the app. In the following screen, click “{1}” and authorize it."
@@ -22374,11 +22374,11 @@ msgid "Delete {0}?"
 msgstr "{0}을(를) 삭제하시겠습니까?"
 
 #: frontend/src/metabase/databases/components/DatabaseEngineWarning/DatabaseEngineWarning.tsx:107
-msgid "This is a community-developed driver and not supported by Metabase. "
+msgid "This is a community-developed driver and not supported by Torch. "
 msgstr "이것은 커뮤니티에서 개발한 드라이버이며 Metabase에서 지원하지 않습니다."
 
 #: frontend/src/metabase/databases/components/DatabaseEngineWarning/DatabaseEngineWarning.tsx:134
-msgid "This is a partner-developed driver. Though Metabase can’t provide support for it, if you need help you can contact the fine folks at "
+msgid "This is a partner-developed driver. Though Torch can’t provide support for it, if you need help you can contact the fine folks at "
 msgstr "파트너가 개발한 드라이버입니다. Metabase에서 지원을 제공할 수는 없지만 도움이 필요하면 다음에서 연락할 수 있습니다."
 
 #: frontend/src/metabase/components/Toaster/Toaster.tsx:25
@@ -22500,7 +22500,7 @@ msgid "Good to see you, {0}"
 msgstr "반가워요, {0}"
 
 #: frontend/src/metabase/home/components/HomeHelpCard/HomeHelpCard.tsx:11
-msgid "Metabase tips"
+msgid "Torch tips"
 msgstr "이동 팁"
 
 #: frontend/src/metabase/home/components/HomePopularSection/HomePopularSection.tsx:46
@@ -22529,7 +22529,7 @@ msgid "Pick up where you left off"
 msgstr "중단한 부분부터 다시 시작"
 
 #: frontend/src/metabase/home/components/HomeXraySection/HomeXraySection.tsx:69
-msgid "Try out these sample x-rays to see what Metabase can do."
+msgid "Try out these sample x-rays to see what Torch can do."
 msgstr "Metabase가 무엇을 할 수 있는지 보려면 이 샘플 x-ray를 사용해 보십시오."
 
 #: frontend/src/metabase/home/components/HomeXraySection/HomeXraySection.tsx:76
@@ -22670,11 +22670,11 @@ msgid "Launch of v2.0"
 msgstr "v2.0 출시"
 
 #: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx:69
-msgid "Add events to Metabase to show important milestones, launches, or anything else, right alongside your data."
+msgid "Add events to Torch to show important milestones, launches, or anything else, right alongside your data."
 msgstr "Metabase에 이벤트를 추가하여 데이터와 함께 중요한 이정표, 출시 또는 기타 항목을 표시하십시오."
 
 #: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx:70
-msgid "Events in Metabase let you see important milestones, launches, or anything else, right alongside your data."
+msgid "Events in Torch let you see important milestones, launches, or anything else, right alongside your data."
 msgstr "Metabase의 이벤트를 통해 데이터와 함께 중요한 이정표, 출시 또는 그 밖의 모든 것을 볼 수 있습니다."
 
 #: frontend/src/metabase/timelines/collections/components/TimelineCard/TimelineCard.tsx:50
@@ -22701,11 +22701,11 @@ msgid "Move {0}"
 msgstr "{0} 이동"
 
 #: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx:30
-msgid "Add events to Metabase to show helpful context alongside your data."
+msgid "Add events to Torch to show helpful context alongside your data."
 msgstr "데이터와 함께 유용한 컨텍스트를 표시하려면 Metabase에 이벤트를 추가하십시오."
 
 #: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx:31
-msgid "Events in Metabase let you see helpful context alongside your data."
+msgid "Events in Torch let you see helpful context alongside your data."
 msgstr "Metabase의 이벤트를 통해 데이터와 함께 유용한 컨텍스트를 볼 수 있습니다."
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:33
@@ -22713,8 +22713,8 @@ msgid "Original schema"
 msgstr "원래 스키마"
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:98
-msgid "Click the button below to begin creating your Slack App using the Metabase configuration."
-msgstr "Metabase 구성을 사용하여 Slack 앱 만들기를 시작하려면 아래 버튼을 클릭하세요."
+msgid "Click the button below to begin creating your Slack App using the Torch configuration."
+msgstr "Torch 구성을 사용하여 Slack 앱 만들기를 시작하려면 아래 버튼을 클릭하세요."
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:99
 msgid "Once created, click “{0}” to authorize it."
@@ -22980,7 +22980,7 @@ msgid "Switch to visualization"
 msgstr "시각화로 전환"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:139
-msgid "Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the\n"
+msgid "Mappings allow Torch to automatically add and remove users from groups based on the membership information provided by the\n"
 "directory server. Users are only ever added to or removed from mapped groups."
 msgstr "매핑을 통해 Metabase는\n"
 "디렉토리 서버. 사용자는 매핑된 그룹에만 추가되거나 제거됩니다."
@@ -23350,7 +23350,7 @@ msgid "Saved questions"
 msgstr "저장된 질문"
 
 #: frontend/src/metabase/admin/settings/selectors.js:602
-msgid "Enabling cache will create tables for your models in a dedicated schema and Metabase will refresh them on a schedule. Questions based on your models will query these tables. {0}."
+msgid "Enabling cache will create tables for your models in a dedicated schema and Torch will refresh them on a schedule. Questions based on your models will query these tables. {0}."
 msgstr "캐시를 활성화하면 전용 스키마에 모델용 테이블이 생성되고 Metabase가 일정에 따라 테이블을 새로 고칩니다. 모델을 기반으로 한 질문은 이러한 테이블을 쿼리합니다. {0}."
 
 #: frontend/src/metabase/admin/settings/selectors.js:439
@@ -23634,8 +23634,8 @@ msgid "Move, archive, and more..."
 msgstr "이동, 보관 등..."
 
 #: frontend/src/metabase/sharing/components/SlackChannelField/SlackChannelField.tsx:71
-msgid "In order to send subscriptions and alerts to private Slack channels, you must first add the Metabase bot to them."
-msgstr "비공개 Slack 채널에 구독 및 알림을 보내려면 먼저 Metabase 봇을 채널에 추가해야 합니다."
+msgid "In order to send subscriptions and alerts to private Slack channels, you must first add the Torch bot to them."
+msgstr "비공개 Slack 채널에 구독 및 알림을 보내려면 먼저 Torch 봇을 채널에 추가해야 합니다."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorResetModal/ColorResetModal.tsx:22
 msgid "Are you sure you want to reset to default colors?"
@@ -23745,8 +23745,8 @@ msgid "Display our little friend on the homepage"
 msgstr "우리 작은 친구를 홈페이지에 표시"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationWidget/EmbeddingCustomizationWidget.tsx:13
-msgid "In order to remove the Metabase logo from embeds, you can always upgrade to {0}"
-msgstr "포함에서 Metabase 로고를 제거하려면 언제든지 {0}로 업그레이드할 수 있습니다."
+msgid "In order to remove the Torch logo from embeds, you can always upgrade to {0}"
+msgstr "포함에서 Torch 로고를 제거하려면 언제든지 {0}로 업그레이드할 수 있습니다."
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationWidget/EmbeddingCustomizationWidget.tsx:15
 msgid "one of our paid plans."
@@ -23754,11 +23754,11 @@ msgstr "유료 플랜 중 하나입니다."
 
 #: frontend/src/metabase/admin/settings/components/widgets/FullAppEmbeddingLinkWidget/FullAppEmbeddingLinkWidget.tsx:13
 msgid "embedding the entire metabase app"
-msgstr "전체 Metabase 앱 포함"
+msgstr "전체 Torch 앱 포함"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FullAppEmbeddingLinkWidget/FullAppEmbeddingLinkWidget.tsx:23
-msgid "With {0} you can embed the full Metabase app and enable your users to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
-msgstr "{0}를 사용하면 전체 Metabase 앱을 포함하고 사용자가 차트를 드릴스루하고 컬렉션을 찾아보고 그래픽 쿼리 빌더를 사용할 수 있습니다. 또한 우선 지원, 팀과 통찰력을 공유하는 데 도움이 되는 더 많은 도구, 고객을 위한 원활한 대화형 데이터 경험을 만드는 데 도움이 되는 강력한 옵션을 받을 수 있습니다."
+msgid "With {0} you can embed the full Torch app and enable your users to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
+msgstr "{0}를 사용하면 전체 Torch 앱을 포함하고 사용자가 차트를 드릴스루하고 컬렉션을 찾아보고 그래픽 쿼리 빌더를 사용할 수 있습니다. 또한 우선 지원, 팀과 통찰력을 공유하는 데 도움이 되는 더 많은 도구, 고객을 위한 원활한 대화형 데이터 경험을 만드는 데 도움이 되는 강력한 옵션을 받을 수 있습니다."
 
 #: frontend/src/metabase/admin/settings/components/widgets/FullAppEmbeddingLinkWidget/FullAppEmbeddingLinkWidget.tsx:16
 msgid "some of our paid plans,"
@@ -23805,8 +23805,8 @@ msgid "Embedding"
 msgstr "임베딩"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingSwitchWidget/EmbeddingSwitchWidget.tsx:15
-msgid "Embed dashboards, questions, or the entire Metabase app into your application. Integrate with your server code to create a secure environment, limited to specific users or organizations."
-msgstr "대시보드, 질문 또는 전체 Metabase 앱을 응용 프로그램에 포함합니다. 서버 코드와 통합하여 특정 사용자 또는 조직으로 제한되는 안전한 환경을 만듭니다."
+msgid "Embed dashboards, questions, or the entire Torch app into your application. Integrate with your server code to create a secure environment, limited to specific users or organizations."
+msgstr "대시보드, 질문 또는 전체 Torch 앱을 응용 프로그램에 포함합니다. 서버 코드와 통합하여 특정 사용자 또는 조직으로 제한되는 안전한 환경을 만듭니다."
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese/EmbeddingLegalese.tsx:28
 msgid "By enabling embedding you're agreeing to"
@@ -23822,14 +23822,14 @@ msgid "More details"
 msgstr "자세한 내용은"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese/EmbeddingLegalese.tsx:43
-msgid "When you embed charts or dashboards from Metabase in your own\n"
+msgid "When you embed charts or dashboards from Torch in your own\n"
 "application, that application isn't subject to the Affero General Public\n"
-"License that covers the rest of Metabase, provided you keep the Metabase\n"
-"logo and the \"Powered by Metabase\" visible on those embeds."
+"License that covers the rest of Torch, provided you keep the Torch\n"
+"logo and the \"Powered by Torch\" visible on those embeds."
 msgstr "Metabase의 차트 또는 대시보드를 자신의 차트에 포함하는 경우\n"
 "해당 애플리케이션은 Affero General Public의 적용을 받지 않습니다.\n"
 "Metabase를 유지하는 경우 Metabase의 나머지 부분을 포괄하는 라이선스\n"
-"로고 및 \"Powered by Metabase\"가 임베드에 표시됩니다."
+"로고 및 \"Powered by Torch\"가 임베드에 표시됩니다."
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese/EmbeddingLegalese.tsx:49
 msgid "Your should, however, read the license text linked above as that is the\n"
@@ -23871,8 +23871,8 @@ msgid "1. Click the button below and create your Slack App"
 msgstr "1. 아래 버튼을 클릭하고 Slack 앱을 생성합니다."
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:101
-msgid "First, {0} using the Metabase configuration. Once created, click “${ 1 }” to authorize it."
-msgstr "먼저 Metabase 구성을 사용하는 {0}입니다. 생성되면 “${ 1 }”을 클릭하여 승인합니다."
+msgid "First, {0} using the Torch configuration. Once created, click “${ 1 }” to authorize it."
+msgstr "먼저 Torch 구성을 사용하는 {0}입니다. 생성되면 “${ 1 }”을 클릭하여 승인합니다."
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:102
 msgid "click the button below to create your Slack App"
@@ -24014,8 +24014,8 @@ msgid "Heavy"
 msgstr "무거운"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/components/EmbeddingAppOriginDescription/EmbeddingAppOriginDescription.tsx:8
-msgid "With this Pro/Enterprise feature you can embed the full Metabase app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder. {0}"
-msgstr "이 Pro/Enterprise 기능을 사용하면 전체 Metabase 앱을 포함할 수 있습니다. 사용자가 차트로 드릴스루하고 컬렉션을 찾아보고 그래픽 쿼리 빌더를 사용할 수 있도록 합니다. {0}"
+msgid "With this Pro/Enterprise feature you can embed the full Torch app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder. {0}"
+msgstr "이 Pro/Enterprise 기능을 사용하면 전체 Torch 앱을 포함할 수 있습니다. 사용자가 차트로 드릴스루하고 컬렉션을 찾아보고 그래픽 쿼리 빌더를 사용할 수 있도록 합니다. {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:27
 msgid "Authorized origins"
@@ -24103,8 +24103,8 @@ msgid "Full-app embedding"
 msgstr "전체 앱 임베딩"
 
 #: frontend/src/metabase/admin/settings/selectors.js:481
-msgid "With this Pro/Enterprise feature you can embed the full Metabase app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder."
-msgstr "이 Pro/Enterprise 기능을 사용하면 전체 Metabase 앱을 포함할 수 있습니다. 사용자가 차트로 드릴스루하고 컬렉션을 찾아보고 그래픽 쿼리 빌더를 사용할 수 있도록 합니다."
+msgid "With this Pro/Enterprise feature you can embed the full Torch app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder."
+msgstr "이 Pro/Enterprise 기능을 사용하면 전체 Torch 앱을 포함할 수 있습니다. 사용자가 차트로 드릴스루하고 컬렉션을 찾아보고 그래픽 쿼리 빌더를 사용할 수 있도록 합니다."
 
 #: frontend/src/metabase/admin/settings/selectors.js:504
 msgid "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations."
@@ -24270,8 +24270,8 @@ msgid "Boolean indicating whether a Snowplow collector is available to receive a
 msgstr "Snowplow 수집기가 분석 이벤트를 수신하는 데 사용할 수 있는지 여부를 나타내는 부울입니다. Cypress 테스트 또는 로컬 개발 중에 환경 변수를 통해 설정해야 합니다."
 
 #: metabase/analytics/snowplow.clj:77
-msgid "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. This is a public setting since some analytics events are sent prior to initial setup."
-msgstr "이 Metabase 인스턴스를 식별하기 위해 Snowplow 분석에서 사용되는 고유 식별자입니다. 일부 분석 이벤트는 초기 설정 전에 전송되기 때문에 이것은 공개 설정입니다."
+msgid "Unique identifier to be used in Snowplow analytics, to identify this instance of Torch. This is a public setting since some analytics events are sent prior to initial setup."
+msgstr "이 Torch 인스턴스를 식별하기 위해 Snowplow 분석에서 사용되는 고유 식별자입니다. 일부 분석 이벤트는 초기 설정 전에 전송되기 때문에 이것은 공개 설정입니다."
 
 #: metabase/api/database.clj:720 metabase/driver/util.clj:68
 #: metabase/driver/util.clj:40 metabase/driver/util.clj:56
@@ -24326,12 +24326,12 @@ msgstr "시스템 정보:\n"
 " {0}"
 
 #: metabase/driver/common.clj:159
-msgid "Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database. When should Metabase automatically scan and cache field values?"
+msgid "Torch can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database. When should Torch automatically scan and cache field values?"
 msgstr "Metabase는 이 데이터베이스의 각 필드에 있는 값을 스캔하여 대시보드 및 질문에서 확인란 필터를 활성화할 수 있습니다. 이는 특히 매우 큰 데이터베이스가 있는 경우 리소스를 많이 사용하는 프로세스일 수 있습니다. Metabase는 언제 필드 값을 자동으로 검색하고 캐시해야 합니까?"
 
 #: metabase/driver/common.clj:220
-msgid "If your database is behind a firewall, you may need to allow connections from our Metabase [Cloud IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html):"
-msgstr "데이터베이스가 방화벽 뒤에 있는 경우 Metabase[클라우드 IP 주소](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html)에서 연결을 허용해야 할 수 있습니다."
+msgid "If your database is behind a firewall, you may need to allow connections from our Torch [Cloud IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html):"
+msgstr "데이터베이스가 방화벽 뒤에 있는 경우 Torch[클라우드 IP 주소](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html)에서 연결을 허용해야 할 수 있습니다."
 
 #: metabase/driver/common.clj:177
 msgid "Unfold JSON Columns"
@@ -24452,16 +24452,16 @@ msgid "[{0}] Model cache refresh failed for {1}"
 msgstr "[{0}] {1}에 대한 모델 캐시 새로고침 실패"
 
 #: metabase/integrations/google.clj:87
-msgid "Google Sign-In token appears to be incorrect. Double check that it matches in Google and Metabase."
+msgid "Google Sign-In token appears to be incorrect. Double check that it matches in Google and Torch."
 msgstr "Google 로그인 토큰이 잘못된 것 같습니다. Google과 Metabase에서 일치하는지 다시 확인하세요."
 
 #: metabase/integrations/slack.clj:22
-msgid "Deprecated Slack API token for connecting the Metabase Slack bot. Please use a new Slack app integration instead."
-msgstr "Metabase Slack 봇을 연결하기 위한 Slack API 토큰이 더 이상 사용되지 않습니다. 대신 새 Slack 앱 통합을 사용하세요."
+msgid "Deprecated Slack API token for connecting the Torch Slack bot. Please use a new Slack app integration instead."
+msgstr "Torch Slack 봇을 연결하기 위한 Slack API 토큰이 더 이상 사용되지 않습니다. 대신 새 Slack 앱 통합을 사용하세요."
 
 #: metabase/integrations/slack.clj:31
-msgid "Bot user OAuth token for connecting the Metabase Slack app. This should be used for all new Slack integrations starting in Metabase v0.42.0."
-msgstr "Metabase Slack 앱을 연결하기 위한 봇 사용자 OAuth 토큰입니다. 이것은 Metabase v0.42.0부터 모든 새로운 Slack 통합에 사용해야 합니다."
+msgid "Bot user OAuth token for connecting the Torch Slack app. This should be used for all new Slack integrations starting in Torch v0.42.0."
+msgstr "Torch Slack 앱을 연결하기 위한 봇 사용자 OAuth 토큰입니다. 이것은 Torch v0.42.0부터 모든 새로운 Slack 통합에 사용해야 합니다."
 
 #: metabase/integrations/slack.clj:44
 msgid "Whether the current Slack app token, if set, is valid. Set to 'false' if a Slack API request returns an auth error."
@@ -24508,7 +24508,7 @@ msgid "Can't update type or hash_key for a FieldValues."
 msgstr "FieldValues에 대한 type 또는 hash_key를 업데이트할 수 없습니다."
 
 #: metabase/models/humanization.clj:78
-msgid "To make table and field names more human-friendly, Metabase will replace dashes and underscores in them with spaces. We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’."
+msgid "To make table and field names more human-friendly, Torch will replace dashes and underscores in them with spaces. We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’."
 msgstr "테이블 및 필드 이름을 더 인간에게 친숙하게 만들기 위해 Metabase는 대시와 밑줄을 공백으로 바꿉니다. 각 단어를 대문자로 표시하므로 'last_visited_at'는 'Last Visited At'가 됩니다."
 
 #: metabase/models/params.clj:38
@@ -24548,8 +24548,8 @@ msgid "Tell us where to find the file for each font weight. You don’t need to 
 msgstr "각 글꼴 두께에 대한 파일을 찾을 수 있는 위치를 알려주세요. 모두 포함할 필요는 없지만 포함하면 더 보기 좋습니다."
 
 #: metabase/public_settings.clj:179
-msgid "The default language for all users across the Metabase UI, system emails, pulses, and alerts. Users can individually override this default language from their own account settings."
-msgstr "Metabase UI, 시스템 전자 메일, 펄스 및 경고 전반에 걸쳐 모든 사용자의 기본 언어입니다. 사용자는 자신의 계정 설정에서 이 기본 언어를 개별적으로 재정의할 수 있습니다."
+msgid "The default language for all users across the Torch UI, system emails, pulses, and alerts. Users can individually override this default language from their own account settings."
+msgstr "Torch UI, 시스템 전자 메일, 펄스 및 경고 전반에 걸쳐 모든 사용자의 기본 언어입니다. 사용자는 자신의 계정 설정에서 이 기본 언어를 개별적으로 재정의할 수 있습니다."
 
 #: metabase/public_settings.clj:741
 msgid "Whether an introductory modal should be shown after the next database connection is added. Defaults to false if any non-default database has already finished syncing for this instance."
@@ -25312,11 +25312,11 @@ msgstr "날짜 또는 날짜/시간 값이 있는 열의 이름입니다."
 msgid "Optional. The default is \"ISO\".\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
-"- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
+"- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Torch localization settings."
 msgstr "선택 과목. 기본값은 \"ISO\"입니다.\n"
 "- ISO: 1주차는 1월 첫 번째 목요일 이전 월요일에 시작됩니다.\n"
 "- 미국: 1주는 1월 1일에 시작합니다. 다른 주는 모두 일요일에 시작합니다.\n"
-"- 인스턴스: 1주는 1월 1일에 시작합니다. 다른 모든 주는 Metabase 현지화 설정에 정의된 날짜에 시작합니다."
+"- 인스턴스: 1주는 1월 1일에 시작합니다. 다른 모든 주는 Torch 현지화 설정에 정의된 날짜에 시작합니다."
 
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:839
 msgid "Takes a datetime and returns an integer (1-31) with the number of the day of the month."
@@ -26074,8 +26074,8 @@ msgid "Database required of {0} has changed from ''{1}'' to ''{2}''."
 msgstr "{0}에 필요한 데이터베이스가 ''{1}''에서 ''{2}''(으)로 변경되었습니다."
 
 #: metabase/task.clj:168
-msgid "Metabase task scheduler disabled. Scheduled tasks will not be ran."
-msgstr "Metabase 작업 스케줄러가 비활성화되었습니다. 예약된 작업은 실행되지 않습니다."
+msgid "Torch task scheduler disabled. Scheduled tasks will not be ran."
+msgstr "Torch 작업 스케줄러가 비활성화되었습니다. 예약된 작업은 실행되지 않습니다."
 
 #: metabase/util/schema.clj:148
 msgid "value must be a map with schema: (\n"
@@ -26088,7 +26088,7 @@ msgid "{0} (optional)"
 msgstr "{0}(선택사항)"
 
 #: metabase_enterprise/advanced_config/file.clj:164
-msgid "Found config file at path {0}; Metabase will be initialized with values from this file"
+msgid "Found config file at path {0}; Torch will be initialized with values from this file"
 msgstr "경로 {0}에서 구성 파일을 찾았습니다. Metabase는 이 파일의 값으로 초기화됩니다."
 
 #: metabase_enterprise/advanced_config/file.clj:265
@@ -26152,8 +26152,8 @@ msgid "Invalid Collection ID(s). These Collections do not exist: {0}"
 msgstr "잘못된 컬렉션 ID입니다. 이 컬렉션이 존재하지 않습니다: {0}"
 
 #: metabase_enterprise/serialization/cmd.clj:95
-msgid "Loading serialized Metabase files from {0}"
-msgstr "{0}에서 직렬화된 Metabase 파일 로드 중"
+msgid "Loading serialized Torch files from {0}"
+msgstr "{0}에서 직렬화된 Torch 파일 로드 중"
 
 #: metabase_enterprise/serialization/v2/entity_ids.clj:68
 msgid "{0} tables have entity_id; expected to resolve the same number of models, but only got {1}"
@@ -26386,19 +26386,19 @@ msgid "Error reducing result rows: {0}"
 msgstr "결과 행을 줄이는 오류: {0}"
 
 #: metabase/sample_data.clj:63
-msgid "Sample database could not be extracted to the plugins directory,which may result in slow startup times. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."
+msgid "Sample database could not be extracted to the plugins directory,which may result in slow startup times. Please set MB_PLUGINS_DIR to a writable directory and restart Torch."
 msgstr "샘플 데이터베이스를 플러그인 디렉토리로 추출할 수 없어 시작 시간이 느려질 수 있습니다. MB_PLUGINS_DIR을 쓰기 가능한 디렉토리로 설정하고 Metabase를 다시 시작하십시오."
 
 #: metabase_enterprise/advanced_config/file.clj:261
-msgid "Metabase config files require a Premium token with the :advanced-config feature."
-msgstr "Metabase 구성 파일에는 :advanced-config 기능이 있는 프리미엄 토큰이 필요합니다."
+msgid "Torch config files require a Premium token with the :advanced-config feature."
+msgstr "Torch 구성 파일에는 :advanced-config 기능이 있는 프리미엄 토큰이 필요합니다."
 
-#: 
+#:
 msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
 msgid "Charts in subscriptions may look slightly different from charts in dashboards."
 msgstr "구독의 차트는 대시보드의 차트와 약간 다르게 보일 수 있습니다."
 
-#: 
+#:
 msgctxt "Seen when creating a new dashboard subscription."
 msgid "Recipients will see this data just as you see it, regardless of their permissions."
 msgstr "수신자는 권한에 관계없이 이 데이터를 귀하가 보는 그대로 보게 됩니다."
@@ -26446,11 +26446,11 @@ msgid "This group's user membership will no longer be synced with the directory 
 msgstr "이 그룹의 사용자 구성원은 더 이상 디렉터리 서버와 동기화되지 않습니다."
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx:62
-msgid "What should happen with the groups themselves in Metabase?"
+msgid "What should happen with the groups themselves in Torch?"
 msgstr "Metabase에서 그룹 자체는 어떻게 됩니까?"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx:63
-msgid "What should happen with the group itself in Metabase?"
+msgid "What should happen with the group itself in Torch?"
 msgstr "Metabase에서 그룹 자체는 어떻게 됩니까?"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx:68
@@ -26482,7 +26482,7 @@ msgid "Synchronize Group Memberships"
 msgstr "그룹 구성원 동기화"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidget.jsx:121
-msgid "Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced."
+msgid "Mappings allow Torch to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced."
 msgstr "매핑을 통해 Metabase는 디렉터리 서버에서 제공하는 구성원 정보를 기반으로 그룹에서 사용자를 자동으로 추가하고 제거할 수 있습니다. 그룹이 매핑되지 않은 경우 멤버 자격이 동기화되지 않습니다."
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidget.jsx:126
@@ -26647,7 +26647,7 @@ msgid "This card does not support click mappings"
 msgstr "이 카드는 클릭 매핑을 지원하지 않습니다."
 
 #: frontend/src/metabase/databases/components/DatabaseCacheScheduleField/DatabaseCacheScheduleField.tsx:88
-msgid "When a user adds a new filter to a dashboard or a SQL question, Metabase will scan the field(s) mapped to that filter in order to show the list of selectable values."
+msgid "When a user adds a new filter to a dashboard or a SQL question, Torch will scan the field(s) mapped to that filter in order to show the list of selectable values."
 msgstr "사용자가 대시보드나 SQL 질문에 새 필터를 추가하면 Metabase는 선택 가능한 값 목록을 표시하기 위해 해당 필터에 매핑된 필드를 스캔합니다."
 
 #: frontend/src/metabase/models/containers/FormModelPicker/FormModelPicker.tsx:25
@@ -27219,11 +27219,11 @@ msgid "Error preparing statement: {0}"
 msgstr "명세서 준비 오류: {0}"
 
 #: metabase/driver/util.clj:332
-msgid "Comma separated names of {0} that should NOT appear in Metabase"
+msgid "Comma separated names of {0} that should NOT appear in Torch"
 msgstr "Metabase에 나타나지 않아야 하는 {0}의 쉼표로 구분된 이름"
 
 #: metabase/driver/util.clj:325
-msgid "Comma separated names of {0} that should appear in Metabase"
+msgid "Comma separated names of {0} that should appear in Torch"
 msgstr "Metabase에 나타나야 하는 {0}의 쉼표로 구분된 이름"
 
 #: metabase/driver/util.clj:327 metabase/driver/util.clj:334
@@ -27325,8 +27325,8 @@ msgid "No current user found"
 msgstr "현재 사용자를 찾을 수 없습니다"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/utils.ts:30
-msgid "Open the Metabase drill-through menu"
-msgstr "Metabase 드릴스루 메뉴 열기"
+msgid "Open the Torch drill-through menu"
+msgstr "Torch 드릴스루 메뉴 열기"
 
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:126
 msgid "Expression"
@@ -27494,13 +27494,13 @@ msgid "Tired of manually managing people and groups?"
 msgstr "사람과 그룹을 수동으로 관리하는 데 지치셨습니까?"
 
 #: frontend/src/metabase/admin/people/components/NudgeToPro.tsx:16
-msgid "Get single-sign on (SSO) via SAML, JWT, or LDAP with Metabase Pro"
-msgstr "Metabase Pro로 SAML, JWT 또는 LDAP 통한 싱글사인온(SSO) 사용"
+msgid "Get single-sign on (SSO) via SAML, JWT, or LDAP with Torch Pro"
+msgstr "Torch Pro로 SAML, JWT 또는 LDAP 통한 싱글사인온(SSO) 사용"
 
 #: frontend/src/metabase/admin/permissions/components/ApplicationPermissionsHelp/ApplicationPermissionsHelp.tsx:11
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsHelp/CollectionPermissionsHelp.tsx:12
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx:21
-msgid "People can be members of multiple groups, and Metabase grants them the most permissive level of access across all of a person's groups."
+msgid "People can be members of multiple groups, and Torch grants them the most permissive level of access across all of a person's groups."
 msgstr "사람들은 여러 그룹의 구성원이 될 수 있으며 Metabase는 개인의 모든 그룹에서 가장 관대한 수준의 액세스 권한을 부여합니다."
 
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx:36
@@ -27516,7 +27516,7 @@ msgid "Impersonated (Pro)"
 msgstr "사칭(프로)"
 
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx:51
-msgid "Impersonation associates a Metabase group with database-defined roles and their privileges. Metabase queries made by this group will respect the grants given to the database roles. You can use impersonation to give a group access to the native/SQL editor, while restricting the group's access to data based on a specific database role."
+msgid "Impersonation associates a Torch group with database-defined roles and their privileges. Torch queries made by this group will respect the grants given to the database roles. You can use impersonation to give a group access to the native/SQL editor, while restricting the group's access to data based on a specific database role."
 msgstr "가장은 메타베이스 그룹을 데이터베이스 정의 역할 및 해당 권한과 연결합니다. 이 그룹이 만든 메타베이스 쿼리는 데이터베이스 역할에 부여된 권한을 존중합니다. 특정 데이터베이스 역할을 기반으로 데이터에 대한 그룹의 액세스를 제한하면서 가장을 사용하여 네이티브/SQL 편집기에 대한 그룹 액세스 권한을 부여할 수 있습니다."
 
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx:58
@@ -27600,7 +27600,7 @@ msgid "{0} about collection permissions"
 msgstr "수집 권한에 대한 {0}"
 
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionUploadInfoModal.tsx:26
-msgid "Uploads CSVs to Metabase"
+msgid "Uploads CSVs to Torch"
 msgstr "메타베이스에 CSV를 업로드합니다."
 
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionUploadInfoModal.tsx:34
@@ -27761,7 +27761,7 @@ msgid "Navigation bar"
 msgstr "내비게이션 바"
 
 #: frontend/src/metabase/nav/components/DatabasePromptBanner/DatabasePromptBanner.tsx:42
-msgid "Connect to your database to get the most from Metabase."
+msgid "Connect to your database to get the most from Torch."
 msgstr "Metabase를 최대한 활용하려면 데이터베이스에 연결하십시오."
 
 #: frontend/src/metabase/nav/components/DatabasePromptBanner/DatabasePromptBanner.tsx:49
@@ -27879,8 +27879,8 @@ msgid "Applications permissions"
 msgstr "애플리케이션 권한"
 
 #: frontend/src/metabase/admin/permissions/components/ApplicationPermissionsHelp/ApplicationPermissionsHelp.tsx:16
-msgid "Application settings are useful for granting groups access to some, but not all, of Metabase’s administrative features."
-msgstr "응용 프로그램 설정은 그룹에 Metabase 관리 기능의 전부가 아닌 일부에 대한 액세스 권한을 부여하는 데 유용합니다."
+msgid "Application settings are useful for granting groups access to some, but not all, of Torch’s administrative features."
+msgstr "응용 프로그램 설정은 그룹에 Torch 관리 기능의 전부가 아닌 일부에 대한 액세스 권한을 부여하는 데 유용합니다."
 
 #: frontend/src/metabase/admin/permissions/components/ApplicationPermissionsHelp/ApplicationPermissionsHelp.tsx:18
 msgid "{0} the group can access the Settings tab in the Admin panel."
@@ -28172,7 +28172,7 @@ msgid "Map a user attribute to database roles"
 msgstr "사용자 특성을 데이터베이스 역할에 매핑"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx:82
-msgid "When the person runs a query (including native queries), Metabase will impersonate the privileges of the database role you associate with the user attribute."
+msgid "When the person runs a query (including native queries), Torch will impersonate the privileges of the database role you associate with the user attribute."
 msgstr "사용자가 쿼리(네이티브 쿼리 포함)를 실행하면 Metabase는 사용자 특성과 연결된 데이터베이스 역할의 권한을 가장합니다."
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx:93
@@ -28189,12 +28189,12 @@ msgid "Edit user settings"
 msgstr "사용자 설정 편집"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:19
-msgid "Make sure the main database credential has access to everything different user groups may need access to. It's what Metabase uses to sync table information."
+msgid "Make sure the main database credential has access to everything different user groups may need access to. It's what Torch uses to sync table information."
 msgstr "기본 데이터베이스 자격 증명이 다른 사용자 그룹이 액세스해야 할 수 있는 모든 항목에 액세스할 수 있는지 확인하십시오. 이것은 Metabase가 테이블 정보를 동기화하는 데 사용하는 것입니다."
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:20
-msgid "{0} is the database user Metabase is using to connect to {1}. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
-msgstr "{0}은 Metabase가 {1}에 연결하는 데 사용하는 데이터베이스 사용자입니다. 데이터베이스 사용자 계정이 Metabase가 테이블 정보를 동기화하는 데 사용하는 것이기 때문에 {2}가 모든 Metabase 그룹이 액세스해야 할 수 있는 {3}의 모든 항목에 액세스할 수 있는지 확인하십시오."
+msgid "{0} is the database user Torch is using to connect to {1}. Make sure that {2} has access to everything in {3} that all Torch groups may need access to, as that database user account is what Torch uses to sync table information."
+msgstr "{0}은 Metabase가 {1}에 연결하는 데 사용하는 데이터베이스 사용자입니다. 데이터베이스 사용자 계정이 Metabase가 테이블 정보를 동기화하는 데 사용하는 것이기 때문에 {2}가 모든 Torch 그룹이 액세스해야 할 수 있는 {3}의 모든 항목에 액세스할 수 있는지 확인하십시오."
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:61
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:143
@@ -28310,7 +28310,7 @@ msgid "None of your databases are compatible with this version of the uploads fe
 msgstr "어떤 데이터베이스도 이 버전의 업로드 기능과 호환되지 않습니다."
 
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettings.tsx:300
-msgid "Metabase currently supports {0} for uploads and needs a connection with write privileges."
+msgid "Torch currently supports {0} for uploads and needs a connection with write privileges."
 msgstr "메타베이스는 현재 업로드를 위해 {0}를 지원하며 쓰기 권한이 있는 연결이 필요합니다."
 
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettings.tsx:301
@@ -28479,7 +28479,7 @@ msgid "\"{0}\""
 msgstr "\"{0}\""
 
 #: metabase/core.clj:149
-msgid "Metabase Initialization COMPLETE in {0}"
+msgid "Torch Initialization COMPLETE in {0}"
 msgstr "{0}에서 메타베이스 초기화 완료"
 
 #: metabase/driver/bigquery_cloud_sdk.clj:245
@@ -28507,8 +28507,8 @@ msgid "Sorry, the row you''re trying to update doesn''t exist"
 msgstr "죄송합니다. 업데이트하려는 행이 존재하지 않습니다."
 
 #: metabase/driver/sql_jdbc/execute.clj:284
-msgid "{0} is deprecated in Metabase 0.47.0. Implement {1} instead."
-msgstr "{0}는 Metabase 0.47.0에서 더 이상 사용되지 않습니다. 대신 {1}을(를) 구현하십시오."
+msgid "{0} is deprecated in Torch 0.47.0. Implement {1} instead."
+msgstr "{0}는 Torch 0.47.0에서 더 이상 사용되지 않습니다. 대신 {1}을(를) 구현하십시오."
 
 #: metabase/events/view_log.clj:29
 msgid "List of the 10 most recently viewed items for the user."
@@ -28977,7 +28977,7 @@ msgid "Export to {0} complete!"
 msgstr "{0}로 내보내기 완료!"
 
 #: metabase_enterprise/serialization/cmd.clj:228
-msgid "Exporting Metabase to {0}"
+msgid "Exporting Torch to {0}"
 msgstr "메타베이스를 {0}(으)로 내보내는 중"
 
 #: metabase_enterprise/serialization/v2/load.clj:80
@@ -29114,7 +29114,7 @@ msgid "Upload error details"
 msgstr "오류 세부정보 업로드"
 
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx:108
-msgid "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage. You can update or reset the homepage at any time in Admin Settings > Settings > General."
+msgid "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Torch will redirect them to the default homepage. You can update or reset the homepage at any time in Admin Settings > Settings > General."
 msgstr "홈페이지로 사용할 대시보드를 선택합니다. 사용자에게 선택한 대시보드를 볼 수 있는 권한이 없는 경우 Metabase는 사용자를 기본 홈페이지로 리디렉션합니다. 관리자 설정 > 설정 > 일반에서 언제든지 홈페이지를 업데이트하거나 재설정할 수 있습니다."
 
 #: frontend/src/metabase/redux/uploads.ts:68
@@ -29122,7 +29122,7 @@ msgid "You cannot upload files larger than {0}mb"
 msgstr "{0}mb보다 큰 파일은 업로드할 수 없습니다."
 
 #: metabase/public_settings.clj:104
-msgid "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage."
+msgid "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Torch will redirect them to the default homepage."
 msgstr "홈페이지로 사용할 대시보드를 선택합니다. 사용자에게 선택한 대시보드를 볼 수 있는 권한이 없는 경우 Metabase는 사용자를 기본 홈페이지로 리디렉션합니다."
 
 #: metabase/public_settings.clj:350
@@ -29245,12 +29245,12 @@ msgid "Interactive embedding"
 msgstr "인터랙티브 임베딩"
 
 #: frontend/src/metabase/admin/settings/selectors.js:507
-msgid "With this Pro/Enterprise feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Metabase in your app or website, complete with your branding. Set permissions with SSO, down to the row- or column-level, so people only see what they need to."
+msgid "With this Pro/Enterprise feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Torch in your app or website, complete with your branding. Set permissions with SSO, down to the row- or column-level, so people only see what they need to."
 msgstr "이 Pro/Enterprise 기능을 사용하면 고객이 앱 또는 웹 사이트에서 Metabase의 모든 기능을 사용하여 데이터를 쿼리, 시각화 및 드릴다운하고 브랜딩을 완성할 수 있습니다. SSO로 권한을 행 또는 열 수준으로 설정하면 사람들이 필요한 항목만 볼 수 있습니다."
 
 #: frontend/src/metabase/admin/settings/components/widgets/FullAppEmbeddingLinkWidget/FullAppEmbeddingLinkWidget.tsx:14
-msgid "With {0} you can embed the full Metabase app to allow people to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
-msgstr "{0}를 사용하면 전체 Metabase 앱을 포함하여 사람들이 차트를 자세히 살펴보고 컬렉션을 찾아보고 그래픽 쿼리 빌더를 사용할 수 있습니다. 또한 우선 지원, 팀과 통찰력을 공유하는 데 도움이 되는 더 많은 도구, 고객을 위한 원활한 대화형 데이터 경험을 만드는 데 도움이 되는 강력한 옵션을 받을 수 있습니다."
+msgid "With {0} you can embed the full Torch app to allow people to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
+msgstr "{0}를 사용하면 전체 Torch 앱을 포함하여 사람들이 차트를 자세히 살펴보고 컬렉션을 찾아보고 그래픽 쿼리 빌더를 사용할 수 있습니다. 또한 우선 지원, 팀과 통찰력을 공유하는 데 도움이 되는 더 많은 도구, 고객을 위한 원활한 대화형 데이터 경험을 만드는 데 도움이 되는 강력한 옵션을 받을 수 있습니다."
 
 #: metabase/analytics/prometheus.clj:210
 msgid "Number of emails sent."
@@ -29326,7 +29326,7 @@ msgid "A value that is true iff the metabase instance has one or more users regi
 msgstr "메타베이스 인스턴스에 하나 이상의 사용자가 등록되어 있으면 true인 값입니다."
 
 #: metabase_enterprise/advanced_config/file.clj:261
-msgid "Metabase config files require a Premium token with the :config-text-file feature."
+msgid "Torch config files require a Premium token with the :config-text-file feature."
 msgstr "메타베이스 구성 파일에는 :config-text-file 기능이 있는 프리미엄 토큰이 필요합니다."
 
 #: metabase_enterprise/advanced_config/models/pulse_channel.clj:10
@@ -29541,7 +29541,7 @@ msgid "{0} has been auto-connected with filters with the same field."
 msgstr "{0}이(가) 동일한 필드를 가진 필터와 자동 연결되었습니다."
 
 #: frontend/src/metabase/nav/components/WhatsNewNotification/WhatsNewNotification.tsx:65
-msgid "Metabase has been updated"
+msgid "Torch has been updated"
 msgstr "메타베이스가 업데이트 되었습니다."
 
 #: frontend/src/metabase/nav/components/WhatsNewNotification/WhatsNewNotification.tsx:75
@@ -29744,7 +29744,7 @@ msgid "Strict (not recommended)"
 msgstr "엄격함(권장하지 않음)"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:48
-msgid "Never allows cookies to be sent on a cross-site request. Warning: this will prevent users from following external links to Metabase."
+msgid "Never allows cookies to be sent on a cross-site request. Warning: this will prevent users from following external links to Torch."
 msgstr "사이트 간 요청으로 쿠키를 전송하는 것을 허용하지 않습니다. 경고: 이렇게 하면 사용자가 메타베이스에 대한 외부 링크를 따라갈 수 없습니다."
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:53
@@ -29879,7 +29879,7 @@ msgid "Cake"
 msgstr "케이크"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/OpenInMetabase.jsx:9
-msgid "Open in Metabase"
+msgid "Open in Torch"
 msgstr "메타베이스에서 열기"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditApp.jsx:35
@@ -29891,7 +29891,7 @@ msgstr "이 감사 섹션이 다음과 같이 업그레이드되었습니다.\n"
 " 로 업그레이드되었으며 향후 릴리스에서 제거될 예정입니다."
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditApp.jsx:42
-msgid "Metabase Analytics Collection"
+msgid "Torch Analytics Collection"
 msgstr "메타베이스 분석 컬렉션"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditApp.jsx:48
@@ -29951,7 +29951,7 @@ msgid "SameSite cookie setting"
 msgstr "SameSite 쿠키 설정"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/components/EmbeddingAppSameSiteCookieDescription/EmbeddingAppSameSiteCookieDescription.tsx:33
-msgid "Determines whether or not cookies are allowed to be sent on cross-site requests. You’ll likely need to change this to None if your embedding application is hosted under a different domain than Metabase. Otherwise, leave it set to Lax, as it's more secure."
+msgid "Determines whether or not cookies are allowed to be sent on cross-site requests. You’ll likely need to change this to None if your embedding application is hosted under a different domain than Torch. Otherwise, leave it set to Lax, as it's more secure."
 msgstr "사이트 간 요청 시 쿠키 전송을 허용할지 여부를 결정합니다. 임베딩 애플리케이션이 메타베이스가 아닌 다른 도메인에서 호스팅되는 경우 이 설정을 없음으로 변경해야 할 수 있습니다. 그렇지 않으면 더 안전하므로 Lax로 설정해 두세요."
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/components/EmbeddingAppSameSiteCookieDescription/EmbeddingAppSameSiteCookieDescription.tsx:34
@@ -30417,7 +30417,7 @@ msgid "Usage insights"
 msgstr "사용 인사이트"
 
 #: enterprise/frontend/src/metabase-enterprise/collections/components/CollectionInstanceAnalyticsIcon.tsx:35
-msgid "This is a read-only Metabase Analytics {0}."
+msgid "This is a read-only Torch Analytics {0}."
 msgstr "이것은 읽기 전용 메타베이스 분석 {0}입니다."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/HelpLinkSettings/HelpLinkSettings.tsx:44
@@ -30429,7 +30429,7 @@ msgid "This needs to be an \"http://\", \"https://\" or \"mailto:\" URL."
 msgstr "\"http://\", \"https://\" 또는 \"mailto:\" URL이어야 합니다."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/HelpLinkSettings/HelpLinkSettings.tsx:61
-msgid "Link to Metabase help"
+msgid "Link to Torch help"
 msgstr "메타베이스 도움말 링크"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/HelpLinkSettings/HelpLinkSettings.tsx:62
@@ -30449,12 +30449,12 @@ msgid "Enter a URL it should go to"
 msgstr "이동해야 하는 URL을 입력합니다."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleDescription.tsx:5
-msgid "Control the visibility of links to Metabase documentation and Metabase references in your instance. {0}"
+msgid "Control the visibility of links to Torch documentation and Torch references in your instance. {0}"
 msgstr "인스턴스에서 메타베이스 문서 및 메타베이스 참조에 대한 링크의 표시 여부를 제어합니다. {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleDescription.tsx:15
-msgid "This affects all links in the product experience (outside of the admin panel) that point to Metabase.com URLs."
-msgstr "이는 제품 환경의 모든 링크(관리자 패널 외부)에서 Metabase.com URL을 가리키는 모든 링크에 영향을 줍니다."
+msgid "This affects all links in the product experience (outside of the admin panel) that point to Torch.com URLs."
+msgstr "이는 제품 환경의 모든 링크(관리자 패널 외부)에서 Torch.com URL을 가리키는 모든 링크에 영향을 줍니다."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleDescription.tsx:18
 msgid "When hidden, your users will lose the ability to troubleshoot and learn how to use features such as the Query and SQL Editors, among others."
@@ -30576,7 +30576,7 @@ msgid "Replace with…"
 msgstr "다음으로 교체..."
 
 #: frontend/src/metabase/home/components/EmbedMinimalHomepage/EmbedMinimalHomepage.tsx:32
-msgid "Get started with Embedding Metabase in your app"
+msgid "Get started with Embedding Torch in your app"
 msgstr "앱에 메타베이스 임베드 시작하기"
 
 #: frontend/src/metabase/home/components/EmbedMinimalHomepage/EmbedMinimalHomepage.tsx:36
@@ -30678,11 +30678,11 @@ msgid "Enable users to download data from this embed"
 msgstr "사용자가 이 임베드에서 데이터를 다운로드할 수 있습니다."
 
 #: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/AppearanceSettings.tsx:188
-msgid "Removing the “Powered by Metabase” banner"
+msgid "Removing the “Powered by Torch” banner"
 msgstr "'메타베이스 제공' 배너 제거하기"
 
 #: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/AppearanceSettings.tsx:190
-msgid "This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to {0} to remove the banner."
+msgid "This banner appears on all static embeds created with the Torch open source version. You’ll need to upgrade to {0} to remove the banner."
 msgstr "이 배너는 메타베이스 오픈 소스 버전으로 만든 모든 정적 임베드에 표시됩니다. 배너를 제거하려면 {0}로 업그레이드해야 합니다."
 
 #: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/AppearanceSettings.tsx:205
@@ -30908,7 +30908,7 @@ msgid "Configure your parameters' types and properties here. The values for thes
 msgstr "여기에서 매개변수의 유형과 속성을 구성합니다. 이러한 매개변수의 값은 사용자 입력 또는 대시보드 필터에서 가져올 수 있습니다."
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/EmbeddingOption.tsx:58
-msgid "A \"powered by Metabase\" banner appears on static embeds. You can {0} to remove it."
+msgid "A \"powered by Torch\" banner appears on static embeds. You can {0} to remove it."
 msgstr "정적 임베드에 '메타베이스 제공' 배너가 나타납니다. 0}을(를) 제거할 수 있습니다."
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/EmbeddingOption.tsx:60
@@ -30949,7 +30949,7 @@ msgid "Set it up"
 msgstr "설정하기"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/InteractiveEmbeddingCTA/InteractiveEmbeddingCTA.tsx:31
-msgid "Give your customers the full power of Metabase in your own app, with SSO, advanced permissions, customization, and more."
+msgid "Give your customers the full power of Torch in your own app, with SSO, advanced permissions, customization, and more."
 msgstr "SSO, 고급 권한, 사용자 지정 등을 통해 고객에게 자체 앱에서 메타베이스의 모든 기능을 제공하세요."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/InteractiveEmbeddingCTA/InteractiveEmbeddingCTA.tsx:59
@@ -31038,7 +31038,7 @@ msgid "Which group should this key belong to? The key will have the same permiss
 msgstr "이 키는 어느 그룹에 속해야 하나요? 키는 해당 그룹에 부여된 권한과 동일한 권한을 갖습니다."
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx:74
-msgid "We don't version the Metabase API. We rarely change API endpoints, and almost never remove them, but if you write code that relies on the API, there's a chance you might have to update your code in the future."
+msgid "We don't version the Torch API. We rarely change API endpoints, and almost never remove them, but if you write code that relies on the API, there's a chance you might have to update your code in the future."
 msgstr "메타베이스 API는 버전을 관리하지 않습니다. API 엔드포인트를 거의 변경하지 않고 제거하지도 않지만, API에 의존하는 코드를 작성하는 경우 향후 코드를 업데이트해야 할 가능성이 있습니다."
 
 #: frontend/src/metabase/admin/settings/auth/components/ApiKeysAuthCard.tsx:19
@@ -31181,11 +31181,11 @@ msgstr "아직 잘 모르겠습니다."
 
 #: frontend/src/metabase/setup/components/UsageQuestionStep/UsageQuestionStep.tsx:53
 #: frontend/src/metabase/setup/components/UsageQuestionStep/UsageQuestionStep.tsx:66
-msgid "What will you use Metabase for?"
+msgid "What will you use Torch for?"
 msgstr "메타베이스를 어떤 용도로 사용하시나요?"
 
 #: frontend/src/metabase/setup/components/UsageQuestionStep/UsageQuestionStep.tsx:76
-msgid "Let us know your plans with Metabase so that we can best guide you"
+msgid "Let us know your plans with Torch so that we can best guide you"
 msgstr "메타베이스에 대한 계획을 알려주시면 가장 적합한 가이드를 제공해 드리겠습니다."
 
 #: frontend/src/metabase/setup/components/UsageQuestionStep/UsageQuestionStep.tsx:82
@@ -31322,19 +31322,19 @@ msgid "Compact number"
 msgstr "컴팩트 번호"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:21
-msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work,  {2} must be a superuser in Redshift."
+msgid "You’re connecting Torch to the {0} database using the credentials for the Redshift user {1}. For impersonation to work,  {2} must be a superuser in Redshift."
 msgstr "Redshift 사용자 {1}의 자격 증명을 사용하여 메타베이스를 {0} 데이터베이스에 연결하고 있습니다. 가장이 작동하려면 {2}가 Redshift에서 수퍼유저여야 합니다."
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:35
-msgid "{0} is the database user Metabase is using to connect to your  {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
-msgstr "{0}은(는) {1} 데이터베이스에 연결하는 데 Metabase가 사용하는 데이터베이스 사용자입니다. 해당 데이터베이스 사용자 계정은 Metabase가 테이블 정보를 동기화하는 데 사용하는 계정이므로 {2}가 {3}의 모든 항목에 액세스할 수 있는지 확인합니다(모든 Metabase 그룹이 액세스해야 할 수 있음)."
+msgid "{0} is the database user Torch is using to connect to your  {1} database. Make sure that {2} has access to everything in {3} that all Torch groups may need access to, as that database user account is what Torch uses to sync table information."
+msgstr "{0}은(는) {1} 데이터베이스에 연결하는 데 Metabase가 사용하는 데이터베이스 사용자입니다. 해당 데이터베이스 사용자 계정은 Metabase가 테이블 정보를 동기화하는 데 사용하는 계정이므로 {2}가 {3}의 모든 항목에 액세스할 수 있는지 확인합니다(모든 Torch 그룹이 액세스해야 할 수 있음)."
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx:77
-msgid "Map a Metabase user attribute to database users"
+msgid "Map a Torch user attribute to database users"
 msgstr "메타베이스 사용자 속성을 데이터베이스 사용자에 매핑하기"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx:81
-msgid "When the person runs a query (including native queries), Metabase will impersonate the privileges of the database user you associate with the user attribute."
+msgid "When the person runs a query (including native queries), Torch will impersonate the privileges of the database user you associate with the user attribute."
 msgstr "사용자가 쿼리(기본 쿼리 포함)를 실행하면 메타베이스는 사용자 속성과 연관된 데이터베이스 사용자의 권한을 가장합니다."
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.js:244
@@ -31431,7 +31431,7 @@ msgid "Regenerate API key"
 msgstr "API 키 다시 생성"
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:76
-msgid "Metabase will replace the existing API key with a new key. You won't be able to recover the old key."
+msgid "Torch will replace the existing API key with a new key. You won't be able to recover the old key."
 msgstr "메타베이스가 기존 API 키를 새 키로 대체합니다. 이전 키는 복구할 수 없습니다."
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:81
@@ -31577,8 +31577,8 @@ msgid "By clicking \"Agree and continue\" you're agreeing to {0}"
 msgstr "\"동의하고 계속\"을 클릭하면 {0}에 동의하는 것입니다."
 
 #: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx:43
-msgid "When you embed charts or dashboards from Metabase in your own application that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the \"Powered by Metabase\" visible on those embeds."
-msgstr "메타베이스의 차트 또는 대시보드를 자체 애플리케이션에 임베드하는 경우, 해당 애플리케이션은 메타베이스의 나머지 부분에 적용되는 Affero 일반 공중 사용 허가서의 적용을 받지 않습니다(단, 해당 임베드에 메타베이스 로고 및 \"Powered by Metabase\"를 표시하는 경우)."
+msgid "When you embed charts or dashboards from Torch in your own application that application isn't subject to the Affero General Public License that covers the rest of Torch, provided you keep the Torch logo and the \"Powered by Torch\" visible on those embeds."
+msgstr "메타베이스의 차트 또는 대시보드를 자체 애플리케이션에 임베드하는 경우, 해당 애플리케이션은 메타베이스의 나머지 부분에 적용되는 Affero 일반 공중 사용 허가서의 적용을 받지 않습니다(단, 해당 임베드에 메타베이스 로고 및 \"Powered by Torch\"를 표시하는 경우)."
 
 #: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx:46
 msgid "You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
@@ -31803,7 +31803,7 @@ msgid "Custom URL for the help link."
 msgstr "도움말 링크의 사용자 지정 URL입니다."
 
 #: metabase/public_settings.clj:512
-msgid "Whether or not to display Metabase links outside admin settings."
+msgid "Whether or not to display Torch links outside admin settings."
 msgstr "관리자 설정 외부에 메타베이스 링크를 표시할지 여부입니다."
 
 #: metabase/public_settings.clj:483
@@ -31819,7 +31819,7 @@ msgid "Toggle which is true after a user has dismissed the banner on Browse Data
 msgstr "사용자가 모델에 대한 데이터 찾아보기의 배너를 닫은 후 참인지 여부를 토글합니다."
 
 #: metabase/public_settings.clj:104
-msgid "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage. To revert to the default Metabase homepage, simply turn off the toggle."
+msgid "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Torch will redirect them to the default homepage. To revert to the default Torch homepage, simply turn off the toggle."
 msgstr "홈페이지로 사용할 대시보드를 선택합니다. 선택한 대시보드를 볼 수 있는 권한이 없는 경우 메타베이스는 기본 홈페이지로 리디렉션합니다. 기본 메타베이스 홈페이지로 되돌리려면 토글을 끄면 됩니다."
 
 #: metabase/pulse/render/body.clj:195
@@ -31911,21 +31911,21 @@ msgid "You do not have access to the audit database"
 msgstr "감사 데이터베이스에 액세스할 수 없습니다."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:27
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid "When we enable SAML user provisioning, we automatically create a Torch account on SAML signin for users who\n"
 "don''t have one."
-msgstr "SAML 사용자 프로비저닝을 사용 설정하면 다음과 같은 사용자를 위해 SAML 로그인 시 자동으로 Metabase 계정이 생성됩니다.\n"
+msgstr "SAML 사용자 프로비저닝을 사용 설정하면 다음과 같은 사용자를 위해 SAML 로그인 시 자동으로 Torch 계정이 생성됩니다.\n"
 "없는 사용자를 위해 자동으로 생성됩니다."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:35
-msgid "When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+msgid "When we enable JWT user provisioning, we automatically create a Torch account on JWT signin for users who\n"
 "don''t have one."
 msgstr "JWT 사용자 프로비저닝을 사용 설정하면 메타베이스 계정이 없는 사용자를 위해 JWT 로그인 시 자동으로 메타베이스 계정이 생성됩니다.\n"
 "없는 사용자를 위해 자동으로 생성됩니다."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:43
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid "When we enable LDAP user provisioning, we automatically create a Torch account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "LDAP 사용자 프로비저닝을 사용하도록 설정하면 다음과 같은 사용자를 위해 LDAP 로그인 시 자동으로 Metabase 계정이 생성됩니다.\n"
+msgstr "LDAP 사용자 프로비저닝을 사용하도록 설정하면 다음과 같은 사용자를 위해 LDAP 로그인 시 자동으로 Torch 계정이 생성됩니다.\n"
 "없는 사용자를 위해 자동으로 생성됩니다."
 
 #: metabase_enterprise/sso/integrations/sso_utils.clj:36

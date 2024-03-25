@@ -4,7 +4,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: POEditor.com\n"
-"Project-Id-Version: Metabase\n"
+"Project-Id-Version: Torch\n"
 "Language: zh-CN\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
@@ -54,7 +54,7 @@ msgid "Save"
 msgstr "保存"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:122
-msgid "To do some of its magic, Metabase needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below."
+msgid "To do some of its magic, Torch needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below."
 msgstr "为了发挥其神奇作用，Metabase需要扫描您的数据库。 并将定期对其进行重新扫描，以使元数据保持最新状态。 您可以控制何时进行定期重新扫描。"
 
 #. 数据库正在同步中...
@@ -79,7 +79,7 @@ msgid "Scanning for Filter Values"
 msgstr "扫描要过滤的值"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:153
-msgid "Metabase can scan the values present in each\n"
+msgid "Torch can scan the values present in each\n"
 "field in this database to enable checkbox filters in dashboards and questions. This\n"
 "can be a somewhat resource-intensive process, particularly if you have a very large\n"
 "database."
@@ -87,8 +87,8 @@ msgstr "Metabase可以扫描此数据库中每个字段中存在的值，以启�
 
 #. Metabase应该什么时候自动地扫描并缓存字段的值？
 #: frontend/src/metabase/entities/databases/big-query-fields.js:167
-msgid "When should Metabase automatically scan and cache field values?"
-msgstr "Metabase 什么时候应该自动扫描和缓存字段值？"
+msgid "When should Torch automatically scan and cache field values?"
+msgstr "Torch 什么时候应该自动扫描和缓存字段值？"
 
 #. 通常情况下，需要制定一个计划表
 #: frontend/src/metabase/databases/components/DatabaseCacheScheduleField/DatabaseCacheScheduleField.tsx:72
@@ -101,7 +101,7 @@ msgid "Only when adding a new filter widget"
 msgstr "仅在添加新的过滤器部件时"
 
 #: frontend/src/metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget.jsx:55
-msgid "When a user adds a new filter to a dashboard or a SQL question, Metabase will\n"
+msgid "When a user adds a new filter to a dashboard or a SQL question, Torch will\n"
 "scan the field(s) mapped to that filter in order to show the list of selectable values."
 msgstr "当用户向仪表板或SQL question添加新过滤器时，Metabase将扫描映射到该过滤器的字段，以显示可选值列表。"
 
@@ -700,7 +700,7 @@ msgid "{0} – Field Settings"
 msgstr "{0} - 字段设置"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:145
-msgid "Where this field will appear throughout Metabase"
+msgid "Where this field will appear throughout Torch"
 msgstr "此字段将在整个Metabase中出现的位置"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:274
@@ -782,7 +782,7 @@ msgid "Cached field values"
 msgstr "缓存字段值"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:332
-msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
+msgid "Torch can scan the values for this field to enable checkbox filters in dashboards and questions."
 msgstr "Metabase可以扫描该字段的值，以启用仪表盘和question中的复选框过滤器。"
 
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:15
@@ -950,7 +950,7 @@ msgid "Settings"
 msgstr "设置"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:106
-msgid "Metabase can scan the values in this table to enable checkbox filters in dashboards and questions."
+msgid "Torch can scan the values in this table to enable checkbox filters in dashboards and questions."
 msgstr "Metabase可以扫描该表中的值以启用仪表盘和question中的复选框过滤器。"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:111
@@ -997,20 +997,20 @@ msgstr "将此用户设为管理员"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:31
 msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
-"make sure you know what new Metabase users will be able to see."
+"make sure you know what new Torch users will be able to see."
 msgstr "所有用户都属于{0}组，无法将其从其中删除。\n"
 "设置该组的权限是一种很好的方法\n"
 "确保您知道哪些新的Metabase用户将能够看到。"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:40
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid "This is a special group whose members can see everything in the Torch instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
 msgstr "这是一个特殊的组，其成员可以查看Metabase实例中的所有内容，并且可以访问和更改\n"
 "管理面板中的设置，包括更改权限！\n"
 "因此，请小心地将人们添加到该组中。"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:44
-msgid "To make sure you don't get locked out of Metabase, there always has to be at least one user in this group."
+msgid "To make sure you don't get locked out of Torch, there always has to be at least one user in this group."
 msgstr "为了确保您不会被Metabase锁定，该组中始终必须至少有一个用户。"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:288
@@ -1401,16 +1401,16 @@ msgid "Sorry, an error occurred."
 msgstr "抱歉，出错了"
 
 #: frontend/src/metabase/admin/permissions/constants/messages.ts:3
-msgid "Administrators always have the highest level of access to everything in Metabase."
+msgid "Administrators always have the highest level of access to everything in Torch."
 msgstr "管理员始终具有对Metabase中所有内容的最高访问权限。"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:70
-msgid "Every Metabase user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access."
+msgid "Every Torch user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access."
 msgstr "每个配置数据库用户都属于“所有用户”组。如果要限制或限制组对某些内容的访问，请确保“所有用户”组具有相同或更低级别的访问权限。"
 
 #: frontend/src/metabase/admin/permissions/selectors.js:72
-msgid "MetaBot is Metabase's Slack bot. You can choose what it has access to here."
-msgstr "MetaBot 是 Metabase 的 Slack 机器人。 您可以在此处选择它可以访问的内容。"
+msgid "MetaBot is Torch's Slack bot. You can choose what it has access to here."
+msgstr "MetaBot 是 Torch 的 Slack 机器人。 您可以在此处选择它可以访问的内容。"
 
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:63
 msgid "The \"{0}\" group may have access to a different set of {1} than this group, which may give this group additional access to some {2}."
@@ -1535,8 +1535,8 @@ msgstr "Google账号登录"
 
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:65
 #: frontend/src/metabase/admin/settings/auth/containers/GoogleAuthCard/GoogleAuthCard.tsx:17
-msgid "Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
-msgstr "允许具有现有 Metabase 帐户的用户使用与他们的电子邮件地址以及他们的 Metabase 用户名和密码相匹配的 Google 帐户登录。"
+msgid "Allows users with existing Torch accounts to login with a Google account that matches their email address in addition to their Torch username and password."
+msgstr "允许具有现有 Torch 帐户的用户使用与他们的电子邮件地址以及他们的 Torch 用户名和密码相匹配的 Google 帐户登录。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/EmbeddingOption.tsx:130
 #: frontend/src/metabase/components/ChannelSetupMessage/ChannelSetupMessage.jsx:32
@@ -1549,8 +1549,8 @@ msgid "LDAP"
 msgstr "LDAP"
 
 #: frontend/src/metabase/admin/settings/auth/containers/LdapAuthCard/LdapAuthCard.tsx:12
-msgid "Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups."
-msgstr "允许您的 LDAP 目录中的用户使用他们的 LDAP 凭据登录到 Metabase，并允许将 LDAP 组自动映射到 Metabase 组。"
+msgid "Allows users within your LDAP directory to log in to Torch with their LDAP credentials, and allows automatic mapping of LDAP groups to Torch groups."
+msgstr "允许您的 LDAP 目录中的用户使用他们的 LDAP 凭据登录到 Torch，并允许将 LDAP 组自动映射到 Torch 组。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:21
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:25
@@ -1623,8 +1623,8 @@ msgid "Getting set up"
 msgstr "设置"
 
 #: frontend/src/metabase/admin/settings/setup/components/SetupCheckList/SetupCheckList.jsx:124
-msgid "A few things you can do to get the most out of Metabase."
-msgstr "您可以做一些事情来充分利用 Metabase。"
+msgid "A few things you can do to get the most out of Torch."
+msgstr "您可以做一些事情来充分利用 Torch。"
 
 #: frontend/src/metabase/admin/settings/setup/components/SetupCheckList/SetupCheckList.jsx:133
 msgid "Recommended next step"
@@ -1635,8 +1635,8 @@ msgid "Google Sign-In"
 msgstr "Google登录"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:123
-msgid "To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}"
-msgstr "要允许用户使用 Google 登录，您需要为 Metabase 提供一个 Google Developers 控制台应用程序客户端 ID。 只需几个步骤即可找到有关如何创建密钥的说明{0}"
+msgid "To allow users to sign in with Google you'll need to give Torch a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}"
+msgstr "要允许用户使用 Google 登录，您需要为 Torch 提供一个 Google Developers 控制台应用程序客户端 ID。 只需几个步骤即可找到有关如何创建密钥的说明{0}"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:140
 msgid "Your Google client ID"
@@ -1655,16 +1655,16 @@ msgid "Create a Slack Bot User for MetaBot"
 msgstr "为 MetaBot 创建 Slack Bot 用户"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:255
-msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Metabase needs this to upload graphs."
+msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Torch needs this to upload graphs."
 msgstr "到达那里后，为其命名并点击 {0}。 然后将 Bot API 令牌复制并粘贴到下面的字段中。 完成后，在 Slack 中创建一个“metabase_files”频道。 元数据库需要这个来上传图表。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:56
-msgid "You're running Metabase {0} which is the latest and greatest!"
-msgstr "您正在运行最新的 Metabase {0}！"
+msgid "You're running Torch {0} which is the latest and greatest!"
+msgstr "您正在运行最新的 Torch {0}！"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:100
-msgid "Metabase {0} is available.  You're running {1}"
-msgstr "Metabase  {0} 可用。 您正在运行 {1}"
+msgid "Torch {0} is available.  You're running {1}"
+msgstr "Torch  {0} 可用。 您正在运行 {1}"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditNotificationEditModal/AuditNotificationEditModal.jsx:76
 #: enterprise/frontend/src/metabase-enterprise/snippets/components/SnippetCollectionForm.tsx:152
@@ -1791,8 +1791,8 @@ msgid "By enabling embedding you're agreeing to the embedding license located at
 msgstr "启用嵌入即表示您同意嵌入许可位于"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:23
-msgid "In plain English, when you embed charts or dashboards from Metabase in your own application, that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the \"Powered by Metabase\" visible on those embeds. You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
-msgstr "简而言之，当您将 Metabase 中的图表或仪表盘嵌入到您自己的应用程序中时，该应用程序不受涵盖 Metabase 其余部分的 Affero 通用公共许可证的约束，前提是您保持 Metabase 徽标和“Powered by Metabase”可见 在那些嵌入上。 但是，您应该阅读上面链接的许可文本，因为这是您通过启用此功能将同意的实际许可。"
+msgid "In plain English, when you embed charts or dashboards from Torch in your own application, that application isn't subject to the Affero General Public License that covers the rest of Torch, provided you keep the Torch logo and the \"Powered by Torch\" visible on those embeds. You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
+msgstr "简而言之，当您将 Torch 中的图表或仪表盘嵌入到您自己的应用程序中时，该应用程序不受涵盖 Torch 其余部分的 Affero 通用公共许可证的约束，前提是您保持 Torch 徽标和“Powered by Torch”可见 在那些嵌入上。 但是，您应该阅读上面链接的许可文本，因为这是您通过启用此功能将同意的实际许可。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese/EmbeddingLegalese.tsx:68
 msgid "Enable"
@@ -1803,12 +1803,12 @@ msgid "Premium embedding enabled"
 msgstr "已启用高级嵌入"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:30
-msgid "Enter the token you bought from the Metabase Store"
-msgstr "输入您从 Metabase Store 购买的令牌"
+msgid "Enter the token you bought from the Torch Store"
+msgstr "输入您从 Torch Store 购买的令牌"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:57
-msgid "Premium embedding lets you disable \"Powered by Metabase\" on your embedded dashboards and questions."
-msgstr "高级嵌入允许您在嵌入的仪表盘和question上禁用“Powered by Metabase”。"
+msgid "Premium embedding lets you disable \"Powered by Torch\" on your embedded dashboards and questions."
+msgstr "高级嵌入允许您在嵌入的仪表盘和question上禁用“Powered by Torch”。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLevel.jsx:64
 msgid "Buy a token"
@@ -1831,10 +1831,10 @@ msgid "Create a mapping"
 msgstr "创建映射"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:145
-msgid "Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the\n"
+msgid "Mappings allow Torch to automatically add and remove users from groups based on the membership information provided by the\n"
 "directory server. Membership to the Admin group can be granted through mappings, but will not be automatically removed as a\n"
 "failsafe measure."
-msgstr "映射允许 Metabase 根据提供的成员信息自动从组中添加和删除用户\n"
+msgstr "映射允许 Torch 根据提供的成员信息自动从组中添加和删除用户\n"
 "目录服务器。 可以通过映射授予 Admin 组的成员资格，但不会作为\n"
 "故障保护措施。"
 
@@ -2107,8 +2107,8 @@ msgid "Map tile server URL"
 msgstr "地图切片服务器 URL"
 
 #: frontend/src/metabase/admin/settings/selectors.js:308
-msgid "Metabase uses OpenStreetMaps by default."
-msgstr "Metabase 默认使用 OpenStreetMaps。"
+msgid "Torch uses OpenStreetMaps by default."
+msgstr "Torch 默认使用 OpenStreetMaps。"
 
 #: frontend/src/metabase/admin/settings/selectors.js:313
 msgid "Custom Maps"
@@ -2139,7 +2139,7 @@ msgid "Embedding in other Applications"
 msgstr "嵌入其他应用程序"
 
 #: frontend/src/metabase/admin/settings/selectors.js:332
-msgid "Enable Embedding Metabase in other Applications"
+msgid "Enable Embedding Torch in other Applications"
 msgstr "在其他应用程序中启用嵌入元数据库"
 
 #: frontend/src/metabase/admin/settings/selectors.js:503
@@ -2200,11 +2200,11 @@ msgid "Back to login"
 msgstr "返回到登录页"
 
 #: frontend/src/metabase/auth/components/GoogleNoAccount.jsx:15
-msgid "No Metabase account exists for this Google account."
+msgid "No Torch account exists for this Google account."
 msgstr "此 Google 帐户不存在任何元数据库帐户。"
 
 #: metabase/integrations/google.clj:26
-msgid "You'll need an administrator to create a Metabase account before you can use Google to log in."
+msgid "You'll need an administrator to create a Torch account before you can use Google to log in."
 msgstr "你需要让管理员先给你在Metabase中创建了账号才可以用Google进行登录。"
 
 #: frontend/src/metabase/auth/components/AuthProviderButton.jsx:24
@@ -2220,8 +2220,8 @@ msgid "Forgot password"
 msgstr "忘记密码"
 
 #: frontend/src/metabase/auth/components/ForgotPasswordForm/ForgotPasswordForm.tsx:51
-msgid "The email you use for your Metabase account"
-msgstr "您用于 Metabase 帐户的电子邮件"
+msgid "The email you use for your Torch account"
+msgstr "您用于 Torch 帐户的电子邮件"
 
 #: frontend/src/metabase/auth/components/ForgotPasswordForm/ForgotPasswordForm.tsx:60
 msgid "Send password reset email"
@@ -2232,7 +2232,7 @@ msgid "Check your email for instructions on how to reset your password."
 msgstr "检查您的电子邮件以获取有关如何重置密码的说明。"
 
 #: frontend/src/metabase/auth/components/Login/Login.tsx:30
-msgid "Sign in to Metabase"
+msgid "Sign in to Torch"
 msgstr "登录Metabase"
 
 #: frontend/src/metabase/auth/containers/LoginApp.jsx:165
@@ -2534,13 +2534,13 @@ msgstr "某些数据库安装只能通过 SSH 堡垒主机连接来访问。\n"
 "启用此功能通常比直接连接慢。"
 
 #: frontend/src/metabase/entities/databases/forms.js:349
-msgid "This is a large database, so let me choose when Metabase syncs and scans"
-msgstr "这是一个大型数据库，所以让我选择 Metabase 同步和扫描的时间"
+msgid "This is a large database, so let me choose when Torch syncs and scans"
+msgstr "这是一个大型数据库，所以让我选择 Torch 同步和扫描的时间"
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:296
-msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values.\n"
+msgid "By default, Torch does a lightweight hourly sync and an intensive daily scan of field values.\n"
 "If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
-msgstr "默认情况下，Metabase 会进行轻量级的每小时同步和每天对字段值的密集扫描。\n"
+msgstr "默认情况下，Torch 会进行轻量级的每小时同步和每天对字段值的密集扫描。\n"
 "如果您有一个大型数据库，我们建议您打开它并查看字段值扫描发生的时间和频率。"
 
 #: frontend/src/metabase/databases/components/DatabaseClientIdDescription/DatabaseClientIdDescription.tsx:25
@@ -2565,8 +2565,8 @@ msgid "with Google Drive permissions"
 msgstr "具有 Google 云硬盘权限"
 
 #: frontend/src/metabase/entities/databases/forms.js:248
-msgid "To use Metabase with this data you must enable API access in the Google Developers Console."
-msgstr "要将 Metabase 与这些数据一起使用，您必须在 Google Developers Console 中启用 API 访问。"
+msgid "To use Torch with this data you must enable API access in the Google Developers Console."
+msgstr "要将 Torch 与这些数据一起使用，您必须在 Google Developers Console 中启用 API 访问。"
 
 #: frontend/src/metabase/entities/databases/forms.js:249
 msgid "{0} to go to the console if you haven't already done so."
@@ -2861,8 +2861,8 @@ msgid "Loading..."
 msgstr "正在加载..."
 
 #: frontend/src/metabase/setup/components/NewsletterForm/NewsletterForm.tsx:44
-msgid "Metabase Newsletter"
-msgstr "Metabase 通讯"
+msgid "Torch Newsletter"
+msgstr "Torch 通讯"
 
 #: frontend/src/metabase/setup/components/NewsletterForm/NewsletterForm.tsx:48
 msgid "Get infrequent emails about new releases and feature updates."
@@ -2873,7 +2873,7 @@ msgid "Subscribe"
 msgstr "订阅"
 
 #: frontend/src/metabase/setup/components/NewsletterForm/NewsletterForm.tsx:71
-msgid "You're subscribed. Thanks for using Metabase!"
+msgid "You're subscribed. Thanks for using Torch!"
 msgstr "您已订阅。 感谢您使用Metabase！"
 
 #: frontend/src/metabase/containers/ErrorPages.tsx:35
@@ -2971,7 +2971,7 @@ msgid "Calendar Day"
 msgstr "日历日"
 
 #: frontend/src/metabase/components/SchedulePicker/SchedulePicker.tsx:235
-msgid "your Metabase timezone"
+msgid "your Torch timezone"
 msgstr "您的Metabase 时区"
 
 #: frontend/src/metabase/components/SearchHeader.jsx:21
@@ -3438,8 +3438,8 @@ msgid "Hello World!"
 msgstr "Hello World!"
 
 #: frontend/src/metabase/home/components/Activity.jsx:264
-msgid "Metabase is up and running."
-msgstr "Metabase 已启动并正在运行。"
+msgid "Torch is up and running."
+msgstr "Torch 已启动并正在运行。"
 
 #: frontend/src/metabase/home/components/Activity.jsx:270
 #: frontend/src/metabase/home/components/Activity.jsx:300
@@ -3814,8 +3814,8 @@ msgid "Do Not Include"
 msgstr "不包括"
 
 #: frontend/src/metabase/lib/core.js:260
-msgid "Metabase will never retrieve this field. Use this for sensitive or irrelevant information."
-msgstr "Metabase 永远不会检索此字段。 将此用于敏感或不相关的信息。"
+msgid "Torch will never retrieve this field. Use this for sensitive or irrelevant information."
+msgstr "Torch 永远不会检索此字段。 将此用于敏感或不相关的信息。"
 
 #: frontend/src/metabase-lib/operators/constants.js:323
 #: frontend/src/metabase/visualizations/lib/utils.js:150
@@ -4491,7 +4491,7 @@ msgid "Help"
 msgstr "帮助"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:75
-msgid "About Metabase"
+msgid "About Torch"
 msgstr "关于Metabase"
 
 #: frontend/src/metabase/nav/components/ProfileLink/ProfileLink.jsx:77
@@ -4519,8 +4519,8 @@ msgid "and is built with care in San Francisco, CA"
 msgstr "并在加利福尼亚州旧金山精心打造"
 
 #: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:40
-msgid "Metabase Admin"
-msgstr "Metabase 管理员"
+msgid "Torch Admin"
+msgstr "Torch 管理员"
 
 #: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:111
 #: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:113
@@ -4847,8 +4847,8 @@ msgid "Public link"
 msgstr "公开链接"
 
 #: frontend/src/metabase/public/components/widgets/SharingPane.tsx:119
-msgid "Share this {0} with people who don't have a Metabase account using the URL below:"
-msgstr "使用以下 URL 与没有 Metabase 帐户的人分享此 {0}："
+msgid "Share this {0} with people who don't have a Torch account using the URL below:"
+msgstr "使用以下 URL 与没有 Torch 帐户的人分享此 {0}："
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:148
 msgid "Public embed"
@@ -5065,7 +5065,7 @@ msgid "Help everyone on your team stay in sync with your data."
 msgstr "帮助团队中的每个人与您的数据保持同步。"
 
 #: frontend/src/metabase/pulse/components/WhatsAPulse.jsx:31
-msgid "Pulses let you send data from Metabase to email or Slack on the schedule of your choice."
+msgid "Pulses let you send data from Torch to email or Slack on the schedule of your choice."
 msgstr "定时通知允许您根据您选择的时间表从Metabase发送数据到电子邮件或Slack。"
 
 #: metabase/lib/fe_util.cljc:98
@@ -6366,7 +6366,7 @@ msgstr "X-Ray(透视)这个字段"
 
 #: frontend/src/metabase/models/containers/NewModelOptions/NewModelOptions.tsx:104
 #: frontend/src/metabase/reference/databases/NoDatabasesEmptyState.jsx:7
-msgid "Metabase is no fun without any data"
+msgid "Torch is no fun without any data"
 msgstr "没有数据mtabase就没有用处"
 
 #: frontend/src/metabase/reference/databases/NoDatabasesEmptyState.jsx:12
@@ -6506,7 +6506,7 @@ msgid "Contact {0}"
 msgstr "包含{0}"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuideEditForm.jsx:253
-msgid "Help new Metabase users find their way around."
+msgid "Help new Torch users find their way around."
 msgstr "帮助metabase找到新用户。"
 
 #: frontend/src/metabase/reference/guide/GettingStartedGuideEditForm.jsx:256
@@ -6722,7 +6722,7 @@ msgid "Connecting to {0}"
 msgstr "连接到 {0} "
 
 #: frontend/src/metabase/setup/components/DatabaseConnectionStep.jsx:132
-msgid "You’ll need some info about your database, like the username and password. If you don’t have that right now, Metabase also comes with a sample dataset you can get started with."
+msgid "You’ll need some info about your database, like the username and password. If you don’t have that right now, Torch also comes with a sample dataset you can get started with."
 msgstr "在开始之前需要配置数据库信息（如：用户名、密码）。如果暂时没有这些信息Metabase也提供了一个简单数据源供学习使用。"
 
 #: frontend/src/metabase/databases/components/DatabaseForm/DatabaseForm.tsx:205
@@ -6746,20 +6746,20 @@ msgid "We won't collect any usage events"
 msgstr "我们不会收集任何使用事件信息"
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:90
-msgid "In order to help us improve Metabase, we'd like to collect certain data about usage through Google Analytics."
-msgstr "为了帮助我们改进 Metabase，我们希望通过 Google Analytics 收集有关使用情况的某些数据。"
+msgid "In order to help us improve Torch, we'd like to collect certain data about usage through Google Analytics."
+msgstr "为了帮助我们改进 Torch，我们希望通过 Google Analytics 收集有关使用情况的某些数据。"
 
 #: frontend/src/metabase/setup/components/PreferencesStep.jsx:95
 msgid "Here's a full list of everything we track and why."
 msgstr "这个是我们要跟踪收集的数据的所有清单，以及为什么要收集。"
 
 #: frontend/src/metabase/setup/components/DataUsageStep/DataUsageStep.tsx:92
-msgid "Allow Metabase to anonymously collect usage events"
-msgstr "允许 Metabase 匿名收集使用数据"
+msgid "Allow Torch to anonymously collect usage events"
+msgstr "允许 Torch 匿名收集使用数据"
 
 #: frontend/src/metabase/setup/components/DataUsageStep/DataUsageStep.tsx:97
-msgid "Metabase {0} collects anything about your data or question results."
-msgstr "Metabase  {0} 收集有关您的数据或question结果的任何信息。"
+msgid "Torch {0} collects anything about your data or question results."
+msgstr "Torch  {0} 收集有关您的数据或question结果的任何信息。"
 
 #: frontend/src/metabase/lib/settings.ts:289
 #: frontend/src/metabase/setup/components/DataUsageStep/DataUsageStep.tsx:98
@@ -6787,7 +6787,7 @@ msgid "is just a click away."
 msgstr "点击一下"
 
 #: frontend/src/metabase/setup/components/WelcomePage/WelcomePage.tsx:39
-msgid "Welcome to Metabase"
+msgid "Welcome to Torch"
 msgstr "欢迎来到Metabase"
 
 #: frontend/src/metabase/setup/components/Setup.jsx:132
@@ -6803,7 +6803,7 @@ msgid "You're all set up!"
 msgstr "你已经设置完毕了！"
 
 #: frontend/src/metabase/setup/components/CompletedStep/CompletedStep.tsx:30
-msgid "Take me to Metabase"
+msgid "Take me to Torch"
 msgstr "带我去Metabase"
 
 #: frontend/src/metabase/setup/components/UserStep/UserStep.tsx:72
@@ -6880,7 +6880,7 @@ msgid "We’ll show you some interesting explorations of your data in\n"
 msgstr "稍等几分钟，我们将向您展示一些有趣的数据探索。"
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:69
-msgid "This seems to be taking a while. In the meantime, you can check out one of these example explorations to see what Metabase can do for you."
+msgid "This seems to be taking a while. In the meantime, you can check out one of these example explorations to see what Torch can do for you."
 msgstr "这需要花费一段时间。 在此期间，您可以查看其中一个示例，来了解Metabase可以为您做些什么。"
 
 #: frontend/src/metabase/setup/containers/PostSetupApp.jsx:83
@@ -8022,7 +8022,7 @@ msgid "Email is not verified."
 msgstr "邮件未验证。"
 
 #: src/metabase/integrations/google.clj
-msgid "You''ll need an administrator to create a Metabase account before you can use Google to log in."
+msgid "You''ll need an administrator to create a Torch account before you can use Google to log in."
 msgstr "您需要管理员创建Metabase帐户，然后才能使用 Google 登录。"
 
 #: target/classes/metabase/integrations/google.clj
@@ -8090,10 +8090,10 @@ msgstr "{0} 中有很多已保存的question？ 创建集合以帮助管理它�
 
 #. This is the very first log message that will get printed.
 #. It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
-#. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+#. It shows up a solid 10-15 seconds before the "Starting Torch in STANDALONE mode" message because so many other namespaces need to get loaded
 #: metabase/api/setup.clj:290 metabase/email/messages.clj:55
-msgid "Metabase"
-msgstr "Metabase"
+msgid "Torch"
+msgstr "Torch"
 
 #: metabase/api/setup.clj:254
 msgid "Create metrics"
@@ -8483,20 +8483,20 @@ msgid "FAIL [[[{0}]]]"
 msgstr "失败 [[[{0}]]]"
 
 #: metabase/core.clj:71
-msgid "Please use the following URL to setup your Metabase installation:"
+msgid "Please use the following URL to setup your Torch installation:"
 msgstr "请使用以下 URL 来设置您的Metabase安装："
 
 #: metabase/core.clj:85
-msgid "Metabase Shutting Down ..."
-msgstr "Metabase 正在关闭..."
+msgid "Torch Shutting Down ..."
+msgstr "Torch 正在关闭..."
 
 #: metabase/core.clj:91
-msgid "Metabase Shutdown COMPLETE"
+msgid "Torch Shutdown COMPLETE"
 msgstr "Metabase完成关闭"
 
 #: metabase/core.clj:101
-msgid "Starting Metabase version {0} ..."
-msgstr "启动 Metabase 的版本 {0} ..."
+msgid "Starting Torch version {0} ..."
+msgstr "启动 Torch 的版本 {0} ..."
 
 #: src/metabase/core.clj
 msgid "System timezone is ''{0}'' ..."
@@ -8504,7 +8504,7 @@ msgstr "系统的时区是''{0}'' ..."
 
 #. startup database.  validates connection & runs any necessary migrations
 #: metabase/core.clj:112
-msgid "Setting up and migrating Metabase DB. Please sit tight, this may take a minute..."
+msgid "Setting up and migrating Torch DB. Please sit tight, this may take a minute..."
 msgstr "设置和迁移Metabase数据库。 请坐好，这可能需要一分钟..."
 
 #: metabase/core.clj:127
@@ -8512,7 +8512,7 @@ msgid "Looks like this is a new installation ... preparing setup wizard"
 msgstr "看起来这是一个新安装...正在准备安装向导"
 
 #: metabase/core.clj:137
-msgid "Metabase Initialization COMPLETE"
+msgid "Torch Initialization COMPLETE"
 msgstr "Metabase初始化完成"
 
 #: metabase/server.clj:49
@@ -8524,12 +8524,12 @@ msgid "Shutting Down Embedded Jetty Webserver"
 msgstr "关闭嵌入式 Jetty 网络服务器"
 
 #: metabase/core.clj:163
-msgid "Starting Metabase in STANDALONE mode"
-msgstr "在STANDALONE模式下启动 Metabase"
+msgid "Starting Torch in STANDALONE mode"
+msgstr "在STANDALONE模式下启动 Torch"
 
 #: metabase/core.clj:173
-msgid "Metabase Initialization FAILED"
-msgstr "Metabase 初始化失败"
+msgid "Torch Initialization FAILED"
+msgstr "Torch 初始化失败"
 
 #: metabase/db/liquibase.clj:215
 msgid "Database has migration lock; cannot run migrations."
@@ -8691,7 +8691,7 @@ msgstr "成功地将metabase.driver.FixedHiveDriver与JDBC注册。"
 #. CONFIG
 #. TODO - smtp-port should be switched to type :integer
 #: src/metabase/email.clj target/classes/metabase/email.clj
-msgid "Email address you want to use as the sender of Metabase."
+msgid "Email address you want to use as the sender of Torch."
 msgstr "你想用来作为Metabase发件人的电子邮件地址。"
 
 #: metabase/email.clj:58
@@ -8784,7 +8784,7 @@ msgstr "组的搜索库，如果您的 LDAP 目录提供“memberOf”覆盖，�
 
 #. Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP groups and values are lists of MB groups IDs
 #: metabase/integrations/ldap.clj:93
-msgid "JSON containing LDAP to Metabase group mappings."
+msgid "JSON containing LDAP to Torch group mappings."
 msgstr "包含 LDAP 到元数据库组映射的 JSON。"
 
 #. Define a setting which captures our Slack api token
@@ -9000,7 +9000,7 @@ msgid "Storing FieldValues for Field {0}..."
 msgstr "正在存储字段{0}.的字段值。"
 
 #: src/metabase/models/humanization.clj
-msgid "Metabase can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
+msgid "Torch can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
 msgstr "元数据库可以尝试将您的表和字段名称转换为更合理的、人类可读的版本，例如“SomeHorribleName”变成“SomeHorribleName”。"
 
 #: src/metabase/models/humanization.clj
@@ -9151,11 +9151,11 @@ msgid "Loading plugin {0}... "
 msgstr "正在加载插件{0}.."
 
 #: src/metabase/plugins.clj
-msgid "It looks like you have some external dependencies in your Metabase plugins directory."
+msgid "It looks like you have some external dependencies in your Torch plugins directory."
 msgstr "看起来您的元数据库插件目录中有一些外部依赖项。"
 
 #: src/metabase/plugins.clj
-msgid "With Java 9 or higher, Metabase cannot automatically add them to your classpath."
+msgid "With Java 9 or higher, Torch cannot automatically add them to your classpath."
 msgstr "对于Java 9或更高版本，Metabase无法自动将它们添加到类路径中。"
 
 #: src/metabase/plugins.clj
@@ -9167,27 +9167,27 @@ msgid "See https://metabase.com/docs/latest/operations-guide/start.html#java-ver
 msgstr "有关更多详细信息，请参见https：//metabase.com/docs/latest/operations-guide/start.html#java-versions。"
 
 #: src/metabase/plugins.clj
-msgid "(If you're already running Metabase this way, you can ignore this message.)"
+msgid "(If you're already running Torch this way, you can ignore this message.)"
 msgstr "（如果您已经以这种方式运行Metabase，则可以忽略此消息。）"
 
 #: metabase/public_settings.clj:67
-msgid "Identify when new versions of Metabase are available."
+msgid "Identify when new versions of Torch are available."
 msgstr "确定元数据库的新版本何时可用。"
 
 #: metabase/public_settings.clj:73
-msgid "Information about available versions of Metabase."
-msgstr "有关 Metabase 的可用版本的信息。"
+msgid "Information about available versions of Torch."
+msgstr "有关 Torch 的可用版本的信息。"
 
 #: metabase/public_settings.clj:77
-msgid "The name used for this instance of Metabase."
-msgstr "用于此 Metabase 实例的名称。"
+msgid "The name used for this instance of Torch."
+msgstr "用于此 Torch 实例的名称。"
 
 #: src/metabase/public_settings.clj
-msgid "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"."
-msgstr "此 Metabase 实例的 base URL，例如“http://metabase.my-company.com”。"
+msgid "The base URL of this Torch instance, e.g. \"http://metabase.my-company.com\"."
+msgstr "此 Torch 实例的 base URL，例如“http://metabase.my-company.com”。"
 
 #: src/metabase/public_settings.clj
-msgid "The default language for this Metabase instance."
+msgid "The default language for this Torch instance."
 msgstr "此元数据库实例的默认语言。"
 
 #: src/metabase/public_settings.clj
@@ -9199,7 +9199,7 @@ msgid "The email address users should be referred to if they encounter a problem
 msgstr "如果用户遇到问题，应向其发送电子邮件地址。"
 
 #: metabase/public_settings.clj:195
-msgid "Enable the collection of anonymous usage data in order to help Metabase improve."
+msgid "Enable the collection of anonymous usage data in order to help Torch improve."
 msgstr "启用匿名使用数据的收集，以帮助改进元数据库。"
 
 #: metabase/public_settings.clj:247
@@ -9231,7 +9231,7 @@ msgid "The absolute maximum time to keep any cached query results, in seconds."
 msgstr "保留任何缓存查询结果的绝对最长时间（秒）。"
 
 #: metabase/public_settings.clj:299
-msgid "Metabase will cache all saved questions with an average query execution time longer than this many seconds:"
+msgid "Torch will cache all saved questions with an average query execution time longer than this many seconds:"
 msgstr "Metabase会捕捉所有平均查询时间大于这么多秒的已保存Question。"
 
 #: src/metabase/public_settings.clj target/classes/metabase/public_settings.clj
@@ -9442,9 +9442,9 @@ msgstr "作业已存在："
 
 #. This is the very first log message that will get printed.  It's here because this is one of the very first
 #. namespaces that gets loaded, and the first that has access to the logger It shows up a solid 10-15 seconds before
-#. the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+#. the "Starting Torch in STANDALONE mode" message because so many other namespaces need to get loaded
 #: src/metabase/util.clj
-msgid "Loading Metabase..."
+msgid "Loading Torch..."
 msgstr "正在加载元数据库.."
 
 #: src/metabase/util/date.clj
@@ -9468,11 +9468,11 @@ msgid "MB_ENCRYPTION_SECRET_KEY must be at least 16 characters."
 msgstr "MB_ENCRYPTION_SECRET_KEY必须至少为16个字符。"
 
 #: metabase/util/encryption.clj:44
-msgid "Saved credentials encryption is ENABLED for this Metabase instance."
+msgid "Saved credentials encryption is ENABLED for this Torch instance."
 msgstr "已为此元数据库实例启用保存的凭据加密。"
 
 #: metabase/util/encryption.clj:45
-msgid "Saved credentials encryption is DISABLED for this Metabase instance."
+msgid "Saved credentials encryption is DISABLED for this Torch instance."
 msgstr "已为此元数据库实例禁用保存的凭据加密。"
 
 #: src/metabase/util/encryption.clj
@@ -9709,7 +9709,7 @@ msgid "No results"
 msgstr "没有结果"
 
 #: frontend/src/metabase/home/containers/SearchApp.jsx:42
-msgid "Metabase couldn't find any results for your search."
+msgid "Torch couldn't find any results for your search."
 msgstr "元数据库找不到任何搜索结果。"
 
 #: frontend/src/metabase/new_query/containers/MetricSearch.jsx:115
@@ -10114,7 +10114,7 @@ msgid "Troubleshooting logs"
 msgstr "错误排查日志"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:47
-msgid "Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on."
+msgid "Trying to get to the bottom of something? This section shows logs of Torch's background tasks, which can help shed light on what's going on."
 msgstr "想把事情弄个水落石出？本节显示了元数据库后台任务的日志，这有助于了解正在发生的事情。"
 
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:66
@@ -11986,15 +11986,15 @@ msgid "We’d love your feedback."
 msgstr "我们欢迎您的反馈。"
 
 #: metabase/email/messages.clj:106
-msgid "It looks like Metabase wasn’t quite a match for you."
+msgid "It looks like Torch wasn’t quite a match for you."
 msgstr "看起来Metabase不太适合你。"
 
 #: metabase/email/messages.clj:108
-msgid "Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"
+msgid "Would you mind taking a fast 5 question survey to help the Torch team understand why and make things better in the future?"
 msgstr "为了帮助Metabase团队改进产品，请参您与完成包含5个简单问题的调查，谢谢。"
 
 #: metabase/email/messages.clj:285
-msgid "We hope you''ve been enjoying Metabase."
+msgid "We hope you''ve been enjoying Torch."
 msgstr "我们希望您喜欢Metabase。"
 
 #: metabase/email/messages.clj:113
@@ -12002,28 +12002,28 @@ msgid "Would you mind taking a fast 6 question survey to tell us how it’s goin
 msgstr "您是否愿意帮助我们来快速填写包含6个问题的调查问卷？"
 
 #: src/metabase/email/messages.clj
-msgid "{0} created a Metabase account"
+msgid "{0} created a Torch account"
 msgstr "{0}已创建元数据库帐户"
 
 #: src/metabase/email/messages.clj
-msgid "{0} accepted their Metabase invite"
+msgid "{0} accepted their Torch invite"
 msgstr "{0}已接受其元数据库邀请"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Password Reset Request"
-msgstr "[Metabase]密码重置请求"
+msgid "[Torch] Password Reset Request"
+msgstr "[Torch]密码重置请求"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Notification"
-msgstr "[Metabase]通知"
+msgid "[Torch] Notification"
+msgstr "[Torch]通知"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Help make Metabase better."
-msgstr "[Metabase]帮助优化Metabase。"
+msgid "[Torch] Help make Torch better."
+msgstr "[Torch]帮助优化Metabase。"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Tell us how things are going."
-msgstr "[Metabase]告诉我们事情进展如何。"
+msgid "[Torch] Tell us how things are going."
+msgstr "[Torch]告诉我们事情进展如何。"
 
 #: metabase/mbql/util.cljc:374
 msgid "Error: query''s source query has not been resolved. You probably need to `preprocess` the query first."
@@ -12316,7 +12316,7 @@ msgid "You may need to add `?sslmode=require` to your application DB connection 
 msgstr "您可能需要添加`？SSLMODE=REQUIRE`到您的应用程序数据库连接字符串。"
 
 #: target/classes/metabase/db/env.clj
-msgid "If Metabase fails to launch, please add it and try again."
+msgid "If Torch fails to launch, please add it and try again."
 msgstr "如果元数据库无法启动，请添加它并重试。"
 
 #: target/classes/metabase/db/env.clj
@@ -12324,7 +12324,7 @@ msgid "See https://github.com/metabase/metabase/issues/8908 for more details."
 msgstr "有关更多详细信息，请参见https://github.com/metabase/metabase/issues/8908。"
 
 #: src/metabase/db.clj
-msgid "WARNING: Using Metabase with an H2 application database is not recomended for production deployments."
+msgid "WARNING: Using Torch with an H2 application database is not recomended for production deployments."
 msgstr "警告：对于生产部署，不建议将元数据库与H2应用程序数据库一起使用。"
 
 #: target/classes/metabase/db/env.clj
@@ -12340,8 +12340,8 @@ msgid "See https://metabase.com/docs/latest/operations-guide/start.html#migratin
 msgstr "有关详细信息，请参见https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres。"
 
 #: metabase/db/setup.clj:110
-msgid "Unable to connect to Metabase {0} DB."
-msgstr "无法连接到 Metabase {0}数据库。"
+msgid "Unable to connect to Torch {0} DB."
+msgstr "无法连接到 Torch {0}数据库。"
 
 #: target/classes/metabase/db/data_migrations.clj
 msgid "Error adding legacy SQL directive to BigQuery saved Question"
@@ -12452,19 +12452,19 @@ msgid "Could not find matching Field ID for target:"
 msgstr "找不到目标的匹配字段ID："
 
 #: metabase/plugins.clj:34
-msgid "Metabase does not have permissions to write to plugins directory {0}"
+msgid "Torch does not have permissions to write to plugins directory {0}"
 msgstr "元数据库没有写入插件目录{0}的权限"
 
 #: metabase/plugins.clj:41
-msgid "Metabase cannot use the plugins directory {0}"
-msgstr "Metabase 无法使用插件目录{0}"
+msgid "Torch cannot use the plugins directory {0}"
+msgstr "Torch 无法使用插件目录{0}"
 
 #: metabase/plugins.clj:43
-msgid "Please make sure the directory exists and that Metabase has permission to write to it."
+msgid "Please make sure the directory exists and that Torch has permission to write to it."
 msgstr "请确保该目录存在，并且元数据库具有写入该目录的权限。"
 
 #: metabase/plugins.clj:44
-msgid "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR."
+msgid "You can change the directory Torch uses for modules by setting the environment variable MB_PLUGINS_DIR."
 msgstr "通过设置环境变量MB_PLUGINS_DIR，可以更改模块的元数据库使用的目录。"
 
 #: metabase/plugins.clj:45
@@ -12472,12 +12472,12 @@ msgid "Falling back to a temporary directory for now."
 msgstr "暂时返回到临时目录。"
 
 #: metabase/plugins.clj:50
-msgid "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."
+msgid "Torch cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Torch."
 msgstr "元数据库无法写入临时目录。请将MB_PLUGINS_DIR设置为可写目录并重新启动元数据库。"
 
 #: src/metabase/plugins.clj
-msgid "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory."
-msgstr "Metabase 1.0+不再需要spark-deps.jar。您可以将其从插件目录中删除。"
+msgid "spark-deps.jar is no longer needed by Torch 1.0+. You can delete it from the plugins directory."
+msgstr "Torch 1.0+不再需要spark-deps.jar。您可以将其从插件目录中删除。"
 
 #: metabase/plugins.clj:168
 msgid "Failied to initialize plugin {0}"
@@ -12508,7 +12508,7 @@ msgid "Added URL {0} to classpath"
 msgstr "已将URL{0}添加到类路径"
 
 #: metabase/plugins/dependencies.clj:29
-msgid "Plugin {0} declares a dependency that Metabase does not understand: {1}"
+msgid "Plugin {0} declares a dependency that Torch does not understand: {1}"
 msgstr "插件{0}声明了元数据库无法理解的依赖项：{1}"
 
 #: metabase/plugins/dependencies.clj:30
@@ -12516,8 +12516,8 @@ msgid "Refer to the plugin manifest reference for a complete list of valid plugi
 msgstr "有关有效插件依赖项的完整列表，请参阅插件清单参考："
 
 #: metabase/plugins/dependencies.clj:51
-msgid "Metabase cannot initialize plugin {0} due to required dependencies."
-msgstr "由于所需的依赖项，Metabase 无法初始化插件{0}。"
+msgid "Torch cannot initialize plugin {0} due to required dependencies."
+msgstr "由于所需的依赖项，Torch 无法初始化插件{0}。"
 
 #: metabase/plugins/dependencies.clj:60
 msgid "Class not found: {0}"
@@ -12580,7 +12580,7 @@ msgstr "无法初始化插件：缺少必需的属性“driver-name”"
 msgid "Warning: plugin manifest for {0} does not include connection properties"
 msgstr "警告：{0}的插件清单不包含连接属性"
 
-#. finally, register the Metabase driver
+#. finally, register the Torch driver
 #: metabase/plugins/lazy_loaded_driver.clj:94
 msgid "Registering lazy loading driver {0}..."
 msgstr "正在注册延迟加载驱动程序{0}.."
@@ -12728,7 +12728,7 @@ msgid "Task history cleanup successful, no rows were deleted"
 msgstr "任务历史记录清除成功，未删除任何行"
 
 #: metabase/task/upgrade_checks.clj:31
-msgid "Checking for new Metabase version info."
+msgid "Checking for new Torch version info."
 msgstr "正在检查新的Metabase 版本信息。"
 
 #: src/metabase/task/upgrade_checks.clj
@@ -13069,7 +13069,7 @@ msgid "Request canceled before finishing."
 msgstr "请求在完成前被取消。"
 
 #: src/metabase/middleware/json.clj
-msgid "Metabase only supports JSON requests."
+msgid "Torch only supports JSON requests."
 msgstr "元数据库仅支持JSON请求。"
 
 #: src/metabase/middleware/json.clj
@@ -13077,7 +13077,7 @@ msgid "Make sure you set a 'Content-Type: application/json' header."
 msgstr "确保设置了“Content-Type：application/JSON”头。"
 
 #: metabase/server/middleware/misc.clj:50
-msgid "Setting Metabase site URL to {0}"
+msgid "Setting Torch site URL to {0}"
 msgstr "正在将元数据库站点URL设置为{0}"
 
 #: metabase/models/database.clj:83
@@ -13183,7 +13183,7 @@ msgid "Automatically run queries when doing simple filtering and summarizing"
 msgstr "在执行简单过滤和汇总时自动运行查询"
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:320
-msgid "When this is on Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
+msgid "When this is on Torch will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
 msgstr "如果启用此选项，则当用户在查看表或图表时使用“汇总”和“筛选”按钮进行简单浏览时，Metabase将自动运行查询。如果查询此数据库的速度很慢，可以将其关闭。此设置不影响穿透钻取或SQL查询。"
 
 #: frontend/src/metabase/containers/Overworld.jsx:313
@@ -13541,11 +13541,11 @@ msgid "Request canceled, canceling future."
 msgstr "请求已取消，正在取消未来。"
 
 #: src/metabase/cmd/load_from_h2.clj
-msgid "Metabase can only transfer data from H2 to Postgres or MySQL/MariaDB."
+msgid "Torch can only transfer data from H2 to Postgres or MySQL/MariaDB."
 msgstr "元数据库只能将数据从H2传输到Postgres或MySQL/MariaDB。"
 
 #: target/classes/metabase/db/env.clj
-msgid "WARNING: Using Metabase with an H2 application database is not recommended for production deployments."
+msgid "WARNING: Using Torch with an H2 application database is not recommended for production deployments."
 msgstr "警告：对于生产部署，建议不要将元数据库与H2应用程序数据库一起使用。"
 
 #: src/metabase/db.clj
@@ -13607,8 +13607,8 @@ msgid "Error saving task history"
 msgstr "保存任务历史记录时出错"
 
 #: metabase/plugins.clj:117
-msgid "spark-deps.jar is no longer needed by Metabase 0.32.0+. You can delete it from the plugins directory."
-msgstr "Metabase 0.32.0+不再需要spark-deps.jar。您可以将其从插件目录中删除。"
+msgid "spark-deps.jar is no longer needed by Torch 0.32.0+. You can delete it from the plugins directory."
+msgstr "Torch 0.32.0+不再需要spark-deps.jar。您可以将其从插件目录中删除。"
 
 #: src/metabase/plugins/classloader.clj
 msgid "Using NEWLY CREATED classloader as shared context classloader: {0}"
@@ -13640,7 +13640,7 @@ msgid "We were unable to display this Pulse."
 msgstr "我们无法显示此 推送通知。"
 
 #: metabase/pulse/render/body.clj:1077
-msgid "Please view this card in Metabase."
+msgid "Please view this card in Torch."
 msgstr "请在Metabase中查看此卡。"
 
 #: metabase/pulse/render/body.clj:53
@@ -13837,7 +13837,7 @@ msgid "Failed to fetch Field {0}: Field does not exist, or belongs to a differen
 msgstr "无法提取字段{0}：字段不存在或属于其他数据库。"
 
 #: metabase/server/routes/index.clj:74
-msgid "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?"
+msgid "Failed to load template ''{0}''. Did you remember to build the Torch frontend?"
 msgstr "未能加载模板“{0}”。您记得构建元数据库前端吗？"
 
 #: target/classes/metabase/sample_data.clj
@@ -13889,13 +13889,13 @@ msgstr "无法为数据库{0}计划任务"
 msgid "All elements must be distinct."
 msgstr "所有元素都必须是不同的。"
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "选择要包含的列"
 
 #: frontend/src/metabase/entities/databases/forms.js:343
-msgid "When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
+msgid "When this is on, Torch will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
 msgstr "启用此选项后，当用户在查看表或图表时使用“汇总”和“筛选”按钮进行简单浏览时，Metabase将自动运行查询。如果查询此数据库的速度很慢，可以将其关闭。此设置不影响穿透钻取或SQL查询。"
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/JoinStep/JoinStrategyPicker/JoinStrategyPicker.tsx:51
@@ -13938,11 +13938,11 @@ msgid "Diagnostic Info"
 msgstr "诊断信息"
 
 #: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:132
-msgid "Select Metabase process:"
+msgid "Select Torch process:"
 msgstr "选择元数据库进程："
 
 #: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:145
-msgid "All Metabase processes"
+msgid "All Torch processes"
 msgstr "所有Metabase进程"
 
 #: frontend/src/metabase/lib/auth.js:18
@@ -13962,7 +13962,7 @@ msgid "Using this option requires that provided host is a FQDN.  If connecting t
 msgstr "使用此选项要求提供的主机是FQDN。如果连接到Atlas群集，则可能需要启用此选项。如果您不知道这是什么意思，请将其禁用。"
 
 #: frontend/src/metabase/entities/databases/forms.js:350
-msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
+msgid "By default, Torch does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
 msgstr "默认情况下，Metabase对字段值进行轻量级的每小时同步和密集的每日扫描。如果您有一个大型数据库，我们建议您打开此功能，并检查字段值扫描发生的时间和频率。"
 
 #: frontend/src/metabase/home/homepage/components/XraySection/XraySection.tsx:45
@@ -14295,8 +14295,8 @@ msgid "Sending Alert ({0}: {1}) via email"
 msgstr "通过电子邮件发送提醒 ({0}: {1})"
 
 #: target/classes/metabase/pulse.clj
-msgid "Metabase alert: {0} has {1}"
-msgstr "Metabase 提醒：{0} 有 {1}"
+msgid "Torch alert: {0} has {1}"
+msgstr "Torch 提醒：{0} 有 {1}"
 
 #: metabase/pulse.clj:481
 msgid "Sending Alert ({0}: {1}) via Slack"
@@ -14380,7 +14380,7 @@ msgid "OK"
 msgstr "不错"
 
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:68
-msgid "To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}."
+msgid "To allow users to sign in with Google you'll need to give Torch a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}."
 msgstr "要允许用户登录Google，您需要为Metabase提供一个Google开发人员控制台应用程序客户端ID。只需几个步骤，即可在{0}中找到有关如何创建密钥的说明。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:134
@@ -14388,7 +14388,7 @@ msgid "Be sure to include the full client ID, including the apps.googleuserconte
 msgstr "确保包含完整的客户端ID，包括apps.googleusercontent.com后缀。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:76
-msgid "Metabase {0} is available."
+msgid "Torch {0} is available."
 msgstr "元数据库{0}可用。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:77
@@ -14416,7 +14416,7 @@ msgid "No mappable groups"
 msgstr "没有可映射的组"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:109
-msgid "Metabase Documentation"
+msgid "Torch Documentation"
 msgstr "元数据库文档"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:110
@@ -14424,11 +14424,11 @@ msgid "Includes a troubleshooting guide"
 msgstr "包括故障排除指南"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:114
-msgid "Post on the Metabase support forum"
+msgid "Post on the Torch support forum"
 msgstr "元数据库支持论坛上的帖子"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:115
-msgid "A community forum for all things Metabase"
+msgid "A community forum for all things Torch"
 msgstr "所有关于Metabase的社区论坛"
 
 #: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:120
@@ -14505,7 +14505,7 @@ msgid "This is a lightweight process that checks for updates to this database’
 msgstr "这是一个轻量级进程，用于检查此数据库架构的更新。在大多数情况下，您可以将此设置保留为每小时同步。"
 
 #: frontend/src/metabase/entities/databases/big-query-fields.js:165
-msgid "Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database."
+msgid "Torch can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database."
 msgstr "Metabase可以扫描此数据库中每个字段中存在的值，以启用仪表盘和Question中的复选框过滤器。这可能会占用一些资源，特别是如果您的数据库很大。"
 
 #: frontend/src/metabase/common/utils/model-names.ts:6
@@ -15037,7 +15037,7 @@ msgid "must be {0} characters or less"
 msgstr "必须为{0}个字符或更少"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:121
-msgid "Thanks for using Metabase!"
+msgid "Thanks for using Torch!"
 msgstr "感谢您使用Metabase！"
 
 #: frontend/src/metabase/public/components/EmbedFrame/LogoBadge.tsx:26
@@ -15194,7 +15194,7 @@ msgstr "Google身份验证令牌似乎不正确。"
 
 #: src/metabase/integrations/google.clj
 #: target/classes/metabase/integrations/google.clj
-msgid "Double check that it matches in Google and Metabase."
+msgid "Double check that it matches in Google and Torch."
 msgstr "仔细检查它在Google和Metabase中是否匹配。"
 
 #: metabase/api/table.clj:341
@@ -15210,7 +15210,7 @@ msgid "Database Upgrade Required"
 msgstr "需要数据库升级"
 
 #: metabase/db/setup.clj:46
-msgid "NOTICE: Your database requires updates to work with this version of Metabase."
+msgid "NOTICE: Your database requires updates to work with this version of Torch."
 msgstr "注意：您的数据库需要更新才能使用此版本的Metabase。"
 
 #: metabase/db/setup.clj:48
@@ -15253,11 +15253,11 @@ msgid "The sub-query from referenced question #{0} failed with the following err
 msgstr "来自引用Question #{0} 的子查询失败并出现以下错误：{1}"
 
 #: metabase/driver/mysql.clj:127
-msgid "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
+msgid "WARNING: Torch only officially supports MySQL {0}/MariaDB {1} and above."
 msgstr "警告：Metabase仅正式支持MySQL{0}/MariaDB{1}及更高版本。"
 
 #: metabase/driver/mysql.clj:131
-msgid "All Metabase features may not work properly when using an unsupported version."
+msgid "All Torch features may not work properly when using an unsupported version."
 msgstr "使用不受支持的版本时，所有Metabase功能都可能无法正常工作。"
 
 #: target/classes/metabase/driver/sql/parameters/substitute.clj
@@ -15551,7 +15551,7 @@ msgid "Service Accounts"
 msgstr "服务帐户"
 
 #: frontend/src/metabase/entities/databases/big-query-fields.js:30
-msgid "Metabase connects to Big Query via {0}."
+msgid "Torch connects to Big Query via {0}."
 msgstr "元数据库通过{0}连接到大查询。"
 
 #: frontend/src/metabase/entities/databases/big-query-fields.js:33
@@ -15684,7 +15684,7 @@ msgid "What's your preferred language?"
 msgstr "你的首选语言是什么？"
 
 #: frontend/src/metabase/setup/components/LanguageStep/LanguageStep.tsx:66
-msgid "This language will be used throughout Metabase and will be the default for new users."
+msgid "This language will be used throughout Torch and will be the default for new users."
 msgstr "此语言将在整个元数据库中使用，并将成为新用户的默认语言。"
 
 #: frontend/src/metabase/visualizations/components/PinMap.jsx:141
@@ -15836,8 +15836,8 @@ msgid "Error fetching value of Setting"
 msgstr "获取设置的值时出错"
 
 #: src/metabase/public_settings.clj
-msgid "The language that should be used for Metabase's UI, system emails, pulses, and alerts."
-msgstr "Metabase 界面、系统电子邮件、推送通知和提醒中所有用户的默认语言。"
+msgid "The language that should be used for Torch's UI, system emails, pulses, and alerts."
+msgstr "Torch 界面、系统电子邮件、推送通知和提醒中所有用户的默认语言。"
 
 #: src/metabase/public_settings.clj
 msgid "This is also the default language for all users, which they can change from their own account settings."
@@ -15856,8 +15856,8 @@ msgid "Cannot redirect requests to HTTPS unless `site-url` is HTTPS."
 msgstr "除非“site-URL”是HTTPS，否则无法将请求重定向到HTTPS。"
 
 #: metabase/pulse/render/style.clj:112
-msgid "Error registering fonts: Metabase will not be able to send Pulses."
-msgstr "注册字体时出错：Metabase 将无法发送推送通知。"
+msgid "Error registering fonts: Torch will not be able to send Pulses."
+msgstr "注册字体时出错：Torch 将无法发送推送通知。"
 
 #: metabase/pulse/render/style.clj:114
 msgid "This is a known issue with certain JVMs. See {0} and for more details."
@@ -15992,7 +15992,7 @@ msgid "Configure your identity provider (IdP)"
 msgstr "配置身份提供商（IDP）"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:92
-msgid "Your identity provider will need the following info about Metabase."
+msgid "Your identity provider will need the following info about Torch."
 msgstr "您的身份提供程序将需要有关元数据库的以下信息。"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:99
@@ -16026,11 +16026,11 @@ msgid "User's last name attribute"
 msgstr "用户的姓氏属性"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:126
-msgid "Tell Metabase about your identity provider"
+msgid "Tell Torch about your identity provider"
 msgstr "告诉Metabase有关您的身份提供程序的信息"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:127
-msgid "Metabase will need the following info about your provider."
+msgid "Torch will need the following info about your provider."
 msgstr "元数据库将需要以下有关您的提供程序的信息。"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:131
@@ -16075,7 +16075,7 @@ msgid "Synchronize group membership with your SSO"
 msgstr "将组成员身份与您的SSO同步"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:176
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid "To enable this, you'll need to create mappings to tell Torch which group(s) your users should\n"
 "be added to based on the SSO group they're in."
 msgstr "要启用此功能，您需要创建映射来告诉Metabase您的用户应该使用哪些组根据它们所在的SSO组添加到。"
 
@@ -16099,7 +16099,7 @@ msgid "Note:"
 msgstr "注意："
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:186
-msgid "If you change any of the settings of an existing SAML active setup, then you will need to restart Metabase for them to take effect."
+msgid "If you change any of the settings of an existing SAML active setup, then you will need to restart Torch for them to take effect."
 msgstr "如果更改现有SAML活动设置的任何设置，则需要重新启动元数据库才能使其生效。"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/SamlAuthCard/SamlAuthCard.tsx:12
@@ -16153,11 +16153,11 @@ msgid "String used by the JWT signing key"
 msgstr "JWT签名密钥使用的字符串"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:27
-msgid "Embedding the entire Metabase app"
+msgid "Embedding the entire Torch app"
 msgstr "嵌入整个元数据库应用程序"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:16
-msgid "If you want to embed all of Metabase, enter the origins of the websites or web apps where you want to allow embedding in an iframe, separated by a space. Here are the {0} for what can be entered."
+msgid "If you want to embed all of Torch, enter the origins of the websites or web apps where you want to allow embedding in an iframe, separated by a space. Here are the {0} for what can be entered."
 msgstr "如果要嵌入所有元数据库，请输入要允许在iframe中嵌入的网站或Web应用程序的来源，并用空格分隔。以下是可输入内容的{0}。"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/EditSandboxingModal/EditSandboxingModal.tsx:116
@@ -16283,7 +16283,7 @@ msgid "We're having trouble validating your token"
 msgstr "验证您的令牌时遇到问题"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:89
-msgid "Please double-check that your instance can connect to Metabase's servers"
+msgid "Please double-check that your instance can connect to Torch's servers"
 msgstr "请仔细检查您的实例是否可以连接到元数据库的服务器"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:94
@@ -16291,11 +16291,11 @@ msgid "Get help"
 msgstr "寻求帮助"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:101
-msgid "Get even more out of Metabase with the Enterprise Edition"
+msgid "Get even more out of Torch with the Enterprise Edition"
 msgstr "通过企业版从元数据库中获得更多"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:103
-msgid "All the tools you need to quickly and easily provide reports for your customers, or to help you run and monitor Metabase in a large organization"
+msgid "All the tools you need to quickly and easily provide reports for your customers, or to help you run and monitor Torch in a large organization"
 msgstr "快速轻松地为客户提供报告或帮助您在大型组织中运行和监视元数据库所需的所有工具"
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:115
@@ -16395,7 +16395,7 @@ msgid "White labeling"
 msgstr "白色标签"
 
 #: enterprise/frontend/src/metabase-enterprise/store/lib/features.js:17
-msgid "Match Metabase to your brand with custom colors, your own logo and more."
+msgid "Match Torch to your brand with custom colors, your own logo and more."
 msgstr "通过自定义颜色、您自己的徽标等，将元数据库与您的品牌相匹配。"
 
 #: enterprise/frontend/src/metabase-enterprise/store/lib/features.js:26
@@ -16495,7 +16495,7 @@ msgid "at"
 msgstr "在"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/utils.ts:29
-msgid "Open the Metabase actions menu"
+msgid "Open the Torch actions menu"
 msgstr "打开Metabase 操作菜单"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/TableClickBehaviorView/TableClickBehaviorView.tsx:29
@@ -17189,7 +17189,7 @@ msgid "Send it to Slack"
 msgstr "发送给 Slack"
 
 #: frontend/src/metabase/sharing/components/NewPulseSidebar.tsx:104
-msgid "Pick a channel and a schedule, and Metabase will do the rest."
+msgid "Pick a channel and a schedule, and Torch will do the rest."
 msgstr "选择一个频道和时间表，Metabase将做其余的工作。"
 
 #: frontend/src/metabase/sharing/components/AddEditSidebar/AddEditEmailSidebar.jsx:51
@@ -17247,24 +17247,24 @@ msgid "Invalid Slack token."
 msgstr "Slack token 无效。"
 
 #: metabase/cmd.clj:51
-msgid "The ''{0}'' command is only available in Metabase Enterprise Edition."
+msgid "The ''{0}'' command is only available in Torch Enterprise Edition."
 msgstr "“{0}”命令仅在Metabase Enterprise Edition中可用。"
 
 #: metabase/core.clj:51
-msgid "Metabase Enterprise Edition extensions are PRESENT."
+msgid "Torch Enterprise Edition extensions are PRESENT."
 msgstr "存在Metabase Enterprise Edition扩展。"
 
 #: metabase/core.clj:53
-msgid "Usage of Metabase Enterprise Edition features are subject to the Metabase Commercial License."
-msgstr "Metabase Enterprise Edition功能的使用受Metabase商业许可证的约束。"
+msgid "Usage of Torch Enterprise Edition features are subject to the Torch Commercial License."
+msgstr "Torch Enterprise Edition功能的使用受Metabase商业许可证的约束。"
 
 #: metabase/core.clj:55
 msgid "See {0} for details."
 msgstr "有关详细信息，请参阅{0}。"
 
 #: metabase/core.clj:56
-msgid "Metabase Enterprise Edition extensions are NOT PRESENT."
-msgstr "Metabase 企业版扩展不存在。"
+msgid "Torch Enterprise Edition extensions are NOT PRESENT."
+msgstr "Torch 企业版扩展不存在。"
 
 #: metabase/email/messages.clj:129
 msgid "You''re invited to join {0}''s {1}"
@@ -17418,8 +17418,8 @@ msgid "login attribute keys must be a keyword or string"
 msgstr "登录属性键必须是关键字或字符串"
 
 #: src/metabase/public_settings.clj target/classes/metabase/public_settings.clj
-msgid "The default language for all users across the Metabase UI, system emails, pulses, and alerts."
-msgstr "Metabase 界面、系统电子邮件、推送和提醒中所有用户的默认语言。"
+msgid "The default language for all users across the Torch UI, system emails, pulses, and alerts."
+msgstr "Torch 界面、系统电子邮件、推送和提醒中所有用户的默认语言。"
 
 #: src/metabase/public_settings.clj target/classes/metabase/public_settings.clj
 msgid "Users can individually override this default language from their own account settings."
@@ -17430,7 +17430,7 @@ msgid "Default page to show the user"
 msgstr "显示用户的默认页面"
 
 #: metabase/public_settings.clj:238
-msgid "Allow this origin to embed the full Metabase application"
+msgid "Allow this origin to embed the full Torch application"
 msgstr "允许此来源嵌入完整的元数据库应用程序"
 
 #: metabase/public_settings.clj:338
@@ -17438,11 +17438,11 @@ msgid "Values greater than {0} ({1}) are not allowed."
 msgstr "不允许大于{0}（{1}）的值。"
 
 #: metabase/public_settings.clj:27
-msgid "This will replace the word \"Metabase\" wherever it appears."
-msgstr "这将替换“Metabase”一词，无论它出现在何处。"
+msgid "This will replace the word \"Torch\" wherever it appears."
+msgstr "这将替换“Torch”一词，无论它出现在何处。"
 
 #: metabase/public_settings.clj:337
-msgid "These are the primary colors used in charts and throughout Metabase. You might need to refresh your browser to see your changes take effect."
+msgid "These are the primary colors used in charts and throughout Torch. You might need to refresh your browser to see your changes take effect."
 msgstr "这些是图表和整个元数据库中使用的原色。您可能需要刷新浏览器才能看到更改生效。"
 
 #: metabase/public_settings.clj:432
@@ -17574,7 +17574,7 @@ msgid "Include User ID and query hash in queries"
 msgstr "在查询中包括用户ID和查询哈希"
 
 #: frontend/src/metabase/entities/databases/forms.js:24
-msgid "When on, Metabase User ID and query hash get appended to queries on this database, which can be useful for auditing and debugging. However, this causes each query to look distinct, preventing BigQuery from returning cached results, which may increase your costs."
+msgid "When on, Torch User ID and query hash get appended to queries on this database, which can be useful for auditing and debugging. However, this causes each query to look distinct, preventing BigQuery from returning cached results, which may increase your costs."
 msgstr "启用此选项后，元数据库用户ID和查询哈希将附加到对此数据库的查询中，这对于审核和调试非常有用。但是，这会导致每个查询看起来不同，从而阻止BigQuery返回缓存的结果，这可能会增加您的成本。"
 
 #: metabase/driver/common.clj:182
@@ -17582,7 +17582,7 @@ msgid "Periodically refingerprint tables"
 msgstr "定期RefingerPrint表格"
 
 #: frontend/src/metabase/entities/databases/forms.js:357
-msgid "When syncing with this database, Metabase will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Metabase instance smarter."
+msgid "When syncing with this database, Torch will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Torch instance smarter."
 msgstr "与此数据库同步时，Metabase将扫描字段值的子集，以收集统计信息，从而改进图表中的装箱行为，并使您的Metabase实例更加智能。"
 
 #: frontend/src/metabase/lib/core.js:251
@@ -17847,7 +17847,7 @@ msgid "invalid context seed value"
 msgstr "上下文种子值无效"
 
 #: metabase_enterprise/serialization/cmd.clj:62
-msgid "Dump was produced using a different version of Metabase. Things may break!"
+msgid "Dump was produced using a different version of Torch. Things may break!"
 msgstr "转储是使用不同版本的元数据库生成的。东西可能会坏！"
 
 #: enterprise/backend/src/metabase_enterprise/serialization/cmd.clj
@@ -18007,7 +18007,7 @@ msgid "Password for opening the keystore"
 msgstr "用于打开密钥库的密码"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:63
-msgid "Alias for the key that Metabase should use for signing SAML requests"
+msgid "Alias for the key that Torch should use for signing SAML requests"
 msgstr "Metabase用于对SAML请求进行签名的密钥的别名"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:108
@@ -18032,7 +18032,7 @@ msgstr "用于组同步的SAML属性"
 
 #. Should be in the form: {"groupName": [1, 2, 3]} where keys are SAML groups and values are lists of MB groups IDs
 #: metabase_enterprise/sso/integrations/sso_settings.clj:89
-msgid "JSON containing SAML to Metabase group mappings."
+msgid "JSON containing SAML to Torch group mappings."
 msgstr "包含SAML到元数据库组映射的JSON。"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:102
@@ -18069,7 +18069,7 @@ msgstr "启用与JWT的组成员同步。"
 
 #. Should be in the form: {"groupName": [1, 2, 3]} where keys are JWT groups and values are lists of MB groups IDs
 #: metabase_enterprise/sso/integrations/sso_settings.clj:144
-msgid "JSON containing JWT to Metabase group mappings."
+msgid "JSON containing JWT to Torch group mappings."
 msgstr "包含JWT到元数据库组映射的JSON。"
 
 #: metabase/integrations/common.clj:62
@@ -18339,12 +18339,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "定时任务正在逐步淘汰"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "您现在可以改为设置 {0}。 我们将在未来的版本中删除定时任务，并帮助您迁移您仍然拥有的任何内容。"
@@ -18353,7 +18353,7 @@ msgstr "您现在可以改为设置 {0}。 我们将在未来的版本中删除�
 msgid "dashboard subscriptions"
 msgstr "仪表板订阅"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0} 订阅中的图表与仪表盘中的图表看起来不一样。{1}"
 
@@ -18502,7 +18502,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "设置{0}源数据库并运行迁移.."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:387
 msgid "Set up {0} target database and run migrations..."
@@ -18548,11 +18548,11 @@ msgstr "想要为您升级吗？"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:123
 #: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:16
-msgid "Migrate to Metabase Cloud."
+msgid "Migrate to Torch Cloud."
 msgstr "迁移到元数据库云。"
 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:50
-msgid "Manage Metabase Cloud"
+msgid "Manage Torch Cloud"
 msgstr "管理元数据库云"
 
 #: frontend/src/metabase/visualizations/visualizations/PivotTable/settings.ts:235
@@ -18929,7 +18929,7 @@ msgid "Invalid cell format"
 msgstr "无效的单元格格式"
 
 #: metabase/search/config.clj:10
-msgid "Enable typeahead search in the Metabase navbar?"
+msgid "Enable typeahead search in the Torch navbar?"
 msgstr "是否在元数据库导航栏中启用Typeahead搜索？"
 
 #: target/classes/metabase/server/request/util.clj
@@ -19323,7 +19323,7 @@ msgstr "字段{0}{1}无效：正在退回到{2}"
 
 #: src/metabase/models/humanization.clj
 #: target/classes/metabase/models/humanization.clj
-msgid "To make table and field names more human-friendly, Metabase will replace dashes and underscores in them with spaces."
+msgid "To make table and field names more human-friendly, Torch will replace dashes and underscores in them with spaces."
 msgstr "为了使表名和字段名更人性化，Metabase将用空格替换其中的破折号和下划线。"
 
 #: src/metabase/models/humanization.clj
@@ -19337,7 +19337,7 @@ msgid "Setting names in would collide: {0} and {1}"
 msgstr "在中设置名称将发生冲突：{0}和{1}"
 
 #: metabase/public_settings.clj:80
-msgid "Indicates when Metabase last checked for new versions."
+msgid "Indicates when Torch last checked for new versions."
 msgstr "指示上次检查元数据库的新版本的时间。"
 
 #: src/metabase/public_settings.clj target/classes/metabase/public_settings.clj
@@ -19437,7 +19437,7 @@ msgid "Enter the token you received from the store"
 msgstr "输入您从商店收到的令牌"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:41
-msgid "Metabase Cloud keeps your instance up-to-date. You're currently on version {0}. Thanks for being a customer!"
+msgid "Torch Cloud keeps your instance up-to-date. You're currently on version {0}. Thanks for being a customer!"
 msgstr "元数据库云使您的实例保持最新。您当前使用的是版本{0}。感谢您成为我们的客户！"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:35
@@ -19592,12 +19592,12 @@ msgid "Make all sub-collections {0}, too."
 msgstr "也使所有子集合成为{0}。"
 
 #: enterprise/frontend/src/metabase-enterprise/hosting/components/SettingsCloudStoreLink/SettingsCloudStoreLink.tsx:10
-msgid "Manage your Cloud account, including billing preferences and technical settings about this instance in your Metabase Store account."
+msgid "Manage your Cloud account, including billing preferences and technical settings about this instance in your Torch Store account."
 msgstr "管理您的云帐户，包括元数据库存储帐户中有关此实例的计费首选项和技术设置。"
 
 #: enterprise/frontend/src/metabase-enterprise/hosting/components/SettingsCloudStoreLink/SettingsCloudStoreLink.tsx:12
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:126
-msgid "Go to the Metabase Store"
+msgid "Go to the Torch Store"
 msgstr "转到元数据库存储区"
 
 #: metabase/driver/presto_jdbc.clj:567
@@ -19720,7 +19720,7 @@ msgid "Ensure users can’t ever see the data from this database regardless of t
 msgstr "确保用户永远无法看到此数据库中的数据，无论他们在集合级别的权限如何。请记住，如果用户属于另一个具有数据访问权限的组，则该设置将优先，并且不会阻止用户的访问。"
 
 #: frontend/src/metabase/admin/permissions/constants/messages.ts:7
-msgid "Only available in certain Metabase plans."
+msgid "Only available in certain Torch plans."
 msgstr "仅在某些元数据库计划中可用。"
 
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.jsx:60
@@ -19857,7 +19857,7 @@ msgid "Unsubscribe from all subscriptions / alerts"
 msgstr "取消订阅所有订阅 / 提醒"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCacheTimeField/DatabaseCacheTimeField.tsx:49
-msgid "How long to keep question results. By default, Metabase will use the value you supply on the {0}, but if this database has other factors that influence the freshness of data, it could make sense to set a custom duration. You can also choose custom durations on individual questions or dashboards to help improve performance."
+msgid "How long to keep question results. By default, Torch will use the value you supply on the {0}, but if this database has other factors that influence the freshness of data, it could make sense to set a custom duration. You can also choose custom durations on individual questions or dashboards to help improve performance."
 msgstr "保留question 结果的时间。默认情况下，Metabase将使用你在{0}上提供的值，但如果这个数据库有其他影响数据新鲜度的因素，设置一个自定义的持续时间可能是有意义的。你也可以在个别question 或仪表盘上选择自定义期限，以帮助提高性能。"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCacheTimeField/DatabaseCacheTimeField.tsx:51
@@ -20087,7 +20087,7 @@ msgid "This will delete any dashboard subscriptions or alerts {0} has created, a
 msgstr "这将删除 {0} 创建的所有仪表盘订阅或提醒，并将它们作为收件人从任何其他订阅或提醒中删除。"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/UnsubscribeUserForm/UnsubscribeUserForm.jsx:45
-msgid "This does not affect email distribution lists that are managed outside of Metabase."
+msgid "This does not affect email distribution lists that are managed outside of Torch."
 msgstr "这不会影响在元数据库之外管理的电子邮件通讯组列表。"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditSidebar/AuditSidebar.jsx:36
@@ -20139,8 +20139,8 @@ msgid "Not seeing something listed here?"
 msgstr "没有看到这里列出的内容？"
 
 #: frontend/src/metabase/account/notifications/components/HelpModal/HelpModal.jsx:29
-msgid "It’s possible you may also receive emails from Metabase if you’re a member of an email distribution list, like “team@mycompany.com” and that list is used as the recipient for an alert or dashboard subscription instead of your individual email."
-msgstr "如果您是电子邮件分发列表（例如“team@mycompany.com”）的成员，并且该列表用作提醒或仪表盘订阅的收件人，而不是您的个人电子邮件，您也可能会收到来自 Metabase 的电子邮件。"
+msgid "It’s possible you may also receive emails from Torch if you’re a member of an email distribution list, like “team@mycompany.com” and that list is used as the recipient for an alert or dashboard subscription instead of your individual email."
+msgstr "如果您是电子邮件分发列表（例如“team@mycompany.com”）的成员，并且该列表用作提醒或仪表盘订阅的收件人，而不是您的个人电子邮件，您也可能会收到来自 Torch 的电子邮件。"
 
 #: frontend/src/metabase/account/notifications/components/HelpModal/HelpModal.jsx:38
 msgid "Hopefully they’ll be able to help you out!"
@@ -20151,7 +20151,7 @@ msgid "your instance administrator"
 msgstr "您的实例管理员"
 
 #: frontend/src/metabase/account/notifications/components/HelpModal/HelpModal.jsx:53
-msgid "Metabase doesn’t manage those lists, so we’d recommend contacting {0}. "
+msgid "Torch doesn’t manage those lists, so we’d recommend contacting {0}. "
 msgstr "Metabase不管理这些列表，因此建议您与{0}联系。"
 
 #: frontend/src/metabase/account/notifications/components/NotificationCard/NotificationCard.jsx:100
@@ -20416,7 +20416,7 @@ msgid "Navigation bar color"
 msgstr "导航栏颜色"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:25
-msgid "The top nav bar of Metabase. Defaults to the Primary Color if not set."
+msgid "The top nav bar of Torch. Defaults to the Primary Color if not set."
 msgstr "元数据库的顶部导航栏。如果未设置，则默认为原色。"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:23
@@ -20469,7 +20469,7 @@ msgid "Service account JSON file"
 msgstr "服务帐户JSON文件"
 
 #: frontend/src/metabase/entities/databases/big-query-fields.js:93
-msgid "This JSON file contains the credentials Metabase needs to read and query your dataset."
+msgid "This JSON file contains the credentials Torch needs to read and query your dataset."
 msgstr "此JSON文件包含元数据库读取和查询数据集所需的凭据。"
 
 #: metabase/driver/common.clj:130
@@ -20485,11 +20485,11 @@ msgid "Choose when syncs and scans happen"
 msgstr "选择同步和扫描发生的时间"
 
 #: metabase/driver/common.clj:141
-msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes."
+msgid "By default, Torch does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes."
 msgstr "默认情况下，Metabase对字段值进行轻量级的每小时同步和密集的每日扫描。如果您有大型数据库，请启用此选项以进行更改。"
 
 #: metabase/driver/common.clj:183
-msgid "This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts."
+msgid "This enables Torch to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts."
 msgstr "这使Metabase能够在同步期间扫描其他字段值，从而允许更智能的行为，如改进条形图上的自动分箱。"
 
 #: frontend/src/metabase/setup/components/UserForm/UserForm.tsx:83
@@ -20608,7 +20608,7 @@ msgid "Our {0}"
 msgstr "我们的{0}"
 
 #: frontend/src/metabase/databases/components/DatabaseNameField/DatabaseNameField.tsx:18
-msgid "Choose what this data will be called in Metabase."
+msgid "Choose what this data will be called in Torch."
 msgstr "选择此数据在元数据库中的名称。"
 
 #: frontend/src/metabase/admin/settings/selectors.js:601
@@ -21028,7 +21028,7 @@ msgid "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and upd
 msgstr "数据库{0}具有硬编码的数据集ID；更改为包含模式并更新表模式"
 
 #: src/metabase/analytics/snowplow.clj
-msgid "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase."
+msgid "Unique identifier to be used in Snowplow analytics, to identify this instance of Torch."
 msgstr "在Snowplow Analytics中用于标识此元数据库实例的唯一标识符。"
 
 #: src/metabase/analytics/snowplow.clj
@@ -21060,7 +21060,7 @@ msgid "Error sending Snowplow analytics event {0}"
 msgstr "发送Snowplow分析事件{0}时出错"
 
 #: metabase/analytics/snowplow.clj:126
-msgid "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics."
+msgid "The approximate timestamp at which this instance of Torch was created, for inclusion in analytics."
 msgstr "创建此元数据库实例的近似时间戳，用于包含在分析中。"
 
 #: metabase/models/card.clj:859
@@ -21180,7 +21180,7 @@ msgid "In most cases, you should be fine leaving this set to sync hourly."
 msgstr "在大多数情况下，您可以将此设置保留为每小时同步。"
 
 #: src/metabase/driver/common.clj
-msgid "If your database is behind a firewall, you may need to allow connections from our Metabase Cloud IP addresses:"
+msgid "If your database is behind a firewall, you may need to allow connections from our Torch Cloud IP addresses:"
 msgstr "如果您的数据库位于防火墙之后，您可能需要允许来自我们的元数据库云IP地址的连接："
 
 #: metabase/driver/common.clj:334
@@ -21192,7 +21192,7 @@ msgid "Error: multiple values specified for parameter; non-Field Filter paramete
 msgstr "错误：为参数指定了多个值；非字段筛选参数只能有一个值。"
 
 #: metabase/driver/h2.clj:92
-msgid "The local path relative to where Metabase is running from. Your string should not include the .mv.db extension."
+msgid "The local path relative to where Torch is running from. Your string should not include the .mv.db extension."
 msgstr "相对于运行元数据库的位置的本地路径。字符串不应包含.MV.db扩展名。"
 
 #: metabase/driver/postgres.clj:136
@@ -21287,7 +21287,7 @@ msgid "All except..."
 msgstr "除了.."
 
 #: metabase/driver/util.clj:293
-msgid "Comma separated names of {0} that <strong>should</strong> appear in Metabase"
+msgid "Comma separated names of {0} that <strong>should</strong> appear in Torch"
 msgstr "以逗号分隔的{0}名称<strong>应该</strong>出现在元数据库中"
 
 #: metabase/driver/util.clj:295 metabase/driver/util.clj:302
@@ -21295,7 +21295,7 @@ msgid "You can use patterns like <strong>auth*</strong> to match multiple {0}"
 msgstr "你可以使用这样的模式<strong>身份验证*</strong>匹配多个{0}"
 
 #: metabase/driver/util.clj:300
-msgid "Comma separated names of {0} that <strong>should NOT</strong> appear in Metabase"
+msgid "Comma separated names of {0} that <strong>should NOT</strong> appear in Torch"
 msgstr "以逗号分隔的{0}名称<strong>不应该</strong>出现在元数据库中"
 
 #: metabase/email/messages.clj:674
@@ -21323,7 +21323,7 @@ msgid "Successfully authenticated Google Sign-In token for: {0} {1}"
 msgstr "已成功验证{0}{1}的Google登录令牌"
 
 #: src/metabase/integrations/slack.clj
-msgid "Deprecated Slack API token for connecting the Metabase Slack bot."
+msgid "Deprecated Slack API token for connecting the Torch Slack bot."
 msgstr "已弃用用于连接Metabase Slack bot的Slack API标记。"
 
 #: src/metabase/integrations/slack.clj
@@ -21331,11 +21331,11 @@ msgid "Please use a new Slack app integration instead."
 msgstr "请改用新的Slack应用程序集成。"
 
 #: src/metabase/integrations/slack.clj
-msgid "Bot user OAuth token for connecting the Metabase Slack app."
+msgid "Bot user OAuth token for connecting the Torch Slack app."
 msgstr "用于连接Metabase Slack应用程序的机器人用户OAuth令牌。"
 
 #: src/metabase/integrations/slack.clj
-msgid "This should be used for all new Slack integrations starting in Metabase v0.42.0."
+msgid "This should be used for all new Slack integrations starting in Torch v0.42.0."
 msgstr "这应该用于从Metabase v0.42.0开始的所有新的松弛集成。"
 
 #: src/metabase/integrations/slack.clj
@@ -21347,7 +21347,7 @@ msgid "Set to 'false' if a Slack API request returns an auth error."
 msgstr "如果 Slack API 请求返回身份验证错误，则设置为“false”。"
 
 #: metabase/integrations/slack.clj:77
-msgid "The name of the channel to which Metabase files should be initially uploaded"
+msgid "The name of the channel to which Torch files should be initially uploaded"
 msgstr "最初应将Metabase 文件上传到的通道的名称"
 
 #: metabase/integrations/slack.clj:119
@@ -21407,7 +21407,7 @@ msgid "{0} points to non-existent file: {1}"
 msgstr "{0} 指向不存在的文件：{1}"
 
 #: metabase/models/secret.clj:190
-msgid "{0} (a local file path) cannot be used in Metabase hosted environment"
+msgid "{0} (a local file path) cannot be used in Torch hosted environment"
 msgstr "{0}（本地文件路径）不能在元Metabase 托管环境中使用"
 
 #: metabase/models/setting.clj:587
@@ -21419,7 +21419,7 @@ msgid "Site-wide values are not allowed for Setting {0}"
 msgstr "设置 {0} 不允许使用站点范围的值"
 
 #: metabase/models/setting.clj:750
-msgid "Setting {0} is deprecated as of Metabase {1} and may be removed in a future version."
+msgid "Setting {0} is deprecated as of Torch {1} and may be removed in a future version."
 msgstr "自Metabase  {1} 起，设置 {0} 已被弃用，并且可能在未来的版本中被删除。"
 
 #: metabase/models/setting.clj:980
@@ -21431,7 +21431,7 @@ msgid "Boolean indicating whether analytics data should be sent to Google Analyt
 msgstr "布尔值，指示分析数据是否应发送到前端的 Google Analytics"
 
 #: metabase/public_settings.clj:373
-msgid "Metabase version for which a notice about usage of deprecated features has been shown."
+msgid "Torch version for which a notice about usage of deprecated features has been shown."
 msgstr "已显示有关使用已弃用功能的通知的元数据库版本。"
 
 #: metabase/public_settings.clj:589
@@ -21451,12 +21451,12 @@ msgid " although it is used to set the WEEK_START session variable in Snowflake.
 msgstr "虽然它用于在 Snowflake 中设置 WEEK_START 会话变量。"
 
 #: metabase/public_settings.clj:680
-msgid "Error fetching Metabase Cloud gateway IP addresses:"
-msgstr "获取 Metabase Cloud 网关 IP 地址时出错："
+msgid "Error fetching Torch Cloud gateway IP addresses:"
+msgstr "获取 Torch Cloud 网关 IP 地址时出错："
 
 #: metabase/public_settings.clj:731
-msgid "Metabase Cloud gateway IP addresses, to configure connections to DBs behind firewalls"
-msgstr "Metabase Cloud 网关 IP 地址，用于配置与防火墙后面的数据库的连接"
+msgid "Torch Cloud gateway IP addresses, to configure connections to DBs behind firewalls"
+msgstr "Torch Cloud 网关 IP 地址，用于配置与防火墙后面的数据库的连接"
 
 #: src/metabase/public_settings.clj
 msgid "Whether an introductory modal should be shown after the next database connection is added."
@@ -21583,8 +21583,8 @@ msgid "This token doesn't seem to be valid. Double-check it, then contact suppor
 msgstr "此令牌似乎无效。 仔细检查它，如果您认为它应该工作，请联系支持人员。"
 
 #: frontend/src/metabase/admin/settings/hooks/use-license.ts:8
-msgid "We're having trouble validating your token. Please double-check that your instance can connect to Metabase's servers."
-msgstr "我们无法验证您的令牌。 请仔细检查您的实例是否可以连接到 Metabase 的服务器。"
+msgid "We're having trouble validating your token. Please double-check that your instance can connect to Torch's servers."
+msgstr "我们无法验证您的令牌。 请仔细检查您的实例是否可以连接到 Torch 的服务器。"
 
 #: frontend/src/metabase-lib/expressions/pratt/compiler.ts:44
 #: frontend/src/metabase-lib/expressions/pratt/compiler.ts:217
@@ -21660,8 +21660,8 @@ msgid "Billing"
 msgstr "计费"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:119
-msgid "Manage your Cloud account, including billing preferences, in your Metabase Store account."
-msgstr "在您的 Metabase Store 帐户中管理您的云帐户，包括计费首选项。"
+msgid "Manage your Cloud account, including billing preferences, in your Torch Store account."
+msgstr "在您的 Torch Store 帐户中管理您的云帐户，包括计费首选项。"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:133
 msgid "To manage your billing preferences, please email {0}"
@@ -21723,7 +21723,7 @@ msgid "Sample Database"
 msgstr "示例数据库"
 
 #: frontend/src/metabase/databases/components/DatabaseSyncModal/DatabaseSyncModal.tsx:34
-msgid "Have a look around your Metabase in the meantime if you want to get a head start."
+msgid "Have a look around your Torch in the meantime if you want to get a head start."
 msgstr "如果您想直接开始，请同时查看您的元数据库。"
 
 #: frontend/src/metabase/databases/components/DatabaseSyncModal/DatabaseSyncModal.tsx:38
@@ -21802,8 +21802,8 @@ msgid "I'll invite a teammate to connect the database"
 msgstr "我会邀请队友连接数据库"
 
 #: frontend/src/metabase/setup/components/DataUsageStep/DataUsageStep.tsx:76
-msgid "In order to help us improve Metabase, we'd like to collect certain data about product usage."
-msgstr "为了帮助我们改进 Metabase，我们希望收集有关产品使用情况的某些数据。"
+msgid "In order to help us improve Torch, we'd like to collect certain data about product usage."
+msgstr "为了帮助我们改进 Torch，我们希望收集有关产品使用情况的某些数据。"
 
 #: frontend/src/metabase/setup/components/DataUsageStep/DataUsageStep.tsx:82
 msgid "Here's a full list of what we track and why."
@@ -21908,13 +21908,13 @@ msgid "Your Premium Embedding license is active until {0}."
 msgstr "您的高级嵌入许可证在 {0}之前一直有效。"
 
 #: frontend/src/metabase/admin/settings/containers/PremiumEmbeddingLicensePage/PremiumEmbeddingLicensePage.tsx:106
-msgid "Enter the token you bought from the Metabase Store below."
-msgstr "在下方输入您从 Metabase Store 购买的token。"
+msgid "Enter the token you bought from the Torch Store below."
+msgstr "在下方输入您从 Torch Store 购买的token。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationInfo.tsx:12
-msgid "Looking to remove the “Powered by Metabase” logo, customize colors\n"
+msgid "Looking to remove the “Powered by Torch” logo, customize colors\n"
 "and make it your own? {0}"
-msgstr "希望删除“Powered by Metabase”徽标，自定义颜色\n"
+msgstr "希望删除“Powered by Torch”徽标，自定义颜色\n"
 "并把它变成你自己的？ {0}"
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:23
@@ -21950,7 +21950,7 @@ msgid "invite a teammate"
 msgstr "邀请队友"
 
 #: frontend/src/metabase/home/homepage/components/StartSection/StartSection.tsx:117
-msgid "Connect your data to get the most out of Metabase"
+msgid "Connect your data to get the most out of Torch"
 msgstr "连接您的数据以更好利用Metabase"
 
 #: frontend/src/metabase/home/homepage/components/StartSection/StartSection.tsx:119
@@ -22003,8 +22003,8 @@ msgid "Use the tab key to navigate through settings and columns."
 msgstr "使用 Tab 键浏览设置和列。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLicense/SettingsLicense.tsx:31
-msgid "Metabase is open source and will be free forever – but by upgrading you can have priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
-msgstr "Metabase 是开源的，将永远免费 - 但通过升级，您可以获得优先支持、更多工具来帮助您与团队分享您的见解，以及帮助您为客户创建无缝、交互式数据体验的强大选项。"
+msgid "Torch is open source and will be free forever – but by upgrading you can have priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
+msgstr "Torch 是开源的，将永远免费 - 但通过升级，您可以获得优先支持、更多工具来帮助您与团队分享您的见解，以及帮助您为客户创建无缝、交互式数据体验的强大选项。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLicense/SettingsLicense.tsx:33
 msgid "Want to know more?"
@@ -22036,7 +22036,7 @@ msgstr "Slack 应用程序停止运行"
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:49
 #: frontend/src/metabase/admin/settings/slack/components/SlackStatus/SlackStatus.tsx:51
-msgid "Metabase on Slack"
+msgid "Torch on Slack"
 msgstr "Slack 上的元数据库"
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackStatus/SlackStatus.tsx:56
@@ -22065,8 +22065,8 @@ msgid "We recommend you {0}, see the instructions below:"
 msgstr "我们推荐您{0}，请参阅以下说明："
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:59
-msgid "Bring the power of Metabase to your Slack #channels."
-msgstr "将 Metabase 的强大功能带入您的 Slack #channels。"
+msgid "Bring the power of Torch to your Slack #channels."
+msgstr "将 Torch 的强大功能带入您的 Slack #channels。"
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:60
 msgid "Follow these steps to connect to Slack:"
@@ -22077,7 +22077,7 @@ msgid "1. Create your Slack App"
 msgstr "1. 创建你的 Slack 应用程序"
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:101
-msgid "To create your Metabase integration on Slack you’ll need to set up some things."
+msgid "To create your Torch integration on Slack you’ll need to set up some things."
 msgstr "要在 Slack 上创建元数据库集成，您需要设置一些选项。"
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:102
@@ -22097,7 +22097,7 @@ msgid "From an app manifest."
 msgstr "来自app manifest."
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:128
-msgid "2. Copy the Metabase manifest"
+msgid "2. Copy the Torch manifest"
 msgstr "2. 复制元数据库清单"
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:130
@@ -22388,11 +22388,11 @@ msgid "Delete {0}?"
 msgstr "是否删除{0}？"
 
 #: frontend/src/metabase/databases/components/DatabaseEngineWarning/DatabaseEngineWarning.tsx:107
-msgid "This is a community-developed driver and not supported by Metabase. "
+msgid "This is a community-developed driver and not supported by Torch. "
 msgstr "这是社区开发的驱动程序，元数据库不支持。"
 
 #: frontend/src/metabase/databases/components/DatabaseEngineWarning/DatabaseEngineWarning.tsx:134
-msgid "This is a partner-developed driver. Though Metabase can’t provide support for it, if you need help you can contact the fine folks at "
+msgid "This is a partner-developed driver. Though Torch can’t provide support for it, if you need help you can contact the fine folks at "
 msgstr "这是一个由合作伙伴开发的驱动程序。虽然Metabase不能为它提供支持，但如果您需要帮助，可以联系"
 
 #: frontend/src/metabase/components/Toaster/Toaster.tsx:25
@@ -22514,7 +22514,7 @@ msgid "Good to see you, {0}"
 msgstr "很高兴见到您，{0}"
 
 #: frontend/src/metabase/home/components/HomeHelpCard/HomeHelpCard.tsx:11
-msgid "Metabase tips"
+msgid "Torch tips"
 msgstr "元数据库提示"
 
 #: frontend/src/metabase/home/components/HomePopularSection/HomePopularSection.tsx:46
@@ -22543,7 +22543,7 @@ msgid "Pick up where you left off"
 msgstr "从你离开的地方继续"
 
 #: frontend/src/metabase/home/components/HomeXraySection/HomeXraySection.tsx:69
-msgid "Try out these sample x-rays to see what Metabase can do."
+msgid "Try out these sample x-rays to see what Torch can do."
 msgstr "尝试一下这些示例X光片，看看Metabase能做什么。"
 
 #: frontend/src/metabase/home/components/HomeXraySection/HomeXraySection.tsx:76
@@ -22684,11 +22684,11 @@ msgid "Launch of v2.0"
 msgstr "推出V2.0"
 
 #: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx:69
-msgid "Add events to Metabase to show important milestones, launches, or anything else, right alongside your data."
+msgid "Add events to Torch to show important milestones, launches, or anything else, right alongside your data."
 msgstr "将事件添加到Metabase中，以在数据旁边显示重要的里程碑、启动或其他任何内容。"
 
 #: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx:70
-msgid "Events in Metabase let you see important milestones, launches, or anything else, right alongside your data."
+msgid "Events in Torch let you see important milestones, launches, or anything else, right alongside your data."
 msgstr "Metabase中的事件可以让您在数据旁边看到重要的里程碑、启动或其他任何内容。"
 
 #: frontend/src/metabase/timelines/collections/components/TimelineCard/TimelineCard.tsx:50
@@ -22715,11 +22715,11 @@ msgid "Move {0}"
 msgstr "移动{0}"
 
 #: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx:30
-msgid "Add events to Metabase to show helpful context alongside your data."
+msgid "Add events to Torch to show helpful context alongside your data."
 msgstr "将事件添加到Metabase中，以便在数据旁边显示有用的上下文。"
 
 #: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx:31
-msgid "Events in Metabase let you see helpful context alongside your data."
+msgid "Events in Torch let you see helpful context alongside your data."
 msgstr "Metabase中的事件使您可以在数据旁边看到有用的上下文。"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:33
@@ -22727,7 +22727,7 @@ msgid "Original schema"
 msgstr "原始模式"
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:98
-msgid "Click the button below to begin creating your Slack App using the Metabase configuration."
+msgid "Click the button below to begin creating your Slack App using the Torch configuration."
 msgstr "单击下面的按钮，开始使用元数据库配置创建Slack应用程序。"
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:99
@@ -22994,7 +22994,7 @@ msgid "Switch to visualization"
 msgstr "切换到可视化"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:139
-msgid "Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the\n"
+msgid "Mappings allow Torch to automatically add and remove users from groups based on the membership information provided by the\n"
 "directory server. Users are only ever added to or removed from mapped groups."
 msgstr "映射允许元数据库根据提供的成员资格信息自动在组中添加和删除用户。目录服务器。用户只能添加到映射组或从映射组中删除。"
 
@@ -23363,7 +23363,7 @@ msgid "Saved questions"
 msgstr "保存的问题"
 
 #: frontend/src/metabase/admin/settings/selectors.js:602
-msgid "Enabling cache will create tables for your models in a dedicated schema and Metabase will refresh them on a schedule. Questions based on your models will query these tables. {0}."
+msgid "Enabling cache will create tables for your models in a dedicated schema and Torch will refresh them on a schedule. Questions based on your models will query these tables. {0}."
 msgstr "启用缓存将在一个专门的模式中为你的模型创建表，Metabase将按计划刷新它们。基于你的模型的问题将查询这些表。{0}."
 
 #: frontend/src/metabase/admin/settings/selectors.js:439
@@ -23647,8 +23647,8 @@ msgid "Move, archive, and more..."
 msgstr "移动，存档等"
 
 #: frontend/src/metabase/sharing/components/SlackChannelField/SlackChannelField.tsx:71
-msgid "In order to send subscriptions and alerts to private Slack channels, you must first add the Metabase bot to them."
-msgstr "如需发送订阅和消息通知到 Slack 频道，你需要先添加 Metabase 机器人。"
+msgid "In order to send subscriptions and alerts to private Slack channels, you must first add the Torch bot to them."
+msgstr "如需发送订阅和消息通知到 Slack 频道，你需要先添加 Torch 机器人。"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorResetModal/ColorResetModal.tsx:22
 msgid "Are you sure you want to reset to default colors?"
@@ -23758,8 +23758,8 @@ msgid "Display our little friend on the homepage"
 msgstr "在首页显示我们的小伙伴"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationWidget/EmbeddingCustomizationWidget.tsx:13
-msgid "In order to remove the Metabase logo from embeds, you can always upgrade to {0}"
-msgstr "为了从嵌入中删除 Metabase 徽标，您可以随时升级到 {0}"
+msgid "In order to remove the Torch logo from embeds, you can always upgrade to {0}"
+msgstr "为了从嵌入中删除 Torch 徽标，您可以随时升级到 {0}"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingCustomizationWidget/EmbeddingCustomizationWidget.tsx:15
 msgid "one of our paid plans."
@@ -23770,8 +23770,8 @@ msgid "embedding the entire metabase app"
 msgstr "嵌入整个元数据库应用程序"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FullAppEmbeddingLinkWidget/FullAppEmbeddingLinkWidget.tsx:23
-msgid "With {0} you can embed the full Metabase app and enable your users to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
-msgstr "借助 {0}，您可以嵌入完整的 Metabase 应用程序，并使您的用户能够钻取到图表、浏览集合并使用图形查询构建器。您还可以获得优先支持、更多工具来帮助您与团队分享您的见解，以及强大的选项来帮助您为客户创建无缝的交互式数据体验。"
+msgid "With {0} you can embed the full Torch app and enable your users to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
+msgstr "借助 {0}，您可以嵌入完整的 Torch 应用程序，并使您的用户能够钻取到图表、浏览集合并使用图形查询构建器。您还可以获得优先支持、更多工具来帮助您与团队分享您的见解，以及强大的选项来帮助您为客户创建无缝的交互式数据体验。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FullAppEmbeddingLinkWidget/FullAppEmbeddingLinkWidget.tsx:16
 msgid "some of our paid plans,"
@@ -23818,8 +23818,8 @@ msgid "Embedding"
 msgstr "嵌入"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingSwitchWidget/EmbeddingSwitchWidget.tsx:15
-msgid "Embed dashboards, questions, or the entire Metabase app into your application. Integrate with your server code to create a secure environment, limited to specific users or organizations."
-msgstr "将仪表板、问题或整个 Metabase 应用程序嵌入到您的应用程序中。与您的服务器代码集成以创建仅限特定用户或组织的安全环境。"
+msgid "Embed dashboards, questions, or the entire Torch app into your application. Integrate with your server code to create a secure environment, limited to specific users or organizations."
+msgstr "将仪表板、问题或整个 Torch 应用程序嵌入到您的应用程序中。与您的服务器代码集成以创建仅限特定用户或组织的安全环境。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese/EmbeddingLegalese.tsx:28
 msgid "By enabling embedding you're agreeing to"
@@ -23835,14 +23835,14 @@ msgid "More details"
 msgstr "更多详情"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese/EmbeddingLegalese.tsx:43
-msgid "When you embed charts or dashboards from Metabase in your own\n"
+msgid "When you embed charts or dashboards from Torch in your own\n"
 "application, that application isn't subject to the Affero General Public\n"
-"License that covers the rest of Metabase, provided you keep the Metabase\n"
-"logo and the \"Powered by Metabase\" visible on those embeds."
-msgstr "当您将 Metabase 中的图表或仪表板嵌入到您自己的\n"
+"License that covers the rest of Torch, provided you keep the Torch\n"
+"logo and the \"Powered by Torch\" visible on those embeds."
+msgstr "当您将 Torch 中的图表或仪表板嵌入到您自己的\n"
 "申请，该申请不受 Affero General Public 的约束\n"
-"涵盖 Metabase 其余部分的许可证，前提是您保留 Metabase\n"
-"徽标和这些嵌入上可见的“Powered by Metabase”。"
+"涵盖 Torch 其余部分的许可证，前提是您保留 Torch\n"
+"徽标和这些嵌入上可见的“Powered by Torch”。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese/EmbeddingLegalese.tsx:49
 msgid "Your should, however, read the license text linked above as that is the\n"
@@ -23884,7 +23884,7 @@ msgid "1. Click the button below and create your Slack App"
 msgstr "1. 单击下面的按钮并创建您的 Slack 应用程序"
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:101
-msgid "First, {0} using the Metabase configuration. Once created, click “${ 1 }” to authorize it."
+msgid "First, {0} using the Torch configuration. Once created, click “${ 1 }” to authorize it."
 msgstr "首先，{0} 使用元数据库配置。创建完成后，点击“${1}”进行授权。"
 
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:102
@@ -24027,8 +24027,8 @@ msgid "Heavy"
 msgstr "重的"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/components/EmbeddingAppOriginDescription/EmbeddingAppOriginDescription.tsx:8
-msgid "With this Pro/Enterprise feature you can embed the full Metabase app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder. {0}"
-msgstr "使用此 Pro/Enterprise 功能，您可以嵌入完整的 Metabase 应用程序。使您的用户能够钻取到图表、浏览集合并使用图形查询构建器。 {0}"
+msgid "With this Pro/Enterprise feature you can embed the full Torch app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder. {0}"
+msgstr "使用此 Pro/Enterprise 功能，您可以嵌入完整的 Torch 应用程序。使您的用户能够钻取到图表、浏览集合并使用图形查询构建器。 {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:27
 msgid "Authorized origins"
@@ -24116,8 +24116,8 @@ msgid "Full-app embedding"
 msgstr "全应用嵌入"
 
 #: frontend/src/metabase/admin/settings/selectors.js:481
-msgid "With this Pro/Enterprise feature you can embed the full Metabase app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder."
-msgstr "使用此 Pro/Enterprise 功能，您可以嵌入完整的 Metabase 应用程序。使您的用户能够钻取到图表、浏览集合并使用图形查询构建器。"
+msgid "With this Pro/Enterprise feature you can embed the full Torch app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder."
+msgstr "使用此 Pro/Enterprise 功能，您可以嵌入完整的 Torch 应用程序。使您的用户能够钻取到图表、浏览集合并使用图形查询构建器。"
 
 #: frontend/src/metabase/admin/settings/selectors.js:504
 msgid "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations."
@@ -24283,7 +24283,7 @@ msgid "Boolean indicating whether a Snowplow collector is available to receive a
 msgstr "指示 Snowplow 收集器是否可用于接收分析事件的布尔值。应在赛普拉斯测试或本地开发期间通过环境变量设置。"
 
 #: metabase/analytics/snowplow.clj:77
-msgid "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. This is a public setting since some analytics events are sent prior to initial setup."
+msgid "Unique identifier to be used in Snowplow analytics, to identify this instance of Torch. This is a public setting since some analytics events are sent prior to initial setup."
 msgstr "要在 Snowplow 分析中使用的唯一标识符，用于标识此元数据库实例。这是一个公共设置，因为一些分析事件是在初始设置之前发送的。"
 
 #: metabase/api/database.clj:720 metabase/driver/util.clj:68
@@ -24339,11 +24339,11 @@ msgstr "系统信息：\n"
 " {0}"
 
 #: metabase/driver/common.clj:159
-msgid "Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database. When should Metabase automatically scan and cache field values?"
-msgstr "Metabase 可以扫描此数据库中每个字段中存在的值，以启用仪表板和问题中的复选框过滤器。这可能是一个资源密集型过程，特别是如果您有一个非常大的数据库。 Metabase 什么时候应该自动扫描和缓存字段值？"
+msgid "Torch can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database. When should Torch automatically scan and cache field values?"
+msgstr "Torch 可以扫描此数据库中每个字段中存在的值，以启用仪表板和问题中的复选框过滤器。这可能是一个资源密集型过程，特别是如果您有一个非常大的数据库。 Torch 什么时候应该自动扫描和缓存字段值？"
 
 #: metabase/driver/common.clj:220
-msgid "If your database is behind a firewall, you may need to allow connections from our Metabase [Cloud IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html):"
+msgid "If your database is behind a firewall, you may need to allow connections from our Torch [Cloud IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html):"
 msgstr "如果您的数据库位于防火墙后面，您可能需要允许来自我们的元数据库 [云 IP 地址](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html) 的连接："
 
 #: metabase/driver/common.clj:177
@@ -24465,16 +24465,16 @@ msgid "[{0}] Model cache refresh failed for {1}"
 msgstr "[{0}] {1} 的模型缓存刷新失败"
 
 #: metabase/integrations/google.clj:87
-msgid "Google Sign-In token appears to be incorrect. Double check that it matches in Google and Metabase."
-msgstr "Google 登录令牌似乎不正确。仔细检查它在 Google 和 Metabase 中是否匹配。"
+msgid "Google Sign-In token appears to be incorrect. Double check that it matches in Google and Torch."
+msgstr "Google 登录令牌似乎不正确。仔细检查它在 Google 和 Torch 中是否匹配。"
 
 #: metabase/integrations/slack.clj:22
-msgid "Deprecated Slack API token for connecting the Metabase Slack bot. Please use a new Slack app integration instead."
-msgstr "已弃用用于连接 Metabase Slack 机器人的 Slack API 令牌。请改用新的 Slack 应用程序集成。"
+msgid "Deprecated Slack API token for connecting the Torch Slack bot. Please use a new Slack app integration instead."
+msgstr "已弃用用于连接 Torch Slack 机器人的 Slack API 令牌。请改用新的 Slack 应用程序集成。"
 
 #: metabase/integrations/slack.clj:31
-msgid "Bot user OAuth token for connecting the Metabase Slack app. This should be used for all new Slack integrations starting in Metabase v0.42.0."
-msgstr "用于连接 Metabase Slack 应用程序的 Bot 用户 OAuth 令牌。这应该用于从 Metabase v0.42.0 开始的所有新的 Slack 集成。"
+msgid "Bot user OAuth token for connecting the Torch Slack app. This should be used for all new Slack integrations starting in Torch v0.42.0."
+msgstr "用于连接 Torch Slack 应用程序的 Bot 用户 OAuth 令牌。这应该用于从 Torch v0.42.0 开始的所有新的 Slack 集成。"
 
 #: metabase/integrations/slack.clj:44
 msgid "Whether the current Slack app token, if set, is valid. Set to 'false' if a Slack API request returns an auth error."
@@ -24521,8 +24521,8 @@ msgid "Can't update type or hash_key for a FieldValues."
 msgstr "无法更新 FieldValues 的类型或 hash_key。"
 
 #: metabase/models/humanization.clj:78
-msgid "To make table and field names more human-friendly, Metabase will replace dashes and underscores in them with spaces. We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’."
-msgstr "为了使表和字段名称更人性化，Metabase 将用空格替换其中的破折号和下划线。我们会将每个单词大写，因此“last_visited_at”将变为“Last Visited At”。"
+msgid "To make table and field names more human-friendly, Torch will replace dashes and underscores in them with spaces. We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’."
+msgstr "为了使表和字段名称更人性化，Torch 将用空格替换其中的破折号和下划线。我们会将每个单词大写，因此“last_visited_at”将变为“Last Visited At”。"
 
 #: metabase/models/params.clj:38
 msgid ":parameters must be a sequence of maps with :id and :type keys"
@@ -24561,8 +24561,8 @@ msgid "Tell us where to find the file for each font weight. You don’t need to 
 msgstr "告诉我们在哪里可以找到每种字体粗细的文件。你不需要包括所有这些，但如果你这样做会更好看。"
 
 #: metabase/public_settings.clj:179
-msgid "The default language for all users across the Metabase UI, system emails, pulses, and alerts. Users can individually override this default language from their own account settings."
-msgstr "Metabase UI、系统电子邮件、脉冲和警报中所有用户的默认语言。用户可以从他们自己的帐户设置中单独覆盖此默认语言。"
+msgid "The default language for all users across the Torch UI, system emails, pulses, and alerts. Users can individually override this default language from their own account settings."
+msgstr "Torch UI、系统电子邮件、脉冲和警报中所有用户的默认语言。用户可以从他们自己的帐户设置中单独覆盖此默认语言。"
 
 #: metabase/public_settings.clj:741
 msgid "Whether an introductory modal should be shown after the next database connection is added. Defaults to false if any non-default database has already finished syncing for this instance."
@@ -25325,7 +25325,7 @@ msgstr "带有日期或日期时间值的列的名称。"
 msgid "Optional. The default is \"ISO\".\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
-"- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
+"- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Torch localization settings."
 msgstr "可选的。默认为 \"ISO\"。\n"
 "- ISO：第一周从一月第一个星期四前的星期一开始。\n"
 "- 美国。第1周从1月1日开始，其他各周都从周日开始。\n"
@@ -26087,7 +26087,7 @@ msgid "Database required of {0} has changed from ''{1}'' to ''{2}''."
 msgstr "{0}的数据库要求从''{1}''变为''{2}''。"
 
 #: metabase/task.clj:168
-msgid "Metabase task scheduler disabled. Scheduled tasks will not be ran."
+msgid "Torch task scheduler disabled. Scheduled tasks will not be ran."
 msgstr "Metabase任务调度器被禁用。预定的任务将不会被运行。"
 
 #: metabase/util/schema.clj:148
@@ -26101,7 +26101,7 @@ msgid "{0} (optional)"
 msgstr "{0}（可选）"
 
 #: metabase_enterprise/advanced_config/file.clj:164
-msgid "Found config file at path {0}; Metabase will be initialized with values from this file"
+msgid "Found config file at path {0}; Torch will be initialized with values from this file"
 msgstr "在路径{0}处找到了配置文件；元数据库将用该文件的值进行初始化"
 
 #: metabase_enterprise/advanced_config/file.clj:265
@@ -26165,7 +26165,7 @@ msgid "Invalid Collection ID(s). These Collections do not exist: {0}"
 msgstr "无效的收藏品ID（s）。这些藏品不存在。{0}"
 
 #: metabase_enterprise/serialization/cmd.clj:95
-msgid "Loading serialized Metabase files from {0}"
+msgid "Loading serialized Torch files from {0}"
 msgstr "从{0}加载序列化的Metabase文件"
 
 #: metabase_enterprise/serialization/v2/entity_ids.clj:68
@@ -26399,19 +26399,19 @@ msgid "Error reducing result rows: {0}"
 msgstr "减少结果行数的错误。{0}"
 
 #: metabase/sample_data.clj:63
-msgid "Sample database could not be extracted to the plugins directory,which may result in slow startup times. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."
+msgid "Sample database could not be extracted to the plugins directory,which may result in slow startup times. Please set MB_PLUGINS_DIR to a writable directory and restart Torch."
 msgstr "样本数据库不能被提取到插件目录中，这可能导致启动时间过慢。请将MB_PLUGINS_DIR设置为一个可写的目录并重新启动Metabase。"
 
 #: metabase_enterprise/advanced_config/file.clj:261
-msgid "Metabase config files require a Premium token with the :advanced-config feature."
+msgid "Torch config files require a Premium token with the :advanced-config feature."
 msgstr "Metabase配置文件需要一个具有:高级配置功能的高级令牌。"
 
-#: 
+#:
 msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
 msgid "Charts in subscriptions may look slightly different from charts in dashboards."
 msgstr "订阅中的图表可能看起来与仪表盘中的图表略有不同。"
 
-#: 
+#:
 msgctxt "Seen when creating a new dashboard subscription."
 msgid "Recipients will see this data just as you see it, regardless of their permissions."
 msgstr "收件人将看到这些数据，就像你看到的一样，不管他们的权限如何。"
@@ -26459,11 +26459,11 @@ msgid "This group's user membership will no longer be synced with the directory 
 msgstr "这个组的用户成员资格将不再与目录服务器同步。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx:62
-msgid "What should happen with the groups themselves in Metabase?"
+msgid "What should happen with the groups themselves in Torch?"
 msgstr "Metabase中的组本身应该如何处理？"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx:63
-msgid "What should happen with the group itself in Metabase?"
+msgid "What should happen with the group itself in Torch?"
 msgstr "在Metabase中，该组本身应该发生什么？"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx:68
@@ -26495,7 +26495,7 @@ msgid "Synchronize Group Memberships"
 msgstr "同步集团成员资格"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidget.jsx:121
-msgid "Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced."
+msgid "Mappings allow Torch to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced."
 msgstr "映射允许Metabase根据目录服务器提供的成员信息，自动从组中添加和删除用户。如果一个组没有被映射，其成员资格将不会被同步。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidget.jsx:126
@@ -26660,7 +26660,7 @@ msgid "This card does not support click mappings"
 msgstr "该卡不支持点击映射"
 
 #: frontend/src/metabase/databases/components/DatabaseCacheScheduleField/DatabaseCacheScheduleField.tsx:88
-msgid "When a user adds a new filter to a dashboard or a SQL question, Metabase will scan the field(s) mapped to that filter in order to show the list of selectable values."
+msgid "When a user adds a new filter to a dashboard or a SQL question, Torch will scan the field(s) mapped to that filter in order to show the list of selectable values."
 msgstr "当用户在仪表盘或SQL问题中添加一个新的过滤器时，Metabase将扫描映射到该过滤器的字段，以显示可选择的值的列表。"
 
 #: frontend/src/metabase/models/containers/FormModelPicker/FormModelPicker.tsx:25
@@ -27232,11 +27232,11 @@ msgid "Error preparing statement: {0}"
 msgstr "准备语句时出错。{0}"
 
 #: metabase/driver/util.clj:332
-msgid "Comma separated names of {0} that should NOT appear in Metabase"
+msgid "Comma separated names of {0} that should NOT appear in Torch"
 msgstr "逗号分隔的{0}名称，不应出现在元数据库中。"
 
 #: metabase/driver/util.clj:325
-msgid "Comma separated names of {0} that should appear in Metabase"
+msgid "Comma separated names of {0} that should appear in Torch"
 msgstr "应该出现在元数据库中的以逗号分隔的{0}名称"
 
 #: metabase/driver/util.clj:327 metabase/driver/util.clj:334
@@ -27338,7 +27338,7 @@ msgid "No current user found"
 msgstr "没有找到当前用户"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/utils.ts:30
-msgid "Open the Metabase drill-through menu"
+msgid "Open the Torch drill-through menu"
 msgstr "打开Metabase钻探菜单"
 
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.tsx:126
@@ -27507,14 +27507,14 @@ msgid "Tired of manually managing people and groups?"
 msgstr "厌倦了手动管理人员和群组？"
 
 #: frontend/src/metabase/admin/people/components/NudgeToPro.tsx:16
-msgid "Get single-sign on (SSO) via SAML, JWT, or LDAP with Metabase Pro"
-msgstr "使用 Metabase Pro 通过 SAML、JWT 或 LDAP 获得单点登录（SSO）"
+msgid "Get single-sign on (SSO) via SAML, JWT, or LDAP with Torch Pro"
+msgstr "使用 Torch Pro 通过 SAML、JWT 或 LDAP 获得单点登录（SSO）"
 
 #: frontend/src/metabase/admin/permissions/components/ApplicationPermissionsHelp/ApplicationPermissionsHelp.tsx:11
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsHelp/CollectionPermissionsHelp.tsx:12
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx:21
-msgid "People can be members of multiple groups, and Metabase grants them the most permissive level of access across all of a person's groups."
-msgstr "用户可以是多个群组的成员，Metabase 会在用户的所有群组中为用户授予最宽松的访问权限。"
+msgid "People can be members of multiple groups, and Torch grants them the most permissive level of access across all of a person's groups."
+msgstr "用户可以是多个群组的成员，Torch 会在用户的所有群组中为用户授予最宽松的访问权限。"
 
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx:36
 msgid "The group can use the query builder to ask questions of any table in the database."
@@ -27529,8 +27529,8 @@ msgid "Impersonated (Pro)"
 msgstr "冒名顶替（专业）"
 
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx:51
-msgid "Impersonation associates a Metabase group with database-defined roles and their privileges. Metabase queries made by this group will respect the grants given to the database roles. You can use impersonation to give a group access to the native/SQL editor, while restricting the group's access to data based on a specific database role."
-msgstr "角色代入将 Metabase 组与数据库定义的角色及其权限关联起来。该组进行的元数据库查询将尊重数据库角色的权限。您可以使用冒充功能让一个组访问本地/SQL 编辑器，同时根据特定的数据库角色限制该组对数据的访问。"
+msgid "Impersonation associates a Torch group with database-defined roles and their privileges. Torch queries made by this group will respect the grants given to the database roles. You can use impersonation to give a group access to the native/SQL editor, while restricting the group's access to data based on a specific database role."
+msgstr "角色代入将 Torch 组与数据库定义的角色及其权限关联起来。该组进行的元数据库查询将尊重数据库角色的权限。您可以使用冒充功能让一个组访问本地/SQL 编辑器，同时根据特定的数据库角色限制该组对数据的访问。"
 
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx:58
 msgid "The group can't use the query builder or drill through existing questions. They also can't see the data in the Browse data section. They can still view questions based on this data, if they have permissions to the relevant collection."
@@ -27613,8 +27613,8 @@ msgid "{0} about collection permissions"
 msgstr "{0}关于收集权限"
 
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionUploadInfoModal.tsx:26
-msgid "Uploads CSVs to Metabase"
-msgstr "将 CSV 上传到 Metabase"
+msgid "Uploads CSVs to Torch"
+msgstr "将 CSV 上传到 Torch"
 
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionUploadInfoModal.tsx:34
 msgid "Team members will be able to upload CSV files and work with them just like any other data source"
@@ -27774,8 +27774,8 @@ msgid "Navigation bar"
 msgstr "导航栏"
 
 #: frontend/src/metabase/nav/components/DatabasePromptBanner/DatabasePromptBanner.tsx:42
-msgid "Connect to your database to get the most from Metabase."
-msgstr "连接数据库，充分利用 Metabase。"
+msgid "Connect to your database to get the most from Torch."
+msgstr "连接数据库，充分利用 Torch。"
 
 #: frontend/src/metabase/nav/components/DatabasePromptBanner/DatabasePromptBanner.tsx:49
 msgid "Get help connecting"
@@ -27892,8 +27892,8 @@ msgid "Applications permissions"
 msgstr "应用程序权限"
 
 #: frontend/src/metabase/admin/permissions/components/ApplicationPermissionsHelp/ApplicationPermissionsHelp.tsx:16
-msgid "Application settings are useful for granting groups access to some, but not all, of Metabase’s administrative features."
-msgstr "应用程序设置可用于授予群组访问 Metabase 的部分（而非全部）管理功能的权限。"
+msgid "Application settings are useful for granting groups access to some, but not all, of Torch’s administrative features."
+msgstr "应用程序设置可用于授予群组访问 Torch 的部分（而非全部）管理功能的权限。"
 
 #: frontend/src/metabase/admin/permissions/components/ApplicationPermissionsHelp/ApplicationPermissionsHelp.tsx:18
 msgid "{0} the group can access the Settings tab in the Admin panel."
@@ -28185,8 +28185,8 @@ msgid "Map a user attribute to database roles"
 msgstr "将用户属性映射到数据库角色"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx:82
-msgid "When the person runs a query (including native queries), Metabase will impersonate the privileges of the database role you associate with the user attribute."
-msgstr "当用户运行查询（包括本地查询）时，Metabase 将假冒与用户属性相关联的数据库角色的权限。"
+msgid "When the person runs a query (including native queries), Torch will impersonate the privileges of the database role you associate with the user attribute."
+msgstr "当用户运行查询（包括本地查询）时，Torch 将假冒与用户属性相关联的数据库角色的权限。"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx:93
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/EmbeddingOption.tsx:137
@@ -28202,12 +28202,12 @@ msgid "Edit user settings"
 msgstr "编辑用户设置"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:19
-msgid "Make sure the main database credential has access to everything different user groups may need access to. It's what Metabase uses to sync table information."
-msgstr "确保主数据库凭证可以访问不同用户组可能需要访问的所有内容。Metabase 就是用它来同步表信息的。"
+msgid "Make sure the main database credential has access to everything different user groups may need access to. It's what Torch uses to sync table information."
+msgstr "确保主数据库凭证可以访问不同用户组可能需要访问的所有内容。Torch 就是用它来同步表信息的。"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:20
-msgid "{0} is the database user Metabase is using to connect to {1}. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
-msgstr "{0} 是 Metabase 用来连接 {1} 的数据库用户。确保{2}可以访问{3}中所有 Metabase 组可能需要访问的内容，因为该数据库用户账户是 Metabase 用来同步表信息的。"
+msgid "{0} is the database user Torch is using to connect to {1}. Make sure that {2} has access to everything in {3} that all Torch groups may need access to, as that database user account is what Torch uses to sync table information."
+msgstr "{0} 是 Torch 用来连接 {1} 的数据库用户。确保{2}可以访问{3}中所有 Torch 组可能需要访问的内容，因为该数据库用户账户是 Torch 用来同步表信息的。"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:61
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:143
@@ -28323,8 +28323,8 @@ msgid "None of your databases are compatible with this version of the uploads fe
 msgstr "您的数据库都不兼容此版本的上传功能。"
 
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettings.tsx:300
-msgid "Metabase currently supports {0} for uploads and needs a connection with write privileges."
-msgstr "Metabase 目前支持 {0} 上传，需要有写权限的连接。"
+msgid "Torch currently supports {0} for uploads and needs a connection with write privileges."
+msgstr "Torch 目前支持 {0} 上传，需要有写权限的连接。"
 
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettings.tsx:301
 msgid "Postgres, MySQL, and H2"
@@ -28492,7 +28492,7 @@ msgid "\"{0}\""
 msgstr "\"{0}\""
 
 #: metabase/core.clj:149
-msgid "Metabase Initialization COMPLETE in {0}"
+msgid "Torch Initialization COMPLETE in {0}"
 msgstr "元数据库初始化在 {0} 完成"
 
 #: metabase/driver/bigquery_cloud_sdk.clj:245
@@ -28520,8 +28520,8 @@ msgid "Sorry, the row you''re trying to update doesn''t exist"
 msgstr "对不起，您要更新的行不存在"
 
 #: metabase/driver/sql_jdbc/execute.clj:284
-msgid "{0} is deprecated in Metabase 0.47.0. Implement {1} instead."
-msgstr "在 Metabase 0.47.0 中，{0} 已被弃用。请改用 {1}。"
+msgid "{0} is deprecated in Torch 0.47.0. Implement {1} instead."
+msgstr "在 Torch 0.47.0 中，{0} 已被弃用。请改用 {1}。"
 
 #: metabase/events/view_log.clj:29
 msgid "List of the 10 most recently viewed items for the user."
@@ -28990,7 +28990,7 @@ msgid "Export to {0} complete!"
 msgstr "导出到 {0} 完成！"
 
 #: metabase_enterprise/serialization/cmd.clj:228
-msgid "Exporting Metabase to {0}"
+msgid "Exporting Torch to {0}"
 msgstr "将元数据库导出到 {0}"
 
 #: metabase_enterprise/serialization/v2/load.clj:80
@@ -29127,16 +29127,16 @@ msgid "Upload error details"
 msgstr "上传错误详细信息"
 
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx:108
-msgid "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage. You can update or reset the homepage at any time in Admin Settings > Settings > General."
-msgstr "选择一个仪表板作为主页。如果用户没有权限查看所选仪表板，Metabase 会将其重定向到默认主页。您可以随时在 \"管理设置\">\"设置\">\"常规 \"中更新或重置主页。"
+msgid "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Torch will redirect them to the default homepage. You can update or reset the homepage at any time in Admin Settings > Settings > General."
+msgstr "选择一个仪表板作为主页。如果用户没有权限查看所选仪表板，Torch 会将其重定向到默认主页。您可以随时在 \"管理设置\">\"设置\">\"常规 \"中更新或重置主页。"
 
 #: frontend/src/metabase/redux/uploads.ts:68
 msgid "You cannot upload files larger than {0}mb"
 msgstr "您不能上传大于 {0}mb 的文件"
 
 #: metabase/public_settings.clj:104
-msgid "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage."
-msgstr "选择一个仪表板作为主页。如果用户没有权限查看所选仪表板，Metabase 会将其重定向到默认主页。"
+msgid "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Torch will redirect them to the default homepage."
+msgstr "选择一个仪表板作为主页。如果用户没有权限查看所选仪表板，Torch 会将其重定向到默认主页。"
 
 #: metabase/public_settings.clj:350
 msgid "{0} will cache all saved questions with an average query execution time longer than this many seconds:"
@@ -29258,11 +29258,11 @@ msgid "Interactive embedding"
 msgstr "互动嵌入"
 
 #: frontend/src/metabase/admin/settings/selectors.js:507
-msgid "With this Pro/Enterprise feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Metabase in your app or website, complete with your branding. Set permissions with SSO, down to the row- or column-level, so people only see what they need to."
-msgstr "有了这项专业版/企业版功能，您就可以让客户在您的应用程序或网站中使用 Metabase 的全部功能对数据进行查询、可视化和深入研究，并完整地使用您的品牌。通过 SSO 设置权限，直至行或列级别，这样人们只能看到他们需要的内容。"
+msgid "With this Pro/Enterprise feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Torch in your app or website, complete with your branding. Set permissions with SSO, down to the row- or column-level, so people only see what they need to."
+msgstr "有了这项专业版/企业版功能，您就可以让客户在您的应用程序或网站中使用 Torch 的全部功能对数据进行查询、可视化和深入研究，并完整地使用您的品牌。通过 SSO 设置权限，直至行或列级别，这样人们只能看到他们需要的内容。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/FullAppEmbeddingLinkWidget/FullAppEmbeddingLinkWidget.tsx:14
-msgid "With {0} you can embed the full Metabase app to allow people to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
+msgid "With {0} you can embed the full Torch app to allow people to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
 msgstr "有了{0}，您就可以嵌入完整的Metabase应用程序，让用户可以深入查看图表、浏览集合并使用图形查询生成器。您还可以获得优先支持、更多帮助您与团队分享见解的工具，以及帮助您为客户创建无缝、交互式数据体验的强大选项。"
 
 #: metabase/analytics/prometheus.clj:210
@@ -29339,8 +29339,8 @@ msgid "A value that is true iff the metabase instance has one or more users regi
 msgstr "如果元数据库实例注册了一个或多个用户，则该值为 true。"
 
 #: metabase_enterprise/advanced_config/file.clj:261
-msgid "Metabase config files require a Premium token with the :config-text-file feature."
-msgstr "Metabase 配置文件需要带有 :config-text-file 功能的 Premium 令牌。"
+msgid "Torch config files require a Premium token with the :config-text-file feature."
+msgstr "Torch 配置文件需要带有 :config-text-file 功能的 Premium 令牌。"
 
 #: metabase_enterprise/advanced_config/models/pulse_channel.clj:10
 msgid "Allowed email address domain(s) for new Dashboard Subscriptions and Alerts. To specify multiple domains, separate each domain with a comma, with no space in between. To allow all domains, leave the field empty. This setting doesn’t affect existing subscriptions."
@@ -29554,7 +29554,7 @@ msgid "{0} has been auto-connected with filters with the same field."
 msgstr "{0} 已与具有相同字段的筛选器自动连接。"
 
 #: frontend/src/metabase/nav/components/WhatsNewNotification/WhatsNewNotification.tsx:65
-msgid "Metabase has been updated"
+msgid "Torch has been updated"
 msgstr "元数据库已更新"
 
 #: frontend/src/metabase/nav/components/WhatsNewNotification/WhatsNewNotification.tsx:75
@@ -29757,8 +29757,8 @@ msgid "Strict (not recommended)"
 msgstr "严格（不推荐）"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:48
-msgid "Never allows cookies to be sent on a cross-site request. Warning: this will prevent users from following external links to Metabase."
-msgstr "绝不允许在跨站请求中发送 cookie。警告：这将阻止用户跟踪 Metabase 的外部链接。"
+msgid "Never allows cookies to be sent on a cross-site request. Warning: this will prevent users from following external links to Torch."
+msgstr "绝不允许在跨站请求中发送 cookie。警告：这将阻止用户跟踪 Torch 的外部链接。"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/index.js:53
 msgid "Allows all cross-site requests. Incompatible with most Safari and iOS-based browsers."
@@ -29892,7 +29892,7 @@ msgid "Cake"
 msgstr "蛋糕"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/OpenInMetabase.jsx:9
-msgid "Open in Metabase"
+msgid "Open in Torch"
 msgstr "在元数据库中打开"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditApp.jsx:35
@@ -29904,7 +29904,7 @@ msgstr "本审计部分已升级为\n"
 " 并将在今后的版本中删除。"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditApp.jsx:42
-msgid "Metabase Analytics Collection"
+msgid "Torch Analytics Collection"
 msgstr "元数据库分析集"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditApp.jsx:48
@@ -29964,8 +29964,8 @@ msgid "SameSite cookie setting"
 msgstr "SameSite cookie 设置"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/components/EmbeddingAppSameSiteCookieDescription/EmbeddingAppSameSiteCookieDescription.tsx:33
-msgid "Determines whether or not cookies are allowed to be sent on cross-site requests. You’ll likely need to change this to None if your embedding application is hosted under a different domain than Metabase. Otherwise, leave it set to Lax, as it's more secure."
-msgstr "决定是否允许在跨站请求中发送 cookie。如果嵌入应用程序的主机与 Metabase 的域不同，则可能需要将其更改为 \"无\"。否则，请将其设置为 \"宽松\"，因为这样更安全。"
+msgid "Determines whether or not cookies are allowed to be sent on cross-site requests. You’ll likely need to change this to None if your embedding application is hosted under a different domain than Torch. Otherwise, leave it set to Lax, as it's more secure."
+msgstr "决定是否允许在跨站请求中发送 cookie。如果嵌入应用程序的主机与 Torch 的域不同，则可能需要将其更改为 \"无\"。否则，请将其设置为 \"宽松\"，因为这样更安全。"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/components/EmbeddingAppSameSiteCookieDescription/EmbeddingAppSameSiteCookieDescription.tsx:34
 msgid "If you set this to None, you'll have to use HTTPS (unless you're just embedding locally), or browsers will reject the request. {0}"
@@ -30430,8 +30430,8 @@ msgid "Usage insights"
 msgstr "使用心得"
 
 #: enterprise/frontend/src/metabase-enterprise/collections/components/CollectionInstanceAnalyticsIcon.tsx:35
-msgid "This is a read-only Metabase Analytics {0}."
-msgstr "这是只读 Metabase 分析 {0}。"
+msgid "This is a read-only Torch Analytics {0}."
+msgstr "这是只读 Torch 分析 {0}。"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/HelpLinkSettings/HelpLinkSettings.tsx:44
 msgid "This field can't be left empty."
@@ -30442,8 +30442,8 @@ msgid "This needs to be an \"http://\", \"https://\" or \"mailto:\" URL."
 msgstr "这需要是一个 \"http://\"、\"https://\"或 \"mailto: \"URL。"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/HelpLinkSettings/HelpLinkSettings.tsx:61
-msgid "Link to Metabase help"
-msgstr "Metabase 帮助链接"
+msgid "Link to Torch help"
+msgstr "Torch 帮助链接"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/HelpLinkSettings/HelpLinkSettings.tsx:62
 msgid "Hide it"
@@ -30462,12 +30462,12 @@ msgid "Enter a URL it should go to"
 msgstr "输入 URL，它应该转到"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleDescription.tsx:5
-msgid "Control the visibility of links to Metabase documentation and Metabase references in your instance. {0}"
-msgstr "控制实例中 Metabase 文档链接和 Metabase 引用的可见性。{0}"
+msgid "Control the visibility of links to Torch documentation and Torch references in your instance. {0}"
+msgstr "控制实例中 Torch 文档链接和 Torch 引用的可见性。{0}"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleDescription.tsx:15
-msgid "This affects all links in the product experience (outside of the admin panel) that point to Metabase.com URLs."
-msgstr "这会影响产品体验中（管理面板之外）指向 Metabase.com URL 的所有链接。"
+msgid "This affects all links in the product experience (outside of the admin panel) that point to Torch.com URLs."
+msgstr "这会影响产品体验中（管理面板之外）指向 Torch.com URL 的所有链接。"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleDescription.tsx:18
 msgid "When hidden, your users will lose the ability to troubleshoot and learn how to use features such as the Query and SQL Editors, among others."
@@ -30589,8 +30589,8 @@ msgid "Replace with…"
 msgstr "替换为..."
 
 #: frontend/src/metabase/home/components/EmbedMinimalHomepage/EmbedMinimalHomepage.tsx:32
-msgid "Get started with Embedding Metabase in your app"
-msgstr "开始在应用程序中嵌入 Metabase"
+msgid "Get started with Embedding Torch in your app"
+msgstr "开始在应用程序中嵌入 Torch"
 
 #: frontend/src/metabase/home/components/EmbedMinimalHomepage/EmbedMinimalHomepage.tsx:36
 msgid "As you expressed interest in Embedding, follow these steps to start"
@@ -30691,12 +30691,12 @@ msgid "Enable users to download data from this embed"
 msgstr "使用户能够从该嵌入下载数据"
 
 #: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/AppearanceSettings.tsx:188
-msgid "Removing the “Powered by Metabase” banner"
-msgstr "移除 \"Powered by Metabase \"横幅"
+msgid "Removing the “Powered by Torch” banner"
+msgstr "移除 \"Powered by Torch \"横幅"
 
 #: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/AppearanceSettings.tsx:190
-msgid "This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to {0} to remove the banner."
-msgstr "该横幅会出现在所有使用 Metabase 开源版本创建的静态嵌入上。您需要升级到{0}才能移除该横幅。"
+msgid "This banner appears on all static embeds created with the Torch open source version. You’ll need to upgrade to {0} to remove the banner."
+msgstr "该横幅会出现在所有使用 Torch 开源版本创建的静态嵌入上。您需要升级到{0}才能移除该横幅。"
 
 #: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/AppearanceSettings.tsx:205
 msgid "Dashboard title"
@@ -30921,8 +30921,8 @@ msgid "Configure your parameters' types and properties here. The values for thes
 msgstr "在此配置参数的类型和属性。这些参数的值可以来自用户输入，也可以来自仪表盘过滤器。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/EmbeddingOption.tsx:58
-msgid "A \"powered by Metabase\" banner appears on static embeds. You can {0} to remove it."
-msgstr "静态嵌入程序上会出现 \"powered by Metabase\"（由 Metabase 提供）横幅。您可以 {0} 删除它。"
+msgid "A \"powered by Torch\" banner appears on static embeds. You can {0} to remove it."
+msgstr "静态嵌入程序上会出现 \"powered by Torch\"（由 Torch 提供）横幅。您可以 {0} 删除它。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/EmbeddingOption.tsx:60
 msgid "upgrade to a paid plan"
@@ -30962,8 +30962,8 @@ msgid "Set it up"
 msgstr "设置"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/InteractiveEmbeddingCTA/InteractiveEmbeddingCTA.tsx:31
-msgid "Give your customers the full power of Metabase in your own app, with SSO, advanced permissions, customization, and more."
-msgstr "通过 SSO、高级权限、自定义等功能，在您自己的应用程序中为客户提供 Metabase 的全部功能。"
+msgid "Give your customers the full power of Torch in your own app, with SSO, advanced permissions, customization, and more."
+msgstr "通过 SSO、高级权限、自定义等功能，在您自己的应用程序中为客户提供 Torch 的全部功能。"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/InteractiveEmbeddingCTA/InteractiveEmbeddingCTA.tsx:59
 msgid "Pro"
@@ -31051,8 +31051,8 @@ msgid "Which group should this key belong to? The key will have the same permiss
 msgstr "该密钥应属于哪个组？该密钥将拥有授予该组的相同权限。"
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx:74
-msgid "We don't version the Metabase API. We rarely change API endpoints, and almost never remove them, but if you write code that relies on the API, there's a chance you might have to update your code in the future."
-msgstr "我们不会对 Metabase API 进行版本更新。我们很少更改 API 端点，也几乎从不删除这些端点，但如果您编写的代码依赖于 API，那么将来有可能需要更新您的代码。"
+msgid "We don't version the Torch API. We rarely change API endpoints, and almost never remove them, but if you write code that relies on the API, there's a chance you might have to update your code in the future."
+msgstr "我们不会对 Torch API 进行版本更新。我们很少更改 API 端点，也几乎从不删除这些端点，但如果您编写的代码依赖于 API，那么将来有可能需要更新您的代码。"
 
 #: frontend/src/metabase/admin/settings/auth/components/ApiKeysAuthCard.tsx:19
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:147
@@ -31194,12 +31194,12 @@ msgstr "我还不确定"
 
 #: frontend/src/metabase/setup/components/UsageQuestionStep/UsageQuestionStep.tsx:53
 #: frontend/src/metabase/setup/components/UsageQuestionStep/UsageQuestionStep.tsx:66
-msgid "What will you use Metabase for?"
-msgstr "Metabase 有什么用途？"
+msgid "What will you use Torch for?"
+msgstr "Torch 有什么用途？"
 
 #: frontend/src/metabase/setup/components/UsageQuestionStep/UsageQuestionStep.tsx:76
-msgid "Let us know your plans with Metabase so that we can best guide you"
-msgstr "让我们了解您使用 Metabase 的计划，以便我们为您提供最佳指导"
+msgid "Let us know your plans with Torch so that we can best guide you"
+msgstr "让我们了解您使用 Torch 的计划，以便我们为您提供最佳指导"
 
 #: frontend/src/metabase/setup/components/UsageQuestionStep/UsageQuestionStep.tsx:82
 msgid "Self-service analytics for my own company"
@@ -31335,20 +31335,20 @@ msgid "Compact number"
 msgstr "紧凑型编号"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:21
-msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work,  {2} must be a superuser in Redshift."
-msgstr "您正在使用 Redshift 用户 {1} 的凭据将 Metabase 连接到 {0} 数据库。要使冒充操作有效，{2} 必须是 Redshift 的超级用户。"
+msgid "You’re connecting Torch to the {0} database using the credentials for the Redshift user {1}. For impersonation to work,  {2} must be a superuser in Redshift."
+msgstr "您正在使用 Redshift 用户 {1} 的凭据将 Torch 连接到 {0} 数据库。要使冒充操作有效，{2} 必须是 Redshift 的超级用户。"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:35
-msgid "{0} is the database user Metabase is using to connect to your  {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
-msgstr "{0} 是 Metabase 用来连接 {1} 数据库的数据库用户。确保 {2} 可以访问所有 Metabase 组可能需要访问的 {3} 中的所有内容，因为该数据库用户账户是 Metabase 用来同步表信息的。"
+msgid "{0} is the database user Torch is using to connect to your  {1} database. Make sure that {2} has access to everything in {3} that all Torch groups may need access to, as that database user account is what Torch uses to sync table information."
+msgstr "{0} 是 Torch 用来连接 {1} 数据库的数据库用户。确保 {2} 可以访问所有 Torch 组可能需要访问的 {3} 中的所有内容，因为该数据库用户账户是 Torch 用来同步表信息的。"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx:77
-msgid "Map a Metabase user attribute to database users"
-msgstr "将 Metabase 用户属性映射到数据库用户"
+msgid "Map a Torch user attribute to database users"
+msgstr "将 Torch 用户属性映射到数据库用户"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx:81
-msgid "When the person runs a query (including native queries), Metabase will impersonate the privileges of the database user you associate with the user attribute."
-msgstr "当用户运行查询（包括本地查询）时，Metabase 将假冒与用户属性相关联的数据库用户的权限。"
+msgid "When the person runs a query (including native queries), Torch will impersonate the privileges of the database user you associate with the user attribute."
+msgstr "当用户运行查询（包括本地查询）时，Torch 将假冒与用户属性相关联的数据库用户的权限。"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.js:244
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.js:549
@@ -31444,8 +31444,8 @@ msgid "Regenerate API key"
 msgstr "重新生成 API 密钥"
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:76
-msgid "Metabase will replace the existing API key with a new key. You won't be able to recover the old key."
-msgstr "Metabase 将用新密钥替换现有的 API 密钥。您将无法恢复旧密钥。"
+msgid "Torch will replace the existing API key with a new key. You won't be able to recover the old key."
+msgstr "Torch 将用新密钥替换现有的 API 密钥。您将无法恢复旧密钥。"
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:81
 msgid "No, don't regenerate"
@@ -31590,8 +31590,8 @@ msgid "By clicking \"Agree and continue\" you're agreeing to {0}"
 msgstr "点击 \"同意并继续\"，即表示您同意 {0}。"
 
 #: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx:43
-msgid "When you embed charts or dashboards from Metabase in your own application that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the \"Powered by Metabase\" visible on those embeds."
-msgstr "当您在自己的应用程序中嵌入 Metabase 中的图表或仪表盘时，该应用程序不受涵盖 Metabase 其他部分的 Affero 通用公共许可证的约束，前提是您必须在嵌入的图表或仪表盘上保留 Metabase 徽标和 \"Powered by Metabase\"（由 Metabase 提供）字样。"
+msgid "When you embed charts or dashboards from Torch in your own application that application isn't subject to the Affero General Public License that covers the rest of Torch, provided you keep the Torch logo and the \"Powered by Torch\" visible on those embeds."
+msgstr "当您在自己的应用程序中嵌入 Torch 中的图表或仪表盘时，该应用程序不受涵盖 Torch 其他部分的 Affero 通用公共许可证的约束，前提是您必须在嵌入的图表或仪表盘上保留 Torch 徽标和 \"Powered by Torch\"（由 Torch 提供）字样。"
 
 #: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx:46
 msgid "You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
@@ -31816,8 +31816,8 @@ msgid "Custom URL for the help link."
 msgstr "帮助链接的自定义 URL。"
 
 #: metabase/public_settings.clj:512
-msgid "Whether or not to display Metabase links outside admin settings."
-msgstr "是否在管理设置之外显示 Metabase 链接。"
+msgid "Whether or not to display Torch links outside admin settings."
+msgstr "是否在管理设置之外显示 Torch 链接。"
 
 #: metabase/public_settings.clj:483
 msgid "Invalid help link option"
@@ -31832,8 +31832,8 @@ msgid "Toggle which is true after a user has dismissed the banner on Browse Data
 msgstr "在用户取消 \"浏览有关模型的数据 \"的横幅后切换为 true"
 
 #: metabase/public_settings.clj:104
-msgid "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage. To revert to the default Metabase homepage, simply turn off the toggle."
-msgstr "选择一个仪表板作为主页。如果用户没有权限查看所选仪表板，Metabase 会将其重定向到默认主页。要恢复到默认 Metabase 主页，只需关闭切换开关即可。"
+msgid "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Torch will redirect them to the default homepage. To revert to the default Torch homepage, simply turn off the toggle."
+msgstr "选择一个仪表板作为主页。如果用户没有权限查看所选仪表板，Torch 会将其重定向到默认主页。要恢复到默认 Torch 主页，只需关闭切换开关即可。"
 
 #: metabase/pulse/render/body.clj:195
 msgid "Results have been included as a file attachment"
@@ -31924,21 +31924,21 @@ msgid "You do not have access to the audit database"
 msgstr "您无法访问审计数据库"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:27
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid "When we enable SAML user provisioning, we automatically create a Torch account on SAML signin for users who\n"
 "don''t have one."
-msgstr "当我们启用 SAML 用户供应时，我们会在 SAML 登录时为没有 Metabase 帐户的用户自动创建一个 Metabase 帐户。\n"
+msgstr "当我们启用 SAML 用户供应时，我们会在 SAML 登录时为没有 Torch 帐户的用户自动创建一个 Torch 帐户。\n"
 "账户。"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:35
-msgid "When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+msgid "When we enable JWT user provisioning, we automatically create a Torch account on JWT signin for users who\n"
 "don''t have one."
-msgstr "当我们启用 JWT 用户供应时，我们会在 JWT 登录时自动为没有 Metabase 帐户的用户创建一个 Metabase 帐户。\n"
+msgstr "当我们启用 JWT 用户供应时，我们会在 JWT 登录时自动为没有 Torch 帐户的用户创建一个 Torch 帐户。\n"
 "账户。"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:43
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid "When we enable LDAP user provisioning, we automatically create a Torch account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "当我们启用 LDAP 用户供应时，我们会在 LDAP 登录时自动为没有 Metabase 帐户的用户创建一个 Metabase 帐户。\n"
+msgstr "当我们启用 LDAP 用户供应时，我们会在 LDAP 登录时自动为没有 Torch 帐户的用户创建一个 Torch 帐户。\n"
 "账户。"
 
 #: metabase_enterprise/sso/integrations/sso_utils.clj:36

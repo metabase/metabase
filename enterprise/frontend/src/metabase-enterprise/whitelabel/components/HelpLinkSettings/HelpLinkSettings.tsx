@@ -59,8 +59,8 @@ export const HelpLinkSettings = ({
     <Stack>
       <Radio.Group value={helpLinkSetting} onChange={handleRadioChange}>
         <Stack>
-          {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
-          <Radio label={t`Link to Metabase help`} value="metabase" />
+          {/* eslint-disable-next-line no-literal-metabase-strings -- Torch settings */}
+          <Radio label={t`Link to Torch help`} value="metabase" />
           <Radio label={t`Hide it`} value="hidden" />
           <Radio label={t`Go to a custom destination...`} value="custom" />
         </Stack>

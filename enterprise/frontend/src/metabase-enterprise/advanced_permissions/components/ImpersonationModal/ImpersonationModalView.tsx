@@ -77,15 +77,15 @@ export const ImpersonationModalView = ({
   const impersonationUsesUsers = database.engine === "redshift";
 
   const modalTitle = impersonationUsesUsers
-    ? // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
-      t`Map a Metabase user attribute to database users`
+    ? // eslint-disable-next-line no-literal-metabase-strings -- Torch settings
+      t`Map a Torch user attribute to database users`
     : t`Map a user attribute to database roles`;
 
   const modalMessage = impersonationUsesUsers
-    ? // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
-      t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database user you associate with the user attribute.`
-    : // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
-      t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database role you associate with the user attribute.`;
+    ? // eslint-disable-next-line no-literal-metabase-strings -- Torch settings
+      t`When the person runs a query (including native queries), Torch will impersonate the privileges of the database user you associate with the user attribute.`
+    : // eslint-disable-next-line no-literal-metabase-strings -- Torch settings
+      t`When the person runs a query (including native queries), Torch will impersonate the privileges of the database role you associate with the user attribute.`;
 
   return (
     <ImpersonationModalViewRoot>

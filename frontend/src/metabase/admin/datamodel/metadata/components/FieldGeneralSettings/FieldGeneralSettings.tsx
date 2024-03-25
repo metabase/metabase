@@ -148,7 +148,7 @@ const FieldVisibilitySection = ({
     <MetadataSection>
       <MetadataSectionHeader
         title={t`Visibility`}
-        description={t`Where this field will appear throughout Metabase`}
+        description={t`Where this field will appear throughout Torch`}
       />
       <div style={{ maxWidth: 400 }}>
         <FieldVisibilityPicker field={field} onUpdateField={onUpdateField} />
@@ -335,7 +335,7 @@ const FieldCachedValuesSection = ({
     <MetadataSection last>
       <MetadataSectionHeader
         title={t`Cached field values`}
-        description={t`Metabase can scan the values for this field to enable checkbox filters in dashboards and questions.`}
+        description={t`Torch can scan the values for this field to enable checkbox filters in dashboards and questions.`}
       />
       <ActionButton
         className={cx(ButtonsS.Button, CS.mr2)}

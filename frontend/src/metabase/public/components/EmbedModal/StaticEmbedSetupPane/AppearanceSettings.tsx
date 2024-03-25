@@ -187,10 +187,10 @@ export const AppearanceSettings = ({
           <Divider my="2rem" />
           <StaticEmbedSetupPaneSettingsContentSection
             // eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins
-            title={t`Removing the “Powered by Metabase” banner`}
+            title={t`Removing the “Powered by Torch” banner`}
           >
             {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins */}
-            <Text>{jt`This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to ${(
+            <Text>{jt`This banner appears on all static embeds created with the Torch open source version. You’ll need to upgrade to ${(
               <ExternalLink
                 key="bannerPlan"
                 href={upgradePageUrl}

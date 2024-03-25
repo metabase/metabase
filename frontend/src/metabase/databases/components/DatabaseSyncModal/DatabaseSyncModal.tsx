@@ -35,8 +35,8 @@ const DatabaseSyncModal = ({ sampleUrl, onClose }: DatabaseSyncModalProps) => {
             ? jt`In the meantime, you can take a look at the ${(
                 <strong key="name">{t`Sample Database`}</strong>
               )} if you want to get a head start. Want to explore?`
-            : // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
-              t`Have a look around your Metabase in the meantime if you want to get a head start.`}
+            : // eslint-disable-next-line no-literal-metabase-strings -- Torch settings
+              t`Have a look around your Torch in the meantime if you want to get a head start.`}
         </ModalMessage>
         {sampleUrl ? (
           <Link

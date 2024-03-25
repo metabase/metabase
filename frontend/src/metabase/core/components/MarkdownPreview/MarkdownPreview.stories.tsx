@@ -27,7 +27,7 @@ PlainText.args = {
 
 export const Markdown = Template.bind({});
 Markdown.args = {
-  children: `![Metabase logo](https://www.metabase.com/images/logo.svg)
+  children: `![Torch logo](https://www.metabase.com/images/logo.svg)
 
 # New version
 

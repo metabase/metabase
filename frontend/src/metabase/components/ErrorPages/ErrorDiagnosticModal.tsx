@@ -117,7 +117,7 @@ export const ErrorDiagnosticModal = ({
             <FormCheckbox
               name="instanceInfo"
               // eslint-disable-next-line no-literal-metabase-strings -- we're mucking around in the software here
-              label={t`Metabase instance version and settings`}
+              label={t`Torch instance version and settings`}
             />
           </Stack>
           <Alert variant="warning">

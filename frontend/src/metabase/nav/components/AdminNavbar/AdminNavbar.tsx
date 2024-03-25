@@ -43,7 +43,7 @@ export const AdminNavbar = ({
       <AdminLogoLink to="/admin">
         <AdminLogoContainer>
           <LogoIcon className="text-brand my2" dark />
-          {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+          {/* eslint-disable-next-line no-literal-metabase-strings -- Torch settings */}
           <AdminLogoText>{t`Torch Admin`}</AdminLogoText>
         </AdminLogoContainer>
       </AdminLogoLink>
@@ -95,7 +95,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
         variant="subtle"
         p="0.25rem"
       >
-        <Icon name="burger" size={32} color="black" />
+        <Icon name="burger" size={32} color="white" />
       </Button>
       {mobileNavOpen && (
         <AdminMobileNavBarItems>

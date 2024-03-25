@@ -11,7 +11,7 @@ import { LDAP_SCHEMA } from "../../constants";
 const mapStateToProps = (state: State) => ({
   type: "ldap",
   name: t`LDAP`,
-  description: t`Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups.`,
+  description: t`Allows users within your LDAP directory to log in to Torch with their LDAP credentials, and allows automatic mapping of LDAP groups to Torch groups.`,
   isConfigured: getSetting(state, "ldap-configured?"),
 });
 
