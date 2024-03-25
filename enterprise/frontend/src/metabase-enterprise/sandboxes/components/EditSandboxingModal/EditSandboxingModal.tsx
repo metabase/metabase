@@ -238,7 +238,7 @@ const PolicySummary = ({ policy }: PolicySummaryProps) => {
   return (
     <div>
       <div
-        className={cx("px1 pb2", CS.textUppercase, "text-small text-grey-4")}
+        className={cx("px1 pb2", CS.textUppercase, CS.textSmall, "text-grey-4")}
       >
         {t`Summary`}
       </div>

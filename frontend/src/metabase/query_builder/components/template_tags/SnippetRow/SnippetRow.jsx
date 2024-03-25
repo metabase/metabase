@@ -75,7 +75,7 @@ class SnippetRowInner extends Component {
                 CS.rounded,
                 CS.p1,
                 CS.textMonospace,
-                "text-small",
+                CS.textSmall,
                 "text-pre-wrap",
                 CS.overflowAuto,
               )}

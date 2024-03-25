@@ -33,7 +33,7 @@ function DefaultParametersSection({ className, parameters }) {
         />
       </Heading>
       <div
-        className={cx("pt1 text-small", CS.textNormal, "text-medium")}
+        className={cx("pt1", CS.textSmall, CS.textNormal, "text-medium")}
       >{t`If a dashboard filter has a default value, it’ll be applied when your subscription is sent.`}</div>
       {formattedParameterValues.map((formattedValue, index) => {
         return (

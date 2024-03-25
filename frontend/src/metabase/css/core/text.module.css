@@ -59,7 +59,7 @@
   line-height: 1.5em;
 }
 
-:global(.text-small) {
+.textSmall {
   font-size: 0.875em;
 }
 
