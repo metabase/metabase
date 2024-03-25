@@ -37,10 +37,6 @@
   display: inline-block;
 }
 
-:global(.table) {
-  display: table;
-}
-
 :global(.full),
 :global(.full-width),
 .full,
