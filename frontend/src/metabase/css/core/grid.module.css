@@ -14,24 +14,6 @@
   flex: 0 0 50%;
 }
 
-@media (--breakpoint-min-sm) {
-  :global(.small-Grid--1of2 > .Grid-cell) {
-    flex: 0 0 50%;
-  }
-}
-
-@media (--breakpoint-min-md) {
-  :global(.md-Grid--1of2 > .Grid-cell) {
-    flex: 0 0 50%;
-  }
-}
-
-@media (--breakpoint-min-lg) {
-  :global(.large-Grid--1of2 > .Grid-cell) {
-    flex: 0 0 50%;
-  }
-}
-
 :global(.Grid--gutters) {
   margin: -1em 0 1em -1em;
 }
