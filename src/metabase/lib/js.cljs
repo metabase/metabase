@@ -25,6 +25,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.stage :as lib.stage]
@@ -360,9 +361,28 @@
    (lib.core/normalize (js->clj source-clause :keywordize-keys true))
    (lib.core/normalize (js->clj target-clause :keywordize-keys true))))
 
+(defn- unwrap [a-query]
+  (let [a-query (mbql.js/unwrap a-query)]
+    (cond-> a-query
+      (map? a-query) (:dataset_query a-query))))
+
+(defn- normalize-to-clj
+  [a-query]
+  (let [normalize-fn (fn [q]
+                       (if (= (lib.util/normalized-query-type q) :mbql/query)
+                         (lib.normalize/normalize q)
+                         (mbql.normalize/normalize q)))]
+    (-> a-query (js->clj :keywordize-keys true) unwrap normalize-fn)))
+
+(defn ^:export normalize
+  "Normalize the MBQL or pMBQL query `a-query`.
+
+  Returns the JS form of the normalized query."
+  [a-query]
+  (-> a-query normalize-to-clj (clj->js :keyword-fn u/qualified-name)))
+
 (defn- prep-query-for-equals-legacy [a-query field-ids]
   (-> a-query
-      mbql.js/normalize-cljs
       ;; If `:native` exists, but it doesn't have `:template-tags`, add it.
       (m/update-existing :native #(merge {:template-tags {}} %))
       (m/update-existing :query (fn [inner-query]
@@ -375,16 +395,16 @@
 
 (defn- prep-query-for-equals-pMBQL
   [a-query field-ids]
-  (let [pMBQL-query (lib.convert/js-legacy-query->pMBQL a-query)
-        fields (or (some->> (lib.core/fields pMBQL-query)
+  (let [fields (or (some->> (lib.core/fields a-query)
                             (map #(assoc % 1 {})))
                    (mapv (fn [id] [:field {} id]) field-ids))]
-    (lib.util/update-query-stage pMBQL-query -1 assoc :fields (frequencies fields))))
+    (lib.util/update-query-stage a-query -1 assoc :fields (frequencies fields))))
 
 (defn- prep-query-for-equals [a-query field-ids]
-  (if (and a-query (gobject/get a-query "lib/type"))
-    (prep-query-for-equals-pMBQL a-query field-ids)
-    (prep-query-for-equals-legacy a-query field-ids)))
+  (when-let [normalized-query (some-> a-query normalize-to-clj)]
+    (if (contains? normalized-query :lib/type)
+      (prep-query-for-equals-pMBQL normalized-query field-ids)
+      (prep-query-for-equals-legacy normalized-query field-ids))))
 
 (defn- compare-field-refs
   [[key1 id1 opts1]
