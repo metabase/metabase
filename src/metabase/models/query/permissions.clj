@@ -124,7 +124,7 @@
                                    query)}
                        e)]
         (if throw-exceptions? (throw e) (log/error e)))
-      {:perms/view-data {0 :unrestricted}}))) ; table 0 will never exist
+      {:perms/create-queries {0 :query-builder}}))) ; table 0 will never exist
 
 (defn- pmbql-required-perms
   "For pMBQL queries: for now, just convert it to legacy by running it thru the QP preprocessor, then hand off to the

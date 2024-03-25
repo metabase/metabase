@@ -211,7 +211,7 @@
 
 (deftest ^:parallel invalid-queries-test
   (testing "invalid/legacy queries should return perms for something that doesn't exist so no one gets to see it"
-    (is (= {:perms/view-data {0 :unrestricted}}
+    (is (= {:perms/create-queries {0 :query-builder}}
            (query-perms/required-perms
             (mt/mbql-query venues
               {:filter [:WOW 100 200]}))))))
