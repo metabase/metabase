@@ -447,7 +447,7 @@
                                ;; we only consider the header row and the first data row
                                (take 2)
                                (map count)
-                               ;; realise the list before the reader closes
+                               ;; realize the list before the reader closes
                                doall)))]
     (->> (map (juxt identity count-columns) separators)
          ;; We cannot have more data columns than header columns
