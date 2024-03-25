@@ -42,7 +42,7 @@
   width: 100%;
 }
 
-:global(.half) {
+.half {
   width: 50%;
 }
 
