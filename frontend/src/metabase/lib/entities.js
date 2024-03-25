@@ -88,6 +88,8 @@ import {
 import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
 import { addUndo } from "metabase/redux/undo";
 
+const EMPTY_ENTITY_QUERY = {};
+
 export function createEntity(def) {
   const entity = { ...def };
 
@@ -311,7 +313,7 @@ export function createEntity(def) {
       ),
     )((entityQuery = null) => async (dispatch, getState) => {
       const fetched = await entity.api.list(
-        entityQuery || {},
+        entityQuery || EMPTY_ENTITY_QUERY,
         dispatch,
         getState,
       );
@@ -666,7 +668,8 @@ export const notify = (opts = {}, subject, verb) =>
 export const undo = (opts = {}, subject, verb) =>
   merge({ notify: { subject, verb, undo: true } }, opts || {});
 
-export async function entityCompatibleQuery(dispatch, endpoint, input) {
+export async function entityCompatibleQuery(dispatch, endpoint, entityQuery) {
+  const input = entityQuery === EMPTY_ENTITY_QUERY ? undefined : entityQuery;
   const action = dispatch(endpoint.initiate(input, { forceRefetch: true }));
   try {
     return await action.unwrap();
