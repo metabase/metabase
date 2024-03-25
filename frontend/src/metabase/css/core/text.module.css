@@ -12,30 +12,6 @@
   text-align: left;
 }
 
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-text-left) {
-    text-align: left;
-  }
-}
-
-@media screen and (--breakpoint-min-md) {
-  :global(.md-text-left) {
-    text-align: left;
-  }
-}
-
-@media screen and (--breakpoint-min-lg) {
-  :global(.lg-text-left) {
-    text-align: left;
-  }
-}
-
-@media screen and (--breakpoint-min-xl) {
-  :global(.xl-text-left) {
-    text-align: left;
-  }
-}
-
 :global(.text-right),
 .text-right {
   text-align: right;
