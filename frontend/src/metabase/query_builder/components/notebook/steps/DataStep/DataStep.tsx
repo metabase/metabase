@@ -87,16 +87,16 @@ export const DataStep = ({
 
           {isDataPickerOpen && (
             <NotebookDataPickerModal
+              value={null} // TODO
               onChange={(item: NotebookDataPickerItem) => {
                 const tableId =
                   item.model === "table"
                     ? item.id
                     : getQuestionVirtualTableId(item.id);
-                const databaseId = 1; // TODO
+                const databaseId = 1; // TODO: fetch table metadata
                 handleTableSelect(tableId, databaseId);
               }}
               onClose={() => setIsDataPickerOpen(false)}
-              value={null} // TODO
             />
           )}
         </>

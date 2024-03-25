@@ -21,7 +21,7 @@ interface Props {
 
 export const NotebookDataPickerModal = ({
   options = defaultOptions,
-  title = t`Select a table`,
+  title = t`Pick your starting data`,
   value,
   onChange,
   onClose,
