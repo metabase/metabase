@@ -26,7 +26,9 @@ interface QueryVisualizationProps {
 type State = {
   loading: boolean;
   card: Card | null;
+  cardError?: Card | string | null;
   result: Dataset | null;
+  resultError?: Dataset | string | null;
 };
 
 export const QueryVisualizationSdk = ({
@@ -36,11 +38,14 @@ export const QueryVisualizationSdk = ({
   const { isInitialized, isLoggedIn } = useEmbeddingContext();
   const metadata = useSelector(getMetadata);
 
-  const [{ loading, card, result }, setState] = useState<State>({
-    loading: false,
-    card: null,
-    result: null,
-  });
+  const [{ loading, card, result, cardError, resultError }, setState] =
+    useState<State>({
+      loading: false,
+      card: null,
+      cardError: null,
+      result: null,
+      resultError: null,
+    });
 
   const loadCardData = async ({ questionId }: { questionId: number }) => {
     setState(prevState => ({
@@ -60,12 +65,18 @@ export const QueryVisualizationSdk = ({
           card,
           result,
           loading: false,
+          cardError: null,
+          resultError: null,
         }));
       })
-      .catch(([_cardError, resultError]) => {
+      .catch(([cardError, resultError]) => {
         setState(prevState => ({
           ...prevState,
-          result: resultError?.data,
+          result: null,
+          card: null,
+          loading: false,
+          cardError,
+          resultError,
         }));
       });
   };
@@ -76,12 +87,12 @@ export const QueryVisualizationSdk = ({
         loading: false,
         card: null,
         result: null,
+        cardError: null,
+        resultError: null,
       });
-
-      return;
+    } else {
+      loadCardData({ questionId });
     }
-
-    loadCardData({ questionId });
   }, [isInitialized, isLoggedIn, questionId]);
 
   const changeVisualization = (newQuestion: Question) => {
@@ -104,13 +115,13 @@ export const QueryVisualizationSdk = ({
     );
   }
 
-  const isLoading = loading || !result;
+  const isLoading = loading || (!result && !resultError);
 
   return (
     <LoadingAndErrorWrapper
       className="flex-full full-width"
       loading={isLoading}
-      error={typeof result === "string" ? result : null}
+      error={cardError || resultError}
       noWrapper
     >
       {() => {
@@ -137,7 +148,7 @@ export const QueryVisualizationSdk = ({
             <QueryVisualization
               className="flex full-width"
               question={question}
-              rawSeries={[{ card, data: result && result.data }]}
+              rawSeries={[{ card, data: result?.data }]}
               isRunning={isLoading}
               isObjectDetail={false}
               isResultDirty={false}
