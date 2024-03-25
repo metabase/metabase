@@ -234,8 +234,8 @@ describe("NumberFilterPicker", () => {
       it("should add a filter with many values", async () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup();
 
-        userEvent.click(screen.getByDisplayValue("Between"));
-        userEvent.click(screen.getByText("Equal to"));
+        await userEvent.click(screen.getByDisplayValue("Between"));
+        await userEvent.click(screen.getByText("Equal to"));
         const input = screen.getByPlaceholderText("Enter a number");
         await userEvent.type(input, "-5");
         await userEvent.tab();

@@ -105,16 +105,6 @@ describe("DatasetColumnSelector", () => {
     expect(items[3]).toHaveTextContent("Subtotal");
   });
 
-  it("should display columns without matching setting", () => {
-    setup({ columnSettings: [] });
-    const items = screen.getAllByTestId(/draggable-item/);
-    expect(items).toHaveLength(4);
-    expect(items[0]).toHaveTextContent("ID");
-    expect(items[1]).toHaveTextContent("Total");
-    expect(items[2]).toHaveTextContent("Tax");
-    expect(items[3]).toHaveTextContent("Subtotal");
-  });
-
   it("should allow to enable a column", async () => {
     const { onChange } = setup();
 

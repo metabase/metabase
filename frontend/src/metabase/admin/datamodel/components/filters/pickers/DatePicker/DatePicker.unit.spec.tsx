@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -12,6 +12,10 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import DatePicker from "./DatePicker";
+
+const userEvent = _userEvent.setup({
+  advanceTimers: jest.advanceTimersByTime,
+});
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

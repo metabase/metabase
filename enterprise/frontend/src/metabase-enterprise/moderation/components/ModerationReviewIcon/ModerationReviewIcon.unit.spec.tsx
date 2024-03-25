@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 
 import {
   createMockModerationReview,
@@ -8,6 +8,10 @@ import {
 
 import type { ModerationReviewIconProps } from "./ModerationReviewIcon";
 import ModerationReviewIcon from "./ModerationReviewIcon";
+
+const userEvent = _userEvent.setup({
+  advanceTimers: jest.advanceTimersByTime,
+});
 
 describe("ModerationReviewIcon", () => {
   beforeEach(() => {

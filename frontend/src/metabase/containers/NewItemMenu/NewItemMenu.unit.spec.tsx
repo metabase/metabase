@@ -91,7 +91,7 @@ describe("NewItemMenu", () => {
   describe("New Collection", () => {
     it("should open new collection modal on click", async () => {
       setup();
-      userEvent.click(await screen.findByText("Collection"));
+      await userEvent.click(await screen.findByText("Collection"));
       const modal = await screen.findByRole("dialog", {
         name: /new collection/i,
       });
@@ -102,7 +102,7 @@ describe("NewItemMenu", () => {
   describe("New Dashboard", () => {
     it("should open new dashboard modal on click", async () => {
       setup();
-      userEvent.click(await screen.findByText("Dashboard"));
+      await userEvent.click(await screen.findByText("Dashboard"));
       const modal = await screen.findByRole("dialog");
       expect(modal).toHaveTextContent("New dashboard");
     });
