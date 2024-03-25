@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { CSSTransition, TransitionGroup } from "react-transition-group";
+import { TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -254,31 +254,23 @@ export const SaveQuestionModal = ({
                     )}
                     <TransitionGroup>
                       {values.saveType === "create" && (
-                        <CSSTransition
-                          classNames="saveQuestionModalFields"
-                          timeout={{
-                            enter: 500,
-                            exit: 500,
-                          }}
-                        >
-                          <div className={CS.overflowHidden}>
-                            <FormInput
-                              name="name"
-                              title={t`Name`}
-                              placeholder={nameInputPlaceholder}
-                            />
-                            <FormTextArea
-                              name="description"
-                              title={t`Description`}
-                              placeholder={t`It's optional but oh, so helpful`}
-                            />
-                            <FormCollectionPicker
-                              name="collection_id"
-                              title={t`Which collection should this go in?`}
-                              zIndex={DEFAULT_MODAL_Z_INDEX + 1}
-                            />
-                          </div>
-                        </CSSTransition>
+                        <div className={CS.overflowHidden}>
+                          <FormInput
+                            name="name"
+                            title={t`Name`}
+                            placeholder={nameInputPlaceholder}
+                          />
+                          <FormTextArea
+                            name="description"
+                            title={t`Description`}
+                            placeholder={t`It's optional but oh, so helpful`}
+                          />
+                          <FormCollectionPicker
+                            name="collection_id"
+                            title={t`Which collection should this go in?`}
+                            zIndex={DEFAULT_MODAL_Z_INDEX + 1}
+                          />
+                        </div>
                       )}
                     </TransitionGroup>
                     <FormFooter>
