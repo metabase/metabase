@@ -2,24 +2,20 @@
   text-decoration: none;
 }
 
-:global(.link),
 .link {
   cursor: pointer;
   text-decoration: none;
   color: var(--color-brand);
 }
 
-:global(.link:hover),
 .link:hover {
   text-decoration: underline;
 }
 
-:global(.link:focus),
 .link:focus {
   outline: 2px solid var(--color-focus);
 }
 
-:global(.link:focus:not(:focus-visible)),
 .link:focus:not(:focus-visible) {
   outline: none;
 }

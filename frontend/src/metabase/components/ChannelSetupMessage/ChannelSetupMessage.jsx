@@ -43,7 +43,7 @@ export default class ChannelSetupMessage extends Component {
         <div className="mb1">
           <h4 className="text-medium">{t`Your admin's email address`}:</h4>
           <a
-            className={cx("h2 link", CS.noDecoration)}
+            className={cx("h2", CS.link, CS.noDecoration)}
             href={"mailto:" + adminEmail}
           >
             {adminEmail}

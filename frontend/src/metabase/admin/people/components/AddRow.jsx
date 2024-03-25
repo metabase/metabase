@@ -45,7 +45,7 @@ export const AddRow = forwardRef(function AddRow(
         onChange={onChange}
       />
       <span
-        className={cx("link", CS.noDecoration, "cursor-pointer")}
+        className={cx(CS.link, CS.noDecoration, "cursor-pointer")}
         onClick={onCancel}
       >
         {t`Cancel`}

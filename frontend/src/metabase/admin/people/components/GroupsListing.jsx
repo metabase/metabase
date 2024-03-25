@@ -165,7 +165,7 @@ function EditingGroupRow({
       <td />
       <td className="text-right">
         <span
-          className={cx("link", CS.noDecoration, "cursor-pointer")}
+          className={cx(CS.link, CS.noDecoration, "cursor-pointer")}
           onClick={onCancelClicked}
         >{t`Cancel`}</span>
         <button
@@ -213,7 +213,7 @@ function GroupRow({
       <td>
         <Link
           to={"/admin/people/groups/" + group.id}
-          className={cx("link", CS.noDecoration, CS.flex, CS.alignCenter)}
+          className={cx(CS.link, CS.noDecoration, CS.flex, CS.alignCenter)}
         >
           <span className="text-white">
             <UserAvatar
