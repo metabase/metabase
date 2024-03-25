@@ -31,6 +31,7 @@ import {
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
   isStackingValueValid,
+  isXAxisScaleValid,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import {
   getCardsColumns,
@@ -238,6 +239,7 @@ export const computeStaticComboChartSettings = (
     settings,
     "graph.x_axis.scale",
     getDefaultXAxisScale(settings),
+    isXAxisScaleValid(rawSeries, settings),
   );
 
   fillWithDefaultValue(settings, "graph.goal_label", getDefaultGoalLabel());
