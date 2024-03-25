@@ -383,6 +383,29 @@ function getStackedValueTransfom(
   };
 }
 
+function getStackedDataLabelTransform(
+  settings: ComputedVisualizationSettings,
+  seriesDataKeys: DataKey[],
+): ConditionalTransform {
+  return {
+    condition: settings["stackable.stack_type"] === "stacked",
+    fn: (datum: Datum) => {
+      const transformedDatum = { ...datum };
+
+      seriesDataKeys.forEach(seriesDataKey => {
+        if (getNumberOrZero(datum[seriesDataKey]) > 0) {
+          transformedDatum[POSITIVE_STACK_TOTAL_DATA_KEY] = Number.MIN_VALUE;
+        }
+        if (getNumberOrZero(datum[seriesDataKey]) < 0) {
+          transformedDatum[NEGATIVE_STACK_TOTAL_DATA_KEY] = -Number.MIN_VALUE;
+        }
+      });
+
+      return transformedDatum;
+    },
+  };
+}
+
 function filterNullDimensionValues(dataset: ChartDataset) {
   // TODO show warning message
   const filteredDataset: ChartDataset = [];
@@ -536,16 +559,7 @@ export const applyVisualizationSettingsDataTransformations = (
           : value;
       }),
     },
-    {
-      condition: settings["stackable.stack_type"] === "stacked",
-      fn: datum => {
-        return {
-          ...datum,
-          [POSITIVE_STACK_TOTAL_DATA_KEY]: Number.MIN_VALUE,
-          [NEGATIVE_STACK_TOTAL_DATA_KEY]: -Number.MIN_VALUE,
-        };
-      },
-    },
+    getStackedDataLabelTransform(settings, seriesDataKeys),
     {
       condition:
         settings["stackable.stack_type"] != null &&
