@@ -670,7 +670,7 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  [card-id export-format :as {{:keys [parameters format_export] :or {format_export false}} :params}]
+  [card-id export-format :as {{:keys [parameters format_export]} :params}]
   {card-id       ms/PositiveInt
    parameters    [:maybe ms/JSONString]
    format_export [:maybe :boolean]
