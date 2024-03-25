@@ -18,6 +18,7 @@ import FormInput from "metabase/core/components/FormInput";
 import FormRadio from "metabase/core/components/FormRadio";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormTextArea from "metabase/core/components/FormTextArea";
+import CS from "metabase/css/core/index.css";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
@@ -29,8 +30,6 @@ import {
 import { Flex, Modal, DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";
-
-import "./SaveQuestionModal.module.css";
 
 const getLabels = (question: Question, showSaveType: boolean) => {
   const type = question.type();
@@ -262,7 +261,7 @@ export const SaveQuestionModal = ({
                             exit: 500,
                           }}
                         >
-                          <div className="saveQuestionModalFields">
+                          <div className={CS.overflowHidden}>
                             <FormInput
                               name="name"
                               title={t`Name`}
