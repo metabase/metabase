@@ -207,7 +207,8 @@ export class AuditTableVisualization extends Component {
                     <div
                       className={cx({
                         [cx(
-                          "rounded p1 text-dark text-monospace",
+                          "rounded p1 text-dark",
+                          CS.textMonospace,
                           CS.textSmall,
                           "bg-light",
                         )]: column["code"],

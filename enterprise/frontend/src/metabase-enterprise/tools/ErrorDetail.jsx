@@ -115,7 +115,8 @@ function ErrorDetailDisplay(props) {
       <div
         key="error_str"
         className={cx(
-          "half rounded p2 text-dark text-monospace",
+          "half rounded p2 text-dark",
+          CS.textMonospace,
           CS.textSmall,
           "bg-light",
         )}
