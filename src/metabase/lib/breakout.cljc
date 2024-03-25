@@ -144,3 +144,16 @@
   (->> (lib.util/query-stage query stage-number)
        (lib.metadata.calculation/visible-columns query stage-number)
        (lib.equality/find-matching-column breakout-ref)))
+
+(mu/defn remove-all-breakouts :- ::lib.schema/query
+  "Remove all breakouts from a query stage."
+  ([query]
+   (remove-all-breakouts query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (reduce
+    (fn [query a-breakout]
+      (lib.remove-replace/remove-clause query stage-number a-breakout))
+    query
+    (breakouts query stage-number))))
