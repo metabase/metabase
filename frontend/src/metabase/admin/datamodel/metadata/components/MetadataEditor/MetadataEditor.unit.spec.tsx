@@ -283,10 +283,11 @@ describe("MetadataEditor", () => {
       ).toBeInTheDocument();
 
       // This click should not cause a change, as the table should be disabled
-      await userEvent.click(
-        screen.getByText(ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE.display_name),
-        { pointerEventsCheck: 0 }, //This is needed due to pointer events: none on the element
-      );
+      await expect(
+        userEvent.click(
+          screen.getByText(ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE.display_name),
+        ),
+      ).rejects.toThrow(/pointer-events: none/);
 
       expect(
         await screen.findByText(
