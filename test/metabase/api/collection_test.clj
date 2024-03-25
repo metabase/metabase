@@ -1035,7 +1035,7 @@
             [:last_edit_first_name :asc]
             [:%lower.name :asc]]
            (api.collection/children-sort-clause [:last-edited-by :asc] :mysql))))
-  (testing "Sortinb by model"
+  (testing "Sorting by model"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case [:= :collection_type nil] 0 :else 1]] :asc]
             [:model_ranking :asc]
