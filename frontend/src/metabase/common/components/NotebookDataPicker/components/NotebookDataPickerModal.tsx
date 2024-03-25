@@ -1,12 +1,13 @@
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
+import type { TableId } from "metabase-types/api";
+
 import type { EntityPickerOptions, EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import type {
   NotebookDataPickerItem,
   NotebookDataPickerValueItem,
-  Value,
 } from "../types";
 
 import { TablePicker } from "./TablePicker";
@@ -16,7 +17,7 @@ interface Props {
   onChange: (item: NotebookDataPickerItem) => void;
   onClose: () => void;
   options?: EntityPickerOptions;
-  value: Value | null;
+  value: TableId | null;
 }
 
 export const NotebookDataPickerModal = ({
@@ -47,6 +48,7 @@ export const NotebookDataPickerModal = ({
   const handleConfirm = () => {
     if (selectedItem) {
       onChange(selectedItem);
+      onClose();
     }
   };
 

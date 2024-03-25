@@ -87,7 +87,7 @@ export const DataStep = ({
 
           {isDataPickerOpen && (
             <NotebookDataPickerModal
-              value={null} // TODO
+              value={tableId} // TODO
               onChange={(item: NotebookDataPickerItem) => {
                 const tableId =
                   item.model === "table"

@@ -62,7 +62,7 @@ export type NotebookDataPickerItem =
 
 export type NotebookDataPickerModel = NotebookDataPickerItem["model"];
 
-export type Value = Pick<NotebookDataPickerItem, "id" | "model">;
+export type Value = NotebookDataPickerValueItem["id"];
 
 export type PathEntry<Model extends NotebookDataPickerFolderItem["model"]> =
   PickerState<Model, NotebookDataPickerItem, NotebookDataPickerQuery<Model>>;
