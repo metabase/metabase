@@ -123,7 +123,7 @@ export function CollectionContentView({
     maxFiles: 1,
     noClick: true,
     noDragEventsBubbling: true,
-    accept: { "text/csv": [".csv"] },
+    accept: { "text/csv": [".csv"], "text/tab-separated-values": [".tsv"] },
   });
 
   const handleBulkArchive = useCallback(async () => {
