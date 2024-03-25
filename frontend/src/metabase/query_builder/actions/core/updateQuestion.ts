@@ -126,7 +126,7 @@ export const updateQuestion = (
 
       // When the dataset query changes, we should change the question type,
       // to start building a new ad-hoc question based on a dataset
-      if (newQuestion.type() === "model") {
+      if (newQuestion.type() === "model" || newQuestion.type() === "metric") {
         newQuestion = newQuestion.setType("question");
         dispatch(onCloseQuestionInfo());
       }

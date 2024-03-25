@@ -78,7 +78,10 @@ export function QuestionDataSource({
             if (!sourceQuestion || loading) {
               return null;
             }
-            if (sourceQuestion.type() === "model") {
+            if (
+              sourceQuestion.type() === "model" ||
+              sourceQuestion.type() === "metric"
+            ) {
               return (
                 <SourceDatasetBreadcrumbs
                   model={sourceQuestion}

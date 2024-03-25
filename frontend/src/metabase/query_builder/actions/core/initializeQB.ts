@@ -298,6 +298,15 @@ async function handleQBInit(
     return;
   }
 
+  if (
+    isSavedCard(card) &&
+    card.type !== "metric" &&
+    location.pathname?.startsWith("/metric")
+  ) {
+    dispatch(setErrorPage(NOT_FOUND_ERROR));
+    return;
+  }
+
   if (deserializedCard?.dashcardId) {
     card = await propagateDashboardParameters({
       card,

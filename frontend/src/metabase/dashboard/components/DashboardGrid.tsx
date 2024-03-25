@@ -642,6 +642,10 @@ const getUndoReplaceCardMessage = ({ type }: Card) => {
     return t`Model replaced`;
   }
 
+  if (type === "metric") {
+    return t`Metric replaced`;
+  }
+
   if (type === "question") {
     return t`Question replaced`;
   }

@@ -150,6 +150,10 @@ function getLabel(card) {
     return t`model`;
   }
 
+  if (card.type === "metric") {
+    return t`metric`;
+  }
+
   return t`question`;
 }
 
@@ -163,6 +167,7 @@ export function getIcon(card) {
       tooltip: type.tooltip,
     };
   }
+
   /**
    * `card.dataset` is still used here because this very function is used
    * by getIcon in frontend/src/metabase/entities/bookmarks.js, which passes
@@ -172,6 +177,10 @@ export function getIcon(card) {
    */
   if (card.dataset || card.type === "model" || card.model === "dataset") {
     return { name: "model" };
+  }
+
+  if (card.type === "metric") {
+    return { name: "metric" };
   }
 
   const visualization = require("metabase/visualizations").default.get(

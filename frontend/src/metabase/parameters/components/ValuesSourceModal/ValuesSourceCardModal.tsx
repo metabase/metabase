@@ -159,6 +159,7 @@ const getInitialValue = (
 ): Partial<DataPickerValue> | undefined => {
   if (question) {
     const id = question.id();
+
     return {
       type: getInitialTypeValue(question),
       schemaId: getCollectionVirtualSchemaId(collection, {

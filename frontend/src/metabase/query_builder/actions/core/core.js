@@ -240,7 +240,8 @@ export const apiCreateQuestion = question => {
     dispatch({ type: API_CREATE_QUESTION, payload: card });
 
     const isModel = question.type() === "model";
-    const metadataOptions = { reload: isModel };
+    const isMetric = question.type() === "metric";
+    const metadataOptions = { reload: isModel || isMetric };
     await dispatch(loadMetadataForCard(card, metadataOptions));
 
     return createdQuestion;
@@ -255,6 +256,8 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
 
     const isResultDirty = getIsResultDirty(getState());
     const isModel = question.type() === "model";
+    const isMetric = question.type() === "metric";
+
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
     if (!isNative) {
@@ -295,7 +298,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       await dispatch(ModelIndexes.actions.updateModelIndexes(question));
     }
 
-    const metadataOptions = { reload: isModel };
+    const metadataOptions = { reload: isModel || isMetric };
     await dispatch(loadMetadataForCard(question.card(), metadataOptions));
 
     if (rerunQuery) {

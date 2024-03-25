@@ -51,6 +51,14 @@ const getLabels = (question: Question, showSaveType: boolean) => {
     };
   }
 
+  if (type === "metric") {
+    return {
+      singleStepTitle: t`Save metric`,
+      multiStepTitle: t`First, save your metric`,
+      nameInputPlaceholder: t`What is the name of your metric?`,
+    };
+  }
+
   throw new Error(`Unknown question.type(): ${type}`);
 };
 
@@ -209,7 +217,6 @@ export const SaveQuestionModal = ({
     question,
     showSaveType,
   );
-
   const title = multiStep ? multiStepTitle : singleStepTitle;
 
   return (

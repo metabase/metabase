@@ -29,6 +29,14 @@ const getLabels = (question: Question) => {
       message: t`You won't make any permanent changes to them unless you edit their query definition.`,
     };
   }
+
+  if (type === "metric") {
+    return {
+      title: t`It's okay to play around with metrics`,
+      message: t`You won't make any permanent changes to them unless you edit their query definition.`,
+    };
+  }
+
   throw new Error(`Unknown question.type(): ${type}`);
 };
 
