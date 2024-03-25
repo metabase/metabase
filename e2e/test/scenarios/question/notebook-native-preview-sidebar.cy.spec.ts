@@ -1,3 +1,5 @@
+import { onlyOn } from "@cypress/skip-test";
+
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -168,7 +170,7 @@ describe("converting question to SQL (metabase#12651, metabase#21615, metabase#3
 });
 
 describe(
-  "converting question to a native query (metabase#15946, metabase#32121)",
+  "converting question to a native query (metabase#15946, metabase#32121, metabase#38181)",
   { tags: "@mongo" },
   () => {
     const MONGO_DB_NAME = "QA Mongo";
@@ -178,7 +180,7 @@ describe(
       cy.signInAsAdmin();
     });
 
-    it("should work ", () => {
+    it("should work for both simple and nested questions based on previously converted GUI query", () => {
       startNewQuestion();
       popover().within(() => {
         cy.findByText("Raw Data").click();
@@ -186,6 +188,7 @@ describe(
         cy.findByText("Products").click();
       });
 
+      cy.log("Simple question");
       cy.findByLabelText("View the native query").click();
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
@@ -199,14 +202,38 @@ describe(
       cy.log("Database and table should be pre-selected (metabase#15946)");
       cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
       cy.findByTestId("selected-table").should("have.text", "Products");
-      cy.get(".cellData").contains("Small Marble Shoes");
+      cy.get(".cellData").should("contain", "Small Marble Shoes");
 
+      cy.log("Nested question");
       cy.log(
         "should be possible to save a question and `Explore results` (metabase#32121)",
       );
       saveQuestion("foo");
       cy.findByTestId("qb-header").findByText("Explore results").click();
-      cy.get(".cellData").contains("Small Marble Shoes");
+      cy.get(".cellData").should("contain", "Small Marble Shoes");
+
+      // FIXME: Remove `onlyOn` wrapper block once the issue #38181 is fixed!
+      onlyOn(false, () => {
+        cy.log("The generated query should be valid (metabase#38181)");
+        openNotebook(); // SQL sidebar state was persisted so it's already open now
+        cy.findByTestId("native-query-preview-sidebar").within(() => {
+          cy.findByText("Native query for this question").should("exist");
+          cy.get(".ace_content")
+            .should("contain", "$project")
+            .and("contain", "$limit")
+            .and("not.contain", "BsonString")
+            .and("not.contain", "BsonInt32");
+
+          cy.button("Convert this question to a native query").click();
+        });
+
+        cy.log(
+          "Database and table should be pre-selected (metabase#15946 and/or metabase#40557)",
+        );
+        cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
+        cy.findByTestId("selected-table").should("have.text", "Products");
+        cy.get(".cellData").should("contain", "Small Marble Shoes");
+      });
     });
   },
 );
