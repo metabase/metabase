@@ -35,7 +35,8 @@
 
 /* text style */
 
-:global(.text-italic) {
+:global(.text-italic),
+.textItalic {
   font-style: italic;
 }
 

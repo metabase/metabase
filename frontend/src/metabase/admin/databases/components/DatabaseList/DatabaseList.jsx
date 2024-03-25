@@ -148,7 +148,7 @@ export default class DatabaseList extends Component {
           {!hasSampleDatabase && isAdmin ? (
             <div className="pt4">
               <span
-                className={cx("p2 text-italic", {
+                className={cx("p2", CS.textItalic, {
                   [CS.borderTop]: databases && databases.length > 0,
                 })}
               >
