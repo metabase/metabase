@@ -67,7 +67,7 @@
   font-size: 0.8em;
 }
 
-:global(.text-ellipsis) {
+.textEllipsis {
   text-overflow: ellipsis;
 }
 
