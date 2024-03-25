@@ -3,7 +3,11 @@ import { t } from "ttag";
 
 import type { EntityPickerOptions, EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
-import type { NotebookDataPickerItem, Value } from "../types";
+import type {
+  NotebookDataPickerItem,
+  NotebookDataPickerValueItem,
+  Value,
+} from "../types";
 
 import { TablePicker } from "./TablePicker";
 
@@ -23,14 +27,14 @@ export const NotebookDataPickerModal = ({
   onClose,
 }: Props) => {
   const [selectedItem, setSelectedItem] =
-    useState<NotebookDataPickerItem | null>(null);
+    useState<NotebookDataPickerValueItem | null>(null);
 
   const pickerRef = useRef<{
     onFolderSelect: (item: { folder: NotebookDataPickerItem }) => void;
   }>();
 
   const handleItemSelect = useCallback(
-    (item: NotebookDataPickerItem) => {
+    (item: NotebookDataPickerValueItem) => {
       if (options.hasConfirmButtons) {
         setSelectedItem(item);
       } else {
@@ -47,8 +51,8 @@ export const NotebookDataPickerModal = ({
   };
 
   const tabs: [
-    EntityTab<NotebookDataPickerItem["model"]>,
-    ...EntityTab<NotebookDataPickerItem["model"]>[],
+    EntityTab<NotebookDataPickerValueItem["model"]>,
+    ...EntityTab<NotebookDataPickerValueItem["model"]>[],
   ] = [
     // {
     //   displayName: t`Models`,
