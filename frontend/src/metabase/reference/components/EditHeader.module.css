@@ -1,6 +1,6 @@
 /* TODO: MAKE SURE THIS WORKS WITH .textWhite */
 .editHeader {
-  composes: text-white from "style";
+  composes: textWhite from "style";
   align-items: center;
   display: flex;
   position: absolute;

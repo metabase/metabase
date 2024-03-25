@@ -166,7 +166,9 @@ function HostingCTA() {
           <Text
             className={cx(CS.textBrand, CS.mb0)}
           >{t`Want to have upgrades taken care of for you?`}</Text>
-          <Text className="text-brand text-bold">{t`Migrate to Metabase Cloud.`}</Text>
+          <Text
+            className={cx(CS.textBrand, CS.textBold)}
+          >{t`Migrate to Metabase Cloud.`}</Text>
         </div>
       </HostingCTAContent>
       <div className="pr1">

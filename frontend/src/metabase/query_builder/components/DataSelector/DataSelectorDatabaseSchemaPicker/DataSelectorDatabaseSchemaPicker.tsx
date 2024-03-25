@@ -66,7 +66,7 @@ const DataSelectorDatabaseSchemaPicker = ({
             name: schema.displayName() ?? "",
           }))
         : [],
-    className: database.is_saved_questions ? "bg-light" : null,
+    className: database.is_saved_questions ? CS.bgLight : null,
     icon: database.is_saved_questions ? "collection" : "database",
     loading:
       selectedDatabase?.id === database.id &&
