@@ -29,7 +29,7 @@
   font-weight: 700;
 }
 
-:global(.text-heavy) {
+.textHeavy {
   font-weight: 900;
 }
 
