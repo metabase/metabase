@@ -33,6 +33,7 @@ import {
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
   isStackingValueValid,
+  isXAxisScaleValid,
   STACKABLE_DISPLAY_TYPES,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import {
@@ -447,6 +448,7 @@ export const GRAPH_AXIS_SETTINGS = {
       "graph.x_axis._is_numeric",
       "graph.x_axis._is_histogram",
     ],
+    isValid: isXAxisScaleValid,
     getDefault: (series, vizSettings) => getDefaultXAxisScale(vizSettings),
     getProps: ([{ data }], vizSettings) => {
       const dimensionColumn = data.cols.find(
