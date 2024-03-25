@@ -1,15 +1,15 @@
 import { getMilestoneIssues, isLatestRelease } from "./github";
+import type { ReleaseProps, Issue } from "./types";
 import {
   isEnterpriseVersion,
   isRCVersion,
   isValidVersionString,
 } from "./version-helpers";
 
-import type { ReleaseProps, Issue } from "./types";
 
 const releaseTemplate = `**Upgrading**
 
-You can download a .jar of the release, or get the latest on Docker. Make sure to back up your Metabase
+You can download a .jar of the release, or get the latest on Docker. Make sure to back up your Torch
 database before you upgrade! Need help? Check out our [upgrading instructions](https://metabase.com/docs/latest/operations-guide/upgrading-metabase.html).
 
 Docker image: {{docker-tag}}
@@ -59,10 +59,10 @@ export const getDownloadUrl = (version: string) => {
 
 export const getReleaseTitle = (version: string) => {
   if (isEnterpriseVersion(version)) {
-    return `Metabase® Enterprise Edition™ ${version}`;
+    return `Torch Enterprise Edition™ ${version}`;
   }
 
-  return `Metabase ${version}`;
+  return `Torch ${version}`;
 };
 
 export const generateReleaseNotes = ({

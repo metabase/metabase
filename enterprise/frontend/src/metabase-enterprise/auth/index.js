@@ -99,7 +99,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         key: "saml-user-provisioning-enabled?",
         display_name: t`User Provisioning`,
         // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
-        description: t`When a user logs in via SAML, create a Metabase account for them automatically if they don't have one.`,
+        description: t`When a user logs in via SAML, create a Torch account for them automatically if they don't have one.`,
         type: "boolean",
       },
       {
@@ -192,7 +192,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         key: "jwt-user-provisioning-enabled?",
         display_name: t`User Provisioning`,
         // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
-        description: t`When a user logs in via JWT, create a Metabase account for them automatically if they don't have one.`,
+        description: t`When a user logs in via JWT, create a Torch account for them automatically if they don't have one.`,
         type: "boolean",
       },
       {

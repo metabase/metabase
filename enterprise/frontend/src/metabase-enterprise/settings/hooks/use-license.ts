@@ -7,7 +7,7 @@ export const LICENSE_ACCEPTED_URL_HASH = "#activated";
 
 const INVALID_TOKEN_ERROR = t`This token doesn't seem to be valid. Double-check it, then contact support if you think it should be working.`;
 // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
-const UNABLE_TO_VALIDATE_TOKEN = t`We're having trouble validating your token. Please double-check that your instance can connect to Metabase's servers.`;
+const UNABLE_TO_VALIDATE_TOKEN = t`We're having trouble validating your token. Please double-check that your instance can connect to Torch's servers.`;
 
 export type TokenStatus = {
   validUntil: Date;

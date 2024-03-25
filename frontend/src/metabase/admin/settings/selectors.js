@@ -201,7 +201,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
       {
         key: "email-from-name",
         display_name: t`From Name`,
-        placeholder: "Metabase",
+        placeholder: "Torch",
         type: "string",
         required: false,
       },
@@ -301,7 +301,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
       {
         key: "map-tile-server-url",
         display_name: t`Map tile server URL`,
-        note: t`Metabase uses OpenStreetMaps by default.`,
+        note: t`Torch uses OpenStreetMaps by default.`,
         type: "string",
       },
       {
@@ -595,7 +595,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
       {
         key: "persisted-models-enabled",
         display_name: t`Models`,
-        description: jt`Enabling cache will create tables for your models in a dedicated schema and Metabase will refresh them on a schedule. Questions based on your models will query these tables. ${(
+        description: jt`Enabling cache will create tables for your models in a dedicated schema and Torch will refresh them on a schedule. Questions based on your models will query these tables. ${(
           <ExternalLink
             key="model-caching-link"
             href={MetabaseSettings.docsUrl("data-modeling/models")}

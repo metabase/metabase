@@ -11,7 +11,7 @@ const baseUrl = e2eHost || server.host;
 
 const init = async () => {
   if (!e2eHost) {
-    printBold("Metabase version info");
+    printBold("Torch version info");
     await getVersion();
 
     printBold("Starting backend");

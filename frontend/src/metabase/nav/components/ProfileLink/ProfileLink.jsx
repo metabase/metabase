@@ -146,9 +146,9 @@ function ProfileLink({ adminItems, onLogout }) {
             >
               <span className="block">
                 {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows on OSS instance */}
-                <span className="text-bold">Metabase</span>{" "}
+                <span className="text-bold">Torch</span>{" "}
                 {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows on OSS instance */}
-                {t`is a Trademark of`} Metabase, Inc
+                {t`is a Trademark of`} Torch, Inc
               </span>
               <span>{t`and is built with care by a team from all across this pale blue dot.`}</span>
             </div>

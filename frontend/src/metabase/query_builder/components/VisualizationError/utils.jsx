@@ -39,7 +39,7 @@ export function stripRemarks(error) {
    * but the whole error contains these remarks that MB added in. Confusing!
    */
   return error.replace(
-    /-- Metabase:: userID: \d+ queryType: native queryHash: \w+\n/,
+    /-- Torch:: userID: \d+ queryType: native queryHash: \w+\n/,
     "",
   );
 }

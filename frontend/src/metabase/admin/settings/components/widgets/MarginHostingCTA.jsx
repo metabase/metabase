@@ -13,7 +13,7 @@ const MarginHostingCTA = ({ tagline }) => (
     <Icon name="cloud" size={48} style={{ color: "#B9D8F4" }} />
     <div className="pb3">
       <Text className="text-brand mb0">{tagline}</Text>
-      <Text className="text-brand text-bold">{t`Migrate to Metabase Cloud.`}</Text>
+      <Text className="text-brand text-bold">{t`Migrate to Torch Cloud.`}</Text>
     </div>
 
     <HostingInfoLink text={t`Learn more`} />

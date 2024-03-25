@@ -48,7 +48,7 @@ if (hasPremiumFeature("embedding")) {
                 value: "strict",
                 name: t`Strict (not recommended)`,
                 // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
-                description: t`Never allows cookies to be sent on a cross-site request. Warning: this will prevent users from following external links to Metabase.`,
+                description: t`Never allows cookies to be sent on a cross-site request. Warning: this will prevent users from following external links to Torch.`,
               },
               {
                 value: "none",

@@ -828,7 +828,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         description: t`Optional. The default is "ISO".
 - ISO: Week 1 starts on the Monday before the first Thursday of January.
 - US: Week 1 starts on Jan 1. All other weeks start on Sunday.
-- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
+- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Torch localization settings.
 `,
         example: formatStringLiteral("iso"),
       },

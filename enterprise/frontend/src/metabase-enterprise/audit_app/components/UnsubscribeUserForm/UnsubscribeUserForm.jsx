@@ -44,8 +44,8 @@ const UnsubscribeUserForm = ({ user, onUnsubscribe, onClose }) => {
         {t`This will delete any dashboard subscriptions or alerts ${user.common_name} has created, and remove them as a recipient from any other subscriptions or alerts.`}
       </ModalMessage>
       <ModalMessage>
-        {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
-        {t`This does not affect email distribution lists that are managed outside of Metabase.`}
+        {/* eslint-disable-next-line no-literal-metabase-strings -- Torch settings */}
+        {t`This does not affect email distribution lists that are managed outside of Torch.`}
       </ModalMessage>
     </ModalContent>
   );

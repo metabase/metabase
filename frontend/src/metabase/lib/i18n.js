@@ -22,7 +22,7 @@ export async function loadLocalization(locale) {
           },
           translations: {
             // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-            "": { Metabase: { msgid: "Metabase", msgstr: ["Metabase"] } },
+            "": { Metabase: { msgid: "Metabase", msgstr: ["Torch"] } },
           },
         };
   setLocalization(translationsObject);

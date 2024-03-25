@@ -62,7 +62,7 @@ if (hasPremiumFeature("whitelabel")) {
           },
           {
             // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
-            name: t`Conceal Metabase`,
+            name: t`Conceal Torch`,
             key: "conceal-metabase",
             to: "/admin/settings/whitelabel/conceal-metabase",
           },
@@ -128,7 +128,7 @@ if (hasPremiumFeature("whitelabel")) {
           },
           {
             // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
-            name: t`Conceal Metabase`,
+            name: t`Conceal Torch`,
             key: "conceal-metabase",
             to: "/admin/settings/whitelabel/conceal-metabase",
             isActive: true,
@@ -140,7 +140,7 @@ if (hasPremiumFeature("whitelabel")) {
             key: "-conceal-metabase-introduction",
             tab: "conceal-metabase",
             // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
-            description: t`Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs`,
+            description: t`Hide or customize pieces of the Torch product to tailor the experience to your brand and needs`,
             type: "hidden",
           },
           {
@@ -154,7 +154,7 @@ if (hasPremiumFeature("whitelabel")) {
             tab: "conceal-metabase",
             display_name: t`Homepage, Documentation and References`,
             // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
-            description: t`Control the display of homepage visuals and greeting message plus other Metabase elements such as links to Metabase documentation and Metabase references in your instance.`,
+            description: t`Control the display of homepage visuals and greeting message plus other Torch elements such as links to Torch documentation and Torch references in your instance.`,
             type: "hidden",
           },
           {
@@ -176,7 +176,7 @@ if (hasPremiumFeature("whitelabel")) {
             widget: SwitchWidget,
             props: {
               // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
-              label: jt`Show links and references to Metabase ${(
+              label: jt`Show links and references to Torch ${(
                 <MetabaseLinksToggleDescription key="show-metabase-links-description-tooltip" />
               )}`,
               mt: "-1rem",
