@@ -84,7 +84,7 @@ const MetadataTableColumn = ({
           <div>
             <ColumnInput
               style={{ minWidth: 420 }}
-              className="float-left inline-block"
+              className={cx(CS.floatLeft, CS.inlineBlock)}
               type="text"
               value={field.displayName()}
               onBlurChange={handleChangeName}

@@ -162,10 +162,10 @@ function AddMemberAutocompleteSuggestion({ user, color, selected, onClick }) {
       isSelected={selected}
       onClick={onClick}
     >
-      <span className="inline-block mr2">
+      <span className={cx(CS.inlineBlock, CS.mr2)}>
         <UserAvatar bg={color} user={user} />
       </span>
-      <span className={cx("h3", { "text-white": selected })}>
+      <span className={cx(CS.h3, { [CS.textWhite]: selected })}>
         {user.common_name}
       </span>
     </AddMemberAutocompleteSuggestionRoot>
