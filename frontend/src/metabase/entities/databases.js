@@ -2,6 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 import _ from "underscore";
 
+import { databaseApi } from "metabase/api";
 import Schemas from "metabase/entities/schemas";
 import { color } from "metabase/lib/colors";
 import { createEntity } from "metabase/lib/entities";
@@ -38,6 +39,21 @@ const Databases = createEntity({
 
   nameOne: "database",
   nameMany: "databases",
+
+  api: {
+    list: async (input, dispatch) => {
+      const action = dispatch(
+        databaseApi.endpoints.getDatabases.initiate(input, {
+          forceRefetch: true,
+        }),
+      );
+      try {
+        return await action.unwrap();
+      } finally {
+        action.unsubscribe();
+      }
+    },
+  },
 
   // ACTION CREATORS
   objectActions: {

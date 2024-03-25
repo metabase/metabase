@@ -3,7 +3,7 @@ import type { Location } from "history";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useListDatabasesQuery } from "metabase/api";
+import { useGetDatabasesQuery } from "metabase/api";
 import { Grid } from "metabase/components/Grid";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
@@ -29,7 +29,7 @@ interface NewModelOptionsProps {
 }
 
 const NewModelOptions = ({ location }: NewModelOptionsProps) => {
-  const { data } = useListDatabasesQuery();
+  const { data } = useGetDatabasesQuery();
   const databases = data?.data ?? [];
   const hasDataAccess = getHasDataAccess(databases);
   const hasNativeWrite = getHasNativeWrite(databases);

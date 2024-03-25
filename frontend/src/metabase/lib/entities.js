@@ -310,7 +310,11 @@ export function createEntity(def) {
         entityQuery => [...getListStatePath(entityQuery), "fetch"],
       ),
     )((entityQuery = null) => async (dispatch, getState) => {
-      const fetched = await entity.api.list(entityQuery || {});
+      const fetched = await entity.api.list(
+        entityQuery || {},
+        dispatch,
+        getState,
+      );
       // for now at least paginated endpoints have a 'data' property that
       // contains the actual entries, if that is on the response we should
       // use that as the 'results'

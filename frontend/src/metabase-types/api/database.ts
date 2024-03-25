@@ -107,7 +107,16 @@ export interface SavedQuestionDatabase {
   is_saved_questions: true;
 }
 
-export interface DatabaseResult {
+export interface DatabaseListInput {
+  include?: "table";
+  saved?: boolean;
+  include_editable_data_model?: boolean;
+  exclude_uneditable_details?: boolean;
+  include_only_uploadable?: boolean;
+  include_analytics?: boolean;
+}
+
+export interface DatabaseListResult {
   data: Database[];
   total: number;
 }

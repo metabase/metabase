@@ -1,14 +1,19 @@
-import type { DatabaseId, DatabaseResult } from "metabase-types/api";
+import type {
+  DatabaseId,
+  DatabaseListInput,
+  DatabaseListResult,
+} from "metabase-types/api";
 
 import { Api } from "./api";
 import { FIELD_VALUES_TAG } from "./tags";
 
 export const databaseApi = Api.injectEndpoints({
   endpoints: builder => ({
-    listDatabases: builder.query<DatabaseResult, void>({
-      query: () => ({
+    getDatabases: builder.query<DatabaseListResult, DatabaseListInput | void>({
+      query: input => ({
         method: "GET",
         url: "/api/database",
+        body: input,
       }),
     }),
     rescanDatabaseFieldValues: builder.mutation<void, DatabaseId>({
@@ -29,7 +34,7 @@ export const databaseApi = Api.injectEndpoints({
 });
 
 export const {
-  useListDatabasesQuery,
+  useGetDatabasesQuery,
   useRescanDatabaseFieldValuesMutation,
   useDiscardDatabaseFieldValuesMutation,
 } = databaseApi;
