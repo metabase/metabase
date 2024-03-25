@@ -20,7 +20,7 @@ interface Props {
   value: TableId | null;
 }
 
-export const NotebookDataPickerModal = ({
+export const DataPickerModal = ({
   options = defaultOptions,
   title = t`Pick your starting data`,
   value,

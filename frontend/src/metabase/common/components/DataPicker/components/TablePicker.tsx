@@ -2,8 +2,6 @@ import type { Ref } from "react";
 import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 import { t } from "ttag";
 
-import { checkNotNull } from "metabase/lib/types";
-
 import {
   NestedItemPicker,
   type EntityPickerModalOptions,
@@ -17,9 +15,8 @@ import type {
 } from "../types";
 import { generateKey, isFolder } from "../utils";
 
-import { NotebookDataItemPickerResolver } from "./NotebookDataItemPickerResolver";
+import { DataPickerListResolver } from "./DataPickerListResolver";
 // import { getCollectionIdPath, isFolder } from "./utils";
-
 
 const defaultOptions: EntityPickerModalOptions = {};
 
@@ -108,7 +105,7 @@ export const TablePicker = forwardRef(function TablePicker(
       generateKey={generateKey}
       isFolder={isFolder}
       itemName={t`table`}
-      listResolver={NotebookDataItemPickerResolver}
+      listResolver={DataPickerListResolver}
       options={options}
       path={path}
       onFolderSelect={onFolderSelect}

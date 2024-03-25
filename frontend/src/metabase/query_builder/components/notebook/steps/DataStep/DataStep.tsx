@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { NotebookDataPickerItem } from "metabase/common/components/DataPicker";
+import { DataPickerModal } from "metabase/common/components/DataPicker";
 import { FieldPicker } from "metabase/common/components/FieldPicker";
-import type { NotebookDataPickerItem } from "metabase/common/components/NotebookDataPicker";
-import { NotebookDataPickerModal } from "metabase/common/components/NotebookDataPicker";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -86,7 +86,7 @@ export const DataStep = ({
           </DataStepCell>
 
           {isDataPickerOpen && (
-            <NotebookDataPickerModal
+            <DataPickerModal
               value={tableId} // TODO
               onChange={(item: NotebookDataPickerItem) => {
                 const tableId =

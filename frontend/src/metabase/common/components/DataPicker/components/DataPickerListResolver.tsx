@@ -5,7 +5,7 @@ import { DatabaseList } from "./DatabaseList";
 import { SchemaList } from "./SchemaList";
 import { TableList } from "./TableList";
 
-export const NotebookDataItemPickerResolver = ({
+export const DataPickerListResolver = ({
   isCurrentLevel,
   isFolder,
   model,
