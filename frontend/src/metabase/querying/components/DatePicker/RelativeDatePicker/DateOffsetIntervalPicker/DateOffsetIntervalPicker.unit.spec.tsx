@@ -1,4 +1,4 @@
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
@@ -18,6 +18,10 @@ function getDefaultValue(
     offsetUnit: "day",
   };
 }
+
+const userEvent = _userEvent.setup({
+  advanceTimers: jest.advanceTimersByTime,
+});
 
 interface SetupOpts {
   value: DateOffsetIntervalValue;

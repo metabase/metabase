@@ -1,4 +1,4 @@
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
@@ -35,6 +35,10 @@ interface SetupOpts {
   column?: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
 }
+
+const userEvent = _userEvent.setup({
+  advanceTimers: jest.advanceTimersByTime,
+});
 
 function setup({
   query = createQuery(),

@@ -1,5 +1,3 @@
-import userEvent from "@testing-library/user-event";
-
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getNextId } from "__support__/utils";
@@ -104,16 +102,12 @@ describe("DatabaseTablesPane", () => {
  * Clicking the element allows us to detect interactiveness (being enabled/disabled) with certainty.
  */
 function expectToBeDisabled(element: Element) {
-  expect(() => {
-    userEvent.click(element);
-  }).toThrow();
+  expect(element).toHaveAttribute("data-disabled", "true");
 }
 
 /**
  * @see expectToBeDisabled
  */
 function expectToBeEnabled(element: Element) {
-  expect(() => {
-    userEvent.click(element);
-  }).not.toThrow();
+  expect(element).toHaveAttribute("data-disabled", "false");
 }

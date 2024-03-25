@@ -1,4 +1,4 @@
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
@@ -15,6 +15,10 @@ const DEFAULT_VALUE: RelativeDatePickerValue = {
 interface SetupOpts {
   value?: RelativeDatePickerValue;
 }
+
+const userEvent = _userEvent.setup({
+  advanceTimers: jest.advanceTimersByTime,
+});
 
 function setup({ value = DEFAULT_VALUE }: SetupOpts = {}) {
   const onChange = jest.fn();

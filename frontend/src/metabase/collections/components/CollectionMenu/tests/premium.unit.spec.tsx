@@ -98,7 +98,7 @@ describe("CollectionMenu", () => {
     ).toBeInTheDocument();
   });
 
-  it("should not be able to make the collection official if it's a personal collection child", async () => {
+  it("should be able to make the collection official if even it's a personal collection child", async () => {
     const collection = createMockCollection({
       can_write: true,
     });
@@ -109,8 +109,6 @@ describe("CollectionMenu", () => {
     });
 
     await userEvent.click(getIcon("ellipsis"));
-    expect(
-      screen.queryByText("Make collection official"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText("Make collection official")).toBeInTheDocument();
   });
 });

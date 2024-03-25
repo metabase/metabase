@@ -1,4 +1,4 @@
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 
@@ -12,6 +12,10 @@ interface SetupOpts {
   availableOperators?: ReadonlyArray<DatePickerOperator>;
   isNew?: boolean;
 }
+
+const userEvent = _userEvent.setup({
+  advanceTimers: jest.advanceTimersByTime,
+});
 
 function setup({
   value,

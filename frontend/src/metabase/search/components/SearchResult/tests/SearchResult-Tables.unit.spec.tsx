@@ -4,6 +4,7 @@ import {
   setupDatabaseEndpoints,
   setupTableEndpoints,
   setupUsersEndpoints,
+  setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { SearchResult } from "metabase/search/components/SearchResult";
@@ -20,12 +21,15 @@ interface SetupOpts {
   initial_sync_status: InitialSyncStatus;
 }
 
+const USER = createMockUser();
+
 const setup = (setupOpts: SetupOpts) => {
   const TEST_TABLE = createMockTable(setupOpts);
   const TEST_DATABASE = createMockDatabase();
   setupTableEndpoints(TEST_TABLE);
   setupDatabaseEndpoints(TEST_DATABASE);
-  setupUsersEndpoints([createMockUser()]);
+  setupUsersEndpoints([USER]);
+  setupUserRecipientsEndpoint({ users: [USER] });
   const result = createWrappedSearchResult({
     model: "table",
     table_id: TEST_TABLE.id,

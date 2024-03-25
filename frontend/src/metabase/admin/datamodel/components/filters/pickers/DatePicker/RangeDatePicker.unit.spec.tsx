@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { BetweenPicker } from "./RangeDatePicker";
@@ -12,6 +12,10 @@ const TestBetweenPicker = ({ initialFilter }: TestBetweenPickerProps) => {
   const [filter, setFilter] = useState(initialFilter);
   return <BetweenPicker filter={filter} onFilterChange={setFilter} />;
 };
+
+const userEvent = _userEvent.setup({
+  advanceTimers: jest.advanceTimersByTime,
+});
 
 describe("BetweenPicker", () => {
   const field = ["field", 10, null];
