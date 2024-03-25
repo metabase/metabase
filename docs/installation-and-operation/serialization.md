@@ -6,7 +6,7 @@ redirect_from:
 
 # Serialization
 
-{% include plans-blockquote.html feature="Serialization" self-hosted-only="true" %}
+{% include plans-blockquote.html feature="Serialization" %}
 
 Once you really get rolling with Metabase, it's often the case that you'll have more than one Metabase instance spun up. You might have a couple of testing or development instances and a few production ones, or maybe you have a separate Metabase per office or region.
 
