@@ -2,14 +2,14 @@ import type { Ref } from "react";
 import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 import { t } from "ttag";
 
+import { checkNotNull } from "metabase/lib/types";
+
 import {
   NestedItemPicker,
   type EntityPickerModalOptions,
-  type PickerState,
 } from "../../EntityPicker";
 import type {
   NotebookDataPickerItem,
-  NotebookDataPickerQuery,
   NotebookDataPickerValueItem,
   PathEntry,
   Value,
@@ -37,18 +37,20 @@ interface Props {
 }
 
 const getFolderPath = (
-  path: PathEntry,
+  path: PathEntry<NotebookDataPickerFolderItem["model"]>,
   folder: NotebookDataPickerItem,
-): PathEntry => {
+): PathEntry<NotebookDataPickerFolderItem["model"]> => {
   const [root, database, schema] = path;
 
   if (folder.model === "database") {
     return [
       root,
       {
-        model: "schema",
         selectedItem: folder,
-        query: { dbId: folder.id },
+        model: "schema",
+        query: {
+          dbId: folder.id,
+        },
       },
     ];
   }
@@ -56,23 +58,24 @@ const getFolderPath = (
   if (folder.model === "schema") {
     return [
       root,
-      schema,
+      database,
       {
         model: "table",
         selectedItem: folder,
-        query: {},
+        query: {
+          dbId: checkNotNull(database.selectedItem?.id),
+        },
       },
     ];
   }
 
   return [
+    root,
     database,
     schema,
     {
       selectedItem: folder,
-      model: folder.model,
-      query: {},
-      // query:
+      model: "", // TODO if there is no query there's no model. // TODO: rename model to queryModel or queryModels
     },
   ];
 };
@@ -105,42 +108,6 @@ export const TablePicker = forwardRef(function TablePicker(
     }),
     [onFolderSelect],
   );
-
-  // useDeepCompareEffect(
-  //   function setInitialPath() {
-  //     if (currentCollection?.id) {
-  //       const newPath = getStateFromIdPath({
-  //         idPath: getCollectionIdPath(
-  //           {
-  //             id: currentCollection.id,
-  //             location: currentCollection.location,
-  //             is_personal: currentCollection.is_personal,
-  //           },
-  //           userPersonalCollectionId,
-  //         ),
-  //         namespace: options.namespace,
-  //       });
-  //       setPath(newPath);
-
-  //       if (currentCollection.can_write) {
-  //         // start with the current item selected if we can
-  //         onItemSelect({
-  //           ...currentCollection,
-  //           model: "collection",
-  //         });
-  //       }
-  //     }
-  //   },
-  //   [currentCollection, options.namespace, userPersonalCollectionId],
-  // );
-
-  // if (error) {
-  //   <LoadingAndErrorWrapper error={error} />;
-  // }
-
-  // if (isLoading) {
-  //   return <LoadingSpnner />;
-  // }
 
   return (
     <NestedItemPicker

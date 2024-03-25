@@ -32,7 +32,7 @@ export const SchemaList = ({
 
   const items: NotebookDataPickerItem[] = schemas.map(table => ({
     id: table.id,
-    model: "table",
+    model: "schema",
     name: table.displayName() ?? table.name,
   }));
 
