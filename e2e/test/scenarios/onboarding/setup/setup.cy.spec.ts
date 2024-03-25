@@ -8,6 +8,7 @@ import {
   expectNoBadSnowplowEvents,
   isEE,
   main,
+  popover,
   resetSnowplow,
   restore,
 } from "e2e/support/helpers";
@@ -319,20 +320,24 @@ describe("scenarios > setup", () => {
 
     cy.location("pathname").should("eq", "/");
 
-    // main().findByText("Embed Metabase in your app").should("exist");
+    main()
+      .findByText("Get started with Embedding Metabase in your app")
+      .should("exist");
 
-    // main()
-    //   .findByRole("link", { name: "Learn more" })
-    //   .should("have.attr", "href")
-    //   .and(
-    //     "match",
-    //     /https:\/\/www.metabase.com\/docs\/[^\/]*\/embedding\/start\.html\?utm_media=embed-minimal-homepage/,
-    //   );
+    // should persist page loads
+    cy.reload();
 
-    // cy.reload();
+    main()
+      .findByText("Get started with Embedding Metabase in your app")
+      .should("exist");
 
-    // // should only show up once
-    // main().findByText("Embed Metabase in your app").should("not.exist");
+    main().findByText("Hide these").realHover();
+
+    popover().findByText("Embedding done, all good").click();
+
+    main()
+      .findByText("Get started with Embedding Metabase in your app")
+      .should("not.exist");
   });
 });
 
