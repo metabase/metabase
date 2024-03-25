@@ -93,14 +93,14 @@ const MetadataTableColumn = ({
               <div className={cx(CS.flex, CS.flexAuto)}>
                 <div className={cx(CS.pl1, CS.flexAuto)}>
                   <FieldVisibilityPicker
-                    className="block"
+                    className={CS.block}
                     field={field}
                     onUpdateField={onUpdateField}
                   />
                 </div>
                 <div className={cx(CS.flexAuto, CS.px1)}>
                   <SemanticTypeAndTargetPicker
-                    className="block"
+                    className={CS.block}
                     field={field}
                     idFields={idFields}
                     onUpdateField={onUpdateField}

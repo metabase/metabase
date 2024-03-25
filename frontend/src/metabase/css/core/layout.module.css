@@ -25,7 +25,6 @@
 }
 
 /* display utilities */
-:global(.block),
 .block {
   display: block;
 }

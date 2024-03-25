@@ -144,7 +144,7 @@ function ProfileLink({ adminItems, onLogout }) {
                 CS.borderTop,
               )}
             >
-              <span className="block">
+              <span className={CS.block}>
                 {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows on OSS instance */}
                 <span className="text-bold">Metabase</span>{" "}
                 {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows on OSS instance */}
