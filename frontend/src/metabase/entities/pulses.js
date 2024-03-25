@@ -10,6 +10,9 @@ import { PulseApi } from "metabase/services";
 
 export const UNSUBSCRIBE = "metabase/entities/pulses/unsubscribe";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Pulses = createEntity({
   name: "pulses",
   nameOne: "pulse",

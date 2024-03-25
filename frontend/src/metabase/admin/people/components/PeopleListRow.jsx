@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
@@ -7,6 +8,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import UserAvatar from "metabase/components/UserAvatar";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -48,7 +50,7 @@ const PeopleListRow = ({
 
   return (
     <tr key={user.id}>
-      <td className="flex align-center">
+      <td className={cx(CS.flex, CS.alignCenter)}>
         <span className="text-white inline-block">
           <UserAvatar
             bg={user.is_superuser ? color("accent2") : color("brand")}

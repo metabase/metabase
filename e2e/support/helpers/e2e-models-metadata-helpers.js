@@ -41,7 +41,7 @@ export function setColumnType(oldType, newType) {
 
 export function mapColumnTo({ table, column } = {}) {
   cy.findByText("Database column this maps to")
-    .closest(".Form-field")
+    .closest("[data-testid='form-field']")
     .findByTestId("select-button")
     .click({ force: true });
 

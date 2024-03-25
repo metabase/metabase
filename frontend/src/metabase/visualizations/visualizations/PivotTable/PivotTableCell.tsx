@@ -4,6 +4,7 @@ import type { ControlPosition, DraggableBounds } from "react-draggable";
 import Draggable from "react-draggable";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import CS from "metabase/css/core/index.css";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import { PivotTableCell, ResizeHandle } from "./PivotTable.styled";
@@ -80,9 +81,13 @@ export function Cell({
       onClick={onClick}
     >
       <>
-        <div className={cx("px1 flex align-center", { "justify-end": isBody })}>
+        <div
+          className={cx(CS.px1, CS.flex, CS.alignCenter, {
+            [CS.justifyEnd]: isBody,
+          })}
+        >
           <Ellipsified showTooltip={showTooltip}>{value}</Ellipsified>
-          {icon && <div className="pl1">{icon}</div>}
+          {icon && <div className={CS.pl1}>{icon}</div>}
         </div>
         {!!onResize && (
           <Draggable
@@ -208,7 +213,7 @@ export const BodyCell = ({
   showTooltip = true,
 }: BodyCellProps) => {
   return (
-    <div style={style} className="flex">
+    <div style={style} className={CS.flex}>
       {rowSection.map(
         ({ value, isSubtotal, clicked, backgroundColor }, index) => (
           <Cell

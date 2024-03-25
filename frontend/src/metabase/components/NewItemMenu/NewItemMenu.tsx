@@ -141,8 +141,8 @@ const NewItemMenu = ({
     collectionId,
     onCloseNavbar,
     hasDatabaseWithJsonEngine,
-    lastUsedDatabaseId,
     dispatch,
+    lastUsedDatabaseId,
   ]);
 
   return (

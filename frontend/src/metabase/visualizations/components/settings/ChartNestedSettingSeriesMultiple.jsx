@@ -43,10 +43,10 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
                   CS.pt2,
                   CS.mt2,
                   CS.borderTop,
-                  "align-self-stretch",
+                  CS.alignSelfStretch,
                 )}
               >
-                <div className="flex align-center">
+                <div className={cx(CS.flex, CS.alignCenter)}>
                   <ColorSelector
                     value={settings.color}
                     colors={getAccentColors()}
@@ -55,7 +55,7 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
                     }
                   />
                   <SeriesNameInput
-                    className="flex-full ml1 align-self-stretch"
+                    className={cx(CS.flexFull, CS.ml1, CS.alignSelfStretch)}
                     // set vertical padding to 0 and use align-self-stretch to match siblings
                     style={{ paddingTop: 0, paddingBottom: 0 }}
                     aria-label="series-name-input"

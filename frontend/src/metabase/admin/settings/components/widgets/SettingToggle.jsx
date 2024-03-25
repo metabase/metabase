@@ -1,8 +1,10 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { t } from "ttag";
 
 import Toggle from "metabase/core/components/Toggle";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 
 const SettingToggle = ({
   disabled,
@@ -15,7 +17,7 @@ const SettingToggle = ({
   const value = setting.value == null ? setting.default : setting.value;
   const on = value === true || value === "true";
   return (
-    <div className="flex align-center pt1">
+    <div className={cx(CS.flex, CS.alignCenter, CS.pt1)}>
       <Tooltip tooltip={tooltip} isEnabled={!!tooltip}>
         <Toggle
           id={id}
@@ -25,7 +27,9 @@ const SettingToggle = ({
         />
       </Tooltip>
       {!hideLabel && (
-        <span className="text-bold mx1">{on ? t`Enabled` : t`Disabled`}</span>
+        <span className={cx(CS.textBold, CS.mx1)}>
+          {on ? t`Enabled` : t`Disabled`}
+        </span>
       )}
     </div>
   );

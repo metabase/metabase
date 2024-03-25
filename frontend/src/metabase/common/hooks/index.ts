@@ -8,7 +8,6 @@ export * from "./use-database-candidate-list-query";
 export * from "./use-database-id-field-list-query";
 export * from "./use-database-list-query";
 export * from "./use-database-query";
-export * from "./use-field-values-query";
 export * from "./use-group-list-query";
 export * from "./use-metric-list-query";
 export * from "./use-metric-query";

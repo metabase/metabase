@@ -314,9 +314,9 @@ class View extends Component {
         <TimeseriesChrome
           question={this.props.question}
           updateQuestion={this.props.updateQuestion}
-          className="flex-no-shrink"
+          className={CS.flexNoShrink}
         />
-        <ViewFooter {...this.props} className="flex-no-shrink" />
+        <ViewFooter {...this.props} className={CS.flexNoShrink} />
       </QueryBuilderMain>
     );
   };
