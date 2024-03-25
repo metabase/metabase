@@ -129,8 +129,8 @@
   "Create `new-tables` for database, or if they already exist, mark them as active."
   [database :- i/DatabaseInstance
    new-tables :- [:set i/DatabaseMetadataTable]]
-  (log/info "Found new tables:"
-            (for [table new-tables]
+  (doseq [table new-tables]
+    (log/info "Found new table:"
               (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [table new-tables]
     (create-or-reactivate-table! database table)))
