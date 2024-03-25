@@ -932,6 +932,7 @@
          (map #(update-vals % (comp keyword lower-case-en)))
          (remove (fn [{:keys [table_name]}]
                    (or (#{:databasechangelog :databasechangeloglock} table_name)
+                       ;; excludes views
                        (str/starts-with? (name table_name) "v_"))))
          (map #(update % :is_nullable (fn [x] (= :yes x))))
          (map (juxt :table_name :column_name :is_nullable)))))
