@@ -114,7 +114,7 @@ class AutomaticDashboardAppInner extends Component {
 
     return (
       <div
-        className={cx("relative AutomaticDashboard", {
+        className={cx(CS.relative, "AutomaticDashboard", {
           "AutomaticDashboard--withSidebar": hasSidebar,
         })}
       >

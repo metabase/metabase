@@ -61,7 +61,15 @@ export const CodeSample = ({
           ) : null}
         </div>
       )}
-      <div className="bordered rounded shadowed relative mt2">
+      <div
+        className={cx(
+          CS.bordered,
+          CS.rounded,
+          CS.shadowed,
+          CS.relative,
+          CS.mt2,
+        )}
+      >
         <AceEditor
           className={CS.z1}
           value={source}

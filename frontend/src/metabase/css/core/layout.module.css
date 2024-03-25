@@ -51,7 +51,6 @@
   position: fixed;
 }
 
-:global(.relative),
 .relative {
   position: relative;
 }
