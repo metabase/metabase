@@ -30,13 +30,6 @@ export const EmbedHomepage = () => {
     getDocsUrl(state, { page: "embedding/static-embedding" }),
   );
 
-  if (
-    embeddingAutoEnabled === undefined ||
-    licenseActiveAtSetup === undefined
-  ) {
-    return null;
-  }
-
   return (
     <EmbedHomepageView
       exampleDashboardId={exampleDashboardId}
