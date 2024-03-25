@@ -221,8 +221,11 @@ export function createEntity(def) {
       ),
       withEntityActionDecorators("fetch"),
     )(
-      entityQuery => async (dispatch, getState) =>
-        entity.normalize(await entity.api.get(entityQuery, dispatch, getState)),
+      (entityQuery, options = {}) =>
+        async (dispatch, getState) =>
+          entity.normalize(
+            await entity.api.get(entityQuery, options, dispatch, getState),
+          ),
     ),
 
     create: compose(
