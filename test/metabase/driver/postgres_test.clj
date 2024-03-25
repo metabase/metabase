@@ -1343,7 +1343,6 @@
              (is (= (into #{}
                           (map #(merge {:role   nil
                                         :schema "dotted.schema"
-                                        :table  "dotted.materialized_view"
                                         :update false
                                         :select false
                                         :insert false
