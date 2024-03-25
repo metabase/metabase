@@ -4,7 +4,7 @@ import { Component } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { useListApiKeyQuery } from "metabase/api";
+import { useGetApiKeysQuery } from "metabase/api";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
@@ -277,7 +277,7 @@ function GroupsTable({
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
 }) {
-  const { isLoading, data: apiKeys } = useListApiKeyQuery();
+  const { isLoading, data: apiKeys } = useGetApiKeysQuery();
 
   if (isLoading) {
     return <LoadingAndErrorWrapper loading={isLoading} />;
