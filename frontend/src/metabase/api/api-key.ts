@@ -1,9 +1,9 @@
 import type {
   ApiKey,
-  CreateApiKeyInput,
+  CreateApiKeyRequest,
   CreateApiKeyResponse,
   RegenerateApiKeyResponse,
-  UpdateApiKeyInput,
+  UpdateApiKeyRequest,
   UpdateApiKeyResponse,
 } from "metabase-types/api/admin";
 
@@ -19,7 +19,7 @@ export const apiKeyApi = Api.injectEndpoints({
     countApiKey: builder.query<number, void>({
       query: () => `/api/api-key/count`,
     }),
-    createApiKey: builder.mutation<CreateApiKeyResponse, CreateApiKeyInput>({
+    createApiKey: builder.mutation<CreateApiKeyResponse, CreateApiKeyRequest>({
       query: input => ({
         method: "POST",
         url: `/api/api-key`,
@@ -27,7 +27,7 @@ export const apiKeyApi = Api.injectEndpoints({
       }),
       invalidatesTags: [API_KEY_TAG],
     }),
-    updateApiKey: builder.mutation<UpdateApiKeyResponse, UpdateApiKeyInput>({
+    updateApiKey: builder.mutation<UpdateApiKeyResponse, UpdateApiKeyRequest>({
       query: ({ id, ...body }) => ({
         method: "PUT",
         url: `/api/api-key/${id}`,

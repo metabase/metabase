@@ -90,11 +90,18 @@ export interface DatabaseQuery {
   exclude_uneditable_details?: boolean;
 }
 
-export interface DatabaseListQuery {
-  include?: "tables";
+export interface DatabaseListRequest {
+  include?: "table";
   saved?: boolean;
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;
+  include_only_uploadable?: boolean;
+  include_analytics?: boolean;
+}
+
+export interface DatabaseListResponse {
+  data: Database[];
+  total: number;
 }
 
 export interface DatabaseIdFieldListQuery {
@@ -105,18 +112,4 @@ export interface SavedQuestionDatabase {
   id: -1337;
   name: "Saved Questions";
   is_saved_questions: true;
-}
-
-export interface DatabaseListInput {
-  include?: "table";
-  saved?: boolean;
-  include_editable_data_model?: boolean;
-  exclude_uneditable_details?: boolean;
-  include_only_uploadable?: boolean;
-  include_analytics?: boolean;
-}
-
-export interface DatabaseListResult {
-  data: Database[];
-  total: number;
 }

@@ -15,7 +15,7 @@ export type ApiKey = {
   };
 };
 
-export type CreateApiKeyInput = {
+export type CreateApiKeyRequest = {
   name: string;
   group_id: string;
 };
@@ -24,7 +24,7 @@ export type CreateApiKeyResponse = {
   unmasked_key: string;
 };
 
-export type UpdateApiKeyInput = {
+export type UpdateApiKeyRequest = {
   id: number;
   group_id: string;
   name: string;

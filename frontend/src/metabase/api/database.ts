@@ -1,7 +1,7 @@
 import type {
   DatabaseId,
   DatabaseListInput,
-  DatabaseListResult,
+  DatabaseListResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -9,13 +9,15 @@ import { FIELD_VALUES_TAG } from "./tags";
 
 export const databaseApi = Api.injectEndpoints({
   endpoints: builder => ({
-    getDatabases: builder.query<DatabaseListResult, DatabaseListInput | void>({
-      query: input => ({
-        method: "GET",
-        url: "/api/database",
-        body: input,
-      }),
-    }),
+    getDatabases: builder.query<DatabaseListResponse, DatabaseListInput | void>(
+      {
+        query: input => ({
+          method: "GET",
+          url: "/api/database",
+          body: input,
+        }),
+      },
+    ),
     rescanDatabaseFieldValues: builder.mutation<void, DatabaseId>({
       query: databaseId => ({
         method: "POST",
