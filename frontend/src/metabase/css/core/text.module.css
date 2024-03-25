@@ -55,8 +55,7 @@
   line-height: 1.5em;
 }
 
-:global(.text-spaced),
-.text-spaced {
+.textSpaced {
   line-height: 1.5em;
 }
 

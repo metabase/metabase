@@ -197,7 +197,12 @@ export function DetailsTable({
                   value={columnValue}
                   isColumnName={false}
                   settings={settings}
-                  className={cx(CS.textBold, "text-dark text-spaced text-wrap")}
+                  className={cx(
+                    CS.textBold,
+                    "text-dark",
+                    CS.textSpaced,
+                    "text-wrap",
+                  )}
                   onVisualizationClick={onVisualizationClick}
                   visualizationIsClickable={visualizationIsClickable}
                 />
