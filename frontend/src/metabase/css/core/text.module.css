@@ -8,16 +8,14 @@
   text-align: center;
 }
 
-.text-left {
+.textLeft {
   text-align: left;
 }
 
-.text-right {
+.textRight {
   text-align: right;
 }
 
-:global(.text-uppercase),
-.text-uppercase,
 .textUppercase {
   text-transform: uppercase;
   letter-spacing: 0.06em;

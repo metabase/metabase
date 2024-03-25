@@ -62,7 +62,7 @@ const AttributeMappingEditor = ({
       shouldUseSavedQuestion ? t`Pick a parameter` : t`Pick a column`
     }
     valueHeader={
-      <div className="text-uppercase text-small text-grey-4">
+      <div className={cx(CS.textUppercase, "text-small text-grey-4")}>
         {shouldUseSavedQuestion ? t`Parameter or variable` : t`Column`}
       </div>
     }

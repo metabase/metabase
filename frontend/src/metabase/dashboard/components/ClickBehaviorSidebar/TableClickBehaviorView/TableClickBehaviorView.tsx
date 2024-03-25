@@ -1,7 +1,9 @@
+import cx from "classnames";
 import { useMemo, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { hasActionsMenu } from "metabase/lib/click-behavior";
 import type {
   QuestionDashboardCard,
@@ -84,7 +86,7 @@ export function TableClickBehaviorView({
       const [clickBehaviorType, columnsWithClickBehavior] = group;
       return (
         <div key={clickBehaviorType} className="mb2 px4">
-          <h5 className="text-uppercase text-medium my1">
+          <h5 className={cx(CS.textUppercase, "text-medium my1")}>
             {explainClickBehaviorType(clickBehaviorType, dashcard)}
           </h5>
           {columnsWithClickBehavior.map(renderColumn)}
