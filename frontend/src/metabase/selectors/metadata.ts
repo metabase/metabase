@@ -1,5 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
+import { normalize } from "normalizr";
 
+import { databaseApi } from "metabase/api";
+import { DatabaseSchema } from "metabase/schema";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
 import Field from "metabase-lib/v1/metadata/Field";
@@ -38,7 +41,23 @@ type FieldSelectorOpts = {
 
 export type MetadataSelectorOpts = TableSelectorOpts & FieldSelectorOpts;
 
-const getNormalizedDatabases = (state: State) => state.entities.databases;
+const getApiNormalizedDatabases = createSelector(
+  (state: State) => databaseApi.endpoints.listDatabases.select()(state as any),
+  ({ data: databases = [] }): Record<string, NormalizedDatabase> => {
+    const { entities } = normalize(databases, [DatabaseSchema]);
+    return entities.databases as Record<string, NormalizedDatabase>;
+  },
+);
+
+const getNormalizedDatabases = createSelector(
+  (state: State) => getApiNormalizedDatabases(state),
+  (state: State) => state.entities.databases,
+  (apiDatabases, entityFrameworkDatabases) => ({
+    ...apiDatabases,
+    ...entityFrameworkDatabases,
+  }),
+);
+
 const getNormalizedSchemas = (state: State) => state.entities.schemas;
 
 const getNormalizedTablesUnfiltered = (state: State) => state.entities.tables;

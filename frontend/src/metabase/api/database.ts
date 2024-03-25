@@ -1,10 +1,16 @@
-import type { DatabaseId } from "metabase-types/api";
+import type { Database, DatabaseId } from "metabase-types/api";
 
 import { Api } from "./api";
 import { FIELD_VALUES_TAG } from "./tags";
 
 export const databaseApi = Api.injectEndpoints({
   endpoints: builder => ({
+    listDatabases: builder.query<Database[], void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/database",
+      }),
+    }),
     rescanDatabaseFieldValues: builder.mutation<void, DatabaseId>({
       query: databaseId => ({
         method: "POST",
