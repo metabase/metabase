@@ -121,7 +121,7 @@
 }
 
 .guideEditHeader {
-  composes: text-body my4 from "style";
+  composes: textBody my4 from "style";
   width: 100%;
   max-width: 550px;
   color: var(--color-text-dark);
@@ -152,7 +152,7 @@
 }
 
 .guideEditTitle {
-  composes: text-body textBold from "style";
+  composes: textBody textBold from "style";
   display: block;
   color: var(--title-color);
   font-size: 16px;
@@ -160,7 +160,7 @@
 }
 
 .guideEditSubtitle {
-  composes: text-body from "style";
+  composes: textBody from "style";
   color: var(--color-text-light);
   font-size: 16px;
   max-width: 700px;

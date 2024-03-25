@@ -35,14 +35,12 @@
 
 /* text style */
 
-:global(.text-italic),
 .textItalic {
   font-style: italic;
 }
 
 /* larger text size used for descriptions  */
-:global(.text-body),
-.text-body {
+.textBody {
   font-size: 1.286em;
   line-height: 1.457em;
   color: var(--color-text-medium); /* TODO - is this bad? */
