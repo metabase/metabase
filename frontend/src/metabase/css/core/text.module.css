@@ -95,7 +95,7 @@
   font-family: Monaco, monospace;
 }
 
-:global(.text-pre-wrap) {
+.textPreWrap {
   white-space: pre-wrap;
 }
 
