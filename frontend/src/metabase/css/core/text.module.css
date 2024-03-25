@@ -99,7 +99,7 @@
   white-space: pre-wrap;
 }
 
-:global(.text-measure) {
+.textMeasure {
   max-width: 620px;
 }
 
