@@ -1,14 +1,17 @@
 import { useMemo } from "react";
 
+import { updateSetting } from "metabase/admin/settings/settings";
 import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isEEBuild } from "metabase/lib/utils";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 
 import { EmbedHomepageView } from "./EmbedHomepageView";
+import type { EmbedHomepageDismissReason } from "./types";
 
 export const EmbedHomepage = () => {
+  const dispatch = useDispatch();
   const embeddingAutoEnabled = useSetting("setup-embedding-autoenabled");
   const licenseActiveAtSetup = useSetting("setup-license-active-at-setup");
   const exampleDashboardId = undefined; // will come from a setting
@@ -47,8 +50,13 @@ export const EmbedHomepage = () => {
     return "static";
   }, [plan]);
 
+  const onDismiss = (reason: EmbedHomepageDismissReason) => {
+    dispatch(updateSetting({ key: "embedding-homepage", value: reason }));
+  };
+
   return (
     <EmbedHomepageView
+      onDismiss={onDismiss}
       exampleDashboardId={exampleDashboardId}
       embeddingAutoEnabled={embeddingAutoEnabled}
       licenseActiveAtSetup={licenseActiveAtSetup}

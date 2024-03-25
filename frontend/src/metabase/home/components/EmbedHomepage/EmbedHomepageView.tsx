@@ -2,16 +2,27 @@ import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { Anchor, Card, Group, Stack, Tabs, Text, Title } from "metabase/ui";
+import {
+  Anchor,
+  Card,
+  Group,
+  Menu,
+  Stack,
+  Tabs,
+  Text,
+  Title,
+} from "metabase/ui";
 
 import { InteractiveTabContent } from "./InteractiveTabContent";
 import { StaticTabContent } from "./StaticTabContent";
+import type { EmbedHomepageDismissReason } from "./types";
 
 export type EmbedHomepageViewProps = {
   embeddingAutoEnabled: boolean;
   exampleDashboardId?: number;
   licenseActiveAtSetup: boolean;
   defaultTab: "interactive" | "static";
+  onDismiss: (reason: EmbedHomepageDismissReason) => void;
   // links
   interactiveEmbeddingQuickstartUrl: string;
   embeddingDocsUrl: string;
@@ -26,12 +37,33 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
     defaultTab,
     embeddingDocsUrl,
     analyticsDocsUrl,
+    onDismiss,
   } = props;
   return (
     <Stack maw={550}>
-      <Group>
+      <Group position="apart">
         {/*  eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
         <Text fw="bold">{t`Get started with Embedding Metabase in your app`}</Text>
+        <Menu trigger="hover">
+          <Menu.Target>
+            <Text
+              fw="bold"
+              color="brand"
+              style={{ cursor: "default" }}
+            >{t`Hide these`}</Text>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item
+              onClick={() => onDismiss("dismissed-done")}
+            >{t`Embedding done, all good`}</Menu.Item>
+            <Menu.Item
+              onClick={() => onDismiss("dismissed-run-into-issues")}
+            >{t`I ran into issues`}</Menu.Item>
+            <Menu.Item
+              onClick={() => onDismiss("dismissed-run-into-issues")}
+            >{t`I'm not interested right now`}</Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
       </Group>
       <Card px="xl" py="lg">
         {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}

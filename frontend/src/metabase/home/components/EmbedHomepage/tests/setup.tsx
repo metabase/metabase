@@ -1,7 +1,17 @@
+import fetchMock from "fetch-mock";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import type { Settings, TokenFeatures } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import {
+  createMockSettings,
+  createMockTokenFeatures,
+  createMockSettingDefinition,
+} from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
@@ -21,6 +31,10 @@ export async function setup({
   settings = {},
 }: SetupOpts = {}) {
   jest.clearAllMocks();
+
+  fetchMock.put("path:/api/setting/embedding-homepage", 200);
+  setupSettingsEndpoints([createMockSettingDefinition()]);
+  setupPropertiesEndpoints(createMockSettings());
 
   const state = createMockState({
     settings: createMockSettingsState({

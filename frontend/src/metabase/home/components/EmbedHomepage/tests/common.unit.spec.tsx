@@ -1,3 +1,6 @@
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
 import { screen } from "__support__/ui";
 
 import { setup } from "./setup";
@@ -45,5 +48,22 @@ describe("EmbedHomepage (OSS)", () => {
     expect(
       screen.getByText("Embedding has been automatically enabled for you"),
     ).toBeInTheDocument();
+  });
+
+  it("should set 'embedding-homepage' to 'dismissed-done' when dismissing as done", async () => {
+    setup();
+    userEvent.hover(screen.getByText("Hide these"));
+
+    userEvent.click(screen.getByText("Embedding done, all good"));
+
+    const lastCall = fetchMock.lastCall(
+      "path:/api/setting/embedding-homepage",
+      {
+        method: "PUT",
+      },
+    );
+
+    const body = await lastCall?.request?.json();
+    expect(body).toEqual({ value: "dismissed-done" });
   });
 });
