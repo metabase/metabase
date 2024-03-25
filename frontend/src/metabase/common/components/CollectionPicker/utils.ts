@@ -2,13 +2,21 @@ import { isRootCollection } from "metabase/collections/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import type {
   CollectionId,
+  CollectionItemModel,
+  CollectionListQuery,
   SearchListQuery,
   SearchModelType,
 } from "metabase-types/api";
 
-import type { PickerState, IsFolder, TypeWithModel } from "../EntityPicker";
+import type {
+  PickerState,
+  IsFolder,
+  TypeWithModel,
+  PickerStateItem,
+} from "../EntityPicker";
 
 import type { CollectionPickerItem } from "./types";
+import type { CollectionItem } from "../NotebookDataPicker";
 
 export const getCollectionIdPath = (
   collection: Pick<
@@ -95,5 +103,12 @@ export const isFolder: IsFolder<
   return item.model === "collection";
 };
 
-export const generateKey = (query?: SearchListQuery) =>
-  JSON.stringify(query ?? "root");
+export const generateKey = (
+  item: PickerStateItem<
+    CollectionItemModel,
+    CollectionItem,
+    CollectionListQuery
+  >,
+) => {
+  return JSON.stringify(item.query ?? "root");
+};

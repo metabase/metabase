@@ -1,6 +1,11 @@
 import type { IsFolder } from "../EntityPicker";
 
-import type { NotebookDataPickerItem, NotebookDataPickerQuery } from "./types";
+import type {
+  NotebookDataPickerItem,
+  NotebookDataPickerModel,
+  NotebookDataPickerQuery,
+  PathEntry,
+} from "./types";
 
 export const isFolder: IsFolder<
   NotebookDataPickerItem["id"],
@@ -14,5 +19,6 @@ export const isFolder: IsFolder<
   );
 };
 
-export const generateKey = (query?: NotebookDataPickerQuery) =>
-  JSON.stringify(query ?? "root");
+export const generateKey = (item?: PathEntry) => {
+  return [item.model, JSON.stringify(item.query ?? "root")].join("-");
+};

@@ -9,6 +9,7 @@ import type {
   PickerState,
   IsFolder,
   TypeWithModel,
+  PickerStateItem,
 } from "../../types";
 import { AutoScrollBox } from "../AutoScrollBox";
 
@@ -23,7 +24,7 @@ export interface NestedItemPickerProps<
 > {
   onFolderSelect: ({ folder }: { folder: Item }) => void;
   onItemSelect: (item: Item) => void;
-  generateKey: (query?: Query) => string;
+  generateKey: (item?: PickerStateItem<Model, Item, Query>) => string;
   itemName: string;
   options: Options;
   path: PickerState<Model, Item, Query>;
@@ -46,6 +47,8 @@ export function NestedItemPicker<
   isFolder,
   listResolver: ListResolver,
 }: NestedItemPickerProps<Id, Model, Item, Query, Options>) {
+  const lastPathItem = path.at(-1);
+
   const handleClick = (item: Item) => {
     if (isFolder(item)) {
       onFolderSelect({ folder: item });
@@ -57,7 +60,7 @@ export function NestedItemPicker<
   return (
     <AutoScrollBox
       data-testid="nested-item-picker"
-      contentHash={generateKey(path[path.length - 1].query)}
+      contentHash={generateKey(lastPathItem)}
     >
       <Flex h="100%" w="fit-content">
         {path.map((level, index) => {
@@ -65,7 +68,7 @@ export function NestedItemPicker<
 
           return (
             <ListBox
-              key={generateKey(query)}
+              key={generateKey(level)}
               data-testid={`item-picker-level-${index}`}
             >
               <ErrorBoundary>

@@ -9,6 +9,7 @@ import {
   type EntityPickerModalOptions,
 } from "../../EntityPicker";
 import type {
+  DatabaseItem,
   NotebookDataPickerItem,
   NotebookDataPickerValueItem,
   PathEntry,
@@ -19,20 +20,12 @@ import { generateKey, isFolder } from "../utilts";
 import { NotebookDataItemPickerResolver } from "./NotebookDataItemPickerResolver";
 // import { getCollectionIdPath, isFolder } from "./utils";
 
-export type TablePickerOptions = EntityPickerModalOptions & {
-  showPersonalCollections?: boolean;
-  showRootCollection?: boolean;
-  namespace?: "snippets";
-};
 
-const defaultOptions: TablePickerOptions = {
-  showPersonalCollections: false,
-  showRootCollection: false,
-};
+const defaultOptions: EntityPickerModalOptions = {};
 
 interface Props {
   initialValue: Value | null;
-  options?: TablePickerOptions;
+  options?: EntityPickerModalOptions;
   onItemSelect: (item: NotebookDataPickerValueItem) => void;
 }
 
@@ -40,7 +33,7 @@ const getFolderPath = (
   path: PathEntry<NotebookDataPickerFolderItem["model"]>,
   folder: NotebookDataPickerItem,
 ): PathEntry<NotebookDataPickerFolderItem["model"]> => {
-  const [root, database, schema] = path;
+  const [root, schemas] = path;
 
   if (folder.model === "database") {
     return [
@@ -56,35 +49,36 @@ const getFolderPath = (
   }
 
   if (folder.model === "schema") {
+    const dbId = (schemas.selectedItem as DatabaseItem).id;
+
     return [
       root,
-      database,
+      schemas,
       {
         model: "table",
         selectedItem: folder,
         query: {
-          dbId: checkNotNull(database.selectedItem?.id),
+          dbId,
         },
       },
     ];
   }
 
-  return [
-    root,
-    database,
-    schema,
-    {
-      selectedItem: folder,
-      model: "", // TODO if there is no query there's no model. // TODO: rename model to queryModel or queryModels
-    },
-  ];
+  if (
+    folder.model === "card" ||
+    folder.model === "dataset" ||
+    folder.model === "table" ||
+    folder.model === "collection"
+  ) {
+    throw new Error("Not implemented"); // TODO typing
+  }
 };
 
 export const TablePicker = forwardRef(function TablePicker(
   { onItemSelect, initialValue, options = defaultOptions }: Props,
   ref: Ref<unknown>,
 ) {
-  const [path, setPath] = useState<PathEntry>([
+  const [path, setPath] = useState<PathEntry[]>([
     {
       model: "database",
       query: { saved: false }, // saved questions are fetched in a separate tab
