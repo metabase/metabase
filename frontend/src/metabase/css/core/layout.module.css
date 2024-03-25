@@ -59,7 +59,6 @@
   position: absolute;
 }
 
-:global(.top),
 .top {
   top: 0;
 }
