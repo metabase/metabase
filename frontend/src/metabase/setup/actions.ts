@@ -240,8 +240,7 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
 
     const interestedInEmbedding =
       usageReason === "embedding" || usageReason === "both";
-    const isLicenseActive =
-      tokenFeatures && Object.values(tokenFeatures).some(Boolean);
+    const isLicenseActive = tokenFeatures && tokenFeatures["embedding"];
 
     const settingsToChange: Partial<Settings> = {};
 
