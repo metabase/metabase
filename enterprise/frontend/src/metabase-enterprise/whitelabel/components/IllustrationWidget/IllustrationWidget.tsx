@@ -11,7 +11,11 @@ import type {
   IllustrationSettingValue,
 } from "metabase-enterprise/settings/types";
 
-import { LighthouseImage, PreviewImage } from "./IllustrationWidget.styled";
+import {
+  LighthouseImage,
+  SailboatImage,
+  PreviewImage,
+} from "./IllustrationWidget.styled";
 
 export interface StringSetting {
   value: IllustrationSettingValue | null;
@@ -31,6 +35,7 @@ type IllustrationWidgetProps = {
     | "no-question-results-illustration-custom"
     | "no-search-results-illustration-custom";
   errorMessageContainerId: string;
+  defaultPreviewType: "lighthouse" | "sailboat";
 };
 
 const MB = 1024 * 1024;
@@ -45,6 +50,7 @@ export function IllustrationWidget({
   defaultIllustrationLabel,
   customIllustrationSetting,
   errorMessageContainerId,
+  defaultPreviewType,
 }: IllustrationWidgetProps) {
   const value = setting.value ?? setting.default;
   const [fileName, setFileName] = useState("");
@@ -73,7 +79,6 @@ export function IllustrationWidget({
       fileInputRef.current?.click();
     } else {
       await onChange(value);
-      await onChange("default");
     }
   }
 
@@ -132,6 +137,7 @@ export function IllustrationWidget({
           {getPreviewImage({
             value,
             customSource: settingValues[customIllustrationSetting] ?? undefined,
+            defaultPreviewType,
           })}
         </Flex>
         <Flex p="lg" w="25rem" align="center" gap="sm">
@@ -140,15 +146,15 @@ export function IllustrationWidget({
             data={data}
             value={value}
             onChange={handleChange}
-            w={isCustomIllustration && fileName ? "8.25rem" : "100%"}
+            w={isCustomIllustration ? "8.25rem" : "100%"}
             style={{
-              flexShrink: isCustomIllustration && fileName ? 0 : undefined,
+              flexShrink: isCustomIllustration ? 0 : undefined,
             }}
             error={Boolean(errorMessage)}
           />
           {isCustomIllustration && (
             <Text truncate="end" ml="auto">
-              {fileName}
+              {fileName ? fileName : t`Remove uploaded image`}
             </Text>
           )}
           {/**
@@ -193,14 +199,27 @@ async function isFileIntact(dataUri: string) {
   });
 }
 
+const PREVIEW_ELEMENTS: Record<
+  IllustrationWidgetProps["defaultPreviewType"],
+  JSX.Element
+> = {
+  lighthouse: <LighthouseImage />,
+  sailboat: <SailboatImage />,
+};
+
 interface GetPreviewImageProps {
   value: IllustrationSettingValue;
   customSource: string | undefined;
+  defaultPreviewType: IllustrationWidgetProps["defaultPreviewType"];
 }
 
-function getPreviewImage({ value, customSource }: GetPreviewImageProps) {
+function getPreviewImage({
+  value,
+  customSource,
+  defaultPreviewType,
+}: GetPreviewImageProps) {
   if (value === "default") {
-    return <LighthouseImage />;
+    return PREVIEW_ELEMENTS[defaultPreviewType];
   }
 
   if (value === "no-illustration") {

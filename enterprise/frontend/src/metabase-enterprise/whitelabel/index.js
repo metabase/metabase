@@ -26,10 +26,10 @@ import ColorSettingsWidget from "./components/ColorSettingsWidget";
 import FontFilesWidget from "./components/FontFilesWidget";
 import FontWidget from "./components/FontWidget";
 import { HelpLinkSettings } from "./components/HelpLinkSettings";
+import { IllustrationDescription } from "./components/IllustrationDescription";
 import { IllustrationWidget } from "./components/IllustrationWidget";
 import { ImageUpload } from "./components/ImageUpload";
 import { LandingPageWidget } from "./components/LandingPageWidget";
-import { LoginPageIllustrationDescription } from "./components/LoginPageIllustrationDescription";
 import LogoIcon from "./components/LogoIcon";
 import { MetabotToggleWidget } from "./components/MetabotToggleWidget";
 import {
@@ -208,16 +208,82 @@ if (hasPremiumFeature("whitelabel")) {
             key: "login-page-illustration",
             tab: "conceal-metabase",
             display_name: (
-              <LoginPageIllustrationDescription errorMessageContainerId="login-page-illustration-error-container" />
+              <IllustrationDescription
+                errorMessageContainerId="login-page-illustration-error-container"
+                type="login-page"
+              />
             ),
             description: null,
             type: "string",
             widget: IllustrationWidget,
             props: {
               defaultIllustrationLabel: t`Lighthouse`,
+              defaultPreviewType: "lighthouse",
               customIllustrationSetting: "login-page-illustration-custom",
               errorMessageContainerId:
                 "login-page-illustration-error-container",
+            },
+          },
+          {
+            key: "landing-page-illustration",
+            tab: "conceal-metabase",
+            display_name: (
+              <IllustrationDescription
+                errorMessageContainerId="landing-page-illustration-error-container"
+                type="landing-page"
+              />
+            ),
+            description: null,
+            type: "string",
+            widget: IllustrationWidget,
+            props: {
+              defaultIllustrationLabel: t`Lighthouse`,
+              defaultPreviewType: "lighthouse",
+              customIllustrationSetting: "landing-page-illustration-custom",
+              errorMessageContainerId:
+                "landing-page-illustration-error-container",
+            },
+          },
+          {
+            key: "no-question-results-illustration",
+            tab: "conceal-metabase",
+            display_name: (
+              <IllustrationDescription
+                errorMessageContainerId="no-question-results-illustration-error-container"
+                type="no-question-results"
+              />
+            ),
+            description: null,
+            type: "string",
+            widget: IllustrationWidget,
+            props: {
+              defaultIllustrationLabel: t`Sailboat`,
+              defaultPreviewType: "sailboat",
+              customIllustrationSetting:
+                "no-question-results-illustration-custom",
+              errorMessageContainerId:
+                "no-question-results-illustration-error-container",
+            },
+          },
+          {
+            key: "no-search-results-illustration",
+            tab: "conceal-metabase",
+            display_name: (
+              <IllustrationDescription
+                errorMessageContainerId="no-search-results-illustration-error-container"
+                type="no-search-results"
+              />
+            ),
+            description: null,
+            type: "string",
+            widget: IllustrationWidget,
+            props: {
+              defaultIllustrationLabel: t`Sailboat`,
+              defaultPreviewType: "sailboat",
+              customIllustrationSetting:
+                "no-search-results-illustration-custom",
+              errorMessageContainerId:
+                "no-search-results-illustration-error-container",
             },
           },
         ],
