@@ -3,6 +3,7 @@ import { jt, t } from "ttag";
 
 import IconBorder from "metabase/components/IconBorder";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import CS from "metabase/css/core/index.css";
 import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
 import { Icon } from "metabase/ui";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
@@ -113,7 +114,7 @@ function Relationship({
           </h5>
         </div>
         {fkClickable && (
-          <IconBorder className="flex-align-right">
+          <IconBorder className={CS.flexAlignRight}>
             <Icon name="chevronright" size={10} />
           </IconBorder>
         )}

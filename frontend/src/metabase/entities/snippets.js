@@ -1,5 +1,8 @@
 import { createEntity } from "metabase/lib/entities";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Snippets = createEntity({
   name: "snippets",
   nameOne: "snippet",

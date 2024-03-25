@@ -422,18 +422,18 @@ function DatasetEditor(props) {
   );
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
-  const isEmpty = !isNative
-    ? Lib.databaseID(question.query()) == null
-    : question.legacyQuery().isEmpty();
 
   const canSaveChanges =
-    !isEmpty &&
     isDirty &&
     (!isNative || !isResultDirty) &&
-    fields.every(field => field.display_name);
+    fields.every(field => field.display_name) &&
+    Lib.canSave(question.query(), question.type());
 
   const saveButtonTooltipLabel =
-    !isEmpty && isDirty && isNative && isResultDirty
+    isDirty &&
+    isNative &&
+    isResultDirty &&
+    Lib.rawNativeQuery(question.query()).length > 0
       ? t`You must run the query before you can save this model`
       : undefined;
 
@@ -523,7 +523,7 @@ function DatasetEditor(props) {
             )}
           </QueryEditorContainer>
           <TableContainer isSidebarOpen={!!sidebar}>
-            <DebouncedFrame className="flex-full" enabled>
+            <DebouncedFrame className={cx(CS.flexFull)} enabled>
               <QueryVisualization
                 {...props}
                 className={CS.spread}

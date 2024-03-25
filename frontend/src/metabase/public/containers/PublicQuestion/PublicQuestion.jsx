@@ -221,7 +221,7 @@ class PublicQuestionInner extends Component {
         setParameterValueToDefault={this.setParameterValueToDefault}
       >
         <LoadingAndErrorWrapper
-          className="flex-full"
+          className={CS.flexFull}
           loading={!result || !initialized}
           error={typeof result === "string" ? result : null}
           noWrapper

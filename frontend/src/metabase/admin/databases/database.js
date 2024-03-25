@@ -265,38 +265,6 @@ export const dismissSyncSpinner = createThunkAction(
   },
 );
 
-// rescanDatabaseFields
-export const rescanDatabaseFields = createThunkAction(
-  RESCAN_DATABASE_FIELDS,
-  function (databaseId) {
-    return async function (dispatch, getState) {
-      try {
-        const call = await MetabaseApi.db_rescan_values({ dbId: databaseId });
-        MetabaseAnalytics.trackStructEvent("Databases", "Manual Sync");
-        return call;
-      } catch (error) {
-        console.error("error syncing database", error);
-      }
-    };
-  },
-);
-
-// discardSavedFieldValues
-export const discardSavedFieldValues = createThunkAction(
-  DISCARD_SAVED_FIELD_VALUES,
-  function (databaseId) {
-    return async function (dispatch, getState) {
-      try {
-        const call = await MetabaseApi.db_discard_values({ dbId: databaseId });
-        MetabaseAnalytics.trackStructEvent("Databases", "Manual Sync");
-        return call;
-      } catch (error) {
-        console.error("error syncing database", error);
-      }
-    };
-  },
-);
-
 export const closeSyncingModal = createThunkAction(
   CLOSE_SYNCING_MODAL,
   function () {

@@ -1,8 +1,8 @@
 (ns metabase-enterprise.caching.strategies
   (:require
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.api.caching :as api.caching]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :refer [defenterprise defenterprise-schema]]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
@@ -13,18 +13,12 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- drop-internal-fields [schema]
-  (walk/prewalk
-   (fn [x]
-     (if (and (vector? x) (= (first x) :map))
-       (into [] (remove #(:internal (meta %))) x)
-       x))
-   schema))
-
 ;; Data shape
 
-(def CacheStrategy
+(defenterprise CacheStrategy
   "Schema for a caching strategy"
+  :feature :cache-granular-controls
+  []
   [:and
    [:map
     [:type [:enum :nocache :ttl :duration :schedule :query]]]
@@ -52,25 +46,6 @@
                 ^:internal
                 [:invalidated-at [:maybe some?]]]]]])
 
-(def CacheStrategyAPI
-  "Schema for a caching strategy for the API"
-  (drop-internal-fields CacheStrategy))
-
-(defn row->config
-  "Transform from how cache config is stored to how it's used/exposed in the API"
-  [row]
-  {:model    (:model row)
-   :model_id (:model_id row)
-   :strategy (assoc (:config row) :type (:strategy row))})
-
-(defn config->row
-  "Transform cache config from API form into db storage from"
-  [{:keys [model model_id strategy]}]
-  {:model    model
-   :model_id model_id
-   :strategy (:type strategy)
-   :config   (dissoc strategy :type)})
-
 ;;; Querying DB
 
 (defn granular-duration-hours
@@ -82,7 +57,7 @@
         (t2/select-one-fn :cache_ttl [:model/Dashboard :cache_ttl] :id dashboard-id))
       (t2/select-one-fn :cache_ttl [:model/Database :cache_ttl] :id (:database_id card))))
 
-(defenterprise-schema granular-cache-strategy :- [:maybe CacheStrategy]
+(defenterprise-schema granular-cache-strategy :- [:maybe (CacheStrategy)]
   "Returns the granular cache strategy for a card."
   :feature :cache-granular-controls
   [card dashboard-id]
@@ -104,7 +79,7 @@
                 :limit    1}
           item (t2/select-one :model/CacheConfig :id q)]
       (if item
-        (-> (:strategy (row->config item))
+        (-> (:strategy (api.caching/row->config item))
            (m/assoc-some :invalidated-at (:invalidated_at item)))
         (when-let [ttl (granular-duration-hours card dashboard-id)]
           {:type     :duration

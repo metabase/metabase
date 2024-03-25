@@ -21,6 +21,9 @@ type EntityInCollection = {
   collection?: Collection;
 };
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Collections = createEntity({
   name: "collections",
   path: "/api/collection",
