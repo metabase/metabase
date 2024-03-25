@@ -218,9 +218,8 @@ export function createEntity(def) {
       ),
       withEntityActionDecorators("fetch"),
     )(
-      (entityQuery, options = {}) =>
-        async (dispatch, getState) =>
-          entity.normalize(await entity.api.get(entityQuery, options)),
+      entityQuery => async (dispatch, getState) =>
+        entity.normalize(await entity.api.get(entityQuery, dispatch, getState)),
     ),
 
     create: compose(
@@ -230,7 +229,11 @@ export function createEntity(def) {
       withEntityActionDecorators("create"),
     )(entityObject => async (dispatch, getState) => {
       return entity.normalize(
-        await entity.api.create(getWritableProperties(entityObject)),
+        await entity.api.create(
+          getWritableProperties(entityObject),
+          dispatch,
+          getState,
+        ),
       );
     }),
 
@@ -255,7 +258,11 @@ export function createEntity(def) {
           }
 
           const result = entity.normalize(
-            await entity.api.update(getWritableProperties(entityObject)),
+            await entity.api.update(
+              getWritableProperties(entityObject),
+              dispatch,
+              getState,
+            ),
           );
 
           if (notify) {
@@ -292,7 +299,7 @@ export function createEntity(def) {
       withEntityRequestState(object => [object.id, "delete"]),
       withEntityActionDecorators("delete"),
     )(entityObject => async (dispatch, getState) => {
-      await entity.api.delete(entityObject);
+      await entity.api.delete(entityObject, dispatch, getState);
       return {
         entities: { [entity.name]: { [entityObject.id]: null } },
         result: entityObject.id,
@@ -670,7 +677,7 @@ export const undo = (opts = {}, subject, verb) =>
 
 export async function entityCompatibleQuery(entityQuery, dispatch, endpoint) {
   const request = entityQuery === EMPTY_ENTITY_QUERY ? undefined : entityQuery;
-  const action = dispatch(endpoint.initiate(request));
+  const action = dispatch(endpoint.initiate(request, { forceRefetch: true }));
   try {
     return await action.unwrap();
   } finally {
