@@ -35,7 +35,7 @@ export function NewPulseSidebar({
         <ChannelCard
           flat
           className={cx("mt1 mb3", {
-            [cx(CS.hoverParent, "hover--inherit")]: emailConfigured,
+            [cx(CS.hoverParent, CS.hoverInherit)]: emailConfigured,
           })}
           isConfigured={emailConfigured}
           onClick={onNewEmailPulse}
@@ -47,7 +47,7 @@ export function NewPulseSidebar({
                 className={cx(
                   "mr1",
                   {
-                    [cx("text-brand", CS.hoverChild, "hover--inherit")]:
+                    [cx("text-brand", CS.hoverChild, CS.hoverInherit)]:
                       emailConfigured,
                   },
                   { "text-light": !emailConfigured },
@@ -59,7 +59,7 @@ export function NewPulseSidebar({
             </div>
             <Text
               className={cx("text-medium", {
-                [cx(CS.hoverChild, "hover--inherit")]: emailConfigured,
+                [cx(CS.hoverChild, CS.hoverInherit)]: emailConfigured,
               })}
             >
               {!emailConfigured &&
@@ -76,7 +76,7 @@ export function NewPulseSidebar({
         <ChannelCard
           flat
           className={cx({
-            [cx(CS.hoverParent, "hover--inherit")]: slackConfigured,
+            [cx(CS.hoverParent, CS.hoverInherit)]: slackConfigured,
           })}
           isConfigured={slackConfigured}
           onClick={onNewSlackPulse}
@@ -88,7 +88,7 @@ export function NewPulseSidebar({
                 size={16}
                 className={cx("mr1", {
                   "text-light": !slackConfigured,
-                  [cx(CS.hoverChild, "hover--inherit")]: slackConfigured,
+                  [cx(CS.hoverChild, CS.hoverInherit)]: slackConfigured,
                 })}
               />
               <h3
@@ -97,7 +97,7 @@ export function NewPulseSidebar({
             </div>
             <Text
               className={cx("text-medium", {
-                [cx(CS.hoverChild, "hover--inherit")]: slackConfigured,
+                [cx(CS.hoverChild, CS.hoverInherit)]: slackConfigured,
               })}
             >
               {!slackConfigured &&

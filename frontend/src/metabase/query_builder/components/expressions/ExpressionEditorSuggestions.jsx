@@ -141,7 +141,7 @@ function ExpressionEditorSuggestionsListItem({
       <ExpressionListItem
         onMouseDownCapture={onMouseDownCapture}
         isHighlighted={isHighlighted}
-        className={cx(CS.hoverParent, "hover--inherit")}
+        className={cx(CS.hoverParent, CS.hoverInherit)}
         data-ignore-outside-clicks
         data-testid="expression-suggestions-list-item"
       >
