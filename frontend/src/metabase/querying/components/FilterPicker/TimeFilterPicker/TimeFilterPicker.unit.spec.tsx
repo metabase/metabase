@@ -1,4 +1,4 @@
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 
 import { render, screen, within } from "__support__/ui";
@@ -26,6 +26,17 @@ const EXPECTED_OPERATORS = [
   "Is empty",
   "Not empty",
 ];
+
+const userEvent = _userEvent.setup({
+  advanceTimers: jest.advanceTimersByTime,
+});
+
+const typeTime = async (input: HTMLInputElement, text: string) => {
+  await userEvent.type(input, text, {
+    initialSelectionStart: 0,
+    initialSelectionEnd: input.value.length,
+  });
+};
 
 function setup({
   query = createQuery(),
@@ -119,8 +130,10 @@ describe("TimeFilterPicker", () => {
     it("should add a filter with one value", async () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
+      const input = screen.getByDisplayValue("00:00") as HTMLInputElement;
+
       await setOperator("After");
-      await userEvent.type(screen.getByDisplayValue("00:00"), "11:15");
+      await typeTime(input, "11:15");
       await userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
@@ -136,8 +149,8 @@ describe("TimeFilterPicker", () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
       await setOperator("After");
-      const input = screen.getByDisplayValue("00:00");
-      await userEvent.type(input, "11:15{enter}");
+      const input = screen.getByDisplayValue("00:00") as HTMLInputElement;
+      await typeTime(input, "11:15{enter}");
 
       expect(getNextFilterParts()).toMatchObject({
         operator: ">",
@@ -152,9 +165,11 @@ describe("TimeFilterPicker", () => {
 
       await setOperator("Between");
 
-      const [leftInput, rightInput] = screen.getAllByDisplayValue("00:00");
-      await userEvent.type(leftInput, "11:15");
-      await userEvent.type(rightInput, "12:30");
+      const [leftInput, rightInput] = screen.getAllByDisplayValue(
+        "00:00",
+      ) as HTMLInputElement[];
+      await typeTime(leftInput, "11:15");
+      await typeTime(rightInput, "12:30");
       await userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
@@ -173,9 +188,11 @@ describe("TimeFilterPicker", () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
       await setOperator("Between");
-      const [leftInput, rightInput] = screen.getAllByDisplayValue("00:00");
-      await userEvent.type(leftInput, "11:15");
-      await userEvent.type(rightInput, "12:30{enter}");
+      const [leftInput, rightInput] = screen.getAllByDisplayValue(
+        "00:00",
+      ) as HTMLInputElement[];
+      await typeTime(leftInput, "11:15");
+      await typeTime(rightInput, "12:30{enter}");
 
       expect(getNextFilterParts()).toMatchObject({
         operator: "between",
@@ -193,9 +210,11 @@ describe("TimeFilterPicker", () => {
 
       await setOperator("Between");
 
-      const [leftInput, rightInput] = screen.getAllByDisplayValue("00:00");
-      await userEvent.type(leftInput, "12:30");
-      await userEvent.type(rightInput, "11:15");
+      const [leftInput, rightInput] = screen.getAllByDisplayValue(
+        "00:00",
+      ) as HTMLInputElement[];
+      await typeTime(leftInput, "12:30");
+      await typeTime(rightInput, "11:15");
       await userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
@@ -228,7 +247,10 @@ describe("TimeFilterPicker", () => {
     it("should handle invalid input", async () => {
       const { getNextFilterParts } = setup();
 
-      await userEvent.type(screen.getByDisplayValue("00:00"), "32:71");
+      await await typeTime(
+        screen.getByDisplayValue("00:00") as HTMLInputElement,
+        "32:71",
+      );
       await userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
@@ -268,7 +290,10 @@ describe("TimeFilterPicker", () => {
           createQueryWithTimeFilter({ operator: ">" }),
         );
 
-        await userEvent.type(screen.getByDisplayValue("00:00"), "20:45");
+        await typeTime(
+          screen.getByDisplayValue("00:00") as HTMLInputElement,
+          "20:45",
+        );
         await userEvent.click(screen.getByText("Update filter"));
 
         const filterParts = getNextFilterParts();
@@ -311,7 +336,10 @@ describe("TimeFilterPicker", () => {
           }),
         );
 
-        await userEvent.type(screen.getByDisplayValue("11:15"), "8:00");
+        await typeTime(
+          screen.getByDisplayValue("11:15") as HTMLInputElement,
+          "8:00",
+        );
         await userEvent.click(screen.getByText("Update filter"));
 
         let filterParts = getNextFilterParts();
@@ -324,7 +352,10 @@ describe("TimeFilterPicker", () => {
           ],
         });
 
-        await userEvent.type(screen.getByDisplayValue("13:00"), "17:31");
+        await typeTime(
+          screen.getByDisplayValue("13:00") as HTMLInputElement,
+          "17:31",
+        );
         await userEvent.click(screen.getByText("Update filter"));
 
         filterParts = getNextFilterParts();
@@ -451,8 +482,8 @@ describe("TimeFilterPicker", () => {
 
       // There's no particular reason why 32:66 becomes 09:06
       // We trust the TimeInput to turn it into a valid time value
-      const input = screen.getByDisplayValue("09:06");
-      await userEvent.type(input, "11:00");
+      const input = screen.getByDisplayValue("09:06") as HTMLInputElement;
+      await typeTime(input, "11:00");
       await userEvent.click(screen.getByText("Update filter"));
 
       const filterParts = getNextFilterParts();

@@ -1,4 +1,4 @@
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
@@ -10,6 +10,10 @@ const DATE_TIME = new Date(2020, 0, 10, 10, 20);
 interface SetupOpts {
   value?: Date;
 }
+
+const userEvent = _userEvent.setup({
+  advanceTimers: jest.advanceTimersByTime,
+});
 
 function setup({ value = DATE }: SetupOpts = {}) {
   const onChange = jest.fn();
