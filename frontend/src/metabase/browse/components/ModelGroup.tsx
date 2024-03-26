@@ -3,7 +3,7 @@ import { t, c, msgid } from "ttag";
 
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
-import { Box, Icon, Title, Button, Flex } from "metabase/ui";
+import { Box, Icon, Title, Button, Flex, Text } from "metabase/ui";
 import type {
   Card,
   SearchResult,
@@ -210,9 +210,13 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
             {model.name}
           </MultilineEllipsified>
         </Title>
-        <MultilineEllipsified tooltipMaxWidth="20rem">
-          {model.description}
-        </MultilineEllipsified>
+        {model.description?.trim() ? (
+          <MultilineEllipsified tooltipMaxWidth="20rem">
+            {model.description}
+          </MultilineEllipsified>
+        ) : (
+          <Text color="text-light">No description.</Text>
+        )}
       </ModelCard>
     </ModelCardLink>
   );
