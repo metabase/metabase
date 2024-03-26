@@ -89,15 +89,14 @@ export function getDataLabelFormatter(
     settings,
   });
 
-  const valueFormatter = (value: unknown) =>
-    renderingContext.formatValue(value, {
+  const valueGetter = getMetricDisplayValueGetter(settings);
+  const valueFormatter = (value: RowValue) =>
+    renderingContext.formatValue(valueGetter(value), {
       ...(settings.column?.(seriesModel.column) ?? {}),
       jsx: false,
       compact: isCompact,
       ...formattingOptions,
     });
-
-  const valueGetter = getMetricDisplayValueGetter(settings);
 
   return (params: CallbackDataParams) => {
     const value = (params.data as Datum)[labelDataKey];
@@ -105,7 +104,7 @@ export function getDataLabelFormatter(
     if (value == null) {
       return " ";
     }
-    return valueFormatter(valueGetter(value));
+    return valueFormatter(value);
   };
 }
 
