@@ -121,16 +121,18 @@ don't, (and shouldn't) care that those are expressions. They are just another fi
           (let [{:keys [additions deletions]} (find-changes {:current-index current-index-values
                                                              :source-values values-to-index})]
             (when (seq deletions)
-              (t2/delete! ModelIndexValue
-                          :model_index_id (:id model-index)
-                          :model_pk [:in (->> deletions (map first))]))
+              (doseq [deletions-part (partition-all 10000 deletions)]
+                (t2/delete! ModelIndexValue
+                            :model_index_id (:id model-index)
+                            :model_pk [:in (->> deletions-part (map first))])))
             (when (seq additions)
-              (t2/insert! ModelIndexValue
-                          (map (fn [[id v]]
-                                 {:name           v
-                                  :model_pk       id
-                                  :model_index_id (:id model-index)})
-                               additions))))
+              (doseq [additions-part (partition-all 10000 additions)]
+                (t2/insert! ModelIndexValue
+                            (map (fn [[id v]]
+                                   {:name           v
+                                    :model_pk       id
+                                    :model_index_id (:id model-index)})
+                                 additions-part)))))
           (t2/update! ModelIndex (:id model-index)
                       {:indexed_at :%now
                        :state      (if (> (count values-to-index) max-indexed-values)
