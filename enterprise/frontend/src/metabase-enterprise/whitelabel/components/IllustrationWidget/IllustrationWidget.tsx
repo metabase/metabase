@@ -149,7 +149,7 @@ export function IllustrationWidget({
           style={{ borderRight: `1px solid ${color("border")}` }}
         >
           {getPreviewImage({
-            value: value,
+            value,
             customSource: customIllustrationSource,
             defaultPreviewType: type,
           })}
