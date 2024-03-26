@@ -70,7 +70,9 @@ const getDatasetParams = ({
 }: DownloadQueryResultsOpts): DownloadQueryResultsParams => {
   const cardId = question.id();
   const isSecureDashboardEmbedding = dashcardId != null && token != null;
-  const format_export = enableFormatting ? "true" : "false";
+
+  // Formatting is always enabled for Excel
+  const format_export = enableFormatting && type !== "xlsx" ? "true" : "false";
 
   if (isSecureDashboardEmbedding) {
     return {
