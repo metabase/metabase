@@ -126,7 +126,15 @@ const CollectionHeader = ({
       <Flex pt="1.5rem" pb="0.75rem" w="100%">
         <Flex>
           <FixedSizeIcon {...icon} />
-          <Title size="1rem" lh="1rem" ml=".25rem" mr="1rem" color="inherit">
+          <Title
+            size="1rem"
+            lh="1rem"
+            style={{
+              marginInlineStart: ".25rem",
+              marginInlineEnd: "1rem",
+            }}
+            color="inherit"
+          >
             {getCollectionName(collection)}
           </Title>
         </Flex>
