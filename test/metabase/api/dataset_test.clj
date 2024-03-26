@@ -216,10 +216,16 @@
                            (count (csv/read-csv result)))))))]
         (mt/with-no-data-perms-for-all-users!
           (testing "with data perms"
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/download-results :one-million-rows)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
             (do-test))
           (testing "with collection perms only"
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/download-results :one-million-rows)
             (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
             (do-test)))))))
 
 (deftest formatted-results-ignore-query-constraints
@@ -277,7 +283,8 @@
       ;; give all-users *partial* permissions for the DB, so we know we're checking more than just read permissions for
       ;; the Database
       (mt/with-no-data-perms-for-all-users!
-        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/data-access :unrestricted)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
         (is (malli= [:map
                      [:status [:= "failed"]]
                      [:error  [:= "You do not have permissions to run this query."]]]
@@ -322,6 +329,8 @@
         (mt/with-temp-copy-of-db
           ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
           (mt/with-no-data-perms-for-all-users!
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
             (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :unrestricted)
             (is (malli= [:map
                          [:permissions-error? [:= true]]
