@@ -2,21 +2,22 @@ import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { DataPermissionValue } from "../types";
 
 export const DATA_PERMISSION_OPTIONS = {
-  all: {
+  unrestricted: {
     label: t`Unrestricted`,
-    value: "unrestricted",
+    value: DataPermissionValue.UNRESTRICTED,
     icon: "check",
     iconColor: "success",
   },
   controlled: {
     label: t`Granular`,
-    value: "controlled",
+    value: DataPermissionValue.CONTROLLED,
     icon: "permissions_limited",
     iconColor: "warning",
   },
-  noSelfService: {
+  noSelfServiceDeprecated: {
     label: (
       <>
         {t`No self-service (Deprecated)`}
@@ -27,31 +28,25 @@ export const DATA_PERMISSION_OPTIONS = {
         />
       </>
     ),
-    value: "legacy-no-self-service",
+    value: DataPermissionValue.LEGACY_NO_SELF_SERVICE,
     icon: "eye",
     iconColor: "accent5",
   },
   no: {
     label: t`No`,
-    value: "no",
+    value: DataPermissionValue.NO,
     icon: "close",
     iconColor: "danger",
   },
-  write: {
-    label: t`Yes`,
-    value: "write",
-    icon: "check",
-    iconColor: "success",
-  },
   queryBuilder: {
     label: t`Query builder only`,
-    value: "query-builder",
+    value: DataPermissionValue.QUERY_BUILDER,
     icon: "permissions_limited",
     iconColor: "warning",
   },
   queryBuilderAndNative: {
     label: t`Query builder and native`,
-    value: "query-builder-and-native",
+    value: DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
     icon: "check",
     iconColor: "success",
   },

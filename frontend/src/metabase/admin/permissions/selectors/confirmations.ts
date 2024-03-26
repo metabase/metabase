@@ -17,7 +17,7 @@ import type {
   ConcreteTableId,
 } from "metabase-types/api";
 
-import type { EntityId } from "../types";
+import { DataPermission, DataPermissionValue, EntityId } from "../types";
 
 export const getDefaultGroupHasHigherAccessText = (defaultGroup: Group) =>
   t`The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;
@@ -27,19 +27,19 @@ const PERM_LEVELS = [
   "write",
   "read",
   "all",
-  "impersonated",
-  "controlled",
-  "none",
-  "block",
+  DataPermissionValue.IMPERSONATED,
+  DataPermissionValue.CONTROLLED,
+  DataPermissionValue.NO,
+  DataPermissionValue.BLOCKED,
 ];
 function hasGreaterPermissions(
-  a: string,
-  b: string,
+  a: DataPermissionValue,
+  b: DataPermissionValue,
   descendingPermissions = PERM_LEVELS,
 ) {
   // Avoids scenario where the logic of the PERM_LEVELS ordering suggests that
   // a default group permission of "none" would overrule "block".
-  if (a === "none" && b === "block") {
+  if (a === DataPermissionValue.NO && b === DataPermissionValue.BLOCKED) {
     return false;
   } else {
     return (
@@ -49,8 +49,8 @@ function hasGreaterPermissions(
 }
 
 export function getPermissionWarning(
-  value: string,
-  defaultGroupValue: string,
+  value: DataPermissionValue,
+  defaultGroupValue: DataPermissionValue,
   entityType: string | null,
   defaultGroup: Group,
   groupId: Group["id"],
@@ -60,7 +60,10 @@ export function getPermissionWarning(
     return null;
   }
 
-  if (value === "controlled" && defaultGroupValue === "controlled") {
+  if (
+    value === DataPermissionValue.CONTROLLED &&
+    defaultGroupValue === DataPermissionValue.CONTROLLED
+  ) {
     return t`The "${defaultGroup.name}" group may have access to a different set of ${entityType} than this group, which may give this group additional access to some ${entityType}.`;
   }
   if (hasGreaterPermissions(defaultGroupValue, value, descendingPermissions)) {
@@ -70,8 +73,8 @@ export function getPermissionWarning(
 }
 
 export function getPermissionWarningModal(
-  value: string,
-  defaultGroupValue: string,
+  value: DataPermissionValue,
+  defaultGroupValue: DataPermissionValue,
   entityType: string | null,
   defaultGroup: Group,
   groupId: Group["id"],
@@ -88,12 +91,14 @@ export function getPermissionWarningModal(
   if (permissionWarning) {
     return {
       title:
-        (value === "controlled" ? t`Limit` : t`Revoke`) +
+        (value === DataPermissionValue.CONTROLLED ? t`Limit` : t`Revoke`) +
         " " +
         t`access even though "${defaultGroup.name}" has greater access?`,
       message: permissionWarning,
       confirmButtonText:
-        value === "controlled" ? t`Limit access` : t`Revoke access`,
+        value === DataPermissionValue.CONTROLLED
+          ? t`Limit access`
+          : t`Revoke access`,
       cancelButtonText: t`Cancel`,
     };
   }
@@ -103,7 +108,7 @@ export function getControlledDatabaseWarningModal(
   currDbPermissionValue: string,
   entityId: EntityId,
 ) {
-  if (currDbPermissionValue !== "controlled") {
+  if (currDbPermissionValue !== DataPermissionValue.CONTROLLED) {
     const [entityType, entityTypePlural] = isTableEntityId(entityId)
       ? [t`table`, t`tables`]
       : isSchemaEntityId(entityId)
@@ -124,12 +129,21 @@ export function getRawQueryWarningModal(
   entityId: EntityId,
   value: string,
 ) {
+  const nativePermission = getNativePermission(permissions, groupId, entityId);
+  const viewPermission = getSchemasPermission(
+    permissions,
+    groupId,
+    entityId,
+    DataPermission.VIEW_DATA,
+  );
+
   if (
-    value === "write" &&
-    getNativePermission(permissions, groupId, entityId) !== "write" &&
-    !["all", "impersonated"].includes(
-      getSchemasPermission(permissions, groupId, entityId, "view-data"),
-    )
+    value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
+    nativePermission !== DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
+    ![
+      DataPermissionValue.UNRESTRICTED,
+      DataPermissionValue.IMPERSONATED,
+    ].includes(viewPermission)
   ) {
     return {
       title: t`Allow native query editing?`,
@@ -148,13 +162,18 @@ export function getRevokingAccessToAllTablesWarningModal(
   permissions: GroupsPermissions,
   groupId: Group["id"],
   entityId: EntityId,
-  value: string,
+  value: DataPermissionValue,
 ) {
   if (
-    value === "none" &&
-    getSchemasPermission(permissions, groupId, entityId, "view-data") ===
-      "controlled" &&
-    getNativePermission(permissions, groupId, entityId) !== "none"
+    value === DataPermissionValue.NO &&
+    getSchemasPermission(
+      permissions,
+      groupId,
+      entityId,
+      DataPermission.VIEW_DATA,
+    ) === DataPermissionValue.CONTROLLED &&
+    getNativePermission(permissions, groupId, entityId) !==
+      DataPermissionValue.NO
   ) {
     // allTableEntityIds contains tables from all schemas
     const allTableEntityIds = database.getTables().map(table => ({
@@ -167,8 +186,12 @@ export function getRevokingAccessToAllTablesWarningModal(
     const afterChangesNoAccessToAnyTable = _.every(
       allTableEntityIds,
       id =>
-        getFieldsPermission(permissions, groupId, id, "view-data") === "none" ||
-        _.isEqual(id, entityId),
+        getFieldsPermission(
+          permissions,
+          groupId,
+          id,
+          DataPermission.VIEW_DATA,
+        ) === DataPermissionValue.NO || _.isEqual(id, entityId),
     );
     if (afterChangesNoAccessToAnyTable) {
       return {

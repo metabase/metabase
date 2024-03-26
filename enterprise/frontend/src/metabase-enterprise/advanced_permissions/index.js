@@ -5,6 +5,7 @@ import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
 } from "metabase/admin/permissions/utils/urls";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import {
   PLUGIN_REDUCERS,
@@ -24,14 +25,14 @@ import { getImpersonations } from "./selectors";
 
 const IMPERSONATED_PERMISSION_OPTION = {
   label: t`Impersonated`,
-  value: "impersonated",
+  value: DataPermissionValue.IMPERSONATED,
   icon: "database",
   iconColor: "warning",
 };
 
 const BLOCK_PERMISSION_OPTION = {
   label: t`Block`,
-  value: "blocked",
+  value: DataPermissionValue.BLOCKED,
   icon: "close",
   iconColor: "danger",
 };
@@ -92,8 +93,9 @@ if (hasPremiumFeature("advanced_permissions")) {
     );
   };
 
-  PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS["impersonated"] =
-    getImpersonatedPostAction;
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS[
+    DataPermissionValue.IMPERSONATED
+  ] = getImpersonatedPostAction;
 
   PLUGIN_REDUCERS.advancedPermissionsPlugin = advancedPermissionsSlice.reducer;
 
@@ -105,7 +107,9 @@ if (hasPremiumFeature("advanced_permissions")) {
     state => getImpersonations(state).length > 0,
   );
 
-  PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS["impersonated"].push({
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS[
+    DataPermissionValue.IMPERSONATED
+  ].push({
     label: t`Edit Impersonated`,
     iconColor: "warning",
     icon: "database",

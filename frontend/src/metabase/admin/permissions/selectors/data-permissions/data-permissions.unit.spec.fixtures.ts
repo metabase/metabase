@@ -1,4 +1,5 @@
 import { createMockSettingsState } from "metabase-types/store/mocks";
+import { DataPermission, DataPermissionValue } from "../../types";
 
 // Database 2 contains an imaginary multi-schema database (like Redshift for instance)
 // Database 3 contains an imaginary database which doesn't have any schemas (like MySQL)
@@ -141,47 +142,38 @@ export const initialPermissions = {
   1: {
     // Sample database
     1: {
-      data: {
-        native: "write",
-        schemas: "all",
-      },
+      [DataPermission.CREATE_QUERIES]:
+        DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+      [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED,
     },
     // Imaginary multi-schema
     2: {
-      data: {
-        native: "write",
-        schemas: "all",
-      },
+      [DataPermission.CREATE_QUERIES]:
+        DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+      [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED,
     },
     // Imaginary schemaless
     3: {
-      data: {
-        native: "write",
-        schemas: "all",
-      },
+      [DataPermission.CREATE_QUERIES]:
+        DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+      [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED,
     },
   },
   2: {
     // Sample database
     1: {
-      data: {
-        native: "none",
-        schemas: "none",
-      },
+      [DataPermission.CREATE_QUERIES]: DataPermissionValue.NO,
+      [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
     },
     // Imaginary multi-schema
     2: {
-      data: {
-        native: "none",
-        schemas: "none",
-      },
+      [DataPermission.CREATE_QUERIES]: DataPermissionValue.NO,
+      [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
     },
     // Imaginary schemaless
     3: {
-      data: {
-        native: "none",
-        schemas: "none",
-      },
+      [DataPermission.CREATE_QUERIES]: DataPermissionValue.NO,
+      [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
     },
   },
 };

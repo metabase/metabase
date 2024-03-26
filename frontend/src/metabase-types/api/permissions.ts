@@ -1,9 +1,15 @@
+// TODO: retype this file...
+
 import type {
   DatabaseId,
   TableId,
   SchemaName,
   CollectionId,
 } from "metabase-types/api";
+import type {
+  DataPermission,
+  DataPermissionValue,
+} from "metabase/admin/permissions/types";
 
 import type { GroupId } from "./group";
 import type { UserAttribute } from "./user";
@@ -21,14 +27,19 @@ export type GroupPermissions = {
   [key: DatabaseId]: DatabasePermissions;
 };
 
-export type DownloadPermission = "full" | "limited" | "none";
+export type DownloadPermission =
+  | DataPermissionValue.FULL
+  | DataPermissionValue.LIMITED
+  | DataPermissionValue.NONE;
 
 export type DownloadAccessPermission = {
   native?: DownloadSchemasPermission;
   schemas: DownloadSchemasPermission;
 };
 
-export type DetailsPermission = "no" | "yes";
+export type DetailsPermission =
+  | DataPermissionValue.NO
+  | DataPermissionValue.YES;
 
 export type DetailsPermissions = {
   [key: DatabaseId]: DetailsPermission;
@@ -43,10 +54,11 @@ export type DownloadTablePermission =
   | { [key: TableId]: DownloadPermission };
 
 export type DatabasePermissions = {
-  data: DatabaseAccessPermissions;
-  "data-model"?: DataModelPermissions;
-  download?: DownloadAccessPermission;
-  details?: DetailsPermissions;
+  [DataPermission.VIEW_DATA]: SchemasPermissions;
+  [DataPermission.CREATE_QUERIES]?: NativePermissions;
+  [DataPermission.DATA_MODEL]?: DataModelPermissions;
+  [DataPermission.DOWNLOAD]?: DownloadAccessPermission;
+  [DataPermission.DETAILS]?: DetailsPermissions;
 };
 
 export type DataModelPermissions = {
@@ -59,34 +71,32 @@ export type DatabaseAccessPermissions = {
 };
 
 export type NativePermissions =
-  | "query-builder-and-native"
-  | "query-builder"
-  | "no"
+  | DataPermissionValue.QUERY_BUILDER_AND_NATIVE
+  | DataPermissionValue.QUERY_BUILDER
+  | DataPermissionValue.NO
   | undefined;
 
 export type SchemasPermissions =
-  | "all"
-  | "none"
-  | "block"
-  | "impersonated"
+  | DataPermissionValue.UNRESTRICTED
+  | DataPermissionValue.NO
+  | DataPermissionValue.LEGACY_NO_SELF_SERVICE
+  | DataPermissionValue.BLOCKED
+  | DataPermissionValue.IMPERSONATED
   | {
       [key: SchemaName]: TablesPermissions;
     };
 
 export type TablesPermissions =
-  | "all"
-  | "none"
+  | DataPermissionValue.UNRESTRICTED
+  | DataPermissionValue.LEGACY_NO_SELF_SERVICE
   | {
       [key: TableId]: FieldsPermissions;
     };
 
 export type FieldsPermissions =
-  | "all"
-  | "none"
-  | {
-      read: "all";
-      query: "segmented";
-    };
+  | DataPermissionValue.UNRESTRICTED
+  | DataPermissionValue.LEGACY_NO_SELF_SERVICE
+  | DataPermissionValue.SANDBOXED;
 
 export type CollectionPermissionsGraph = {
   groups: CollectionPermissions;

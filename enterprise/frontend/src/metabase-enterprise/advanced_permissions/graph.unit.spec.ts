@@ -1,6 +1,10 @@
 import Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseAccessPermissions } from "metabase-types/api";
+import type { SchemasPermissions, NativePermissions } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
+import {
+  DataPermission,
+  DataPermissionValue,
+} from "metabase/admin/permissions/types";
 
 import { updateNativePermission } from "./graph";
 const groupId = 10;
@@ -15,61 +19,76 @@ const database = new Database({
   tables: [tableId],
 });
 
-const createGraph = (dataPermissions: DatabaseAccessPermissions) => ({
+const createGraph = (
+  viewPermissions: SchemasPermissions,
+  createPermissions?: NativePermissions,
+) => ({
   [groupId]: {
-    [databaseId]: { data: dataPermissions },
+    [databaseId]: {
+      [DataPermission.VIEW_DATA]: viewPermissions,
+      ...(createPermissions
+        ? { [DataPermission.CREATE_QUERIES]: createPermissions }
+        : {}),
+    },
   },
 });
 
 describe("updateNativePermission", () => {
-  it("should revoke native query permission and keep the schema access permission", () => {
-    const graph = createGraph({ schemas: "all", native: "write" });
+  it("should revoke create queries permission and keep the view data permission", () => {
+    const graph = createGraph(
+      DataPermissionValue.UNRESTRICTED,
+      DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+    );
     const updatedGraph = updateNativePermission(
       graph,
       groupId,
       entityId,
-      undefined,
+      DataPermissionValue.NO,
       database,
-      "view-data",
+      DataPermission.CREATE_QUERIES,
     );
 
     expect(updatedGraph).toStrictEqual({
       [groupId]: {
-        [databaseId]: { data: { native: undefined, schemas: "all" } },
+        [databaseId]: {
+          [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED,
+          [DataPermission.CREATE_QUERIES]: DataPermissionValue.NO,
+        },
       },
     });
   });
 
   it("should grant native query permission when schema access permission already granted", () => {
-    const graph = createGraph({ schemas: "all", native: "write" });
+    const graph = createGraph(
+      DataPermissionValue.UNRESTRICTED,
+      DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+    );
     const updatedGraph = updateNativePermission(
       graph,
       groupId,
       entityId,
-      "write",
+      DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
       database,
-      "view-data",
+      DataPermission.CREATE_QUERIES,
     );
 
     expect(updatedGraph).toStrictEqual({
       [groupId]: {
-        [databaseId]: { data: { native: "write", schemas: "all" } },
+        [databaseId]: {
+          [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED,
+          [DataPermission.CREATE_QUERIES]:
+            DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+        },
       },
     });
   });
 
   it.each([
-    createGraph({ schemas: "block" }),
-    createGraph({ schemas: "none" }),
-    createGraph({ schemas: { [schema]: "all" } }),
-    createGraph({
-      schemas: { [schema]: { [tableId]: "all" } },
-    }),
-    createGraph({
-      schemas: {
-        [schema]: { [tableId]: { read: "all", query: "segmented" } },
-      },
-    }),
+    createGraph(DataPermissionValue.BLOCKED),
+    createGraph(DataPermissionValue.NO),
+    createGraph({ [schema]: DataPermissionValue.UNRESTRICTED }),
+    createGraph({ [schema]: { [tableId]: DataPermissionValue.UNRESTRICTED } }),
+    createGraph({ [schema]: { [tableId]: DataPermissionValue.SANDBOXED } }),
   ])(
     "should upgrade data access permission if it is not fully granted except impersonated",
     graph => {
@@ -77,33 +96,41 @@ describe("updateNativePermission", () => {
         graph,
         groupId,
         entityId,
-        "write",
+        DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
         database,
-        "view-data",
+        DataPermission.CREATE_QUERIES,
       );
 
       expect(updatedGraph).toStrictEqual({
         [groupId]: {
-          [databaseId]: { data: { native: "write", schemas: "all" } },
+          [databaseId]: {
+            [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED,
+            [DataPermission.CREATE_QUERIES]:
+              DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+          },
         },
       });
     },
   );
 
   it("should not upgrade data access permission if it is impersonated", () => {
-    const graph = createGraph({ schemas: "impersonated" });
+    const graph = createGraph(DataPermissionValue.IMPERSONATED);
     const updatedGraph = updateNativePermission(
       graph,
       groupId,
       entityId,
-      "write",
+      DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
       database,
-      "view-data",
+      DataPermission.CREATE_QUERIES,
     );
 
     expect(updatedGraph).toStrictEqual({
       [groupId]: {
-        [databaseId]: { data: { native: "write", schemas: "impersonated" } },
+        [databaseId]: {
+          [DataPermission.VIEW_DATA]: DataPermissionValue.IMPERSONATED,
+          [DataPermission.CREATE_QUERIES]:
+            DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+        },
       },
     });
   });
