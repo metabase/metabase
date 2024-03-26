@@ -22,6 +22,7 @@ import {
   summarize,
   visitQuestionAdhoc,
   visualize,
+  createMetric,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
@@ -632,12 +633,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     it("should support custom columns", () => {
-      // startNewQuestion();
-      // popover().within(() => {
-      //   cy.findByText("QA Postgres12").click();
-      //   cy.findByText("Products").click();
-      // });
-
       addCustomColumn();
       enterCustomColumnDetails({
         formula: "Price * 10",
@@ -670,12 +665,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     it("should support Summarize side panel", () => {
-      // startNewQuestion();
-      // popover().within(() => {
-      //   cy.findByText("QA Postgres12").click();
-      //   cy.findByText("Products").click();
-      // });
-
       visualize();
 
       summarize();
@@ -797,6 +786,39 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       name: "ID is 1",
       index: 1,
       horizontal: -100,
+    });
+  });
+
+  it("should not crash notebook when metric is used as an aggregation and breakout is applied (metabase#40553)", () => {
+    createMetric({
+      name: "Revenue",
+      description: "Sum of orders subtotal",
+      table_id: ORDERS_ID,
+      definition: {
+        "source-table": ORDERS_ID,
+        aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
+      },
+    }).then(({ body }) => {
+      cy.wrap(body.id).as("metricId");
+    });
+
+    cy.get("@metricId").then(metricId => {
+      const questionDetails = {
+        query: {
+          "source-table": ORDERS_ID,
+          breakout: [["field", ORDERS.CREATED_AT, null]],
+          aggregation: [["metric", metricId]],
+        },
+      };
+      cy.createQuestion(questionDetails, { visitQuestion: true });
+    });
+
+    openNotebook();
+
+    getNotebookStep("summarize").contains("Revenue").click();
+
+    popover().within(() => {
+      cy.findByTestId("expression-editor-textfield").contains("[Revenue]");
     });
   });
 });
