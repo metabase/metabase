@@ -1,10 +1,10 @@
-(ns metabase.api.metric-test
+(ns metabase.api.legacy-metric-test
   "Tests for /api/legacy-metric endpoints."
   (:require
    [clojure.test :refer :all]
    [metabase.http-client :as client]
    [metabase.models :refer [Database Revision Segment Table]]
-   [metabase.models.metric :as metric :refer [LegacyMetric]]
+   [metabase.models.legacy-metric :as metric :refer [LegacyMetric]]
    [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.util :as u]

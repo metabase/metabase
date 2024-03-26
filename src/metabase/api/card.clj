@@ -117,7 +117,7 @@
                  (when-let [query (some-> card :dataset_query lib.convert/->pMBQL)]
                    (case model-type
                      :segment (lib/uses-segment? query model-id)
-                     :metric (lib/uses-metric? query model-id)))))))
+                     :metric  (lib/uses-legacy-metric? query model-id)))))))
 
 (defmethod cards-for-filter-option* :using_metric
   [_filter-option model-id]

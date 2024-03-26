@@ -52,7 +52,7 @@
     [metabase.legacy-mbql.util :as mbql.u]
     [metabase.models.field :as field :refer [Field]]
     [metabase.models.interface :as mi]
-    [metabase.models.metric :refer [LegacyMetric]]
+    [metabase.models.legacy-metric :refer [LegacyMetric]]
     [metabase.models.table :refer [Table]]
     [metabase.util :as u]
     [metabase.util.date-2 :as u.date]

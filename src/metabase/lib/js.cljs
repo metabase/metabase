@@ -1019,13 +1019,13 @@
 (defn ^:export metric-metadata
   "Get metadata for the Metric with `metric-id`, if it can be found."
   [metadata-providerable metric-id]
-  (lib.metadata/metric metadata-providerable metric-id))
+  (lib.metadata/legacy-metric metadata-providerable metric-id))
 
-(defn ^:export available-metrics
+(defn ^:export available-legacy-metrics
   "Get a list of Metrics that you may consider using as aggregations for a query. Returns JS array of opaque Metric
   metadata objects."
   [a-query]
-  (to-array (lib.core/available-metrics a-query)))
+  (to-array (lib.core/available-legacy-metrics a-query)))
 
 (defn ^:export joinable-columns
   "Return information about the fields that you can pass to [[with-join-fields]] when constructing a join against

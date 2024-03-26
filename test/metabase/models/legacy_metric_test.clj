@@ -1,8 +1,8 @@
-(ns metabase.models.metric-test
+(ns metabase.models.legacy-metric-test
   (:require
    [clojure.test :refer :all]
    [metabase.models :refer [Database Segment Table]]
-   [metabase.models.metric :as metric :refer [LegacyMetric]]
+   [metabase.models.legacy-metric :as metric :refer [LegacyMetric]]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]

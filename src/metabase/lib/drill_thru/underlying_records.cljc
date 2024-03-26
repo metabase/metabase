@@ -165,7 +165,7 @@
 
                 ;; Metrics are standard filter + aggregation units; if the column is a metric get its filters.
                 :metric
-                (-> (lib.metadata/metric query (last aggregation))
+                (-> (lib.metadata/legacy-metric query (last aggregation))
                     :definition
                     lib.convert/js-legacy-inner-query->pMBQL
                     (assoc :database (:database query))

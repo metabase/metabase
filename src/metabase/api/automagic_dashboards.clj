@@ -14,7 +14,7 @@
    [metabase.models.collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
-   [metabase.models.metric :refer [LegacyMetric]]
+   [metabase.models.legacy-metric :refer [LegacyMetric]]
    [metabase.models.model-index :refer [ModelIndex ModelIndexValue]]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]

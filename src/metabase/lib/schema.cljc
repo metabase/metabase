@@ -161,7 +161,7 @@
   [:map
    {:decode/normalize common/normalize-map}
    [:lib/type [:enum {:decode/normalize common/normalize-keyword} :source/metric]]
-   [:id [:ref ::id/metric]]])
+   [:id [:ref ::id/card]]])
 
 (mr/def ::sources
   [:sequential {:min 1} ::source])

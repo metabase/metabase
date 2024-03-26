@@ -1,5 +1,6 @@
-(ns metabase.models.metric-important-field
-  "Intersection table for `Metric` and `Field`; this is used to keep track of the top 0-3 important fields for a metric as shown in the Getting Started guide."
+(ns metabase.models.legacy-metric-important-field
+  "Intersection table for `LegacyMetric` and `Field`; this is used to keep track of the top 0-3 important fields for a
+  metric as shown in the Getting Started guide."
   (:require
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]

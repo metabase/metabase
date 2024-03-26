@@ -87,7 +87,7 @@
    metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    legacy-macro-ids      :- [:maybe [:set {:min 1} pos-int?]]]
   (let [metadata-type     (case macro-type
-                            :metric  :metadata/metric
+                            :metric  :metadata/legacy-metric
                             :segment :metadata/segment)]
     (u/prog1 (into {}
                    (map (juxt :id (fn [legacy-macro]

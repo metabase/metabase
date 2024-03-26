@@ -256,7 +256,7 @@
     stage-number :- :int
     aggregable :- Aggregable]
    ;; if this is a Metric metadata, convert it to `:metric` MBQL clause before adding.
-   (if (= (lib.dispatch/dispatch-value aggregable) :metadata/metric)
+   (if (= (lib.dispatch/dispatch-value aggregable) :metadata/legacy-metric)
      (recur query stage-number (lib.ref/ref aggregable))
      (lib.util/add-summary-clause query stage-number :aggregation aggregable))))
 
