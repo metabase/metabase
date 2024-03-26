@@ -138,7 +138,11 @@ const setup = ({
   walkForCollectionItems(collectionTree);
 
   return renderWithProviders(
-    <QuestionPicker onItemSelect={onItemSelect} initialValue={initialValue} />,
+    <QuestionPicker
+      onItemSelect={onItemSelect}
+      initialValue={initialValue}
+      options={{}}
+    />,
   );
 };
 

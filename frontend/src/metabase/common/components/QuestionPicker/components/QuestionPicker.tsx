@@ -3,12 +3,13 @@ import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
-import { useCollectionQuery } from "metabase/common/hooks";
+import { useCollectionQuery, useQuestionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { SearchListQuery, SearchModelType } from "metabase-types/api";
 
+import type { CollectionPickerItem } from "../../CollectionPicker";
 import {
   LoadingSpinner,
   NestedItemPicker,
@@ -28,13 +29,44 @@ export const defaultOptions: QuestionPickerOptions = {
   showPersonalCollections: true,
   showRootCollection: true,
 };
-
 interface QuestionPickerProps {
-  onItemSelect: (item: QuestionPickerItem) => void;
-  initialValue?: Partial<QuestionPickerItem>;
-  options?: QuestionPickerOptions;
+  onItemSelect: (item: QuestionPickerItem | CollectionPickerItem) => void;
+  initialValue?: Pick<QuestionPickerItem, "model" | "id">;
+  options: QuestionPickerOptions;
   models?: SearchModelType[];
 }
+
+const useGetInitialCollection = (
+  initialValue?: Pick<QuestionPickerItem, "model" | "id">,
+) => {
+  const isQuestion =
+    initialValue && ["card", "dataset"].includes(initialValue.model);
+
+  const cardId = isQuestion ? Number(initialValue.id) : undefined;
+
+  const { data: currentQuestion, error: questionError } = useQuestionQuery({
+    id: cardId,
+    enabled: !!cardId,
+  });
+
+  const collectionId =
+    isQuestion && currentQuestion
+      ? currentQuestion?.collectionId()
+      : initialValue?.id;
+
+  const { data: currentCollection, error: collectionError } =
+    useCollectionQuery({
+      id: collectionId ?? "root",
+      enabled: !isQuestion || !!currentQuestion,
+    });
+
+  return {
+    currentQuestion: currentQuestion?._card,
+    currentCollection,
+    isLoading: !currentCollection,
+    error: questionError ?? collectionError,
+  };
+};
 
 export const QuestionPickerInner = (
   {
@@ -46,21 +78,20 @@ export const QuestionPickerInner = (
   ref: Ref<unknown>,
 ) => {
   const [path, setPath] = useState<
-    PickerState<QuestionPickerItem, SearchListQuery>
+    PickerState<QuestionPickerItem | CollectionPickerItem, SearchListQuery>
   >(() =>
     getStateFromIdPath({
       idPath: ["root"],
+      models,
     }),
   );
 
   const {
-    data: currentCollection,
+    currentCollection,
+    currentQuestion,
     error,
     isLoading: loadingCurrentCollection,
-  } = useCollectionQuery({
-    id: initialValue?.id ?? "root",
-    enabled: !!initialValue?.id,
-  });
+  } = useGetInitialCollection(initialValue);
 
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
 
@@ -110,15 +141,26 @@ export const QuestionPickerInner = (
             },
             userPersonalCollectionId,
           ),
+          models,
         });
+
         setPath(newPath);
 
         if (currentCollection.can_write) {
           // start with the current item selected if we can
-          onItemSelect({
-            ...currentCollection,
-            model: "collection",
-          });
+          onItemSelect(
+            currentQuestion
+              ? {
+                  id: currentQuestion.id,
+                  name: currentQuestion.name,
+                  model: currentQuestion.type === "model" ? "dataset" : "card",
+                }
+              : {
+                  id: currentCollection.id,
+                  name: currentCollection.name,
+                  model: "collection",
+                },
+          );
         }
       }
     },
