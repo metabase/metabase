@@ -31,7 +31,7 @@ function EmailAdmin(): JSX.Element | null {
   const hasAdminEmail = isNotNull(MetabaseSettings.adminEmail());
   return hasAdminEmail ? (
     <span className={QueryBuilderS.QueryErrorAdminEmail}>
-      <a className="no-decoration" href={`mailto:${hasAdminEmail}`}>
+      <a className={CS.noDecoration} href={`mailto:${hasAdminEmail}`}>
         {hasAdminEmail}
       </a>
     </span>

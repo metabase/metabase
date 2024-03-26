@@ -120,7 +120,7 @@ export default class DatabaseList extends Component {
                             )}
                             <Link
                               to={"/admin/databases/" + database.id}
-                              className="text-bold link"
+                              className={cx("text-bold", CS.link)}
                             >
                               {database.name}
                             </Link>
@@ -153,7 +153,7 @@ export default class DatabaseList extends Component {
                 })}
               >
                 {isAddingSampleDatabase ? (
-                  <span className="text-light no-decoration">
+                  <span className={cx("text-light", CS.noDecoration)}>
                     {t`Restoring the sample database...`}
                   </span>
                 ) : (
