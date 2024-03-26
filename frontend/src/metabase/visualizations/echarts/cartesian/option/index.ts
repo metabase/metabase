@@ -17,7 +17,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { ChartMeasurements } from "../chart-measurements/types";
 import { getGoalLineSeriesOption } from "./goal-line";
-import { getTrendLineOptionsAndDatasets } from "./trend-line";
+import { getTrendLinesOption } from "./trend-line";
 
 export const getSharedEChartsOptions = (isPlaceholder: boolean) => ({
   animation: !isPlaceholder,
@@ -65,15 +65,14 @@ export const getCartesianChartOption = (
     settings,
     renderingContext,
   );
-  const { options: trendSeriesOptions, datasets: trendDatasets } =
-    getTrendLineOptionsAndDatasets(chartModel, settings, renderingContext);
+  const trendSeriesOption = getTrendLinesOption(chartModel);
 
   const seriesOption = [
     // Data series should always come first for correct labels positioning
     // since series labelLayout function params return seriesIndex which is used to access label value
     dataSeriesOptions,
     goalSeriesOption,
-    trendSeriesOptions,
+    trendSeriesOption,
     timelineEventsSeries,
   ].flatMap(option => option ?? []);
 
@@ -91,7 +90,7 @@ export const getCartesianChartOption = (
 
   const echartsDataset = [
     { source: chartModel.transformedDataset, dimensions },
-    ...(trendDatasets ?? []),
+    ...chartModel.trendLinesDataset,
   ];
 
   return {

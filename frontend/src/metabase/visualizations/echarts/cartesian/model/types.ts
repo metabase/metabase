@@ -13,6 +13,7 @@ import type {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   ORIGINAL_INDEX_DATA_KEY,
+  TREND_LINE_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { OptionsType } from "metabase/lib/formatting/types";
 
@@ -39,10 +40,13 @@ export type LegacySeriesSettingsObjectKey = {
   };
 };
 
-export type RegularSeriesModel = {
+export type BaseSeriesModel = {
   name: string;
   color: string;
   dataKey: DataKey;
+};
+
+export type RegularSeriesModel = BaseSeriesModel & {
   vizSettingsKey: VizSettingsKey;
 
   // TODO: remove when the settings definitions are updated for the dynamic combo chart.
@@ -66,6 +70,8 @@ export type ScatterSeriesModel = (RegularSeriesModel | BreakoutSeriesModel) & {
   bubbleSizeDataKey?: DataKey;
 };
 
+export type TrendLineSeriesModel = BaseSeriesModel;
+
 export type SeriesModel =
   | RegularSeriesModel
   | BreakoutSeriesModel
@@ -84,7 +90,7 @@ export type Datum = Record<DataKey, RowValue> & {
   [X_AXIS_DATA_KEY]: RowValue;
   [ORIGINAL_INDEX_DATA_KEY]?: number;
 };
-export type ChartDataset = Datum[];
+export type ChartDataset<D extends Datum = Datum> = D[];
 export type Extent = [number, number];
 export type SeriesExtents = Record<DataKey, Extent>;
 export type AxisFormatter = (value: RowValue, options?: OptionsType) => string;
@@ -163,12 +169,17 @@ export type YAxisModel = {
   formatter: AxisFormatter;
 };
 
+export type TrendDataset = ChartDataset<
+  Datum & { [TREND_LINE_DATA_KEY]: number }
+>;
+
 export type BaseCartesianChartModel = {
   dimensionModel: DimensionModel;
   seriesModels: SeriesModel[];
   dataset: ChartDataset;
   transformedDataset: ChartDataset;
-
+  trendLinesDataset: TrendDataset;
+  trendLinesSeries: TrendLineSeriesModel[];
   leftAxisModel: YAxisModel | null;
   rightAxisModel: YAxisModel | null;
   xAxisModel: XAxisModel;
