@@ -571,8 +571,7 @@
     :constraints nil
     :middleware {:process-viz-settings? true
                  :js-int-to-string?     false
-                 :format-rows?          false
-                 :format-export?        format_export}))
+                 :format-rows?          format_export}))
 
 
 ;;; ----------------------------------------------- Param values -------------------------------------------------

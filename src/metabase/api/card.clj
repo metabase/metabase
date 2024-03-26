@@ -683,9 +683,8 @@
    :middleware  {:process-viz-settings?  true
                  :skip-results-metadata? true
                  :ignore-cached-results? true
-                 :format-rows?           false
-                 :js-int-to-string?      false
-                 :format-export?         format_export}))
+                 :format-rows?           format_export
+                 :js-int-to-string?      false}))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 

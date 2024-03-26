@@ -29,11 +29,11 @@
   (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
         ordered-formatters (volatile! nil)]
     (reify qp.si/StreamingResultsWriter
-      (begin! [_ {{:keys [ordered-cols results_timezone format-export?]
-                   :or   {format-export? true}} :data} viz-settings]
+      (begin! [_ {{:keys [ordered-cols results_timezone format-rows?]
+                   :or   {format-rows? true}} :data} viz-settings]
         (let [col-names (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings))]
           (vreset! ordered-formatters (mapv (fn [col]
-                                              (if format-export?
+                                              (if format-rows?
                                                 (formatter/create-formatter results_timezone col viz-settings)
                                                 identity))
                                             ordered-cols))

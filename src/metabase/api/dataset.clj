@@ -142,8 +142,7 @@
                                                   (dissoc :add-default-userland-constraints? :js-int-to-string?)
                                                   (assoc :process-viz-settings? true
                                                          :skip-results-metadata? true
-                                                         :format-rows? false
-                                                         :format-export? format_export))))]
+                                                         :format-rows? format_export))))]
     (run-streaming-query
      (qp/userland-query query)
      :export-format export-format
