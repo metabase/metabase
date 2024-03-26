@@ -123,7 +123,7 @@ don't, (and shouldn't) care that those are expressions. They are just another fi
             (when (seq deletions)
               (t2/delete! ModelIndexValue
                           :model_index_id (:id model-index)
-                          :pk_ref [:in (->> deletions (map first))]))
+                          :model_pk [:in (->> deletions (map first))]))
             (when (seq additions)
               (t2/insert! ModelIndexValue
                           (map (fn [[id v]]
@@ -137,6 +137,9 @@ don't, (and shouldn't) care that those are expressions. They are just another fi
                                      "overflow"
                                      "indexed")}))
         (catch Exception e
+          (log/error (format "Error saving model-index values for model-index: %d, model: %d"
+                             (:id model-index) (:model-id model-index))
+                     e)
           (t2/update! ModelIndex (:id model-index)
                       {:state      "error"
                        :error      (ex-message e)
