@@ -8,7 +8,7 @@ import {
 
 import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 
-describe("issue 31606", () => {
+describe("issue 40232", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -19,7 +19,9 @@ describe("issue 31606", () => {
 
     SQLFilter.enterParameterizedQuery("{{foo}} {{bar}}");
 
-    cy.findAllByRole("radio", { name: "Search box" }).first().click();
+    cy.findAllByRole("radio", { name: "Search box" })
+      .first()
+      .click({ force: true });
     filterWidget().first().click();
 
     moveDnDKitElement(popover().findByText("Add filter"), {
