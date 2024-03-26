@@ -14,7 +14,11 @@ describe("issue 20436", () => {
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
-        1: { data: { schemas: "all", native: "none" } },
+        1: {
+          data: { schemas: "all", native: "none" },
+          "view-data": "unrestricted",
+          "create-queries": "query-builder",
+        },
       },
     });
   });

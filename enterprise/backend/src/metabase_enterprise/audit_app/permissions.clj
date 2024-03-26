@@ -64,11 +64,15 @@
   [group-id changes]
   (let [[change-id type] (first (filter #(= (first %) (:id (default-audit-collection))) changes))]
       (when change-id
-        (let [permission-value (case type
-                                 :read  :unrestricted
-                                 :none  :no-self-service
-                                 :write (throw (ex-info (tru (str "Unable to make audit collections writable."))
-                                                        {:status-code 400})))
+        (let [data-access-value (case type
+                                  :read  :unrestricted
+                                  :none  :no-self-service
+                                  :write (throw (ex-info (tru (str "Unable to make audit collections writable."))
+                                                         {:status-code 400})))
+              create-queries-value (case type
+                                     :read :query-builder
+                                     :none :no)
               view-tables         (t2/select :model/Table :db_id perms/audit-db-id :name [:in audit-db-view-names])]
           (doseq [table view-tables]
-            (data-perms/set-table-permission! group-id (u/the-id table) :perms/data-access permission-value))))))
+            (data-perms/set-table-permission! group-id table :perms/data-access data-access-value)
+            (data-perms/set-table-permission! group-id table :perms/create-queries create-queries-value))))))
