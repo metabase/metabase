@@ -53,7 +53,7 @@ const generatePath = (
         ? {
             model: "database",
             id: dbId,
-            name: "",
+            name: "", // TODO
           }
         : null,
     },
@@ -67,7 +67,7 @@ const generatePath = (
         ? {
             model: "schema",
             id: schemaName,
-            name: "",
+            name: "", // TODO
           }
         : null,
     });
@@ -81,7 +81,7 @@ const generatePath = (
         ? {
             model: "table",
             id: tableId,
-            name: "",
+            name: "", // TODO
           }
         : null,
     });
