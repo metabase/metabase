@@ -49,6 +49,7 @@ describe("LimitStep", () => {
     const limitInput = screen.getByPlaceholderText("Enter a limit");
 
     fireEvent.change(limitInput, { target: { value: "52" } });
+    fireEvent.blur(limitInput);
 
     expect(Lib.currentLimit(getNextQuery(), 0)).toBe(52);
   });
@@ -59,6 +60,7 @@ describe("LimitStep", () => {
 
     const limitInput = screen.getByPlaceholderText("Enter a limit");
     fireEvent.change(limitInput, { target: { value: "1000" } });
+    fireEvent.blur(limitInput);
 
     expect(Lib.currentLimit(getNextQuery(), 0)).toBe(1000);
   });
