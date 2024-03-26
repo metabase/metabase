@@ -2,8 +2,6 @@
 
 (defn format-export
   "Apply formatting to exports."
-  [{{:keys [format-export?]} :middleware, :as _query} rff]
-  (if format-export?
-    (fn format-export-rff* [metadata]
-      (rff (assoc metadata :format-export? format-export?)))
-    rff))
+  [{{:keys [format-export?] :or {format-export? true}} :middleware, :as _query} rff]
+  (fn format-export-rff* [metadata]
+    (rff (assoc metadata :format-export? format-export?))))
