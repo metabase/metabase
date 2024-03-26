@@ -18,6 +18,7 @@ interface ListPickerProps {
   /** Omit the prop or pass -1 if you want to disable it */
   searchDebounceMs?: number;
   onDropdownOpen?: () => void;
+  onDropdownClose?: () => void;
   enableSearch: boolean;
   isLoading: boolean;
   noResultsText: string;
@@ -35,6 +36,7 @@ export function ListPicker(props: ListPickerProps) {
     onSearchChange = noop,
     searchDebounceMs = -1,
     onDropdownOpen,
+    onDropdownClose,
     enableSearch,
     placeholder,
     noResultsText,
@@ -92,6 +94,7 @@ export function ListPicker(props: ListPickerProps) {
       nothingFound={noResultsText}
       onSearchChange={singleOnSearch}
       onDropdownOpen={onDropdownOpen}
+      onDropdownClose={onDropdownClose}
       inputWrapperOrder={["label", "input", "error", "description"]}
     />
   );
