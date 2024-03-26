@@ -465,7 +465,7 @@
       :query-params     (dissoc query-params :format_export)
       :constraints      constraints
       :qp               qp
-      :middleware       (assoc middleware :format-export? format-export?))))
+      :middleware       (assoc middleware :format-export? (parse-boolean format-export?)))))
 
 (api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
