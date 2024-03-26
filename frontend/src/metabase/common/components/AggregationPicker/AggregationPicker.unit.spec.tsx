@@ -353,7 +353,6 @@ describe("AggregationPicker", () => {
       expect(screen.getByText(TEST_METRIC.name)).toBeInTheDocument();
     });
 
-
     // FIXME metrics v2
     it.skip("shouldn't list metrics for other tables", () => {
       setupMetrics({ metadata: createMetadata({ metrics: [TEST_METRIC] }) });
