@@ -38,7 +38,8 @@
 }
 
 :global(.inline-block),
-.inline-block {
+.inline-block,
+.inlineBlock {
   display: inline-block;
 }
 

@@ -10,7 +10,8 @@
 }
 
 :global(.ml-auto),
-.ml-auto {
+.ml-auto,
+.mlAuto {
   margin-left: auto;
 }
 

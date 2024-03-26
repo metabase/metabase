@@ -216,7 +216,8 @@
 }
 
 :global(.text-monospace),
-.text-monospace {
+.text-monospace,
+.textMonospace {
   font-family: Monaco, monospace;
 }
 
