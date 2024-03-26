@@ -1,9 +1,14 @@
+import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 
 import { EmbedHomepageView } from "./EmbedHomepageView";
 
 export const EmbedHomepage = () => {
+  const embeddingAutoEnabled = useSetting("setup-embedding-autoenabled");
+  const licenseActiveAtSetup = useSetting("setup-license-active-at-setup");
+  const exampleDashboardId = undefined; // will come from a setting
+
   const interactiveEmbeddingQuickStartUrl = useSelector(state =>
     // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
     getDocsUrl(state, {
@@ -27,9 +32,9 @@ export const EmbedHomepage = () => {
 
   return (
     <EmbedHomepageView
-      exampleDashboardId={1}
-      embeddingAutoEnabled={false}
-      licenseActiveAtSetup={true}
+      exampleDashboardId={exampleDashboardId}
+      embeddingAutoEnabled={embeddingAutoEnabled}
+      licenseActiveAtSetup={licenseActiveAtSetup}
       plan="oss-starter"
       interactiveEmbeddingQuickstartUrl={interactiveEmbeddingQuickStartUrl}
       embeddingDocsUrl={embeddingDocsUrl}
