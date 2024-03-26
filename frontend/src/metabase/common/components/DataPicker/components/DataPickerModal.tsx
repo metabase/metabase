@@ -62,7 +62,7 @@ export const DataPickerModal = ({
     //   icon: "model",
     //   element: (
     //     <NotebookDataPicker
-    //       initialValue={value}
+    //       value={value}
     //       options={options}
     //       ref={pickerRef}
     //       onItemSelect={handleItemSelect}
@@ -75,7 +75,7 @@ export const DataPickerModal = ({
       icon: "table",
       element: (
         <TablePicker
-          initialValue={value}
+          value={value}
           options={options}
           ref={pickerRef}
           onItemSelect={handleItemSelect}
@@ -88,7 +88,7 @@ export const DataPickerModal = ({
     //   icon: "folder",
     //   element: (
     //     <NotebookDataPicker
-    //       initialValue={value}
+    //       value={value}
     //       options={options}
     //       ref={pickerRef}
     //       onItemSelect={handleItemSelect}

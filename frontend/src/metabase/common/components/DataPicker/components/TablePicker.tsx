@@ -21,7 +21,7 @@ import { DataPickerListResolver } from "./DataPickerListResolver";
 const defaultOptions: EntityPickerModalOptions = {};
 
 interface Props {
-  initialValue: Value | null;
+  value: Value | null;
   options?: EntityPickerModalOptions;
   onItemSelect: (item: NotebookDataPickerValueItem) => void;
 }
@@ -29,13 +29,14 @@ interface Props {
 const getFolderPath = (
   path: PathEntry<NotebookDataPickerFolderItem["model"]>,
   folder: NotebookDataPickerItem,
+  value: Value | null,
 ): PathEntry<NotebookDataPickerFolderItem["model"]> => {
-  const [root, schema] = path;
+  const [database, schema] = path;
 
   if (folder.model === "database") {
     return [
       {
-        ...root,
+        ...database,
         selectedItem: folder,
       },
       {
@@ -49,17 +50,17 @@ const getFolderPath = (
   }
 
   if (folder.model === "schema") {
-    const dbId = (root.selectedItem as DatabaseItem).id;
+    const dbId = (database.selectedItem as DatabaseItem).id;
 
     return [
-      root,
+      database,
       {
         ...schema,
         selectedItem: folder,
       },
       {
         model: "table",
-        selectedItem: null,
+        selectedItem: value,
         query: {
           dbId,
         },
@@ -77,33 +78,46 @@ const getFolderPath = (
   }
 };
 
+const getInitialPath = (value: Value | null) => [
+  {
+    model: "database",
+    query: { saved: false },
+    selectedItem: value,
+  },
+];
+
 export const TablePicker = forwardRef(function TablePicker(
-  { onItemSelect, initialValue, options = defaultOptions }: Props,
+  { onItemSelect, value, options = defaultOptions }: Props,
   ref: Ref<unknown>,
 ) {
-  const [path, setPath] = useState<PathEntry[]>([
-    {
-      model: "database",
-      query: { saved: false }, // saved questions are fetched in a separate tab
-      selectedItem: initialValue,
-    },
-  ]);
+  const [path, setPath] = useState<PathEntry[]>(getInitialPath(value));
 
-  const onFolderSelect = useCallback(
+  const handleFolderSelect = useCallback(
     ({ folder }: { folder: NotebookDataPickerItem }) => {
-      setPath(path => getFolderPath(path, folder));
+      setPath(path => getFolderPath(path, folder, value));
     },
-    [setPath],
+    [setPath, value],
   );
 
-  // Exposing onFolderSelect so that parent can select newly created
+  const handleItemSelect = useCallback(
+    (item: NotebookDataPickerItem) => {
+      setPath(path => {
+        const [database, schema, table] = path;
+        return [database, schema, { ...table, selectedItem: item }];
+      });
+      onItemSelect(item);
+    },
+    [setPath, onItemSelect],
+  );
+
+  // Exposing handleFolderSelect so that parent can select newly created
   // folder
   useImperativeHandle(
     ref,
     () => ({
-      onFolderSelect,
+      handleFolderSelect,
     }),
-    [onFolderSelect],
+    [handleFolderSelect],
   );
 
   return (
@@ -114,8 +128,8 @@ export const TablePicker = forwardRef(function TablePicker(
       listResolver={DataPickerListResolver}
       options={options}
       path={path}
-      onFolderSelect={onFolderSelect}
-      onItemSelect={onItemSelect}
+      onFolderSelect={handleFolderSelect}
+      onItemSelect={handleItemSelect}
     />
   );
 });
