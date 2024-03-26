@@ -60,7 +60,9 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
   ]);
 
   const handleSearch = useDebouncedCallback(
-    useCallback((query: string) => setSearchQuery(query), []),
+    useCallback((query: string) => {
+      setSearchQuery(query);
+    }, []),
     searchDebounceMs,
   );
 
@@ -79,8 +81,7 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
         value,
         staticValues ?? getFlattenedStrings(fetchedValues?.values ?? []),
       )}
-      onClear={() => {}}
-      // onClear={handleChange}
+      onClear={handleChange}
       onChange={handleChange}
       onSearchChange={handleSearch}
       onDropdownOpen={() => setIsOpen(true)}
