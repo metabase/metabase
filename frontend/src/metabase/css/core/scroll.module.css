@@ -51,15 +51,15 @@
 }
 
 /* scroll light */
-.scrollShow.scroll--light::-webkit-scrollbar-thumb {
+.scrollShow.scrollLight::-webkit-scrollbar-thumb {
   border-radius: 0;
   background-color: var(--color-bg-medium);
 }
 
-.scrollShow.scroll--light::-webkit-scrollbar-thumb:horizontal:hover,
-.scrollShow.scroll--light::-webkit-scrollbar-thumb:vertical:hover,
-.scrollShow.scroll--light::-webkit-scrollbar-thumb:horizontal:active,
-.scrollShow.scroll--light::-webkit-scrollbar-thumb:vertical:active {
+.scrollShow.scrollLight::-webkit-scrollbar-thumb:horizontal:hover,
+.scrollShow.scrollLight::-webkit-scrollbar-thumb:vertical:hover,
+.scrollShow.scrollLight::-webkit-scrollbar-thumb:horizontal:active,
+.scrollShow.scrollLight::-webkit-scrollbar-thumb:vertical:active {
   background-color: var(--color-bg-medium);
 }
 
