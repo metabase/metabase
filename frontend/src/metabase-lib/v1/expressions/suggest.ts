@@ -247,7 +247,7 @@ export function suggest({
 
   suggestions = suggestions.filter(suggestion => suggestion.range);
 
-  // deduplicate suggestions and sort by type then name
+  // deduplicate suggestions and sort by type
   suggestions = _.chain(suggestions)
     .uniq(suggestion => suggestion.text)
     .sortBy("order")
