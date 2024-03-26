@@ -3,7 +3,7 @@ import * as Lib from "metabase-lib";
 
 import { createMockNotebookStep, DEFAULT_QUERY } from "../../test-utils";
 
-import LimitStep from "./LimitStep";
+import { LimitStep } from "./LimitStep";
 
 const DEFAULT_LIMIT = 10;
 const QUERY_WITH_LIMIT = Lib.limit(DEFAULT_QUERY, 0, DEFAULT_LIMIT);

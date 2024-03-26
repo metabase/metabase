@@ -8,7 +8,7 @@ import * as Lib from "metabase-lib";
 import { NotebookCell } from "../../NotebookCell";
 import type { NotebookStepUiComponentProps } from "../../types";
 
-function LimitStep({
+export function LimitStep({
   query,
   step,
   color,
@@ -44,6 +44,3 @@ function LimitStep({
     </NotebookCell>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default LimitStep;
