@@ -156,10 +156,9 @@
 
 (defmethod driver/with-transaction* :sql-jdbc
   [_ db-id thunk]
-  (let [conn (local-conn db-id)]
-    (jdbc/with-db-transaction [conn conn]
-      (binding [*tx-connections* (update *tx-connections* db-id #(or % conn))]
-        (thunk conn)))))
+  (jdbc/with-db-transaction [conn (local-conn db-id)]
+    (binding [*tx-connections* (assoc *tx-connections* db-id conn)]
+      (thunk))))
 
 (defmethod driver/delete! :sql-jdbc
   [driver db-id table-name & _args]
@@ -168,7 +167,7 @@
                                :quoted true
                                :dialect (sql.qp/quote-style driver))]
     (driver/with-transaction driver db-id
-      (jdbc/execute! (get *tx-connections* db-id) sql))))
+      (jdbc/execute! (local-conn db-id) sql))))
 
 (defmethod driver/insert-into! :sql-jdbc
   [driver db-id table-name column-names values]
@@ -191,7 +190,7 @@
                         chunks)]
     (driver/with-transaction driver db-id
       (doseq [sql sqls]
-        (jdbc/execute! (get *tx-connections* db-id) sql)))))
+        (jdbc/execute! (local-conn db-id) sql)))))
 
 (defmethod driver/add-columns! :sql-jdbc
   [driver db-id table-name column-definitions & {:keys [primary-key]}]

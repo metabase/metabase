@@ -947,13 +947,13 @@
   :hierarchy #'hierarchy)
 
 (defmethod with-transaction* ::driver [_ _ thunk]
-  (thunk nil))
+  (thunk))
 
 (defmacro with-transaction
   "Executes the given body within a transaction, if the given driver supports transactions."
   {:added "0.50.0", :arglists '([driver db-id & body])}
   [driver db-id & body]
-  `(with-transaction* ~driver ~db-id (fn [_conn#] ~@body)))
+  `(with-transaction* ~driver ~db-id (fn [] ~@body)))
 
 (defmulti delete!
   "Delete the current contents of `table-name`.
