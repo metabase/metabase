@@ -706,7 +706,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.icon("play").click();
       assertTableRowCount(5);
 
-      cy.findByDisplayValue("5").type("{selectall}50");
+      cy.findByDisplayValue("5").type("{selectall}50").blur();
       cy.button("Refresh").click();
       assertTableRowCount(10);
     });
