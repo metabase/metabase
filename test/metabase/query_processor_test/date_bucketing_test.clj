@@ -18,10 +18,14 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.database :refer [Database]]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
@@ -30,7 +34,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
+   #_{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [metabase.util.regex :as u.regex]
@@ -1015,8 +1019,7 @@
                     {:aggregation [[:count]]
                      :filter      [:time-interval $timestamp :last :week]})))))))))
 
-;; Commenting out for now because this is blocking CI
-#_(deftest ^:parallel time-interval-expression-test
+(deftest ^:parallel time-interval-expression-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (mt/dataset checkins:1-per-day
       (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -1025,11 +1028,11 @@
             timestamp-col (m/find-first (comp #{(mt/id :checkins :timestamp)} :id) (lib/visible-columns query))
             query (-> query
                       (lib/expression "Date" timestamp-col)
-                      (lib/filter (lib/time-interval timestamp-col :current :quarter))
+                      (lib/filter (lib/time-interval timestamp-col :current :week))
                       (as-> $q (lib/filter $q (lib/time-interval
                                                 (m/find-first (comp #{"Date"} :name) (lib/visible-columns $q))
-                                                :current :quarter))))]
-        (is (= 30
+                                                :current :week))))]
+        (is (= 7
                (count (mt/rows (qp/process-query query)))))))))
 
 ;; Make sure that when referencing the same field multiple times with different units we return the one that actually
