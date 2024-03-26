@@ -377,11 +377,23 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
     cy.intercept("/api/database?saved=true").as("database");
     cy.updatePermissionsGraph({
       [USER_GROUPS.ALL_USERS_GROUP]: {
-        [WRITABLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+        [WRITABLE_DB_ID]: {
+          data: { schemas: "none", native: "none" },
+          "view-data": "blocked",
+          "create-queries": "no",
+        },
       },
       [USER_GROUPS.NOSQL_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "all", native: "write" } },
-        [WRITABLE_DB_ID]: { data: { schemas: "all", native: "none" } },
+        [SAMPLE_DB_ID]: {
+          data: { schemas: "all", native: "write" },
+          "view-data": "unrestricted",
+          "create-queries": "query-builder-and-native",
+        },
+        [WRITABLE_DB_ID]: {
+          data: { schemas: "all", native: "none" },
+          "view-data": "unrestricted",
+          "create-queries": "query-builder",
+        },
       },
     });
 

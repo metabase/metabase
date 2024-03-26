@@ -4,6 +4,7 @@ import {
   popover,
   addPostgresDatabase,
   POPOVER_ELEMENT,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 const PG_DB_ID = 2;
@@ -180,9 +181,13 @@ describe(
 
       cy.signOut();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
       cy.updatePermissionsGraph({
         [DATA_GROUP]: {
-          [SAMPLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+          [SAMPLE_DB_ID]: {
+            "view-data": "blocked",
+            "create-queries": "no",
+          },
         },
       });
 

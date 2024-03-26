@@ -635,7 +635,8 @@
           (model-index/add-values! model-index-2)
 
           (testing "Indexed entities returned if a non-admin user has full data perms and collection access"
-            (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :all :native :write}}}
+            (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :unrestricted
+                                                           :create-queries :query-builder-and-native}}
               (is (=? {"Rome"   {:pk_ref         (mt/$ids $municipality.id)
                                  :name           "Rome"
                                  :model_id       (:id root-model)
@@ -650,27 +651,31 @@
                             (search! "rom" :rasta))))))
 
           (testing "Indexed entities are not returned if a user doesn't have full data perms for the DB"
-            (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :none :native :none}}}
+            (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :unrestricted
+                                                           :create-queries :no}}
               (is (= #{}
                      (into #{} (comp relevant-1 (map (juxt :name normalize)))
                            (search! "rom" :rasta)))))
 
-            (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :all :native :none}}}
+            (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :unrestricted
+                                                           :create-queries :query-builder}}
               (is (= #{}
                      (into #{} (comp relevant-1 (map (juxt :name normalize)))
                            (search! "rom" :rasta)))))
 
             (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
-              (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas {"PUBLIC" {id-1 :all
-                                                                                        id-2 :all
-                                                                                        id-3 :all
-                                                                                        id-4 :none}}}}}
+              (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :unrestricted
+                                                             :create-queries {"PUBLIC" {id-1 :query-builder
+                                                                                        id-2 :query-builder
+                                                                                        id-3 :query-builder
+                                                                                        id-4 :no}}}}
                 (is (= #{}
                        (into #{} (comp relevant-1 (map (juxt :name normalize)))
                              (search! "rom" :rasta))))))
 
             (mt/with-additional-premium-features #{:advanced-permissions}
-              (mt/with-all-users-data-perms-graph! {(mt/id) {:data {:schemas :block :native :none}}}
+              (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :blocked
+                                                             :create-queries :no}}
                 (is (= #{}
                        (into #{} (comp relevant-1 (map (juxt :name normalize)))
                              (search! "rom" :rasta)))))))
@@ -830,7 +835,8 @@
                    PermissionsGroup           {group-id :id} {}
                    PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
       (mt/with-no-data-perms-for-all-users!
-        (data-perms/set-table-permission! group-id table :perms/data-access :unrestricted)
+        (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! group-id table :perms/create-queries :query-builder)
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(default-table-search-row "RoundTable")]
                  (binding [*search-request-results-database-id* db-id]
@@ -841,7 +847,7 @@
     (mt/with-temp [Database                   {db-id :id} {}
                    Table                      table {:name "RoundTable", :db_id db-id}]
       (mt/with-restored-data-perms-for-group! (:id (perms-group/all-users))
-        (data-perms/set-table-permission! (perms-group/all-users) table :perms/data-access :no-self-service)
+        (data-perms/set-table-permission! (perms-group/all-users) table :perms/create-queries :no)
         (is (= []
                (filter #(= (:name %) "RoundTable")
                        (binding [*search-request-results-database-id* db-id]
