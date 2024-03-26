@@ -5,9 +5,10 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { GroupsPermissions, ConcreteTableId } from "metabase-types/api";
 
-import type {
+import {
   DatabaseEntityId,
   DataPermission,
+  DataPermissionValue,
   EntityId,
   SchemaEntityId,
   TableEntityId,
@@ -30,14 +31,18 @@ function getPermissionPath(
   return [groupId, databaseId, permission, "schemas", ...(nestedPath || [])];
 }
 
-// TODO: add better typing Record<DataPermission, string | undefined>
-const elludedDefaultValues: Record<string, string | undefined> = {
-  "view-data": "blocked",
-  "create-queries": "no",
+const elludedDefaultValues: Record<DataPermission, DataPermissionValue> = {
+  [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
+  [DataPermission.CREATE_QUERIES]: DataPermissionValue.NO,
+  [DataPermission.DOWNLOAD]: DataPermissionValue.NONE,
+  [DataPermission.DATA_MODEL]: DataPermissionValue.NONE,
+  [DataPermission.DETAILS]: DataPermissionValue.NO,
 };
 
-function getElludedPermissionValue(permission: DataPermission) {
-  return elludedDefaultValues[permission] ?? "none";
+function getElludedPermissionValue(
+  permission: DataPermission,
+): DataPermissionValue {
+  return elludedDefaultValues[permission] ?? DataPermissionValue.NO;
 }
 
 interface GetPermissionParams {
@@ -56,11 +61,11 @@ const getPermission = ({
   permission,
   path,
   isControlledType = false,
-}: GetPermissionParams) => {
+}: GetPermissionParams): DataPermissionValue => {
   const valuePath = getPermissionPath(groupId, databaseId, permission, path);
   const value = getIn(permissions, valuePath);
   if (isControlledType && typeof value === "object") {
-    return "controlled";
+    return DataPermissionValue.CONTROLLED;
   }
   return value ? value : getElludedPermissionValue(permission);
 };
@@ -79,12 +84,14 @@ export function updatePermission(
 
   if (
     current === value ||
-    (current && typeof current === "object" && value === "controlled")
+    (current &&
+      typeof current === "object" &&
+      value === DataPermissionValue.CONTROLLED)
   ) {
     return permissions;
   }
   let newValue: any;
-  if (value === "controlled") {
+  if (value === DataPermissionValue.CONTROLLED) {
     newValue = {};
     if (entityIds) {
       for (const entityId of entityIds) {
@@ -121,8 +128,13 @@ export const getNativePermission = (
   permissions: GroupsPermissions,
   groupId: number,
   entityId: any, // TODO: fix
-) => {
-  return getFieldsPermission(permissions, groupId, entityId, "create-queries");
+): DataPermissionValue => {
+  return getFieldsPermission(
+    permissions,
+    groupId,
+    entityId,
+    DataPermission.CREATE_QUERIES,
+  );
 };
 
 export const getTablesPermission = (
@@ -139,7 +151,7 @@ export const getTablesPermission = (
     },
     permission,
   );
-  if (schemas === "controlled") {
+  if (schemas === DataPermissionValue.CONTROLLED) {
     return getPermission({
       permissions,
       databaseId,
@@ -158,7 +170,7 @@ export const getFieldsPermission = (
   groupId: number,
   { databaseId, schemaName, tableId }: TableEntityId,
   permission: DataPermission,
-) => {
+): DataPermissionValue => {
   const tables = getTablesPermission(
     permissions,
     groupId,
@@ -168,7 +180,7 @@ export const getFieldsPermission = (
     },
     permission,
   );
-  if (tables === "controlled") {
+  if (tables === DataPermissionValue.CONTROLLED) {
     return getPermission({
       permissions,
       groupId,
@@ -203,14 +215,25 @@ export function downgradeNativePermissionsIfNeeded(
 
   if (isRestrictivePermission(value)) {
     // if changing schemas to none, downgrade native to none
-    return updateNativePermission(permissions, groupId, { databaseId }, "no");
+    return updateNativePermission(
+      permissions,
+      groupId,
+      { databaseId },
+      DataPermissionValue.NO,
+    );
   } else if (
-    value === "controlled" &&
+    value === DataPermissionValue.CONTROLLED &&
+    // TODO: fix
     currentSchemas === "all" &&
-    currentNative !== "no"
+    currentNative !== DataPermissionValue.NO
   ) {
     // if changing schemas to controlled, downgrade native to none
-    return updateNativePermission(permissions, groupId, { databaseId }, "no");
+    return updateNativePermission(
+      permissions,
+      groupId,
+      { databaseId },
+      DataPermissionValue.NO,
+    );
   } else {
     return permissions;
   }
@@ -238,7 +261,7 @@ function inferEntityPermissionValueFromChildTables(
   entityId: EntityId,
   database: Database,
   permission: DataPermission,
-) {
+): DataPermissionValue {
   const entityIdsForDescendantTables = _.chain(database.tables)
     .filter(t => _.isMatch(t, entityIdToMetadataTableFields(entityId)))
     .map(metadataTableToTableEntityId)
@@ -249,14 +272,14 @@ function inferEntityPermissionValueFromChildTables(
     .groupBy(_.identity)
     .value();
 
-  const keys = Object.keys(entityIdsByPermValue);
+  const keys = Object.keys(entityIdsByPermValue) as DataPermissionValue[];
   const allTablesHaveSamePermissions = keys.length === 1;
 
   if (allTablesHaveSamePermissions) {
     // either "all" or "none"
     return keys[0];
   } else {
-    return "controlled";
+    return DataPermissionValue.CONTROLLED;
   }
 }
 
@@ -342,7 +365,7 @@ export function updateFieldsPermission(
     permissions,
     groupId,
     { databaseId, schemaName },
-    "controlled",
+    DataPermissionValue.CONTROLLED,
     database,
     permission,
     downgradeNative,
@@ -375,7 +398,7 @@ export function updateTablesPermission(
     permissions,
     groupId,
     { databaseId },
-    "controlled",
+    DataPermissionValue.CONTROLLED,
     database,
     permission,
     downgradeNative,
@@ -397,7 +420,7 @@ export function updateSchemasPermission(
   permissions: GroupsPermissions,
   groupId: number,
   { databaseId }: DatabaseEntityId,
-  value: any,
+  value: DataPermissionValue,
   database: Database,
   permission: DataPermission,
   downgradeNative?: boolean,
@@ -436,13 +459,13 @@ export function updateNativePermission(
   permissions: GroupsPermissions,
   groupId: number,
   { databaseId }: DatabaseEntityId,
-  value: any,
+  value: DataPermissionValue,
 ) {
   return updatePermission(
     permissions,
     groupId,
     databaseId,
-    "create-queries",
+    DataPermission.CREATE_QUERIES,
     [],
     value,
   );

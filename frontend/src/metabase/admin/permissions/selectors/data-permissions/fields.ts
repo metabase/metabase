@@ -18,7 +18,13 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
-import type { TableEntityId, PermissionSectionConfig } from "../../types";
+import {
+  TableEntityId,
+  PermissionSectionConfig,
+  DataPermission,
+  DataPermissionType,
+  DataPermissionValue,
+} from "../../types";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
@@ -34,25 +40,25 @@ const buildAccessPermission = (
   originalPermissions: GroupsPermissions,
   defaultGroup: Group,
   database: Database,
-) => {
+): PermissionSectionConfig => {
   const value = getFieldsPermission(
     permissions,
     groupId,
     entityId,
-    "view-data",
+    DataPermission.VIEW_DATA,
   );
 
   const originalValue = getFieldsPermission(
     originalPermissions,
     groupId,
     entityId,
-    "view-data",
+    DataPermission.VIEW_DATA,
   );
   const defaultGroupValue = getFieldsPermission(
     permissions,
     defaultGroup.id,
     entityId,
-    "view-data",
+    DataPermission.VIEW_DATA,
   );
 
   const warning = getPermissionWarning(
@@ -67,10 +73,10 @@ const buildAccessPermission = (
     permissions,
     groupId,
     entityId,
-    "view-data",
+    DataPermission.VIEW_DATA,
   );
 
-  const confirmations = (newValue: string) => [
+  const confirmations = (newValue: DataPermissionValue) => [
     getPermissionWarningModal(
       newValue,
       defaultGroupValue,
@@ -89,8 +95,8 @@ const buildAccessPermission = (
   ];
 
   return {
-    permission: "view-data",
-    type: "access",
+    permission: DataPermission.VIEW_DATA,
+    type: DataPermissionType.ACCESS,
     isDisabled:
       isAdmin ||
       PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(value, "fields"),
@@ -100,10 +106,11 @@ const buildAccessPermission = (
     warning,
     options: PLUGIN_ADVANCED_PERMISSIONS.addTablePermissionOptions(
       _.compact([
-        DATA_PERMISSION_OPTIONS.all,
+        DATA_PERMISSION_OPTIONS.unrestricted,
         ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
-        originalValue === DATA_PERMISSION_OPTIONS.noSelfService.value &&
-          DATA_PERMISSION_OPTIONS.noSelfService,
+        originalValue ===
+          DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated.value &&
+          DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated,
       ]),
       value,
     ),
@@ -119,13 +126,13 @@ const buildNativePermission = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   accessPermissionValue: string,
-) => {
+): PermissionSectionConfig => {
   const { databaseId } = entityId;
   const dbValue = getNativePermission(permissions, groupId, { databaseId });
 
   return {
-    permission: "create-queries",
-    type: "native",
+    permission: DataPermission.CREATE_QUERIES,
+    type: DataPermissionType.NATIVE,
     isDisabled: dbValue !== DATA_PERMISSION_OPTIONS.controlled.value,
     disabledTooltip: getNativePermissionDisabledTooltip(
       isAdmin,

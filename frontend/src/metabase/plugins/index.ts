@@ -6,6 +6,7 @@ import type {
   DataPermission,
   DatabaseEntityId,
   PermissionSubject,
+  DataPermissionValue,
 } from "metabase/admin/permissions/types";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
@@ -284,7 +285,7 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
     _groupId: number,
     _isAdmin: boolean,
     _permissions: GroupsPermissions,
-    _dataAccessPermissionValue: string,
+    _dataAccessPermissionValue: DataPermissionValue,
     _defaultGroup: Group,
     _permissionSubject: PermissionSubject,
   ) => {

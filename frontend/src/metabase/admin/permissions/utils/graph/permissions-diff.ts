@@ -4,6 +4,7 @@ import type {
   Group,
   GroupsPermissions,
 } from "metabase-types/api";
+import { DataPermission } from "../../types";
 
 import {
   getFieldsPermission,
@@ -51,7 +52,7 @@ function diffDatabasePermissions(
         schemaName: table.schema_name || "",
         tableId: table.id as ConcreteTableId,
       },
-      "view-data",
+      DataPermission.VIEW_DATA,
     );
     const newFieldsPerm = getFieldsPermission(
       newPerms,
@@ -61,7 +62,7 @@ function diffDatabasePermissions(
         schemaName: table.schema_name || "",
         tableId: table.id as ConcreteTableId,
       },
-      "view-data",
+      DataPermission.VIEW_DATA,
     );
     if (oldFieldsPerm !== newFieldsPerm) {
       if (isRestrictivePermission(newFieldsPerm)) {

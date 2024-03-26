@@ -26,6 +26,7 @@ import { CollectionsApi, PermissionsApi } from "metabase/services";
 
 import { trackPermissionChange } from "./analytics";
 import { isDatabaseEntityId } from "./utils/data-entity-id";
+import { DataPermissionType, DataPermissionValue } from "./types";
 
 const INITIALIZE_DATA_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_DATA_PERMISSIONS";
@@ -96,7 +97,7 @@ export const granulateDatabasePermissions = createThunkAction(
     // to the previously set value of the parent (database in this case). if the db perm
     // value is set to something other than restrictied before changing to controlled, the
     // table's view data dropdowns will get locked in an unchangable state (e.g. blocked, impersonated)
-    if (value === "controlled") {
+    if (value === DataPermissionValue.CONTROLLED) {
       dispatch(
         updateDataPermission({
           groupId,
@@ -146,7 +147,7 @@ export const updateDataPermission = createThunkAction(
       trackPermissionChange(
         entityId,
         permissionInfo.permission,
-        permissionInfo.type === "create-queries",
+        permissionInfo.type === "native",
         value,
       );
 
@@ -266,7 +267,7 @@ const dataPermissions = handleActions(
 
         const database = metadata.database(entityId.databaseId);
 
-        if (permissionInfo.type === "details") {
+        if (permissionInfo.type === DataPermissionType.DETAILS) {
           return updatePermission(
             state,
             groupId,
@@ -275,7 +276,7 @@ const dataPermissions = handleActions(
           );
         }
 
-        if (permissionInfo.type === "create-queries") {
+        if (permissionInfo.type === DataPermissionType.NATIVE) {
           const updateFn =
             PLUGIN_DATA_PERMISSIONS.updateNativePermission ??
             updateNativePermission;
@@ -290,7 +291,8 @@ const dataPermissions = handleActions(
           );
         }
 
-        const shouldDowngradeNative = permissionInfo.type === "access";
+        const shouldDowngradeNative =
+          permissionInfo.type === DataPermissionType.ACCESS;
 
         if (entityId.tableId != null) {
           const updatedPermissions = updateFieldsPermission(

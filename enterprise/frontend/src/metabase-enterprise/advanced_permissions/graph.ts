@@ -1,6 +1,7 @@
-import type {
+import {
   DataPermission,
   DatabaseEntityId,
+  DataPermissionValue,
 } from "metabase/admin/permissions/types";
 import {
   getSchemasPermission,
@@ -22,17 +23,21 @@ export function updateNativePermission(
     permissions,
     groupId,
     entityId,
-    permission,
+    DataPermission.VIEW_DATA,
   );
 
-  if (value !== "no" && schemasPermission !== "impersonated") {
+  if (
+    (value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE ||
+      value === DataPermissionValue.QUERY_BUILDER) &&
+    schemasPermission !== DataPermissionValue.IMPERSONATED
+  ) {
     permissions = updateSchemasPermission(
       permissions,
       groupId,
       { databaseId: entityId.databaseId },
-      "unrestricted",
+      DataPermissionValue.UNRESTRICTED,
       database,
-      permission,
+      DataPermission.VIEW_DATA,
       false,
     );
   }
