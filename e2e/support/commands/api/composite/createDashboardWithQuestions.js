@@ -15,7 +15,7 @@ Cypress.Commands.add(
             dashcardResponse => dashcardResponse.body.card,
           );
           return {
-            questions: questions,
+            questions,
             dashboard,
           };
         });
