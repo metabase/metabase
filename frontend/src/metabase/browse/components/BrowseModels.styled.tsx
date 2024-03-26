@@ -6,7 +6,7 @@ import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
-import { Collapse, Icon, type ButtonProps, Box } from "metabase/ui";
+import { Box, Collapse, FixedSizeIcon, type ButtonProps } from "metabase/ui";
 
 import { BrowseGrid } from "./BrowseApp.styled";
 
@@ -130,11 +130,6 @@ export const CollectionSummary = styled.div`
   white-space: nowrap;
   font-size: 0.75rem;
   color: ${color("text-medium")};
-`;
-
-export const FixedSizeIcon = styled(Icon)<{ size?: number }>`
-  min-width: ${({ size }) => size ?? 16}px;
-  min-height: ${({ size }) => size ?? 16}px;
 `;
 
 export const BannerModelIcon = styled(FixedSizeIcon)`

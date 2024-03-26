@@ -1,4 +1,5 @@
 import isPropValid from "@emotion/is-prop-valid";
+import styled from "@emotion/styled";
 import cx from "classnames";
 import type { SVGAttributes, MouseEvent } from "react";
 import { forwardRef } from "react";
@@ -41,3 +42,8 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
 
   return tooltip ? <Tooltip label={tooltip}>{icon}</Tooltip> : icon;
 });
+
+export const FixedSizeIcon = styled(Icon)<{ size?: number }>`
+  min-width: ${({ size }) => size ?? 16}px;
+  min-height: ${({ size }) => size ?? 16}px;
+`;
