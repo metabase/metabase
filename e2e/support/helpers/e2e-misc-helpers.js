@@ -102,7 +102,7 @@ export function interceptPromise(method, path) {
 const cypressWaitAllRecursive = (results, commands) => {
   const [nextCommand, ...restCommands] = commands;
   if (!nextCommand) {
-    return results;
+    return;
   }
 
   return nextCommand.then(result => {
