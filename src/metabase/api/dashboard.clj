@@ -1170,22 +1170,22 @@
   (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              request-parameters
-             {:dashboard-id   dashboard-id
-              :card-id        card-id
-              :dashcard-id    dashcard-id
-              :export-format  export-format
-              :format-export? format_export
-              :parameters     (json/parse-string parameters keyword)
-              :context        (api.dataset/export-format->context export-format)
-              :constraints    nil
+             {:dashboard-id  dashboard-id
+              :card-id       card-id
+              :dashcard-id   dashcard-id
+              :export-format export-format
+              :parameters    (json/parse-string parameters keyword)
+              :context       (api.dataset/export-format->context export-format)
+              :constraints   nil
               ;; TODO -- passing this `:middleware` map is a little repetitive, need to think of a way to not have to
               ;; specify this all over the codebase any time we want to do a query with an export format. Maybe this
               ;; should be the default if `export-format` isn't `:api`?
-              :middleware     {:process-viz-settings?  true
-                               :skip-results-metadata? true
-                               :ignore-cached-results? true
-                               :format-rows?           false
-                               :js-int-to-string?      false}})))
+              :middleware    {:process-viz-settings?  true
+                              :skip-results-metadata? true
+                              :ignore-cached-results? true
+                              :format-rows?           false
+                              :format-export?         format_export
+                              :js-int-to-string?      false}})))
 
 (api/defendpoint POST "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run a pivot table query for a specific DashCard."

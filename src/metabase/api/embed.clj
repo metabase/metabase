@@ -452,7 +452,8 @@
       :or   {constraints (qp.constraints/default-query-constraints)
              qp          qp.card/process-query-for-card-default-qp}}]
   (let [unsigned-token (embed/unsign token)
-        dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+        dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        format-export? (:format_export query-params)]
     (check-embedding-enabled-for-dashboard dashboard-id)
     (process-query-for-dashcard
       :export-format    export-format
@@ -461,10 +462,10 @@
       :card-id          card-id
       :embedding-params (t2/select-one-fn :embedding_params Dashboard :id dashboard-id)
       :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-      :query-params     query-params
+      :query-params     (dissoc query-params :format_export)
       :constraints      constraints
       :qp               qp
-      :middleware       middleware)))
+      :middleware       (assoc middleware :format-export? format-export?))))
 
 (api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
