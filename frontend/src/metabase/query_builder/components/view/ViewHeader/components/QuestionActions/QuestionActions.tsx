@@ -28,6 +28,7 @@ import {
   checkCanBeModel,
   checkDatabaseCanPersistDatasets,
 } from "metabase-lib/v1/metadata/utils/models";
+import { UploadMode } from "metabase-types/store/upload";
 
 import { canUploadToQuestion } from "../../../../../selectors";
 import { ViewHeaderIconButtonContainer } from "../../ViewHeader.styled";
@@ -72,7 +73,7 @@ export const QuestionActions = ({
   onInfoClick,
   onModelPersistenceChange,
 }: Props) => {
-  const [uploadMode, setUploadMode] = useState<"append" | "replace">("append");
+  const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.append);
   const isMetabotEnabled = useSetting("is-metabot-enabled");
   const canUpload = useSelector(canUploadToQuestion(question));
 
@@ -231,7 +232,9 @@ export const QuestionActions = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUploadClick = (newUploadMode: "append" | "replace") => {
+  const handleUploadClick = (
+    newUploadMode: UploadMode.append | UploadMode.replace,
+  ) => {
     if (fileInputRef.current) {
       setUploadMode(newUploadMode);
       fileInputRef.current.click();
@@ -302,27 +305,19 @@ export const QuestionActions = ({
                 <Menu.Dropdown>
                   <Menu.Item
                     icon={<Icon name="add" />}
-                    onClick={() => handleUploadClick("append")}
+                    onClick={() => handleUploadClick(UploadMode.append)}
                   >
                     {t`Append data to this model`}
                   </Menu.Item>
 
                   <Menu.Item
                     icon={<Icon name="refresh" />}
-                    onClick={() => handleUploadClick("replace")}
+                    onClick={() => handleUploadClick(UploadMode.replace)}
                   >
                     {t`Replace all data in this model`}
                   </Menu.Item>
                 </Menu.Dropdown>
               </Menu>
-              {/* <Button
-                onlyIcon
-                icon="upload"
-                iconSize={HEADER_ICON_SIZE}
-                onClick={handleUploadClick}
-                color={infoButtonColor}
-                data-testid="qb-header-append-button"
-              /> */}
             </ViewHeaderIconButtonContainer>
           </Tooltip>
         </>

@@ -13,19 +13,18 @@ import {
   Icon,
 } from "metabase/ui";
 import type { CollectionId, TableId, CardId } from "metabase-types/api";
+import { UploadMode } from "metabase-types/store/upload";
 
 import { findLastEditedCollectionItem } from "./utils";
 
-enum UploadMode {
-  append = "append",
-  create = "create",
-  replace = "replace",
-}
-
 type CollectionOrTableIdProps =
-  | { uploadMode: "create"; collectionId: CollectionId; tableId?: never }
   | {
-      uploadMode: "append" | "replace";
+      uploadMode: UploadMode.create;
+      collectionId: CollectionId;
+      tableId?: never;
+    }
+  | {
+      uploadMode: UploadMode.append | UploadMode.replace;
       collectionId?: never;
       tableId: TableId;
       modelId?: CardId;
@@ -73,7 +72,7 @@ export function ModelUploadModal({
   );
 
   const handleUpload = () => {
-    if (uploadMode !== "create" && tableId) {
+    if (uploadMode !== UploadMode.create && tableId) {
       const modelForTableId = uploadableModels.find(
         model => model.based_on_upload === Number(tableId),
       );
@@ -84,14 +83,14 @@ export function ModelUploadModal({
       });
     }
 
-    return onUpload({ collectionId, uploadMode: "create" });
+    return onUpload({ collectionId, uploadMode: UploadMode.create });
   };
 
   useEffect(() => {
     // if we trigger the modal, and there's no uploadable models, just
     // automatically upload a new one
     if (opened && uploadableModels.length === 0) {
-      onUpload({ collectionId, uploadMode: "create" });
+      onUpload({ collectionId, uploadMode: UploadMode.create });
       onClose();
     }
   }, [onUpload, onClose, collectionId, uploadableModels, opened]);
