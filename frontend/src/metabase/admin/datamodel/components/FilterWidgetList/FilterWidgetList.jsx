@@ -46,7 +46,8 @@ export class FilterWidgetList extends Component {
         className={cx(
           QueryBuilderS.QueryFilterList,
           CS.ml2,
-          "scroll-x scroll-show",
+          CS.scrollX,
+          "scroll-show",
         )}
       >
         {filters.map((filter, index) => (
