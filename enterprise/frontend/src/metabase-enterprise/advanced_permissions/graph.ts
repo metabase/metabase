@@ -1,6 +1,11 @@
+import _ from "underscore";
+
+import type {
+  DatabaseEntityId,
+  TableEntityId,
+} from "metabase/admin/permissions/types";
 import {
   DataPermission,
-  DatabaseEntityId,
   DataPermissionValue,
 } from "metabase/admin/permissions/types";
 import {
@@ -14,7 +19,7 @@ import type { GroupsPermissions, NativePermissions } from "metabase-types/api";
 export function updateNativePermission(
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: DatabaseEntityId,
+  entityId: DatabaseEntityId & TableEntityId,
   value: NativePermissions,
   database: Database,
   permission: DataPermission,
@@ -46,7 +51,7 @@ export function updateNativePermission(
     groupId,
     entityId.databaseId,
     permission,
-    [],
+    _.compact([(entityId as any).schemaName, (entityId as any).tableId]),
     value,
   );
 }

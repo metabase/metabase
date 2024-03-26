@@ -17,7 +17,8 @@ import type {
   ConcreteTableId,
 } from "metabase-types/api";
 
-import { DataPermission, DataPermissionValue, EntityId } from "../types";
+import type { EntityId } from "../types";
+import { DataPermission, DataPermissionValue } from "../types";
 
 export const getDefaultGroupHasHigherAccessText = (defaultGroup: Group) =>
   t`The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;
@@ -127,7 +128,7 @@ export function getRawQueryWarningModal(
   permissions: GroupsPermissions,
   groupId: Group["id"],
   entityId: EntityId,
-  value: string,
+  value: DataPermissionValue,
 ) {
   const nativePermission = getNativePermission(permissions, groupId, entityId);
   const viewPermission = getSchemasPermission(

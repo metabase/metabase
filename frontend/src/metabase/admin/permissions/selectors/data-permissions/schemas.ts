@@ -17,13 +17,12 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
 import { granulateDatabasePermissions } from "../../permissions";
-import {
+import type {
   DatabaseEntityId,
-  DataPermission,
-  DataPermissionType,
   DataPermissionValue,
   PermissionSectionConfig,
 } from "../../types";
+import { DataPermission, DataPermissionType } from "../../types";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
@@ -75,25 +74,27 @@ const buildAccessPermission = (
     groupId,
   );
 
+  const options = PLUGIN_ADVANCED_PERMISSIONS.addDatabasePermissionOptions(
+    _.compact([
+      DATA_PERMISSION_OPTIONS.unrestricted,
+      DATA_PERMISSION_OPTIONS.controlled,
+      originalAccessPermissionValue ===
+        DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated.value &&
+        DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated,
+    ]),
+    database,
+  );
+
   return {
     permission: DataPermission.VIEW_DATA,
     type: DataPermissionType.ACCESS,
-    isDisabled: isAdmin,
+    isDisabled: isAdmin || options.length <= 1,
     disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
     isHighlighted: isAdmin,
     value: accessPermissionValue,
     warning: accessPermissionWarning,
     confirmations: accessPermissionConfirmations,
-    options: PLUGIN_ADVANCED_PERMISSIONS.addDatabasePermissionOptions(
-      _.compact([
-        DATA_PERMISSION_OPTIONS.unrestricted,
-        DATA_PERMISSION_OPTIONS.controlled,
-        originalAccessPermissionValue ===
-          DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated.value &&
-          DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated,
-      ]),
-      database,
-    ),
+    options,
     postActions: {
       controlled: (_, __, ___, accessPermissionValue) =>
         granulateDatabasePermissions(

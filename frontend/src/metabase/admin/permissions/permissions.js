@@ -25,8 +25,12 @@ import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { CollectionsApi, PermissionsApi } from "metabase/services";
 
 import { trackPermissionChange } from "./analytics";
+import {
+  DataPermissionType,
+  DataPermissionValue,
+  DataPermission,
+} from "./types";
 import { isDatabaseEntityId } from "./utils/data-entity-id";
-import { DataPermissionType, DataPermissionValue } from "./types";
 
 const INITIALIZE_DATA_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_DATA_PERMISSIONS";
@@ -271,7 +275,9 @@ const dataPermissions = handleActions(
           return updatePermission(
             state,
             groupId,
-            [entityId.databaseId, permissionInfo.type],
+            entityId.databaseId,
+            DataPermission.DETAILS,
+            [],
             value,
           );
         }
