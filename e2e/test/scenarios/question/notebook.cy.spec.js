@@ -701,7 +701,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.button("Row limit").click();
     cy.findByTestId("step-limit-0-0").within(() => {
-      cy.findByPlaceholderText("Enter a limit").type("5");
+      cy.findByPlaceholderText("Enter a limit").type("5").blur();
 
       cy.icon("play").click();
       assertTableRowCount(5);
