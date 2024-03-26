@@ -170,7 +170,9 @@ export function IllustrationWidget({
                 className={CS.flexNoShrink}
                 onClick={() => fileInputRef.current?.click()}
               >{t`Choose File`}</Button>
-              {<Box ml="sm">{<ImageUploadInfoDot type={type} />}</Box>}
+              <Box ml="sm">
+                <ImageUploadInfoDot type={type} />
+              </Box>
               <input
                 data-testid="file-input"
                 ref={fileInputRef}
