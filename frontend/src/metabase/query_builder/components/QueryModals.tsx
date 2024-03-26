@@ -6,7 +6,7 @@ import _ from "underscore";
 import Modal from "metabase/components/Modal";
 import QuestionSavedModal from "metabase/components/QuestionSavedModal";
 import { ConnectedAddToDashSelectDashModal } from "metabase/containers/AddToDashSelectDashModal";
-import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
+import { MoveModal } from "metabase/containers/MoveModal";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
@@ -237,7 +237,7 @@ class QueryModals extends Component<QueryModalsProps> {
       case MODAL_TYPES.MOVE:
         return (
           <Modal onClose={onCloseModal}>
-            <CollectionMoveModal
+            <MoveModal
               title={t`Which collection should this be in?`}
               initialCollectionId={question.collectionId()}
               onClose={onCloseModal}

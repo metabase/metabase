@@ -3,6 +3,7 @@ import type {
   ClickBehavior,
   Collection,
   CollectionAuthorityLevel,
+  CollectionId,
   Parameter,
   ParameterId,
   ParameterTarget,
@@ -32,7 +33,7 @@ export interface Dashboard {
   created_at: string;
   updated_at: string;
   collection?: Collection | null;
-  collection_id: number | null;
+  collection_id: CollectionId | null;
   name: string;
   description: string | null;
   model?: string;

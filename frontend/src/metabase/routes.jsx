@@ -14,7 +14,7 @@ import { BrowseApp } from "metabase/browse/components/BrowseApp";
 import SchemaBrowser from "metabase/browse/components/SchemaBrowser";
 import TableBrowser from "metabase/browse/containers/TableBrowser";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
-import MoveCollectionModal from "metabase/collections/containers/MoveCollectionModal";
+import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import { Unauthorized } from "metabase/components/ErrorPages";
 import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
