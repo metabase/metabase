@@ -9,16 +9,21 @@ import type {
 } from "metabase-types/api/admin";
 
 import { Api } from "./api";
-import { API_KEY_TAG } from "./tags";
+import { API_KEY_TAG, listWithItemTags, listTag } from "./tags";
 
 export const apiKeyApi = Api.injectEndpoints({
   endpoints: builder => ({
     listApiKeys: builder.query<ApiKey[], void>({
       query: () => `/api/api-key`,
-      providesTags: [API_KEY_TAG],
+      providesTags: response =>
+        listWithItemTags(
+          API_KEY_TAG,
+          response?.map(({ id }) => id),
+        ),
     }),
     countApiKeys: builder.query<number, void>({
       query: () => `/api/api-key/count`,
+      providesTags: [listTag(API_KEY_TAG)],
     }),
     createApiKey: builder.mutation<CreateApiKeyResponse, CreateApiKeyRequest>({
       query: body => ({
@@ -26,7 +31,7 @@ export const apiKeyApi = Api.injectEndpoints({
         url: `/api/api-key`,
         body,
       }),
-      invalidatesTags: [API_KEY_TAG],
+      invalidatesTags: [listTag(API_KEY_TAG)],
     }),
     updateApiKey: builder.mutation<UpdateApiKeyResponse, UpdateApiKeyRequest>({
       query: ({ id, ...body }) => ({
@@ -34,15 +39,18 @@ export const apiKeyApi = Api.injectEndpoints({
         url: `/api/api-key/${id}`,
         body,
       }),
-      invalidatesTags: [API_KEY_TAG],
+      invalidatesTags: (response, error, { id }) =>
+        listWithItemTags(API_KEY_TAG, [id]),
     }),
     deleteApiKey: builder.mutation<void, ApiKeyId>({
       query: id => ({ method: "DELETE", url: `/api/api-key/${id}` }),
-      invalidatesTags: [API_KEY_TAG],
+      invalidatesTags: (response, error, id) =>
+        listWithItemTags(API_KEY_TAG, [id]),
     }),
     regenerateApiKey: builder.mutation<RegenerateApiKeyResponse, ApiKeyId>({
       query: id => ({ method: "PUT", url: `/api/api-key/${id}/regenerate` }),
-      invalidatesTags: [API_KEY_TAG],
+      invalidatesTags: (response, error, id) =>
+        listWithItemTags(API_KEY_TAG, [id]),
     }),
   }),
 });
