@@ -3,6 +3,7 @@ import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { Box, Button, Flex, Icon, Paper, Select, Text } from "metabase/ui";
 import type {
@@ -166,7 +167,7 @@ export function IllustrationWidget({
           {value === "custom" && (
             <Flex w="100%" align="center">
               <Button
-                style={{ flexShrink: 0 }}
+                className={CS.flexNoShrink}
                 onClick={() => fileInputRef.current?.click()}
               >{t`Choose File`}</Button>
               {<Box ml="sm">{<ImageUploadInfoDot type={type} />}</Box>}
