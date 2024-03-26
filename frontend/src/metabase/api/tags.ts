@@ -1,4 +1,4 @@
-export const TAG_TYPES = ["ApiKey", "Database", "FieldValues"] as const;
+export const TAG_TYPES = ["api-key", "database", "field-values"] as const;
 
 export type TagType = typeof TAG_TYPES[number];
 

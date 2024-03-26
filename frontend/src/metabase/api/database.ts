@@ -23,8 +23,8 @@ export const databaseApi = Api.injectEndpoints({
         body,
       }),
       providesTags: response => [
-        tagWithList("Database"),
-        ...(response?.data?.map(({ id }) => tagWithId("Database", id)) ?? []),
+        tagWithList("database"),
+        ...(response?.data?.map(({ id }) => tagWithId("database", id)) ?? []),
       ],
     }),
     getDatabase: builder.query<Database, DatabaseRequest>({
@@ -33,7 +33,7 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${id}`,
         body,
       }),
-      providesTags: (response, error, { id }) => [tagWithId("Database", id)],
+      providesTags: (response, error, { id }) => [tagWithId("database", id)],
     }),
     createDatabase: builder.mutation<Database, DatabaseCreateRequest>({
       query: body => ({
@@ -41,7 +41,7 @@ export const databaseApi = Api.injectEndpoints({
         url: "/api/database",
         body,
       }),
-      invalidatesTags: [tagWithList("Database")],
+      invalidatesTags: [tagWithList("database")],
     }),
     updateDatabase: builder.mutation<Database, DatabaseUpdateRequest>({
       query: ({ id, ...body }) => ({
@@ -50,8 +50,8 @@ export const databaseApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (response, error, { id }) => [
-        tagWithList("Database"),
-        tagWithId("Database", id),
+        tagWithList("database"),
+        tagWithId("database", id),
       ],
     }),
     deleteDatabase: builder.mutation<void, DatabaseId>({
@@ -60,8 +60,8 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${id}`,
       }),
       invalidatesTags: (response, error, id) => [
-        tagWithList("Database"),
-        tagWithId("Database", id),
+        tagWithList("database"),
+        tagWithId("database", id),
       ],
     }),
     rescanDatabaseFieldValues: builder.mutation<void, DatabaseId>({
@@ -69,14 +69,14 @@ export const databaseApi = Api.injectEndpoints({
         method: "POST",
         url: `/api/database/${databaseId}/rescan_values`,
       }),
-      invalidatesTags: [tag("FieldValues")],
+      invalidatesTags: [tag("field-values")],
     }),
     discardDatabaseFieldValues: builder.mutation<void, DatabaseId>({
       query: databaseId => ({
         method: "POST",
         url: `/api/database/${databaseId}/discard_values`,
       }),
-      invalidatesTags: [tag("FieldValues")],
+      invalidatesTags: [tag("field-values")],
     }),
   }),
 });

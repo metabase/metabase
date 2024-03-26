@@ -16,13 +16,13 @@ export const apiKeyApi = Api.injectEndpoints({
     listApiKeys: builder.query<ApiKey[], void>({
       query: () => `/api/api-key`,
       providesTags: response => [
-        tagWithList("ApiKey"),
-        ...(response?.map(({ id }) => tagWithId("ApiKey", id)) ?? []),
+        tagWithList("api-key"),
+        ...(response?.map(({ id }) => tagWithId("api-key", id)) ?? []),
       ],
     }),
     countApiKeys: builder.query<number, void>({
       query: () => `/api/api-key/count`,
-      providesTags: [tagWithList("ApiKey")],
+      providesTags: [tagWithList("api-key")],
     }),
     createApiKey: builder.mutation<CreateApiKeyResponse, CreateApiKeyRequest>({
       query: body => ({
@@ -30,7 +30,7 @@ export const apiKeyApi = Api.injectEndpoints({
         url: `/api/api-key`,
         body,
       }),
-      invalidatesTags: [tagWithList("ApiKey")],
+      invalidatesTags: [tagWithList("api-key")],
     }),
     updateApiKey: builder.mutation<UpdateApiKeyResponse, UpdateApiKeyRequest>({
       query: ({ id, ...body }) => ({
@@ -39,22 +39,22 @@ export const apiKeyApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (response, error, { id }) => [
-        tagWithList("ApiKey"),
-        tagWithId("ApiKey", id),
+        tagWithList("api-key"),
+        tagWithId("api-key", id),
       ],
     }),
     deleteApiKey: builder.mutation<void, ApiKeyId>({
       query: id => ({ method: "DELETE", url: `/api/api-key/${id}` }),
       invalidatesTags: (response, error, id) => [
-        tagWithList("ApiKey"),
-        tagWithId("ApiKey", id),
+        tagWithList("api-key"),
+        tagWithId("api-key", id),
       ],
     }),
     regenerateApiKey: builder.mutation<RegenerateApiKeyResponse, ApiKeyId>({
       query: id => ({ method: "PUT", url: `/api/api-key/${id}/regenerate` }),
       invalidatesTags: (response, error, id) => [
-        tagWithList("ApiKey"),
-        tagWithId("ApiKey", id),
+        tagWithList("api-key"),
+        tagWithId("api-key", id),
       ],
     }),
   }),
