@@ -13,10 +13,10 @@ describeEE("issue 22695 ", () => {
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "block" } },
+        [SAMPLE_DB_ID]: { data: { schemas: "block" }, "view-data": "blocked" },
       },
       [DATA_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "block" } },
+        [SAMPLE_DB_ID]: { data: { schemas: "block" }, "view-data": "blocked" },
       },
     });
   });

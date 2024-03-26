@@ -83,7 +83,7 @@
                             :from [[:data_permissions :p]]
                             :where [:and
                                     [:= :p.group_id group-id]
-                                    [:= :p.perm_type (u/qualified-name :perms/data-access)]
+                                    [:= :p.perm_type (u/qualified-name :perms/view-data)]
                                     [:= :p.db_id db-id]]}))))
 
 (deftest newly-created-databases-test

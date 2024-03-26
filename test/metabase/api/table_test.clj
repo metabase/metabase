@@ -10,8 +10,8 @@
    [metabase.http-client :as client]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models :refer [Card Database Field FieldValues Table]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.permissions.test-util :as perms.test-util]
    [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
@@ -359,15 +359,16 @@
                      Field    table-1-id  {:table_id (u/the-id table-1), :name "id", :base_type :type/Integer, :semantic_type :type/PK}
                      Field    _table-2-id {:table_id (u/the-id table-2), :name "id", :base_type :type/Integer, :semantic_type :type/PK}
                      Field    _table-2-fk {:table_id (u/the-id table-2), :name "fk", :base_type :type/Integer, :semantic_type :type/FK, :fk_target_field_id (u/the-id table-1-id)}]
-        (perms.test-util/with-no-data-perms-for-all-users!
+        (mt/with-no-data-perms-for-all-users!
           ;; grant permissions only to table-2
-          (perms.test-util/with-perm-for-group-and-table! (u/the-id (perms-group/all-users)) (u/the-id table-2) :perms/data-access :unrestricted
-            ;; metadata for table-2 should show all fields for table-2, but the FK target info shouldn't be hydrated
-            (is (= #{{:name "id", :target false}
-                     {:name "fk", :target false}}
-                   (set (for [field (:fields (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (u/the-id table-2))))]
-                          (-> (select-keys field [:name :target])
-                              (update :target boolean))))))))))))
+          (data-perms/set-table-permission! (perms-group/all-users) table-2 :perms/create-queries :query-builder)
+          (data-perms/set-database-permission! (perms-group/all-users) db :perms/view-data :unrestricted)
+          ;; metadata for table-2 should show all fields for table-2, but the FK target info shouldn't be hydrated
+          (is (= #{{:name "id", :target false}
+                   {:name "fk", :target false}}
+                 (set (for [field (:fields (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (u/the-id table-2))))]
+                        (-> (select-keys field [:name :target])
+                            (update :target boolean)))))))))))
 
 (deftest update-table-test
   (testing "PUT /api/table/:id"
