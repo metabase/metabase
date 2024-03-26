@@ -2,8 +2,10 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   appBar,
   describeEE,
+  entityPickerModal,
   main,
   mantinePopover,
+  modal,
   popover,
   restore,
   setTokenFeatures,
@@ -403,6 +405,91 @@ describeEE("formatting > whitelabel", () => {
 
           visitQuestion("@questionId");
           cy.findByAltText("No results").should("not.exist");
+        });
+      });
+
+      describe("no object illustration", () => {
+        it("should allow display the selected illustration at relevant places", () => {
+          const emptyCollectionName = "Empty Collection";
+          cy.request("POST", "/api/collection", { name: emptyCollectionName });
+          cy.visit("/admin/settings/whitelabel/conceal-metabase");
+
+          cy.findByRole("searchbox", {
+            name: "When no objects can be found",
+          }).should("have.value", "Sailboat");
+
+          cy.findByRole("searchbox", {
+            name: "When no objects can be found",
+          }).click();
+          mantinePopover().findByText("Custom").click();
+
+          cy.findByTestId("no-object-illustration-setting").within(() => {
+            cy.findByTestId("file-input").selectFile(
+              {
+                contents: "e2e/support/assets/logo.jpeg",
+                mimeType: "image/jpeg",
+              },
+              { force: true },
+            );
+            cy.findByText("logo.jpeg").should("be.visible");
+          });
+          undoToast().findByText("Changes saved").should("be.visible");
+
+          cy.log("test custom illustration");
+
+          cy.findByRole("navigation").findByText("Exit admin").click();
+          appBar().findByText("New").click();
+          popover().findByText("Dashboard").click();
+          modal().findByTestId("collection-picker-button").click();
+          entityPickerModal().within(() => {
+            cy.findByText(emptyCollectionName).click();
+            cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
+              logo_data => {
+                const imageDataUrl = `data:image/jpeg;base64,${logo_data}`;
+                cy.wrap(imageDataUrl).as("imageDataUrl");
+                cy.findByAltText("No results").should(
+                  "have.attr",
+                  "src",
+                  imageDataUrl,
+                );
+              },
+            );
+
+            cy.log("test search not found illustration");
+            cy.findByPlaceholderText("Search…").type(
+              "This aren't the objects you're looking for",
+            );
+            cy.get("@imageDataUrl").then(imageDataUrl => {
+              cy.findByAltText("No results").should(
+                "have.attr",
+                "src",
+                imageDataUrl,
+              );
+            });
+          });
+
+          cy.log("test no illustration");
+
+          cy.visit("/admin/settings/whitelabel/conceal-metabase");
+          cy.findByRole("searchbox", {
+            name: "When no objects can be found",
+          }).click();
+          mantinePopover().findByText("No illustration").click();
+
+          cy.findByRole("navigation").findByText("Exit admin").click();
+          appBar().findByText("New").click();
+          popover().findByText("Dashboard").click();
+          modal().findByTestId("collection-picker-button").click();
+          entityPickerModal().within(() => {
+            cy.findByText(emptyCollectionName).click();
+            cy.findByAltText("No results").should("not.exist");
+
+            cy.log("test search not found illustration");
+            cy.findByPlaceholderText("Search…").type(
+              "This aren't the objects you're looking for",
+            );
+            cy.findByAltText("No results").should("not.exist");
+          });
         });
       });
     });
