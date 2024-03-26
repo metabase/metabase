@@ -11,6 +11,7 @@
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [toucan2.core :as t2]))
 
 (use-fixtures :each
@@ -46,7 +47,9 @@
 (def ^:private example-test-data
   [[1 34.0996 "2014-04-01T08:30:00.0000" "Stout Burgers & Beers"]
    [2 34.0406 "2014-12-05T15:15:00.0000" "The Apple Pan"]
-   [3 34.0474 "2014-08-01T12:45:00.0000" "The Gorbals"]])
+   [3 34.0474 "2014-08-01T12:45:00.0000" "The Gorbals"]
+   [4 0       "2018-09-01T19:32:00.0000" "The Tipsy Tardigrade"]
+   [5 nil     "2022-10-12T05:55:00.0000" "The Bungalow"]])
 
 (defn- col-counts [results]
   (set (map (comp count :row) results)))
@@ -166,14 +169,18 @@
 (deftest format-result-rows
   (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
           {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan"]}
-          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals"]}]
+          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals"]}
+          {:bar-width nil, :row [(number "4" 4)  "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade"]}
+          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows example-test-data})))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
 (deftest bar-column
   (is (= [{:bar-width (float 85.249), :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
           {:bar-width (float 85.1015), :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan"]}
-          {:bar-width (float 85.1185), :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals"]}]
+          {:bar-width (float 85.1185), :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals"]}
+          {:bar-width (float 0.0), :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade"]}
+          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows example-test-data}
                  {:bar-column second, :min-value 0, :max-value 40})))))
 
@@ -240,7 +247,9 @@
 (deftest cols-with-semantic-types
   (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
           {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan"]}
-          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals"]}]
+          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals"]}
+          {:bar-width nil, :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade"]}
+          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
                  {}
                  {:cols test-columns-with-date-semantic-type :rows example-test-data})))))
@@ -621,6 +630,50 @@
                             doc)]
             (is (not (render-error? pulse-body)))))))))
 
+(def ^:private funnel-rows
+  [["cart" 1500]
+   ["checkout" 450]
+   ["homepage" 10000]
+   ["product_page" 5000]
+   ["purchase" 225]])
+
+(tx/defdataset funnel-data
+  [["stages"
+    [{:field-name "stage", :base-type :type/Text}
+     {:field-name "count", :base-type :type/Quantity}]
+    funnel-rows]])
+
+(deftest render-funnel-with-row-keys-test
+  (testing "Static-viz Funnel Chart with text keys in viz-settings and text in returned
+            rows renders without error and in the order specified by the viz-settings (#39743)."
+    (mt/dataset funnel-data
+      (let [funnel-query {:database (mt/id)
+                          :type     :query
+                          :query
+                          {:source-table (mt/id :stages)
+                           ;; we explicitly select the 2 columns because if we don't the query returns the ID as well.
+                           ;; this is done here to construct the failing case resulting from the reproduction steps in issue #39743
+                           :fields       [[:field (mt/id :stages :stage)]
+                                          [:field (mt/id :stages :count)]]}}
+            funnel-card  {:display       :funnel
+                          :dataset_query funnel-query
+                          :visualization_settings
+                          {:funnel.rows
+                           [{:key "homepage" :name "homepage" :enabled true}
+                            {:key "product_page" :name "product_page" :enabled true}
+                            {:key "cart" :name "cart" :enabled true}
+                            {:key "checkout" :name "checkout" :enabled true}
+                            {:key "purchase" :name "purchase" :enabled true}]}}]
+        (mt/with-temp [:model/Card {card-id :id} funnel-card]
+          (let [row-names      (into #{} (map first funnel-rows))
+                doc            (render.tu/render-card-as-hickory card-id)
+                section-labels (->> doc
+                                    (hik.s/select (hik.s/tag :tspan))
+                                    (mapv (comp first :content))
+                                    (filter row-names))]
+            (is (= (map :key (get-in funnel-card [:visualization_settings :funnel.rows]))
+                   section-labels))))))))
+
 (deftest render-categorical-donut-test
   (let [columns [{:name          "category",
                   :display_name  "Category",
@@ -843,3 +896,28 @@
                                                              :visualization_settings viz}]
             (testing "the render succeeds with unknown column settings keys"
               (is (seq (render.tu/render-card-as-hickory card-id))))))))))
+
+(deftest trend-chart-renders-in-alerts-test
+  (testing "Trend charts render successfully in Alerts. (#39854)"
+    (mt/dataset test-data
+      (let [q {:database (mt/id)
+               :type     :query
+               :query
+               {:source-table (mt/id :orders)
+                :aggregation  [[:count]]
+                :breakout     [[:field (mt/id :orders :created_at) {:base-type :type/DateTime, :temporal-unit :month}]]}}]
+        ;; Alerts are set on Questions. They run through the 'pulse' code the same as subscriptions,
+        ;; But will not have any Dashcard data associated, which caused an error in the static-viz render code
+        ;; which implicitly expected a DashCard to exist
+        ;; Here, we simulate an Alert (NOT a subscription) by only providing a card and not mocking a DashCard.
+        (mt/with-temp [:model/Card {card-id :id} {:display       :smartscalar
+                                                  :dataset_query q}]
+          (let [doc       (render.tu/render-card-as-hickory card-id)
+                span-text (->> doc
+                               (hik.s/select (hik.s/tag :span))
+                               (mapv (comp first :content))
+                               (filter string?)
+                               (filter #(str/includes? % "previous month")))]
+            ;; we look for content that we are certain comes from a
+            ;; successfully rendered trend chart.
+            (is (= ["vs. previous month: "] span-text))))))))

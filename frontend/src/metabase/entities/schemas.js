@@ -18,6 +18,9 @@ import {
 
 // This is a weird entity because we don't have actual schema objects
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export default createEntity({
   name: "schemas",
   schema: SchemaSchema,

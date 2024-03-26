@@ -12,6 +12,9 @@ import type { IndexedEntity } from "metabase-types/api/modelIndexes";
 import * as actions from "./actions";
 import * as utils from "./utils";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export const ModelIndexes = createEntity({
   name: "modelIndexes",
   nameOne: "modelIndex",

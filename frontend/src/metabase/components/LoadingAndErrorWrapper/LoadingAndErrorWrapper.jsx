@@ -50,7 +50,7 @@ export default class LoadingAndErrorWrapper extends Component {
 
     return (
       <div className={contentClassName}>
-        <h2 className="text-normal text-light ie-wrap-content-fix">
+        <h2 className={cx(CS.textNormal, CS.textLight, CS.ieWrapContentFix)}>
           {this.getErrorMessage()}
         </h2>
       </div>
@@ -127,8 +127,14 @@ export default class LoadingAndErrorWrapper extends Component {
 
     const contentClassName = cx(
       CS.wrapper,
-      "py4 text-brand text-centered flex-full flex flex-column layout-centered",
-      { "bg-white": !noBackground },
+      CS.py4,
+      CS.textBrand,
+      CS.textCentered,
+      CS.flexFull,
+      CS.flex,
+      CS.flexColumn,
+      CS.layoutCentered,
+      { [CS.bgWhite]: !noBackground },
     );
 
     if (noWrapper && !error && !loading) {

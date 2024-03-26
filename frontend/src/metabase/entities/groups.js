@@ -8,6 +8,9 @@ import {
 import { createEntity } from "metabase/lib/entities";
 import { PermissionsApi } from "metabase/services";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Groups = createEntity({
   name: "groups",
   path: "/api/permissions/group",
