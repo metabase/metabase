@@ -5,6 +5,7 @@ import CreateCollectionModal from "metabase/collections/containers/CreateCollect
 import ModalContent from "metabase/components/ModalContent";
 import CollectionPicker from "metabase/containers/CollectionPicker";
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { ButtonContainer } from "./CollectionMoveModal.styled";
@@ -54,7 +55,7 @@ export const CollectionMoveModal = ({
         </Button>
         <Button
           primary
-          className="ml-auto"
+          className={CS.mlAuto}
           disabled={
             selectedCollectionId === undefined ||
             selectedCollectionId === initialCollectionId

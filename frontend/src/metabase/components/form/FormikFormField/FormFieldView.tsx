@@ -77,13 +77,16 @@ function FormFieldView({
             )}
           </FieldRow>
           {description && descriptionPosition === "top" && (
-            <FormFieldDescription className="mb1" description={description} />
+            <FormFieldDescription
+              className={CS.mb1}
+              description={description}
+            />
           )}
         </FieldContainer>
       )}
       {align !== "left" && <InputContainer>{children}</InputContainer>}
       {description && descriptionPosition === "bottom" && (
-        <FormFieldDescription className="mt1" description={description} />
+        <FormFieldDescription className={CS.mt1} description={description} />
       )}
     </div>
   );

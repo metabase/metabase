@@ -35,7 +35,7 @@ class RevisionHistory extends Component {
         {() => (
           <div className={CS.wrapper}>
             <Breadcrumbs
-              className="py4"
+              className={CS.py4}
               crumbs={[
                 objectType === "segment"
                   ? [t`Segments`, `/admin/datamodel/segments?table=${table.id}`]
@@ -43,8 +43,8 @@ class RevisionHistory extends Component {
                 [this.props.objectType + t` History`],
               ]}
             />
-            <div className={cx(CS.wrapper, "py4")} style={{ maxWidth: 950 }}>
-              <h2 className="mb4">
+            <div className={cx(CS.wrapper, CS.py4)} style={{ maxWidth: 950 }}>
+              <h2 className={CS.mb4}>
                 {t`Revision History for`} &quot;{object.name}&quot;
               </h2>
               <ol>

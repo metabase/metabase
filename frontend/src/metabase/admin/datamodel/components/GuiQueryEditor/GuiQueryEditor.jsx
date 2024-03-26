@@ -196,7 +196,7 @@ export class GuiQueryEditor extends Component {
       for (const [index, aggregation] of aggregations.entries()) {
         aggregationList.push(
           <AggregationWidget
-            className="QueryOption p1"
+            className={cx("QueryOption", CS.p1)}
             key={"agg" + index}
             aggregation={aggregation}
             query={legacyQuery}

@@ -98,7 +98,7 @@ export function VisualizationError({
         />
         <div className={QueryBuilderS.QueryError2Details}>
           <h1 className="text-bold">{t`There was a problem with this visualization`}</h1>
-          <ErrorDetails className="pt2" details={error} />
+          <ErrorDetails className={CS.pt2} details={error} />
         </div>
       </div>
     );

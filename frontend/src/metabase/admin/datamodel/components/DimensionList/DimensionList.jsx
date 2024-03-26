@@ -111,7 +111,9 @@ export class DimensionList extends Component {
     return (
       <Box className="Field-extra">
         {item.dimension?.tag && (
-          <span className="h5 text-light px1">{item.dimension.tag}</span>
+          <span className={cx(CS.h5, CS.textLight, CS.px1)}>
+            {item.dimension.tag}
+          </span>
         )}
         {subDimensions?.length > 0 ? (
           <PopoverWithTrigger
@@ -144,7 +146,13 @@ export class DimensionList extends Component {
           <Tooltip tooltip={t`Add grouping`}>
             <Icon
               name="add"
-              className="mx1 cursor-pointer hover-child faded fade-in-hover"
+              className={cx(
+                CS.mx1,
+                CS.cursorPointer,
+                "hover-child",
+                CS.faded,
+                "fade-in-hover",
+              )}
               onClick={e => {
                 e.stopPropagation();
                 this.handleAdd(item);
@@ -187,7 +195,9 @@ export class DimensionList extends Component {
         data-testid="dimension-list-item-binning"
       >
         {name && <h4>{name}</h4>}
-        {!multiSelect && <Icon name="chevronright" className="ml1" size={16} />}
+        {!multiSelect && (
+          <Icon name="chevronright" className={CS.ml1} size={16} />
+        )}
       </FieldListGroupingTrigger>
     );
   }

@@ -78,7 +78,7 @@ export const ParametersSettings = ({
                 buttonProps={{
                   "aria-label": parameter.name,
                 }}
-                className="ml-auto bg-white"
+                className={cx(CS.mlAuto, CS.bgWhite)}
                 value={embeddingParams[parameter.slug] || "disabled"}
                 onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                   onChangeEmbeddingParameters({
@@ -120,7 +120,7 @@ export const ParametersSettings = ({
               {valuePopulatedLockedParameters.map(parameter => (
                 <StaticParameterWidget
                   key={parameter.id}
-                  className="m0"
+                  className={CS.m0}
                   parameter={parameter}
                   parameters={valuePopulatedLockedParameters}
                   setValue={(value: string) =>

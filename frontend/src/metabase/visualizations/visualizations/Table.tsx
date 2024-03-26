@@ -430,7 +430,7 @@ class Table extends Component<TableProps, TableState> {
               app/assets/img/hidden-field.png     1x,
               app/assets/img/hidden-field@2x.png  2x
             "
-            className="mb2"
+            className={CS.mb2}
           />
           <span className="h4 text-bold">{t`Every field is hidden right now`}</span>
         </div>

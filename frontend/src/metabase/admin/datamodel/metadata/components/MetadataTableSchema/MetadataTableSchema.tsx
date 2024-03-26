@@ -1,7 +1,9 @@
+import cx from "classnames";
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
 
@@ -25,9 +27,9 @@ const MetadataTableSchema = ({ table }: MetadataTableSchemaProps) => {
   }, [table]);
 
   return (
-    <div className="mt3 full">
-      <table className="mt2 full">
-        <thead className="text-uppercase text-medium py1">
+    <div className={cx(CS.mt3, CS.full)}>
+      <table className={cx(CS.mt2, CS.full)}>
+        <thead className={cx(CS.textUppercase, CS.textMedium, CS.py1)}>
           <tr>
             <HeaderCell>{t`Column`}</HeaderCell>
             <HeaderCell>{t`Data Type`}</HeaderCell>

@@ -42,7 +42,7 @@ export default class NewModelOption extends Component {
           />
         </div>
         <div
-          className="text-normal mt2 mb2 text-paragraph"
+          className={cx(CS.textNormal, CS.mt2, CS.mb2, CS.textParagraph)}
           style={{ lineHeight: "1.25em" }}
         >
           <h2 className={cx(S.modelTitle, { "text-brand": hover })}>{title}</h2>

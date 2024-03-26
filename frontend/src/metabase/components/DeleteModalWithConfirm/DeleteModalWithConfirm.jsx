@@ -73,7 +73,7 @@ export default class DeleteModalWithConfirm extends Component {
             ))}
           </ul>
         </div>
-        <div className="Form-actions ml-auto">
+        <div className={cx("Form-actions", CS.mlAuto)}>
           <button
             className={ButtonsS.Button}
             onClick={this.props.onClose}

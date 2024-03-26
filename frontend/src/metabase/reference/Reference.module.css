@@ -34,6 +34,7 @@
 }
 
 .schemaSeparator {
+  /* TODO FIGURE OUT WHAT TO DO WITH THIS */
   composes: text-light mt2 from "style";
   margin-left: var(--icon-width);
   font-size: 18px;
@@ -102,6 +103,7 @@
 }
 
 .guideSeeAllLink {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: py1 border-top from "style";
   text-decoration: none;
   display: block;
@@ -121,6 +123,7 @@
 }
 
 .guideEditHeader {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: text-body my4 from "style";
   width: 100%;
   max-width: 550px;
@@ -128,15 +131,18 @@
 }
 
 .guideEditHeaderTitle {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: text-bold mb2 from "style";
   font-size: 24px;
 }
 
 .guideEditCards {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: mt2 mb4 from "style";
 }
 
 .guideEditCard {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: input p4 from "style";
 }
 
@@ -167,6 +173,7 @@
 }
 
 .guideEditAddButton {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: my2 pl4 from "style";
   width: 100%;
   display: flex;
@@ -187,6 +194,7 @@
 }
 
 .guideEditTextarea {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: text-dark input p2 from "style";
   resize: none;
   font-size: 16px;
@@ -211,6 +219,7 @@
 }
 
 .guideEditInput {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: text-dark input p2 from "style";
   width: 100%;
   font-size: 16px;

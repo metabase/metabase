@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 
 import { Sortable } from "metabase/core/components/Sortable";
+import CS from "metabase/css/core/index.css";
 
 import ParameterValueWidget from "../ParameterValueWidget";
 
@@ -127,7 +128,7 @@ export class ParameterWidget extends Component {
             setEditingParameter(isEditingParameter ? null : parameter.id)
           }
         >
-          <div className="mr1" onClick={e => e.stopPropagation()}>
+          <div className={CS.mr1} onClick={e => e.stopPropagation()}>
             {dragHandle}
           </div>
           {parameter.name}

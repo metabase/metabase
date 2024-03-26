@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { getIn } from "icepick";
 import PropTypes from "prop-types";
 import { Component } from "react";
@@ -92,7 +93,15 @@ class SegmentRevisions extends Component {
           {() =>
             Object.keys(revisions).length > 0 && tables[entity.table_id] ? (
               <div className={CS.wrapper}>
-                <div className="px3 py3 mb4 bg-white bordered">
+                <div
+                  className={cx(
+                    CS.px3,
+                    CS.py3,
+                    CS.mb4,
+                    CS.bgWhite,
+                    CS.bordered,
+                  )}
+                >
                   <div>
                     {Object.values(revisions)
                       .map(revision =>

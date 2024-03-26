@@ -63,7 +63,7 @@ export const ArchivedItem = ({
     />
     {name}
     {(onUnarchive || onDelete) && (
-      <span className="ml-auto mr2">
+      <span className={cx(CS.mlAuto, CS.mr2)}>
         {onUnarchive && (
           <Tooltip
             tooltip={t`Unarchive this ${getTranslatedEntityName(

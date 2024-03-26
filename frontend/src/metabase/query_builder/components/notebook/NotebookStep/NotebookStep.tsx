@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import ExpandingContent from "metabase/components/ExpandingContent";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { color as c } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
@@ -69,7 +70,10 @@ function NotebookStep({
           button: (
             <ActionButton
               key={`actionButton_${stepUi.title}`}
-              className={cx({ "mr2 mt2": isLastStep, mr1: !isLastStep })}
+              className={cx({
+                [cx(CS.mr2, CS.mt2)]: isLastStep,
+                mr1: !isLastStep,
+              })}
               color={stepUi.getColor()}
               large={hasLargeActionButtons}
               {...stepUi}
@@ -118,7 +122,11 @@ function NotebookStep({
           {title}
           {canRevert && (
             <IconButtonWrapper
-              className="ml-auto text-light text-medium-hover hover-child"
+              className={cx(
+                CS.mlAuto,
+                CS.textLight,
+                "text-medium-hover hover-child",
+              )}
               onClick={handleClickRevert}
             >
               <Icon

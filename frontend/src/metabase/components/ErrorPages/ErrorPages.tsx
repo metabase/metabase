@@ -5,6 +5,7 @@ import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
 import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
 import type { ErrorDetailsProps } from "metabase/components/ErrorDetails/types";
+import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { color } from "metabase/lib/colors";
@@ -38,7 +39,7 @@ export const GenericError = ({
         />
       }
     />
-    <ErrorDetails className="pt2" details={details} centered />
+    <ErrorDetails className={CS.pt2} details={details} centered />
     <ErrorDiagnosticModalTrigger />
   </ErrorPageRoot>
 );

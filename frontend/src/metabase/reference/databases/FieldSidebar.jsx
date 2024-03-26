@@ -7,6 +7,7 @@ import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import S from "metabase/components/Sidebar.module.css";
 import SidebarItem from "metabase/components/SidebarItem";
+import CS from "metabase/css/core/index.css";
 import MetabaseSettings from "metabase/lib/settings";
 
 const FieldSidebar = ({ database, table, field, style, className }) => (
@@ -14,7 +15,7 @@ const FieldSidebar = ({ database, table, field, style, className }) => (
     <ul>
       <div>
         <Breadcrumbs
-          className="py4 ml3"
+          className={cx(CS.py4, CS.ml3)}
           crumbs={[
             [database.name, `/reference/databases/${database.id}`],
             [
@@ -27,7 +28,7 @@ const FieldSidebar = ({ database, table, field, style, className }) => (
           placeholder={t`Data Reference`}
         />
       </div>
-      <ol className="mx3">
+      <ol className={CS.mx3}>
         <SidebarItem
           key={`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`}
           href={`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`}

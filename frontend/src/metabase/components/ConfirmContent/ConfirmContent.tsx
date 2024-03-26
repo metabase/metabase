@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 
 interface ConfirmContentProps {
   "data-testid"?: string;
@@ -38,9 +39,9 @@ const ConfirmContent = ({
   >
     <div>{content}</div>
 
-    <p className="mb4">{message}</p>
+    <p className={CS.mb4}>{message}</p>
 
-    <div className="ml-auto">
+    <div className={CS.mlAuto}>
       <Button
         onClick={() => {
           onCancel();
@@ -51,7 +52,7 @@ const ConfirmContent = ({
       </Button>
       <Button
         danger
-        className="ml2"
+        className={CS.ml2}
         onClick={() => {
           onAction();
           onClose();

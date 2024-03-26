@@ -200,7 +200,7 @@ class PublicQuestionInner extends Component {
 
     const actionButtons = result && (
       <QueryDownloadWidget
-        className="m1 text-medium-hover"
+        className={cx(CS.m1, "text-medium-hover")}
         question={question}
         result={result}
         uuid={uuid}

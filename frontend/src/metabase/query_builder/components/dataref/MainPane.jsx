@@ -1,7 +1,9 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
@@ -15,7 +17,7 @@ import { PaneContent } from "./Pane.styled";
 const MainPane = ({ databases, onClose, onItemClick }) => (
   <SidebarContent title={t`Data Reference`} onClose={onClose}>
     <PaneContent>
-      <p className="mt2 mb3 text-spaced">
+      <p className={cx(CS.mt2, CS.mb3, CS.textSpaced)}>
         {t`Browse the contents of your databases, tables, and columns. Pick a database to get started.`}
       </p>
       <ul>

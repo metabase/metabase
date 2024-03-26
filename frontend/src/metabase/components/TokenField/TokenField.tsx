@@ -645,10 +645,19 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
           onMouseLeave={() => this.setState({ listIsHovered: false })}
         >
           {filteredOptions.map(option => (
-            <li className="mr1" key={this._key(option)}>
+            <li className={CS.mr1} key={this._key(option)}>
               <div
                 className={cx(
-                  `py1 pl1 pr2 block rounded text-bold text-${color}-hover inline-block full cursor-pointer`,
+                  CS.py1,
+                  CS.pl1,
+                  CS.pr2,
+                  CS.block,
+                  CS.rounded,
+                  CS.textBold,
+                  CS.inlineBlock,
+                  CS.full,
+                  CS.cursorPointer,
+                  `text-${color}-hover`,
                   `bg-light-hover`,
                   {
                     [`text-${color} bg-light`]:

@@ -1,6 +1,8 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 
+import CS from "metabase/css/core/index.css";
+
 import { DimensionListItem } from "./DimensionPicker.styled";
 
 const propTypes = {
@@ -22,7 +24,7 @@ export const DimensionPicker = ({
   onChangeDimension,
 }) => {
   return (
-    <ul className={cx(className, "px2 py1")} style={style}>
+    <ul className={cx(className, CS.px2, CS.py1)} style={style}>
       {dimensions.map((d, index) => {
         const isSelected = d.isEqual(dimension);
         return (
@@ -34,7 +36,13 @@ export const DimensionPicker = ({
             })}
           >
             <a
-              className="List-item-title full px2 py1 cursor-pointer"
+              className={cx(
+                "List-item-title",
+                CS.full,
+                CS.px2,
+                CS.py1,
+                CS.cursorPointer,
+              )}
               onClick={() => onChangeDimension(d)}
             >
               {d.subDisplayName()}
