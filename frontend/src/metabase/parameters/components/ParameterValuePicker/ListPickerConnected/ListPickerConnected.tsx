@@ -34,6 +34,7 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
 
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [lastChange, setLastChange] = useState("");
   const [hasMoreValues, setHasMoreValues] = useState(false);
   const [resetKey, setResetKey] = useState(getResetKey(parameter));
 
@@ -45,6 +46,7 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
         setResetKey(newResetKey);
         setIsOpen(false);
         setSearchQuery("");
+        setLastChange("");
       }
     },
     [onChange, resetKey, parameter],
@@ -69,14 +71,19 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
   const handleSearch = useDebouncedCallback(
     useCallback(
       (query: string) => {
-        if (hasMoreValues) {
+        if (hasMoreValues && lastChange !== query) {
           setSearchQuery(query);
         }
       },
-      [hasMoreValues],
+      [lastChange, hasMoreValues],
     ),
     searchDebounceMs,
   );
+
+  const handleChange = (value: string | null) => {
+    setLastChange(value ?? "");
+    onChange(value);
+  };
 
   const staticValues = getListParameterStaticValues(parameter);
   const enableSearch = shouldEnableSearch(parameter, forceSearchItemCount);
@@ -90,8 +97,8 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
         value,
         staticValues ?? getFlattenedStrings(fetchedValues ?? []),
       )}
-      onClear={() => onChange(null)}
-      onChange={onChange}
+      onClear={() => handleChange(null)}
+      onChange={handleChange}
       onSearchChange={handleSearch}
       onDropdownOpen={() => setIsOpen(true)}
       onDropdownClose={() => setIsOpen(false)}
