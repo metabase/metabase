@@ -86,7 +86,7 @@ export function FieldTrigger({
 export function DatabaseTrigger({ database }: { database: Database }) {
   return database ? (
     <span
-      className="text-wrap text-grey no-decoration"
+      className={cx("text-wrap text-grey", CS.noDecoration)}
       data-testid="selected-database"
     >
       {database.name}
@@ -100,7 +100,7 @@ export function DatabaseTrigger({ database }: { database: Database }) {
 
 export function TableTrigger({ table }: { table: Table }) {
   return table ? (
-    <span className="text-wrap text-grey no-decoration">
+    <span className={cx("text-wrap text-grey", CS.noDecoration)}>
       {table.display_name || table.name}
     </span>
   ) : (

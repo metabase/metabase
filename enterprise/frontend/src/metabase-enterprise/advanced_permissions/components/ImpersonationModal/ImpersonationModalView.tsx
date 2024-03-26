@@ -10,6 +10,7 @@ import FormFooter from "metabase/core/components/FormFooter";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import Link from "metabase/core/components/Link/Link";
+import CS from "metabase/css/core/index.css";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
@@ -93,7 +94,7 @@ export const ImpersonationModalView = ({
       <ImpersonationDescription>
         {modalMessage}{" "}
         <ExternalLink
-          className="link"
+          className={CS.link}
           // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
           href={MetabaseSettings.docsUrl("permissions/data")}
         >{t`Learn More`}</ExternalLink>

@@ -1001,41 +1001,48 @@
   ;; we always place "special" collection types (i.e. "Metabase Analytics") last
   (testing "Default sort"
     (doseq [app-db [:mysql :h2 :postgres]]
-      (is (= [[[[:case [:= :collection_type nil] 0 :else 1]] :asc]
+      (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+              [[[:case [:= :collection_type nil] 0 :else 1]] :asc]
               [:%lower.name :asc]]
              (api.collection/children-sort-clause nil app-db)))))
   (testing "Sorting by last-edited-at"
-    (is (= [[[[:case [:= :collection_type nil] 0 :else 1]] :asc]
+    (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+            [[[:case [:= :collection_type nil] 0 :else 1]] :asc]
             [:%isnull.last_edit_timestamp]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]]
            (api.collection/children-sort-clause [:last-edited-at :asc] :mysql)))
-    (is (= [[[[:case [:= :collection_type nil] 0 :else 1]] :asc]
+    (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+            [[[:case [:= :collection_type nil] 0 :else 1]] :asc]
             [:last_edit_timestamp :nulls-last]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]]
            (api.collection/children-sort-clause [:last-edited-at :asc] :postgres))))
   (testing "Sorting by last-edited-by"
-    (is (= [[[[:case [:= :collection_type nil] 0 :else 1]] :asc]
+    (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+            [[[:case [:= :collection_type nil] 0 :else 1]] :asc]
             [:last_edit_last_name :nulls-last]
             [:last_edit_last_name :asc]
             [:last_edit_first_name :nulls-last]
             [:last_edit_first_name :asc]
             [:%lower.name :asc]]
            (api.collection/children-sort-clause [:last-edited-by :asc] :postgres)))
-    (is (= [[[[:case [:= :collection_type nil] 0 :else 1]] :asc]
+    (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+            [[[:case [:= :collection_type nil] 0 :else 1]] :asc]
             [:%isnull.last_edit_last_name]
             [:last_edit_last_name :asc]
             [:%isnull.last_edit_first_name]
             [:last_edit_first_name :asc]
             [:%lower.name :asc]]
            (api.collection/children-sort-clause [:last-edited-by :asc] :mysql))))
-  (testing "Sortinb by model"
-    (is (= [[[[:case [:= :collection_type nil] 0 :else 1]] :asc]
+  (testing "Sorting by model"
+    (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+            [[[:case [:= :collection_type nil] 0 :else 1]] :asc]
             [:model_ranking :asc]
             [:%lower.name :asc]]
            (api.collection/children-sort-clause [:model :asc] :postgres)))
-    (is (= [[[[:case [:= :collection_type nil] 0 :else 1]] :asc]
+    (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+            [[[:case [:= :collection_type nil] 0 :else 1]] :asc]
             [:model_ranking :desc]
             [:%lower.name :asc]]
            (api.collection/children-sort-clause [:model :desc] :mysql)))))

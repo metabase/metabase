@@ -76,7 +76,7 @@ export default class PasswordReveal extends Component {
 
         <div className={cx(CS.mlAuto, CS.flex, CS.alignCenter)}>
           <a
-            className={cx("link", CS.textBold, CS.mr2)}
+            className={cx(CS.link, CS.textBold, CS.mr2)}
             onClick={() => this.setState({ visible: !visible })}
           >
             {visible ? t`Hide` : t`Show`}
