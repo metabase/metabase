@@ -30,9 +30,7 @@ interface DatabaseLoaderProps {
 interface DispatchProps {
   onSelectDatabase: (
     databaseId: DatabaseId,
-    options: {
-      useReplace?: boolean;
-    },
+    options: { useReplace?: boolean },
   ) => void;
 }
 
