@@ -56,6 +56,18 @@ const Databases = createEntity({
         dispatch,
         databaseApi.endpoints.getDatabase,
       ),
+    create: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        databaseApi.endpoints.createDatabase,
+      ),
+    update: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        databaseApi.endpoints.updateDatabase,
+      ),
     delete: (entityQuery, dispatch) =>
       entityCompatibleQuery(
         entityQuery,

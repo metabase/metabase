@@ -1,9 +1,11 @@
 import type {
   Database,
+  DatabaseCreateRequest,
   DatabaseId,
   DatabaseListRequest,
   DatabaseListResponse,
   DatabaseRequest,
+  DatabaseUpdateRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -24,6 +26,20 @@ export const databaseApi = Api.injectEndpoints({
     getDatabase: builder.query<Database, DatabaseRequest>({
       query: ({ id, ...body }) => ({
         method: "GET",
+        url: `/api/database/${id}`,
+        body,
+      }),
+    }),
+    createDatabase: builder.mutation<Database, DatabaseCreateRequest>({
+      query: body => ({
+        method: "POST",
+        url: "/api/database/",
+        body,
+      }),
+    }),
+    updateDatabase: builder.mutation<Database, DatabaseUpdateRequest>({
+      query: ({ id, ...body }) => ({
+        method: "PUT",
         url: `/api/database/${id}`,
         body,
       }),
