@@ -9,9 +9,15 @@ title: Driver interface changelog
 - The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to
   use these namespaces in your driver, but if you did, please update them.
 
-- The multimethod `metabase.driver/truncate!` has been added. This method is used to delete a table's rows in the most
-  efficient way possible. This is currently only required for drivers that support the `:uploads` feature, and has
-  a default implementation for JDBC-based drivers.
+- The multimethod `metabase.driver/delete!` has been added. This method is used to delete rows from a table.
+  This is currently only required for drivers that support the `:uploads` feature, and has a default implementation for
+  JDBC-based drivers. Implementations should support transactions if relevant for the given driver.
+
+- The multimethod `metabase.driver/with-transaction*` has been added. This method is used to create a scope within
+  which querying and mutating the contents of tables will be done atomically.
+  This is currently only relevant to drivers that support the `:uploads` feature, and has a default implementation for
+  JDBC-based drivers. The method is optional, but will improve the user experience when dealing with failing or
+  concurrent operations on uploaded tables.
 
 ## Metabase 0.49.1
 
