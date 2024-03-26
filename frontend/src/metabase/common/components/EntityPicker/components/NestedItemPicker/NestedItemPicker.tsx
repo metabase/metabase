@@ -111,7 +111,7 @@ const getIsHighlighted = <
 
   if (isFolder(selectedItem)) {
     const nextLevelSelectedItem = nextLevel?.selectedItem;
-    return nextLevelSelectedItem != null;
+    return !nextLevelSelectedItem;
   }
 
   return true;
