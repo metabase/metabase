@@ -112,6 +112,7 @@ export function FilterColumnPicker({
       // disable scrollbars inside the list
       style={{ overflow: "visible" }}
       maxHeight={Infinity}
+      searchProp={["name", "displayName"]}
       // Compat with E2E tests around MLv1-based components
       // Prefer using a11y role selectors
       itemTestId="dimension-list-item"
