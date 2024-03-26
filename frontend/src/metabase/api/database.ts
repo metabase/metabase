@@ -46,7 +46,7 @@ export const databaseApi = Api.injectEndpoints({
     createDatabase: builder.mutation<Database, DatabaseCreateRequest>({
       query: body => ({
         method: "POST",
-        url: "/api/database/",
+        url: "/api/database",
         body,
       }),
       invalidatesTags: [listTag(DATABASE_TAG)],
