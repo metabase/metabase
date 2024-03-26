@@ -1,4 +1,4 @@
-(ns metabase-enterprise.caching.config
+(ns metabase-enterprise.cache.config
   (:require [metabase.public-settings.premium-features :refer [defenterprise]]))
 
 (defenterprise refreshable-states

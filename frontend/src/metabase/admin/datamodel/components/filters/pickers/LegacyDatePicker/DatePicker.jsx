@@ -54,15 +54,15 @@ const MultiDatePicker = ({
   hideTimeSelectors,
 }) => (
   <div className={className}>
-    <div className="Grid Grid--1of2 Grid--gutters">
-      <div className="Grid-cell">
+    <div className={cx(CS.Grid, CS.Grid1of2, CS.GridGutters)}>
+      <div className={CS.GridCell}>
         <SpecificDatePicker
           value={startValue}
           hideTimeSelectors={hideTimeSelectors}
           onChange={value => onFilterChange([op, field, value, endValue])}
         />
       </div>
-      <div className="Grid-cell">
+      <div className={CS.GridCell}>
         <SpecificDatePicker
           value={endValue}
           hideTimeSelectors={hideTimeSelectors}
