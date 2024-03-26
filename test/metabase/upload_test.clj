@@ -14,7 +14,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Field]]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -302,12 +301,11 @@
                                 "2, Darth Vader"]
                                csv-file-prefix)
             group-id          (u/the-id (perms-group/all-users))
-            grant?            (and db
-                                   (not (mi/can-read? db))
-                                   grant-permission?)]
+            grant?            (and db grant-permission?)]
         (mt/with-restored-data-perms-for-group! group-id
           (when grant?
-            (data-perms/set-database-permission! group-id db-id :perms/data-access :unrestricted))
+            (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! group-id db-id :perms/create-queries :query-builder))
           (u/prog1 (binding [upload/*sync-synchronously?* sync-synchronously?]
                      (upload/create-csv-upload! {:collection-id collection-id
                                                  :filename      csv-file-prefix
