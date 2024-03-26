@@ -22,20 +22,21 @@
     <li>Sandboxed</li>
     <li>Block</li>
   </ul>
-  <p>For which permission level is right for each group, see our <a href="https://www.notion.so/44cc72d46f9048068750f7598dd403f8?pvs=21">docs on permissions</a>.</p>
+  <p>For which permission level is right for each group, see our <a href="#">docs on permissions</a>.</p>
 
   <h4>The groups you need to update</h4>
 
-  <p>The following groups currently have their <strong>View data</strong> access set to "No self-service (deprecated)"</p>
+  <p>The following groups currently have their <strong>View data</strong> access set to <strong>No self-service (deprecated)</strong></p>
   <ul>
    {{#groups}}
       <li><a href="{{instanceURL}}/admin/permissions/data/group/{{id}}" style="color: #336699;">{{name}}</a></li>
    {{/groups}}
   </ul>
 
-  <p>If you take no action, Metabase will change the groups' <strong>View data</strong> access from "No self-service (deprecated)" to "Block"</p>
+  <p>If the group's <strong>View data</strong> access is set to "Granular" for a database, be sure to check the <strong>View data</strong> access for individual schemas and tables.</p>
 
-  <p>In a future release, Metabase will convert any group that still has the <strong>View data</strong> access level set to "Block". We're defaulting to "Block", the least permissive View access, to prevent any unintended access to data.</p>
+  <p>In a future release, if a group's <strong>View data</strong> access for a database (or any of its schemas or tables) is still set to <strong>No self-service (deprecated)</strong>, Metabase will automatically change that group's <strong>View data</strong> access for the entire database to <strong>Blocked</strong>.
+  We're defaulting to <strong>Blocked</strong>, the least permissive <strong>View data</strong> access, to prevent any unintended access to data.</p>
 
   <h4>Why did we change our permissions model?</h4>
 

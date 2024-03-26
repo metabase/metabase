@@ -34,7 +34,7 @@
         (email/send-email-retrying!
          {:recipients   [(:email admin)]
           :message-type :html
-          :subject      "[Metabase] Please update your permissions for groups with View data access set to \"No self-service (deprecated)\""
+          :subject      "[Metabase] Please update groups with deprecated view access"
           :message      (stencil/render-file
                          template-path
                          (merge (messages/common-context)
