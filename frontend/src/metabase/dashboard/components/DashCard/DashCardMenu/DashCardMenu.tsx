@@ -62,9 +62,9 @@ const DashCardMenu = ({
   onDownloadResults,
 }: DashCardMenuProps) => {
   const [{ loading }, handleDownload] = useAsyncFn(
-    async (type: string) => {
+    async (opts: { type: string; enableFormatting: boolean }) => {
       await onDownloadResults({
-        type,
+        ...opts,
         question,
         result,
         dashboardId,
@@ -82,9 +82,9 @@ const DashCardMenu = ({
       <QueryDownloadPopover
         question={question}
         result={result}
-        onDownload={type => {
+        onDownload={opts => {
           toggleMenu();
-          handleDownload(type);
+          handleDownload(opts);
         }}
       />
     ),

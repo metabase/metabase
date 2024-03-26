@@ -17,6 +17,7 @@ export interface DownloadQueryResultsOpts {
   type: string;
   question: Question;
   result: Dataset;
+  enableFormatting?: boolean;
   dashboardId?: DashboardId;
   dashcardId?: DashCardId;
   uuid?: string;
@@ -60,6 +61,7 @@ const getDatasetParams = ({
   question,
   dashboardId,
   dashcardId,
+  enableFormatting,
   uuid,
   token,
   params = {},
@@ -68,6 +70,8 @@ const getDatasetParams = ({
 }: DownloadQueryResultsOpts): DownloadQueryResultsParams => {
   const cardId = question.id();
   const isSecureDashboardEmbedding = dashcardId != null && token != null;
+  const format_export = enableFormatting ? "true" : "false";
+
   if (isSecureDashboardEmbedding) {
     return {
       method: "GET",
@@ -81,6 +85,7 @@ const getDatasetParams = ({
     return {
       method: "POST",
       url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query/${type}`,
+      params: new URLSearchParams({ format_export }),
       body: {
         parameters: result?.json_query?.parameters ?? [],
       },
