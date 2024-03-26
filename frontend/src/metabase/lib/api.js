@@ -236,6 +236,7 @@ export class Api extends EventEmitter {
     options,
   ) {
     const controller = options.controller || new AbortController();
+    const signal = options.signal ?? controller.signal;
     options.cancelled?.then(() => controller.abort());
 
     const requestUrl = new URL(this.basename + url, location.origin);
@@ -243,7 +244,7 @@ export class Api extends EventEmitter {
       method,
       headers,
       body: requestBody,
-      signal: controller.signal,
+      signal,
     });
 
     return fetch(request)
@@ -280,7 +281,7 @@ export class Api extends EventEmitter {
         });
       })
       .catch(error => {
-        if (controller.signal.aborted) {
+        if (signal.aborted) {
           throw { isCancelled: true };
         } else {
           throw error;
