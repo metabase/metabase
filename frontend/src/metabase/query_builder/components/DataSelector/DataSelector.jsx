@@ -487,7 +487,7 @@ export class UnconnectedDataSelector extends Component {
       this.props.useOnlyAvailableDatabase &&
       this.props.selectedDatabaseId == null
     ) {
-      const databases = this.listDatabases();
+      const databases = this.getDatabases();
       if (databases && databases.length === 1) {
         this.onChangeDatabase(databases[0]);
       }
@@ -807,7 +807,7 @@ export class UnconnectedDataSelector extends Component {
 
     const props = {
       ...this.state,
-      databases: this.listDatabases(),
+      databases: this.getDatabases(),
 
       onChangeDataBucket: this.onChangeDataBucket,
       onChangeDatabase: this.onChangeDatabase,
