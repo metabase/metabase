@@ -28,10 +28,7 @@ export const AppInitializeController = ({
         isLoggedIn,
       }}
     >
-      <SdkContentWrapper
-        data-elementid="sdk-content-wrapper"
-        font={config.font ?? DEFAULT_FONT}
-      >
+      <SdkContentWrapper font={config.font ?? DEFAULT_FONT}>
         {!isInitialized ? <div>{t`Loading…`}</div> : children}
       </SdkContentWrapper>
     </EmbeddingContext.Provider>
