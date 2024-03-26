@@ -37,7 +37,8 @@ export const LayoutIllustration = styled.div<{
     `url("${backgroundImageSrc}")`};
   background-size: ${({ isDefault }) =>
     isDefault ? "max(2592px, 100%) auto" : "cover"};
-  position: right bottom;
+  background-repeat: no-repeat;
+  background-position: right bottom;
 `;
 
 export const LayoutCard = styled.div`
