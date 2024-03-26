@@ -164,10 +164,7 @@ function EditingGroupRow({
       </td>
       <td />
       <td className="text-right">
-        <span
-          className="link no-decoration cursor-pointer"
-          onClick={onCancelClicked}
-        >{t`Cancel`}</span>
+        <span className={CS.link} onClick={onCancelClicked}>{t`Cancel`}</span>
         <button
           className={cx(ButtonsS.Button, CS.ml2, {
             [ButtonsS.ButtonPrimary]: textIsValid && textHasChanged,
@@ -213,7 +210,7 @@ function GroupRow({
       <td>
         <Link
           to={"/admin/people/groups/" + group.id}
-          className={cx("link", CS.noDecoration, CS.flex, CS.alignCenter)}
+          className={cx(CS.link, CS.flex, CS.alignCenter)}
         >
           <span className="text-white">
             <UserAvatar
