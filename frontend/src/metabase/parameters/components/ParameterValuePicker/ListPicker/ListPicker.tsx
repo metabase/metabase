@@ -5,13 +5,13 @@ import { useDebouncedCallback } from "use-debounce";
 import { Select, Loader } from "metabase/ui";
 
 import { PickerIcon } from "../ParameterValuePicker.styled";
-import { blurOnCommitKey } from "../util";
+import { blurOnCommitKey } from "../utils";
 
 import S from "./ListPicker.css";
 
 interface ListPickerProps {
   value: string;
-  values: string[];
+  options: string[];
   onChange: (value: string) => void;
   onClear: () => void;
   onSearchChange?: (query: string) => void;
@@ -29,7 +29,7 @@ interface ListPickerProps {
 export function ListPicker(props: ListPickerProps) {
   const {
     value,
-    values,
+    options,
     onChange,
     onClear,
     onSearchChange = noop,
@@ -83,7 +83,7 @@ export function ListPicker(props: ListPickerProps) {
       classNames={{ dropdown: S.dropdown }}
       error={errorMessage}
       value={value}
-      data={values}
+      data={options}
       onChange={onChange}
       rightSection={icon}
       placeholder={placeholder}

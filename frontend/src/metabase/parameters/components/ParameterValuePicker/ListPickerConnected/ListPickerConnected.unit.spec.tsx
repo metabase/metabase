@@ -2,7 +2,12 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import type { Parameter } from "metabase-types/api";
+import type {
+  Parameter,
+  ParameterValue,
+  ParameterValues,
+  ValuesQueryType,
+} from "metabase-types/api";
 import {
   createMockParameter,
   createMockParameterValues,
@@ -34,7 +39,10 @@ const STATIC_VALUES = [
 
 const OTHER_VALUES = ["AK", "AL", "AR", "AZ", "CA"];
 
-function getStaticListParam(values = STATIC_VALUES, queryType = "list") {
+function getStaticListParam(
+  values = STATIC_VALUES,
+  queryType: ValuesQueryType = "list",
+) {
   return createMockParameter({
     id: "param",
     type: "category",
@@ -43,7 +51,7 @@ function getStaticListParam(values = STATIC_VALUES, queryType = "list") {
     slug: "address",
     default: null,
     required: false,
-    values_query_type: queryType as any,
+    values_query_type: queryType,
     values_source_type: "static-list",
     values_source_config: {
       values: values.slice(),
@@ -105,7 +113,7 @@ function getCardBoundParam(def: any = null) {
 }
 
 function getResolvedValuesMock(
-  values: any[],
+  values: ParameterValue[],
   { hasMore = false }: { hasMore?: boolean } = {},
 ) {
   return jest.fn(() =>
@@ -127,7 +135,7 @@ function setup({
   value: string | null;
   parameter: Parameter;
   forceSearchItemCount?: number;
-  fetchValuesMock?: () => any;
+  fetchValuesMock?: () => Promise<ParameterValues>;
 }) {
   const onChangeMock = jest.fn();
 
@@ -183,7 +191,7 @@ describe("ListPickerConnected", () => {
 
       const input = screen
         .getAllByDisplayValue("1-5 Texas 41")
-        .filter(el => el.getAttribute("type") !== "hidden")[0];
+        .find(el => el.getAttribute("type") !== "hidden") as HTMLElement;
 
       userEvent.click(input);
       STATIC_VALUES.forEach(value =>
@@ -226,7 +234,7 @@ describe("ListPickerConnected", () => {
       userEvent.click(screen.getByLabelText("close icon"));
       expect(onChangeMock).toHaveBeenCalledTimes(1);
       expect(onChangeMock).toHaveBeenCalledWith(null);
-      onChangeMock.mockReset();
+      onChangeMock.mockClear();
 
       act(() =>
         userEvent.click(screen.getByPlaceholderText("Select a default value…")),
@@ -248,7 +256,7 @@ describe("ListPickerConnected", () => {
       );
       act(() => userEvent.click(screen.getByText("1-7 County Road 462")));
 
-      render1.onChangeMock.mockReset();
+      render1.onChangeMock.mockClear();
 
       render1.rerender(null, getAnotherStaticListParam());
       expect(render1.onChangeMock).toHaveBeenCalledTimes(1);
@@ -281,7 +289,7 @@ describe("ListPickerConnected", () => {
       expect(render2.onChangeMock).toHaveBeenCalledTimes(2);
       expect(render2.onChangeMock).toHaveBeenCalledWith("AL");
       expect(render2.onChangeMock).toHaveBeenCalledWith("CA");
-      render2.onChangeMock.mockReset();
+      render2.onChangeMock.mockClear();
 
       render2.rerender(null, getAnotherStaticListParam());
       expect(render2.onChangeMock).toHaveBeenCalledTimes(0);
@@ -335,7 +343,7 @@ describe("ListPickerConnected", () => {
       const input = screen.getByPlaceholderText("Start typing to filter…");
       expect(input).toBeVisible();
       userEvent.click(input);
-      fetchValuesMock.mockReset();
+      fetchValuesMock.mockClear();
 
       userEvent.type(input, "CA");
       await checkFetch(fetchValuesMock, 1, "CA");
@@ -362,7 +370,7 @@ describe("ListPickerConnected", () => {
       const input = screen.getByPlaceholderText("Start typing to filter…");
       expect(input).toBeVisible();
       userEvent.click(input);
-      fetchValuesMock.mockReset();
+      fetchValuesMock.mockClear();
 
       userEvent.type(input, "WA");
       await checkFetch(fetchValuesMock, 1, "WA");
@@ -435,7 +443,7 @@ describe("ListPickerConnected", () => {
   });
 });
 
-async function checkFetch(mock: () => any, calls: number, value: string) {
+async function checkFetch(mock: jest.Mock, calls: number, value: string) {
   await waitFor(() => expect(screen.getByText(value)).toBeVisible());
   await waitFor(() =>
     expect(screen.queryByTestId("listpicker-loader")).not.toBeInTheDocument(),
@@ -443,7 +451,7 @@ async function checkFetch(mock: () => any, calls: number, value: string) {
   await waitFor(() => expect(mock).toHaveBeenCalledTimes(calls));
 }
 
-async function clickCheckChange(mock: () => any, calls: number, value: string) {
+async function clickCheckChange(mock: jest.Mock, calls: number, value: string) {
   act(() => userEvent.click(screen.getByText(value)));
   await waitFor(() => expect(mock).toHaveBeenCalledWith(value));
   await waitFor(() => expect(mock).toHaveBeenCalledTimes(calls));

@@ -3,7 +3,7 @@ import type { ChangeEvent } from "react";
 import { TextInput } from "metabase/ui";
 
 import { PickerIcon } from "../ParameterValuePicker.styled";
-import { blurOnCommitKey } from "../util";
+import { blurOnCommitKey } from "../utils";
 
 interface PlainValueInputProps {
   value: string | null;

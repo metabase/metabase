@@ -72,8 +72,8 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
   }
 
   if (shouldUseListPicker(parameter)) {
-    // Wrapper is a hack to prevent 0.25rem added by mantine to its Select
     return (
+      // Wrapper is a hack to prevent 0.25rem added by mantine to its Select
       <ListPickerWrapper>
         <ListPickerConnected
           value={getSingleStringOrNull(value)}

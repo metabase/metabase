@@ -29,7 +29,7 @@ function setup(value: string, values: string[], searchDebounceMs?: number) {
   const { rerender, unmount } = render(
     <ListPicker
       value={value}
-      values={values}
+      options={values}
       onChange={onChangeMock}
       onClear={onClearMock}
       onSearchChange={onSearchChange}

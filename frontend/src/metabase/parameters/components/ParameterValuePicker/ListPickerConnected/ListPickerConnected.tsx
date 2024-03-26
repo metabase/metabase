@@ -129,7 +129,7 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
   return (
     <ListPicker
       value={value ?? ""} // Can't be null for the underlying Select
-      values={staticValues ?? fetchedValues}
+      options={staticValues ?? fetchedValues}
       onClear={() => ownOnChange(null)}
       onChange={ownOnChange}
       onSearchChange={ownOnSearch}
