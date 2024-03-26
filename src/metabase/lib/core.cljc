@@ -37,6 +37,7 @@
    [metabase.lib.table :as lib.table]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.walk :as lib.walk]
    [metabase.shared.util.namespaces :as shared.ns]))
 
 (comment lib.aggregation/keep-me
@@ -305,4 +306,7 @@
   with-temporal-bucket]
  [lib.util
   normalized-query-type
-  source-table-id])
+  source-table-id]
+ [lib.walk
+  walk
+  walk-stages])

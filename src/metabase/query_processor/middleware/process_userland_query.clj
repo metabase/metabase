@@ -6,14 +6,18 @@
   ViewLog recording is triggered indirectly by the call to [[events/publish-event!]] with the `:event/card-query`
   event -- see [[metabase.events.view-log]]."
   (:require
+   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.events :as events]
    [metabase.lib.core :as lib]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.query :as query]
    [metabase.models.query-execution
     :as query-execution
     :refer [QueryExecution]]
+   [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -33,32 +37,85 @@
 ;;; |                                              Save Query Execution                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; Should be in lib.core
+(defn- remove-lib-uuids
+  "Two queries should be the same even if they have different :lib/uuids, because they might have both been converted
+  from the same legacy query."
+  [x]
+  (walk/postwalk
+   (fn [x]
+     (if (map? x)
+       (dissoc x :lib/uuid)
+       x))
+   x))
+
+(defn- collect-field-referenced
+  [query]
+  (->> (lib/walk query
+                 (fn [_query _path-type _path stage-or-join]
+                   (select-keys stage-or-join [:aggregation :breakout :filters :expressions])))
+       :stages
+       (apply merge-with concat)))
+
+(defn- find-field-counts
+  [{:keys [aggregation breakout filters expressions]}]
+  (let [field-with-id (fn [x]
+                       (and (seq x)
+                            (= (first x) :field)
+                            (pos-int? (nth x 2))))]
+    (concat
+     ;; aggregation
+     (for [[op _opts [_field _opts field-id-or-name :as clause]] aggregation
+           :when (field-with-id clause)]
+       {:used_in              :aggregation
+        :field_id             field-id-or-name
+        :aggregation_function op})
+     ;; breakouts
+     (for [[_field opts field-id-or-name :as clause] breakout
+           :when (field-with-id clause)]
+       {:used_in        :breakout
+        :field_id       field-id-or-name
+        :breakout_param (select-keys opts [:temporal-unit :binning])})
+     ;; filters
+     (for [[_op _opts [_field _opts field-id-or-name :as clause] :as filter-clause] filters
+           :when (field-with-id clause)]
+       {:used_in       :filter
+        :field_id      field-id-or-name
+        :filter_clause (remove-lib-uuids filter-clause)})
+     ;; expressions
+     (for [expression expressions
+           :let [field-id (lib.util.match/match-one expression [:field _ (id :guard int?)] id)]
+           :when (int? field-id)]
+       {:used_in           :expression
+        :field_id          field-id
+        :expression_clause (remove-lib-uuids expression)}))))
+
+(defn- query->field-usages
+  [query]
+  (-> (lib/query (qp.store/metadata-provider) query)
+      fetch-source-query/resolve-source-cards
+      collect-field-referenced
+      find-field-counts))
 
 ;; TODO - I'm not sure whether this should happen async as is currently the case, or should happen synchronously e.g.
 ;; in the completing arity of the rf
 ;;
 ;; Async seems like it makes sense from a performance standpoint, but should we have some sort of shared threadpool
 ;; for other places where we would want to do async saves (such as results-metadata for Cards?)
-(defn- save-query-execution!*
+(defn- save-execution-metadata!*
   "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
-  [{query :json_query, query-hash :hash, running-time :running_time, context :context :as query-execution}]
-  (def query-execution query-execution)
-  (when (and
-         (not (contains? query-execution :error))
-         (= :query (:type query)))
-    (let [breakouts     (lib/breakouts (lib/->pMBQL query))
-          filters     (lib/filters (lib/->pMBQL query))
-          aggreations (lib/aggregations (lib/->pMBQL query))])
-    (t2/insert! :model/FieldUsage))
+  [{query :json_query, query-hash :hash, running-time :running_time, context :context :as query-execution} field-usages]
   (when-not (:cache_hit query-execution)
     (query/save-query-and-update-average-execution-time! query query-hash running-time))
   (if-not context
     (log/warn "Cannot save QueryExecution, missing :context")
-    (t2/insert! QueryExecution (dissoc query-execution :json_query))))
+    (let [qe-id (t2/insert-returning-pk! QueryExecution (dissoc query-execution :json_query))]
+      (when (seq field-usages)
+        (t2/insert! :model/FieldUsage (map #(assoc % :query_execution_id qe-id) field-usages))))))
 
-(defn- save-query-execution!
+(defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
-  [execution-info]
+  [execution-info field-usages]
   (let [execution-info (add-running-time execution-info)]
     ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
     ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
@@ -70,21 +127,21 @@
     (.submit clojure.lang.Agent/pooledExecutor ^Runnable (fn []
                                                            (log/trace "Saving QueryExecution info")
                                                            (try
-                                                             (save-query-execution!* execution-info)
+                                                             (save-execution-metadata!* execution-info field-usages)
                                                              (catch Throwable e
                                                                (log/error e (trs "Error saving query execution info"))))))))
 
-(defn- save-successful-query-execution! [cache-details is-sandboxed? query-execution result-rows]
+(defn- save-successful-execution-metadata! [cache-details is-sandboxed? query-execution result-rows field-usages]
   (let [qe-map (assoc query-execution
                       :cache_hit    (boolean (:cached cache-details))
                       :cache_hash   (:hash cache-details)
                       :result_rows  result-rows
                       :is_sandboxed (boolean is-sandboxed?))]
-    (save-query-execution! qe-map)))
+    (save-execution-metadata! qe-map field-usages)))
 
 (defn- save-failed-query-execution! [query-execution message]
   (try
-    (save-query-execution! (assoc query-execution :error (str message)))
+    (save-execution-metadata! (assoc query-execution :error (str message)) nil)
     (catch Throwable e
       (log/errorf e "Unexpected error saving failed query execution: %s" (ex-message e)))))
 
@@ -104,7 +161,7 @@
     :average_execution_time (when (:cached cache)
                               (query/average-execution-time-ms query-hash))}))
 
-(defn- add-and-save-execution-info-xform! [execution-info rf]
+(defn- add-and-save-execution-metadata-xform! [execution-info field-usages rf]
   {:pre [(fn? rf)]}
   ;; previously we did nothing for cached results, now we have `cache_hit?` column
   (let [row-count (volatile! 0)]
@@ -115,10 +172,10 @@
       ([acc]
        ;; We don't actually have a guarantee that it's from a card just because it's userland
        (when (integer? (:card_id execution-info))
-         (events/publish-event! :event/card-query {:user-id      (:executor_id execution-info)
-                                                   :card-id      (:card_id execution-info)
-                                                   :context      (:context execution-info)}))
-       (save-successful-query-execution! (:cache/details acc) (get-in acc [:data :is_sandboxed]) execution-info @row-count)
+         (events/publish-event! :event/card-query {:user-id (:executor_id execution-info)
+                                                   :card-id (:card_id execution-info)
+                                                   :context (:context execution-info)}))
+       (save-successful-execution-metadata! (:cache/details acc) (get-in acc [:data :is_sandboxed]) execution-info @row-count field-usages)
        (rf (if (map? acc)
              (success-response execution-info acc)
              acc)))
@@ -170,7 +227,7 @@
             execution-info (query-execution-info query)]
         (letfn [(rff* [metadata]
                   (let [result (rff metadata)]
-                    (add-and-save-execution-info-xform! execution-info result)))]
+                    (add-and-save-execution-metadata-xform! execution-info (query->field-usages query) result)))]
           (try
             (qp query rff*)
             (catch Throwable e

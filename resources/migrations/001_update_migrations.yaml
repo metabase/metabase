@@ -6081,6 +6081,38 @@ databaseChangeLog:
                     referencedColumnNames: id
                     foreignKeyName: fk_field_usage_field_id_metabase_field_id
               - column:
+                  name: query_execution_id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    referencedTableName: query_execution
+                    referencedColumnNames: id
+                    foreignKeyName: fk_field_usage_query_execution_id
+              - column:
+                  name: used_in
+                  type: varchar(25)
+              - column:
+                  name: filter_clause
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: aggregation_function
+                  type: varchar(25)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: breakout_param
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: expression_clause
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
                   name: timestamp
                   type: ${timestamp_type}
                   remarks: The time an event was recorded
