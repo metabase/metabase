@@ -6,39 +6,14 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
-(defmulti ^:private normalize*
-  {:arglists '([query])}
-  lib/normalized-query-type)
-
-(defn- normalize-legacy-query [query]
-  (lib/query (qp.store/metadata-provider) query))
-
-(defmethod normalize* :query  [query] (normalize-legacy-query query))
-(defmethod normalize* :native [query] (normalize-legacy-query query))
-
-;;; normalize a pMBQL query
-(defmethod normalize* :mbql/query
+(defn- normalize*
   [query]
-  (let [query (lib/normalize query)]
-    ;; attach the metatdata provider if needed.
-    (cond->> query
-      (not (:lib/metadata query)) (lib/query (qp.store/metadata-provider)))))
-
-;;; normalize an audit app query
-(defmethod normalize* :internal
-  [query]
-  (-> query
-      (update-keys keyword)
-      (update :type keyword)))
-
-(defmethod normalize* :default
-  [query]
-  (throw (ex-info (i18n/tru "Invalid query, missing query :type or :lib/type")
-                  {:query query, :type qp.error-type/invalid-query})))
+  (let [metadata-provider (or (:lib/metadata query)
+                              (qp.store/metadata-provider))]
+    (lib/query metadata-provider query)))
 
 (mu/defn normalize-preprocessing-middleware :- [:and
                                                 [:map
