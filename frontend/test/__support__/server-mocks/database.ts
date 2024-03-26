@@ -31,20 +31,23 @@ export function setupDatabaseUsageInfoEndpoint(
 }
 
 export function setupDatabasesEndpoints(
-  dbs: Database[],
+  databases: Database[],
   { hasSavedQuestions = true } = {},
   query: object = { saved: true },
 ) {
-  const databases = hasSavedQuestions
-    ? [...dbs, SAVED_QUESTIONS_DATABASE]
-    : dbs;
+  const databasesWithSavedQuestions = hasSavedQuestions
+    ? [...databases, SAVED_QUESTIONS_DATABASE]
+    : databases;
   fetchMock.get(
     {
       url: "path:/api/database",
       query,
       overwriteRoutes: false,
     },
-    { data: databases, total: databases.length },
+    {
+      data: databasesWithSavedQuestions,
+      total: databasesWithSavedQuestions.length,
+    },
   );
   fetchMock.get(
     { url: "path:/api/database", overwriteRoutes: false },
@@ -55,7 +58,7 @@ export function setupDatabasesEndpoints(
     return await lastCall?.request?.json();
   });
 
-  dbs.forEach(db => setupDatabaseEndpoints(db));
+  databases.forEach(db => setupDatabaseEndpoints(db));
 }
 
 export const setupSchemaEndpoints = (db: Database) => {
