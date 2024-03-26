@@ -247,10 +247,9 @@ export function suggest({
 
   suggestions = suggestions.filter(suggestion => suggestion.range);
 
-  // deduplicate suggestions and sort by type
+  // deduplicate suggestions
   suggestions = _.chain(suggestions)
     .uniq(suggestion => suggestion.text)
-    .sortBy("order")
     .value();
 
   // the only suggested function equals the prefix match?
