@@ -86,42 +86,43 @@
   i.e., it may return fields that are *not* in the query, and is unlikely to fail to return fields that are in the
   query.
 
-  Direct references are columns that are named in the query; indirect ones are from wildcards. If a field could be both direct and indirect, it will *only* show up in the `:direct` set.
-
-  Returns `nil` (and logs the error) if there was a parse error."
+  Direct references are columns that are named in the query; indirect ones are from wildcards. If a field could be both direct and indirect, it will *only* show up in the `:direct` set."
   [card]
-  (try
-    (let [{native-query :native
-           db-id        :database} (:dataset_query card)
-          parsed-query             (mac/query->components (mac/parsed-query (:query native-query)))
-          direct-ids               (direct-field-ids-for-query parsed-query db-id)
-          indirect-ids             (set/difference
-                                    (indirect-field-ids-for-query parsed-query db-id)
-                                    direct-ids)]
-      {:direct   direct-ids
-       :indirect indirect-ids})
-    (catch JSQLParserException e
-      (log/error e "Error parsing native query"))))
+  (let [{native-query :native
+         db-id        :database} (:dataset_query card)
+        parsed-query             (mac/query->components (mac/parsed-query (:query native-query)))
+        direct-ids               (direct-field-ids-for-query parsed-query db-id)
+        indirect-ids             (set/difference
+                                  (indirect-field-ids-for-query parsed-query db-id)
+                                  direct-ids)]
+    {:direct   direct-ids
+     :indirect indirect-ids}))
 
 (defn update-query-fields-for-card!
   "Clears QueryFields associated with this card and creates fresh, up-to-date-ones.
 
   Any card is accepted, but this functionality only works for ones with a native query.
 
-  If you're invoking this from a test, be sure to turn on [[*parse-queries-in-test?*]]."
+  If you're invoking this from a test, be sure to turn on [[*parse-queries-in-test?*]].
+
+  Returns `nil` (and logs the error) if there was a parse error."
   [{card-id :id, query :dataset_query :as card}]
   (when (and (active?)
              (= :native (:type query)))
-    (let [{:keys [direct indirect]} (field-ids-for-card card)
-          id->record (fn [direct? field-id] {:card_id          card-id
-                                             :field_id         field-id
-                                             :direct_reference direct?})
-          query-field-records (concat
-                               (map (partial id->record true) direct)
-                               (map (partial id->record false) indirect))]
-      ;; This feels inefficient at first glance, but the number of records should be quite small and doing some sort
-      ;; of upsert-or-delete would involve comparisons in Clojure-land that are more expensive than just "killing and
-      ;; filling" the records.
-      (t2/with-transaction [_conn]
-        (t2/delete! :model/QueryField :card_id card-id)
-        (t2/insert! :model/QueryField query-field-records)))))
+    (try
+      (let [{:keys [direct indirect]} (field-ids-for-card card)
+            id->record                (fn [direct? field-id]
+                                        {:card_id          card-id
+                                         :field_id         field-id
+                                         :direct_reference direct?})
+            query-field-records       (concat
+                                       (map (partial id->record true) direct)
+                                       (map (partial id->record false) indirect))]
+        ;; This feels inefficient at first glance, but the number of records should be quite small and doing some sort
+        ;; of upsert-or-delete would involve comparisons in Clojure-land that are more expensive than just "killing and
+        ;; filling" the records.
+        (t2/with-transaction [_conn]
+          (t2/delete! :model/QueryField :card_id card-id)
+          (t2/insert! :model/QueryField query-field-records)))
+ (catch JSQLParserException e
+      (log/error e "Error parsing native query")))))
