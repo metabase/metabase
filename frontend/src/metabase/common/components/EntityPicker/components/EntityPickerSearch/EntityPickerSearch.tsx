@@ -136,11 +136,18 @@ export const EntityPickerSearchTab = <
 >({
   searchResults,
   searchQuery,
+  onClick,
 }: {
   searchResults: Item[] | null;
   searchQuery: string;
+  onClick: () => void;
 }) => (
-  <Tabs.Tab key="search" value="search" icon={<Icon name="search" />}>
+  <Tabs.Tab
+    key="search"
+    value="search"
+    icon={<Icon name="search" />}
+    onClick={onClick}
+  >
     {getSearchTabText(searchResults, searchQuery)}
   </Tabs.Tab>
 );
