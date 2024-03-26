@@ -214,10 +214,10 @@
                                                                :pk_ref    pk-ref
                                                                :value_ref value-ref})]
               (is (nil? error))
-              ;; oracle returns BigDecimal ids so need `number?` rather than `int?`
               (is (> (count values) 0))
+              ;; oracle returns BigDecimal ids so need `number?` rather than `int?`
               (is (mc/validate [:sequential [:tuple number? string?]] values)
-                  (-> (mc/validate [:sequential [:tuple int? string?]] values)
+                  (-> (mc/explain [:sequential [:tuple number? string?]] values)
                       (me/humanize))))))))))
 
 (defn- test-index
