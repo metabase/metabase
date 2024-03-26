@@ -155,10 +155,14 @@ const getDatasetResponse = ({
   const requestUrl = getDatasetDownloadUrl(url, params);
 
   if (method === "POST") {
-    return fetch(requestUrl, {
-      method,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    // BE expects the body to be form-encoded :(
+    const formattedBody = new URLSearchParams();
+    if (body != null) {
+      for (const key in body) {
+        formattedBody.append(key, JSON.stringify(body[key]));
+      }
+    }
+    return fetch(requestUrl, { method, body: formattedBody });
   } else {
     return fetch(requestUrl);
   }
