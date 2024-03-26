@@ -46,7 +46,7 @@
 (def max-indexed-values
   "Maximum number of values we will index. Actually take one more than this to test if there are more than the
   threshold."
-  5000)
+  25000)
 
 ;;;; indexing functions
 
