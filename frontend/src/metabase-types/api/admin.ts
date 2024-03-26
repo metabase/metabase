@@ -1,6 +1,8 @@
+export type ApiKeyId = number;
+
 export type ApiKey = {
   name: string;
-  id: number;
+  id: ApiKeyId;
   group: {
     id: number;
     name: string;

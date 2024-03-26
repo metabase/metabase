@@ -1,5 +1,6 @@
 import type {
   ApiKey,
+  ApiKeyId,
   CreateApiKeyRequest,
   CreateApiKeyResponse,
   RegenerateApiKeyResponse,
@@ -35,11 +36,11 @@ export const apiKeyApi = Api.injectEndpoints({
       }),
       invalidatesTags: [API_KEY_TAG],
     }),
-    deleteApiKey: builder.mutation<void, ApiKey["id"]>({
+    deleteApiKey: builder.mutation<void, ApiKeyId>({
       query: id => ({ method: "DELETE", url: `/api/api-key/${id}` }),
       invalidatesTags: [API_KEY_TAG],
     }),
-    regenerateApiKey: builder.mutation<RegenerateApiKeyResponse, ApiKey["id"]>({
+    regenerateApiKey: builder.mutation<RegenerateApiKeyResponse, ApiKeyId>({
       query: id => ({ method: "PUT", url: `/api/api-key/${id}/regenerate` }),
       invalidatesTags: [API_KEY_TAG],
     }),

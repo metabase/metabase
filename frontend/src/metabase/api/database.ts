@@ -28,6 +28,12 @@ export const databaseApi = Api.injectEndpoints({
         body,
       }),
     }),
+    deleteDatabase: builder.mutation<void, DatabaseId>({
+      query: id => ({
+        method: "DELETE",
+        url: `/api/database/${id}`,
+      }),
+    }),
     rescanDatabaseFieldValues: builder.mutation<void, DatabaseId>({
       query: databaseId => ({
         method: "POST",
