@@ -8,3 +8,7 @@ title: API changelog
 - `POST /api/card` and `PUT /api/card/:id`
 
   The `dataset` key is deprecated and will be removed in a future version, most likely 50. In its place we have added a new key: `type` which is equivalent in that it distinguishes Models from Questions. `type="model"` is equivalent to `dataset=true` and `type="question"` is equivalent to `dataset=false`.
+
+- all endpoints that return data (e.g. exports in JSON, XLSX, CSV, endpoints that end in "/query")
+
+   Starting from v49, we respond to the API calls with values formatted according to the instance localization options
