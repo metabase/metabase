@@ -1,9 +1,9 @@
-(ns metabase-enterprise.caching.config-test
+(ns metabase-enterprise.cache.config-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.caching.config :as caching.config]
+   [metabase-enterprise.cache.config :as cache.config]
    [metabase.models :refer [Card Database PersistedInfo TaskHistory]]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
@@ -11,7 +11,7 @@
    [toucan2.core :as t2]))
 
 (comment
-  caching.config/keep-me)
+  cache.config/keep-me)
 
 (defn do-with-persist-models [f]
   (let [two-hours-ago (t/minus (t/local-date-time) (t/hours 2))]

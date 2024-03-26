@@ -1,9 +1,9 @@
-(ns metabase-enterprise.caching.strategies-test
+(ns metabase-enterprise.cache.strategies-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.caching.strategies :as caching]
-   [metabase-enterprise.task.caching :as task.caching]
+   [metabase-enterprise.cache.strategies :as strategies]
+   [metabase-enterprise.task.cache :as task.cache]
    [metabase.models :refer [Card Dashboard Database]]
    [metabase.models.query :as query]
    [metabase.public-settings :as public-settings]
@@ -14,7 +14,7 @@
    [toucan2.core :as t2]))
 
 (comment
-  caching/keep-me)
+  strategies/keep-me)
 
 (deftest query-cache-strategy-hierarchy-test
   (mt/with-premium-features #{:cache-granular-controls}
@@ -228,7 +228,7 @@
               (testing "strategy = schedule"
                 (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
                   (mt/with-clock (t 0)
-                    (is (pos? (#'task.caching/refresh-schedule-configs!)))
+                    (is (pos? (#'task.cache/refresh-schedule-configs!)))
                     (let [q (#'qp.card/query-for-card card3 [] {} {} {})]
                       (is (=? {:type :schedule}
                               (:cache-strategy q)))
@@ -239,7 +239,7 @@
                                 (-> (qp/process-query q) (dissoc :data)))))))
                   (testing "No cache after job ran again"
                     (mt/with-clock (t 121)
-                      (is (pos? (#'task.caching/refresh-schedule-configs!)))
+                      (is (pos? (#'task.cache/refresh-schedule-configs!)))
                       (let [q (#'qp.card/query-for-card card3 {} {} {} {})]
                         (is (=? (mkres nil)
                                 (-> (qp/process-query q) (dissoc :data)))))))))
@@ -247,7 +247,7 @@
               (testing "strategy = query"
                 (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
                   (mt/with-clock (t 0)
-                    (is (pos? (#'task.caching/refresh-query-configs!)))
+                    (is (pos? (#'task.cache/refresh-query-configs!)))
                     (let [q (#'qp.card/query-for-card card4 [] {} {} {})]
                       (is (=? {:type :query}
                               (:cache-strategy q)))
@@ -259,9 +259,9 @@
                                 (-> (qp/process-query q) (dissoc :data)))))))
 
                   (mt/with-clock (t 121)
-                    (is (pos? (#'task.caching/refresh-query-configs!)))
+                    (is (pos? (#'task.cache/refresh-query-configs!)))
                     (testing "Nothing to run, because it's already scheduled for later"
-                      (is (nil? (#'task.caching/refresh-query-configs!))))
+                      (is (nil? (#'task.cache/refresh-query-configs!))))
                     (testing "Job ran again, but state has not changed, so there's still cache"
                       (let [q (#'qp.card/query-for-card card4 {} {} {} {})]
                         (is (=? (mkres (t 0))
@@ -271,7 +271,7 @@
                     (let [state (:state (t2/select-one :model/CacheConfig :id (:id c4)))]
                       (t2/update! :model/CacheConfig {:id (:id c4)} {:config (assoc (:config c4)
                                                                                     :field_id (mt/id :table :value))})
-                      (is (pos? (#'task.caching/refresh-query-configs!)))
+                      (is (pos? (#'task.cache/refresh-query-configs!)))
                       (testing "Marker has changed"
                         (is (not= state
                                   (:state (t2/select-one :model/CacheConfig :id (:id c4)))))))
