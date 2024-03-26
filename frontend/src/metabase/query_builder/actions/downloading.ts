@@ -129,6 +129,7 @@ const getDatasetParams = ({
   return {
     method: "POST",
     url: `/api/dataset/${type}`,
+    params: new URLSearchParams({ format_export }),
     body: {
       query: _.omit(result?.json_query ?? {}, "constraints"),
       visualization_settings: visualizationSettings ?? {},
