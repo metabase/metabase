@@ -80,7 +80,7 @@ class AutomaticDashboardAppInner extends Component {
       <div className={cx(CS.flex, CS.alignCenter)}>
         {t`Your dashboard was saved`}
         <Link
-          className={cx("link", CS.textBold, "ml1")}
+          className={cx(CS.link, CS.textBold, "ml1")}
           to={Urls.dashboard(newDashboard)}
         >
           {t`See it`}

@@ -85,22 +85,26 @@ export function FieldTrigger({
 export function DatabaseTrigger({ database }: { database: Database }) {
   return database ? (
     <span
-      className={cx(CS.textWrap, "text-grey no-decoration")}
+      className={cx(CS.textWrap, "text-grey", CS.noDecoration)}
       data-testid="selected-database"
     >
       {database.name}
     </span>
   ) : (
-    <span className="text-medium no-decoration">{t`Select a database`}</span>
+    <span
+      className={cx("text-medium", CS.noDecoration)}
+    >{t`Select a database`}</span>
   );
 }
 
 export function TableTrigger({ table }: { table: Table }) {
   return table ? (
-    <span className={cx(CS.textWrap, "text-grey no-decoration")}>
+    <span className={cx(CS.textWrap, "text-grey", CS.noDecoration)}>
       {table.display_name || table.name}
     </span>
   ) : (
-    <span className="text-medium no-decoration">{t`Select a table`}</span>
+    <span
+      className={cx("text-medium", CS.noDecoration)}
+    >{t`Select a table`}</span>
   );
 }

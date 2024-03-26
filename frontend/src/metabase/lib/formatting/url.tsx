@@ -1,4 +1,7 @@
+import cx from "classnames";
+
 import ExternalLink from "metabase/core/components/ExternalLink";
+import CS from "metabase/css/core/index.css";
 import { getDataFromClicked } from "metabase-lib/v1/parameters/utils/click-behavior";
 import { isURL } from "metabase-lib/v1/types/utils/isa";
 
@@ -35,7 +38,7 @@ export function formatUrl(value: string, options: OptionsType = {}) {
   if (jsx && rich && url) {
     const text = getLinkText(value, options);
     return (
-      <ExternalLink className="link link--wrappable" href={url}>
+      <ExternalLink className={cx(CS.link, CS.linkWrappable)} href={url}>
         {text}
       </ExternalLink>
     );
