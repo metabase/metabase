@@ -11,7 +11,7 @@ export type EmbedHomepageViewProps = {
   embeddingAutoEnabled: boolean;
   exampleDashboardId?: number;
   licenseActiveAtSetup: boolean;
-  plan: "oss-starter" | "pro-ee";
+  defaultTab: "interactive" | "static";
   // links
   interactiveEmbeddingQuickstartUrl: string;
   embeddingDocsUrl: string;
@@ -21,8 +21,12 @@ export type EmbedHomepageViewProps = {
 };
 
 export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
-  const { embeddingAutoEnabled, plan, embeddingDocsUrl, analyticsDocsUrl } =
-    props;
+  const {
+    embeddingAutoEnabled,
+    defaultTab,
+    embeddingDocsUrl,
+    analyticsDocsUrl,
+  } = props;
   return (
     <Stack maw={550}>
       <Group>
@@ -32,7 +36,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
       <Card px="xl" py="lg">
         {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
         <Title order={2} mb="md">{t`Embedding Metabase`}</Title>
-        <Tabs defaultValue={plan === "oss-starter" ? "static" : "interactive"}>
+        <Tabs defaultValue={defaultTab}>
           <Tabs.List>
             <Tabs.Tab value="interactive">{t`Interactive`}</Tabs.Tab>
             <Tabs.Tab value="static">{t`Static`}</Tabs.Tab>
@@ -57,14 +61,14 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
           <Text color="text-light" size="sm">
             {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
             {jt`Because you expressed interest in embedding Metabase, we took this step for you so that you can more easily try it out. You can turn it off anytime in ${(
-              <Link
-                to="admin/settings/embedding-in-other-applications"
+              <Anchor
+                size="sm"
+                component={Link}
+                to="/admin/settings/embedding-in-other-applications"
                 key="link"
               >
-                <Anchor size="sm">
-                  admin/settings/embedding-in-other-applications
-                </Anchor>
-              </Link>
+                admin/settings/embedding-in-other-applications
+              </Anchor>
             )}.`}
           </Text>
         </Card>

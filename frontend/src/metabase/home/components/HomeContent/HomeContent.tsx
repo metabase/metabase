@@ -2,6 +2,7 @@ import {
   useDatabaseListQuery,
   usePopularItemListQuery,
   useRecentItemListQuery,
+  useSetting,
 } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
@@ -12,12 +13,14 @@ import type { PopularItem, RecentItem, User } from "metabase-types/api";
 
 import { getIsXrayEnabled } from "../../selectors";
 import { isWithinWeeks } from "../../utils";
+import { EmbedHomepage } from "../EmbedHomepage";
 import { HomePopularSection } from "../HomePopularSection";
 import { HomeRecentSection } from "../HomeRecentSection";
 import { HomeXraySection } from "../HomeXraySection";
 
 export const HomeContent = (): JSX.Element | null => {
   const user = useSelector(getUser);
+  const embeddingHomepage = useSetting("embedding-homepage");
   const isXrayEnabled = useSelector(getIsXrayEnabled);
   const { data: databases, error: databasesError } = useDatabaseListQuery();
   const { data: recentItems, error: recentItemsError } = useRecentItemListQuery(
@@ -33,6 +36,10 @@ export const HomeContent = (): JSX.Element | null => {
 
   if (!user || isLoading(user, databases, recentItems, popularItems)) {
     return <LoadingAndErrorWrapper loading />;
+  }
+
+  if (embeddingHomepage === "visible" && user.is_superuser) {
+    return <EmbedHomepage />;
   }
 
   if (isPopularSection(user, recentItems, popularItems)) {

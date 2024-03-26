@@ -31,9 +31,11 @@ export const StaticTabContent = ({
       >
         {embeddingAutoEnabled === false && (
           <List.Item>
-            <Link to="/admin/settings/embedding-in-other-applications">
-              <Anchor size="sm">{t`Enable embedding in the settings`}</Anchor>
-            </Link>
+            <Anchor
+              size="sm"
+              component={Link}
+              to="/admin/settings/embedding-in-other-applications"
+            >{t`Enable embedding in the settings`}</Anchor>
           </List.Item>
         )}
         <List.Item>{jt`${

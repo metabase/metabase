@@ -13,6 +13,7 @@ import type {
   Database,
   PopularItem,
   RecentItem,
+  Settings,
   User,
 } from "metabase-types/api";
 import {
@@ -34,7 +35,7 @@ interface SetupOpts {
   recentItems?: RecentItem[];
   popularItems?: PopularItem[];
   isXrayEnabled?: boolean;
-  hasEmbeddingHomepageFlag?: boolean;
+  settings?: Partial<Settings>;
 }
 
 const setup = async ({
@@ -43,18 +44,15 @@ const setup = async ({
   recentItems = [],
   popularItems = [],
   isXrayEnabled = true,
-  hasEmbeddingHomepageFlag = false,
+  settings = {},
 }: SetupOpts) => {
   const state = createMockState({
     currentUser: user,
     settings: createMockSettingsState({
       "enable-xrays": isXrayEnabled,
+      ...settings,
     }),
   });
-
-  if (hasEmbeddingHomepageFlag) {
-    localStorage.setItem("showEmbedHomepage", "true");
-  }
 
   setupDatabasesEndpoints(databases);
   setupRecentViewsEndpoints(recentItems);
@@ -180,5 +178,37 @@ describe("HomeContent", () => {
     expect(
       screen.queryByText(/Here are some explorations/),
     ).not.toBeInTheDocument();
+  });
+
+  describe("embed-focused homepage", () => {
+    it("should show it for admins if 'embedding-homepage' is visible", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        settings: { "embedding-homepage": "visible" },
+      });
+
+      expect(screen.getByText("Embedding Metabase")).toBeInTheDocument();
+      expect(screen.getByText("The TL;DR:")).toBeInTheDocument();
+    });
+
+    it("should not show it for non-admins even if 'embedding-homepage' is visible", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: false }),
+        settings: { "embedding-homepage": "visible" },
+      });
+
+      expect(screen.queryByText("Embedding Metabase")).not.toBeInTheDocument();
+      expect(screen.queryByText("The TL;DR:")).not.toBeInTheDocument();
+    });
+
+    it("should not show it if 'embedding-homepage' is not 'visible'", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        settings: { "embedding-homepage": "hidden" },
+      });
+
+      expect(screen.queryByText("Embedding Metabase")).not.toBeInTheDocument();
+      expect(screen.queryByText("The TL;DR:")).not.toBeInTheDocument();
+    });
   });
 });

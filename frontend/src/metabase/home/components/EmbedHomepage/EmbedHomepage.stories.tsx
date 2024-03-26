@@ -28,7 +28,7 @@ export const Default: Story = {
       <EmbedHomepageView
         {...args}
         exampleDashboardId={args.hasExampleDashboard ? 1 : undefined}
-        key={args.plan}
+        key={args.defaultTab}
       />
     );
   },
@@ -36,7 +36,7 @@ export const Default: Story = {
     embeddingAutoEnabled: true,
     hasExampleDashboard: true,
     licenseActiveAtSetup: true,
-    plan: "oss-starter",
+    defaultTab: "interactive",
     interactiveEmbeddingQuickstartUrl:
       "https://www.metabase.com/docs/latest/embedding/interactive-embedding-quick-start-guide.html",
     embeddingDocsUrl:

@@ -32,22 +32,22 @@ export const InteractiveTabContent = ({
         style={{ listStyleType: "decimal" }}
       >
         {!licenseActiveAtSetup && (
-          <>
-            <List.Item>
-              <Link to="/admin/settings/license">
-                <Anchor size="sm">{t`Activate your commercial license`}</Anchor>
-              </Link>
-            </List.Item>
-          </>
+          <List.Item>
+            <Anchor
+              size="sm"
+              component={Link}
+              to="/admin/settings/license"
+            >{t`Activate your commercial license`}</Anchor>
+          </List.Item>
         )}
         {embeddingAutoEnabled === false && (
-          <>
-            <List.Item>
-              <Link to="/admin/settings/embedding-in-other-applications">
-                <Anchor size="sm">{t`Enable embedding in the settings`}</Anchor>
-              </Link>
-            </List.Item>
-          </>
+          <List.Item>
+            <Anchor
+              size="sm"
+              component={Link}
+              to="/admin/settings/embedding-in-other-applications"
+            >{t`Enable embedding in the settings`}</Anchor>
+          </List.Item>
         )}
         {exampleDashboardId === undefined && (
           <List.Item>{t`Create a dashboard to be embedded`}</List.Item>
