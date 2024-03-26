@@ -1,3 +1,4 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
@@ -8,6 +9,7 @@ import { StackedCheckBox } from "metabase/components/StackedCheckBox";
 import Label from "metabase/components/type/Label";
 import CheckBox from "metabase/core/components/CheckBox";
 import Toggle from "metabase/core/components/Toggle";
+import CS from "metabase/css/core/index.css";
 
 export default class EmailAttachmentPicker extends Component {
   DEFAULT_ATTACHMENT_TYPE = "csv";
@@ -191,7 +193,7 @@ export default class EmailAttachmentPicker extends Component {
 
         {isEnabled && (
           <div>
-            <div className="my1 flex justify-between">
+            <div className={cx(CS.my1, CS.flex, CS.justifyBetween)}>
               <Label className="pt1">{t`File format`}</Label>
               <SegmentedControl
                 options={[
@@ -203,9 +205,27 @@ export default class EmailAttachmentPicker extends Component {
                 fullWidth
               />
             </div>
-            <div className="text-bold pt1 pb2 flex justify-between align-center">
-              <ul className="full">
-                <li className="mb2 pb1 flex align-center cursor-pointer border-bottom">
+            <div
+              className={cx(
+                CS.textBold,
+                CS.pt1,
+                CS.pb2,
+                CS.flex,
+                CS.justifyBetween,
+                CS.alignCenter,
+              )}
+            >
+              <ul className={CS.full}>
+                <li
+                  className={cx(
+                    CS.mb2,
+                    CS.pb1,
+                    CS.flex,
+                    CS.alignCenter,
+                    CS.cursorPointer,
+                    CS.borderBottom,
+                  )}
+                >
                   <StackedCheckBox
                     label={t`Questions to attach`}
                     checked={this.areAllSelected(cards, selectedCardIds)}
@@ -219,7 +239,12 @@ export default class EmailAttachmentPicker extends Component {
                 {cards.map(card => (
                   <li
                     key={card.id}
-                    className="pb2 flex align-center cursor-pointer"
+                    className={cx(
+                      CS.pb2,
+                      CS.flex,
+                      CS.alignCenter,
+                      CS.cursorPointer,
+                    )}
                   >
                     <CheckBox
                       checked={selectedCardIds.has(card.id)}
@@ -227,7 +252,7 @@ export default class EmailAttachmentPicker extends Component {
                       onChange={() => {
                         this.onToggleCard(card);
                       }}
-                      className="mr1"
+                      className={CS.mr1}
                     />
                   </li>
                 ))}

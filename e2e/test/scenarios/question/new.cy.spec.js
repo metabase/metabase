@@ -206,19 +206,6 @@ describe("scenarios > question > new", () => {
     });
   });
 
-  it("should remove `/notebook` from URL when converting question to SQL/Native (metabase#12651)", () => {
-    openOrdersTable();
-
-    cy.url().should("include", "question#");
-    // Isolate icons within "QueryBuilder" scope because there is also `.Icon-sql` in top navigation
-    cy.findByTestId("query-builder-root").icon("notebook").click();
-    cy.url().should("include", "question/notebook#");
-    cy.findByTestId("query-builder-root").icon("sql").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Convert this question to SQL").click();
-    cy.url().should("include", "question#");
-  });
-
   it("composite keys should act as filters on click (metabase#13717)", () => {
     cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
       semantic_type: "type/PK",

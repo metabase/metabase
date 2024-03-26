@@ -6,6 +6,9 @@ import { AlertApi } from "metabase/services";
 
 export const UNSUBSCRIBE = "metabase/entities/alerts/unsubscribe";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Alerts = createEntity({
   name: "alerts",
   nameOne: "alert",

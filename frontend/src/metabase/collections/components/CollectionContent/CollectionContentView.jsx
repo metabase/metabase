@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { usePrevious } from "react-use";
@@ -12,6 +13,7 @@ import Header from "metabase/collections/containers/CollectionHeader";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
 import PaginationControls from "metabase/components/PaginationControls";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
+import CS from "metabase/css/core/index.css";
 import Search from "metabase/entities/search";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { usePagination } from "metabase/hooks/use-pagination";
@@ -75,10 +77,16 @@ export function CollectionContentView({
   };
 
   const handleUploadFile = useCallback(
-    ({ collectionId, tableId, modelId }) => {
+    ({ collectionId, tableId, modelId, uploadMode }) => {
       if (uploadedFile && (collectionId || tableId)) {
         closeModelUploadModal();
-        uploadFile({ file: uploadedFile, collectionId, tableId, modelId });
+        uploadFile({
+          file: uploadedFile,
+          collectionId,
+          tableId,
+          modelId,
+          uploadMode,
+        });
       }
     },
     [uploadFile, uploadedFile, closeModelUploadModal],
@@ -310,7 +318,7 @@ export function CollectionContentView({
                           onSelectAll={handleSelectAll}
                           onSelectNone={clear}
                         />
-                        <div className="flex justify-end my3">
+                        <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
                           {hasPagination && (
                             <PaginationControls
                               showTotal

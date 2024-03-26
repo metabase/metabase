@@ -1,24 +1,27 @@
-import { Tabs, Icon } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
+import { Icon, Tabs } from "metabase/ui";
 
 import type { EntityTab, TypeWithModel } from "../../types";
 import {
-  EntityPickerSearchTab,
   EntityPickerSearchResults,
+  EntityPickerSearchTab,
 } from "../EntityPickerSearch";
 
-export const TabsView = <TItem extends TypeWithModel>({
+export const TabsView = <
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>({
   tabs,
   onItemSelect,
   searchQuery,
   searchResults,
   selectedItem,
 }: {
-  tabs: [EntityTab, ...EntityTab[]];
-  onItemSelect: (item: TItem) => void;
+  tabs: [EntityTab<Model>, ...EntityTab<Model>[]];
+  onItemSelect: (item: Item) => void;
   searchQuery: string;
-  searchResults: SearchResult[] | null;
-  selectedItem: TItem | null;
+  searchResults: Item[] | null;
+  selectedItem: Item | null;
 }) => {
   const hasSearchTab = !!searchQuery;
   const defaultTab = hasSearchTab ? { model: "search" } : tabs[0];

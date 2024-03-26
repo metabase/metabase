@@ -27,7 +27,7 @@
 /.lein-repl-history
 /.sqlite.db
 /backend-checksums.txt
-/backend-docs/uberdoc.html
+/backend-docs
 /build.xml
 /checkouts
 /classes
