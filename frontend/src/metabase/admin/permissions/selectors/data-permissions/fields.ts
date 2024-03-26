@@ -18,13 +18,12 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
-import {
+import type {
   TableEntityId,
   PermissionSectionConfig,
-  DataPermission,
-  DataPermissionType,
   DataPermissionValue,
 } from "../../types";
+import { DataPermission, DataPermissionType } from "../../types";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
@@ -94,26 +93,28 @@ const buildAccessPermission = (
     ),
   ];
 
+  const options = PLUGIN_ADVANCED_PERMISSIONS.addTablePermissionOptions(
+    _.compact([
+      DATA_PERMISSION_OPTIONS.unrestricted,
+      ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
+      originalValue === DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated.value &&
+        DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated,
+    ]),
+    value,
+  );
+
   return {
     permission: DataPermission.VIEW_DATA,
     type: DataPermissionType.ACCESS,
     isDisabled:
       isAdmin ||
+      options.length <= 1 ||
       PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(value, "fields"),
     disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
     isHighlighted: isAdmin,
     value,
     warning,
-    options: PLUGIN_ADVANCED_PERMISSIONS.addTablePermissionOptions(
-      _.compact([
-        DATA_PERMISSION_OPTIONS.unrestricted,
-        ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
-        originalValue ===
-          DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated.value &&
-          DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated,
-      ]),
-      value,
-    ),
+    options,
     actions: PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
     postActions: PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
     confirmations,
@@ -129,18 +130,23 @@ const buildNativePermission = (
 ): PermissionSectionConfig => {
   const { databaseId } = entityId;
   const dbValue = getNativePermission(permissions, groupId, { databaseId });
+  const isControlledByDb = dbValue !== DATA_PERMISSION_OPTIONS.controlled.value;
 
   return {
     permission: DataPermission.CREATE_QUERIES,
     type: DataPermissionType.NATIVE,
-    isDisabled: dbValue !== DATA_PERMISSION_OPTIONS.controlled.value,
+    isDisabled: isControlledByDb,
     disabledTooltip: getNativePermissionDisabledTooltip(
       isAdmin,
       accessPermissionValue,
     ),
     isHighlighted: isAdmin,
     value: getNativePermission(permissions, groupId, entityId),
-    options: [DATA_PERMISSION_OPTIONS.queryBuilder, DATA_PERMISSION_OPTIONS.no],
+    options: _.compact([
+      isControlledByDb && DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
+      DATA_PERMISSION_OPTIONS.queryBuilder,
+      DATA_PERMISSION_OPTIONS.no,
+    ]),
   };
 };
 

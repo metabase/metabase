@@ -5,17 +5,19 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { GroupsPermissions, ConcreteTableId } from "metabase-types/api";
 
-import {
+import type {
   DatabaseEntityId,
-  DataPermission,
-  DataPermissionValue,
   EntityId,
   SchemaEntityId,
   TableEntityId,
 } from "../../types";
+import { DataPermission, DataPermissionValue } from "../../types";
 
 export const isRestrictivePermission = (value: string) =>
   value === "blocked" || value === "no";
+
+// permission that do not have a nested shemas/native key
+const flatPermissions = new Set(["details", "view-data", "create-queries"]);
 
 // util to ease migration of perms attributes into a flatter structure
 function getPermissionPath(
@@ -24,7 +26,7 @@ function getPermissionPath(
   permission: DataPermission,
   nestedPath?: Array<string | number>,
 ) {
-  const isFlatPermValue = ["view-data", "create-queries"].includes(permission);
+  const isFlatPermValue = flatPermissions.has(permission);
   if (isFlatPermValue) {
     return [groupId, databaseId, permission, ...(nestedPath || [])];
   }
@@ -454,19 +456,18 @@ export function updateSchemasPermission(
   );
 }
 
-// TODO: refactor
 export function updateNativePermission(
   permissions: GroupsPermissions,
   groupId: number,
-  { databaseId }: DatabaseEntityId,
+  entityId: DatabaseEntityId & TableEntityId,
   value: DataPermissionValue,
 ) {
   return updatePermission(
     permissions,
     groupId,
-    databaseId,
+    entityId.databaseId,
     DataPermission.CREATE_QUERIES,
-    [],
+    _.compact([entityId.schemaName, entityId.tableId]),
     value,
   );
 }
