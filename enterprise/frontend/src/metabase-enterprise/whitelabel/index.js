@@ -26,7 +26,7 @@ import ColorSettingsWidget from "./components/ColorSettingsWidget";
 import FontFilesWidget from "./components/FontFilesWidget";
 import FontWidget from "./components/FontWidget";
 import { HelpLinkSettings } from "./components/HelpLinkSettings";
-import { IllustrationDescription } from "./components/IllustrationDescription";
+import { IllustrationTitle } from "./components/IllustrationTitle";
 import { IllustrationWidget } from "./components/IllustrationWidget";
 import { ImageUpload } from "./components/ImageUpload";
 import { LandingPageWidget } from "./components/LandingPageWidget";
@@ -208,17 +208,16 @@ if (hasPremiumFeature("whitelabel")) {
             key: "login-page-illustration",
             tab: "conceal-metabase",
             display_name: (
-              <IllustrationDescription
+              <IllustrationTitle
+                title={t`Login and unsubscribe pages`}
                 errorMessageContainerId="login-page-illustration-error-container"
-                type="login-page"
               />
             ),
             description: null,
             type: "string",
             widget: IllustrationWidget,
             props: {
-              defaultIllustrationLabel: t`Lighthouse`,
-              defaultPreviewType: "lighthouse",
+              type: "background",
               customIllustrationSetting: "login-page-illustration-custom",
               errorMessageContainerId:
                 "login-page-illustration-error-container",
@@ -228,17 +227,16 @@ if (hasPremiumFeature("whitelabel")) {
             key: "landing-page-illustration",
             tab: "conceal-metabase",
             display_name: (
-              <IllustrationDescription
+              <IllustrationTitle
+                title={t`Landing page`}
                 errorMessageContainerId="landing-page-illustration-error-container"
-                type="landing-page"
               />
             ),
             description: null,
             type: "string",
             widget: IllustrationWidget,
             props: {
-              defaultIllustrationLabel: t`Lighthouse`,
-              defaultPreviewType: "lighthouse",
+              type: "background",
               customIllustrationSetting: "landing-page-illustration-custom",
               errorMessageContainerId:
                 "landing-page-illustration-error-container",
@@ -248,17 +246,16 @@ if (hasPremiumFeature("whitelabel")) {
             key: "no-question-results-illustration",
             tab: "conceal-metabase",
             display_name: (
-              <IllustrationDescription
+              <IllustrationTitle
+                title={t`No-results image for questions`}
                 errorMessageContainerId="no-question-results-illustration-error-container"
-                type="no-question-results"
               />
             ),
             description: null,
             type: "string",
             widget: IllustrationWidget,
             props: {
-              defaultIllustrationLabel: t`Sailboat`,
-              defaultPreviewType: "sailboat",
+              type: "icon",
               customIllustrationSetting:
                 "no-question-results-illustration-custom",
               errorMessageContainerId:
@@ -269,17 +266,16 @@ if (hasPremiumFeature("whitelabel")) {
             key: "no-search-results-illustration",
             tab: "conceal-metabase",
             display_name: (
-              <IllustrationDescription
+              <IllustrationTitle
+                title={t`No search results`}
                 errorMessageContainerId="no-search-results-illustration-error-container"
-                type="no-search-results"
               />
             ),
             description: null,
             type: "string",
             widget: IllustrationWidget,
             props: {
-              defaultIllustrationLabel: t`Sailboat`,
-              defaultPreviewType: "sailboat",
+              type: "icon",
               customIllustrationSetting:
                 "no-search-results-illustration-custom",
               errorMessageContainerId:

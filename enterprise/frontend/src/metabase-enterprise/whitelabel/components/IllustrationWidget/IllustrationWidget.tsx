@@ -1,15 +1,18 @@
 import type { ChangeEvent } from "react";
-import { useMemo, useState, useRef } from "react";
+import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
-import { Button, Flex, Icon, Paper, Select, Text } from "metabase/ui";
+import { Box, Button, Flex, Icon, Paper, Select, Text } from "metabase/ui";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
   IllustrationSettingValue,
 } from "metabase-enterprise/settings/types";
+
+import { ImageUploadInfoDot } from "../ImageUploadInfoDot";
 
 import {
   LighthouseImage,
@@ -22,24 +25,42 @@ export interface StringSetting {
   default: IllustrationSettingValue;
 }
 
+type IllustrationType = "background" | "icon";
+
 type IllustrationWidgetProps = {
   id?: string;
   setting: StringSetting;
   onChange: (value: IllustrationSettingValue) => Promise<void>;
   onChangeSetting: (key: EnterpriseSettingKey, value: unknown) => Promise<void>;
   settingValues: Partial<EnterpriseSettings>;
-  defaultIllustrationLabel: string;
   customIllustrationSetting:
     | "login-page-illustration-custom"
     | "landing-page-illustration-custom"
     | "no-question-results-illustration-custom"
     | "no-search-results-illustration-custom";
   errorMessageContainerId: string;
-  defaultPreviewType: "lighthouse" | "sailboat";
+  type: IllustrationType;
 };
 
 const MB = 1024 * 1024;
 const IMAGE_SIZE_LIMIT = 2 * MB;
+
+interface SelectOption {
+  label: string;
+  value: string;
+}
+const SELECT_OPTIONS: Record<IllustrationType, SelectOption[]> = {
+  background: [
+    { label: t`Lighthouse`, value: "default" },
+    { label: t`No illustration`, value: "no-illustration" },
+    { label: t`Custom`, value: "custom" },
+  ],
+  icon: [
+    { label: t`Sailboat`, value: "default" },
+    { label: t`No illustration`, value: "no-illustration" },
+    { label: t`Custom`, value: "custom" },
+  ],
+};
 
 export function IllustrationWidget({
   id,
@@ -47,25 +68,20 @@ export function IllustrationWidget({
   onChange,
   onChangeSetting,
   settingValues,
-  defaultIllustrationLabel,
   customIllustrationSetting,
   errorMessageContainerId,
-  defaultPreviewType,
+  type,
 }: IllustrationWidgetProps) {
-  const value = setting.value ?? setting.default;
+  const [value, setValue] = useState(setting.value ?? setting.default);
   const [fileName, setFileName] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const data = useMemo(
-    () => [
-      { label: defaultIllustrationLabel, value: "default" },
-      { label: t`No illustration`, value: "no-illustration" },
-      { label: t`Custom`, value: "custom" },
-    ],
-    [defaultIllustrationLabel],
-  );
+  const options = SELECT_OPTIONS[type];
+  const customIllustrationSource =
+    settingValues[customIllustrationSetting] ?? undefined;
 
   async function handleChange(value: IllustrationSettingValue) {
+    setValue(value);
     setErrorMessage("");
     // Avoid saving the same value
     // When setting.value is set to the default value its value would be `null`
@@ -73,11 +89,9 @@ export function IllustrationWidget({
       return;
     }
 
-    if (value === "custom" && settingValues[customIllustrationSetting]) {
+    if (value === "custom" && customIllustrationSource) {
       await onChange("custom");
-    } else if (value === "custom") {
-      fileInputRef.current?.click();
-    } else {
+    } else if (value !== "custom") {
       await onChange(value);
     }
   }
@@ -101,6 +115,7 @@ export function IllustrationWidget({
           );
           return;
         }
+        setErrorMessage("");
         setFileName(file.name);
         // Setting 2 setting values at the same time could result in one of them not being saved
         await onChange("custom");
@@ -116,11 +131,11 @@ export function IllustrationWidget({
     }
     setFileName("");
     // Setting 2 setting values at the same time could result in one of them not being saved
+    setValue("default");
     await onChange("default");
     await onChangeSetting(customIllustrationSetting, null);
   }
 
-  const isCustomIllustration = value === "custom";
   const errorMessageContainer = document.getElementById(
     errorMessageContainerId,
   );
@@ -136,51 +151,57 @@ export function IllustrationWidget({
         >
           {getPreviewImage({
             value,
-            customSource: settingValues[customIllustrationSetting] ?? undefined,
-            defaultPreviewType,
+            customSource: customIllustrationSource,
+            defaultPreviewType: type,
           })}
         </Flex>
-        <Flex p="lg" w="25rem" align="center" gap="sm">
+        <Flex p="lg" w="25rem" align="center" gap="md" direction="column">
           <Select
             id={id}
-            data={data}
+            data={options}
             value={value}
             onChange={handleChange}
-            w={isCustomIllustration ? "8.25rem" : "100%"}
-            style={{
-              flexShrink: isCustomIllustration ? 0 : undefined,
-            }}
+            w="100%"
             error={Boolean(errorMessage)}
           />
-          {isCustomIllustration && (
-            <Text truncate="end" ml="auto">
-              {fileName ? fileName : t`Remove uploaded image`}
-            </Text>
+          {value === "custom" && (
+            <Flex w="100%" align="center">
+              <Button
+                className={CS.flexNoShrink}
+                onClick={() => fileInputRef.current?.click()}
+              >{t`Choose File`}</Button>
+              <Box ml="sm">
+                <ImageUploadInfoDot type={type} />
+              </Box>
+              <input
+                data-testid="file-input"
+                ref={fileInputRef}
+                hidden
+                onChange={handleFileUpload}
+                type="file"
+                accept="image/jpeg,image/png,image/svg+xml"
+                multiple={false}
+              />
+              <Text ml="lg" truncate="end">
+                {!customIllustrationSource
+                  ? t`No file chosen`
+                  : fileName
+                  ? fileName
+                  : t`Remove uploaded image`}
+              </Text>
+              {customIllustrationSource && (
+                <Button
+                  leftIcon={<Icon name="close" />}
+                  variant="subtle"
+                  c="text-dark"
+                  ml="md"
+                  compact
+                  onClick={handleRemoveCustomIllustration}
+                  aria-label={t`Remove custom illustration`}
+                />
+              )}
+            </Flex>
           )}
-          {/**
-           * <Select /> has an annoying 0.25rem top margin which I don't have time to fix yet.
-           * This makes sure the X button is aligned with the Select component.
-           */}
-          {isCustomIllustration && (
-            <Button
-              leftIcon={<Icon name="close" />}
-              mt="0.25rem"
-              variant="subtle"
-              c="text-dark"
-              compact
-              onClick={handleRemoveCustomIllustration}
-              aria-label={t`Remove custom illustration`}
-            />
-          )}
-          <input
-            data-testid="file-input"
-            hidden
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-            type="file"
-            accept="image/jpeg,image/png,image/svg+xml"
-            multiple={false}
-          />
         </Flex>
       </Flex>
       {errorMessage &&
@@ -199,18 +220,15 @@ async function isFileIntact(dataUri: string) {
   });
 }
 
-const PREVIEW_ELEMENTS: Record<
-  IllustrationWidgetProps["defaultPreviewType"],
-  JSX.Element
-> = {
-  lighthouse: <LighthouseImage />,
-  sailboat: <SailboatImage />,
+const PREVIEW_ELEMENTS: Record<IllustrationType, JSX.Element> = {
+  background: <LighthouseImage />,
+  icon: <SailboatImage />,
 };
 
 interface GetPreviewImageProps {
   value: IllustrationSettingValue;
   customSource: string | undefined;
-  defaultPreviewType: IllustrationWidgetProps["defaultPreviewType"];
+  defaultPreviewType: IllustrationType;
 }
 
 function getPreviewImage({
@@ -226,7 +244,7 @@ function getPreviewImage({
     return null;
   }
 
-  if (value === "custom") {
+  if (value === "custom" && customSource) {
     return <PreviewImage src={customSource} />;
   }
 
