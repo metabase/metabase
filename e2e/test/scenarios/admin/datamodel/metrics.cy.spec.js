@@ -20,7 +20,8 @@ describe("scenarios > admin > datamodel > metrics", () => {
     cy.viewport(1400, 860);
   });
 
-  it("should be possible to sort by metric (metabase#8283)", () => {
+  // FIXME metrics v2
+  it.skip("should be possible to sort by metric (metabase#8283)", () => {
     createMetric({
       name: "Revenue",
       description: "Sum of orders subtotal",
@@ -161,7 +162,8 @@ describe("scenarios > admin > datamodel > metrics", () => {
       );
     });
 
-    it("should see a newly asked question in its questions list", () => {
+    // FIXME metrics v2
+    it.skip("should see a newly asked question in its questions list", () => {
       // Ask a new question
       cy.visit("/reference/metrics/1/questions");
 

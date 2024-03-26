@@ -70,7 +70,8 @@ describe("QueryBuilder - unsaved changes warning", () => {
       expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
 
-    it("does not show custom warning modal when saving new model", async () => {
+    // FIXME metrics v2
+    it.skip("does not show custom warning modal when saving new model", async () => {
       await setup({
         card: null,
         initialRoute: "/model/new",

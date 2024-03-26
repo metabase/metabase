@@ -10,9 +10,11 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
@@ -20,7 +22,7 @@
    [metabase.util.malli :as mu]))
 
 (defmethod lib.metadata.calculation/metadata-method :mbql/query
-  [_query _stage-number _query]
+  [_query _stage-number _likely-the-same-query]
   ;; not i18n'ed because this shouldn't be developer-facing.
   (throw (ex-info "You can't calculate a metadata map for a query! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
@@ -66,19 +68,27 @@
 
 (defmulti can-save-method
   "Returns whether the query can be saved based on first stage :lib/type."
-  (fn [query]
+  (fn [query _card-type]
     (:lib/type (lib.util/query-stage query 0))))
 
 (defmethod can-save-method :default
-  [_query]
+  [_query _card-type]
   true)
 
+(defmethod can-save-method :mbql.stage/mbql
+  [query card-type]
+  (or (not= card-type :metric)
+      (let [last-stage (lib.util/query-stage query -1)]
+        (and (empty? (:breakout last-stage))
+             (= (-> last-stage :aggregation count) 1)))))
+
 (mu/defn can-save :- :boolean
-  "Returns whether the query can be saved."
-  [query :- ::lib.schema/query]
+  "Returns whether `query` for a card of `card-type` can be saved."
+  [query :- ::lib.schema/query
+   card-type :- ::lib.schema.metadata/card.type]
   (and (lib.metadata/editable? query)
        (can-run query)
-       (boolean (can-save-method query))))
+       (boolean (can-save-method query card-type))))
 
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."
@@ -192,13 +202,45 @@
   [metadata-providerable native-stage]
   (query-with-stages metadata-providerable [native-stage]))
 
+(defn- convert-metric-query
+  [a-query]
+  (if-let [card-id (get-in a-query [:stages 0 :source-card])]
+    (let [{card-type :type} (lib.metadata/card a-query card-id)
+          metric-meta (lib.metadata/metric a-query card-id)]
+      (cond-> a-query
+        (= card-type :metric)
+        (lib.util/update-query-stage 0 (fn [stage]
+                                         (-> stage
+                                             (dissoc :source-card)
+                                             (assoc :sources [{:lib/type :source/metric
+                                                               :id card-id}]))))
+
+        (and (= card-type :metric)
+             (not-any? #(= (peek %) card-id)
+                       ;; using lib.aggregation/aggregations would result in a cyclic dep
+                       (:aggregation (lib.util/query-stage a-query 0))))
+        (lib.util/add-summary-clause 0 :aggregation (lib.ref/ref metric-meta))))
+    a-query))
+
+(defn- revert-metric-query
+  [a-query]
+  ;; handle single metric for now
+  (if-let [{source-type :lib/type, card-id :id} (first (get-in a-query [:stages 0 :sources]))]
+    (cond-> a-query
+      (= source-type :source/metric)
+      (lib.util/update-query-stage 0 (fn [stage]
+                                       (-> stage
+                                           (dissoc :sources)
+                                           (assoc :source-card card-id)))))
+    a-query))
+
 (mu/defn query :- ::lib.schema/query
   "Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an
   existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
   it in separately -- metadata is needed for most query manipulation operations."
   [metadata-providerable :- lib.metadata/MetadataProviderable
    x]
-  (query-method metadata-providerable x))
+  (convert-metric-query (query-method metadata-providerable x)))
 
 (mu/defn query-from-legacy-inner-query :- ::lib.schema/query
   "Create a pMBQL query from a legacy inner query."
@@ -208,6 +250,11 @@
   (->> (lib.convert/legacy-query-from-inner-query database-id inner-query)
        lib.convert/->pMBQL
        (query metadata-providerable)))
+
+(defn ->legacy-MBQL
+  "Convert the pMBQL `a-query` into a legacy MBQL query."
+  [a-query]
+  (-> a-query revert-metric-query lib.convert/->legacy-MBQL))
 
 (mu/defn with-different-table :- ::lib.schema/query
   "Changes an existing query to use a different source table or card.

@@ -10,11 +10,12 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
+   [metabase.compatibility :as compatibility]
    [metabase.driver :as driver]
    [metabase.events :as events]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models :refer [Card CardBookmark Collection Database PersistedInfo Table]]
@@ -435,6 +436,16 @@
 (mr/def ::card-type
   (into [:enum {:decode/json keyword}] (mapcat (juxt identity u/qualified-name)) card/card-types))
 
+(defn- check-if-card-can-be-saved
+  [dataset-query card-type]
+  (when (= card-type :metric)
+    (let [pMBQL-query (-> dataset-query compatibility/normalize-dataset-query lib.convert/->pMBQL)
+          metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database pMBQL-query))]
+      (when-not (lib/can-save (lib/query metadata-provider pMBQL-query) card-type)
+        (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (clojure.core/name card-type))
+                        {:type        card-type
+                         :status-code 400}))))))
+
 (api/defendpoint POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
@@ -451,6 +462,7 @@
    collection_position    [:maybe ms/PositiveInt]
    result_metadata        [:maybe qr/ResultsMetadata]
    cache_ttl              [:maybe ms/PositiveInt]}
+  (check-if-card-can-be-saved dataset_query type)
   ;; check that we have permissions to run the query that we're trying to save
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
@@ -477,7 +489,7 @@
 (defn- check-allowed-to-modify-query
   "If the query is being modified, check that we have data permissions to run the query."
   [card-before-updates card-updates]
-  (let [card-updates (m/update-existing card-updates :dataset_query mbql.normalize/normalize)]
+  (let [card-updates (m/update-existing card-updates :dataset_query compatibility/normalize-dataset-query)]
     (when (api/column-will-change? :dataset_query card-before-updates card-updates)
       (check-data-permissions-for-query (:dataset_query card-updates)))))
 
@@ -512,6 +524,7 @@
    result_metadata        [:maybe qr/ResultsMetadata]
    cache_ttl              [:maybe ms/PositiveInt]
    collection_preview     [:maybe :boolean]}
+  (check-if-card-can-be-saved dataset_query type)
   (let [card-before-update     (t2/hydrate (api/write-check Card id)
                                            [:moderation_reviews :moderator_details])
         card-updates           (cond-> card-updates

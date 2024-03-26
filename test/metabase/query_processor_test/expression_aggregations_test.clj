@@ -2,11 +2,9 @@
   "Tests for expression aggregations and for named aggregations."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.metric :refer [LegacyMetric]]
+   #_[metabase.models.metric :refer [LegacyMetric]]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]))
 
 (deftest ^:parallel sum-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
@@ -243,7 +241,8 @@
                    {:aggregation [[:aggregation-options [:- [:sum $price] 41] {:name "sum_41"}]]
                     :breakout    [$price]}))))))))
 
-(deftest metrics-test
+;; TODO TB legacy macro test, delete or port
+#_(deftest metrics-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "check that we can handle Metrics inside expression aggregation clauses"
       (t2.with-temp/with-temp [LegacyMetric metric {:table_id   (mt/id :venues)

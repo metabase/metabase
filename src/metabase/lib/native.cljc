@@ -271,7 +271,7 @@
     (some? value)))
 
 (defmethod lib.query/can-save-method :mbql.stage/native
-  [query]
+  [query _card-type]
   (every? (fn [{:keys [required] :as tag}]
             (or (not required) (has-default? tag)))
           (vals (template-tags query))))

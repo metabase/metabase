@@ -10,6 +10,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.compatibility :as compatibility]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.email.messages :as messages]
@@ -584,8 +585,8 @@
     (cond
       (or
        ;; query didn't change, preserve existing metadata
-       (and (= (mbql.normalize/normalize original-query)
-               (mbql.normalize/normalize query))
+       (and (= (compatibility/normalize-dataset-query original-query)
+               (compatibility/normalize-dataset-query query))
             valid-metadata?)
        ;; only sent valid metadata in the edit. Metadata might be the same, might be different. We save in either case
        (and (nil? query)

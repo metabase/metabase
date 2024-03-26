@@ -3,8 +3,10 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -47,15 +49,16 @@
 
 (mu/defn ^:private existing-stage-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Return existing stage metadata attached to a stage if is already present: return it as-is, but only if this is a
-  native stage or a source-Card stage. if it's any other sort of stage then ignore the metadata, it's probably wrong;
-  we can recalculate the correct metadata anyway."
+  native stage or a source-Card or a metric stage. If it's any other sort of stage then ignore the metadata, it's
+  probably wrong; we can recalculate the correct metadata anyway."
   [query        :- ::lib.schema/query
    stage-number :- :int]
-  (let [{stage-type :lib/type, :keys [source-card] :as stage} (lib.util/query-stage query stage-number)]
+  (let [{stage-type :lib/type, :keys [source-card sources] :as stage} (lib.util/query-stage query stage-number)]
     (or (::cached-metadata stage)
         (when-let [metadata (:lib/stage-metadata stage)]
           (when (or (= stage-type :mbql.stage/native)
-                    source-card)
+                    source-card
+                    (lib.util/first-metric-id sources))
             (let [source-type (case stage-type
                                 :mbql.stage/native :source/native
                                 :mbql.stage/mbql   :source/card)]
@@ -160,6 +163,23 @@
     (when-let [card (lib.metadata/card query card-id)]
       (not-empty (lib.metadata.calculation/visible-columns query stage-number card options)))))
 
+(mu/defn ^:private metric-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
+  [query          :- ::lib.schema/query
+   _stage-number   :- :int
+   sources        :- [:maybe ::lib.schema/sources]
+   options        :- lib.metadata.calculation/VisibleColumnsOptions]
+  ;; deal with just a single source for now
+  (when-let [{metric-id :id, source-type :lib/type} (first sources)]
+    (when (= source-type :source/metric)
+      (when-let [card (lib.metadata/card query metric-id)]
+        (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
+                               (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
+          (not-empty (lib.metadata.calculation/visible-columns
+                      (assoc metric-query :lib/metadata (:lib/metadata query))
+                      -1
+                      (lib.util/query-stage metric-query -1)
+                      options)))))))
+
 (mu/defn ^:private expressions-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query           :- ::lib.schema/query
    stage-number    :- :int
@@ -184,6 +204,8 @@
 ;;; 1c. Metadata associated with a Saved Question, if we have `:source-card` (`:source-table` is a `card__<id>` string
 ;;;     in legacy MBQL), OR
 ;;;
+;;; 1e. Metadata associated with a Metric, if we have `:sources`, OR
+;;;
 ;;; 1d. `:lib/stage-metadata` if this is a `:mbql.stage/native` stage
 ;;;
 ;;; PLUS
@@ -199,13 +221,15 @@
    stage-number                          :- :int
    {:keys [unique-name-fn], :as options} :- lib.metadata.calculation/VisibleColumnsOptions]
   {:pre [(fn? unique-name-fn)]}
-  (mapv
-   #(dissoc % ::lib.join/join-alias ::lib.field/temporal-unit ::lib.field/binning :fk-field-id)
-   (or
-    ;; 1a. columns returned by previous stage
-    (previous-stage-metadata query stage-number unique-name-fn)
-    ;; 1b or 1c
-    (let [{:keys [source-table source-card], :as this-stage} (lib.util/query-stage query stage-number)]
+  (let [{:keys [source-table source-card sources], :as this-stage} (lib.util/query-stage query stage-number)]
+    (mapv
+     #(cond-> %
+        (not (lib.util/first-metric-id sources))
+        (dissoc ::lib.join/join-alias ::lib.field/temporal-unit ::lib.field/binning :fk-field-id))
+     (or
+      ;; 1a. columns returned by previous stage
+      (previous-stage-metadata query stage-number unique-name-fn)
+      ;; 1b or 1c
       (or
        ;; 1b: default visible Fields for the source Table
        (when source-table
@@ -215,6 +239,9 @@
        ;; 1c. Metadata associated with a saved Question
        (when source-card
          (saved-question-metadata query stage-number source-card (assoc options :include-implicitly-joinable? false)))
+       ;; 1e. Metadata associated with a Metric
+       (when sources
+         (metric-metadata query stage-number sources options))
        ;; 1d: `:lib/stage-metadata` for the (presumably native) query
        (for [col (:columns (:lib/stage-metadata this-stage))]
          (assoc col
@@ -289,6 +316,7 @@
 (def ^:private display-name-source-parts
   [:source-table
    :source-card
+   :sources
    :joins])
 
 (def ^:private display-name-other-parts
@@ -321,7 +349,7 @@
   "Does given query stage have any clauses?"
   [query        :- ::lib.schema/query
    stage-number :- :int]
-  (boolean (seq (dissoc (lib.util/query-stage query stage-number) :lib/type :source-table :source-card))))
+  (boolean (seq (dissoc (lib.util/query-stage query stage-number) :lib/type :source-table :source-card :sources))))
 
 (mu/defn append-stage :- ::lib.schema/query
   "Adds a new blank stage to the end of the pipeline"

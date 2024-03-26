@@ -403,7 +403,10 @@
        :where     [:and
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]
-                   [:= :c.type (h2x/literal (if dataset? "model" "question"))]]}
+                   (if dataset?
+                     [:= :c.type (h2x/literal "model")]
+                     [:in :c.type [(h2x/literal "question")
+                                   (h2x/literal "metric")]])]}
       (cond-> dataset?
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
             (sql.helpers/left-join [:metabase_table :t] [:= :t.id :c.table_id])))
@@ -462,7 +465,10 @@
       false)))
 
 (defn- fully-parameterized-query? [row]
-  (let [native-query (-> row :dataset_query json/parse-string mbql.normalize/normalize :native)]
+  (let [parsed-query (-> row :dataset_query json/parse-string)
+        ;; TODO TB handle pMBQL native queries
+        native-query (when (contains? parsed-query "native")
+                       (-> parsed-query mbql.normalize/normalize :native))]
     (if-let [template-tags (:template-tags native-query)]
       (fully-parameterized-text? (:query native-query) template-tags)
       true)))
