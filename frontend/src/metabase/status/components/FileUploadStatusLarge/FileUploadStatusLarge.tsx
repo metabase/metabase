@@ -12,7 +12,7 @@ import {
 import { Box, Stack } from "metabase/ui";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { Collection } from "metabase-types/api";
-import type { FileUpload } from "metabase-types/store/upload";
+import { UploadMode, type FileUpload } from "metabase-types/store/upload";
 
 import StatusLarge from "../StatusLarge";
 
@@ -91,7 +91,7 @@ const getTitle = (
 ) => {
   const isDone = uploads.every(isUploadCompleted);
   const isOnlyReplace = uploads.every(
-    upload => upload.uploadMode === "replace",
+    upload => upload.uploadMode === UploadMode.replace,
   );
   const isError = uploads.some(isUploadAborted);
 
