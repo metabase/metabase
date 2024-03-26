@@ -244,30 +244,40 @@
    - If user-visibility is :group, include only users in the same group (excluding the all users group).
    - If user-visibility is :none or the user is sandboxed, include only themselves."
   []
-  (cond
-    (or (= :all (user-visibility)) api/*is-superuser?*)
-    (let [clauses (-> (user-clauses nil nil nil nil)
-                      (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
-      {:data   (t2/select (vec (cons User (user-visible-columns))) clauses)
-       :total  (t2/count :model/User (filter-clauses-without-paging clauses))
-       :limit  mw.offset-paging/*limit*
-       :offset mw.offset-paging/*offset*})
+  ;; defining these functions so the branching logic below can be as clear as possible
+  (letfn [(all [] (let [clauses (-> (user-clauses nil nil nil nil)
+                                    (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
+                    {:data   (t2/select (vec (cons User (user-visible-columns))) clauses)
+                     :total  (t2/count :model/User (filter-clauses-without-paging clauses))
+                     :limit  mw.offset-paging/*limit*
+                     :offset mw.offset-paging/*offset*}))
+          (within-group [] (let [user-ids (same-groups-user-ids api/*current-user-id*)
+                                 clauses  (cond-> (user-clauses nil nil nil nil)
+                                            (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
+                                            true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
+                             {:data   (t2/select (vec (cons User (user-visible-columns))) clauses)
+                              :total  (t2/count :model/User (filter-clauses-without-paging clauses))
+                              :limit  mw.offset-paging/*limit*
+                              :offset mw.offset-paging/*offset*}))
+          (just-me [] {:data   [(fetch-user :id api/*current-user-id*)]
+                       :total  1
+                       :limit  mw.offset-paging/*limit*
+                       :offset mw.offset-paging/*offset*})]
+    (cond
+      ;; if they're sandboxed OR if they're a superuser, ignore the setting and just give them nothing or everything,
+      ;; respectively.
+      (premium-features/sandboxed-or-impersonated-user?)
+      (just-me)
 
-    (and (= :group (user-visibility)) (not (premium-features/sandboxed-or-impersonated-user?)))
-    (let [user-ids (same-groups-user-ids api/*current-user-id*)
-          clauses  (cond-> (user-clauses nil nil nil nil)
-                     (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
-                     true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
-      {:data   (t2/select (vec (cons User (user-visible-columns))) clauses)
-       :total  (t2/count :model/User (filter-clauses-without-paging clauses))
-       :limit  mw.offset-paging/*limit*
-       :offset mw.offset-paging/*offset*})
+      api/*is-superuser?*
+      (all)
 
-    :else
-    {:data   [(fetch-user :id api/*current-user-id*)]
-     :total  1
-     :limit  mw.offset-paging/*limit*
-     :offset mw.offset-paging/*offset*}))
+      ;; otherwise give them what the setting says on the tin
+      :else
+      (case (user-visibility)
+        :none (just-me)
+        :group (within-group)
+        :all (all)))))
 
 (defn- maybe-add-advanced-permissions
   "If `advanced-permissions` is enabled, add to `user` a permissions map."
