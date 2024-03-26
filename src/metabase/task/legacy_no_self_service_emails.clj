@@ -2,6 +2,7 @@
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.config :as config]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.task :as task]
@@ -26,7 +27,7 @@
 (defn- legacy-no-self-service-email
   "Sends an email to all admins if the instance has any `legacy-no-self-service` permissions in any groups"
   []
-  (when (email/email-configured?)
+  (when (and config/ee-available? (email/email-configured?))
     (when-let [groups (not-empty (legacy-no-self-service-groups))]
       (log/info "Sending email to admins about deprecation of `no-self-service`")
       (doseq [admin (t2/select :model/User :is_superuser true)]

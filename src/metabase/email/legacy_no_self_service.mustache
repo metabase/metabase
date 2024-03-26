@@ -1,5 +1,10 @@
 {{> metabase/email/_header }}
-<div class="card-container" style="color: {{colorTextMedium}};">
+<style>
+  strong: {
+    font-weight: 600;
+  }
+</style>
+<div class="card-container" style="color: {{colorTextDark}}; font-weight: 300;">
 
   <p style="font-weight: 500; font-size: 0.875em; line-height: 1.375em; color: {{colorTextMedium}};">
     <i>(This email is sent directly from {{instanceURL}}, it doesn't go through any external services)</i>
@@ -8,7 +13,7 @@
   <p>Hi {{userName}},</p>
   <p>We updated our permissions model in Metabase 50, and you’ll need to update the new <strong>View data</strong> permission for a few groups that we can’t automatically update for you.</p>
 
-  <h2>What you need to update</h2>
+  <h4>What you need to update</h4>
 
   <p>Please review your Metabase permissions and change all groups that have their <strong>View data</strong> access set to <strong>No self-service (deprecated)</strong> to one of the new <strong>View data</strong> permission types:</p>
   <ul>
@@ -19,7 +24,7 @@
   </ul>
   <p>For which permission level is right for each group, see our <a href="https://www.notion.so/44cc72d46f9048068750f7598dd403f8?pvs=21">docs on permissions</a>.</p>
 
-  <h2>The groups you need to update</h2>
+  <h4>The groups you need to update</h4>
 
   <p>The following groups currently have their <strong>View data</strong> access set to "No self-service (deprecated)"</p>
   <ul>
@@ -32,7 +37,7 @@
 
   <p>In a future release, Metabase will convert any group that still has the <strong>View data</strong> access level set to "Block". We're defaulting to "Block", the least permissive View access, to prevent any unintended access to data.</p>
 
-  <h2>Why did we change our permissions model?</h2>
+  <h4>Why did we change our permissions model?</h4>
 
   <p>For an explanation about what changed and why, check out this doc on <a href="#">permission improvements in Metabase</a>.</p>
 
