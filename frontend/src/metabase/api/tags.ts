@@ -16,7 +16,3 @@ export function listTag(type: TagType) {
 export function itemTag(type: TagType, id: string | number) {
   return { type, id };
 }
-
-export function listWithItemTags(type: TagType, ids: (string | number)[] = []) {
-  return [listTag(type), ...ids.map(id => itemTag(type, id))];
-}

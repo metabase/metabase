@@ -15,7 +15,6 @@ import {
   FIELD_VALUES_TAG,
   itemTag,
   listTag,
-  listWithItemTags,
 } from "./tags";
 
 export const databaseApi = Api.injectEndpoints({
@@ -29,11 +28,10 @@ export const databaseApi = Api.injectEndpoints({
         url: "/api/database",
         body,
       }),
-      providesTags: response =>
-        listWithItemTags(
-          DATABASE_TAG,
-          response?.data?.map(({ id }) => id),
-        ),
+      providesTags: response => [
+        listTag(DATABASE_TAG),
+        ...(response?.data?.map(({ id }) => itemTag(DATABASE_TAG, id)) ?? []),
+      ],
     }),
     getDatabase: builder.query<Database, DatabaseRequest>({
       query: ({ id, ...body }) => ({
@@ -57,16 +55,20 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${id}`,
         body,
       }),
-      invalidatesTags: (response, error, { id }) =>
-        listWithItemTags(DATABASE_TAG, [id]),
+      invalidatesTags: (response, error, { id }) => [
+        listTag(DATABASE_TAG),
+        itemTag(DATABASE_TAG, id),
+      ],
     }),
     deleteDatabase: builder.mutation<void, DatabaseId>({
       query: id => ({
         method: "DELETE",
         url: `/api/database/${id}`,
       }),
-      invalidatesTags: (response, error, id) =>
-        listWithItemTags(DATABASE_TAG, [id]),
+      invalidatesTags: (response, error, id) => [
+        listTag(DATABASE_TAG),
+        itemTag(DATABASE_TAG, id),
+      ],
     }),
     rescanDatabaseFieldValues: builder.mutation<void, DatabaseId>({
       query: databaseId => ({
