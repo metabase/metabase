@@ -1,4 +1,4 @@
-(ns metabase-enterprise.task.caching
+(ns metabase-enterprise.task.cache
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
@@ -69,28 +69,28 @@
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc                                   "Refresh 'schedule' caches"}
-  Caching [_ctx]
+  Cache [_ctx]
   (refresh-schedule-configs!)
   (refresh-query-configs!))
 
-(def ^:private caching-job
+(def ^:private cache-job
   (jobs/build
     (jobs/with-description "Schedule Caches refresh task")
-    (jobs/of-type Caching)
-    (jobs/with-identity (jobs/key "metabase-enterprise.Caching.job"))
+    (jobs/of-type Cache)
+    (jobs/with-identity (jobs/key "metabase-enterprise.cache.job"))
     (jobs/store-durably)))
 
-(def ^:private caching-trigger
+(def ^:private cache-trigger
   (triggers/build
-    (triggers/with-identity (triggers/key "metabase-enterprise.Caching.trigger"))
+    (triggers/with-identity (triggers/key "metabase-enterprise.cache.trigger"))
     (triggers/start-now)
     (triggers/with-schedule
       (cron/schedule
         ;; run every minute
         (cron/cron-schedule "0 * * * * ? *")))))
 
-(defenterprise init-caching-task!
+(defenterprise init-cache-task!
   "Inits periodical task checking for cache expiration"
   :feature :cache-granular-controls
   []
-  (task/schedule-task! caching-job caching-trigger))
+  (task/schedule-task! cache-job cache-trigger))
