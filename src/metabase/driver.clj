@@ -940,13 +940,26 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti truncate!
+(defmulti with-transaction*
+  "Executes the given thunk within a transaction, if the given driver supports transactions."
+  {:added "0.50.0", :arglists '([driver db-id thunk])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod with-transaction* ::driver [_ _ thunk]
+  (thunk nil))
+
+(defmacro with-transaction
+  "Executes the given body within a transaction, if the given driver supports transactions."
+  {:added "0.50.0", :arglists '([driver db-id & body])}
+  [driver db-id & body]
+  `(with-transaction* ~driver ~db-id (fn [_conn#] ~@body)))
+
+(defmulti delete!
   "Delete the current contents of `table-name`.
-  If something like a SQL TRUNCATE statement is supported, we use that, but may otherwise fall back to explicitly
-  deleting rows, or dropping and recreating the table.
-  Depending on the driver, the semantics can vary on whether triggers are fired, AUTO_INCREMENT is reset etc.
-  The application assumes that the implementation can be rolled back if inside a transaction."
-  {:added "0.50.0", :arglists '([driver db-id table-name])}
+  Currently only supports fully truncating the query, but may introduce support for restricting the scope in future.
+  If the driver supports transactions, then it must support this operation being run within a transaction."
+  {:added "0.50.0", :arglists '([driver db-id table-name & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

@@ -148,14 +148,27 @@
                                :dialect (sql.qp/quote-style driver)))]
     (qp.writeback/execute-write-sql! db-id sql)))
 
-(defmethod driver/truncate! :sql-jdbc
-  [driver db-id table-name]
+(def ^:private ^:dynamic *tx-connections* {})
+
+(defn- local-conn [db-id]
+  (or (get *tx-connections* db-id)
+      (sql-jdbc.conn/db->pooled-connection-spec db-id)))
+
+(defmethod driver/with-transaction* :sql-jdbc
+  [_ db-id thunk]
+  (let [conn (local-conn db-id)]
+    (jdbc/with-db-transaction [conn conn]
+      (binding [*tx-connections* (update *tx-connections* db-id #(or % conn))]
+        (thunk conn)))))
+
+(defmethod driver/delete! :sql-jdbc
+  [driver db-id table-name & _args]
   (let [table-name (keyword table-name)
-        sql        (sql/format {:truncate table-name}
+        sql        (sql/format {:delete-from table-name}
                                :quoted true
                                :dialect (sql.qp/quote-style driver))]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-      (jdbc/execute! conn sql))))
+    (driver/with-transaction driver db-id
+      (jdbc/execute! (get *tx-connections* db-id) sql))))
 
 (defmethod driver/insert-into! :sql-jdbc
   [driver db-id table-name column-names values]
@@ -176,9 +189,9 @@
                                      :quoted true
                                      :dialect (sql.qp/quote-style driver))
                         chunks)]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (driver/with-transaction driver db-id
       (doseq [sql sqls]
-        (jdbc/execute! conn sql)))))
+        (jdbc/execute! (get *tx-connections* db-id) sql)))))
 
 (defmethod driver/add-columns! :sql-jdbc
   [driver db-id table-name column-definitions & {:keys [primary-key]}]

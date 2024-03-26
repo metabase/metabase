@@ -807,12 +807,15 @@
                                   :num-columns       (count new-types)
                                   :generated-columns (if create-auto-pk? 1 0)
                                   :size-mb           (file-size-mb file)
-                                  :upload-seconds    (since-ms timer)}]
+                                  :upload-seconds    (since-ms timer)}
+              table-name         (table-identifier table)]
 
           (try
-            (when replace-rows?
-              (driver/truncate! driver (:id database) (table-identifier table)))
-            (driver/insert-into! driver (:id database) (table-identifier table) normed-header parsed-rows)
+            (let [db-id (:id database)]
+              (driver/with-transaction driver db-id
+                (when replace-rows?
+                  (driver/delete! driver db-id table-name))
+                (driver/insert-into! driver db-id table-name normed-header parsed-rows)))
             (catch Throwable e
               (throw (ex-info (ex-message e) {:status-code 422}))))
 
