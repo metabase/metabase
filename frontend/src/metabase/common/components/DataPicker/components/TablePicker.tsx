@@ -8,7 +8,6 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   DatabaseId,
   SchemaId,
@@ -112,7 +111,7 @@ export const TablePicker = forwardRef(function TablePicker(
       }
 
       if (folder.model === "schema") {
-        setSchemaId(getSchemaName(folder.id));
+        setSchemaId(folder.id);
         setTableId(undefined);
       }
     },
@@ -122,8 +121,9 @@ export const TablePicker = forwardRef(function TablePicker(
   const handleItemSelect = useCallback(
     (item: NotebookDataPickerItem) => {
       setTableId(item.id);
+      onItemSelect(item);
     },
-    [setTableId],
+    [setTableId, onItemSelect],
   );
 
   // Exposing handleFolderSelect so that parent can select newly created

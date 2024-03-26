@@ -29,10 +29,10 @@ export const SchemaList = ({
     isLoading,
   } = useSchemaListQuery({ query });
 
-  const items: NotebookDataPickerItem[] = schemas.map(table => ({
-    id: table.id,
+  const items: NotebookDataPickerItem[] = schemas.map(schema => ({
+    id: schema.name,
     model: "schema",
-    name: table.displayName() ?? table.name,
+    name: schema.displayName() ?? schema.name,
   }));
 
   return (
