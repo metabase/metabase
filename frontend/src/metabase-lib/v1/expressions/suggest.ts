@@ -153,6 +153,7 @@ export function suggest({
           })),
       );
     }
+    suggestions = _.sortBy(suggestions, "text");
   }
 
   if (_.last(matchPrefix) !== "]") {
