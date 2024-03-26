@@ -10,7 +10,7 @@ import type {
 
 import { Api } from "./api";
 import {
-  everyTag,
+  catchAllTag,
   DATABASE_TAG,
   FIELD_VALUES_TAG,
   itemTag,
@@ -73,14 +73,14 @@ export const databaseApi = Api.injectEndpoints({
         method: "POST",
         url: `/api/database/${databaseId}/rescan_values`,
       }),
-      invalidatesTags: [everyTag(FIELD_VALUES_TAG)],
+      invalidatesTags: [catchAllTag(FIELD_VALUES_TAG)],
     }),
     discardDatabaseFieldValues: builder.mutation<void, DatabaseId>({
       query: databaseId => ({
         method: "POST",
         url: `/api/database/${databaseId}/discard_values`,
       }),
-      invalidatesTags: [everyTag(FIELD_VALUES_TAG)],
+      invalidatesTags: [catchAllTag(FIELD_VALUES_TAG)],
     }),
   }),
 });
