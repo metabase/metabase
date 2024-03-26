@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import { useUnmount } from "react-use";
+import { useDebouncedCallback } from "use-debounce";
 
-import { useDebouncedCallback } from "metabase/hooks/use-debounced-callback";
 import { Select, Loader } from "metabase/ui";
 
 import { PickerIcon } from "../ParameterValuePicker.styled";
@@ -51,9 +51,8 @@ export function ListPicker(props: ListPickerProps) {
   ) : null;
 
   const debouncedOnSearch = useDebouncedCallback(
-    onSearchChange,
+    useCallback(onSearchChange, [onSearchChange]),
     searchDebounceMs,
-    [onSearchChange],
   );
 
   // For some reason Select is firing multiple events, which isn't needed.

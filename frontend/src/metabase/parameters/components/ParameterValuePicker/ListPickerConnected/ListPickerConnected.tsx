@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useReducer } from "react";
 import { useUnmount } from "react-use";
 import { t } from "ttag";
+import { useDebouncedCallback } from "use-debounce";
 
-import { useDebouncedCallback } from "metabase/hooks/use-debounced-callback";
 import type { Parameter, ParameterValues } from "metabase-types/api";
 
 import { ListPicker } from "../ListPicker";
@@ -68,9 +68,8 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
   );
 
   const fetchUpdateDebounced = useDebouncedCallback(
-    fetchAndUpdate,
+    useCallback(fetchAndUpdate, [fetchAndUpdate]),
     searchDebounceMs,
-    [fetchAndUpdate],
   );
 
   const cancelFetch = useCallback(() => {
