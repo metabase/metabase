@@ -9,6 +9,7 @@ import { ListPicker } from "../ListPicker";
 import {
   getFlattenedStrings,
   getListParameterStaticValues,
+  isStaticListParam,
   shouldEnableSearch,
 } from "../core";
 
@@ -32,23 +33,28 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
   } = props;
 
   const [isOpen, setIsOpen] = useState(false);
-  const [_, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [hasMoreValues, setHasMoreValues] = useState(false);
+  const [resetKey, setResetKey] = useState(getResetKey(parameter));
 
-  useEffect(() => {
-    onChange(null);
-    setIsOpen(false);
-    setSearchQuery("");
-    setSearchValue("");
-  }, [onChange, parameter.values_source_type, parameter.values_source_config]);
+  useEffect(
+    function resetOnParameterChange() {
+      const newResetKey = getResetKey(parameter);
+      if (resetKey !== newResetKey) {
+        onChange(null);
+        setResetKey(newResetKey);
+        setIsOpen(false);
+        setSearchQuery("");
+      }
+    },
+    [onChange, resetKey, parameter],
+  );
 
-  const {
-    value: fetchedValues,
-    loading,
-    error,
-  } = useAsync(async () => {
-    if (isOpen) {
-      return await fetchValues(searchQuery);
+  const fetchResult = useAsync(async () => {
+    if (isOpen && parameter.values_source_type !== "static-list") {
+      const res = await fetchValues(searchQuery);
+      setHasMoreValues(res.has_more_values);
+      return res.values;
     }
     return undefined;
   }, [
@@ -58,31 +64,34 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
     parameter.values_source_config,
     fetchValues,
   ]);
+  const { value: fetchedValues, loading } = fetchResult;
 
   const handleSearch = useDebouncedCallback(
-    useCallback((query: string) => {
-      setSearchQuery(query);
-    }, []),
+    useCallback(
+      (query: string) => {
+        if (hasMoreValues) {
+          setSearchQuery(query);
+        }
+      },
+      [hasMoreValues],
+    ),
     searchDebounceMs,
   );
 
-  const handleChange = (value: string | null = null) => {
-    onChange(value);
-    setSearchValue(value ?? "");
-  };
-
   const staticValues = getListParameterStaticValues(parameter);
   const enableSearch = shouldEnableSearch(parameter, forceSearchItemCount);
+  const isLoading = loading && !isStaticListParam(parameter);
+  const isError = "error" in fetchResult;
 
   return (
     <ListPicker
       value={value ?? ""} // Can't be null for the underlying Select
       options={getCombinedValues(
         value,
-        staticValues ?? getFlattenedStrings(fetchedValues?.values ?? []),
+        staticValues ?? getFlattenedStrings(fetchedValues ?? []),
       )}
-      onClear={handleChange}
-      onChange={handleChange}
+      onClear={() => onChange(null)}
+      onChange={onChange}
       onSearchChange={handleSearch}
       onDropdownOpen={() => setIsOpen(true)}
       onDropdownClose={() => setIsOpen(false)}
@@ -90,10 +99,12 @@ export function ListPickerConnected(props: ListPickerConnectedProps) {
       placeholder={
         enableSearch ? t`Start typing to filter…` : t`Select a default value…`
       }
-      isLoading={loading}
-      noResultsText={loading ? t`Loading…` : t`No matching result`}
+      isLoading={isLoading}
+      noResultsText={isLoading ? t`Loading…` : t`No matching result`}
       errorMessage={
-        error ? t`Loading values failed. Please try again shortly.` : undefined
+        isError
+          ? t`Loading values failed. Please try again shortly.`
+          : undefined
       }
     />
   );
@@ -104,4 +115,11 @@ function getCombinedValues(selected: string | null, other: string[]) {
     ...(selected ? [selected] : []),
     ...other.filter(v => v !== selected),
   ];
+}
+
+function getResetKey(parameter: Parameter): string {
+  return JSON.stringify([
+    parameter.values_source_config,
+    parameter.values_source_type,
+  ]);
 }

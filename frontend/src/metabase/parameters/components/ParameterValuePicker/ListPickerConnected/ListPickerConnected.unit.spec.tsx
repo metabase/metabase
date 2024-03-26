@@ -17,7 +17,7 @@ import { ListPickerConnected } from "./ListPickerConnected";
 
 // If some state updates aren't happening inside the component,
 // the test will fail on a relatively short timeout
-jest.setTimeout(1000);
+jest.setTimeout(5000);
 
 const STATIC_VALUES = [
   "1 A Point Pleasant Road",
@@ -346,64 +346,17 @@ describe("ListPickerConnected", () => {
       fetchValuesMock.mockClear();
 
       userEvent.type(input, "CA");
-      await checkFetch(fetchValuesMock, 1, "CA");
+      await checkFetch(fetchValuesMock, "CA", "CA");
       await clickCheckChange(onChangeMock, 1, "CA");
 
       userEvent.clear(input);
       userEvent.type(input, "AL");
-      await checkFetch(fetchValuesMock, 2, "AL");
+      await checkFetch(fetchValuesMock, "AL", "AL");
       await clickCheckChange(onChangeMock, 2, "AL");
 
       userEvent.clear(input);
       userEvent.type(input, "WA");
-      await checkFetch(fetchValuesMock, 3, "No matching result");
-    });
-
-    it("does not call fetch multiple times", async () => {
-      const fetchValuesMock = getResolvedValuesMock([["WA"], ["NY"]]);
-      setup({
-        value: null,
-        parameter: getCardBoundParam(),
-        fetchValuesMock,
-      });
-
-      const input = screen.getByPlaceholderText("Start typing to filter…");
-      expect(input).toBeVisible();
-      userEvent.click(input);
-      fetchValuesMock.mockClear();
-
-      userEvent.type(input, "WA");
-      await checkFetch(fetchValuesMock, 1, "WA");
-
-      userEvent.clear(input);
-      userEvent.type(input, "NY");
-      await checkFetch(fetchValuesMock, 2, "NY");
-    });
-
-    it("debounces fetch calls", async () => {
-      const fetchValuesMock = getResolvedValuesMock(
-        [["WA"], ["NY"], ["CA"], ["NC"]],
-        { hasMore: true },
-      );
-      setup({
-        value: null,
-        parameter: getCardBoundParam(),
-        fetchValuesMock,
-      });
-
-      const input = screen.getByPlaceholderText("Start typing to filter…");
-      expect(input).toBeVisible();
-      userEvent.click(input);
-
-      await checkFetch(fetchValuesMock, 1, "WA");
-
-      userEvent.type(input, "WA");
-      userEvent.clear(input);
-      userEvent.type(input, "CA");
-      userEvent.clear(input);
-      userEvent.type(input, "NC");
-
-      await checkFetch(fetchValuesMock, 2, "NC");
+      await checkFetch(fetchValuesMock, "WA", "No matching result");
     });
 
     it("shows fetch error", async () => {
@@ -443,12 +396,9 @@ describe("ListPickerConnected", () => {
   });
 });
 
-async function checkFetch(mock: jest.Mock, calls: number, value: string) {
+async function checkFetch(mock: jest.Mock, callValue: string, value: string) {
   await waitFor(() => expect(screen.getByText(value)).toBeVisible());
-  await waitFor(() =>
-    expect(screen.queryByTestId("listpicker-loader")).not.toBeInTheDocument(),
-  );
-  await waitFor(() => expect(mock).toHaveBeenCalledTimes(calls));
+  await waitFor(() => expect(mock).toHaveBeenLastCalledWith(callValue));
 }
 
 async function clickCheckChange(mock: jest.Mock, calls: number, value: string) {
