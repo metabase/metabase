@@ -17,7 +17,12 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
 import { applySquareRootScaling, replaceValues } from "./dataset";
-import type { ChartDataset, SeriesModel, TrendDataset } from "./types";
+import type {
+  ChartDataset,
+  SeriesModel,
+  TrendDataset,
+  TrendLineSeriesModel,
+} from "./types";
 
 /**
  * Computes the dataset for a single series, based on its `insight` object.
@@ -126,7 +131,7 @@ export function getTrendLineModelAndDatasets(
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): {
-  trendLinesSeries: SeriesModel[];
+  trendLinesSeries: TrendLineSeriesModel[];
   trendLinesDataset: TrendDataset;
 } {
   // The trend line can only be shown when the question has only a single
@@ -170,13 +175,15 @@ export function getTrendLineModelAndDatasets(
     source: dataset,
   }));
 
-  const trendLinesSeries: SeriesModel[] = seriesModels.map(seriesModel => ({
-    name: "",
-    color: Color(renderingContext.getColor(seriesModel.color))
-      .lighten(0.25)
-      .hex(),
-    dataKey: TREND_LINE_DATA_KEY,
-  }));
+  const trendLinesSeries: TrendLineSeriesModel[] = seriesModels.map(
+    seriesModel => ({
+      name: `${seriesModel.name}; trend line`, // not used in UI
+      color: Color(renderingContext.getColor(seriesModel.color))
+        .lighten(0.25)
+        .hex(),
+      dataKey: TREND_LINE_DATA_KEY,
+    }),
+  );
 
   return {
     trendLinesSeries,

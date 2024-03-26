@@ -40,10 +40,13 @@ export type LegacySeriesSettingsObjectKey = {
   };
 };
 
-export type RegularSeriesModel = {
+export type BaseSeriesModel = {
   name: string;
   color: string;
   dataKey: DataKey;
+};
+
+export type RegularSeriesModel = BaseSeriesModel & {
   vizSettingsKey: VizSettingsKey;
 
   // TODO: remove when the settings definitions are updated for the dynamic combo chart.
@@ -66,6 +69,8 @@ export type BreakoutSeriesModel = RegularSeriesModel & {
 export type ScatterSeriesModel = (RegularSeriesModel | BreakoutSeriesModel) & {
   bubbleSizeDataKey?: DataKey;
 };
+
+export type TrendLineSeriesModel = BaseSeriesModel;
 
 export type SeriesModel =
   | RegularSeriesModel
@@ -174,7 +179,7 @@ export type BaseCartesianChartModel = {
   dataset: ChartDataset;
   transformedDataset: ChartDataset;
   trendLinesDataset: TrendDataset;
-  trendLinesSeries: SeriesModel[];
+  trendLinesSeries: TrendLineSeriesModel[];
   leftAxisModel: YAxisModel | null;
   rightAxisModel: YAxisModel | null;
   xAxisModel: XAxisModel;
