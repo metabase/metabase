@@ -213,7 +213,7 @@
     (mt/dataset airports
       (is (= {:query  "SELECT NAME FROM COUNTRY WHERE (\"PUBLIC\".\"COUNTRY\".\"NAME\" = 'US')"
               :params nil}
-             (qp.compile/compile-and-splice-parameters
+             (qp/compile-and-splice-parameters
                {:type       :native
                 :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
                              :template-tags {"country"
@@ -231,7 +231,7 @@
     (mt/dataset airports
       (is (= {:query  "SELECT NAME FROM COUNTRY WHERE (LOWER(\"PUBLIC\".\"COUNTRY\".\"NAME\") LIKE '%us')"
               :params nil}
-             (qp.compile/compile-and-splice-parameters
+             (qp/compile-and-splice-parameters
                {:type       :native
                 :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
                              :template-tags {"country"
