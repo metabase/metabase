@@ -11,11 +11,11 @@
   min-height: 10px;
 }
 
-:global(.scroll-show--hover::-webkit-scrollbar) {
+.scrollShowHover::-webkit-scrollbar {
   display: none;
 }
 
-:global(.scroll-show--hover:hover::-webkit-scrollbar) {
+.scrollShowHover:hover::-webkit-scrollbar {
   display: inherit;
 }
 

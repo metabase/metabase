@@ -222,7 +222,7 @@ function TableSimpleInner({
   return (
     <Root className={className}>
       <ContentContainer>
-        <TableContainer className={cx(CS.scrollShow, "scroll-show--hover")}>
+        <TableContainer className={cx(CS.scrollShow, CS.scrollShowHover)}>
           <Table
             className={cx(
               DashboardS.fullscreenNormalText,

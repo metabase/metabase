@@ -17,7 +17,8 @@ const SidebarLayout = ({ className, style, sidebar, children }) => (
         className: cx(
           CS.scrollY,
           CS.scrollShow,
-          "scroll--light scroll-show--hover",
+          "scroll--light",
+          CS.scrollShowHover,
         ),
       },
       sidebar.props.children,
