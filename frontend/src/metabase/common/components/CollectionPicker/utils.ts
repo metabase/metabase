@@ -6,7 +6,7 @@ import type {
   SearchModelType,
 } from "metabase-types/api";
 
-import type { PickerState, IsFolder, TypeWithModel } from "../EntityPicker";
+import type { PickerState } from "../EntityPicker";
 
 import type { CollectionPickerItem } from "./types";
 
@@ -62,6 +62,8 @@ export const getStateFromIdPath = ({
         name: "",
         model: "collection",
         id: idPath[0],
+        here: ["collection"],
+        below: ["collection"],
       },
     },
   ];
@@ -80,6 +82,8 @@ export const getStateFromIdPath = ({
             name: "",
             model: "collection",
             id: nextLevelId,
+            here: ["collection"],
+            below: ["collection"],
           }
         : null,
     });
@@ -88,13 +92,18 @@ export const getStateFromIdPath = ({
   return statePath;
 };
 
-export const isFolder: IsFolder<
-  CollectionId,
-  SearchModelType,
-  CollectionPickerItem
-> = <Item extends TypeWithModel<CollectionId, SearchModelType>>(item: Item) => {
-  return item.model === "collection";
+export const isFolder = (item: CollectionPickerItem): boolean => {
+  return Boolean(
+    item.model === "collection" && item?.here?.includes("collection"),
+  );
 };
 
 export const generateKey = (query?: SearchRequest) =>
   JSON.stringify(query ?? "root");
+
+export const getParentCollectionId = (
+  location: string | null,
+): CollectionId => {
+  const parentCollectionId = location?.split("/").filter(Boolean).reverse()[0];
+  return parentCollectionId ? Number(parentCollectionId) : "root";
+};
