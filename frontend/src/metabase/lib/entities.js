@@ -683,7 +683,7 @@ export const undo = (opts = {}, subject, verb) =>
 
 export async function entityCompatibleQuery(entityQuery, dispatch, endpoint) {
   const request = entityQuery === EMPTY_ENTITY_QUERY ? undefined : entityQuery;
-  const action = dispatch(endpoint.initiate(request));
+  const action = dispatch(endpoint.initiate(request, { forceRefetch: true }));
   try {
     return await action.unwrap();
   } finally {
