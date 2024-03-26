@@ -15,11 +15,15 @@
    schema         ms/NonBlankString
    transform-name ms/NonBlankString}
   (api/check-403
-   (= (data-perms/full-schema-permission-for-user api/*current-user-id*
-                                                  :perms/data-access
-                                                  db-id
-                                                  schema)
-      :unrestricted))
+   (and (= (data-perms/full-db-permission-for-user api/*current-user-id*
+                                                   :perms/view-data
+                                                   db-id)
+           :unrestricted)
+        (contains? #{:query-builder-and-native :query-builder}
+                   (data-perms/full-schema-permission-for-user api/*current-user-id*
+                                                               :perms/create-queries
+                                                               db-id
+                                                               schema))))
   (->> @tf.specs/transform-specs
        (m/find-first (comp #{transform-name} :name))
        (tf/apply-transform! db-id schema)))

@@ -257,11 +257,38 @@
     (qp.store/cached card-id
                      (query-perms/required-perms (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
                                                  :throw-exceptions? true))
-    {:perms/data-access (zipmap (sandbox->table-ids sandbox) (repeat :unrestricted))}))
+    {:perms/view-data :unrestricted
+     :perms/create-queries (zipmap (sandbox->table-ids sandbox) (repeat :query-builder))}))
+
+(defn- merge-perms
+  "The shape of permissions maps is a little odd, and using `m/deep-merge` doesn't give us exactly what we want.
+  In particular, if we need query-builder-and-native at the *database* level, but :query-builder at the *table* level,
+  the permissions maps will look like:
+
+  - `{:perms/create-queries :query-builder-and-native}`
+  - `{:perms/create-queries {1 :query-builder}}`
+
+  Currently, we never require a *lower* level permission at the database level, so it's ok to just say that the
+  db-level permissions always win. If we ever wanted to merge something like `{:perms/create-queries
+  {1 :query-builder-and-native}}` with `{:perms/create-queries :query-builder}`, this would break down and we'd
+  probably want to modify the shape of the permissions-maps themselves."
+  ([perms-a] perms-a)
+  ([perms-a perms-b]
+   (reduce (fn [merged [k v]]
+             (update merged k (fn [old-v]
+                                (cond
+                                  (keyword? old-v) old-v
+                                  (keyword? v) v
+                                  (and (map? old-v) (map? v))
+                                  (merge old-v v)
+                                  :else v))))
+           (or perms-a {})
+           (seq perms-b)))
+  ([perms-a perms-b & more]
+   (reduce merge-perms perms-a (cons perms-b more))))
 
 (defn- sandboxes->required-perms [sandboxes]
-  (apply m/deep-merge (map sandbox->required-perms sandboxes)))
-
+  (apply merge-perms (map sandbox->required-perms sandboxes)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |

@@ -168,8 +168,10 @@
                      Permissions                _ {:group_id group-id :object (perms/collection-read-path collection-id)}]
         (mt/with-premium-features #{:advanced-permissions}
           (mt/with-no-data-perms-for-all-users!
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
-            (data-perms/set-database-permission! group-id (mt/id) :perms/data-access :no-self-service)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+            (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
             (letfn [(run-ad-hoc-query []
                       (mt/with-current-user user-id
                         (qp/process-query query)))
@@ -188,40 +190,27 @@
                 (is (run-saved-question))
                 (is (= true (check-block-perms))))
               ;; 'grant' the block permissions.
-              (data-perms/set-database-permission! group-id (mt/id) :perms/data-access :block)
-              (testing "if EE token does not have the `:advanced-permissions` feature: should not do check"
-                (mt/with-premium-features #{}
-                  (is (nil? (check-block-perms)))))
-              (testing "disallow running the query"
-                (is (thrown-with-msg?
-                     clojure.lang.ExceptionInfo
-                     #"Blocked: you are not allowed to run queries against Database \d+"
-                     (check-block-perms)))
-                (is (thrown-with-msg?
-                     clojure.lang.ExceptionInfo
-                     #"Blocked: you are not allowed to run queries against Database \d+"
-                     (run-saved-question))))
-              (testing "\nAllow running if current User has data permissions from another group."
-                (mt/with-temp [PermissionsGroup           {group-2-id :id} {}
-                               PermissionsGroupMembership _ {:group_id group-2-id :user_id user-id}]
-                  (doseq [[message perms-fn!] {"with full DB perms"
-                                               #(data-perms/set-database-permission! group-2-id (mt/id) :perms/data-access :unrestricted)
-                                               "with perms for the Table in question"
-                                               #(data-perms/set-table-permission! group-2-id (mt/id :venues) :perms/data-access :unrestricted)}]
-                    (perms-fn!)
-                    (testing (format "Should be able to run the query %s" message)
-
-                      (doseq [[message thunk] {"ad-hoc queries"  run-ad-hoc-query
-                                               "Saved Questions" run-saved-question}]
-                        (testing message
-                          (is (=? {:status :completed}
-                                  (thunk)))))))
-                  (testing "\nSandboxed permissions"
-                    (mt/with-premium-features #{:advanced-permissions :sandboxes}
-                      (mt/with-temp [GroupTableAccessPolicy _ {:table_id (mt/id :venues) :group_id group-id}]
-                        (testing "Should be able to run the query"
-                          (doseq [[message thunk] {"ad-hoc queries"  run-ad-hoc-query
-                                                   "Saved Questions" run-saved-question}]
-                            (testing message
-                              (is (=? {:status :completed}
-                                      (thunk))))))))))))))))))
+              (testing "the highest permission level from any group wins (block doesn't override other groups anymore)"
+                (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
+                (testing "if EE token does not have the `:advanced-permissions` feature: should not do check"
+                  (mt/with-premium-features #{}
+                    (is (nil? (check-block-perms)))))
+                (testing "should still not be able to run ad-hoc query"
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"You do not have permissions to run this query"
+                       (run-ad-hoc-query))))
+                (testing "should STILL be able to run query as saved Question"
+                  (is (run-saved-question))
+                  (is (= true (check-block-perms)))))
+              (testing "once blocked in all groups, now access is truly blocked"
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+                (testing "disallow running the query"
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"Blocked: you are not allowed to run queries against Database \d+"
+                       (check-block-perms)))
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"Blocked: you are not allowed to run queries against Database \d+"
+                       (run-saved-question))))))))))))
