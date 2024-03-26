@@ -28,7 +28,8 @@ export interface DownloadQueryResultsOpts {
 interface DownloadQueryResultsParams {
   method: string;
   url: string;
-  params: URLSearchParams;
+  body?: Record<string, unknown>;
+  params?: URLSearchParams;
 }
 
 export const downloadQueryResults =
@@ -80,9 +81,9 @@ const getDatasetParams = ({
     return {
       method: "POST",
       url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query/${type}`,
-      params: new URLSearchParams({
-        parameters: JSON.stringify(result?.json_query?.parameters ?? []),
-      }),
+      body: {
+        parameters: result?.json_query?.parameters ?? [],
+      },
     };
   }
 
@@ -113,41 +114,47 @@ const getDatasetParams = ({
     return {
       method: "POST",
       url: `/api/card/${cardId}/query/${type}`,
-      params: new URLSearchParams({
-        parameters: JSON.stringify(result?.json_query?.parameters ?? []),
-      }),
+      body: {
+        parameters: result?.json_query?.parameters ?? [],
+      },
     };
   }
 
   return {
-    url: `/api/dataset/${type}`,
     method: "POST",
-    params: new URLSearchParams({
-      query: JSON.stringify(_.omit(result?.json_query ?? {}, "constraints")),
-      visualization_settings: JSON.stringify(visualizationSettings ?? {}),
-    }),
+    url: `/api/dataset/${type}`,
+    body: {
+      query: _.omit(result?.json_query ?? {}, "constraints"),
+      visualization_settings: visualizationSettings ?? {},
+    },
   };
 };
 
-export function getDatasetDownloadUrl(url: string) {
-  // make url relative if it's not
-  url = url.replace(api.basename, "");
-  const requestUrl = new URL(api.basename + url, location.origin);
-
+export function getDatasetDownloadUrl(url: string, params?: URLSearchParams) {
+  url = url.replace(api.basename, ""); // make url relative if it's not
+  url = api.basename + url;
+  if (params) {
+    url += `?${params.toString()}`;
+  }
+  const requestUrl = new URL(url, location.origin);
   return requestUrl.href;
 }
 
 const getDatasetResponse = ({
   url,
   method,
+  body,
   params,
 }: DownloadQueryResultsParams) => {
-  const requestUrl = getDatasetDownloadUrl(url);
+  const requestUrl = getDatasetDownloadUrl(url, params);
 
   if (method === "POST") {
-    return fetch(requestUrl, { method, body: params });
+    return fetch(requestUrl, {
+      method,
+      body: body ? JSON.stringify(body) : undefined,
+    });
   } else {
-    return fetch(`${requestUrl}?${params}`);
+    return fetch(requestUrl);
   }
 };
 
