@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 
-import { NoRowsError } from "metabase/components/errors/NoRowsError";
+import { NoDataError } from "metabase/components/errors/NoDataError";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 
@@ -31,7 +31,7 @@ export const ErrorMessage = ({
       )}
     >
       {type === "noRows" ? (
-        <NoRowsError mb="1rem" />
+        <NoDataError mb="1rem" />
       ) : (
         <div
           className={cx(QueryBuilderS.QueryErrorImage, {

@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import EmptyState from "metabase/components/EmptyState";
 import PaginationControls from "metabase/components/PaginationControls";
-import { NoArtifactError } from "metabase/components/errors/NoArtifactError";
+import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import Search from "metabase/entities/search";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useDispatch } from "metabase/lib/redux";
@@ -91,7 +91,7 @@ function SearchApp({ location }) {
                   <EmptyState
                     title={t`Didn't find anything`}
                     message={t`There weren't any results for your search.`}
-                    illustrationElement={<NoArtifactError mb="-1.5rem" />}
+                    illustrationElement={<NoObjectError mb="-1.5rem" />}
                   />
                 </Paper>
               ) : (

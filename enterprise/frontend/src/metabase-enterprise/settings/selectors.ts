@@ -92,12 +92,10 @@ export function getLandingPageIllustration(
   }
 }
 
-export function getNoQuestionResultsIllustration(
-  state: EnterpriseState,
-): string | null {
+export function getNoDataIllustration(state: EnterpriseState): string | null {
   const illustrationOption = getSetting(
     state,
-    "no-question-results-illustration",
+    "no-data-illustration",
   ) as IllustrationSettingValue;
 
   switch (illustrationOption) {
@@ -108,19 +106,14 @@ export function getNoQuestionResultsIllustration(
       return null;
 
     case "custom":
-      return getSetting(
-        state,
-        "no-question-results-illustration-custom",
-      ) as string;
+      return getSetting(state, "no-data-illustration-custom") as string;
   }
 }
 
-export function getNoSearchResultsIllustration(
-  state: EnterpriseState,
-): string | null {
+export function getNoObjectIllustration(state: EnterpriseState): string | null {
   const illustrationOption = getSetting(
     state,
-    "no-search-results-illustration",
+    "no-object-illustration",
   ) as IllustrationSettingValue;
 
   switch (illustrationOption) {
@@ -131,9 +124,6 @@ export function getNoSearchResultsIllustration(
       return null;
 
     case "custom":
-      return getSetting(
-        state,
-        "no-search-results-illustration-custom",
-      ) as string;
+      return getSetting(state, "no-object-illustration-custom") as string;
   }
 }

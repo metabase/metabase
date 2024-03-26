@@ -29,10 +29,10 @@ export function getLandingPageIllustration(state: State) {
   return PLUGIN_SELECTORS.getLandingPageIllustration(state);
 }
 
-export function getNoQuestionResultsIllustration(state: State) {
-  return PLUGIN_SELECTORS.getNoQuestionResultsIllustration(state);
+export function getNoDataIllustration(state: State) {
+  return PLUGIN_SELECTORS.getNoDataIllustration(state);
 }
 
-export function getNoSearchResultsIllustration(state: State) {
-  return PLUGIN_SELECTORS.getNoSearchResultsIllustration(state);
+export function getNoObjectIllustration(state: State) {
+  return PLUGIN_SELECTORS.getNoObjectIllustration(state);
 }

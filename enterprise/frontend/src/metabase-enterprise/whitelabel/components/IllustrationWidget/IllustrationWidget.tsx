@@ -36,8 +36,8 @@ type IllustrationWidgetProps = {
   customIllustrationSetting:
     | "login-page-illustration-custom"
     | "landing-page-illustration-custom"
-    | "no-question-results-illustration-custom"
-    | "no-search-results-illustration-custom";
+    | "no-data-illustration-custom"
+    | "no-object-illustration-custom";
   errorMessageContainerId: string;
   type: IllustrationType;
 };

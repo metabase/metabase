@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
-import { NoArtifactError } from "metabase/components/errors/NoArtifactError";
+import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
 import { Box, Center, Flex, Icon, NavLink } from "metabase/ui";
 
@@ -68,7 +68,7 @@ export const ItemList = <
     return (
       <Flex justify="center" align="center" direction="column" h="100%">
         <EmptyState
-          illustrationElement={<NoArtifactError aria-label={t`empty`} />}
+          illustrationElement={<NoObjectError aria-label={t`empty`} />}
         />
       </Flex>
     );

@@ -146,10 +146,10 @@ export const PLUGIN_SELECTORS = {
       isDefault: true,
     };
   },
-  getNoQuestionResultsIllustration: (_state: State): string => {
+  getNoDataIllustration: (_state: State): string => {
     return noResultsSource;
   },
-  getNoSearchResultsIllustration: (_state: State): string => {
+  getNoObjectIllustration: (_state: State): string => {
     return noResultsSource;
   },
 };
