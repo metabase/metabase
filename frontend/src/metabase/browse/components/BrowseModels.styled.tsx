@@ -115,6 +115,7 @@ export const CollectionHeaderToggleContainer = styled.div`
   border: none;
   background-color: transparent;
   overflow: unset;
+  display: flex;
   &:hover {
     background-color: inherit;
     div,
