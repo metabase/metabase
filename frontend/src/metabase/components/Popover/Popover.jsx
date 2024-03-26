@@ -395,7 +395,7 @@ export default class Popover extends Component {
     if (bodyHeight > maxHeight) {
       body.style.maxHeight = maxHeight + "px";
       body.classList.add(CS.scrollY);
-      body.classList.add("scroll-show");
+      body.classList.add(CS.scrollShow);
     }
   }
 

@@ -23,7 +23,7 @@ class _FilterList extends Component {
     const { filters, metadata, filterRenderer } = this.props;
     return (
       <div
-        className={cx(QueryBuilderS.QueryFilterList, CS.scrollX, "scroll-show")}
+        className={cx(QueryBuilderS.QueryFilterList, CS.scrollX, CS.scrollShow)}
       >
         {filters.map((filter, index) => (
           <Filter

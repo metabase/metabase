@@ -16,7 +16,8 @@ const SidebarLayout = ({ className, style, sidebar, children }) => (
         style: { flexShrink: 0, alignSelf: "stretch" },
         className: cx(
           CS.scrollY,
-          "scroll-show scroll--light scroll-show--hover",
+          CS.scrollShow,
+          "scroll--light scroll-show--hover",
         ),
       },
       sidebar.props.children,

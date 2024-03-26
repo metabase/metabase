@@ -41,7 +41,8 @@ export default class RevisionDiff extends Component {
             CS.flex,
             CS.alignCenter,
             CS.scrollX,
-            "scroll-show scroll-show-horizontal",
+            CS.scrollShow,
+            "scroll-show-horizontal",
           )}
         >
           <div className={CS.m3} style={{ lineHeight: 0 }}>
