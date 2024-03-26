@@ -30,13 +30,16 @@ const getFolderPath = (
   path: PathEntry<NotebookDataPickerFolderItem["model"]>,
   folder: NotebookDataPickerItem,
 ): PathEntry<NotebookDataPickerFolderItem["model"]> => {
-  const [root, schemas] = path;
+  const [root, schema] = path;
 
   if (folder.model === "database") {
     return [
-      root,
       {
+        ...root,
         selectedItem: folder,
+      },
+      {
+        selectedItem: null,
         model: "schema",
         query: {
           dbId: folder.id,
@@ -46,14 +49,17 @@ const getFolderPath = (
   }
 
   if (folder.model === "schema") {
-    const dbId = (schemas.selectedItem as DatabaseItem).id;
+    const dbId = (root.selectedItem as DatabaseItem).id;
 
     return [
       root,
-      schemas,
+      {
+        ...schema,
+        selectedItem: folder,
+      },
       {
         model: "table",
-        selectedItem: folder,
+        selectedItem: null,
         query: {
           dbId,
         },
@@ -79,7 +85,7 @@ export const TablePicker = forwardRef(function TablePicker(
     {
       model: "database",
       query: { saved: false }, // saved questions are fetched in a separate tab
-      selectedItem: null,
+      selectedItem: initialValue,
     },
   ]);
 
