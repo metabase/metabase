@@ -422,7 +422,7 @@
     (->> (map #(assoc %2 :dataset_query %1) queries-parsed rows)
          upload/model-hydrate-based-on-upload
          (map #(assoc %2 :dataset_query %1) queries-before)
-         (post-process-collection-children collection :card))))
+         (post-process-collection-children :card collection))))
 
 (defmethod collection-children-query :card
   [_ collection options]
