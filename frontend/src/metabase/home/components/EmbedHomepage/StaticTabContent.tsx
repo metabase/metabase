@@ -1,10 +1,8 @@
-// eslint-disable-next-line no-restricted-imports
-import { List } from "@mantine/core";
 import { Link } from "react-router";
 import { t, jt } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { Anchor, Button, Icon, Text } from "metabase/ui";
+import { Anchor, Button, Icon, Text, List } from "metabase/ui";
 
 import type { EmbedHomepageViewProps } from "./EmbedHomepageView";
 
@@ -22,13 +20,7 @@ export const StaticTabContent = ({
 
       <Text fw="bold" mb="md">{t`The TL;DR:`}</Text>
 
-      <List
-        type="ordered"
-        mb="lg"
-        size="sm"
-        // TODO: fix this in a better way
-        style={{ listStyleType: "decimal" }}
-      >
+      <List type="ordered" mb="lg" size="sm">
         {embeddingAutoEnabled === false && (
           <List.Item>
             <Anchor
