@@ -1,5 +1,6 @@
-import { Api } from "metabase/api";
 import type { NativeQueryForm, DatasetQuery } from "metabase-types/api";
+
+import { Api } from "./api";
 
 export const datasetApi = Api.injectEndpoints({
   endpoints: builder => ({

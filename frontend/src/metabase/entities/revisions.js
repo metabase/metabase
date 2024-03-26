@@ -6,6 +6,9 @@ import Questions from "./questions";
 
 const listRevisions = GET("/api/revision");
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Revision = createEntity({
   name: "revisions",
   api: {

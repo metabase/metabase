@@ -99,28 +99,29 @@ export function interceptPromise(method, path) {
  *   cy.visit(`/dashboard/1`);
  * });
  */
-const cypressWaitAllRecursive = (results, currentCommand, commands) => {
-  return currentCommand.then(result => {
+const cypressWaitAllRecursive = (results, commands) => {
+  const [nextCommand, ...restCommands] = commands;
+  if (!nextCommand) {
+    return;
+  }
+
+  return nextCommand.then(result => {
     results.push(result);
 
-    const [nextCommand, ...rest] = Array.from(commands);
-
     if (nextCommand == null) {
-      return results;
+      return;
     }
 
-    return cypressWaitAllRecursive(results, nextCommand, rest);
+    return cypressWaitAllRecursive(results, restCommands);
   });
 };
 
 export const cypressWaitAll = function (commands) {
   const results = [];
 
-  return cypressWaitAllRecursive(
-    results,
-    cy.wrap(null, { log: false }),
-    commands,
-  );
+  return cy.wrap(results).then(() => {
+    cypressWaitAllRecursive(results, commands);
+  });
 };
 
 /**
