@@ -22,8 +22,9 @@ import {
   summarize,
   visitQuestionAdhoc,
   visualize,
-  createMetric,
+  createQuestion,
 } from "e2e/support/helpers";
+import { createMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
   SAMPLE_DATABASE;
@@ -799,10 +800,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
       },
     }).then(({ body }) => {
-      cy.wrap(body.id).as("metricId");
-    });
+      const metricId = body.id;
 
-    cy.get("@metricId").then(metricId => {
       const questionDetails = {
         query: {
           "source-table": ORDERS_ID,
@@ -810,16 +809,15 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
           aggregation: [["metric", metricId]],
         },
       };
-      cy.createQuestion(questionDetails, { visitQuestion: true });
+
+      createQuestion(questionDetails, { visitQuestion: true });
     });
 
     openNotebook();
 
     getNotebookStep("summarize").contains("Revenue").click();
 
-    popover().within(() => {
-      cy.findByTestId("expression-editor-textfield").contains("[Revenue]");
-    });
+    popover().findByTestId("expression-editor-textfield").contains("[Revenue]");
   });
 });
 
