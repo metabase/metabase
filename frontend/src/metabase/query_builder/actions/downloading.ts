@@ -101,6 +101,7 @@ const getDatasetParams = ({
       url: Urls.publicQuestion({ uuid, type, includeSiteUrl: false }),
       params: new URLSearchParams({
         parameters: JSON.stringify(result?.json_query?.parameters ?? []),
+        format_export,
       }),
     };
   }
