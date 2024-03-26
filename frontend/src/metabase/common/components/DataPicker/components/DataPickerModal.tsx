@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
-import type { TableId } from "metabase-types/api";
+import type { Table } from "metabase-types/api";
 
 import type { EntityPickerOptions, EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
@@ -17,7 +17,7 @@ interface Props {
   onChange: (item: NotebookDataPickerItem) => void;
   onClose: () => void;
   options?: EntityPickerOptions;
-  value: TableId | null;
+  value: Table | null;
 }
 
 export const DataPickerModal = ({
@@ -75,9 +75,9 @@ export const DataPickerModal = ({
       icon: "table",
       element: (
         <TablePicker
-          value={value}
           options={options}
           ref={pickerRef}
+          value={value}
           onItemSelect={handleItemSelect}
         />
       ),

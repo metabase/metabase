@@ -1,17 +1,31 @@
 import type { Ref } from "react";
-import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
+
+import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
+import type {
+  DatabaseId,
+  SchemaId,
+  SchemaName,
+  Table,
+  TableId,
+} from "metabase-types/api";
 
 import {
   NestedItemPicker,
   type EntityPickerModalOptions,
 } from "../../EntityPicker";
 import type {
-  DatabaseItem,
   NotebookDataPickerItem,
+  NotebookDataPickerModel,
   NotebookDataPickerValueItem,
   PathEntry,
-  Value,
 } from "../types";
 import { generateKey, isFolder } from "../utils";
 
@@ -21,93 +35,95 @@ import { DataPickerListResolver } from "./DataPickerListResolver";
 const defaultOptions: EntityPickerModalOptions = {};
 
 interface Props {
-  value: Value | null;
+  value: Table | null;
   options?: EntityPickerModalOptions;
   onItemSelect: (item: NotebookDataPickerValueItem) => void;
 }
 
-const getFolderPath = (
-  path: PathEntry<NotebookDataPickerFolderItem["model"]>,
-  folder: NotebookDataPickerItem,
-  value: Value | null,
-): PathEntry<NotebookDataPickerFolderItem["model"]> => {
-  const [database, schema] = path;
+const generatePath = (
+  dbId: DatabaseId | undefined,
+  schemaName: SchemaName | undefined,
+  tableId: TableId | undefined,
+) => {
+  const path: PathEntry<NotebookDataPickerModel> = [
+    {
+      model: "database",
+      query: { saved: false },
+      selectedItem: dbId
+        ? {
+            model: "database",
+            id: dbId,
+            name: "",
+          }
+        : null,
+    },
+  ];
 
-  if (folder.model === "database") {
-    return [
-      {
-        ...database,
-        selectedItem: folder,
-      },
-      {
-        selectedItem: null,
-        model: "schema",
-        query: {
-          dbId: folder.id,
-        },
-      },
-    ];
+  if (dbId != null) {
+    path.push({
+      model: "schema",
+      query: { dbId },
+      selectedItem: schemaName
+        ? {
+            model: "schema",
+            id: schemaName,
+            name: "",
+          }
+        : null,
+    });
   }
 
-  if (folder.model === "schema") {
-    const dbId = (database.selectedItem as DatabaseItem).id;
-
-    return [
-      database,
-      {
-        ...schema,
-        selectedItem: folder,
-      },
-      {
-        model: "table",
-        selectedItem: value,
-        query: {
-          dbId,
-        },
-      },
-    ];
+  if (schemaName != null) {
+    path.push({
+      model: "table",
+      query: { dbId, schemaName },
+      selectedItem: tableId
+        ? {
+            model: "table",
+            id: tableId,
+            name: "",
+          }
+        : null,
+    });
   }
 
-  if (
-    folder.model === "card" ||
-    folder.model === "dataset" ||
-    folder.model === "table" ||
-    folder.model === "collection"
-  ) {
-    throw new Error("Not implemented"); // TODO typing
-  }
+  return path;
 };
-
-const getInitialPath = (value: Value | null) => [
-  {
-    model: "database",
-    query: { saved: false },
-    selectedItem: value,
-  },
-];
 
 export const TablePicker = forwardRef(function TablePicker(
   { onItemSelect, value, options = defaultOptions }: Props,
   ref: Ref<unknown>,
 ) {
-  const [path, setPath] = useState<PathEntry[]>(getInitialPath(value));
+  const [dbId, setDbId] = useState<DatabaseId | undefined>(value?.db_id);
+  const [schemaId, setSchemaId] = useState<SchemaId | undefined>(value?.schema);
+  const [tableId, setTableId] = useState<TableId | undefined>(value?.id);
+
+  const path = useMemo(
+    () => generatePath(dbId, schemaId, tableId),
+    [dbId, schemaId, tableId],
+  );
 
   const handleFolderSelect = useCallback(
     ({ folder }: { folder: NotebookDataPickerItem }) => {
-      setPath(path => getFolderPath(path, folder, value));
+      if (folder.model === "database") {
+        setDbId(folder.id);
+        setSchemaId(undefined);
+        setTableId(undefined);
+      }
+
+      if (folder.model === "schema") {
+        setSchemaId(getSchemaName(folder.id));
+        setTableId(undefined);
+      }
     },
-    [setPath, value],
+    [setDbId, setSchemaId, setTableId],
   );
 
   const handleItemSelect = useCallback(
     (item: NotebookDataPickerItem) => {
-      setPath(path => {
-        const [database, schema, table] = path;
-        return [database, schema, { ...table, selectedItem: item }];
-      });
-      onItemSelect(item);
+      setTableId(item.id);
     },
-    [setPath, onItemSelect],
+    [setTableId],
   );
 
   // Exposing handleFolderSelect so that parent can select newly created
