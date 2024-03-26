@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { CSSTransition, TransitionGroup } from "react-transition-group";
+import { TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -18,6 +18,7 @@ import FormInput from "metabase/core/components/FormInput";
 import FormRadio from "metabase/core/components/FormRadio";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormTextArea from "metabase/core/components/FormTextArea";
+import CS from "metabase/css/core/index.css";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
@@ -29,8 +30,6 @@ import {
 import { Flex, Modal, DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";
-
-import "./SaveQuestionModal.module.css";
 
 const getLabels = (question: Question, showSaveType: boolean) => {
   const type = question.type();
@@ -255,31 +254,23 @@ export const SaveQuestionModal = ({
                     )}
                     <TransitionGroup>
                       {values.saveType === "create" && (
-                        <CSSTransition
-                          classNames="saveQuestionModalFields"
-                          timeout={{
-                            enter: 500,
-                            exit: 500,
-                          }}
-                        >
-                          <div className="saveQuestionModalFields">
-                            <FormInput
-                              name="name"
-                              title={t`Name`}
-                              placeholder={nameInputPlaceholder}
-                            />
-                            <FormTextArea
-                              name="description"
-                              title={t`Description`}
-                              placeholder={t`It's optional but oh, so helpful`}
-                            />
-                            <FormCollectionPicker
-                              name="collection_id"
-                              title={t`Which collection should this go in?`}
-                              zIndex={DEFAULT_MODAL_Z_INDEX + 1}
-                            />
-                          </div>
-                        </CSSTransition>
+                        <div className={CS.overflowHidden}>
+                          <FormInput
+                            name="name"
+                            title={t`Name`}
+                            placeholder={nameInputPlaceholder}
+                          />
+                          <FormTextArea
+                            name="description"
+                            title={t`Description`}
+                            placeholder={t`It's optional but oh, so helpful`}
+                          />
+                          <FormCollectionPicker
+                            name="collection_id"
+                            title={t`Which collection should this go in?`}
+                            zIndex={DEFAULT_MODAL_Z_INDEX + 1}
+                          />
+                        </div>
                       )}
                     </TransitionGroup>
                     <FormFooter>
