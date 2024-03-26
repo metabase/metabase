@@ -37,7 +37,7 @@
 ;;; |                                              Save Query Execution                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Should be in lib.core
+;; Should be somewhere in metabase.lib
 (defn- remove-lib-uuids
   "Two queries should be the same even if they have different :lib/uuids, because they might have both been converted
   from the same legacy query."
@@ -49,36 +49,37 @@
        x))
    x))
 
-(defn- collect-field-referenced
+(defn- pmbql->field-usages
   [query]
-  (->> (lib/walk query
-                 (fn [_query _path-type _path stage-or-join]
-                   (select-keys stage-or-join [:aggregation :breakout :filters :expressions])))
-       :stages
-       (apply merge-with concat)))
-
-(defn- find-field-counts
-  [{:keys [aggregation breakout filters expressions]}]
-  (let [field-with-id (fn [x]
-                       (and (seq x)
-                            (= (first x) :field)
-                            (pos-int? (nth x 2))))]
+  (let [{:keys [aggregation
+                breakout
+                filters
+                expressions]} (->> (lib/walk query
+                                             (fn [_query _path-type _path stage-or-join]
+                                               (select-keys stage-or-join
+                                                            [:aggregation :breakout :filters :expressions])))
+                                   :stages
+                                   (apply merge-with concat))
+        field-with-id?         (fn [x]
+                                 (and (seq x)
+                                      (= (first x) :field)
+                                      (pos-int? (nth x 2))))]
     (concat
      ;; aggregation
      (for [[op _opts [_field _opts field-id-or-name :as clause]] aggregation
-           :when (field-with-id clause)]
+           :when (field-with-id? clause)]
        {:used_in              :aggregation
         :field_id             field-id-or-name
         :aggregation_function op})
      ;; breakouts
      (for [[_field opts field-id-or-name :as clause] breakout
-           :when (field-with-id clause)]
+           :when (field-with-id? clause)]
        {:used_in        :breakout
         :field_id       field-id-or-name
         :breakout_param (select-keys opts [:temporal-unit :binning])})
      ;; filters
      (for [[_op _opts [_field _opts field-id-or-name :as clause] :as filter-clause] filters
-           :when (field-with-id clause)]
+           :when (field-with-id? clause)]
        {:used_in       :filter
         :field_id      field-id-or-name
         :filter_clause (remove-lib-uuids filter-clause)})
@@ -94,8 +95,7 @@
   [query]
   (-> (lib/query (qp.store/metadata-provider) query)
       fetch-source-query/resolve-source-cards
-      collect-field-referenced
-      find-field-counts))
+      pmbql->field-usages))
 
 ;; TODO - I'm not sure whether this should happen async as is currently the case, or should happen synchronously e.g.
 ;; in the completing arity of the rf
