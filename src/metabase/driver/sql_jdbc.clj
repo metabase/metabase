@@ -150,7 +150,10 @@
 
 (def ^:private ^:dynamic *tx-connections* {})
 
-(defn- local-conn [db-id]
+(defn- local-conn
+  "If called with a transaction for the given database in dynamic scope, return the corresponding connection.
+  Otherwise, return a non-transactional connection."
+  [db-id]
   (or (get *tx-connections* db-id)
       (sql-jdbc.conn/db->pooled-connection-spec db-id)))
 
