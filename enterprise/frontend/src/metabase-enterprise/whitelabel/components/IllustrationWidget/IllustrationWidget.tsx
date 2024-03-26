@@ -44,7 +44,11 @@ type IllustrationWidgetProps = {
 const MB = 1024 * 1024;
 const IMAGE_SIZE_LIMIT = 2 * MB;
 
-const OPTIONS: Record<IllustrationType, any[]> = {
+interface SelectOption {
+  label: string;
+  value: string;
+}
+const SELECT_OPTIONS: Record<IllustrationType, SelectOption[]> = {
   background: [
     { label: t`Lighthouse`, value: "default" },
     { label: t`No illustration`, value: "no-illustration" },
@@ -71,7 +75,7 @@ export function IllustrationWidget({
   const [fileName, setFileName] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const options = OPTIONS[type];
+  const options = SELECT_OPTIONS[type];
   const customIllustrationSource =
     settingValues[customIllustrationSetting] ?? undefined;
 
