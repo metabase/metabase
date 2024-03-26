@@ -119,6 +119,7 @@ const getDatasetParams = ({
     return {
       method: "POST",
       url: `/api/card/${cardId}/query/${type}`,
+      params: new URLSearchParams({ format_export }),
       body: {
         parameters: result?.json_query?.parameters ?? [],
       },

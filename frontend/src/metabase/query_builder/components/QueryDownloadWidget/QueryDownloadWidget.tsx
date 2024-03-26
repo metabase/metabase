@@ -50,9 +50,9 @@ const QueryDownloadWidget = ({
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const [{ loading }, handleDownload] = useAsyncFn(
-    async (type: string) => {
+    async (opts: { type: string; enableFormatting: boolean }) => {
       await onDownload({
-        type,
+        ...opts,
         question,
         result,
         dashboardId,
@@ -89,9 +89,9 @@ const QueryDownloadWidget = ({
         <QueryDownloadPopover
           question={question}
           result={result}
-          onDownload={type => {
+          onDownload={opts => {
             setIsPopoverOpen(false);
-            handleDownload(type);
+            handleDownload(opts);
           }}
         />
       </Popover.Dropdown>
