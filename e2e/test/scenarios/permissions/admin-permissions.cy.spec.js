@@ -24,7 +24,7 @@ import {
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-const { ALL_USERS_GROUP, ADMIN_GROUP } = USER_GROUPS;
+const { ALL_USERS_GROUP, ADMIN_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
 
@@ -857,6 +857,13 @@ describeEE("scenarios > admin > permissions", () => {
       [ALL_USERS_GROUP]: {
         [SAMPLE_DB_ID]: {
           data: { schemas: "block" },
+          "view-data": "blocked",
+        },
+      },
+      [COLLECTION_GROUP]: {
+        [SAMPLE_DB_ID]: {
+          data: { schemas: "block" },
+          "view-data": "blocked",
         },
       },
     });
@@ -876,6 +883,13 @@ describeEE("scenarios > admin > permissions", () => {
       [ALL_USERS_GROUP]: {
         [SAMPLE_DB_ID]: {
           data: { schemas: "block" },
+          "view-data": "blocked",
+        },
+      },
+      [COLLECTION_GROUP]: {
+        [SAMPLE_DB_ID]: {
+          data: { schemas: "block" },
+          "view-data": "blocked",
         },
       },
     });

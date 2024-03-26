@@ -252,6 +252,7 @@ describe("permissions", () => {
           data: {
             schemas: "block",
           },
+          "view-data": "blocked",
         },
       },
     });
@@ -297,6 +298,7 @@ describe("permissions", () => {
             data: {
               schemas: "block",
             },
+            "view-data": "blocked",
           },
         },
         [NOSQL_GROUP]: {
@@ -304,6 +306,8 @@ describe("permissions", () => {
             data: {
               schemas: "all",
             },
+            "view-data": "unrestricted",
+            "create-queries": "query-builder",
           },
         },
       });

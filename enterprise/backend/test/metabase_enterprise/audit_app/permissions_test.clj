@@ -108,8 +108,10 @@
                     audit-db/default-audit-collection (constantly collection)]
         (testing "Adding instance analytics adds audit db permissions"
           (is (= :no-self-service (data-perms/table-permission-for-group group-id :perms/data-access database-id (:id view-table))))
+          (is (= :no (data-perms/table-permission-for-group group-id :perms/create-queries database-id (:id view-table))))
           (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :read))
-          (is (= :unrestricted (data-perms/table-permission-for-group group-id :perms/data-access database-id (:id view-table)))))
+          (is (= :unrestricted (data-perms/table-permission-for-group group-id :perms/data-access database-id (:id view-table))))
+          (is (= :query-builder (data-perms/table-permission-for-group group-id :perms/create-queries database-id (:id view-table)))))
         (testing "Unable to update instance analytics to writable"
           (is (thrown-with-msg?
                Exception
