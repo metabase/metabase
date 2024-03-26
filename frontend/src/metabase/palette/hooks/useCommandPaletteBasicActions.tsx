@@ -17,7 +17,6 @@ import {
   getHasNativeWrite,
   getHasDatabaseWithActionsEnabled,
 } from "metabase/selectors/data";
-import { Icon } from "metabase/ui";
 
 export const useCommandPaletteBasicActions = ({
   isLoggedIn,
@@ -58,7 +57,7 @@ export const useCommandPaletteBasicActions = ({
         id: "new_question",
         name: t`New question`,
         section: "basic",
-        icon: <Icon name="insight" />,
+        icon: "insight",
         perform: () => {
           dispatch(closeModal());
           dispatch(
@@ -80,7 +79,7 @@ export const useCommandPaletteBasicActions = ({
         id: "new_query",
         name: t`New SQL query`,
         section: "basic",
-        icon: <Icon name="sql" />,
+        icon: "sql",
         perform: () => {
           dispatch(closeModal());
           dispatch(
@@ -102,7 +101,7 @@ export const useCommandPaletteBasicActions = ({
           id: "new_dashboard",
           name: t`New dashboard`,
           section: "basic",
-          icon: <Icon name="dashboard" />,
+          icon: "dashboard",
           perform: () => {
             openNewModal("dashboard");
           },
@@ -111,7 +110,7 @@ export const useCommandPaletteBasicActions = ({
           id: "new_collection",
           name: t`New collection`,
           section: "basic",
-          icon: <Icon name="collection" />,
+          icon: "collection",
           perform: () => {
             openNewModal("collection");
           },
@@ -124,7 +123,7 @@ export const useCommandPaletteBasicActions = ({
         id: "new_model",
         name: t`New model`,
         section: "basic",
-        icon: <Icon name="model" />,
+        icon: "model",
         perform: () => {
           dispatch(closeModal());
           dispatch(push("model/new"));
@@ -137,7 +136,7 @@ export const useCommandPaletteBasicActions = ({
         id: "new_action",
         name: t`New action`,
         section: "basic",
-        icon: <Icon name="bolt" />,
+        icon: "bolt",
         perform: () => {
           openNewModal("action");
         },
@@ -149,7 +148,7 @@ export const useCommandPaletteBasicActions = ({
         id: "navigate_data",
         name: t`Browse Data`,
         section: "basic",
-        icon: <Icon name="database" />,
+        icon: "database",
         perform: () => {
           dispatch(push("/browse"));
         },
