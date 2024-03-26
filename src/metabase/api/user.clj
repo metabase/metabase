@@ -168,16 +168,6 @@
   [clauses]
   (dissoc clauses :order-by :limit :offset))
 
-(defn- group-ids-for-manager
-  "Given a `user-id` return a list of group-ids of which the user is a group manager."
-  [user-id]
-  (t2/select-fn-set
-   :group_id
-   :model/PermissionsGroupMembership
-   {:where [:and [:= :user_id user-id]
-            [:= :is_group_manager true]
-            [:not= :group_id (:id (perms-group/all-users))]]}))
-
 (api/defendpoint GET "/"
   "Fetch a list of `Users` for admins or group managers.
   By default returns only active users for admins and only active users within groups that the group manager is managing for group managers.
@@ -205,14 +195,7 @@
      (validation/check-manager-of-group group_id)
      (validation/check-group-manager)))
   (let [include_deactivated (Boolean/parseBoolean include_deactivated)
-        manager-group-ids   (set (group-ids-for-manager api/*current-user-id*))
-        group-id-clause     (cond
-                              ;; We know that the user is either admin or group manager of the given group_id (if it exists)
-                              group_id                [group_id]
-                              ;; Superuser can see all users, so don't filter by group ID
-                              api/*is-superuser?*     nil
-                              ;; otherwise, if the user is a group manager, only show them users in the groups they manage
-                              api/*is-group-manager?* (vec manager-group-ids))
+        group-id-clause     (when group_id [group_id])
         clauses             (user-clauses status query group-id-clause include_deactivated)]
     {:data (cond-> (t2/select
                     (vec (cons User (user-visible-columns)))
