@@ -465,7 +465,7 @@
       :query-params     (dissoc query-params :format_export)
       :constraints      constraints
       :qp               qp
-      :middleware       (assoc middleware :format-export? (parse-boolean format-export?)))))
+      :middleware       (assoc middleware :format-export? format-export?))))
 
 (api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
@@ -559,9 +559,10 @@
                                          :export-format api.dataset/export-format-regex]
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
-  [token export-format dashcard-id card-id, :as {:keys [query-params]}]
+  [token export-format dashcard-id card-id format_export, :as {:keys [query-params]}]
   {dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
+   format_export [:maybe :boolean]
    export-format (into [:enum] api.dataset/export-formats)}
   (process-query-for-dashcard-with-signed-token token
     dashcard-id
