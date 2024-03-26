@@ -51,7 +51,9 @@ module.exports = env => {
       path: BUILD_PATH + "/dist",
       publicPath: "",
       filename: "[name].bundle.js",
-      libraryTarget: "commonjs2",
+      library: {
+        type: "commonjs2",
+      },
     },
 
     module: {
