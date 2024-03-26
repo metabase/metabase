@@ -54,7 +54,6 @@ export function LeftNavPaneItemBack({ path }) {
           AdminS.AdminListItem,
           CS.flex,
           CS.alignCenter,
-          CS.noDecoration,
           CS.textBold,
           CS.justifyBetween,
           CS.link,
