@@ -365,7 +365,7 @@ function PivotTable({
               {/* top header */}
               <Collection
                 ref={topHeaderRef}
-                className="scroll-hide-all"
+                className={CS.scrollHideAll}
                 isNightMode={isNightMode}
                 width={width - leftHeaderWidth}
                 height={topHeaderHeight}
@@ -406,7 +406,7 @@ function PivotTable({
                   {({ height }) => (
                     <Collection
                       ref={leftHeaderRef}
-                      className="scroll-hide-all"
+                      className={CS.scrollHideAll}
                       cellCount={leftHeaderItems.length}
                       cellRenderer={({ index, style, key }) => (
                         <LeftHeaderCell

@@ -72,14 +72,14 @@
   display: none; /* Safari and Chrome */
 }
 
-:global(.scroll-hide-all),
-:global(.scroll-hide-all *) {
+.scrollHideAll,
+.scrollHideAll * {
   -ms-overflow-style: none; /* IE 10+ */
   overflow: -moz-scrollbars-none; /* Firefox */
   scrollbar-width: none; /* Firefox */
 }
 
-:global(.scroll-hide-all::-webkit-scrollbar),
-:global(.scroll-hide-all *::-webkit-scrollbar) {
+.scrollHideAll::-webkit-scrollbar,
+.scrollHideAll *::-webkit-scrollbar {
   display: none; /* Safari and Chrome */
 }

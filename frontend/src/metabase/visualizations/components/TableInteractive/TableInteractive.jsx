@@ -391,6 +391,7 @@ class TableInteractive extends Component {
       console.error(e);
     }
   }
+
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   _getCellClickedObjectCached(
     data,
@@ -446,6 +447,7 @@ class TableInteractive extends Component {
       console.error(e);
     }
   }
+
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   _visualizationIsClickableCached(visualizationIsClickable, clicked) {
     return visualizationIsClickable(clicked);
@@ -1047,7 +1049,7 @@ class TableInteractive extends Component {
                     overflow: "hidden",
                     paddingRight: getScrollBarSize(),
                   }}
-                  className="TableInteractive-header scroll-hide-all"
+                  className={cx("TableInteractive-header", CS.scrollHideAll)}
                   width={width || 0}
                   height={headerHeight}
                   rowCount={1}
@@ -1113,6 +1115,7 @@ class TableInteractive extends Component {
     const height = grid.scrollHeight;
     let top = 0;
     let start = Date.now();
+
     // console.profile();
     function next() {
       grid.scrollTop = top;
@@ -1131,6 +1134,7 @@ class TableInteractive extends Component {
         }
       }, 40);
     }
+
     next();
   }
 }
