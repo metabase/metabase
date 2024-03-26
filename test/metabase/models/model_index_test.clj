@@ -146,10 +146,13 @@
       (doseq [[scenario query [field-refs]]
               (remove nil?
                       [[:mbql (mt/mbql-query products {:fields [$id $title]})]
-                       [:mbql-custom-column (mt/mbql-query products {:expressions
-                                                                     {"full-name"
-                                                                      [:concat $title "custom"]}})
-                        [(mt/$ids [$products.id [:expression "full-name"]])]]
+                       [:mbql-custom-column (mt/mbql-query products
+                                                           {:expressions
+                                                            {"inc-id"
+                                                             [:+ $id 1]
+                                                             "full-name"
+                                                             [:concat $title "custom"]}})
+                        [[[:expression "inc-id"] [:expression "full-name"]]]]
                        [:native (mt/native-query
                                  (qp.compile/compile
                                   (mt/mbql-query products {:fields [$id $title]})))]
@@ -181,6 +184,7 @@
                                                                :value_ref value-ref})]
               (is (nil? error))
               ;; oracle returns BigDecimal ids so need `number?` rather than `int?`
+              (is (> (count values) 0))
               (is (mc/validate [:sequential [:tuple number? string?]] values)
                   (-> (mc/validate [:sequential [:tuple int? string?]] values)
                       (me/humanize))))))))))

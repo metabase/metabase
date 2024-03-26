@@ -60,34 +60,35 @@
 Expression refs (`[:expression \"full-name\"]`) are how the _query_ refers to a custom column. But nested queries
 don't, (and shouldn't) care that those are expressions. They are just another field. The field type is always
 `:type/Text` enforced by the endpoint to create model indexes."
-  [field-ref :- mbql.s/Field]
+  [field-ref :- mbql.s/Field base-type]
   (case (first field-ref)
     :field field-ref
     :expression (let [[_ expression-name] field-ref]
                   ;; api validated that this is a text field when the model-index was created. When selecting the
                   ;; expression we treat it as a field.
-                  [:field expression-name {:base-type :type/Text}])
-    (throw (ex-info (trs "Invalid field ref for indexing: {0}" field-ref)
+                  [:field expression-name {:base-type base-type}])
+    (throw (ex-info (format "Invalid field ref for indexing: %s" field-ref)
                     {:field-ref field-ref
                      :valid-clauses [:field :expression]}))))
 
 (defn- fetch-values
   [model-index]
   (let [model     (t2/select-one Card :id (:model_id model-index))
-        value-ref (-> model-index
-                      :value_ref
-                      mbql.normalize/normalize-field-ref
-                      fix-expression-refs)]
-    (try [nil (->> (qp/process-query
-                    {:database (:database_id model)
-                     :type     :query
-                     :query    {:source-table (format "card__%d" (:id model))
-                                :breakout     [(:pk_ref model-index) value-ref]
-                                :limit        (inc max-indexed-values)}})
-                   :data :rows (filter valid-tuples?))]
-         (catch Exception e
-           (log/warn (trs "Error fetching indexed values for model {0}" (:id model)) e)
-           [(ex-message e) []]))))
+        fix       (fn [field-ref base-type] (-> field-ref mbql.normalize/normalize-field-ref (fix-expression-refs base-type)))
+        ;; :type/Text and :type/Integer are ensured at creation time on the api.
+        value-ref (-> model-index :value_ref (fix :type/Text))
+        pk-ref    (-> model-index :pk_ref (fix :type/Integer))]
+    (try
+      [nil (->> (qp/process-query
+                 {:database (:database_id model)
+                  :type     :query
+                  :query    {:source-table (format "card__%d" (:id model))
+                             :breakout     [pk-ref value-ref]
+                             :limit        (inc max-indexed-values)}})
+                :data :rows (filter valid-tuples?))]
+      (catch Exception e
+        (log/warn (trs "Error fetching indexed values for model {0}" (:id model)) e)
+        [(ex-message e) []]))))
 
 (defn find-changes
   "Find additions and deletions in indexed values. `source-values` are from the db, `indexed-values` are what we
@@ -107,13 +108,13 @@ don't, (and shouldn't) care that those are expressions. They are just another fi
   "Add indexed values to the model_index_value table."
   [model-index]
   (let [[error-message values-to-index] (fetch-values model-index)
-        current-index-values               (into #{}
-                                                 (map (juxt :model_pk :name))
-                                                 (t2/select ModelIndexValue
-                                                            :model_index_id (:id model-index)))]
+        current-index-values            (into #{}
+                                              (map (juxt :model_pk :name))
+                                              (t2/select ModelIndexValue
+                                                         :model_index_id (:id model-index)))]
     (if-not (str/blank? error-message)
-      (t2/update! ModelIndex (:id model-index) {:state           "error"
-                                                :error           error-message
+      (t2/update! ModelIndex (:id model-index) {:state      "error"
+                                                :error      error-message
                                                 :indexed_at :%now})
       (try
         (t2/with-transaction [_conn]
@@ -132,13 +133,13 @@ don't, (and shouldn't) care that those are expressions. They are just another fi
                                additions))))
           (t2/update! ModelIndex (:id model-index)
                       {:indexed_at :%now
-                       :state           (if (> (count values-to-index) max-indexed-values)
-                                          "overflow"
-                                          "indexed")}))
+                       :state      (if (> (count values-to-index) max-indexed-values)
+                                     "overflow"
+                                     "indexed")}))
         (catch Exception e
           (t2/update! ModelIndex (:id model-index)
-                      {:state           "error"
-                       :error           (ex-message e)
+                      {:state      "error"
+                       :error      (ex-message e)
                        :indexed_at :%now}))))))
 
 
