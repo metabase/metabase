@@ -1,3 +1,6 @@
+import { useState, useEffect } from "react";
+import { usePrevious } from "react-use";
+
 import { Icon, Tabs } from "metabase/ui";
 
 import type { EntityTab, TypeWithModel } from "../../types";
@@ -24,13 +27,23 @@ export const TabsView = <
   selectedItem: Item | null;
 }) => {
   const hasSearchTab = !!searchQuery;
+  const previousSearchQuery = usePrevious(searchQuery);
   const defaultTab = hasSearchTab ? { model: "search" } : tabs[0];
+  const [selectedTab, setSelectedTab] = useState<string>(defaultTab.model);
 
-  // TODO: better search tab handling, probably need to control tab state
+  useEffect(() => {
+    // when when the searchQuery changes, switch to the search tab
+    if (!!searchQuery && searchQuery !== previousSearchQuery) {
+      setSelectedTab("search");
+    } else if (selectedTab === "search") {
+      setSelectedTab(defaultTab.model);
+    }
+  }, [searchQuery, previousSearchQuery, selectedTab, defaultTab.model]);
 
   return (
     <Tabs
       defaultValue={defaultTab.model}
+      value={selectedTab}
       style={{
         flexGrow: 1,
         height: 0,
@@ -43,13 +56,19 @@ export const TabsView = <
           const { model, icon, displayName } = tab;
 
           return (
-            <Tabs.Tab key={model} value={model} icon={<Icon name={icon} />}>
+            <Tabs.Tab
+              key={model}
+              value={model}
+              icon={<Icon name={icon} />}
+              onClick={() => setSelectedTab(model)}
+            >
               {displayName}
             </Tabs.Tab>
           );
         })}
         {hasSearchTab && (
           <EntityPickerSearchTab
+            onClick={() => setSelectedTab("search")}
             searchResults={searchResults}
             searchQuery={searchQuery}
           />

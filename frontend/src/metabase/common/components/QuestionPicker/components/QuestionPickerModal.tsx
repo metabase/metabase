@@ -11,7 +11,11 @@ import {
   EntityPickerModal,
   defaultOptions as defaultEntityPickerOptions,
 } from "../../EntityPicker";
-import type { QuestionPickerItem, QuestionPickerOptions } from "../types";
+import type {
+  QuestionPickerItem,
+  QuestionPickerOptions,
+  QuestionPickerModel,
+} from "../types";
 
 import {
   QuestionPicker,
@@ -23,7 +27,8 @@ interface QuestionPickerModalProps {
   onChange: (item: QuestionPickerItem) => void;
   onClose: () => void;
   options?: QuestionPickerOptions;
-  value: Pick<QuestionPickerItem, "id" | "model">;
+  value?: Pick<QuestionPickerItem, "id" | "model">;
+  models?: [QuestionPickerModel, ...QuestionPickerModel[]];
 }
 
 const canSelectItem = (item: QuestionPickerItem | null): boolean => {
@@ -42,11 +47,12 @@ const defaultOptions: QuestionPickerOptions = {
 };
 
 export const QuestionPickerModal = ({
-  title = t`Choose a collection`,
+  title = t`Choose a question or model`,
   onChange,
   onClose,
   value,
   options = defaultOptions,
+  models = ["card", "dataset"],
 }: QuestionPickerModalProps) => {
   options = { ...defaultOptions, ...options };
   const [selectedItem, setSelectedItem] = useState<QuestionPickerItem | null>(
@@ -94,7 +100,7 @@ export const QuestionPickerModal = ({
   const tabs: [EntityTab<SearchModelType>, ...EntityTab<SearchModelType>[]] = [
     {
       displayName: t`Questions`,
-      model: "card",
+      model: "card" as QuestionPickerModel, // FIXME 😢
       icon: "table",
       element: (
         <QuestionPicker
@@ -108,7 +114,7 @@ export const QuestionPickerModal = ({
     },
     {
       displayName: t`Models`,
-      model: "dataset",
+      model: "dataset" as QuestionPickerModel, // FIXME 😢
       icon: "model",
       element: (
         <QuestionPicker
@@ -120,7 +126,10 @@ export const QuestionPickerModal = ({
         />
       ),
     },
-  ];
+  ].filter(tab => models.includes(tab.model)) as [
+    EntityTab<SearchModelType>,
+    ...EntityTab<SearchModelType>[],
+  ]; // FIXME 😢
 
   const handleNewCollectionCreate = (folder: QuestionPickerItem) => {
     pickerRef.current?.onFolderSelect({ folder });

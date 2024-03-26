@@ -12,6 +12,8 @@ import type {
   TypeWithModel,
 } from "../EntityPicker";
 
+export type QuestionPickerModel = Extract<SearchModelType, "card" | "dataset">;
+
 export type QuestionPickerItem = TypeWithModel<
   CollectionId | CardId,
   SearchModelType
