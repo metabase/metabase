@@ -12,7 +12,7 @@ import { API_KEY_TAG } from "./tags";
 
 export const apiKeyApi = Api.injectEndpoints({
   endpoints: builder => ({
-    getApiKeys: builder.query<ApiKey[], void>({
+    listApiKeys: builder.query<ApiKey[], void>({
       query: () => `/api/api-key`,
       providesTags: [API_KEY_TAG],
     }),
@@ -47,7 +47,7 @@ export const apiKeyApi = Api.injectEndpoints({
 });
 
 export const {
-  useGetApiKeysQuery,
+  useListApiKeysQuery,
   useCountApiKeysQuery,
   useCreateApiKeyMutation,
   useRegenerateApiKeyMutation,

@@ -11,7 +11,7 @@ import { FIELD_VALUES_TAG } from "./tags";
 
 export const databaseApi = Api.injectEndpoints({
   endpoints: builder => ({
-    getDatabases: builder.query<
+    listDatabases: builder.query<
       DatabaseListResponse,
       DatabaseListRequest | void
     >({
@@ -46,7 +46,7 @@ export const databaseApi = Api.injectEndpoints({
 });
 
 export const {
-  useGetDatabasesQuery,
+  useListDatabasesQuery,
   useRescanDatabaseFieldValuesMutation,
   useDiscardDatabaseFieldValuesMutation,
 } = databaseApi;

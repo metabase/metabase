@@ -48,7 +48,7 @@ const Databases = createEntity({
       entityCompatibleQuery(
         entityQuery,
         dispatch,
-        databaseApi.endpoints.getDatabases,
+        databaseApi.endpoints.listDatabases,
       ),
     get: (entityQuery, options, dispatch) =>
       entityCompatibleQuery(
