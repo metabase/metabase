@@ -6,10 +6,10 @@ export function tag(type: TagType) {
   return { type };
 }
 
-export function tagWithList(type: TagType) {
+export function listTag(type: TagType) {
   return { type, id: "LIST" };
 }
 
-export function tagWithId(type: TagType, id: string | number) {
+export function idTag(type: TagType, id: string | number) {
   return { type, id };
 }

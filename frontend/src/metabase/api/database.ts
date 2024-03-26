@@ -9,7 +9,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { tag, tagWithId, tagWithList } from "./tags";
+import { tag, idTag, listTag } from "./tags";
 
 export const databaseApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -23,8 +23,8 @@ export const databaseApi = Api.injectEndpoints({
         body,
       }),
       providesTags: response => [
-        tagWithList("database"),
-        ...(response?.data?.map(({ id }) => tagWithId("database", id)) ?? []),
+        listTag("database"),
+        ...(response?.data?.map(({ id }) => idTag("database", id)) ?? []),
       ],
     }),
     getDatabase: builder.query<Database, DatabaseRequest>({
@@ -33,7 +33,7 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${id}`,
         body,
       }),
-      providesTags: (response, error, { id }) => [tagWithId("database", id)],
+      providesTags: (response, error, { id }) => [idTag("database", id)],
     }),
     createDatabase: builder.mutation<Database, DatabaseCreateRequest>({
       query: body => ({
@@ -41,7 +41,7 @@ export const databaseApi = Api.injectEndpoints({
         url: "/api/database",
         body,
       }),
-      invalidatesTags: [tagWithList("database")],
+      invalidatesTags: [listTag("database")],
     }),
     updateDatabase: builder.mutation<Database, DatabaseUpdateRequest>({
       query: ({ id, ...body }) => ({
@@ -50,8 +50,8 @@ export const databaseApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (response, error, { id }) => [
-        tagWithList("database"),
-        tagWithId("database", id),
+        listTag("database"),
+        idTag("database", id),
       ],
     }),
     deleteDatabase: builder.mutation<void, DatabaseId>({
@@ -60,8 +60,8 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${id}`,
       }),
       invalidatesTags: (response, error, id) => [
-        tagWithList("database"),
-        tagWithId("database", id),
+        listTag("database"),
+        idTag("database", id),
       ],
     }),
     rescanDatabaseFieldValues: builder.mutation<void, DatabaseId>({
