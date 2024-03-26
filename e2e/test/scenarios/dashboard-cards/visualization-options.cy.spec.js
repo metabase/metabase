@@ -10,7 +10,7 @@ import {
   saveDashboard,
   getDashboardCardMenu,
   getDraggableElements,
-  moveDnDKitColumnVertical,
+  moveDnDKitElement,
 } from "e2e/support/helpers";
 
 describe("scenarios > dashboard cards > visualization options", () => {
@@ -51,7 +51,9 @@ describe("scenarios > dashboard cards > visualization options", () => {
     getDashboardCard().realHover();
     cy.findByLabelText("Show visualization options").click();
     cy.findByTestId("chartsettings-sidebar").within(() => {
-      moveDnDKitColumnVertical(getDraggableElements().contains("ID"), 100);
+      moveDnDKitElement(getDraggableElements().contains("ID"), {
+        vertical: 100,
+      });
 
       /**
        * When this issue gets fixed, it should be safe to uncomment the following assertion.

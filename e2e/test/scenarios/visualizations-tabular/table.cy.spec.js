@@ -17,7 +17,7 @@ import {
   getTable,
   leftSidebar,
   sidebar,
-  moveDnDKitColumnVertical,
+  moveDnDKitElement,
 } from "e2e/support/helpers";
 
 describe("scenarios > visualizations > table", () => {
@@ -415,10 +415,9 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
         .first()
         .should("contain.text", "is less than 20");
 
-      moveDnDKitColumnVertical(
-        cy.findAllByTestId("formatting-rule-preview").eq(2),
-        -300,
-      );
+      moveDnDKitElement(cy.findAllByTestId("formatting-rule-preview").eq(2), {
+        vertical: -300,
+      });
 
       cy.findAllByTestId("formatting-rule-preview")
         .first()
