@@ -13,6 +13,7 @@ import {
   ListCellItem,
   FilterContainer,
   Content,
+  IconWrapper,
 } from "./AccordionListCell.styled";
 
 export const AccordionListCell = ({
@@ -44,10 +45,18 @@ export const AccordionListCell = ({
   searchInputProps,
   hasCursor,
 }) => {
-  const { type, section, sectionIndex, item, itemIndex, isLastItem } = row;
+  const {
+    type,
+    section,
+    sectionIndex,
+    item,
+    itemIndex,
+    isLastItem,
+    hasAction,
+  } = row;
   let content;
   if (type === "header") {
-    if (alwaysExpanded) {
+    if (alwaysExpanded && !hasAction) {
       content = (
         <div
           className="pt2 mb1 mx2 h5 text-uppercase text-bold"
@@ -96,6 +105,11 @@ export const AccordionListCell = ({
             <Box ml="0.5rem">
               <LoadingSpinner size={16} borderWidth={2} />
             </Box>
+          )}
+          {hasAction && (
+            <IconWrapper>
+              <Icon name="chevronright" size={12} />
+            </IconWrapper>
           )}
           {sections.length > 1 && section.items && section.items.length > 0 && (
             <span className={cx(CS.flexAlignRight, CS.ml1, "hover-child")}>

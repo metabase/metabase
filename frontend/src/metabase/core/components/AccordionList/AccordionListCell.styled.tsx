@@ -27,3 +27,7 @@ export const Content = styled.div<{ isClickable: boolean }>`
     flex-shrink: 1;
   }
 `;
+
+export const IconWrapper = styled.span`
+  margin-left: auto;
+`;

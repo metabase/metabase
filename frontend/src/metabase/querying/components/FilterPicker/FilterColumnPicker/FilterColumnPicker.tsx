@@ -32,6 +32,7 @@ type Section = {
   name: string;
   items: (Lib.ColumnMetadata | Lib.SegmentMetadata)[];
   icon?: IconName;
+  hasAction?: boolean;
 };
 
 const CUSTOM_EXPRESSION_SECTION: Section = {
@@ -39,6 +40,7 @@ const CUSTOM_EXPRESSION_SECTION: Section = {
   name: t`Custom Expression`,
   items: [],
   icon: "filter",
+  hasAction: true,
 };
 
 export const isSegmentListItem = (
@@ -125,6 +127,7 @@ export function FilterColumnPicker({
         // Prefer using a11y role selectors
         itemTestId="dimension-list-item"
         searchProp={["name", "displayName"]}
+        globalSearch
       />
     </DelayGroup>
   );
