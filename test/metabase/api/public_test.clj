@@ -1755,5 +1755,5 @@
                 (is (= expected
                        (->> (mt/user-http-request
                              :crowberto :get 200
-                             (format "public/card/%s/query/%s?format_export=%s" uuid (name export-format) apply-formatting?))
+                             (format "public/card/%s/query/%s?format_rows=%s" uuid (name export-format) apply-formatting?))
                             ((get output-helper export-format))))))))))))

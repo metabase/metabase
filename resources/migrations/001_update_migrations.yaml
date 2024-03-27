@@ -5544,6 +5544,14 @@ databaseChangeLog:
                   remarks: Whether or not to apply formatting to the rows of the export
 
   - changeSet:
+      id: v49.2024-03-26T20:27:58
+      author: noahmoss
+      comment: Added 0.46.0 - Delete the truncate audit log task (renamed to truncate audit tables)
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteTruncateAuditLogTask"
+
+  - changeSet:
       id: v50.2024-01-04T13:52:51
       author: noahmoss
       comment: Data permissions table

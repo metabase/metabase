@@ -167,6 +167,7 @@
                              :display            :table
                              :include_csv        false
                              :include_xls        false
+                             :format_rows        true
                              :dashboard_card_id  nil
                              :dashboard_id       nil
                              :parameter_mappings nil}]})
@@ -257,6 +258,7 @@
                                    :display            :bar
                                    :include_csv        false
                                    :include_xls        false
+                                   :format_rows        true
                                    :dashboard_card_id  nil
                                    :dashboard_id       nil
                                    :parameter_mappings nil}
@@ -266,6 +268,7 @@
                                    :display            :table
                                    :include_csv        false
                                    :include_xls        false
+                                   :format_rows        true
                                    :dashboard_card_id  nil
                                    :dashboard_id       nil
                                    :parameter_mappings nil}]

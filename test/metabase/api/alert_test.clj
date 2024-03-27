@@ -34,7 +34,7 @@
       (select-keys [:name :description :display])
       (update :display name)
       (update :collection_id boolean)
-      (assoc :id true, :include_csv false, :include_xls false, :dashboard_card_id false,
+      (assoc :id true, :include_csv false, :include_xls false, :format_rows true, :dashboard_card_id false,
              :dashboard_id false, :parameter_mappings nil)))
 
 (defn- recipient-details [user-kwd]

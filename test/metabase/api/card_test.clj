@@ -3528,5 +3528,5 @@
               (is (= expected
                      (->> (mt/user-http-request
                            :crowberto :post 200
-                           (format "card/%s/query/%s?format_export=%s" card-id (name export-format) apply-formatting?))
+                           (format "card/%s/query/%s?format_rows=%s" card-id (name export-format) apply-formatting?))
                           ((get output-helper export-format)))))))))))

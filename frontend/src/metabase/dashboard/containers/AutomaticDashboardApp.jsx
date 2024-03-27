@@ -79,7 +79,10 @@ class AutomaticDashboardAppInner extends Component {
     triggerToast(
       <div className={cx(CS.flex, CS.alignCenter)}>
         {t`Your dashboard was saved`}
-        <Link className="link text-bold ml1" to={Urls.dashboard(newDashboard)}>
+        <Link
+          className={cx(CS.link, "text-bold ml1")}
+          to={Urls.dashboard(newDashboard)}
+        >
           {t`See it`}
         </Link>
       </div>,
@@ -253,7 +256,7 @@ const SuggestionsList = ({ suggestions, section }) => (
             <ItemLink
               key={itemIndex}
               to={item.url}
-              className="hover-parent hover--visibility"
+              className={cx(CS.hoverParent, CS.hoverVisibility)}
             >
               <Card className="p2" hoverable>
                 <ItemContent>
@@ -263,7 +266,7 @@ const SuggestionsList = ({ suggestions, section }) => (
                     className="mr1"
                   />
                   <h4 className="text-wrap">{item.title}</h4>
-                  <ItemDescription className="hover-child">
+                  <ItemDescription className={CS.hoverChild}>
                     <Tooltip tooltip={item.description}>
                       <Icon name="info_outline" color={color("bg-dark")} />
                     </Tooltip>

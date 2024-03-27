@@ -312,8 +312,8 @@ describe("scenarios > dashboard", () => {
         cy.findByTestId("edit-bar").button("Cancel").click();
         openDashboardMenu();
         popover().findByText("Move").click();
-        modal().within(() => {
-          cy.findByRole("heading", { name: myPersonalCollection }).click();
+        entityPickerModal().within(() => {
+          cy.findByText("Bobby Tables's Personal Collection").click();
           cy.button("Move").click();
         });
 
@@ -330,8 +330,8 @@ describe("scenarios > dashboard", () => {
         cy.findByTestId("edit-bar").button("Cancel").click();
         openDashboardMenu();
         popover().findByText("Move").click();
-        modal().within(() => {
-          cy.findByRole("heading", { name: "Our analytics" }).click();
+        entityPickerModal().within(() => {
+          cy.findByText("Our analytics").click();
           cy.button("Move").click();
         });
 
@@ -1159,8 +1159,7 @@ function checkOptionsForFilter(filter) {
     .and("not.contain", "Dashboard filters");
 
   // Get rid of the open popover to be able to select another filter
-  // Uses force: true because the popover is covering this text. This happens
-  // after we introduce the database prompt banner.
+  // Uses force: true because the popover is covering this text.
   cy.findByText("Pick one or more filters to update").click({ force: true });
 }
 

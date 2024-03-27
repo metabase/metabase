@@ -297,6 +297,7 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.findByText("Browse data").click();
     });
 
+    cy.findByRole("tab", { name: "Databases" }).click();
     cy.findByTestId("database-browser").within(() => {
       cy.findByText("Sample Database").should("exist");
     });

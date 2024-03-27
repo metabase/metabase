@@ -519,7 +519,7 @@
   (for [{{result-card-id :id} :card :as result} results
         :let [pulse-card (m/find-first #(= (:id %) result-card-id) (:cards pulse))]]
     (if result-card-id
-      (update result :card merge (select-keys pulse-card [:include_csv :include_xls :format_export]))
+      (update result :card merge (select-keys pulse-card [:include_csv :include_xls :format_rows]))
       result)))
 
 (defn render-pulse-email

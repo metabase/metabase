@@ -169,7 +169,7 @@ export default class PulseEditChannels extends Component {
         )}
         {channelSpec.recipients && (
           <div>
-            <div className="h4 text-bold mb1">
+            <div className={cx(CS.h4, CS.textBold, CS.mb1)}>
               {this.props.emailRecipientText || t`To:`}
             </div>
             <RecipientPicker
