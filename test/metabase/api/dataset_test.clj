@@ -625,6 +625,6 @@
           (is (= expected
                  (->> (mt/user-http-request
                        :crowberto :post 200
-                       (format "dataset/%s?format_export=%s" (name export-format) apply-formatting?)
+                       (format "dataset/%s?format_rows=%s" (name export-format) apply-formatting?)
                        :query (json/generate-string q))
                       ((get output-helper export-format))))))))))
