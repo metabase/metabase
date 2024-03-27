@@ -197,6 +197,20 @@ PowYScaleMixed.args = {
   renderingContext,
 };
 
+export const LogYScale = Template.bind({});
+LogYScale.args = {
+  rawSeries: data.logYScale as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const LogYScaleNegative = Template.bind({});
+LogYScaleNegative.args = {
+  rawSeries: data.logYScaleNegative as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const NativeTimeSeriesQuarter = Template.bind({});
 NativeTimeSeriesQuarter.args = {
   rawSeries: data.nativeTimeSeriesQuarter as any,
