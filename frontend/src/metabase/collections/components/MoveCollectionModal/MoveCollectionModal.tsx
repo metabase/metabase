@@ -29,8 +29,12 @@ const MoveCollectionModalView = ({
 }: MoveCollectionModalProps): JSX.Element => {
   const handleMove = useCallback(
     async (destination: { id: CollectionId }) => {
-      await onMove(collection, destination);
-      onClose();
+      try {
+        await onMove(collection, destination);
+        onClose();
+      } catch (e) {
+        console.log("caught error", e);
+      }
     },
     [collection, onMove, onClose],
   );
@@ -76,8 +80,7 @@ export const MoveCollectionModal = ({
     <MoveCollectionModalView
       collection={collection}
       onMove={async (source, destination) => {
-        const result = await dispatch(Collections.actions.setCollection(source, destination).catch(e => e))
-        console.log('dispatch await result', result);
+        await dispatch(Collections.actions.setCollection(source, destination));
       }}
       onClose={onClose}
     />
