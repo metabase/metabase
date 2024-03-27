@@ -53,7 +53,7 @@ export const SegmentQuestions = ({ style, table, segment, metadata }) => {
   });
 
   return (
-    <div style={style} className="full">
+    <div style={style} className={CS.full}>
       <ReferenceHeader
         name={t`Questions about ${segment.name}`}
         type="questions"

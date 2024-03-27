@@ -174,7 +174,7 @@ class AlertListItemInner extends Component {
         })}
       >
         <Icon name="alert" size="20" />
-        <div className="full ml2">
+        <div className={cx(CS.full, CS.ml2)}>
           <div className={cx(CS.flex, "align-top")}>
             <div>
               <AlertCreatorTitle alert={alert} user={user} />

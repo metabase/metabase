@@ -64,7 +64,8 @@
 }
 
 :global(.text-right),
-.text-right {
+.text-right,
+.textRight {
   text-align: right;
 }
 
@@ -212,7 +213,8 @@
 }
 
 :global(.text-monospace),
-.text-monospace {
+.text-monospace,
+.textMonospace {
   font-family: Monaco, monospace;
 }
 

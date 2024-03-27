@@ -63,7 +63,11 @@ export const CodeSample = ({
       )}
       <div
         className={cx(
-          "bordered rounded shadowed relative mt2",
+          CS.bordered,
+          CS.rounded,
+          CS.shadowed,
+          CS.relative,
+          CS.mt2,
           CS.overflowHidden,
         )}
       >

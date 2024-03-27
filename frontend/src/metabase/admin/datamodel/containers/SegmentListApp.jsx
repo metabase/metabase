@@ -29,7 +29,7 @@ class SegmentListAppInner extends Component {
           <thead className="text-bold">
             <tr>
               <th style={{ minWidth: "320px" }}>{t`Name`}</th>
-              <th className="full">{t`Definition`}</th>
+              <th className={CS.full}>{t`Definition`}</th>
               <th>{t`Actions`}</th>
             </tr>
           </thead>

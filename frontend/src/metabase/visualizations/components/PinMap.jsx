@@ -188,7 +188,10 @@ export default class PinMap extends Component {
       <div
         className={cx(
           className,
-          "PinMap relative hover-parent hover--visibility",
+          "PinMap",
+          CS.relative,
+          "hover-parent",
+          "hover--visibility",
         )}
         onMouseDownCapture={e => e.stopPropagation() /* prevent dragging */}
       >

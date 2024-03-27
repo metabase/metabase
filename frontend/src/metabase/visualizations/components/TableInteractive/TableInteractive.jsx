@@ -989,7 +989,7 @@ class TableInteractive extends Component {
             }
             return (
               <TableInteractiveRoot
-                className={cx(className, "TableInteractive relative", {
+                className={cx(className, "TableInteractive", CS.relative, {
                   "TableInteractive--pivot": this.props.isPivoted,
                   "TableInteractive--ready": this.state.contentWidths,
                   // no hover if we're dragging a column

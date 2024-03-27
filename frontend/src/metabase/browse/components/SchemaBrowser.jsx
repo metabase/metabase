@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { t } from "ttag";
 
 import TableBrowser from "metabase/browse/containers/TableBrowser";
@@ -44,7 +45,9 @@ function SchemaBrowser(props) {
             />
           </BrowseHeaderContent>
           {schemas.length === 0 ? (
-            <h2 className="full text-centered text-medium">{t`This database doesn't have any tables.`}</h2>
+            <h2
+              className={cx(CS.full, CS.textCentered, CS.textMedium)}
+            >{t`This database doesn't have any tables.`}</h2>
           ) : (
             <Grid>
               {schemas.map(schema => (

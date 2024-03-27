@@ -114,7 +114,15 @@ function ErrorDetailDisplay(props) {
       </h2>,
       <div
         key="error_str"
-        className="half rounded p2 text-dark text-monospace text-small bg-light"
+        className={cx(
+          CS.half,
+          CS.rounded,
+          CS.p2,
+          CS.textDark,
+          CS.textMonospace,
+          "text-small",
+          "bg-light",
+        )}
       >
         {resRow[nameToResCol.error_str]}
       </div>,

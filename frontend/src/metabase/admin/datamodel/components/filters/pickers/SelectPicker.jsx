@@ -136,7 +136,7 @@ export default class SelectPicker extends Component {
               {validOptions.map(option => (
                 <div
                   key={option.key}
-                  className="half"
+                  className={CS.half}
                   style={{ padding: "0.15em" }}
                 >
                   <SelectPickerButton

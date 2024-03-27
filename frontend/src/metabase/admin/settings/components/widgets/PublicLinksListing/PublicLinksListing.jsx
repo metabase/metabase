@@ -184,7 +184,10 @@ export const EmbeddedResources = () => (
   <Stack spacing="md" className={CS.flexFull}>
     <div>
       <Text mb="sm">{t`Embedded Dashboards`}</Text>
-      <div className="bordered rounded full" style={{ maxWidth: 820 }}>
+      <div
+        className={cx(CS.bordered, CS.rounded, CS.full)}
+        style={{ maxWidth: 820 }}
+      >
         <PublicLinksListing
           data-testId="-embedded-dashboards-setting"
           load={DashboardApi.listEmbeddable}
@@ -197,7 +200,10 @@ export const EmbeddedResources = () => (
 
     <div>
       <Text mb="sm">{t`Embedded Questions`}</Text>
-      <div className="bordered rounded full" style={{ maxWidth: 820 }}>
+      <div
+        className={cx(CS.bordered, CS.rounded, CS.full)}
+        style={{ maxWidth: 820 }}
+      >
         <PublicLinksListing
           data-testId="-embedded-questions-setting"
           load={CardApi.listEmbeddable}

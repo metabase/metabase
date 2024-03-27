@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
@@ -8,6 +9,7 @@ import _ from "underscore";
 import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 import User from "metabase/entities/users";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -38,7 +40,9 @@ class UserPasswordResetModal extends Component {
         footer={<Button primary onClick={this.handleClose}>{t`Done`}</Button>}
         onClose={this.handleClose}
       >
-        <span className="pb3 block">{t`Here’s a temporary password they can use to log in and then change their password.`}</span>
+        <span
+          className={cx(CS.pb3, CS.block)}
+        >{t`Here’s a temporary password they can use to log in and then change their password.`}</span>
 
         <PasswordReveal password={temporaryPassword} />
       </ModalContent>
