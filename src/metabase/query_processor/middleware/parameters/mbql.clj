@@ -4,6 +4,7 @@
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -80,7 +81,7 @@
     ;; TODO - We can't tell the difference between a dashboard parameter (convert to an MBQL filter) and a native
     ;; query template tag parameter without this. There's should be a better, less fragile way to do this. (Not 100%
     ;; sure why, but this is needed for GTAPs to work.)
-    (mbql.u/is-clause? :template-tag field)
+    (schema.helpers/is-clause? :template-tag field)
     nil
 
     ;; single-value, non-date param. Generate MBQL [= [field <field> nil] <value>] clause

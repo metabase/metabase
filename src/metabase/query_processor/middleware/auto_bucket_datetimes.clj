@@ -7,7 +7,7 @@
    [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.log :as log]
@@ -56,7 +56,7 @@
 
 (defn- auto-bucketable-value? [v]
   (or (yyyy-MM-dd-date-string? v)
-      (mbql.u/is-clause? :relative-datetime v)))
+      (schema.helpers/is-clause? :relative-datetime v)))
 
 (defn- should-not-be-autobucketed?
   "Is `x` a clause (or a clause that contains a clause) that we should definitely not autobucket?"
@@ -64,11 +64,11 @@
   (or
    ;; do not autobucket Fields in a non-compound filter clause that either:
    (when (and (mbql.preds/Filter? x)
-              (not (mbql.u/is-clause? #{:and :or :not} x)))
+              (not (schema.helpers/is-clause? #{:and :or :not} x)))
      (or
       ;; *  is not an equality or comparison filter. e.g. wouldn't make sense to bucket a field and then check if it is
       ;;    `NOT NULL`
-      (not (mbql.u/is-clause? #{:= :!= :< :> :<= :>= :between} x))
+      (not (schema.helpers/is-clause? #{:= :!= :< :> :<= :>= :between} x))
       ;; *  has arguments that aren't `yyyy-MM-dd` date strings. The only reason we auto-bucket datetime Fields in the
       ;; *  first place is for legacy reasons, if someone is specifying additional info like hour/minute then we
       ;; *  shouldn't assume they want to bucket by day
@@ -76,9 +76,9 @@
         (not (every? auto-bucketable-value? vs)))))
    ;; do not auto-bucket fields inside a `:time-interval` filter: it already supplies its own unit
    ;; do not auto-bucket fields inside a `:datetime-diff` clause: the precise timestamp is needed for the difference
-   (mbql.u/is-clause? #{:time-interval :datetime-diff} x)
+   (schema.helpers/is-clause? #{:time-interval :datetime-diff} x)
    ;; do not autobucket Fields that already have a temporal unit, or have a binning strategy
-   (and (mbql.u/is-clause? :field x)
+   (and (schema.helpers/is-clause? :field x)
         (let [[_ _ opts] x]
           ((some-fn :temporal-unit :binning) opts)))))
 

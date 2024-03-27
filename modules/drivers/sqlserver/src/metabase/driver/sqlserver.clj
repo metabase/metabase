@@ -17,6 +17,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.interface :as qp.i]
@@ -411,7 +412,7 @@
   The `year`, `month`, and `day` can make use of indexes whereas `DateFromParts` cannot. The optimized version of the
   query is much more efficient. See #9934 for more details."
   [field-clause]
-  (when (mbql.u/is-clause? :field field-clause)
+  (when (schema.helpers/is-clause? :field field-clause)
     (let [[_ id-or-name {:keys [temporal-unit], :as opts}] field-clause]
       (when (#{:year :month :day} temporal-unit)
         (mapv

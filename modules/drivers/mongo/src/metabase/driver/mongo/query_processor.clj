@@ -16,6 +16,7 @@
                                             $size $skip $sort $strcasecmp $subtract $sum $toLower $unwind $year]]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
@@ -728,7 +729,7 @@
                    [:<= field max-val]]))
 
 (defn- str-match-pattern [field options prefix value suffix]
-  (if (mbql.u/is-clause? ::not value)
+  (if (schema.helpers/is-clause? ::not value)
     {$not (str-match-pattern field options prefix (second value) suffix)}
     (do
       (assert (and (contains? #{nil "^"} prefix) (contains? #{nil "$"} suffix))
@@ -1013,7 +1014,7 @@
      [(field-alias field-or-expr) (format "$_id.%s" (field-alias field-or-expr))])
    (for [ag aggregations
          :let [ag-name (annotate/aggregation-name (:query *query*) ag)]]
-     [ag-name (if (mbql.u/is-clause? :distinct (unwrap-named-ag ag))
+     [ag-name (if (schema.helpers/is-clause? :distinct (unwrap-named-ag ag))
                 {$size (str \$ ag-name)}
                 true)])))
 

@@ -51,6 +51,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -218,7 +219,7 @@
                                                 :or   {normalize-fn normalize-clause}}]
   (let [normalized    (normalize-fn field-clause)
         all-exports   (exports source-query)
-        field-exports (filter (partial mbql.u/is-clause? :field)
+        field-exports (filter (partial schema.helpers/is-clause? :field)
                               all-exports)]
     ;; first look for an EXACT match in the `exports`
     (or (m/find-first (fn [a-clause]
@@ -242,14 +243,14 @@
           (or ;; Expressions by exact name.
               (m/find-first (fn [[_ expression-name :as _expression-clause]]
                               (= expression-name field-name))
-                            (filter (partial mbql.u/is-clause? :expression) all-exports))
+                            (filter (partial schema.helpers/is-clause? :expression) all-exports))
               ;; Expressions whose ::desired-alias matches the name we're searching for.
               (m/find-first (fn [[_expression _expression-name {::keys [desired-alias]} :as _expression-clause]]
                               (= desired-alias field-name))
-                            (filter (partial mbql.u/is-clause? :expression) all-exports))
+                            (filter (partial schema.helpers/is-clause? :expression) all-exports))
               (m/find-first (fn [[_ _ opts :as _aggregation-options-clause]]
                               (= (::source-alias opts) field-name))
-                            (filter (partial mbql.u/is-clause? :aggregation-options) all-exports))))
+                            (filter (partial schema.helpers/is-clause? :aggregation-options) all-exports))))
         ;; look for a field referenced by the name in source-metadata
         (let [field-name (second field-clause)]
           (when (string? field-name)
@@ -409,7 +410,7 @@
     (let [[_ _ {ag-name :name} :as matching-ag] (nth aggregations index)]
       ;; make sure we have an `:aggregation-options` clause like we expect. This is mostly a precondition check
       ;; since we should never be running this code on not-preprocessed queries, so it's not i18n'ed
-      (when-not (mbql.u/is-clause? :aggregation-options matching-ag)
+      (when-not (schema.helpers/is-clause? :aggregation-options matching-ag)
         (throw (ex-info (format "Expected :aggregation-options, got %s. (Query must be fully preprocessed.)"
                                 (pr-str matching-ag))
                         {:clause ag-ref-clause, :query inner-query})))
