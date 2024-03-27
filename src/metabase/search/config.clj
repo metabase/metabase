@@ -147,6 +147,8 @@
    :bookmark            :boolean
    ;; returned for everything except Collection
    :updated_at          :timestamp
+   ;; returned only for Collection
+   :location            :text
    ;; returned for Card only, used for scoring and displays
    :dashboardcard_count :integer
    :last_edited_at      :timestamp
@@ -299,6 +301,7 @@
         [:name :collection_name]
         [:type :collection_type]
         [:authority_level :collection_authority_level]
+        :location
         bookmark-col))
 
 (defmethod columns-for-model "segment"
