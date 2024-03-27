@@ -45,10 +45,13 @@ describe("Notebook Editor > Expression Step", () => {
   it("should handle adding expression", async () => {
     const { getRecentQuery } = setup();
 
-    userEvent.click(screen.getByRole("img", { name: "add icon" }));
+    await userEvent.click(screen.getByRole("img", { name: "add icon" }));
 
-    userEvent.type(screen.getByLabelText("Expression"), "1 + 1");
-    userEvent.type(screen.getByLabelText("Name"), "new expression{enter}");
+    await userEvent.type(screen.getByLabelText("Expression"), "1 + 1");
+    await userEvent.type(
+      screen.getByLabelText("Name"),
+      "new expression{enter}",
+    );
 
     const recentQuery = getRecentQuery();
     const expressions = Lib.expressions(recentQuery, 0);
@@ -64,11 +67,11 @@ describe("Notebook Editor > Expression Step", () => {
     });
     const { getRecentQuery } = setup({ query });
 
-    userEvent.click(screen.getByText("old name"));
+    await userEvent.click(screen.getByText("old name"));
 
     const nameField = screen.getByLabelText("Name");
-    userEvent.clear(nameField);
-    userEvent.type(nameField, "new name{enter}");
+    await userEvent.clear(nameField);
+    await userEvent.type(nameField, "new name{enter}");
 
     const recentQuery = getRecentQuery();
     const expressions = Lib.expressions(recentQuery, 0);
@@ -78,7 +81,7 @@ describe("Notebook Editor > Expression Step", () => {
     );
   });
 
-  it("should handle removing existing expression", () => {
+  it("should handle removing existing expression", async () => {
     const query = createQueryWithClauses({
       expressions: [{ name: "expression name", operator: "+", args: [1, 1] }],
     });
@@ -89,7 +92,7 @@ describe("Notebook Editor > Expression Step", () => {
       name: "close icon",
     });
 
-    userEvent.click(closeIcon);
+    await userEvent.click(closeIcon);
 
     expect(Lib.expressions(getRecentQuery(), 0)).toHaveLength(0);
   });
@@ -97,10 +100,10 @@ describe("Notebook Editor > Expression Step", () => {
   it("should handle expressions named as existing columns (metabase#39508)", async () => {
     const { getRecentQuery } = setup();
 
-    userEvent.click(screen.getByRole("img", { name: "add icon" }));
+    await userEvent.click(screen.getByRole("img", { name: "add icon" }));
 
-    userEvent.type(screen.getByLabelText("Expression"), "1 + 1");
-    userEvent.type(screen.getByLabelText("Name"), "Total{enter}");
+    await userEvent.type(screen.getByLabelText("Expression"), "1 + 1");
+    await userEvent.type(screen.getByLabelText("Name"), "Total{enter}");
 
     const recentQuery = getRecentQuery();
     const expressions = Lib.expressions(recentQuery, 0);

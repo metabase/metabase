@@ -52,16 +52,17 @@ describe("LegaleseStep", () => {
   });
 
   it("calls goToNextStep and updates setting on clicking 'Agree and continue'", async () => {
-    const settingPutCalls = fetchMock.put(
-      "path:/api/setting/show-static-embed-terms",
-      {},
-    );
+    fetchMock.put("path:/api/setting/show-static-embed-terms", 204);
 
     const { goToNextStep } = setup();
-    userEvent.click(screen.getByText("Agree and continue"));
+    await userEvent.click(screen.getByText("Agree and continue"));
 
-    expect(settingPutCalls.calls().length).toBe(1);
-    expect(await settingPutCalls.lastCall()?.request?.json()).toEqual({
+    const settingPutCalls = fetchMock.calls(
+      "path:/api/setting/show-static-embed-terms",
+    );
+
+    expect(settingPutCalls.length).toBe(1);
+    expect(await settingPutCalls[0]?.request?.json()).toEqual({
       value: false,
     });
     expect(goToNextStep).toHaveBeenCalled();

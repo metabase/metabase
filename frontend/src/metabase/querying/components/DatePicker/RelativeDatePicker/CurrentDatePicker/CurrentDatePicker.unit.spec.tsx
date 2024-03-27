@@ -1,4 +1,4 @@
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
@@ -16,6 +16,10 @@ interface SetupOpts {
   value?: RelativeDatePickerValue;
 }
 
+const userEvent = _userEvent.setup({
+  advanceTimers: jest.advanceTimersByTime,
+});
+
 function setup({ value = DEFAULT_VALUE }: SetupOpts = {}) {
   const onChange = jest.fn();
 
@@ -30,10 +34,10 @@ describe("CurrentDatePicker", () => {
     jest.setSystemTime(new Date(2020, 0, 1));
   });
 
-  it("should be able to filter by a current interval", () => {
+  it("should be able to filter by a current interval", async () => {
     const { onChange } = setup();
 
-    userEvent.click(screen.getByText("Week"));
+    await userEvent.click(screen.getByText("Week"));
 
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
@@ -42,10 +46,10 @@ describe("CurrentDatePicker", () => {
     });
   });
 
-  it("should show the date range for the selected interval", () => {
+  it("should show the date range for the selected interval", async () => {
     setup();
 
-    userEvent.hover(screen.getByText("Week"));
+    await userEvent.hover(screen.getByText("Week"));
 
     expect(
       screen.getByText("Right now, this is Dec 29, 2019 – Jan 4, 2020"),

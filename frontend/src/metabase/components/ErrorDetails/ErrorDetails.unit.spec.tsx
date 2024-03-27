@@ -10,14 +10,14 @@ const setup = (propOverrides?: object) => {
 describe("ErrorDetails", () => {
   it("should render string errors", async () => {
     setup({ details: "Oh no!" });
-    userEvent.click(screen.getByText("Show error details"));
+    await userEvent.click(screen.getByText("Show error details"));
 
     expect(await screen.findByText("Oh no!")).toBeVisible();
   });
 
   it("should render message property errors", async () => {
     setup({ details: { message: "Oh no!" } });
-    userEvent.click(screen.getByText("Show error details"));
+    await userEvent.click(screen.getByText("Show error details"));
 
     expect(await screen.findByText("Oh no!")).toBeVisible();
   });
@@ -26,7 +26,7 @@ describe("ErrorDetails", () => {
     setup({ details: { message: "Oh no!" } });
     expect(screen.queryByText("Oh no!")).not.toBeVisible();
 
-    userEvent.click(screen.getByText("Show error details"));
+    await userEvent.click(screen.getByText("Show error details"));
 
     expect(await screen.findByText("Oh no!")).toBeVisible();
   });

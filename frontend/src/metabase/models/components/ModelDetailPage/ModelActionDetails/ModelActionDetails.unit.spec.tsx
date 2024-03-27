@@ -58,7 +58,7 @@ describe("ModelActionDetails", () => {
   it("should not leave ActionCreatorModal when clicking outside modal", async () => {
     await setup({});
 
-    userEvent.click(document.body);
+    await userEvent.click(document.body);
 
     const mockQueryEditor = await screen.findByTestId(
       "mock-native-query-editor",

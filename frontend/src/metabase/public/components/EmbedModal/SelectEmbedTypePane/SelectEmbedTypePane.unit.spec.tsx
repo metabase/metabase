@@ -78,10 +78,12 @@ describe("SelectEmbedTypePane", () => {
         ).toBeInTheDocument();
       });
 
-      it("should call `goToNextStep` with `application` when `Edit settings` is clicked", () => {
+      it("should call `goToNextStep` with `application` when `Edit settings` is clicked", async () => {
         const { goToNextStep } = setup({ isResourcePublished: true });
 
-        userEvent.click(screen.getByRole("button", { name: "Edit settings" }));
+        await userEvent.click(
+          screen.getByRole("button", { name: "Edit settings" }),
+        );
 
         expect(goToNextStep).toHaveBeenCalled();
       });
@@ -96,10 +98,12 @@ describe("SelectEmbedTypePane", () => {
         ).toBeInTheDocument();
       });
 
-      it("should call `goToNextStep` with `application` when `Set this up` is clicked", () => {
+      it("should call `goToNextStep` with `application` when `Set this up` is clicked", async () => {
         const { goToNextStep } = setup({ isResourcePublished: false });
 
-        userEvent.click(screen.getByRole("button", { name: "Set this up" }));
+        await userEvent.click(
+          screen.getByRole("button", { name: "Set this up" }),
+        );
 
         expect(goToNextStep).toHaveBeenCalled();
       });
@@ -125,12 +129,12 @@ describe("SelectEmbedTypePane", () => {
         expect(embedLinkButton).toBeDisabled();
       });
 
-      it("should redirect to settings when public sharing is disabled and `Settings` is clicked", () => {
+      it("should redirect to settings when public sharing is disabled and `Settings` is clicked", async () => {
         const { history } = setup({
           isPublicSharingEnabled: false,
         });
 
-        userEvent.click(screen.getByTestId("sharing-pane-settings-link"));
+        await userEvent.click(screen.getByTestId("sharing-pane-settings-link"));
 
         expect(history.getCurrentLocation().pathname).toEqual(
           "/admin/settings/public-sharing",
@@ -139,7 +143,7 @@ describe("SelectEmbedTypePane", () => {
     });
 
     describe("when a public link exists", () => {
-      it("should render iframe link, copy button, `Copy snippet` description, and `Affects public url and link` tooltip", () => {
+      it("should render iframe link, copy button, `Copy snippet` description, and `Affects public url and link` tooltip", async () => {
         setup({ hasPublicLink: true, isPublicSharingEnabled: true });
 
         expect(
@@ -155,7 +159,7 @@ describe("SelectEmbedTypePane", () => {
         expect(screen.getByTestId("copy-button")).toBeInTheDocument();
         expect(screen.getByText("Remove public URL")).toBeInTheDocument();
 
-        userEvent.hover(screen.getByText("Remove public URL"));
+        await userEvent.hover(screen.getByText("Remove public URL"));
         expect(
           screen.getByText(
             "Affects both embed URL and public link for this dashboard",
@@ -163,13 +167,13 @@ describe("SelectEmbedTypePane", () => {
         ).toBeInTheDocument();
       });
 
-      it("should call `onDeletePublicLink` when `Remove public URL` is clicked", () => {
+      it("should call `onDeletePublicLink` when `Remove public URL` is clicked", async () => {
         const { onDeletePublicLink } = setup({
           hasPublicLink: true,
           isPublicSharingEnabled: true,
         });
 
-        userEvent.click(screen.getByText("Remove public URL"));
+        await userEvent.click(screen.getByText("Remove public URL"));
 
         expect(onDeletePublicLink).toHaveBeenCalled();
       });
@@ -188,10 +192,10 @@ describe("SelectEmbedTypePane", () => {
         expect(screen.getByText("Get an embed link")).toBeInTheDocument();
       });
 
-      it("should call `onCreatePublicLink` when `Get an embed link` is clicked", () => {
+      it("should call `onCreatePublicLink` when `Get an embed link` is clicked", async () => {
         const { onCreatePublicLink } = setup({ isPublicSharingEnabled: true });
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByRole("button", { name: "Get an embed link" }),
         );
 

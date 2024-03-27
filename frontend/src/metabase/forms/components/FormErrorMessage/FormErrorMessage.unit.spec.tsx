@@ -35,14 +35,14 @@ describe("FormErrorMessage", () => {
   it("should show the default error message", async () => {
     const { onSubmit } = setup();
     onSubmit.mockRejectedValue(new Error());
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByText("Submit"));
     expect(await screen.findByText("An error occurred")).toBeInTheDocument();
   });
 
   it("should show a custom error message", async () => {
     const { onSubmit } = setup();
     onSubmit.mockRejectedValue(new Error("Wrong host or port"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByText("Submit"));
     expect(await screen.findByText("Wrong host or port")).toBeInTheDocument();
   });
 });

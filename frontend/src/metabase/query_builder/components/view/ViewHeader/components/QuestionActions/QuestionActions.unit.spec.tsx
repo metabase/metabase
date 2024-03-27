@@ -92,7 +92,7 @@ describe("QuestionActions", () => {
       }),
     });
 
-    userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(getIcon("ellipsis"));
     await screen.findByRole("dialog");
 
     expect(screen.getByText("Edit query definition")).toBeInTheDocument();
@@ -107,7 +107,7 @@ describe("QuestionActions", () => {
       }),
     });
 
-    userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(getIcon("ellipsis"));
     await screen.findByRole("dialog");
 
     expect(screen.queryByText("Edit query definition")).not.toBeInTheDocument();

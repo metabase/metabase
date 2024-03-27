@@ -147,8 +147,8 @@ describe("actions > containers > ActionCreatorModal", () => {
         expect(screen.getByTestId("action-creator")).toBeInTheDocument();
       });
 
-      userEvent.type(screen.getByDisplayValue("New Action"), "a change");
-      userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
+      await userEvent.type(screen.getByDisplayValue("New Action"), "a change");
+      await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
 
       history.goBack();
 
@@ -168,9 +168,9 @@ describe("actions > containers > ActionCreatorModal", () => {
 
       const query = "select 1;";
 
-      userEvent.type(screen.getByDisplayValue("New Action"), "a change");
-      userEvent.type(screen.queryAllByRole("textbox")[1], query);
-      userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
+      await userEvent.type(screen.getByDisplayValue("New Action"), "a change");
+      await userEvent.type(screen.queryAllByRole("textbox")[1], query);
+      await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
 
       fetchMock.post("path:/api/action", {
         name: "New Actiona change",
@@ -195,8 +195,8 @@ describe("actions > containers > ActionCreatorModal", () => {
         },
       });
 
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
-      userEvent.click(screen.getByRole("button", { name: "Create" }));
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await userEvent.click(screen.getByRole("button", { name: "Create" }));
 
       await waitFor(() => {
         expect(history.getCurrentLocation().pathname).toBe(initialRoute);
@@ -222,10 +222,10 @@ describe("actions > containers > ActionCreatorModal", () => {
       });
 
       const input = screen.getByDisplayValue(action.name);
-      userEvent.type(input, "12");
-      userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
-      userEvent.type(input, "{backspace}{backspace}");
-      userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
+      await userEvent.type(input, "12");
+      await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
+      await userEvent.type(input, "{backspace}{backspace}");
+      await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
 
       history.goBack();
 
@@ -246,8 +246,8 @@ describe("actions > containers > ActionCreatorModal", () => {
         expect(screen.getByTestId("action-creator")).toBeInTheDocument();
       });
 
-      userEvent.type(screen.getByDisplayValue(action.name), "a change");
-      userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
+      await userEvent.type(screen.getByDisplayValue(action.name), "a change");
+      await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
 
       history.goBack();
 
@@ -267,8 +267,8 @@ describe("actions > containers > ActionCreatorModal", () => {
         expect(screen.getByTestId("action-creator")).toBeInTheDocument();
       });
 
-      userEvent.type(screen.getByDisplayValue(action.name), "a change");
-      userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
+      await userEvent.type(screen.getByDisplayValue(action.name), "a change");
+      await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
 
       fetchMock.put(
         `path:/api/action/${action.id}`,
@@ -279,7 +279,7 @@ describe("actions > containers > ActionCreatorModal", () => {
         { overwriteRoutes: true },
       );
 
-      userEvent.click(screen.getByRole("button", { name: "Update" }));
+      await userEvent.click(screen.getByRole("button", { name: "Update" }));
 
       await waitFor(() => {
         expect(history.getCurrentLocation().pathname).toBe(initialRoute);

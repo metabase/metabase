@@ -59,7 +59,7 @@ describe("SearchUserPicker", () => {
 
   it("should show 'No results' when no users match the filter", async () => {
     await setup();
-    userEvent.type(
+    await userEvent.type(
       screen.getByPlaceholderText("Search for someone…"),
       "Charlie",
     );
@@ -87,14 +87,14 @@ describe("SearchUserPicker", () => {
     await setup();
     const searchUserList = within(screen.getByTestId("search-user-list"));
 
-    userEvent.click(searchUserList.getByText("Alice"));
+    await userEvent.click(searchUserList.getByText("Alice"));
     expect(screen.getByTestId("selected-user-button")).toHaveTextContent(
       "Alice",
     );
 
     expect(searchUserList.queryByText("Alice")).not.toBeInTheDocument();
 
-    userEvent.click(searchUserList.getByText("Bob"));
+    await userEvent.click(searchUserList.getByText("Bob"));
     expect(
       screen.getAllByTestId("selected-user-button").map(el => el.textContent),
     ).toEqual(["Alice", "Bob"]);
@@ -115,11 +115,11 @@ describe("SearchUserPicker", () => {
     expect(selectBox.getByText("Alice")).toBeInTheDocument();
     expect(selectBox.getByText("Bob")).toBeInTheDocument();
 
-    userEvent.click(selectBox.getByText("Alice"));
+    await userEvent.click(selectBox.getByText("Alice"));
     expect(screen.getByTestId("selected-user-button")).toHaveTextContent("Bob");
     expect(searchUserList.getByText("Alice")).toBeInTheDocument();
 
-    userEvent.click(selectBox.getByText("Bob"));
+    await userEvent.click(selectBox.getByText("Bob"));
 
     // expect the two users are only in the search list now
     expect(
@@ -131,7 +131,10 @@ describe("SearchUserPicker", () => {
 
   it("should filter users when user types in the search box", async () => {
     await setup();
-    userEvent.type(screen.getByPlaceholderText("Search for someone…"), "Alice");
+    await userEvent.type(
+      screen.getByPlaceholderText("Search for someone…"),
+      "Alice",
+    );
     const searchUserList = within(screen.getByTestId("search-user-list"));
     expect(searchUserList.getByText("Alice")).toBeInTheDocument();
 
@@ -142,10 +145,10 @@ describe("SearchUserPicker", () => {
     const { mockOnChange } = await setup();
 
     const searchUserList = within(screen.getByTestId("search-user-list"));
-    userEvent.click(searchUserList.getByText("Alice"));
-    userEvent.click(searchUserList.getByText("Bob"));
+    await userEvent.click(searchUserList.getByText("Alice"));
+    await userEvent.click(searchUserList.getByText("Bob"));
 
-    userEvent.click(screen.getByText("Apply"));
+    await userEvent.click(screen.getByText("Apply"));
 
     expect(mockOnChange).toHaveBeenCalledWith([1, 2]);
   });
@@ -155,10 +158,10 @@ describe("SearchUserPicker", () => {
       initialSelectedUsers: TEST_USERS.map(user => user.id),
     });
     const searchUserList = within(screen.getByTestId("search-user-select-box"));
-    userEvent.click(searchUserList.getByText("Alice"));
-    userEvent.click(searchUserList.getByText("Bob"));
+    await userEvent.click(searchUserList.getByText("Alice"));
+    await userEvent.click(searchUserList.getByText("Bob"));
 
-    userEvent.click(screen.getByText("Apply"));
+    await userEvent.click(screen.getByText("Apply"));
     expect(mockOnChange).toHaveBeenCalledWith([]);
   });
 });

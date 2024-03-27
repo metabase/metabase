@@ -29,7 +29,7 @@ const setup = ({ parameter, otherParameters }: SetupOpts) => {
 };
 
 describe("ParameterLinkedFilters", () => {
-  it("should toggle filtering parameters", () => {
+  it("should toggle filtering parameters", async () => {
     const { onChangeFilteringParameters } = setup({
       parameter: createMockUiParameter({
         id: "p1",
@@ -43,7 +43,7 @@ describe("ParameterLinkedFilters", () => {
       ],
     });
 
-    userEvent.click(screen.getByRole("switch"));
+    await userEvent.click(screen.getByRole("switch"));
 
     expect(onChangeFilteringParameters).toHaveBeenCalledWith(["p2"]);
   });

@@ -27,9 +27,9 @@ describe("[EE, with token] embedding settings", () => {
           settingValues: { "enable-embedding": false },
         });
 
-        expect(() => {
-          goToStaticEmbeddingSettings();
-        }).toThrow();
+        expect(
+          await screen.findByRole("button", { name: "Manage" }),
+        ).toBeDisabled();
 
         history.push(staticEmbeddingSettingsUrl);
 
@@ -55,9 +55,9 @@ describe("[EE, with token] embedding settings", () => {
           settingValues: { "enable-embedding": false },
         });
 
-        expect(() => {
-          goToInteractiveEmbeddingSettings();
-        }).toThrow();
+        expect(
+          await screen.findByRole("button", { name: "Configure" }),
+        ).toBeDisabled();
 
         history.push(interactiveEmbeddingSettingsUrl);
 
@@ -87,7 +87,7 @@ describe("[EE, with token] embedding settings", () => {
         settingValues: { "enable-embedding": true },
       });
 
-      goToStaticEmbeddingSettings();
+      await goToStaticEmbeddingSettings();
 
       const location = history.getCurrentLocation();
       expect(location.pathname).toEqual(staticEmbeddingSettingsUrl);
@@ -98,7 +98,7 @@ describe("[EE, with token] embedding settings", () => {
         settingValues: { "enable-embedding": true },
       });
 
-      goToInteractiveEmbeddingSettings();
+      await goToInteractiveEmbeddingSettings();
 
       const location = history.getCurrentLocation();
       expect(location.pathname).toEqual(interactiveEmbeddingSettingsUrl);

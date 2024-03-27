@@ -100,7 +100,7 @@ describe("AccordionList", () => {
         />,
       );
 
-      userEvent.hover(screen.getByText("Foo"));
+      await userEvent.hover(screen.getByText("Foo"));
       expect(await screen.findByText("popover")).toBeVisible();
     });
   });

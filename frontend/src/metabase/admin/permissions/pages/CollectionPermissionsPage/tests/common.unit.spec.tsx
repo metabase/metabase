@@ -24,7 +24,7 @@ describe("Admin > CollectionPermissionsPage", () => {
 
       const collection1 = await screen.findByText("Collection One");
       expect(screen.queryByText("Nested One")).not.toBeInTheDocument();
-      userEvent.click(collection1);
+      await userEvent.click(collection1);
       expect(await screen.findByText("Nested One")).toBeInTheDocument();
     });
 
@@ -42,8 +42,8 @@ describe("Admin > CollectionPermissionsPage", () => {
         await screen.findByText("Select a collection to see its permissions"),
       ).toBeVisible();
 
-      userEvent.click(await screen.findByText("Collection One"));
-      userEvent.click(await screen.findByText("Nested One"));
+      await userEvent.click(await screen.findByText("Collection One"));
+      await userEvent.click(await screen.findByText("Nested One"));
 
       expect(
         await screen.findByText("Permissions for Nested One"),
@@ -65,25 +65,25 @@ describe("Admin > CollectionPermissionsPage", () => {
         await screen.findByText("Select a collection to see its permissions"),
       ).toBeVisible();
 
-      userEvent.click(await screen.findByText("Collection One"));
-      userEvent.click(await screen.findByText("Nested One"));
+      await userEvent.click(await screen.findByText("Collection One"));
+      await userEvent.click(await screen.findByText("Nested One"));
 
       // change Other users from no access to view
-      userEvent.click(await screen.findByText("No access"));
+      await userEvent.click(await screen.findByText("No access"));
       const listbox = await screen.findByRole("listbox");
-      userEvent.click(within(listbox).getByText("View"));
+      await userEvent.click(within(listbox).getByText("View"));
 
       expect(
         await screen.findByText("You've made changes to permissions."),
       ).toBeInTheDocument();
 
-      userEvent.click(await screen.findByText("Save changes"));
+      await userEvent.click(await screen.findByText("Save changes"));
 
       // are you sure you want to save?
-      userEvent.click(await screen.findByText("Yes"));
+      await userEvent.click(await screen.findByText("Yes"));
 
       expect(
-        await screen.findByText("You've made changes to permissions."),
+        screen.queryByText("You've made changes to permissions."),
       ).not.toBeInTheDocument();
 
       expect(await screen.findByText("Curate")).toBeInTheDocument();
@@ -115,7 +115,7 @@ describe("Admin > CollectionPermissionsPage", () => {
         await screen.findByText("Select a collection to see its permissions"),
       ).toBeVisible();
 
-      userEvent.click(await screen.findByText("Collection One"));
+      await userEvent.click(await screen.findByText("Collection One"));
 
       // change other users from read to curate on collection one
       // should also change permissions on nested one from no access to curate
@@ -124,23 +124,23 @@ describe("Admin > CollectionPermissionsPage", () => {
         .then(rows => rows[3]);
 
       expect(within(otherUsersRow).getByText("Other Users")).toBeVisible();
-      userEvent.click(within(otherUsersRow).getByText("View"));
+      await userEvent.click(within(otherUsersRow).getByText("View"));
 
       const popover = await screen.findByTestId("popover");
-      userEvent.click(within(popover).getByRole("switch")); // propagate switch
-      userEvent.click(within(popover).getByText("Curate"));
+      await userEvent.click(within(popover).getByRole("switch")); // propagate switch
+      await userEvent.click(within(popover).getByText("Curate"));
 
       expect(
         await screen.findByText("You've made changes to permissions."),
       ).toBeInTheDocument();
 
-      userEvent.click(await screen.findByText("Save changes"));
+      await userEvent.click(await screen.findByText("Save changes"));
 
       // are you sure you want to save?
-      userEvent.click(await screen.findByText("Yes"));
+      await userEvent.click(await screen.findByText("Yes"));
 
       expect(
-        await screen.findByText("You've made changes to permissions."),
+        screen.queryByText("You've made changes to permissions."),
       ).not.toBeInTheDocument();
 
       expect(await screen.findAllByText("Curate")).toHaveLength(3);
@@ -168,8 +168,8 @@ describe("Admin > CollectionPermissionsPage", () => {
     it("should show toggle to change sub-collection permissions if the collection has sub-collections", async () => {
       await setup();
 
-      userEvent.click(await screen.findByText("Collection One"));
-      userEvent.click(await screen.findByText("View"));
+      await userEvent.click(await screen.findByText("Collection One"));
+      await userEvent.click(await screen.findByText("View"));
 
       expect(
         await screen.findByText("Also change sub-collections"),
@@ -179,9 +179,9 @@ describe("Admin > CollectionPermissionsPage", () => {
     it("should not show toggle to change sub-collection permissions if the collection does not have sub-collections", async () => {
       await setup();
 
-      userEvent.click(await screen.findByText("Collection One"));
-      userEvent.click(await screen.findByText("Nested One"));
-      userEvent.click(await screen.findByText("View"));
+      await userEvent.click(await screen.findByText("Collection One"));
+      await userEvent.click(await screen.findByText("Nested One"));
+      await userEvent.click(await screen.findByText("View"));
 
       expect(
         screen.queryByText("Also change sub-collections"),

@@ -16,8 +16,8 @@ describe("SettingsEditor", () => {
         settingValues: createMockSettings({ "enable-embedding": true }),
       });
 
-      userEvent.click(screen.getByText("Embedding"));
-      userEvent.click(screen.getByText("Interactive embedding"));
+      await userEvent.click(screen.getByText("Embedding"));
+      await userEvent.click(screen.getByText("Interactive embedding"));
       expect(screen.queryByText("Authorized origins")).not.toBeInTheDocument();
       expect(
         screen.queryByText("SameSite cookie setting"),

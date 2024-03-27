@@ -93,10 +93,10 @@ describe("FilterHeader", () => {
   it("should update a filter on the last stage", async () => {
     const { getNextQuery, getFilterColumnNameForStage } = setup();
 
-    userEvent.click(screen.getByText("User → Source is Organic"));
-    userEvent.click(await screen.findByLabelText("Filter operator"));
-    userEvent.click(await screen.findByText("Is empty"));
-    userEvent.click(screen.getByText("Update filter"));
+    await userEvent.click(screen.getByText("User → Source is Organic"));
+    await userEvent.click(await screen.findByLabelText("Filter operator"));
+    await userEvent.click(await screen.findByText("Is empty"));
+    await userEvent.click(screen.getByText("Update filter"));
 
     expect(screen.getByText("User → Source is empty")).toBeInTheDocument();
     expect(
@@ -124,9 +124,12 @@ describe("FilterHeader", () => {
   it("should update a filter on the previous stage", async () => {
     const { getNextQuery, getFilterColumnNameForStage } = setup();
 
-    userEvent.click(screen.getByText("Count is greater than 5"));
-    userEvent.type(await screen.findByDisplayValue("5"), "{backspace}110");
-    userEvent.click(screen.getByText("Update filter"));
+    await userEvent.click(screen.getByText("Count is greater than 5"));
+    await userEvent.type(
+      await screen.findByDisplayValue("5"),
+      "{backspace}110",
+    );
+    await userEvent.click(screen.getByText("Update filter"));
 
     expect(screen.getByText("Count is greater than 110")).toBeInTheDocument();
     expect(
@@ -150,10 +153,10 @@ describe("FilterHeader", () => {
     expect(nextColumnName).toBe("Count");
   });
 
-  it("should remove a filter from the last stage", () => {
+  it("should remove a filter from the last stage", async () => {
     const { getNextQuery } = setup();
 
-    userEvent.click(
+    await userEvent.click(
       within(screen.getByText("User → Source is Organic")).getByLabelText(
         "Remove",
       ),
@@ -170,10 +173,10 @@ describe("FilterHeader", () => {
     expect(Lib.filters(query, 1)).toHaveLength(1);
   });
 
-  it("should remove a filter from the previous stage", () => {
+  it("should remove a filter from the previous stage", async () => {
     const { getNextQuery } = setup();
 
-    userEvent.click(
+    await userEvent.click(
       within(screen.getByText("Count is greater than 5")).getByLabelText(
         "Remove",
       ),

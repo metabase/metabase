@@ -47,7 +47,7 @@ describe("useDatabaseUpdate", () => {
     await setup();
     expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole("button"));
+    await userEvent.click(screen.getByRole("button"));
     expect(await screen.findByText(TEST_NEW_NAME)).toBeInTheDocument();
   });
 });

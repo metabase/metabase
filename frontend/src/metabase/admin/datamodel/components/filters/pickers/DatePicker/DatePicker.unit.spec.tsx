@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -12,6 +12,10 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import DatePicker from "./DatePicker";
+
+const userEvent = _userEvent.setup({
+  advanceTimers: jest.advanceTimersByTime,
+});
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -178,7 +182,7 @@ describe("DatePicker", () => {
       it(`shows a ${type} date picker when the user clicks ${type} on the shortcut screen`, async () => {
         render(<DatePickerStateWrapper filter={filter} />);
 
-        userEvent.click(screen.getByText(new RegExp(type, "i")));
+        await userEvent.click(screen.getByText(new RegExp(type, "i")));
 
         expect(
           (await screen.findAllByTestId(`${type}-date-picker`)).length,
@@ -228,7 +232,7 @@ describe("DatePicker", () => {
             <DatePickerStateWrapper filter={filter} onCommit={commitSpy} />,
           );
 
-          userEvent.click(screen.getByText(new RegExp(label, "i")));
+          await userEvent.click(screen.getByText(new RegExp(label, "i")));
           expect(commitSpy).toHaveBeenCalledWith(expectedFilter);
         });
       });
@@ -248,12 +252,12 @@ describe("DatePicker", () => {
           render(
             <DatePickerStateWrapper filter={filter} onChange={changeSpy} />,
           );
-          userEvent.click(screen.getByText(/specific dates/i));
-          userEvent.click(screen.getByText("On"));
+          await userEvent.click(screen.getByText(/specific dates/i));
+          await userEvent.click(screen.getByText("On"));
           await screen.findByTestId(`specific-date-picker`);
-          userEvent.click(screen.getByText(new RegExp(description, "i")));
+          await userEvent.click(screen.getByText(new RegExp(description, "i")));
           const dateField = screen.getByText("21");
-          userEvent.click(dateField);
+          await userEvent.click(dateField);
 
           expect(changeSpy).toHaveBeenLastCalledWith([
             operator,
@@ -268,14 +272,14 @@ describe("DatePicker", () => {
 
         render(<DatePickerStateWrapper filter={filter} onChange={changeSpy} />);
 
-        userEvent.click(await screen.findByText(/specific/i));
-        userEvent.click(await screen.findByText(/between/i));
+        await userEvent.click(await screen.findByText(/specific/i));
+        await userEvent.click(await screen.findByText(/between/i));
 
         const dateField1 = screen.getByText("17");
         const dateField2 = screen.getByText("19");
 
-        userEvent.click(dateField1); // begin range, clears end range
-        userEvent.click(dateField2); // end range
+        await userEvent.click(dateField1); // begin range, clears end range
+        await userEvent.click(dateField2); // end range
 
         expect(changeSpy).toHaveBeenLastCalledWith([
           "between",
@@ -287,13 +291,13 @@ describe("DatePicker", () => {
 
       it("can navigate between months on the calendar using arrows", async () => {
         render(<DatePickerStateWrapper filter={filter} />);
-        userEvent.click(screen.getByText(/specific/i));
-        userEvent.click(screen.getByText("On"));
+        await userEvent.click(screen.getByText(/specific/i));
+        await userEvent.click(screen.getByText("On"));
 
         expect(await screen.findByText("May 2020")).toBeInTheDocument();
-        userEvent.click(screen.getByLabelText(/chevronright/i));
+        await userEvent.click(screen.getByLabelText(/chevronright/i));
         expect(await screen.findByText("June 2020")).toBeInTheDocument();
-        userEvent.click(screen.getByLabelText(/chevronright/i));
+        await userEvent.click(screen.getByLabelText(/chevronright/i));
         expect(await screen.findByText("July 2020")).toBeInTheDocument();
       });
     });
@@ -318,19 +322,21 @@ describe("DatePicker", () => {
             render(
               <DatePickerStateWrapper filter={filter} onChange={changeSpy} />,
             );
-            userEvent.click(screen.getByText(/relative dates/i));
-            userEvent.click(screen.getByText(new RegExp(direction, "i")));
+            await userEvent.click(screen.getByText(/relative dates/i));
+            await userEvent.click(screen.getByText(new RegExp(direction, "i")));
 
             const valueInput = await screen.findByTestId(
               "relative-datetime-value",
             );
-            userEvent.clear(valueInput);
-            userEvent.type(valueInput, String(relativeTimeValue));
+            await userEvent.clear(valueInput);
+            await userEvent.type(valueInput, String(relativeTimeValue));
 
-            userEvent.click(
+            await userEvent.click(
               await screen.findByTestId("relative-datetime-unit"),
             );
-            userEvent.click(await screen.findByText(new RegExp(unit, "i")));
+            await userEvent.click(
+              await screen.findByText(new RegExp(unit, "i")),
+            );
 
             expect(changeSpy).toHaveBeenLastCalledWith([
               "time-interval",
@@ -354,9 +360,9 @@ describe("DatePicker", () => {
           render(
             <DatePickerStateWrapper filter={filter} onCommit={commitSpy} />,
           );
-          userEvent.click(screen.getByText(/relative dates/i));
-          userEvent.click(screen.getByText(/current/i));
-          userEvent.click(screen.getByText(new RegExp(unit, "i")));
+          await userEvent.click(screen.getByText(/relative dates/i));
+          await userEvent.click(screen.getByText(/current/i));
+          await userEvent.click(screen.getByText(new RegExp(unit, "i")));
 
           expect(commitSpy).toHaveBeenLastCalledWith([
             "time-interval",
@@ -376,8 +382,8 @@ describe("DatePicker", () => {
           <DatePickerStateWrapper filter={filter} onChange={onChangeMock} />,
         );
 
-        userEvent.click(screen.getByText("Exclude..."));
-        userEvent.click(screen.getByText("Hours of the day..."));
+        await userEvent.click(screen.getByText("Exclude..."));
+        await userEvent.click(screen.getByText("Hours of the day..."));
 
         const midnightCheckbox = screen.getByRole("checkbox", {
           name: /12 AM/i,
@@ -385,7 +391,7 @@ describe("DatePicker", () => {
 
         expect(midnightCheckbox).toBeChecked();
 
-        userEvent.click(midnightCheckbox);
+        await userEvent.click(midnightCheckbox);
 
         expect(onChangeMock).toHaveBeenCalledWith([
           "!=",

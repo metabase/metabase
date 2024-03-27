@@ -47,19 +47,19 @@ describe("DateFilterEditor", () => {
   const column = findColumn("ORDERS", "CREATED_AT");
 
   describe("new filter", () => {
-    it("should add a relative date filter from a shortcut", () => {
+    it("should add a relative date filter from a shortcut", async () => {
       const { getNextFilterName } = setup({
         query: defaultQuery,
         stageIndex,
         column,
       });
 
-      userEvent.click(screen.getByText("Last month"));
+      await userEvent.click(screen.getByText("Last month"));
 
       expect(getNextFilterName()).toBe("Created At is in the previous month");
     });
 
-    it("should remove a relative date filter from a shortcut", () => {
+    it("should remove a relative date filter from a shortcut", async () => {
       const { query, filter } = createQueryWithFilter(
         defaultQuery,
         stageIndex,
@@ -82,7 +82,7 @@ describe("DateFilterEditor", () => {
       const button = screen.getByRole("button", { name: "Today" });
       expect(button).toHaveAttribute("aria-selected", "true");
 
-      userEvent.click(button);
+      await userEvent.click(button);
       expect(getNextFilterName()).toBeNull();
     });
 
@@ -93,8 +93,8 @@ describe("DateFilterEditor", () => {
         column,
       });
 
-      userEvent.click(screen.getByLabelText("More options"));
-      userEvent.click(await screen.findByText("Last 30 days"));
+      await userEvent.click(screen.getByLabelText("More options"));
+      await userEvent.click(await screen.findByText("Last 30 days"));
 
       expect(getNextFilterName()).toBe("Created At is in the previous 30 days");
     });
@@ -120,7 +120,7 @@ describe("DateFilterEditor", () => {
       });
       expect(screen.getByText("Previous 30 Days")).toBeInTheDocument();
 
-      userEvent.click(screen.getByLabelText("Clear"));
+      await userEvent.click(screen.getByLabelText("Clear"));
       expect(getNextFilterName()).toBe(null);
     });
 
@@ -131,12 +131,12 @@ describe("DateFilterEditor", () => {
         column,
       });
 
-      userEvent.click(screen.getByLabelText("More options"));
-      userEvent.click(await screen.findByText("Specific dates…"));
-      userEvent.click(screen.getByText("After"));
-      userEvent.clear(screen.getByLabelText("Date"));
-      userEvent.type(screen.getByLabelText("Date"), "Feb 15, 2020");
-      userEvent.click(screen.getByText("Add filter"));
+      await userEvent.click(screen.getByLabelText("More options"));
+      await userEvent.click(await screen.findByText("Specific dates…"));
+      await userEvent.click(screen.getByText("After"));
+      await userEvent.clear(screen.getByLabelText("Date"));
+      await userEvent.type(screen.getByLabelText("Date"), "Feb 15, 2020");
+      await userEvent.click(screen.getByText("Add filter"));
 
       expect(getNextFilterName()).toBe("Created At is after Feb 15, 2020");
     });
@@ -159,7 +159,7 @@ describe("DateFilterEditor", () => {
       });
       expect(screen.getByText("Feb 15, 2020")).toBeInTheDocument();
 
-      userEvent.click(screen.getByLabelText("Clear"));
+      await userEvent.click(screen.getByLabelText("Clear"));
       expect(getNextFilterName()).toBe(null);
     });
 
@@ -170,11 +170,11 @@ describe("DateFilterEditor", () => {
         column,
       });
 
-      userEvent.click(screen.getByLabelText("More options"));
-      userEvent.click(await screen.findByText("Exclude…"));
-      userEvent.click(screen.getByText("Hours of the day…"));
-      userEvent.click(screen.getByText("5 PM"));
-      userEvent.click(screen.getByText("Add filter"));
+      await userEvent.click(screen.getByLabelText("More options"));
+      await userEvent.click(await screen.findByText("Exclude…"));
+      await userEvent.click(screen.getByText("Hours of the day…"));
+      await userEvent.click(screen.getByText("5 PM"));
+      await userEvent.click(screen.getByText("Add filter"));
 
       expect(getNextFilterName()).toBe("Created At excludes the hour of 5 PM");
     });
@@ -198,7 +198,7 @@ describe("DateFilterEditor", () => {
       });
       expect(screen.getByText("Excludes 5 PM")).toBeInTheDocument();
 
-      userEvent.click(screen.getByLabelText("Clear"));
+      await userEvent.click(screen.getByLabelText("Clear"));
       expect(getNextFilterName()).toBe(null);
     });
   });

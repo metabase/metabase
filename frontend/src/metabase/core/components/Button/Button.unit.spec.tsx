@@ -18,9 +18,9 @@ describe("Button", () => {
     expect(screen.getByRole("img", { name: "star icon" })).toBeInTheDocument();
   });
 
-  it("should receive focus on tab", () => {
+  it("should receive focus on tab", async () => {
     render(<Button>{title}</Button>);
-    userEvent.tab();
+    await userEvent.tab();
 
     expect(screen.getByRole("button")).toHaveFocus();
   });

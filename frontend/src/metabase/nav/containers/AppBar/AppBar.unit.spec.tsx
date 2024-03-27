@@ -91,7 +91,7 @@ describe("AppBar", () => {
         }
 
         expect(history.getCurrentLocation().pathname).toBe("/question/1");
-        userEvent.click(screen.getByTestId("main-logo"));
+        await userEvent.click(screen.getByTestId("main-logo"));
         expect(history.getCurrentLocation().pathname).toBe("/");
       });
     });
@@ -158,7 +158,7 @@ describe("AppBar", () => {
         }
 
         expect(history.getCurrentLocation().pathname).toBe("/question/1");
-        userEvent.click(screen.getByTestId("main-logo"));
+        await userEvent.click(screen.getByTestId("main-logo"));
         expect(history.getCurrentLocation().pathname).toBe("/");
       });
     });

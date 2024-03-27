@@ -27,8 +27,8 @@ describe("ClampedText", () => {
 
     it("should show a toggle for showing expanded or clamped text", async () => {
       render(<ClampedText visibleLines={1} text={TEXT} />);
-      userEvent.click(screen.getByText("See more"));
-      userEvent.click(screen.getByText("See less"));
+      await userEvent.click(screen.getByText("See more"));
+      await userEvent.click(screen.getByText("See less"));
       expect(screen.getByText("See more")).toBeInTheDocument();
     });
   });

@@ -143,7 +143,7 @@ describe("SearchApp", () => {
       expect(getPagination()).toHaveTextContent("1 - 4");
 
       // test next page button
-      userEvent.click(getNextPageButton());
+      await userEvent.click(getNextPageButton());
       await waitForLoaderToBeRemoved();
       expect(getPaginationTotal()).toHaveTextContent(String(TEST_ITEMS.length));
       expect(getPreviousPageButton()).toBeEnabled();
@@ -152,7 +152,7 @@ describe("SearchApp", () => {
       expect(getPagination()).toHaveTextContent("5 - 7");
 
       // test previous page button
-      userEvent.click(getPreviousPageButton());
+      await userEvent.click(getPreviousPageButton());
       await waitForLoaderToBeRemoved();
       expect(getPaginationTotal()).toHaveTextContent(String(TEST_ITEMS.length));
       expect(getPreviousPageButton()).toBeDisabled();
@@ -169,7 +169,7 @@ describe("SearchApp", () => {
           searchText: "Test",
         });
 
-        userEvent.click(
+        await userEvent.click(
           within(screen.getByTestId("type-search-filter")).getByTestId(
             "sidebar-filter-dropdown-button",
           ),
@@ -178,14 +178,14 @@ describe("SearchApp", () => {
         await waitForLoaderToBeRemoved();
 
         const popover = within(screen.getByTestId("popover"));
-        userEvent.click(
+        await userEvent.click(
           popover.getByRole("checkbox", {
             name: TYPE_FILTER_LABELS[
               model as EnabledSearchModelType
             ] as EnabledSearchModelType,
           }),
         );
-        userEvent.click(popover.getByRole("button", { name: "Apply" }));
+        await userEvent.click(popover.getByRole("button", { name: "Apply" }));
 
         const url = history.getCurrentLocation();
         expect(url.query.type).toEqual(model);

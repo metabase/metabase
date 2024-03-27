@@ -503,7 +503,7 @@ describe("ObjectDetailView", () => {
 
 async function findActionInActionMenu({ name }: Pick<WritebackAction, "name">) {
   const actionsMenu = await screen.findByTestId("actions-menu");
-  userEvent.click(actionsMenu);
+  await userEvent.click(actionsMenu);
   const popover = await screen.findByRole("dialog");
   const action = within(popover).queryByText(name);
   return action;

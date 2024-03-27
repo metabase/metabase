@@ -86,14 +86,14 @@ describe("UserForm", () => {
     it("should allow you to add groups", async () => {
       const { onSubmit } = setup();
 
-      userEvent.click(await screen.findByText("foo"));
-      userEvent.click(await screen.findByText("Administrators"));
+      await userEvent.click(await screen.findByText("foo"));
+      await userEvent.click(await screen.findByText("Administrators"));
 
       expect(
         await screen.findByRole("generic", { name: "group-summary" }),
       ).toHaveTextContent("Admin and 1 other group");
 
-      userEvent.click(await screen.findByText("bar"));
+      await userEvent.click(await screen.findByText("bar"));
 
       expect(
         await screen.findByRole("generic", { name: "group-summary" }),
@@ -103,7 +103,9 @@ describe("UserForm", () => {
         await screen.findByRole("button", { name: "Update" }),
       ).toBeEnabled();
 
-      userEvent.click(await screen.findByRole("button", { name: "Update" }));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Update" }),
+      );
 
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalledWith(
@@ -136,14 +138,18 @@ describe("UserForm", () => {
     it("should allow you to remove a group", async () => {
       const { onSubmit } = setup();
 
-      userEvent.click(await screen.findByText("foo"));
-      userEvent.click(await screen.findByRole("listitem", { name: "foo" }));
+      await userEvent.click(await screen.findByText("foo"));
+      await userEvent.click(
+        await screen.findByRole("listitem", { name: "foo" }),
+      );
 
       expect(
         await screen.findByRole("generic", { name: "group-summary" }),
       ).toHaveTextContent("Default");
 
-      userEvent.click(await screen.findByRole("button", { name: "Update" }));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Update" }),
+      );
 
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalledWith(
@@ -186,15 +192,24 @@ describe("UserForm", () => {
         initialValues: eeUser,
       });
 
-      userEvent.click(await screen.findByText("Add an attribute"));
+      await userEvent.click(await screen.findByText("Add an attribute"));
 
-      userEvent.type((await screen.findAllByPlaceholderText("Key"))[1], "exp");
-      userEvent.type(
-        (await screen.findAllByPlaceholderText("Value"))[1],
+      await userEvent.type(
+        (
+          await screen.findAllByPlaceholderText("Key")
+        )[1],
+        "exp",
+      );
+      await userEvent.type(
+        (
+          await screen.findAllByPlaceholderText("Value")
+        )[1],
         "1234",
       );
 
-      userEvent.click(await screen.findByRole("button", { name: "Update" }));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Update" }),
+      );
 
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalledWith(
@@ -216,9 +231,11 @@ describe("UserForm", () => {
         initialValues: eeUser,
       });
 
-      userEvent.click(await screen.findByTestId("remove-mapping"));
+      await userEvent.click(await screen.findByTestId("remove-mapping"));
 
-      userEvent.click(await screen.findByRole("button", { name: "Update" }));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Update" }),
+      );
 
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalledWith(
@@ -237,9 +254,14 @@ describe("UserForm", () => {
         initialValues: eeUser,
       });
 
-      userEvent.click(await screen.findByText("Add an attribute"));
+      await userEvent.click(await screen.findByText("Add an attribute"));
 
-      userEvent.type((await screen.findAllByPlaceholderText("Key"))[1], "1");
+      await userEvent.type(
+        (
+          await screen.findAllByPlaceholderText("Key")
+        )[1],
+        "1",
+      );
 
       expect((await screen.findAllByPlaceholderText("Key"))[1]).toHaveValue(
         "1",
@@ -252,7 +274,7 @@ describe("UserForm", () => {
         initialValues: eeUser,
       });
 
-      userEvent.click(await screen.findByText("Add an attribute"));
+      await userEvent.click(await screen.findByText("Add an attribute"));
 
       // We need a delay in typing into the form so that the error
       // state is handled apropriately. Formik clears errors when you call

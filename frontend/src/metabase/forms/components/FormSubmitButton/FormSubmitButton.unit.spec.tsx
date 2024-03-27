@@ -46,28 +46,28 @@ describe("FormSubmitButton", () => {
   it("should show the default success message", async () => {
     const { onSubmit } = setup();
     onSubmit.mockResolvedValue(true);
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByText("Submit"));
     expect(await screen.findByText("Success")).toBeInTheDocument();
   });
 
   it("should show a custom success message", async () => {
     const { onSubmit } = setup({ label: "Save", successLabel: "Saved" });
     onSubmit.mockResolvedValue(true);
-    userEvent.click(screen.getByText("Save"));
+    await userEvent.click(screen.getByText("Save"));
     expect(await screen.findByText("Saved")).toBeInTheDocument();
   });
 
   it("should show the default error message", async () => {
     const { onSubmit } = setup();
     onSubmit.mockRejectedValue(new Error("An error occurred"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByText("Submit"));
     expect(await screen.findByText("Failed")).toBeInTheDocument();
   });
 
   it("should show a custom error message", async () => {
     const { onSubmit } = setup({ failedLabel: "Error" });
     onSubmit.mockRejectedValue(new Error("An error occurred"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByText("Submit"));
     expect(await screen.findByText("Error")).toBeInTheDocument();
   });
 });

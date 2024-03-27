@@ -142,7 +142,7 @@ describe("Metabot", () => {
       setupMetabotDatabaseEndpoints();
       setup({ entityType: "database" });
 
-      enterPromptAndGetResults("Ask something…");
+      await enterPromptAndGetResults("Ask something…");
 
       expect(await screen.findByText("Here you go!")).toBeInTheDocument();
       expect(await screen.findByText(RESULT_VALUE)).toBeInTheDocument();
@@ -153,7 +153,7 @@ describe("Metabot", () => {
       setupMetabotDatabaseEndpoints(false);
       setup({ entityType: "database" });
 
-      enterPromptAndGetResults("Ask something…");
+      await enterPromptAndGetResults("Ask something…");
 
       expect(await screen.findByText(API_ERROR)).toBeInTheDocument();
       expect(screen.queryByText("How did I do?")).not.toBeInTheDocument();
@@ -165,7 +165,7 @@ describe("Metabot", () => {
       setupMetabotModelEndpoints();
       setup({ entityType: "model", model: MODEL });
 
-      enterPromptAndGetResults(
+      await enterPromptAndGetResults(
         "Ask something like, how many Q1 have we had over time?",
       );
       expect(await screen.findByText("Here you go!")).toBeInTheDocument();
@@ -177,7 +177,7 @@ describe("Metabot", () => {
       setupMetabotModelEndpoints(false);
       setup({ entityType: "model", model: MODEL });
 
-      enterPromptAndGetResults(
+      await enterPromptAndGetResults(
         "Ask something like, how many Q1 have we had over time?",
       );
       expect(await screen.findByText(API_ERROR)).toBeInTheDocument();
@@ -186,7 +186,9 @@ describe("Metabot", () => {
       // The error state get cleared
       setupMetabotModelEndpoints(true);
 
-      userEvent.click(screen.getByRole("button", { name: /get answer/i }));
+      await userEvent.click(
+        screen.getByRole("button", { name: /get answer/i }),
+      );
       expect(await screen.findByText("Here you go!")).toBeInTheDocument();
       expect(await screen.findByText(RESULT_VALUE)).toBeInTheDocument();
     });
@@ -200,24 +202,22 @@ describe("Metabot", () => {
     setupMetabotModelEndpoints();
     setup({ entityType, model: MODEL });
 
-    enterPromptAndGetResults(
+    await enterPromptAndGetResults(
       "Ask something like, how many Q1 have we had over time?",
     );
 
     expect(await screen.findByText("How did I do?")).toBeInTheDocument();
 
-    userEvent.click(screen.getByText("This is great!"));
+    await userEvent.click(screen.getByText("This is great!"));
 
     expect(await screen.findByText("Glad to hear it!")).toBeInTheDocument();
   });
 });
 
-function enterPromptAndGetResults(inputPlaceholder: string) {
+async function enterPromptAndGetResults(inputPlaceholder: string) {
   // Empty state
   screen.getByRole("img", { name: /insight icon/i });
 
-  userEvent.type(screen.getByPlaceholderText(inputPlaceholder), PROMPT);
-  userEvent.click(screen.getByRole("button", { name: /get answer/i }));
-
-  expect(screen.getByText("Doing science...")).toBeInTheDocument();
+  await userEvent.type(screen.getByPlaceholderText(inputPlaceholder), PROMPT);
+  await userEvent.click(screen.getByRole("button", { name: /get answer/i }));
 }

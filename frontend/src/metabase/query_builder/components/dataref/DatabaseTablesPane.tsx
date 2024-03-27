@@ -104,7 +104,11 @@ export const DatabaseTablesPane = ({
                   onClick={() => onItemClick("table", table)}
                 >
                   <NodeListItemIcon name="table" />
-                  <NodeListItemName>{table.table_name}</NodeListItemName>
+                  <NodeListItemName
+                    data-disabled={table.initial_sync_status !== "complete"}
+                  >
+                    {table.table_name}
+                  </NodeListItemName>
                 </NodeListItemLink>
               </li>
             ))}

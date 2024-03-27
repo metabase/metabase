@@ -192,6 +192,6 @@ describe("ProfileLink", () => {
 });
 
 const openMenu = async () => {
-  userEvent.click(screen.getByRole("img", { name: /gear/i }));
+  await userEvent.click(screen.getByRole("img", { name: /gear/i }));
   await screen.findByRole("dialog");
 };

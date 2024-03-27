@@ -24,7 +24,7 @@ describe("ExpressionWidget", () => {
     expect(screen.queryByText("Name")).not.toBeInTheDocument();
   });
 
-  it("should render help icon with tooltip which opens documentation page", () => {
+  it("should render help icon with tooltip which opens documentation page", async () => {
     setup();
 
     const icon = getIcon("info");
@@ -40,7 +40,7 @@ describe("ExpressionWidget", () => {
       "https://www.metabase.com/docs/latest/questions/query-builder/expressions.html",
     );
 
-    userEvent.hover(link);
+    await userEvent.hover(link);
 
     expect(
       screen.getByText(
@@ -49,7 +49,7 @@ describe("ExpressionWidget", () => {
     ).toBeInTheDocument();
   });
 
-  it("should trigger onChangeExpression if expression is valid", () => {
+  it("should trigger onChangeExpression if expression is valid", async () => {
     const { onChangeExpression } = setup();
 
     const doneButton = screen.getByRole("button", { name: "Done" });
@@ -58,18 +58,18 @@ describe("ExpressionWidget", () => {
     const expressionInput = screen.getByRole("textbox");
     expect(expressionInput).toHaveClass("ace_text-input");
 
-    userEvent.type(expressionInput, "1 + 1");
-    userEvent.tab();
+    await userEvent.type(expressionInput, "1 + 1");
+    await userEvent.tab();
 
     expect(doneButton).toBeEnabled();
 
-    userEvent.click(doneButton);
+    await userEvent.click(doneButton);
 
     expect(onChangeExpression).toHaveBeenCalledTimes(1);
     expect(onChangeExpression).toHaveBeenCalledWith("", ["+", 1, 1]);
   });
 
-  it("should trigger onChangeClause if expression is valid", () => {
+  it("should trigger onChangeClause if expression is valid", async () => {
     const { getRecentExpressionClauseInfo, onChangeClause } = setup();
 
     const doneButton = screen.getByRole("button", { name: "Done" });
@@ -78,19 +78,19 @@ describe("ExpressionWidget", () => {
     const expressionInput = screen.getByRole("textbox");
     expect(expressionInput).toHaveClass("ace_text-input");
 
-    userEvent.type(expressionInput, "1 + 1");
-    userEvent.tab();
+    await userEvent.type(expressionInput, "1 + 1");
+    await userEvent.tab();
 
     expect(doneButton).toBeEnabled();
 
-    userEvent.click(doneButton);
+    await userEvent.click(doneButton);
 
     expect(onChangeClause).toHaveBeenCalledTimes(1);
     expect(onChangeClause).toHaveBeenCalledWith("", expect.anything());
     expect(getRecentExpressionClauseInfo().displayName).toBe("1 + 1");
   });
 
-  it(`should render interactive header if it is passed`, () => {
+  it(`should render interactive header if it is passed`, async () => {
     const mockTitle = "Some Title";
     const onClose = jest.fn();
     setup({
@@ -101,7 +101,7 @@ describe("ExpressionWidget", () => {
     const titleEl = screen.getByText(mockTitle);
     expect(titleEl).toBeInTheDocument();
 
-    userEvent.click(titleEl);
+    await userEvent.click(titleEl);
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -113,7 +113,7 @@ describe("ExpressionWidget", () => {
       expect(screen.getByText("Name")).toBeInTheDocument();
     });
 
-    it("should validate name value", () => {
+    it("should validate name value", async () => {
       const expression: Expression = ["+", 1, 1];
       const {
         getRecentExpressionClauseInfo,
@@ -131,7 +131,7 @@ describe("ExpressionWidget", () => {
 
       expect(doneButton).toBeDisabled();
 
-      userEvent.type(screen.getByDisplayValue("1 + 1"), "{enter}");
+      await userEvent.type(screen.getByDisplayValue("1 + 1"), "{enter}");
 
       // enter in expression editor should not trigger "onChangeClause" or "onChangeExpression"
       // as popover is not valid with empty "name"
@@ -139,27 +139,27 @@ describe("ExpressionWidget", () => {
       expect(onChangeExpression).toHaveBeenCalledTimes(0);
 
       // The name must not be empty
-      userEvent.type(expressionNameInput, "");
+      await userEvent.clear(expressionNameInput);
       expect(doneButton).toBeDisabled();
 
       // The name must not consist of spaces or tabs only.
-      userEvent.type(expressionNameInput, " ");
+      await userEvent.type(expressionNameInput, " ");
       expect(doneButton).toBeDisabled();
-      userEvent.type(expressionNameInput, "\t");
+      await userEvent.type(expressionNameInput, "\t");
       expect(doneButton).toBeDisabled();
-      userEvent.type(expressionNameInput, "  \t\t");
+      await userEvent.type(expressionNameInput, "  \t\t");
       expect(doneButton).toBeDisabled();
 
-      userEvent.clear(expressionNameInput);
+      await userEvent.clear(expressionNameInput);
 
-      userEvent.type(
+      await userEvent.type(
         expressionNameInput,
         "Some n_am!e 2q$w&YzT(6i~#sLXv7+HjP}Ku1|9c*RlF@4o5N=e8;G*-bZ3/U0:Qa'V,t(W-_D",
       );
 
       expect(doneButton).toBeEnabled();
 
-      userEvent.click(doneButton);
+      await userEvent.click(doneButton);
 
       expect(onChangeExpression).toHaveBeenCalledTimes(1);
       expect(onChangeExpression).toHaveBeenCalledWith(

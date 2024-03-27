@@ -25,9 +25,9 @@ describe("AuthCard", () => {
     });
 
     render(<AuthCard {...props} />);
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await userEvent.click(screen.getByLabelText("ellipsis icon"));
     await screen.findByRole("dialog");
-    userEvent.click(screen.getByText("Pause"));
+    await userEvent.click(screen.getByText("Pause"));
 
     expect(props.onChange).toHaveBeenCalledWith(false);
   });
@@ -39,9 +39,9 @@ describe("AuthCard", () => {
     });
 
     render(<AuthCard {...props} />);
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await userEvent.click(screen.getByLabelText("ellipsis icon"));
     await screen.findByRole("dialog");
-    userEvent.click(screen.getByText("Resume"));
+    await userEvent.click(screen.getByText("Resume"));
 
     expect(props.onChange).toHaveBeenCalledWith(true);
   });
@@ -53,10 +53,10 @@ describe("AuthCard", () => {
     });
 
     render(<AuthCard {...props} />);
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await userEvent.click(screen.getByLabelText("ellipsis icon"));
     await screen.findByRole("dialog");
-    userEvent.click(screen.getByText("Deactivate"));
-    userEvent.click(screen.getByRole("button", { name: "Deactivate" }));
+    await userEvent.click(screen.getByText("Deactivate"));
+    await userEvent.click(screen.getByRole("button", { name: "Deactivate" }));
 
     expect(props.onDeactivate).toHaveBeenCalled();
   });
