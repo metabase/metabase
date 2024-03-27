@@ -6,7 +6,11 @@ import _ from "underscore";
 import { tableApi } from "metabase/api";
 import type { CollectionId } from "metabase-types/api";
 
-import type { EntityPickerOptions, EntityTab } from "../../EntityPicker";
+import type {
+  EntityPickerModalOptions,
+  EntityPickerOptions,
+  EntityTab,
+} from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import type {
   NotebookDataPickerItem,
@@ -24,9 +28,9 @@ interface Props {
   value: Value | null;
 }
 
-const options = {
+const options: EntityPickerModalOptions = {
   ...defaultOptions,
-  showConfirmButton: false,
+  hasConfirmButtons: false,
 };
 
 export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
