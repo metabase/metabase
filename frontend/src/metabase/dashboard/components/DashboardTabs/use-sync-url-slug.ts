@@ -70,8 +70,9 @@ export function useSyncURLSlug({ location }: { location: Location }) {
     if (slugChanged) {
       dispatch(initTabs({ slug }));
       const slugId = getIdFromSlug(slug);
+      const hasTabs = tabs.length > 0;
       const isValidSlug = !!tabs.find(t => t.id === slugId);
-      if (!isValidSlug) {
+      if (hasTabs && !isValidSlug) {
         const [tab] = tabs;
         updateURLSlug({ slug: getSlug({ tabId: tab.id, name: tab.name }) });
       }
