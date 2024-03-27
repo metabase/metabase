@@ -68,6 +68,11 @@ export function NestedItemPicker<
       <Flex h="100%" w="fit-content">
         {path.map((level, index) => {
           const { query, selectedItem } = level;
+          const isCurrentLevel = Boolean(
+            selectedItem &&
+              lastSelectedItem &&
+              isSelectedItem(selectedItem, lastSelectedItem),
+          );
 
           const isCurrentLevel = Boolean(
             selectedItem &&
