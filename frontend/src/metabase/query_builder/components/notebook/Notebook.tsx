@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -13,7 +14,7 @@ import {
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { State } from "metabase-types/store";
 
-import { NotebookRoot } from "./Notebook.styled";
+import N from "./Notebook.module.css";
 import NotebookSteps from "./NotebookSteps";
 
 interface NotebookOwnProps {
@@ -82,14 +83,14 @@ const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
   };
 
   return (
-    <NotebookRoot className={className}>
+    <div className={cx(N.notebookRoot)}>
       <NotebookSteps updateQuestion={handleUpdateQuestion} {...props} />
       {hasVisualizeButton && isRunnable && (
         <Button medium primary style={{ minWidth: 220 }} onClick={visualize}>
           {t`Visualize`}
         </Button>
       )}
-    </NotebookRoot>
+    </div>
   );
 };
 

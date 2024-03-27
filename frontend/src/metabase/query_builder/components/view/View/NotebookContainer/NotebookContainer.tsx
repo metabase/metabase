@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { TransitionEventHandler } from "react";
 import { useEffect, useState } from "react";
 
@@ -5,7 +6,9 @@ import { useSelector } from "metabase/lib/redux";
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
 import { NativeQueryPreviewSidebar } from "metabase/query_builder/components/view/NativeQueryPreviewSidebar";
 import { getUiControls } from "metabase/query_builder/selectors";
-import { Flex } from "metabase/ui";
+import { Flex, Box } from "metabase/ui";
+
+import NC from "./NotebookContainer.module.css";
 
 // There must exist some transition time, no matter how short,
 // because we need to trigger the 'onTransitionEnd' in the component
@@ -39,20 +42,33 @@ export const NotebookContainer = ({
 
   return (
     <Flex
+      className={cx(NC.main)}
       bg="white"
       pos="absolute"
       inset={0}
       opacity={isOpen ? 1 : 0}
       style={{
-        zIndex: 2,
-        overflowY: "auto",
         transform: transformStyle,
         transition: `transform ${delayBeforeNotRenderingNotebook}ms, opacity ${delayBeforeNotRenderingNotebook}ms`,
       }}
       onTransitionEnd={handleTransitionEnd}
     >
-      {shouldShowNotebook && <Notebook {...props} />}
-      {isNativePreviewSidebarOpen && <NativeQueryPreviewSidebar />}
+      {shouldShowNotebook && (
+        <Box className={cx(NC.main)}>
+          <Notebook {...props} />
+        </Box>
+      )}
+
+      {isNativePreviewSidebarOpen && (
+        <Flex
+          className={cx(NC.sqlSidebar)}
+          data-testid="native-query-preview-sidebar"
+          role="complementary"
+          direction="column"
+        >
+          <NativeQueryPreviewSidebar />
+        </Flex>
+      )}
     </Flex>
   );
 };
