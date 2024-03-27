@@ -278,7 +278,7 @@ const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
           <div>
             <div style={{ textAlign: "left" }}>{name}</div>
             <div
-              className="mt1 h6"
+              className={cx(CS.mt1, CS.h6)}
               style={{
                 maxWidth: 250,
                 whiteSpace: "nowrap",
