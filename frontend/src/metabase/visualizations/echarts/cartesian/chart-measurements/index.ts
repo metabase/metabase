@@ -2,6 +2,7 @@ import type {
   AxisFormatter,
   BaseCartesianChartModel,
   ChartDataset,
+  NumericAxisScaleTransforms,
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
@@ -22,6 +23,7 @@ import type {
 
 const getYAxisTicksWidth = (
   axisModel: YAxisModel,
+  yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
   { measureText, fontFamily }: RenderingContext,
 ): number => {
@@ -33,8 +35,10 @@ const getYAxisTicksWidth = (
     ...CHART_STYLE.axisTicks,
     family: fontFamily,
   };
-
-  const valuesToMeasure = [...axisModel.extent];
+  // extents need to be untransformed to get the value of the tick label
+  const valuesToMeasure = axisModel.extent.map(extent =>
+    yAxisScaleTransforms.fromEChartsAxisValue(extent),
+  );
 
   if (!settings["graph.y_axis.auto_range"]) {
     const customRangeValues = [
@@ -164,14 +168,19 @@ export const getTicksDimensions = (
 
   if (chartModel.leftAxisModel) {
     ticksDimensions.yTicksWidthLeft =
-      getYAxisTicksWidth(chartModel.leftAxisModel, settings, renderingContext) +
-      CHART_STYLE.axisTicksMarginY;
+      getYAxisTicksWidth(
+        chartModel.leftAxisModel,
+        chartModel.yAxisScaleTransforms,
+        settings,
+        renderingContext,
+      ) + CHART_STYLE.axisTicksMarginY;
   }
 
   if (chartModel.rightAxisModel) {
     ticksDimensions.yTicksWidthRight =
       getYAxisTicksWidth(
         chartModel.rightAxisModel,
+        chartModel.yAxisScaleTransforms,
         settings,
         renderingContext,
       ) + CHART_STYLE.axisTicksMarginY;

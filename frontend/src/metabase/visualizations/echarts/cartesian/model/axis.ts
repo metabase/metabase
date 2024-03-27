@@ -1,6 +1,5 @@
 import d3 from "d3";
 import _ from "underscore";
-import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
 import dayjs from "dayjs";
 import type {
   AxisFormatter,
@@ -35,7 +34,6 @@ import type {
 import { isNotNull, isNumber } from "metabase/lib/types";
 import {
   getDatasetExtents,
-  getMetricDisplayValueGetter,
   getSeriesExtent,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
@@ -56,7 +54,6 @@ import {
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 import { computeNumericDataInverval } from "metabase/visualizations/lib/numeric";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { isDate } from "metabase-lib/types/utils/isa";
 
 const KEYS_TO_COMPARE = new Set([
   "number_style",
@@ -366,10 +363,12 @@ const getYAxisFormatter = (
       });
   }
 
-  const valueGetter = getMetricDisplayValueGetter(settings);
   return (value: RowValue) => {
-    const restoredValue = valueGetter(value);
-    return renderingContext.formatValue(restoredValue, {
+    if (!isNumber(value)) {
+      return " ";
+    }
+
+    return renderingContext.formatValue(value, {
       column,
       ...(settings.column?.(column) ?? {}),
     });
@@ -478,26 +477,6 @@ export function getYAxesModels(
     ),
   };
 }
-
-export const getXAxisEChartsType = (
-  dimensionModel: DimensionModel,
-  settings: ComputedVisualizationSettings,
-): OptionAxisType => {
-  // Relative time scale charts have numeric dimensions but should use category scale
-  const isDimensionColumnDate = isDate(dimensionModel.column);
-
-  switch (settings["graph.x_axis.scale"]) {
-    case "timeseries":
-      return "time";
-    case "linear":
-    case "pow":
-      return isDimensionColumnDate ? "category" : "value";
-    case "log":
-      return isDimensionColumnDate ? "category" : "log";
-    default:
-      return "category";
-  }
-};
 
 export function getTimeSeriesXAxisModel(
   dimensionModel: DimensionModel,

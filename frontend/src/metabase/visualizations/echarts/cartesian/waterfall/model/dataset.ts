@@ -6,11 +6,9 @@ import type {
   ChartDataset,
   Datum,
   WaterfallXAxisModel,
+  NumericAxisScaleTransforms,
 } from "metabase/visualizations/echarts/cartesian/model/types";
-import {
-  applySquareRootScaling,
-  replaceValues,
-} from "metabase/visualizations/echarts/cartesian/model/dataset";
+import { replaceValues } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
   WATERFALL_DATA_KEYS,
   WATERFALL_END_KEY,
@@ -57,6 +55,7 @@ const replaceZerosForLogScale = (dataset: ChartDataset): ChartDataset => {
 
 export const getWaterfallDataset = (
   dataset: ChartDataset,
+  yAxisScaleTransforms: NumericAxisScaleTransforms,
   originalSeriesKey: DataKey,
   settings: ComputedVisualizationSettings,
   xAxisModel: WaterfallXAxisModel,
@@ -106,7 +105,8 @@ export const getWaterfallDataset = (
       transformedDataset,
       (dataKey: DataKey, value: RowValue) =>
         WATERFALL_DATA_KEYS.includes(dataKey)
-          ? applySquareRootScaling(value)
+          ? // TODO use this more generally for both pow and log scales
+            yAxisScaleTransforms.toEChartsAxisValue(value)
           : value,
     );
   } else if (settings["graph.y_axis.scale"] === "log") {
