@@ -19,10 +19,12 @@ import type {
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 
+import type { YAxisScale } from "metabase-types/api";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 
 import type { ChartMeasurements } from "../chart-measurements/types";
 import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
+import { applySquareRootScaling } from "../model/dataset";
 import { getTicksOptions } from "./ticks";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
@@ -31,16 +33,22 @@ export const getAxisNameGap = (ticksWidth: number): number => {
   return ticksWidth + CHART_STYLE.axisNameMargin;
 };
 
-const getCustomAxisRange = (
-  axisExtent: Extent,
-  min: number | undefined,
-  max: number | undefined,
-) => {
+const getCustomAxisRange = ({
+  axisExtent,
+  customMin,
+  customMax,
+}: {
+  axisExtent: Extent;
+  customMin: number | null | undefined;
+  customMax: number | null | undefined;
+}) => {
   const [extentMin, extentMax] = axisExtent;
   // if min/max are not specified or within series extents return `undefined`
   // so that ECharts compute a rounded range automatically
-  const finalMin = min != null && min < extentMin ? min : undefined;
-  const finalMax = max != null && max > extentMax ? max : undefined;
+  const finalMin =
+    customMin != null && customMin < extentMin ? customMin : undefined;
+  const finalMax =
+    customMax != null && customMax > extentMax ? customMax : undefined;
 
   return { min: finalMin, max: finalMax };
 };
@@ -56,13 +64,34 @@ export const getYAxisRange = (
     return isNormalized ? NORMALIZED_RANGE : {};
   }
 
-  const customMin = settings["graph.y_axis.min"];
-  const customMax = settings["graph.y_axis.max"];
+  const scale = settings["graph.y_axis.scale"];
+  const customMin = getScaledMin(settings["graph.y_axis.min"], scale);
+  const customMax = getScaledMax(settings["graph.y_axis.max"], scale);
 
   return axisModel.extent
-    ? getCustomAxisRange(axisModel.extent, customMin, customMax)
+    ? getCustomAxisRange({ axisExtent: axisModel.extent, customMin, customMax })
     : {};
 };
+
+function getScaledMin(customMin: number | undefined, scale?: YAxisScale) {
+  if (scale === "pow") {
+    return customMin
+      ? (applySquareRootScaling(customMin) as number)
+      : undefined;
+  }
+
+  return customMin;
+}
+
+function getScaledMax(customMax: number | undefined, scale?: YAxisScale) {
+  if (scale === "pow") {
+    return customMax
+      ? (applySquareRootScaling(customMax) as number)
+      : undefined;
+  }
+
+  return customMax;
+}
 
 export const getAxisNameDefaultOption = (
   { getColor, fontFamily }: RenderingContext,
