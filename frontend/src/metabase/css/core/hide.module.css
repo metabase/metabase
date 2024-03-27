@@ -2,8 +2,27 @@
   display: none !important;
 }
 
-.smShow {
+.show {
+  display: inherit;
+}
+
+.hidden {
+  visibility: hidden;
+}
+
+.smShow,
+.mdShow,
+.lgShow,
+.xlShow {
   display: none;
+}
+
+/* extra-small */
+
+@media screen and (--breakpoint-min-xs) {
+  .xsShow {
+    display: inherit !important;
+  }
 }
 
 /* small */
@@ -12,4 +31,38 @@
   .smShow {
     display: inherit !important;
   }
+}
+
+/* medium */
+
+@media screen and (--breakpoint-min-md) {
+  .mdShow {
+    display: inherit !important;
+  }
+}
+
+/* large */
+
+@media screen and (--breakpoint-min-lg) {
+  .lgShow {
+    display: inherit !important;
+  }
+}
+
+/* xl */
+@media screen and (--breakpoint-min-xl) {
+  .xlShow {
+    display: inherit !important;
+  }
+}
+
+.TableInteractiveDetailButton {
+  color: var(--color-brand);
+  transition: opacity 0.2s ease-in-out;
+  margin: 0 4px;
+  opacity: 0;
+}
+
+.show .TableInteractiveDetailButton {
+  opacity: 1;
 }

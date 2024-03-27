@@ -283,9 +283,9 @@ export default class PieChart extends Component {
         groupElement.getBoundingClientRect().width < 120 ||
         !settings["pie.show_total"]
       ) {
-        detailElement.classList.add("hide");
+        detailElement.classList.add(CS.hide);
       } else {
-        detailElement.classList.remove("hide");
+        detailElement.classList.remove(CS.hide);
       }
     });
 

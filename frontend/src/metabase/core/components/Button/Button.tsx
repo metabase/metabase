@@ -5,7 +5,7 @@ import { forwardRef } from "react";
 import _ from "underscore";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
-import CS from "metabase/css/core/spacing.module.css";
+import CS from "metabase/css/core/index.css";
 import { isNotNull } from "metabase/lib/types";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
@@ -46,6 +46,13 @@ const VARIANT_TO_CLASS_MAP: { [key: string]: string } = {
   borderless: ButtonsS.ButtonBorderless,
   onlyIcon: ButtonsS.ButtonOnlyIcon,
   fullWidth: ButtonsS.ButtonFullWidth,
+};
+
+const BREAKPOINT_TO_STYLE_MAP: { [key: string]: string } = {
+  sm: CS.smShow,
+  md: CS.mdShow,
+  lg: CS.lgShow,
+  xl: CS.xlShow,
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -128,9 +135,11 @@ const BaseButton = forwardRef(function BaseButton(
             hasIcon={!!icon}
             hasRightIcon={!!iconRight}
             iconVertical={iconVertical}
-            className={cx({
-              [`hide ${labelBreakpoint}-show`]: !!labelBreakpoint,
-            })}
+            className={
+              labelBreakpoint
+                ? cx(CS.hide, BREAKPOINT_TO_STYLE_MAP[labelBreakpoint])
+                : null
+            }
           >
             {children}
           </ButtonTextContainer>
