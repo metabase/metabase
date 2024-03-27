@@ -414,7 +414,7 @@
             viz-settings'               (assoc viz-settings :output-order output-order)]
         (qp.si/begin! w
                       (-> results
-                          (assoc-in [:data :format-rows?] (or format-rows? true))
+                          (assoc-in [:data :format-rows?] format-rows?)
                           (assoc-in [:data :ordered-cols] ordered-cols))
                       viz-settings')
         (dorun
@@ -425,17 +425,18 @@
         (qp.si/finish! w results)))))
 
 (defn- result-attachment
-  [{{card-name :name format-rows? :format_export :as card} :card {{:keys [rows]} :data :as result} :result}]
+  [{{card-name :name format-rows :format_rows :as card} :card
+    {{:keys [rows]} :data :as result}                   :result}]
   (when (seq rows)
     [(when-let [temp-file (and (:include_csv card)
                                (create-temp-file-or-throw "csv"))]
        (with-open [os (io/output-stream temp-file)]
-         (stream-api-results-to-export-format :csv format-rows? os result))
+         (stream-api-results-to-export-format :csv format-rows os result))
        (create-result-attachment-map "csv" card-name temp-file))
      (when-let [temp-file (and (:include_xls card)
                                (create-temp-file-or-throw "xlsx"))]
        (with-open [os (io/output-stream temp-file)]
-         (stream-api-results-to-export-format :xlsx format-rows? os result))
+         (stream-api-results-to-export-format :xlsx format-rows os result))
        (create-result-attachment-map "xlsx" card-name temp-file))]))
 
 (defn- part-attachments [parts]

@@ -40,20 +40,22 @@
   [:dashboard_card_id                  ms/PositiveInt]
   [:position          {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
   [:include_csv       {:optional true} [:maybe :boolean]]
-  [:include_xls       {:optional true} [:maybe :boolean]]])
+  [:include_xls       {:optional true} [:maybe :boolean]]
+  [:format_rows       {:optional true} [:maybe :boolean]]])
 
 (mu/defn bulk-create!
   "Creates new PulseCards, joining the given card, pulse, and dashboard card and setting appropriate defaults for other
   values if they're not provided."
   [new-pulse-cards :- [:sequential NewPulseCard]]
   (t2/insert! PulseCard
-    (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls]} new-pulse-cards]
+    (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls format_rows]} new-pulse-cards]
       {:card_id           card_id
        :pulse_id          pulse_id
        :dashboard_card_id dashboard_card_id
        :position          (u/or-with some? position (next-position-for pulse_id))
        :include_csv       (boolean include_csv)
-       :include_xls       (boolean include_xls)})))
+       :include_xls       (boolean include_xls)
+       :format_rows       (boolean format_rows)})))
 
 ; ----------------------------------------------------- Serialization -------------------------------------------------
 
