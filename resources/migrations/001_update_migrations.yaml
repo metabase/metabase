@@ -5529,6 +5529,13 @@ databaseChangeLog:
             sql: INSERT INTO setting ("KEY", "VALUE") VALUES ('enable-public-sharing', 'false');
       rollback: # not needed
 
+  - changeSet:
+      id: v49.2024-03-26T20:27:58
+      author: noahmoss
+      comment: Added 0.46.0 - Delete the truncate audit log task (renamed to truncate audit tables)
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteTruncateAuditLogTask"
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
