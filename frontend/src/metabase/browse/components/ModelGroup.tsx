@@ -224,7 +224,7 @@ const ModelCell = ({ model, collectionHtmlId }: ModelCellProps) => {
             {model.description}
           </MultilineEllipsified>
         ) : (
-          <Text color="text-light">No description.</Text>
+          <Text color="text-light">{t`No description.`}</Text>
         )}
       </ModelCard>
     </ModelCardLink>
