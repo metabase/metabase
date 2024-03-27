@@ -2,7 +2,7 @@
 /** @type {import('jest').Config} */
 const config = {
   moduleNameMapper: {
-    "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
+    "\\.(css|less)$": "identity-obj-proxy",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "^promise-loader\\?global\\!metabase-lib\\/v1\\/metadata\\/utils\\/ga-metadata$":
