@@ -36,4 +36,8 @@ describe("getNormalizedStackedTrendDatas", () => {
       ]),
     ]);
   });
+
+  it("should return an empty array when there is no trend data", () => {
+    expect(getNormalizedStackedTrendDatas([])).toStrictEqual([]);
+  });
 });

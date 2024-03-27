@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useState, useMemo } from "react";
 import { t } from "ttag";
 
-import { useListApiKeyQuery } from "metabase/api";
+import { useListApiKeysQuery } from "metabase/api";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
@@ -113,7 +113,7 @@ export const ManageApiKeys = () => {
   const [modal, setModal] = useState<Modal>(null);
   const [activeApiKey, setActiveApiKey] = useState<null | ApiKey>(null);
 
-  const { data: apiKeys, error, isLoading } = useListApiKeyQuery();
+  const { data: apiKeys, error, isLoading } = useListApiKeysQuery();
 
   const sortedApiKeys = useMemo(() => {
     if (!apiKeys) {

@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useListApiKeyQuery } from "metabase/api";
+import { useListApiKeysQuery } from "metabase/api";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -60,7 +60,7 @@ function GroupMembersTable({
   onPreviousPage,
   reload,
 }: GroupMembersTableProps) {
-  const { isLoading, data: apiKeys } = useListApiKeyQuery();
+  const { isLoading, data: apiKeys } = useListApiKeysQuery();
   const groupApiKeys = useMemo(() => {
     return apiKeys?.filter(apiKey => apiKey.group.id === group.id) ?? [];
   }, [apiKeys, group.id]);

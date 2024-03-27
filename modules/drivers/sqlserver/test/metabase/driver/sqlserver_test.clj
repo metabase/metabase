@@ -18,10 +18,13 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.test.util.timezone :as test.tz]
+   [metabase.util.date-2 :as u.date]
+   [next.jdbc]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
@@ -435,25 +438,34 @@
                         filter-query (update-in filter-query [:query :filter] into (map second) expected-result)]
                     (mt/with-native-query-testing-context filter-query
                       (is (= expected-result
-                             (-> filter-query qp/process-query mt/rows))))))))))))
-    #_(testing "Demo that filtering datetime fields by localdatetime objects doesn't work"
-        (mt/dataset attempted-murders
-          (let [details (mt/dbdef->connection-details :sqlserver :db {:database-name "attempted-murders"})
-                tricky-datetime "2019-11-02T00:14:14.247Z"
-                datetime-string (-> tricky-datetime
-                                    (str/replace #"T" " ")
-                                    (str/replace #"0*Z$" ""))
-                datetime-localdatetime (-> tricky-datetime
-                                           t/offset-date-time
-                                           t/local-date-time)
-                base-query "SELECT id FROM [attempts] WHERE datetime = ?"]
-            (doseq [param [datetime-string datetime-localdatetime]
-                    :let [query [base-query param]]]
-              (testing (pr-str query)
-                (is (= [{:id 2}]
-                       (sql-jdbc.execute/do-with-connection-with-options
-                        :sqlserver
-                        (sql-jdbc.conn/connection-details->spec :sqlserver details)
-                        {}
-                        (fn [^java.sql.Connection conn]
-                          (next.jdbc/execute! conn query))))))))))))
+                             (-> filter-query qp/process-query mt/rows))))))))))))))
+
+(deftest ^:parallel filter-by-datetime-against-localdate-time-test
+  (mt/test-driver :sqlserver
+    (testing "Filtering datetime fields by localdatetime objects should work"
+      (mt/dataset attempted-murders
+        (let [tricky-datetime        "2019-11-02T00:14:14.247"
+              datetime-string        (-> tricky-datetime
+                                         (str/replace #"T" " "))
+              datetime-localdatetime (t/local-date-time (u.date/parse tricky-datetime))
+              base-query             (qp.store/with-metadata-provider (mt/id)
+                                       (first
+                                        (sql.qp/format-honeysql
+                                         :sqlserver
+                                         {:select [:id]
+                                          :from   [:attempts]
+                                          :where  (sql.qp/->honeysql
+                                                   :sqlserver
+                                                   [:=
+                                                    [:field (mt/id :attempts :datetime) nil]
+                                                    (sql.qp/compiled [:raw "?"])])})))]
+          (doseq [param [datetime-string datetime-localdatetime]
+                  :let  [query [base-query param]]]
+            (testing (pr-str query)
+              (is (= [{:id 2}]
+                     (sql-jdbc.execute/do-with-connection-with-options
+                      :sqlserver
+                      (mt/id)
+                      {}
+                      (fn [^java.sql.Connection conn]
+                        (next.jdbc/execute! conn query))))))))))))

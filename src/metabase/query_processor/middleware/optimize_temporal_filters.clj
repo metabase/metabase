@@ -4,7 +4,9 @@
   (:require
    [clojure.walk :as walk]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
@@ -15,6 +17,7 @@
 (def ^:private optimizable-units
   #{:second :minute :hour :day :week :month :quarter :year})
 
+;;; TODO -- we can use [[metabase.lib/temporal-bucket]] for this once we convert this middleware to MLv2
 (defn- temporal-unit [field]
   (lib.util.match/match-one field [(_ :guard #{:field :expression}) _ (opts :guard :temporal-unit)] (:temporal-unit opts)))
 
@@ -46,10 +49,23 @@
     [(_ :guard #{:absolute-datetime :relative-datetime}) _ (unit :guard optimizable-units)]
     (= (temporal-unit field) unit)))
 
+;;; TODO -- once we convert this middleware to MLv2 we can use [[metabase.lib.metadata.calculation/type-of]]
+(defn- field-or-expression-effective-type [field-or-expression]
+  (lib.util.match/match-one field-or-expression
+    [(_tag :guard #{:field :expression}) _ (opts :guard :effective-type)]
+    (:effective-type opts)
+
+    [:field (id :guard pos-int?) _opts]
+    (when-let [field (lib.metadata/field (qp.store/metadata-provider) id)]
+      (:effective-type field))
+
+    [(_tag :guard #{:field :expression}) _ (opts :guard :base-type)]
+    (:base-type opts)))
+
 (defmethod can-optimize-filter? :default
   [filter-clause]
   (lib.util.match/match-one filter-clause
-    [_
+    [_tag
      (field :guard optimizable-field?)
      (temporal-value :guard optimizable-temporal-value?)]
     (field-and-temporal-value-have-compatible-units? field temporal-value)))
@@ -75,7 +91,10 @@
 (defn- change-temporal-unit-to-default [field]
   (lib.util.match/replace field
     [(_ :guard #{:field :expression}) _ (_ :guard (comp optimizable-units :temporal-unit))]
-    (mbql.u/update-field-options &match assoc :temporal-unit :default)))
+    (mbql.u/update-field-options &match assoc :temporal-unit :default)
+
+    [:absolute-datetime t _unit]
+    [:absolute-datetime t :default]))
 
 (defmulti ^:private temporal-value-lower-bound
   "Get a clause representing the *lower* bound that should be used when converting a `temporal-value-clause` (e.g.
@@ -105,6 +124,10 @@
   [[_ n unit] temporal-unit]
   [:relative-datetime (inc (if (= n :current) 0 n)) (or unit temporal-unit)])
 
+(defn- date-field-with-day-bucketing? [x]
+  (and (isa? (field-or-expression-effective-type x) :type/Date)
+       (= (temporal-unit x) :day)))
+
 (defmulti ^:private optimize-filter
   "Optimize a filter clause against a temporal-bucketed `:field` or `:expression` clause and `:absolute-datetime` or `:relative-datetime`
   value by converting to an unbucketed range."
@@ -113,22 +136,30 @@
 
 (defmethod optimize-filter :=
   [[_tag field temporal-value]]
-  (let [temporal-unit (lib.util.match/match-one field [(_ :guard #{:field :expression}) _ (opts :guard :temporal-unit)] (:temporal-unit opts))]
-    (when (field-and-temporal-value-have-compatible-units? field temporal-value)
-      (let [field' (change-temporal-unit-to-default field)]
-        [:and
-         [:>= field' (temporal-value-lower-bound temporal-value temporal-unit)]
-         [:< field'  (temporal-value-upper-bound temporal-value temporal-unit)]]))))
+  (if (date-field-with-day-bucketing? field)
+    [:= (change-temporal-unit-to-default field) (change-temporal-unit-to-default temporal-value)]
+    (let [temporal-unit (lib.util.match/match-one field
+                          [(_ :guard #{:field :expression}) _ (opts :guard :temporal-unit)]
+                          (:temporal-unit opts))]
+      (when (field-and-temporal-value-have-compatible-units? field temporal-value)
+        (let [field' (change-temporal-unit-to-default field)]
+          [:and
+           [:>= field' (temporal-value-lower-bound temporal-value temporal-unit)]
+           [:< field'  (temporal-value-upper-bound temporal-value temporal-unit)]])))))
 
 (defmethod optimize-filter :!=
-  [filter-clause]
-  (mbql.u/negate-filter-clause ((get-method optimize-filter :=) filter-clause)))
+  [[_tag field temporal-value :as filter-clause]]
+  (if (date-field-with-day-bucketing? field)
+    [:!= (change-temporal-unit-to-default field) (change-temporal-unit-to-default temporal-value)]
+    (mbql.u/negate-filter-clause ((get-method optimize-filter :=) filter-clause))))
 
 (defn- optimize-comparison-filter
-  [optimize-temporal-value-fn [_filter-type field temporal-value] new-filter-type]
-  [new-filter-type
-   (change-temporal-unit-to-default field)
-   (optimize-temporal-value-fn temporal-value (temporal-unit field))])
+  [optimize-temporal-value-fn [tag field temporal-value] new-filter-type]
+  (if (date-field-with-day-bucketing? field)
+    [tag (change-temporal-unit-to-default field) (change-temporal-unit-to-default temporal-value)]
+    [new-filter-type
+     (change-temporal-unit-to-default field)
+     (optimize-temporal-value-fn temporal-value (temporal-unit field))]))
 
 (defmethod optimize-filter :<
   [filter-clause]
@@ -147,11 +178,16 @@
   (optimize-comparison-filter temporal-value-lower-bound filter-clause :>=))
 
 (defmethod optimize-filter :between
-  [[_ field lower-bound upper-bound]]
-  (let [field' (change-temporal-unit-to-default field)]
-    [:and
-     [:>= field' (temporal-value-lower-bound lower-bound (temporal-unit field))]
-     [:<  field' (temporal-value-upper-bound upper-bound (temporal-unit field))]]))
+  [[_tag field lower-bound upper-bound]]
+  (if (date-field-with-day-bucketing? field)
+    [:between
+     (change-temporal-unit-to-default field)
+     (change-temporal-unit-to-default lower-bound)
+     (change-temporal-unit-to-default upper-bound)]
+    (let [field' (change-temporal-unit-to-default field)]
+      [:and
+       [:>= field' (temporal-value-lower-bound lower-bound (temporal-unit field))]
+       [:<  field' (temporal-value-upper-bound upper-bound (temporal-unit field))]])))
 
 (defn- optimize-temporal-filters* [query]
   (lib.util.match/replace query

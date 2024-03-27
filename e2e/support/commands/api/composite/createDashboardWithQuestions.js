@@ -10,7 +10,10 @@ Cypress.Commands.add(
           questions.map(query =>
             cy.createQuestionAndAddToDashboard(query, dashboard.id),
           ),
-        ).then(questions => {
+        ).then(dashcardResponses => {
+          const questions = dashcardResponses.map(
+            dashcardResponse => dashcardResponse.body.card,
+          );
           return {
             questions,
             dashboard,

@@ -130,7 +130,7 @@ const CollectionPermissionsModal = ({
           : [
               <Link
                 key="all-permissions"
-                className="link"
+                className={CS.link}
                 to="/admin/permissions/collections"
               >
                 {t`See all collection permissions`}

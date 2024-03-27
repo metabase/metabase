@@ -1,5 +1,6 @@
 import EntityMenu from "metabase/components/EntityMenu";
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 import { Flex } from "metabase/ui/components";
 
 import {
@@ -39,8 +40,8 @@ export function ObjectDetailHeader({
   closeObjectDetail,
 }: ObjectDetailHeaderProps): JSX.Element {
   return (
-    <ObjectDetailHeaderWrapper className="Grid">
-      <div className="Grid-cell">
+    <ObjectDetailHeaderWrapper className={CS.Grid}>
+      <div className={CS.GridCell}>
         <h2 className="p3">
           {objectName}
           {objectId !== null && <ObjectIdLabel> {objectId}</ObjectIdLabel>}

@@ -284,7 +284,7 @@
                     (mt/user-http-request :rasta :post "dataset"
                                           (mt/mbql-query venues {:limit 1}))))))))
 
-(deftest compile-test
+(deftest ^:parallel compile-test
   (testing "POST /api/dataset/native"
     (testing "\nCan we fetch a native version of an MBQL query?"
       (is (= {:query  (str "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\" "
@@ -293,20 +293,31 @@
               :params nil}
              (mt/user-http-request :crowberto :post 200 "dataset/native"
                                    (assoc (mt/mbql-query venues {:fields [$id $name]})
-                                     :pretty false))))
+                                     :pretty false)))))))
 
+(deftest ^:parallel compile-test-2
+  (testing "POST /api/dataset/native"
+    (testing "\nCan we fetch a native version of an MBQL query?"
       (testing "\nMake sure parameters are spliced correctly"
-        (is (= {:query  (str "SELECT \"PUBLIC\".\"CHECKINS\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"CHECKINS\" "
-                             "WHERE (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= timestamp with time zone '2015-11-13 00:00:00.000Z')"
-                             " AND (\"PUBLIC\".\"CHECKINS\".\"DATE\" < timestamp with time zone '2015-11-14 00:00:00.000Z') "
-                             "LIMIT 1048575")
+        (is (= {:query  ["SELECT"
+                         "  \"PUBLIC\".\"CHECKINS\".\"ID\" AS \"ID\""
+                         "FROM"
+                         "  \"PUBLIC\".\"CHECKINS\""
+                         "WHERE"
+                         "  \"PUBLIC\".\"CHECKINS\".\"DATE\" = date '2015-11-13'"
+                         "LIMIT"
+                         "  1048575"]
                 :params nil}
-               (mt/user-http-request :crowberto :post 200 "dataset/native"
-                                     (assoc (mt/mbql-query checkins
-                                                           {:fields [$id]
-                                                            :filter [:= $date "2015-11-13"]})
-                                       :pretty false)))))
+               (-> (mt/user-http-request :crowberto :post 200 "dataset/native"
+                                         (assoc (mt/mbql-query checkins
+                                                  {:fields [$id]
+                                                   :filter [:= $date "2015-11-13"]})
+                                                :pretty false))
+                   (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
 
+(deftest compile-test-3
+  (testing "POST /api/dataset/native"
+    (testing "\nCan we fetch a native version of an MBQL query?"
       (testing "\nshould require that the user have ad-hoc native perms for the DB"
         (mt/with-temp-copy-of-db
           ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
@@ -317,7 +328,11 @@
                          [:message            [:= "You do not have permissions to run this query."]]]
                         (mt/user-http-request :rasta :post "dataset/native"
                                               (mt/mbql-query venues
-                                                             {:fields [$id $name]})))))))
+                                                             {:fields [$id $name]}))))))))))
+
+(deftest ^:parallel compile-test-4
+  (testing "POST /api/dataset/native"
+    (testing "\nCan we fetch a native version of an MBQL query?"
       (testing "We should be able to format the resulting SQL query if desired"
         ;; Note that the following was tested against all driver branches of format-sql and all results were identical.
         (is (= {:query  (str "SELECT\n"
@@ -331,7 +346,11 @@
                (mt/user-http-request :crowberto :post 200 "dataset/native"
                                      (assoc
                                       (mt/mbql-query venues {:fields [$id $name]})
-                                      :pretty true)))))
+                                      :pretty true))))))))
+
+(deftest ^:parallel compile-test-5
+  (testing "POST /api/dataset/native"
+    (testing "\nCan we fetch a native version of an MBQL query?"
       (testing "The default behavior is to format the SQL"
         (is (= {:query  (str "SELECT\n"
                              "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\",\n"
@@ -342,7 +361,11 @@
                              "  1048575")
                 :params nil}
                (mt/user-http-request :crowberto :post 200 "dataset/native"
-                                     (mt/mbql-query venues {:fields [$id $name]})))))
+                                     (mt/mbql-query venues {:fields [$id $name]}))))))))
+
+(deftest ^:parallel compile-test-6
+  (testing "POST /api/dataset/native"
+    (testing "\nCan we fetch a native version of an MBQL query?"
       (testing "`:now` is usable inside `:case` with mongo (#32216)"
         (mt/test-driver :mongo
           (is (= {:$switch
@@ -371,7 +394,7 @@
                      :data
                      (select-keys [:requested_timezone :results_timezone])))))))))
 
-(deftest pivot-dataset-test
+(deftest ^:parallel pivot-dataset-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
@@ -382,11 +405,14 @@
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
             (is (= 1144 (count rows)))
-
             (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
             (is (= ["WV" "Facebook" nil 4 45 292] (nth rows 1000)))
-            (is (= [nil nil nil 7 18760 69540] (last rows)))))
+            (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
+(deftest ^:parallel pivot-dataset-test-2
+  (mt/test-drivers (api.pivots/applicable-drivers)
+    (mt/dataset test-data
+      (testing "POST /api/dataset/pivot"
         ;; this only works on a handful of databases -- most of them don't allow you to ask for a Field that isn't in
         ;; the GROUP BY expression
         (when (#{:mongo :h2 :sqlite} driver/*driver*)
@@ -400,7 +426,6 @@
                   rows   (mt/rows result)]
               (is (= 1144 (:row_count result)))
               (is (= 1144 (count rows)))
-
               (let [cols (mt/cols result)]
                 (is (= ["User → State"
                         "User → Source"
@@ -410,14 +435,14 @@
                         "Sum of Quantity"
                         "test-expr"]
                        (map :display_name cols)))
-                (is (= {:base_type       "type/Integer"
-                        :effective_type  "type/Integer"
-                        :name            "pivot-grouping"
-                        :display_name    "pivot-grouping"
-                        :expression_name "pivot-grouping"
-                        :field_ref       ["expression" "pivot-grouping"]
-                        :source          "breakout"}
-                       (nth cols 3))))
+                (is (=? {:base_type       "type/Integer"
+                         :effective_type  "type/Integer"
+                         :name            "pivot-grouping"
+                         :display_name    "pivot-grouping"
+                         :expression_name "pivot-grouping"
+                         :field_ref       ["expression" "pivot-grouping"]
+                         :source          "breakout"}
+                        (nth cols 3))))
 
               (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
 

@@ -10,7 +10,7 @@ import { DataStep } from "../steps/DataStep";
 import { ExpressionStep } from "../steps/ExpressionStep";
 import { FilterStep } from "../steps/FilterStep";
 import { JoinStep } from "../steps/JoinStep";
-import LimitStep from "../steps/LimitStep";
+import { LimitStep } from "../steps/LimitStep";
 import SortStep from "../steps/SortStep";
 import SummarizeStep from "../steps/SummarizeStep";
 import type { NotebookStepUiComponentProps } from "../types";

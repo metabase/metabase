@@ -6,7 +6,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { FIELD_VALUES_TAG } from "./tags";
+import { idTag } from "./tags";
 
 export const fieldApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -16,7 +16,7 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${fieldId}/values`,
       }),
       providesTags: (result, error, fieldId) => [
-        { type: FIELD_VALUES_TAG, id: fieldId },
+        idTag("field-values", fieldId),
       ],
     }),
     searchFieldValues: builder.query<FieldValue[], FieldSearchInput>({
@@ -26,7 +26,7 @@ export const fieldApi = Api.injectEndpoints({
         body,
       }),
       providesTags: (result, error, { fieldId }) => [
-        { type: FIELD_VALUES_TAG, id: fieldId },
+        idTag("field-values", fieldId),
       ],
     }),
     rescanFieldValues: builder.mutation<void, FieldId>({
@@ -35,7 +35,7 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${fieldId}/rescan_values`,
       }),
       invalidatesTags: (result, error, fieldId) => [
-        { type: FIELD_VALUES_TAG, id: fieldId },
+        idTag("field-values", fieldId),
       ],
     }),
     discardFieldValues: builder.mutation<void, FieldId>({
@@ -44,7 +44,7 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${fieldId}/discard_values`,
       }),
       invalidatesTags: (result, error, fieldId) => [
-        { type: FIELD_VALUES_TAG, id: fieldId },
+        idTag("field-values", fieldId),
       ],
     }),
   }),

@@ -264,7 +264,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
     it("should save the metric using custom expressions (metabase#13022)", () => {
       createMetric({
         name: "13022_Metric",
-        desription: "desc",
+        description: "desc",
         table_id: ORDERS_ID,
         definition: {
           "source-table": ORDERS_ID,

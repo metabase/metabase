@@ -3,7 +3,6 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-  within,
 } from "__support__/ui";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { createMockDatabase } from "metabase-types/api/mocks";
@@ -13,7 +12,7 @@ import { useDatabaseListQuery } from "./use-database-list-query";
 const TEST_DB = createMockDatabase();
 
 const TestComponent = () => {
-  const { data = [], metadata, isLoading, error } = useDatabaseListQuery();
+  const { data = [], isLoading, error } = useDatabaseListQuery();
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -24,10 +23,6 @@ const TestComponent = () => {
       {data.map(database => (
         <div key={database.id}>{database.name}</div>
       ))}
-
-      <div data-testid="metadata">
-        {(!metadata || Object.keys(metadata).length === 0) && "No metadata"}
-      </div>
     </div>
   );
 };
@@ -47,13 +42,5 @@ describe("useDatabaseListQuery", () => {
     setup();
     await waitForLoaderToBeRemoved();
     expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
-  });
-
-  it("should not have any metadata in the response", async () => {
-    setup();
-    await waitForLoaderToBeRemoved();
-    expect(
-      within(screen.getByTestId("metadata")).getByText("No metadata"),
-    ).toBeInTheDocument();
   });
 });

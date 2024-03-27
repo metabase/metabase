@@ -2,6 +2,7 @@ import { jt, t } from "ttag";
 
 import Banner from "metabase/components/Banner";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import CS from "metabase/css/core/index.css";
 import MetabaseSettings from "metabase/lib/settings";
 import type { TokenStatus } from "metabase-types/api";
 
@@ -17,7 +18,7 @@ export const PaymentBanner = ({ isAdmin, tokenStatus }: PaymentBannerProps) => {
         {jt`⚠️ We couldn't process payment for your account. Please ${(
           <ExternalLink
             key="payment-past-due"
-            className="link"
+            className={CS.link}
             href={MetabaseSettings.storeUrl()}
           >
             {t`review your payment settings`}
@@ -31,7 +32,7 @@ export const PaymentBanner = ({ isAdmin, tokenStatus }: PaymentBannerProps) => {
         {jt`⚠️ Pro features won’t work right now due to lack of payment. ${(
           <ExternalLink
             key="payment-unpaid"
-            className="link"
+            className={CS.link}
             href={MetabaseSettings.storeUrl()}
           >
             {t`Review your payment settings`}

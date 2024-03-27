@@ -34,6 +34,7 @@ import {
   getTimeInputOverrides,
   getTitleOverrides,
   getTooltipOverrides,
+  getListOverrides,
 } from "./components";
 import { getThemeColors } from "./utils/colors";
 
@@ -127,5 +128,6 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...getTitleOverrides(),
     ...getTooltipOverrides(),
     ...getHoverCardOverrides(),
+    ...getListOverrides(),
   },
 });

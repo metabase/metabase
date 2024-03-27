@@ -8,7 +8,7 @@
    [metabase.api.api-key :as api.api-key]
    [metabase.api.automagic-dashboards :as api.magic]
    [metabase.api.bookmark :as api.bookmark]
-   [metabase.api.caching :as api.caching]
+   [metabase.api.cache :as api.cache]
    [metabase.api.card :as api.card]
    [metabase.api.collection :as api.collection]
    [metabase.api.common :as api :refer [defroutes context]]
@@ -134,7 +134,7 @@
   (context "/search"               [] (+auth api.search/routes))
   (context "/segment"              [] (+auth api.segment/routes))
   (context "/session"              [] api.session/routes)
-  (context "/caching"              [] (+auth api.caching/routes))
+  (context "/cache"                [] (+auth api.cache/routes))
   (context "/setting"              [] (+auth api.setting/routes))
   (context "/setup"                [] api.setup/routes)
   (context "/slack"                [] (+auth api.slack/routes))

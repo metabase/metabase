@@ -135,14 +135,14 @@ function formatMetric([, metricId]: FieldReference, options: Options) {
     throw new Error("`query` is a required parameter to format expressions");
   }
 
-  const metric = Lib.availableMetrics(query).find(metric => {
+  const metric = Lib.availableMetrics(query, stageIndex).find(metric => {
     const [_, availableMetricId] = Lib.legacyRef(query, stageIndex, metric);
 
     return availableMetricId === metricId;
   });
 
   if (!metric) {
-    throw "metric with ID does not exist: " + metricId;
+    throw new Error(`metric with ID: ${metricId} does not exist`);
   }
 
   const displayInfo = Lib.displayInfo(query, stageIndex, metric);
@@ -158,9 +158,11 @@ function formatLegacyMetric(
   const metric = _.findWhere(checkNotNull(legacyQuery.table()).metrics ?? [], {
     id: metricId,
   });
+
   if (!metric) {
-    throw "metric with ID does not exist: " + metricId;
+    throw new Error(`metric with ID: "${metricId}" does not exist`);
   }
+
   return formatMetricName(metric.name, options);
 }
 
@@ -184,7 +186,7 @@ function formatSegment([, segmentId]: FieldReference, options: Options) {
   });
 
   if (!segment) {
-    throw "segment with ID does not exist: " + segmentId;
+    throw new Error("segment with ID does not exist: " + segmentId);
   }
 
   const displayInfo = Lib.displayInfo(query, stageIndex, segment);
@@ -202,7 +204,7 @@ function formatLegacySegment(
     { id: Number(segmentId) },
   );
   if (!segment) {
-    throw "segment with ID does not exist: " + segmentId;
+    throw new Error("segment with ID does not exist: " + segmentId);
   }
   return formatSegmentName(segment.name, options);
 }

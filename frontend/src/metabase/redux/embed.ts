@@ -18,6 +18,7 @@ export const DEFAULT_EMBED_OPTIONS = {
 } as const;
 
 export const SET_OPTIONS = "metabase/embed/SET_OPTIONS";
+// FIXME: "setOptions" overrides all other options that haven't been passed. We should add another action to set only one key from options object.
 export const setOptions = createAction(
   SET_OPTIONS,
   ({ search, hash }: { search: string; hash: string }) => {

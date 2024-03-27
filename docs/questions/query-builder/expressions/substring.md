@@ -68,7 +68,7 @@ substring([Mission ID], (1 + length([Mission ID]) - 3), 3)
 
 `substring` extracts text by counting a fixed number of characters. If you need to extract text based on some more complicated logic, try [`regexextract`](../expressions-list.md#regexextract).
 
-And if you only need to clean up extra whitespace around your text, you can use the [`trim`](../expressions-list.md#trim), [`lefttrim`](../expressions-list.md#lefttrim), or [`righttrim`](../expressions-list.md#righttrim) expressions instead.
+And if you only need to clean up extra whitespace around your text, you can use the [`trim`](../expressions-list.md#trim), [`ltrim`](../expressions-list.md#ltrim), or [`rtrim`](../expressions-list.md#rtrim) expressions instead.
 
 ## Related functions
 

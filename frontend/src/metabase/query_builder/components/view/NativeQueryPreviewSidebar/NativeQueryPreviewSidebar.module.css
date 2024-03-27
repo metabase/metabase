@@ -1,0 +1,11 @@
+.container {
+  position: absolute;
+  inset: 0;
+  background-color: white;
+
+  @media screen and (--breakpoint-min-md) {
+    position: relative;
+    flex: 1;
+    max-width: 37.5rem;
+  }
+}

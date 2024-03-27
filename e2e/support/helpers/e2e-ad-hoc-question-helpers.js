@@ -110,18 +110,35 @@ export function openTable({
   );
 }
 
+/**
+ *
+ * @typedef {{mode?: "notebook", limit?: number, callback?: function }} OpenTablesProps
+ */
+
+/**
+ * @param {OpenTablesProps} props
+ */
 export function openProductsTable({ mode, limit, callback } = {}) {
   return openTable({ table: STATIC_PRODUCTS_ID, mode, limit, callback });
 }
 
+/**
+ * @param {OpenTablesProps} props
+ */
 export function openOrdersTable({ mode, limit, callback } = {}) {
   return openTable({ table: STATIC_ORDERS_ID, mode, limit, callback });
 }
 
+/**
+ * @param {OpenTablesProps} props
+ */
 export function openPeopleTable({ mode, limit, callback } = {}) {
   return openTable({ table: STATIC_PEOPLE_ID, mode, limit, callback });
 }
 
+/**
+ * @param {OpenTablesProps} props
+ */
 export function openReviewsTable({ mode, limit, callback } = {}) {
   return openTable({ table: STATIC_REVIEWS_ID, mode, limit, callback });
 }

@@ -4,7 +4,7 @@ import { Component } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { useListApiKeyQuery } from "metabase/api";
+import { useListApiKeysQuery } from "metabase/api";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
@@ -164,10 +164,7 @@ function EditingGroupRow({
       </td>
       <td />
       <td className="text-right">
-        <span
-          className="link no-decoration cursor-pointer"
-          onClick={onCancelClicked}
-        >{t`Cancel`}</span>
+        <span className={CS.link} onClick={onCancelClicked}>{t`Cancel`}</span>
         <button
           className={cx(ButtonsS.Button, CS.ml2, {
             [ButtonsS.ButtonPrimary]: textIsValid && textHasChanged,
@@ -213,7 +210,7 @@ function GroupRow({
       <td>
         <Link
           to={"/admin/people/groups/" + group.id}
-          className={cx("link", CS.noDecoration, CS.flex, CS.alignCenter)}
+          className={cx(CS.link, CS.flex, CS.alignCenter)}
         >
           <span className="text-white">
             <UserAvatar
@@ -277,7 +274,7 @@ function GroupsTable({
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
 }) {
-  const { isLoading, data: apiKeys } = useListApiKeyQuery();
+  const { isLoading, data: apiKeys } = useListApiKeysQuery();
 
   if (isLoading) {
     return <LoadingAndErrorWrapper loading={isLoading} />;

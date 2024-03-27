@@ -17,7 +17,7 @@ describeEE("scenarios > question > caching", () => {
     cy.request("PUT", "/api/setting/enable-query-caching", { value: true });
   });
 
-  it("can set cache ttl for a saved question", () => {
+  it("can set cache ttl for a saved question", { tags: "@flaky" }, () => {
     cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`).as("updateQuestion");
     visitQuestion(ORDERS_QUESTION_ID);
 

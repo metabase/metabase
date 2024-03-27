@@ -23,12 +23,10 @@ export const apiQuery: BaseQueryFn = async (args, ctx, extraOptions: any) => {
   }
 
   try {
-    const abortControllerOption = ctx.signal
-      ? { controller: ctx.signal }
-      : undefined;
+    const abortSignalOption = ctx.signal ? { signal: ctx.signal } : undefined;
     const options = Object.assign(
       {},
-      abortControllerOption,
+      abortSignalOption,
       extraOptions?.requestOptions,
     );
 

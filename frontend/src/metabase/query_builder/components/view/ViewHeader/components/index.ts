@@ -1,4 +1,4 @@
-export * from "./ConvertQueryButton";
+export * from "./ToggleNativeQueryPreview";
 export * from "./HeaderBreadcrumbs";
 export * from "./QuestionActions";
 export * from "./QuestionDataSource";

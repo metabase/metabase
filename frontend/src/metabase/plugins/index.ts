@@ -8,6 +8,10 @@ import type {
   PermissionSubject,
 } from "metabase/admin/permissions/types";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
+import type {
+  AvailableModelFilters,
+  ModelFilterControlsProps,
+} from "metabase/browse/utils";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
 import type { IconName, IconProps } from "metabase/ui";
@@ -17,6 +21,7 @@ import type {
   Bookmark,
   Collection,
   CollectionAuthorityLevelConfig,
+  CollectionEssentials,
   CollectionInstanceAnaltyicsConfig,
   Dashboard,
   Dataset,
@@ -24,6 +29,7 @@ import type {
   GroupPermissions,
   GroupsPermissions,
   Revision,
+  SearchResult,
   User,
   UserListResult,
 } from "metabase-types/api";
@@ -332,6 +338,13 @@ export const PLUGIN_EMBEDDING = {
 
 export const PLUGIN_CONTENT_VERIFICATION = {
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
+  availableModelFilters: {} as AvailableModelFilters,
+  ModelFilterControls: (() => null) as ComponentType<ModelFilterControlsProps>,
+  sortModelsByVerification: (_a: SearchResult, _b: SearchResult) => 0,
+  sortCollectionsByVerification: (
+    _a: CollectionEssentials,
+    _b: CollectionEssentials,
+  ) => 0,
 };
 
 export const PLUGIN_DASHBOARD_HEADER = {

@@ -1,0 +1,38 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "./resources/embedding-sdk/dist",
+    "paths": {
+      "*": [
+        "./frontend/src/*",
+        "./frontend/test/*",
+        "./enterprise/frontend/src/*",
+        "./enterprise/frontend/test/*"
+      ],
+      "cljs/*": ["./target/cljs_dev/*"]
+    }
+  },
+  "include": [
+    "frontend/src/**/*",
+    "enterprise/frontend/src/**/*",
+    "frontend/test/**/*",
+    "enterprise/frontend/test/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    // The following files will load `frontend/src/metabase/app` which will conflict with
+    // `frontend/src/metabase/App.tsx`, since now we're loading both JS and TS files.
+    "frontend/src/metabase/app-main.js",
+    "frontend/src/metabase/app-public.js",
+    "frontend/src/metabase/app-embed.js",
+
+    "**/*.unit.spec.ts",
+    "**/*.unit.spec.tsx",
+    "**/tests/*",
+    "**/test/*",
+    "**/test-utils.ts",
+    "**/*.stories.tsx"
+  ]
+}

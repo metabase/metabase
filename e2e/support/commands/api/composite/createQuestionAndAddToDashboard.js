@@ -26,7 +26,7 @@ Cypress.Commands.add(
             })
             .then(response => ({
               ...response,
-              body: response.body.dashcards[0],
+              body: response.body.dashcards.at(-1),
             })),
         ),
     ),
