@@ -72,13 +72,13 @@ const getDatasetParams = ({
   const isSecureDashboardEmbedding = dashcardId != null && token != null;
 
   // Formatting is always enabled for Excel
-  const format_export = enableFormatting && type !== "xlsx" ? "true" : "false";
+  const format_rows = enableFormatting && type !== "xlsx" ? "true" : "false";
 
   if (isSecureDashboardEmbedding) {
     return {
       method: "GET",
       url: `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${type}`,
-      params: Urls.getEncodedUrlSearchParams({ ...params, format_export }),
+      params: Urls.getEncodedUrlSearchParams({ ...params, format_rows }),
     };
   }
 
@@ -87,7 +87,7 @@ const getDatasetParams = ({
     return {
       method: "POST",
       url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query/${type}`,
-      params: new URLSearchParams({ format_export }),
+      params: new URLSearchParams({ format_rows }),
       body: {
         parameters: result?.json_query?.parameters ?? [],
       },
@@ -101,7 +101,7 @@ const getDatasetParams = ({
       url: Urls.publicQuestion({ uuid, type, includeSiteUrl: false }),
       params: new URLSearchParams({
         parameters: JSON.stringify(result?.json_query?.parameters ?? []),
-        format_export,
+        format_rows,
       }),
     };
   }
@@ -111,7 +111,7 @@ const getDatasetParams = ({
     // For whatever wacky reason the /api/embed endpoint expect params like ?key=value instead
     // of like ?params=<json-encoded-params-array> like the other endpoints do.
     const params = new URLSearchParams(window.location.search);
-    params.set("format_export", format_export);
+    params.set("format_rows", format_rows);
     return {
       method: "GET",
       url: Urls.embedCard(token, type),
@@ -124,7 +124,7 @@ const getDatasetParams = ({
     return {
       method: "POST",
       url: `/api/card/${cardId}/query/${type}`,
-      params: new URLSearchParams({ format_export }),
+      params: new URLSearchParams({ format_rows }),
       body: {
         parameters: result?.json_query?.parameters ?? [],
       },
@@ -134,7 +134,7 @@ const getDatasetParams = ({
   return {
     method: "POST",
     url: `/api/dataset/${type}`,
-    params: new URLSearchParams({ format_export }),
+    params: new URLSearchParams({ format_rows }),
     body: {
       query: _.omit(result?.json_query ?? {}, "constraints"),
       visualization_settings: visualizationSettings ?? {},
