@@ -18,7 +18,6 @@ import { TablePicker } from "./TablePicker";
 
 interface Props {
   collectionId: CollectionId | null | undefined; // TODO: use it
-  title?: string;
   onChange: (item: Value) => void;
   onClose: () => void;
   options?: EntityPickerOptions;
@@ -30,12 +29,7 @@ const options = {
   showConfirmButton: false,
 };
 
-export const DataPickerModal = ({
-  title = t`Pick your starting data`,
-  value,
-  onChange,
-  onClose,
-}: Props) => {
+export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
   const [selectedItem, setSelectedItem] =
     useState<NotebookDataPickerValueItem | null>(null);
   const [valueId, setValueId] = useState<
@@ -114,7 +108,7 @@ export const DataPickerModal = ({
       options={options}
       selectedItem={selectedItem}
       tabs={tabs}
-      title={title}
+      title={t`Pick your starting data`}
       onClose={onClose}
       onConfirm={_.noop}
       onItemSelect={handleItemSelect}
