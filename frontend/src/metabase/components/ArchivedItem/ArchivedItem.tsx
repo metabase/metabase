@@ -43,7 +43,7 @@ export const ArchivedItem = ({
       "hover-parent",
       "hover--visibility",
       CS.borderBottom,
-      "bg-light-hover",
+      CS.bgLightHover,
     )}
     data-testid={`archive-item-${name}`}
   >

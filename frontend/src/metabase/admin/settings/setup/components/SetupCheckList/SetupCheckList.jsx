@@ -31,7 +31,9 @@ const TaskList = ({ tasks }) => (
 );
 
 const TaskSectionHeader = ({ name }) => (
-  <h4 className="text-medium text-bold text-uppercase pb2">{name}</h4>
+  <h4 className={cx(CS.textMedium, CS.textBold, CS.textUppercase, CS.pb2)}>
+    {name}
+  </h4>
 );
 
 const TaskSection = ({ name, tasks }) => (
@@ -78,7 +80,7 @@ const Task = ({ title, description, completed, link }) => (
     <div>
       <TaskTitle
         title={title}
-        titleClassName={completed ? "text-success" : "text-brand"}
+        titleClassName={completed ? CS.textSuccess : CS.textBrand}
       />
       {!completed ? <TaskDescription description={description} /> : null}
     </div>

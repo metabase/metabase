@@ -62,7 +62,7 @@ function FormFieldView({
                 standAlone={standAloneLabel}
               >
                 {title}
-                {error && <span className="text-error">: {error}</span>}
+                {error && <span className={CS.textError}>: {error}</span>}
               </Label>
             )}
             {info && (

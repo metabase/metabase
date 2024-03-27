@@ -66,7 +66,7 @@ export default function AddMemberRow({ users, excludeIds, onCancel, onDone }) {
             <div
               key={user.id}
               className={cx(
-                "bg-medium",
+                CS.bgMedium,
                 CS.p1,
                 CS.px2,
                 CS.mr1,
@@ -77,7 +77,12 @@ export default function AddMemberRow({ users, excludeIds, onCancel, onDone }) {
             >
               {user.common_name}
               <Icon
-                className="pl1 cursor-pointer text-slate text-medium-hover"
+                className={cx(
+                  CS.pl1,
+                  CS.cursorPointer,
+                  CS.textSlate,
+                  CS.textMediumHover,
+                )}
                 name="close"
                 onClick={() => handleRemoveUser(user)}
               />
@@ -165,7 +170,7 @@ function AddMemberAutocompleteSuggestion({ user, color, selected, onClick }) {
       <span className="inline-block mr2">
         <UserAvatar bg={color} user={user} />
       </span>
-      <span className={cx(CS.h3, { "text-white": selected })}>
+      <span className={cx(CS.h3, { [CS.textWhite]: selected })}>
         {user.common_name}
       </span>
     </AddMemberAutocompleteSuggestionRoot>

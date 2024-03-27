@@ -6,6 +6,7 @@ import _ from "underscore";
 
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { Icon } from "metabase/ui";
@@ -58,12 +59,25 @@ const NotebookStepPreview = ({ step, onClose }) => {
           <Icon
             name="close"
             onClick={onClose}
-            className="text-light text-medium-hover cursor-pointer ml1"
+            className={cx(
+              CS.textLight,
+              CS.textMediumHover,
+              CS.cursorPointer,
+              CS.ml1,
+            )}
           />
         </PreviewIconContainer>
       </PreviewHeader>
       {isDirty ? (
-        <PreviewButtonContainer className="bordered shadowed rounded bg-white p4">
+        <PreviewButtonContainer
+          className={cx(
+            CS.bordered,
+            CS.shadowed,
+            CS.rounded,
+            CS.bgWhite,
+            CS.p4,
+          )}
+        >
           <Button onClick={refresh}>{t`Refresh`}</Button>
         </PreviewButtonContainer>
       ) : (
@@ -87,8 +101,8 @@ const VisualizationPreview = ({ rawSeries, result }) => {
     <Visualization
       rawSeries={rawSeries}
       error={result && result.error}
-      className={cx("bordered shadowed rounded bg-white", {
-        p2: result && result.error,
+      className={cx(CS.bordered, CS.shadowed, CS.rounded, CS.bgWhite, {
+        [CS.p2]: result && result.error,
       })}
       style={{
         height: open

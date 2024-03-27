@@ -38,7 +38,8 @@
 }
 
 :global(.inline-block),
-.inline-block {
+.inline-block,
+.inlineBlock {
   display: inline-block;
 }
 
@@ -53,7 +54,8 @@
   width: 100%;
 }
 
-:global(.half) {
+:global(.half),
+.half {
   width: 50%;
 }
 

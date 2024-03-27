@@ -1,5 +1,7 @@
+import cx from "classnames";
 import { isValidElement, useMemo } from "react";
 
+import CS from "metabase/css/core/index.css";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import type {
   ComputedVisualizationSettings,
@@ -51,7 +53,7 @@ export interface TooltipRowProps {
 const TooltipRow = ({ name, value, column, settings }: TooltipRowProps) => (
   <tr>
     {name ? (
-      <TooltipTableCell className="text-light text-right pr1">
+      <TooltipTableCell className={cx(CS.textLight, CS.textRight, CS.pr1)}>
         {name}:
       </TooltipTableCell>
     ) : (

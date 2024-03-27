@@ -45,7 +45,10 @@ export function Trigger({
 
   return (
     <span
-      className={className || "px2 py2 text-bold cursor-pointer text-default"}
+      className={
+        className ||
+        cx(CS.px2, CS.py2, CS.textBold, CS.cursorPointer, CS.textDefault)
+      }
       style={style}
     >
       {children}
@@ -90,7 +93,7 @@ export function DatabaseTrigger({ database }: { database: Database }) {
     </span>
   ) : (
     <span
-      className={cx("text-medium", CS.noDecoration)}
+      className={cx(CS.textMedium, CS.noDecoration)}
     >{t`Select a database`}</span>
   );
 }
@@ -105,7 +108,7 @@ export function TableTrigger({ table }: { table: Table }) {
     </span>
   ) : (
     <span
-      className={cx("text-medium", CS.noDecoration)}
+      className={cx(CS.textMedium, CS.noDecoration)}
     >{t`Select a table`}</span>
   );
 }

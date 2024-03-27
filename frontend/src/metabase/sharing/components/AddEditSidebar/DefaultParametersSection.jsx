@@ -2,6 +2,7 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { conjunct } from "metabase/lib/formatting";
 import { Icon } from "metabase/ui";
 
@@ -26,15 +27,17 @@ function DefaultParametersSection({ className, parameters }) {
         {t`Filter values`}
         <Icon
           name="info"
-          className="text-medium ml1"
+          className={cx(CS.textMedium, CS.ml1)}
           size={12}
           tooltip={t`You can customize filter values for each subscription with paid plans.`}
         />
       </Heading>
-      <div className="pt1 text-small text-normal text-medium">{t`If a dashboard filter has a default value, it’ll be applied when your subscription is sent.`}</div>
+      <div
+        className={cx(CS.pt1, "text-small", CS.textNormal, CS.textMedium)}
+      >{t`If a dashboard filter has a default value, it’ll be applied when your subscription is sent.`}</div>
       {formattedParameterValues.map((formattedValue, index) => {
         return (
-          <div className="pt1 text-medium" key={index}>
+          <div className={cx(CS.pt1, CS.textMedium)} key={index}>
             {formattedValue}
           </div>
         );

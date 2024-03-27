@@ -6,6 +6,7 @@ import {
   TableColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import AccordionList from "metabase/core/components/AccordionList";
+import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
 import { Icon, DelayGroup } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -83,7 +84,7 @@ const DataSelectorFieldPicker = ({
         <AccordionList
           id="FieldPicker"
           key="fieldPicker"
-          className="text-brand"
+          className={CS.textBrand}
           hasInitialFocus={hasInitialFocus}
           sections={sections}
           maxHeight={Infinity}

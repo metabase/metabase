@@ -1,10 +1,12 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Fragment, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { t, ngettext, msgid } from "ttag";
 
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
+import CS from "metabase/css/core/index.css";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import {
   isAdminGroup,
@@ -159,7 +161,7 @@ const GroupDetail = ({
       title={
         <Fragment>
           {getGroupNameLocalized(group ?? {})}
-          <span className="text-light ml1">
+          <span className={cx(CS.textLight, CS.ml1)}>
             {ngettext(
               msgid`${group.members.length} member`,
               `${group.members.length} members`,

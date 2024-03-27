@@ -300,7 +300,9 @@ class SettingsBatchForm extends Component {
         )}
 
         {formErrors && formErrors.message && (
-          <div className="m2 text-error text-bold">{formErrors.message}</div>
+          <div className={cx(CS.m2, CS.textError, CS.textBold)}>
+            {formErrors.message}
+          </div>
         )}
 
         <div className="m2 mb4">
@@ -362,6 +364,7 @@ class CollapsibleSection extends React.Component {
       show: !previousState.show,
     }));
   }
+
   render() {
     const { title, children } = this.props;
     const { show } = this.state;

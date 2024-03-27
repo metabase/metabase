@@ -31,7 +31,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
           ) : (
             <div>
               <Link to={url}>
-                <span className="text-brand">{field.display_name}</span>
+                <span className={CS.textBrand}>{field.display_name}</span>
                 <span className={cx(F.fieldActualName, "ml2")}>
                   {field.name}
                 </span>
@@ -69,8 +69,8 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
                     field.semantic_type,
                     "name",
                   ])
-                    ? "text-medium"
-                    : "text-light"
+                    ? CS.textMedium
+                    : CS.textLight
                 }
               >
                 {getIn(MetabaseCore.field_semantic_types_map, [

@@ -215,7 +215,7 @@ const Placeholder = ({ query, editorContext }) => {
 
   const language = getNativeQueryLanguage(query.engine());
   return (
-    <div className="ml2 p2 text-medium">
+    <div className={cx(CS.ml2, CS.p2, CS.textMedium)}>
       {t`This question is written in ${language}.`}
     </div>
   );

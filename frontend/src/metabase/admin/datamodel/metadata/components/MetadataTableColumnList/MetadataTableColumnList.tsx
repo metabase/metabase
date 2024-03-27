@@ -93,7 +93,7 @@ const MetadataTableColumnList = ({
 
   return (
     <div id="ColumnsList" className={cx("mt3", { disabled: isHidden })}>
-      <div className="text-uppercase text-medium py1">
+      <div className={cx(CS.textUppercase, CS.textMedium, CS.py1)}>
         <div className="relative">
           <div
             style={{ minWidth: 420 }}
@@ -145,7 +145,7 @@ const TableFieldOrderDropdown = ({
     <TippyPopoverWithTrigger
       triggerContent={
         <span
-          className="text-brand text-bold"
+          className={cx(CS.textBrand, CS.textBold)}
           style={{ textTransform: "none", letterSpacing: 0 }}
           aria-label={t`Sort`}
         >
@@ -159,7 +159,7 @@ const TableFieldOrderDropdown = ({
       }
       popoverContent={({ closePopover }) => (
         <AccordionList
-          className="text-brand"
+          className={CS.textBrand}
           sections={ORDER_SECTIONS}
           alwaysExpanded
           itemIsSelected={({ value }: TableFieldOrderOption) =>
