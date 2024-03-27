@@ -117,6 +117,7 @@ const config = (module.exports = {
               publicPath: "./",
             },
           },
+          'css-modules-typescript-loader',
           { loader: "css-loader", options: CSS_CONFIG },
           { loader: "postcss-loader" },
         ],

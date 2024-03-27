@@ -227,6 +227,7 @@
     "concurrently": "^7.6.0",
     "cross-fetch": "^3.1.5",
     "css-loader": "^6.10.0",
+    "css-modules-typescript-loader": "^4.0.1",
     "cypress": "13.6.1",
     "cypress-multi-reporters": "^1.6.4",
     "cypress-real-events": "^1.11.0",
