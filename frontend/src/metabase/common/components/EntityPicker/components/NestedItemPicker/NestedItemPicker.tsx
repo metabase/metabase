@@ -9,6 +9,7 @@ import type {
   PickerState,
   IsFolder,
   TypeWithModel,
+  PickerStateItem,
 } from "../../types";
 import { AutoScrollBox } from "../AutoScrollBox";
 
@@ -23,10 +24,10 @@ export interface NestedItemPickerProps<
 > {
   onFolderSelect: ({ folder }: { folder: Item }) => void;
   onItemSelect: (item: Item) => void;
-  generateKey: (query?: Query) => string;
+  generateKey: (item?: PickerStateItem<Model, Item, Query>) => string;
   itemName: string;
   options: Options;
-  path: PickerState<Item, Query>;
+  path: PickerState<Model, Item, Query>;
   isFolder: IsFolder<Id, Model, Item>;
   listResolver: ComponentType<ListProps<Id, Model, Item, Query, Options>>;
 }
@@ -46,6 +47,8 @@ export function NestedItemPicker<
   isFolder,
   listResolver: ListResolver,
 }: NestedItemPickerProps<Id, Model, Item, Query, Options>) {
+  const lastPathItem = path.at(-1);
+
   const handleClick = (item: Item) => {
     if (isFolder(item)) {
       onFolderSelect({ folder: item });
@@ -57,24 +60,26 @@ export function NestedItemPicker<
   return (
     <AutoScrollBox
       data-testid="nested-item-picker"
-      contentHash={generateKey(path[path.length - 1].query)}
+      contentHash={generateKey(lastPathItem)}
     >
       <Flex h="100%" w="fit-content">
         {path.map((level, index) => {
-          const { query, selectedItem } = level;
+          const { model, query, selectedItem } = level;
+          const isCurrentLevel = getIsHighlighted(path, index, isFolder);
 
           return (
             <ListBox
-              key={generateKey(query)}
+              key={generateKey(level)}
               data-testid={`item-picker-level-${index}`}
             >
               <ErrorBoundary>
                 <ListResolver
+                  model={model}
                   query={query}
                   selectedItem={selectedItem}
                   options={options}
                   onClick={(item: Item) => handleClick(item)}
-                  isCurrentLevel={index === path.length - 2}
+                  isCurrentLevel={isCurrentLevel}
                   isFolder={isFolder}
                 />
               </ErrorBoundary>
@@ -85,3 +90,29 @@ export function NestedItemPicker<
     </AutoScrollBox>
   );
 }
+
+const getIsHighlighted = <
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+  Query,
+>(
+  path: PickerState<Model, Item, Query>,
+  index: number,
+  isFolder: IsFolder<Id, Model, Item>,
+) => {
+  const level = path[index];
+  const nextLevel = path[index + 1];
+  const { selectedItem } = level;
+
+  if (!selectedItem) {
+    return false;
+  }
+
+  if (isFolder(selectedItem)) {
+    const nextLevelSelectedItem = nextLevel?.selectedItem;
+    return !nextLevelSelectedItem;
+  }
+
+  return true;
+};

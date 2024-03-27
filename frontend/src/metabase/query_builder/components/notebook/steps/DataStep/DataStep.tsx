@@ -1,8 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { DataPickerModal } from "metabase/common/components/DataPicker";
 import { FieldPicker } from "metabase/common/components/FieldPicker";
-import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, TableId } from "metabase-types/api";
@@ -20,15 +20,20 @@ export const DataStep = ({
   updateQuery,
 }: NotebookStepUiComponentProps) => {
   const { stageIndex } = step;
-
   const question = step.question;
+  const metadata = question.metadata();
   const collectionId = question.collectionId();
-  const databaseId = Lib.databaseID(query);
-  const tableId = Lib.sourceTableOrCardId(query);
-  const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : null;
 
-  const pickerLabel = table
-    ? Lib.displayInfo(query, stageIndex, table).displayName
+  const tableId = Lib.sourceTableOrCardId(query);
+  const table = metadata.table(tableId);
+  const tableMetadata = tableId
+    ? Lib.tableOrCardMetadata(query, tableId)
+    : null;
+
+  const [isDataPickerOpen, setIsDataPickerOpen] = useState(!tableMetadata);
+
+  const pickerLabel = tableMetadata
+    ? Lib.displayInfo(query, stageIndex, tableMetadata).displayName
     : t`Pick your starting data`;
 
   const isRaw = useMemo(() => {
@@ -38,7 +43,7 @@ export const DataStep = ({
     );
   }, [query, stageIndex]);
 
-  const canSelectTableColumns = table && isRaw && !readOnly;
+  const canSelectTableColumns = tableMetadata && isRaw && !readOnly;
 
   const handleTableSelect = (tableId: TableId, databaseId: DatabaseId) => {
     const metadata = question.metadata();
@@ -51,7 +56,7 @@ export const DataStep = ({
     <NotebookCell color={color}>
       <NotebookCellItem
         color={color}
-        inactive={!table}
+        inactive={!tableMetadata}
         right={
           canSelectTableColumns && (
             <DataFieldPopover
@@ -65,16 +70,30 @@ export const DataStep = ({
         rightContainerStyle={{ width: 37, height: 37, padding: 0 }}
         data-testid="data-step-cell"
       >
-        <DataSourceSelector
-          hasTableSearch
-          collectionId={collectionId}
-          databaseQuery={{ saved: true }}
-          selectedDatabaseId={databaseId}
-          selectedTableId={tableId}
-          setSourceTableFn={handleTableSelect}
-          isInitiallyOpen={!table}
-          triggerElement={<DataStepCell>{pickerLabel}</DataStepCell>}
-        />
+        <>
+          <DataStepCell onClick={() => setIsDataPickerOpen(true)}>
+            {pickerLabel}
+          </DataStepCell>
+
+          {isDataPickerOpen && (
+            <DataPickerModal
+              collectionId={collectionId}
+              value={
+                table
+                  ? {
+                      id: table.id,
+                      db_id: table.db_id,
+                      schema: table.schema?.name,
+                    }
+                  : null
+              }
+              onChange={table => {
+                handleTableSelect(table.id, table.db_id);
+              }}
+              onClose={() => setIsDataPickerOpen(false)}
+            />
+          )}
+        </>
       </NotebookCellItem>
     </NotebookCell>
   );

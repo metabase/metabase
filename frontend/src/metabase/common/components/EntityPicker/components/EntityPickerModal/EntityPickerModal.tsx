@@ -26,13 +26,11 @@ import { TabsView } from "./TabsView";
 export type EntityPickerModalOptions = {
   showSearch?: boolean;
   hasConfirmButtons?: boolean;
-  allowCreateNew?: boolean;
 };
 
 export const defaultOptions: EntityPickerModalOptions = {
   showSearch: true,
   hasConfirmButtons: true,
-  allowCreateNew: true,
 };
 
 export interface EntityPickerModalProps<Model extends string, Item> {

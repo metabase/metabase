@@ -30,7 +30,7 @@ export interface Table {
   db_id: DatabaseId;
   db?: Database;
 
-  schema: string;
+  schema: SchemaName;
 
   fks?: ForeignKey[];
   fields?: Field[];
@@ -45,6 +45,17 @@ export interface Table {
   caveats?: string;
   points_of_interest?: string;
 }
+
+export type VirtualTableMetadata = Pick<
+  Table,
+  | "db_id"
+  | "description"
+  | "dimension_options"
+  | "display_name"
+  | "fields"
+  | "id"
+  | "schema"
+>;
 
 export type SchemaName = string;
 
