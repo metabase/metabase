@@ -321,9 +321,9 @@
       mbql.u/simplify-compound-filter
       parse-filter*))
 
-(mu/defn ^:private add-datetime-units* :- mbql.s/DateTimeValue
+(mu/defn ^:private add-datetime-units* :- ::mbql.s/DateTimeValue
   "Return a `relative-datetime` clause with `n` units added to it."
-  [absolute-or-relative-datetime :- mbql.s/DateTimeValue
+  [absolute-or-relative-datetime :- ::mbql.s/DateTimeValue
    n                             :- number?]
   (if (mbql.u/is-clause? :relative-datetime absolute-or-relative-datetime)
     (let [[_ original-n unit] absolute-or-relative-datetime]

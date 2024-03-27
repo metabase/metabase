@@ -294,10 +294,10 @@
     [:/ x y z & more]
     (recur (into [:/ [:/ x y]] (cons z more)))))
 
-(mu/defn desugar-expression :- mbql.s/FieldOrExpressionDef
+(mu/defn desugar-expression :- ::mbql.s/FieldOrExpressionDef
   "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers
   to compile."
-  [expression :- mbql.s/FieldOrExpressionDef]
+  [expression :- ::mbql.s/FieldOrExpressionDef]
   (-> expression
       desugar-divide-with-extra-args))
 
@@ -390,7 +390,7 @@
   "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
   already being used in another order-by clause, this function does nothing."
   [inner-query                                        :- mbql.s/MBQLQuery
-   [_ [_ id-or-name :as _field], :as order-by-clause] :- mbql.s/OrderBy]
+   [_ [_ id-or-name :as _field], :as order-by-clause] :- ::mbql.s/OrderBy]
   (let [existing-fields (set (for [[_ [_ id-or-name]] (:order-by inner-query)]
                                id-or-name))]
     (if (existing-fields id-or-name)
@@ -420,7 +420,7 @@
   ([x _]
    (dispatch-by-clause-name-or-class x)))
 
-(mu/defn expression-with-name :- mbql.s/FieldOrExpressionDef
+(mu/defn expression-with-name :- ::mbql.s/FieldOrExpressionDef
   "Return the `Expression` referenced by a given `expression-name`."
   [inner-query expression-name :- [:or :keyword ::lib.schema.common/non-blank-string]]
   (let [allowed-names [(qualified-name expression-name) (keyword expression-name)]]

@@ -50,6 +50,7 @@
 ;;; Schema for a string that cannot be blank.
 (mr/def ::non-blank-string
   [:and
+   {:error/message "non-blank string"}
    [:string {:min 1}]
    [:fn
     {:error/message "non-blank string"}
@@ -57,7 +58,9 @@
 
 ;;; Schema representing an integer than must also be greater than or equal to zero.
 (mr/def ::int-greater-than-or-equal-to-zero
-  [:int {:min 0}])
+  [:int
+   {:error/message "integer greater than or equal to zero"
+    :min           0}])
 
 (mr/def ::positive-number
   [:fn
@@ -101,6 +104,7 @@
 
 (mr/def ::semantic-or-relation-type
   [:and
+   {:doc/message "valid semantic or relation type"}
    [:keyword
     {:decode/normalize normalize-keyword}]
    [:fn

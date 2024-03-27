@@ -97,6 +97,7 @@
 
 (mr/def ::time
   #?(:clj [:or
+           {:doc/title "time literal"}
            ::string.time
            [:time/local-time
             {:error/message    "instance of java.time.LocalTime"

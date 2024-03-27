@@ -14,14 +14,18 @@
    :bin-width :default :num-bins])
 
 (mr/def ::num-bins
+  "Number of bins to use."
   pos-int?)
 
 (mr/def ::bin-width
+  "Bin width (size of each bin)."
   ::lib.schema.common/positive-number)
 
 ;;; the binning options that goes in a `:field` ref under the `:binning` key
 (mr/def ::binning
+  "Schema for `:binning` options passed to a `:field` clause."
   [:and
+   {:doc/title "`:binning` options"}
    [:map
     {:decode/normalize lib.schema.common/normalize-map}
     [:strategy [:ref ::strategy]]]
