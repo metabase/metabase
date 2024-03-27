@@ -272,6 +272,13 @@ if (hasPremiumFeature("disable_password_login")) {
 if (hasPremiumFeature("sso_ldap")) {
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
     updateIn(sections, ["authentication/ldap", "settings"], settings => [
+      {
+        key: "ldap-user-provisioning-enabled?",
+        display_name: t`User Provisioning`,
+        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+        description: t`When a user logs in via LDAP, create a Metabase account for them automatically if they don't have one.`,
+        type: "boolean",
+      },
       ...settings,
       {
         key: "ldap-group-membership-filter",

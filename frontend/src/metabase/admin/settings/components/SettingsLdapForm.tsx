@@ -113,17 +113,22 @@ export const SettingsLdapFormView = ({
               [t`LDAP`],
             ]}
           />
-          <Stack spacing="0.75rem" m="2.5rem 0">
-            <SettingHeader
-              id="ldap-user-provisioning-enabled?"
-              setting={settings["ldap-user-provisioning-enabled?"]}
-            />
-            <FormSwitch
-              id="ldap-user-provisioning-enabled?"
-              name={fields["ldap-user-provisioning-enabled?"].name}
-              defaultChecked={fields["ldap-user-provisioning-enabled?"].default}
-            />
-          </Stack>
+          {"ldap-user-provisioning-enabled?" in fields &&
+            "ldap-user-provisioning-enabled?" in settingValues && (
+              <Stack spacing="0.75rem" m="2.5rem 0">
+                <SettingHeader
+                  id="ldap-user-provisioning-enabled?"
+                  setting={settings["ldap-user-provisioning-enabled?"]}
+                />
+                <FormSwitch
+                  id="ldap-user-provisioning-enabled?"
+                  name={fields["ldap-user-provisioning-enabled?"].name}
+                  defaultChecked={
+                    fields["ldap-user-provisioning-enabled?"].default
+                  }
+                />
+              </Stack>
+            )}
           <FormSection title={"Server Settings"}>
             <Stack spacing="md">
               <FormTextInput {...fields["ldap-host"]} />
