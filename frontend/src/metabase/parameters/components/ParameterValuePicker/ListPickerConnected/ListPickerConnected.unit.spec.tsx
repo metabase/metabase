@@ -302,20 +302,16 @@ describe("ListPickerConnected", () => {
     });
 
     // This probably shouldn't be supported but so far, it could happen
-    it("renders with null/undefined values", () => {
-      [null, undefined].forEach(value => {
-        expect(() => {
-          const { unmount } = setup({
-            value: value as any,
-            parameter: getEmptyParam(value),
-          });
+    it.each([null, undefined])("renders with null/undefined values", value => {
+      expect(() => {
+        const { unmount } = setup({
+          value: value as any,
+          parameter: getEmptyParam(value),
+        });
 
-          userEvent.click(
-            screen.getByPlaceholderText("Start typing to filter…"),
-          );
-          unmount();
-        }).not.toThrow();
-      });
+        userEvent.click(screen.getByPlaceholderText("Start typing to filter…"));
+        unmount();
+      }).not.toThrow();
     });
   });
 
