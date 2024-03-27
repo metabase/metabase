@@ -1,4 +1,9 @@
-import { editDashboard, restore, visitDashboard } from "e2e/support/helpers";
+import {
+  editDashboard,
+  restore,
+  visitDashboard,
+  echartsContainer,
+} from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -68,21 +73,21 @@ describe("issue 32231", () => {
     cy.wait("@seriesQuery");
 
     cy.findByTestId("add-series-modal").within(() => {
-      cy.get(".LineAreaBarChart").should("exist");
+      echartsContainer().should("exist");
       cy.findByText(issue32231Error).should("not.exist");
       cy.findByText(multipleSeriesError).should("not.exist");
       cy.findByText(defaultError).should("not.exist");
 
       cy.findByLabelText(incompleteQuestion.name).click();
 
-      cy.get(".LineAreaBarChart").should("not.exist");
+      echartsContainer().should("not.exist");
       cy.findByText(issue32231Error).should("not.exist");
       cy.findByText(multipleSeriesError).should("exist");
       cy.findByText(defaultError).should("not.exist");
 
       cy.findByLabelText(incompleteQuestion.name).click();
 
-      cy.get(".LineAreaBarChart").should("exist");
+      echartsContainer().should("exist");
       cy.findByText(issue32231Error).should("not.exist");
       cy.findByText(multipleSeriesError).should("not.exist");
       cy.findByText(defaultError).should("not.exist");
@@ -116,7 +121,7 @@ describe("issue 32231", () => {
     cy.wait("@seriesQuery");
 
     cy.findByTestId("add-series-modal").within(() => {
-      cy.get(".LineAreaBarChart").should("not.exist");
+      echartsContainer().should("not.exist");
       cy.findByText(issue32231Error).should("not.exist");
       cy.findByText(multipleSeriesError).should("not.exist");
       cy.findByText(defaultError).should("exist");

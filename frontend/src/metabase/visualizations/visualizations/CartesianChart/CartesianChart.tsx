@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { EChartsType } from "echarts";
+import { t } from "ttag";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
@@ -13,6 +14,7 @@ import { useChartEvents } from "metabase/visualizations/visualizations/Cartesian
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { useModelsAndOption } from "./use-models-and-option";
 import { useChartDebug } from "./use-chart-debug";
+import { getChartWarnings } from "./warnings";
 
 function _CartesianChart(props: VisualizationProps) {
   // The width and height from props reflect the dimensions of the entire container which includes legend,
@@ -29,9 +31,11 @@ function _CartesianChart(props: VisualizationProps) {
     actionButtons,
     isQueryBuilder,
     isFullscreen,
+    isPlaceholder,
     hovered,
     onChangeCardAndRun,
     onHoverChange,
+    onRender,
   } = props;
   const { chartModel, timelineEventsModel, option } = useModelsAndOption({
     ...props,
@@ -39,6 +43,26 @@ function _CartesianChart(props: VisualizationProps) {
     height: chartSize.height,
   });
   useChartDebug({ isQueryBuilder, rawSeries, option });
+
+  useEffect(() => {
+    if (chartModel.seriesModels.length > 100) {
+      throw new Error(
+        t`This chart type doesn't support more than 100 series of data.`,
+      );
+    }
+  }, [chartModel]);
+
+  const chartWarnings = useMemo(
+    () => getChartWarnings(chartModel),
+    [chartModel],
+  );
+
+  useEffect(
+    function warnOnRendered() {
+      !isPlaceholder && onRender({ warnings: chartWarnings });
+    },
+    [chartWarnings, isPlaceholder, onRender],
+  );
 
   const chartRef = useRef<EChartsType>();
 

@@ -21,6 +21,7 @@ import {
   getDashboardCard,
   saveDashboard,
   getNotebookStep,
+  echartsContainer,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -167,18 +168,18 @@ describe("scenarios > models", () => {
   it("changes model's display to table", () => {
     visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
-    cy.get(".LineAreaBarChart");
+    echartsContainer();
     cy.get(".TableInteractive").should("not.exist");
 
     turnIntoModel();
 
     cy.get(".TableInteractive");
-    cy.get(".LineAreaBarChart").should("not.exist");
+    echartsContainer().should("not.exist");
   });
 
   it("allows to undo turning a question into a model", () => {
     visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-    cy.get(".LineAreaBarChart");
+    echartsContainer();
 
     turnIntoModel();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -186,7 +187,7 @@ describe("scenarios > models", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Undo").click();
 
-    cy.get(".LineAreaBarChart");
+    echartsContainer();
     openQuestionActions();
     assertIsQuestion();
   });
@@ -323,7 +324,7 @@ describe("scenarios > models", () => {
       selectFromDropdown("Created At");
 
       visualize();
-      cy.get(".LineAreaBarChart");
+      echartsContainer();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
 

@@ -84,7 +84,7 @@ it("should create questions", () => {
   cy.findByText("Created At: Quarter");
 
   visualize();
-  cy.get("circle");
+  lineChartCircle();
 
   cy.findByTestId("viz-settings-button").click();
   cy.icon("area").click();

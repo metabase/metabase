@@ -7,6 +7,7 @@ import {
   restore,
   visitQuestionAdhoc,
   visualize,
+  echartsContainer,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -87,7 +88,7 @@ describe("issue 32075", () => {
     visualize();
 
     cy.get(".PinMap").should("not.exist");
-    cy.get(".LineAreaBarChart").should("exist");
+    echartsContainer().should("exist");
   });
 });
 

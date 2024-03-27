@@ -4,6 +4,7 @@ import {
   visitQuestion,
   visitDashboard,
   assertQueryBuilderRowCount,
+  lineChartCircle,
 } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
@@ -103,7 +104,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
     cy
       .intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}`)
       .as("loadTargetDashboard"),
-      cy.get("circle").eq(25).click({ force: true });
+      lineChartCircle().eq(25).click({ force: true });
     cy.wait("@loadTargetDashboard");
 
     cy.location("pathname").should("eq", `/dashboard/${ORDERS_DASHBOARD_ID}`);
