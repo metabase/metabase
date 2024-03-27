@@ -46,6 +46,10 @@ const mapStateToProps = (
     t`The maximum download size is 1 million rows.`,
 });
 
+// Excel and images always use formatting
+const checkCanManageFormatting = (format: string) =>
+  format !== "xlsx" && format !== "png";
+
 const QueryDownloadPopover = ({
   canDownloadPng,
   hasTruncatedResults,
@@ -69,7 +73,9 @@ const QueryDownloadPopover = ({
     : exportFormats;
 
   const handleDownload = (type: string) => {
-    onDownload({ type, enableFormatting: isFormattingEnabled });
+    const canManageFormatting = checkCanManageFormatting(type);
+    const enableFormatting = canManageFormatting ? isFormattingEnabled : true;
+    onDownload({ type, enableFormatting });
   };
 
   return (
@@ -90,9 +96,9 @@ const QueryDownloadPopover = ({
         <DownloadButton
           key={format}
           format={format}
-          // Excel files are always formatted
-          isFormattingEnabled={isFormattingEnabled || format === "xlsx"}
           onDownload={handleDownload}
+          hasFormattingOption={checkCanManageFormatting(format)}
+          isFormattingEnabled={isFormattingEnabled}
         />
       ))}
     </DownloadPopoverRoot>
@@ -101,12 +107,14 @@ const QueryDownloadPopover = ({
 
 interface DownloadButtonProps {
   format: string;
+  hasFormattingOption: boolean;
   isFormattingEnabled: boolean;
   onDownload: (format: string) => void;
 }
 
 const DownloadButton = ({
   format,
+  hasFormattingOption,
   isFormattingEnabled,
   onDownload,
 }: DownloadButtonProps) => {
@@ -119,7 +127,7 @@ const DownloadButton = ({
   return (
     <DownloadButtonRoot onClick={handleClick} ref={ref}>
       <DownloadButtonText>.{format}</DownloadButtonText>
-      {hovered && !isFormattingEnabled && (
+      {hovered && hasFormattingOption && !isFormattingEnabled && (
         <DownloadButtonSecondaryText>{t`(Unformatted)`}</DownloadButtonSecondaryText>
       )}
     </DownloadButtonRoot>
