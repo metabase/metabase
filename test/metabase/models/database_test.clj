@@ -44,9 +44,7 @@
                 {db-id
                  {:perms/view-data             :unrestricted
                   :perms/create-queries        :query-builder-and-native
-                  :perms/data-access           :unrestricted
                   :perms/download-results      :one-million-rows
-                  :perms/native-query-editing  :yes
                   :perms/manage-table-metadata :no
                   :perms/manage-database       :no}}}
                (data-perms/data-permissions-graph :group-id all-users-group-id :db-id db-id))))
@@ -57,8 +55,6 @@
                {:perms/view-data             :unrestricted
                 :perms/create-queries        :no
                 :perms/download-results      :no
-                :perms/data-access           :no-self-service
-                :perms/native-query-editing  :no
                 :perms/manage-table-metadata :no
                 :perms/manage-database       :no}}}
              (data-perms/data-permissions-graph :group-id group-id :db-id db-id))))))

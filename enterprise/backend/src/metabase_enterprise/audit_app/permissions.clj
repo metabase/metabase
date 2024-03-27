@@ -62,17 +62,13 @@
   But it's cleaner to keep the audit DB permission paths in the database consistent."
   :feature :audit-app
   [group-id changes]
-  (let [[change-id type] (first (filter #(= (first %) (:id (default-audit-collection))) changes))]
+  (let [[change-id tyype] (first (filter #(= (first %) (:id (default-audit-collection))) changes))]
       (when change-id
-        (let [data-access-value (case type
-                                  :read  :unrestricted
-                                  :none  :no-self-service
-                                  :write (throw (ex-info (tru (str "Unable to make audit collections writable."))
-                                                         {:status-code 400})))
-              create-queries-value (case type
-                                     :read :query-builder
-                                     :none :no)
+        (let [create-queries-value (case tyype
+                                     :read  :query-builder
+                                     :none  :no
+                                     :write (throw (ex-info (tru (str "Unable to make audit collections writable."))
+                                                            {:status-code 400})))
               view-tables         (t2/select :model/Table :db_id perms/audit-db-id :name [:in audit-db-view-names])]
           (doseq [table view-tables]
-            (data-perms/set-table-permission! group-id table :perms/data-access data-access-value)
             (data-perms/set-table-permission! group-id table :perms/create-queries create-queries-value))))))

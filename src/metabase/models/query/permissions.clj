@@ -139,7 +139,7 @@
 
 (defn required-perms
   "Returns a map representing the permissions requried to run `query`. The map has the optional keys
-  :paths (containing legacy permission paths), :perms/data-access, and :perms/native-query-editing."
+  :paths (containing legacy permission paths), :perms/view-data, and :perms/create-queries."
   [query & {:as perms-opts}]
   (if (empty? query)
     {}

@@ -155,9 +155,7 @@
            {db-id
             {:perms/view-data :unrestricted,
              :perms/create-queries :no,
-             :perms/data-access :no-self-service,
              :perms/download-results :no,
              :perms/manage-table-metadata :no,
-             :perms/native-query-editing :no,
              :perms/manage-database :no}}}
           (data-perms/data-permissions-graph :group-id group-id :db-id db-id))))))
