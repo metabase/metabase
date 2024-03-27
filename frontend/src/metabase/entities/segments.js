@@ -4,6 +4,9 @@ import * as Urls from "metabase/lib/urls";
 import { SegmentSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Segments = createEntity({
   name: "segments",
   nameOne: "segment",

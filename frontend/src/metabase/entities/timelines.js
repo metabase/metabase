@@ -10,6 +10,9 @@ import { TimelineApi, TimelineEventApi } from "metabase/services";
 
 import TimelineEvents from "./timeline-events";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Timelines = createEntity({
   name: "timelines",
   nameOne: "timeline",

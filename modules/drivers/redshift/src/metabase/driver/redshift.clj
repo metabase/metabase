@@ -51,6 +51,12 @@
   [& args]
   (apply (get-method driver/describe-table :sql-jdbc) args))
 
+;; don't use the Postgres implementation for `describe-database` as it uses a custom SQL to get the tables.
+;; we should do the same for Redshift tho
+(defmethod driver/describe-database :redshift
+ [& args]
+ (apply (get-method driver/describe-database :sql-jdbc) args))
+
 (defmethod sql-jdbc.sync/describe-fks-sql :redshift
   [driver & {:keys [schema-names table-names]}]
   (sql/format {:select (vec

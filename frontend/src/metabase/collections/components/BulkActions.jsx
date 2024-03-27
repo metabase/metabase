@@ -6,7 +6,7 @@ import _ from "underscore";
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 import { canArchiveItem, canMoveItem } from "metabase/collections/utils";
 import Modal from "metabase/components/Modal";
-import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
+import { MoveModal } from "metabase/containers/MoveModal";
 import { Transition } from "metabase/ui";
 
 import {
@@ -89,7 +89,7 @@ function BulkActions({
       )}
       {!_.isEmpty(selectedItems) && selectedAction === "move" && (
         <Modal onClose={onCloseModal}>
-          <CollectionMoveModal
+          <MoveModal
             title={
               selectedItems.length > 1
                 ? t`Move ${selectedItems.length} items?`

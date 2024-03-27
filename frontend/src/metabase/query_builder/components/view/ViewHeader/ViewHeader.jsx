@@ -35,7 +35,7 @@ import {
   ViewRunButtonWithTooltip,
 } from "./ViewHeader.styled";
 import {
-  ConvertQueryButton,
+  ToggleNativeQueryPreview,
   HeadBreadcrumbs,
   FilterHeaderButton,
   FilterHeaderToggle,
@@ -503,8 +503,8 @@ function ViewTitleHeaderRightSide(props) {
           />
         </ViewHeaderIconButtonContainer>
       )}
-      {ConvertQueryButton.shouldRender(props) && (
-        <ConvertQueryButton question={question} onOpenModal={onOpenModal} />
+      {ToggleNativeQueryPreview.shouldRender(props) && (
+        <ToggleNativeQueryPreview question={question} />
       )}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && !isShowingNotebook && (
