@@ -188,10 +188,8 @@ describe("ListPickerConnected", () => {
         parameter: getStaticListParam(),
       });
 
-      const input = screen
-        .getAllByDisplayValue("1-5 Texas 41")
-        .find(el => el.getAttribute("type") !== "hidden") as HTMLElement;
-
+      // there's a hidden input with the same value that you can't click
+      const input = screen.getByRole("searchbox");
       userEvent.click(input);
       STATIC_VALUES.forEach(value =>
         expect(screen.getByText(value)).toBeVisible(),
