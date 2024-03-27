@@ -23,14 +23,11 @@ export interface StepHeaderProps {
 }
 
 export const StepContent = styled.div`
-  width: ${getPercentage(11 / 12)};
-
-  ${breakpointMinSmall} {
-    width: ${getPercentage(8 / 12)};
-  }
+  width: 100%;
+  max-width: 960px;
 `;
 
-export const StepHeader = styled(StepContent)<StepHeaderProps>`
+export const StepHeader = styled.div`
   display: flex;
   color: ${props => props.color};
   font-weight: bold;
