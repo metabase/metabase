@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import { t } from "ttag";
 import type {
   DatasetColumn,
   RawSeries,
@@ -14,6 +15,7 @@ import type {
   SeriesModel,
   Datum,
   XAxisModel,
+  NumericAxisScaleTransforms,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -29,8 +31,10 @@ import {
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import { isMetric } from "metabase-lib/types/utils/isa";
 import { isCategoryAxis, isNumericAxis } from "./guards";
+import { signedLog, signedSquareRoot } from "./transforms";
 
 /**
  * Sums two metric column values.
@@ -308,20 +312,10 @@ const getStackedAreasInterpolateTransform = (
   };
 };
 
-function signedSquareRoot(value: number) {
-  const sign = value >= 0 ? 1 : -1;
-  return sign * Math.sqrt(Math.abs(value));
-}
-
-export const applySquareRootScaling = (value: RowValue): RowValue => {
-  if (typeof value !== "number") {
-    return value;
-  }
-
-  return signedSquareRoot(value);
-};
-
-function getStackedPowerTransform(seriesDataKeys: DataKey[]): TransformFn {
+function getStackedValueTransformFunction(
+  seriesDataKeys: DataKey[],
+  valueTransform: (value: number) => number,
+): TransformFn {
   return (datum: Datum) => {
     const transformedSeriesValues: Record<DataKey, number> = {};
 
@@ -348,12 +342,12 @@ function getStackedPowerTransform(seriesDataKeys: DataKey[]): TransformFn {
       const rawTotal = rawBelowTotal + getNumberOrZero(datum[seriesDataKey]);
 
       // 2. Transform this total
-      const transformedTotal = signedSquareRoot(rawTotal);
+      const transformedTotal = valueTransform(rawTotal);
 
       // 3. Subtract the transformed total of the already stacked values (not
       //    including the value we are currently stacking)
       transformedSeriesValues[seriesDataKey] =
-        transformedTotal - signedSquareRoot(rawBelowTotal);
+        transformedTotal - valueTransform(rawBelowTotal);
     }
 
     seriesDataKeys.forEach(seriesDataKey => {
@@ -364,6 +358,51 @@ function getStackedPowerTransform(seriesDataKeys: DataKey[]): TransformFn {
     });
 
     return { ...datum, ...transformedSeriesValues };
+  };
+}
+
+function getStackedValueTransfom(
+  settings: ComputedVisualizationSettings,
+  seriesDataKeys: DataKey[],
+): ConditionalTransform {
+  const isPow = settings["graph.y_axis.scale"] === "pow";
+  const isLog = settings["graph.y_axis.scale"] === "log";
+
+  // In `getStackedValueTransformFunction`, each iteration of the loop ends with
+  // `transformedTotal - valueTransform(rawBelowTotal)`. However, in the first
+  // iteration `rawBelowTotal` will 0 because nothing is stacked yet, so to
+  // handle this case we want the `valueTransform` function to just return 0.
+  const logValueTransform = (value: number) =>
+    value === 0 ? value : signedLog(value);
+
+  const valueTransform = isPow ? signedSquareRoot : logValueTransform;
+
+  return {
+    condition: (isPow || isLog) && settings["stackable.stack_type"] != null,
+    fn: getStackedValueTransformFunction(seriesDataKeys, valueTransform),
+  };
+}
+
+function getStackedDataLabelTransform(
+  settings: ComputedVisualizationSettings,
+  seriesDataKeys: DataKey[],
+): ConditionalTransform {
+  return {
+    condition: settings["stackable.stack_type"] === "stacked",
+    fn: (datum: Datum) => {
+      const transformedDatum = { ...datum };
+
+      seriesDataKeys.forEach(seriesDataKey => {
+        if (getNumberOrZero(datum[seriesDataKey]) > 0) {
+          transformedDatum[POSITIVE_STACK_TOTAL_DATA_KEY] = Number.MIN_VALUE;
+        }
+        if (getNumberOrZero(datum[seriesDataKey]) < 0) {
+          transformedDatum[NEGATIVE_STACK_TOTAL_DATA_KEY] = -Number.MIN_VALUE;
+        }
+      });
+
+      return transformedDatum;
+    },
   };
 }
 
@@ -382,6 +421,66 @@ function filterNullDimensionValues(dataset: ChartDataset) {
   });
 
   return filteredDataset;
+}
+
+const Y_AXIS_CROSSING_ERROR = Error(
+  t`Y-axis must not cross 0 when using log scale.`,
+);
+
+export function replaceZeroesForLogScale(
+  dataset: ChartDataset,
+  seriesDataKeys: DataKey[],
+) {
+  let hasZeros = false;
+  let minNonZeroValue = Infinity;
+  let sign: number | undefined = undefined;
+
+  dataset.forEach(datum => {
+    const datumNumericValues = seriesDataKeys
+      .map(key => getNumberOr(datum[key], null))
+      .filter(isNotNull);
+
+    const hasPositive = datumNumericValues.some(value => value > 0);
+    const hasNegative = datumNumericValues.some(value => value < 0);
+
+    if (hasPositive && hasNegative) {
+      throw Y_AXIS_CROSSING_ERROR;
+    }
+
+    if (sign === undefined && hasPositive) {
+      sign = 1;
+    }
+    if (sign === undefined && hasNegative) {
+      sign = -1;
+    }
+    if ((sign === 1 && hasNegative) || (sign === -1 && hasPositive)) {
+      throw Y_AXIS_CROSSING_ERROR;
+    }
+
+    if (!hasZeros) {
+      hasZeros = datumNumericValues.includes(0);
+    }
+
+    minNonZeroValue = Math.min(
+      minNonZeroValue,
+      ...datumNumericValues
+        .map(value => Math.abs(value))
+        .filter(number => number !== 0),
+    );
+  });
+
+  // if sign is still undefined all metric series values are 0
+  if (!hasZeros || sign === undefined) {
+    return dataset;
+  }
+
+  const zeroReplacementValue = sign * Math.min(minNonZeroValue, 1);
+
+  return replaceValues(dataset, (dataKey: DataKey, value: RowValue) =>
+    seriesDataKeys.includes(dataKey) && value === 0
+      ? zeroReplacementValue
+      : value,
+  );
 }
 
 function getHistogramDataset(
@@ -413,8 +512,11 @@ export const applyVisualizationSettingsDataTransformations = (
   dataset: ChartDataset,
   xAxisModel: XAxisModel,
   seriesModels: SeriesModel[],
+  yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
 ) => {
+  const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
+
   if (
     xAxisModel.axisType === "value" ||
     xAxisModel.axisType === "time" ||
@@ -423,11 +525,13 @@ export const applyVisualizationSettingsDataTransformations = (
     dataset = filterNullDimensionValues(dataset);
   }
 
+  if (settings["graph.y_axis.scale"] === "log") {
+    dataset = replaceZeroesForLogScale(dataset, seriesDataKeys);
+  }
+
   if (xAxisModel.axisType === "category" && xAxisModel.isHistogram) {
     dataset = getHistogramDataset(dataset, xAxisModel.histogramInterval);
   }
-
-  const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
 
   return transformDataset(dataset, [
     getNullReplacerTransform(settings, seriesModels),
@@ -435,18 +539,10 @@ export const applyVisualizationSettingsDataTransformations = (
       condition: settings["stackable.stack_type"] === "normalized",
       fn: getNormalizedDatasetTransform(seriesDataKeys),
     },
-    {
-      condition:
-        settings["graph.y_axis.scale"] === "pow" &&
-        settings["stackable.stack_type"] == null,
-      fn: getKeyBasedDatasetTransform(seriesDataKeys, applySquareRootScaling),
-    },
-    {
-      condition:
-        settings["graph.y_axis.scale"] === "pow" &&
-        settings["stackable.stack_type"] != null,
-      fn: getStackedPowerTransform(seriesDataKeys),
-    },
+    getKeyBasedDatasetTransform(seriesDataKeys, value =>
+      yAxisScaleTransforms.toEChartsAxisValue(value),
+    ),
+    getStackedValueTransfom(settings, seriesDataKeys),
     {
       condition: isCategoryAxis(xAxisModel),
       fn: getKeyBasedDatasetTransform([X_AXIS_DATA_KEY], value => {
@@ -463,16 +559,7 @@ export const applyVisualizationSettingsDataTransformations = (
           : value;
       }),
     },
-    {
-      condition: settings["stackable.stack_type"] === "stacked",
-      fn: datum => {
-        return {
-          ...datum,
-          [POSITIVE_STACK_TOTAL_DATA_KEY]: Number.MIN_VALUE,
-          [NEGATIVE_STACK_TOTAL_DATA_KEY]: -Number.MIN_VALUE,
-        };
-      },
-    },
+    getStackedDataLabelTransform(settings, seriesDataKeys),
     {
       condition:
         settings["stackable.stack_type"] != null &&
@@ -521,22 +608,6 @@ const sortByDimension = (
   return dataset.sort((left, right) => {
     return compareFn(left[X_AXIS_DATA_KEY], right[X_AXIS_DATA_KEY]);
   });
-};
-
-export const getMetricDisplayValueGetter = (
-  settings: ComputedVisualizationSettings,
-) => {
-  const isPowerScale = settings["graph.y_axis.scale"] === "pow";
-
-  const powerScaleGetter = (value: RowValue) => {
-    if (typeof value !== "number") {
-      return value;
-    }
-    const sign = value >= 0 ? 1 : -1;
-    return Math.pow(value, 2) * sign;
-  };
-
-  return isPowerScale ? powerScaleGetter : (value: RowValue) => value;
 };
 
 /**
