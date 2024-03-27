@@ -3,6 +3,7 @@ import type { Location } from "history";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useListDatabasesQuery } from "metabase/api";
 import { Grid } from "metabase/components/Grid";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
@@ -14,35 +15,31 @@ import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesE
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import type Database from "metabase-lib/v1/metadata/Database";
 
 import {
+  EducationalButton,
   OptionsGridItem,
   OptionsRoot,
-  EducationalButton,
 } from "./NewModelOptions.styled";
 
 const EDUCATIONAL_LINK = MetabaseSettings.learnUrl("data-modeling/models");
 
 interface NewModelOptionsProps {
-  databases?: Database[];
   location: Location;
 }
 
-const NewModelOptions = (props: NewModelOptionsProps) => {
-  const hasDataAccess = useSelector(() =>
-    getHasDataAccess(props.databases ?? []),
-  );
-  const hasNativeWrite = useSelector(() =>
-    getHasNativeWrite(props.databases ?? []),
-  );
+const NewModelOptions = ({ location }: NewModelOptionsProps) => {
+  const { data } = useListDatabasesQuery();
+  const databases = data?.data ?? [];
+  const hasDataAccess = getHasDataAccess(databases);
+  const hasNativeWrite = getHasNativeWrite(databases);
 
   const lastUsedDatabaseId = useSelector(state =>
     getSetting(state, "last-used-native-database-id"),
   );
 
   const collectionId = Urls.extractEntityId(
-    props.location.query.collectionId as string,
+    location.query.collectionId as string,
   );
 
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);

@@ -22,7 +22,9 @@ import {
   summarize,
   visitQuestionAdhoc,
   visualize,
+  createQuestion,
 } from "e2e/support/helpers";
+import { createMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
   SAMPLE_DATABASE;
@@ -632,12 +634,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     it("should support custom columns", () => {
-      // startNewQuestion();
-      // popover().within(() => {
-      //   cy.findByText("QA Postgres12").click();
-      //   cy.findByText("Products").click();
-      // });
-
       addCustomColumn();
       enterCustomColumnDetails({
         formula: "Price * 10",
@@ -670,12 +666,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     it("should support Summarize side panel", () => {
-      // startNewQuestion();
-      // popover().within(() => {
-      //   cy.findByText("QA Postgres12").click();
-      //   cy.findByText("Products").click();
-      // });
-
       visualize();
 
       summarize();
@@ -798,6 +788,36 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       index: 1,
       horizontal: -100,
     });
+  });
+
+  it("should not crash notebook when metric is used as an aggregation and breakout is applied (metabase#40553)", () => {
+    createMetric({
+      name: "Revenue",
+      description: "Sum of orders subtotal",
+      table_id: ORDERS_ID,
+      definition: {
+        "source-table": ORDERS_ID,
+        aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
+      },
+    }).then(({ body }) => {
+      const metricId = body.id;
+
+      const questionDetails = {
+        query: {
+          "source-table": ORDERS_ID,
+          breakout: [["field", ORDERS.CREATED_AT, null]],
+          aggregation: [["metric", metricId]],
+        },
+      };
+
+      createQuestion(questionDetails, { visitQuestion: true });
+    });
+
+    openNotebook();
+
+    getNotebookStep("summarize").contains("Revenue").click();
+
+    popover().findByTestId("expression-editor-textfield").contains("[Revenue]");
   });
 });
 

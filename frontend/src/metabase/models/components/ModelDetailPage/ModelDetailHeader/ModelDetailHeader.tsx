@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import Modal from "metabase/components/Modal";
-import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
+import { MoveModal } from "metabase/containers/MoveModal";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
@@ -69,7 +69,7 @@ function ModelDetailHeader({
   const renderModal = useCallback(() => {
     if (modal === "move") {
       return (
-        <CollectionMoveModal
+        <MoveModal
           title={t`Which collection should this be in?`}
           initialCollectionId={model.collectionId() || "root"}
           onMove={handleCollectionChange}

@@ -76,6 +76,7 @@ describe("scenarios > auth > signin", () => {
     cy.signInAsAdmin();
     cy.visit("/");
     browse().click();
+    cy.findByRole("tab", { name: "Databases" }).click();
     cy.findByRole("heading", { name: "Sample Database" }).click();
     cy.findByRole("heading", { name: "Orders" }).click();
     cy.wait("@dataset");
