@@ -50,7 +50,14 @@ export const AccordionListCell = ({
     if (alwaysExpanded) {
       content = (
         <div
-          className="pt2 mb1 mx2 h5 text-uppercase text-bold"
+          className={cx(
+            CS.pt2,
+            CS.mb1,
+            CS.mx2,
+            CS.h5,
+            CS.textUppercase,
+            CS.textBold,
+          )}
           style={{ color: color }}
         >
           {section.name}

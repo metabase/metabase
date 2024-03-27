@@ -112,7 +112,7 @@ const FieldHeaderSection = ({
     <MetadataSection first>
       <FieldNameInput
         name="display_name"
-        className="h2"
+        className={CS.h2}
         value={field.displayName()}
         placeholder={field.name}
         onBlurChange={handleChangeName}
