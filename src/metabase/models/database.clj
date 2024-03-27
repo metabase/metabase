@@ -63,10 +63,15 @@
   ([_model pk]
    (if (should-read-audit-db? pk)
      false
-     (= :unrestricted (data-perms/most-permissive-database-permission-for-user
-                       api/*current-user-id*
-                       :perms/data-access
-                       pk)))))
+     (and (= :unrestricted (data-perms/full-db-permission-for-user
+                            api/*current-user-id*
+                            :perms/view-data
+                            pk))
+          (contains? #{:query-builder :query-builder-and-native}
+                    (data-perms/most-permissive-database-permission-for-user
+                     api/*current-user-id*
+                     :perms/create-queries
+                     pk))))))
 
 (defenterprise current-user-can-write-db?
   "OSS implementation. Returns a boolean whether the current user can write the given field."
@@ -114,14 +119,20 @@
       ;; tables.
       (if (:is_audit database)
         (doseq [group non-admin-groups]
+          (data-perms/set-database-permission! group database :perms/view-data :unrestricted)
           (data-perms/set-database-permission! group database :perms/data-access :no-self-service)
+          (data-perms/set-database-permission! group database :perms/create-queries :no)
           (data-perms/set-database-permission! group database :perms/native-query-editing :no)
           (data-perms/set-database-permission! group database :perms/download-results :one-million-rows))
         (do
+          (data-perms/set-database-permission! all-users-group database :perms/view-data :unrestricted)
+          (data-perms/set-database-permission! all-users-group database :perms/create-queries :query-builder-and-native)
           (data-perms/set-database-permission! all-users-group database :perms/data-access :unrestricted)
           (data-perms/set-database-permission! all-users-group database :perms/native-query-editing :yes)
           (data-perms/set-database-permission! all-users-group database :perms/download-results :one-million-rows)
           (doseq [group non-magic-groups]
+            (data-perms/set-database-permission! group database :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! group database :perms/create-queries :no)
             (data-perms/set-database-permission! group database :perms/download-results :no)
             (data-perms/set-database-permission! group database :perms/data-access :no-self-service)
             (data-perms/set-database-permission! group database :perms/native-query-editing :no))))

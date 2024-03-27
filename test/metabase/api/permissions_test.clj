@@ -7,12 +7,7 @@
    [metabase.api.permissions :as api.permissions]
    [metabase.api.permissions-test-util :as perm-test-util]
    [metabase.models
-    :refer [Database
-            Permissions
-            PermissionsGroup
-            PermissionsGroupMembership
-            Table
-            User]]
+    :refer [Database PermissionsGroup PermissionsGroupMembership Table User]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.permissions-group :as perms-group]
@@ -213,9 +208,11 @@
         (mt/user-http-request
          :crowberto :put 200 "permissions/graph"
          (assoc-in (data-perms.graph/api-graph)
-                   [:groups (u/the-id group) db-id :data :schemas]
-                   :all))
-        (is (= {:data {:schemas :all}}
+                   [:groups (u/the-id group) db-id]
+                   {:view-data :unrestricted
+                    :create-queries :query-builder}))
+        (is (= {:view-data :unrestricted
+                :create-queries :query-builder}
                (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) db-id])))))))
 
 (deftest update-perms-graph-perms-for-new-db-with-no-tables-test
@@ -226,9 +223,11 @@
         (mt/user-http-request
          :crowberto :put 200 "permissions/graph"
          (assoc-in (data-perms.graph/api-graph)
-                   [:groups (u/the-id group) db-id :data :schemas]
-                   :all))
-        (is (= {:data {:schemas :all}}
+                   [:groups (u/the-id group) db-id]
+                   {:view-data :unrestricted
+                    :create-queries :query-builder}))
+        (is (= {:view-data :unrestricted
+                :create-queries :query-builder}
                (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) db-id])))))))
 
 (deftest update-perms-graph-with-skip-graph-skips-graph-test
@@ -257,16 +256,6 @@
             (is (not (perm-test-util/validate-graph-api-groups (:groups no-returned-g))))
             (is (mc/validate [:map {:closed true}
                               [:revision pos-int?]] no-returned-g))))))))
-
-
-(deftest update-perms-graph-group-has-no-permissions-test
-  (testing "PUT /api/permissions/graph"
-    (testing "permissions when group has no permissions"
-      (t2.with-temp/with-temp [PermissionsGroup group]
-        (mt/user-http-request :crowberto :put 200 "permissions/graph"
-                              (assoc-in (data-perms.graph/api-graph) [:groups (u/the-id group)] nil))
-        (is (empty? (t2/select Permissions :group_id (u/the-id group))))
-        (is (nil? (get-in (data-perms.graph/api-graph) [:groups (u/the-id group)])))))))
 
 (deftest can-revoke-permsissions-via-graph-test
   (testing "PUT /api/permissions/graph"

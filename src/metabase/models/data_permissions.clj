@@ -44,9 +44,11 @@
 
 (def Permissions
   "Permissions which apply to individual databases or tables"
-  {:perms/data-access           {:model :model/Table :values [:unrestricted :no-self-service :block]}
+  {:perms/view-data             {:model :model/Table :values [:unrestricted :legacy-no-self-service :blocked]}
+   :perms/data-access           {:model :model/Table :values [:unrestricted :no-self-service :block]}
    :perms/download-results      {:model :model/Table :values [:one-million-rows :ten-thousand-rows :no]}
    :perms/manage-table-metadata {:model :model/Table :values [:yes :no]}
+   :perms/create-queries        {:model :model/Table :values [:query-builder-and-native :query-builder :no]}
 
    :perms/native-query-editing  {:model :model/Database :values [:yes :no]}
    :perms/manage-database       {:model :model/Database :values [:yes :no]}})
@@ -163,6 +165,16 @@
   (let [ordered-values (-> Permissions perm-type :values)]
     (first (filter (set perm-values) ordered-values))))
 
+(defmethod coalesce :perms/view-data
+  [perm-type perm-values]
+  (let [perm-values (set perm-values)
+        ordered-values (-> Permissions perm-type :values)]
+    (if (and (perm-values :blocked)
+             (not (perm-values :unrestricted)))
+      ;; Block in one group overrides `legacy-no-self-service` in another, but not unrestricted
+      :blocked
+      (first (filter perm-values ordered-values)))))
+
 (defmethod coalesce :perms/data-access
   [perm-type perm-values]
   (let [perm-values    (set perm-values)
@@ -232,11 +244,37 @@
 (defn- get-additional-table-permission! [{:keys [db-id table-id]} perm-type]
   (get-in *additional-table-permissions* [db-id table-id perm-type]))
 
+(mu/defn database-permission-for-group :- PermissionValue
+  "Returns the effective permission value for a given *group*, permission type, and database ID"
+  [group-id perm-type database-id]
+  (when (not= :model/Database (model-by-perm-type perm-type))
+    (throw (ex-info (tru "Permission type {0} is not a data-level permission." perm-type)
+                    {perm-type (Permissions perm-type)})))
+  (let [perm-values (t2/select-fn-set :value
+                                      :model/DataPermissions
+                                      {:select [[:p.perm_value :value]]
+                                       :from [[:data_permissions :p]]
+                                       :where [:and
+                                               [:= :p.group_id group-id]
+                                               [:= :p.perm_type (u/qualified-name perm-type)]
+                                               [:= :p.db_id database-id]
+                                               [:= :table_id nil]]})]
+    (or (coalesce perm-type perm-values)
+        (least-permissive-value perm-type))))
+
+(mu/defn group-has-permission-for-database? :- :boolean
+  "Returns a Boolean indicating whether the group has the specified permission value for the given database ID,
+   or a more permissive value."
+  [group-id perm-type perm-value database-id]
+  (at-least-as-permissive? perm-type
+                           (database-permission-for-group group-id perm-type database-id)
+                           perm-value))
+
 (mu/defn table-permission-for-group :- PermissionValue
   "Returns the effective permission value for a given *group*, permission type, and database ID, and table ID."
   [group-id perm-type database-id table-id]
   (when (not= :model/Table (model-by-perm-type perm-type))
-    (throw (ex-info (tru "Permission type {0} is a table-level permission." perm-type)
+    (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
                     {perm-type (Permissions perm-type)})))
   (let [perm-values (t2/select-fn-set :value
                                       :model/DataPermissions
@@ -252,6 +290,15 @@
     (or (coalesce perm-type (conj perm-values (get-additional-table-permission! {:db-id database-id :table-id table-id}
                                                                                 perm-type)))
         (least-permissive-value perm-type))))
+
+(mu/defn group-has-permission-for-table? :- :boolean
+  "Returns a Boolean indicating whether the group has the specified permission value for the given table ID, or a more
+  permissive value."
+  [group-id perm-type perm-value database-id table-id]
+  (at-least-as-permissive? perm-type
+                           (table-permission-for-group group-id perm-type database-id table-id)
+                           perm-value))
+
 
 (mu/defn table-permission-for-user :- PermissionValue
   "Returns the effective permission value for a given user, permission type, and database ID, and table ID. If the user
@@ -399,20 +446,6 @@
                                (coalesce-most-restrictive :perms/download-results values)))))]
       (or (coalesce :perms/download-results (vals value-by-group))
           (least-permissive-value :perms/download-results)))))
-
-(mu/defn user-has-block-perms-for-database? :- :boolean
-  "Returns a Boolean indicating whether the given user should have block permissions enforced for the given database.
-  This is a standalone function because block perms are only set at the database-level, but :perms/data-access is
-  generally checked at the table-level, except in the case of block perms."
-  [user-id database-id]
-  (if (is-superuser? user-id)
-    false
-    (let [perm-values
-          (->> (get-permissions user-id :perms/data-access database-id)
-               (map :perm_value)
-               (into #{}))]
-      (= (coalesce :perms/data-access perm-values)
-         :block))))
 
 (mu/defn user-has-any-perms-of-type? :- :boolean
   "Returns a Boolean indicating whether the user has the highest level of access for the given permission type in any
@@ -575,7 +608,7 @@
   "Sets a single permission to a specified value for a given group and database. If a permission value already exists
   for the specified group and object, it will be updated to the new value.
 
-  Block permissions (i.e. :perms/data-access :block) can only be set at the database-level, despite :perms/data-access
+  Block permissions (i.e. :perms/view-data :blocked) can only be set at the database-level, despite :perms/view-data
   being a table-level permission."
   [group-or-id :- TheIdable
    db-or-id    :- TheIdable
@@ -589,6 +622,9 @@
                                           :group_id   group-id
                                           :perm_value value
                                           :db_id      db-id})
+      (when (= [:perms/view-data :blocked] [perm-type value])
+        (set-database-permission! group-or-id db-or-id :perms/create-queries :no)
+        (set-database-permission! group-or-id db-or-id :perms/download-results :no))
       (when (= [:perms/data-access :block] [perm-type value])
         (set-database-permission! group-or-id db-or-id :perms/native-query-editing :no)
         (set-database-permission! group-or-id db-or-id :perms/download-results :no)))))
@@ -646,15 +682,19 @@
             (when (not= values #{existing-db-perm-value})
               ;; If we're setting any table permissions to a value that is different from the database-level permission,
               ;; we need to replace it with individual permission rows for every table in the database instead.
-              ;; If the database-level permission was previously `:block`, we set the tables to `:no-self-service`.
               (let [other-tables    (t2/select :model/Table {:where [:and
                                                                      [:= :db_id db-id]
                                                                      [:not [:in :id table-ids]]]})
                     other-new-perms (map (fn [table]
                                            {:perm_type   perm-type
                                             :group_id    group-id
-                                            :perm_value  (if (= :block existing-db-perm-value)
-                                                           :no-self-service
+                                            :perm_value  (case existing-db-perm-value
+                                                           ;; `:query-builder-and-native` can only be set at the
+                                                           ;; database level. So if we're setting a particular table
+                                                           ;; to something other than `:query-builder-and-native` when
+                                                           ;; the *database* had that permission, the db-level
+                                                           ;; permission needs to be dropped to `:query-builder`.
+                                                           :query-builder-and-native :query-builder
                                                            existing-db-perm-value)
                                             :db_id       db-id
                                             :table_id    (:id table)

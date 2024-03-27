@@ -73,8 +73,12 @@
       ;; Data access permissions
       (if (= (:db_id table) config/audit-db-id)
         ;; Tables in audit DB should start out with no-self-service in all groups
-        (data-perms/set-new-table-permissions! non-admin-groups table :perms/data-access :no-self-service)
         (do
+         (data-perms/set-new-table-permissions! non-admin-groups table :perms/create-queries :no)
+         (data-perms/set-new-table-permissions! non-admin-groups table :perms/data-access :no-self-service))
+        (do
+          (data-perms/set-new-table-permissions! [all-users-group] table :perms/create-queries :query-builder)
+          (data-perms/set-new-table-permissions! non-magic-groups table :perms/create-queries :no)
           (data-perms/set-new-table-permissions! [all-users-group] table :perms/data-access :unrestricted)
           (data-perms/set-new-table-permissions! non-magic-groups table :perms/data-access :no-self-service)))
       ;; Download permissions
@@ -90,12 +94,18 @@
 
 (defmethod mi/can-read? :model/Table
   ([instance]
-   (data-perms/user-has-permission-for-table?
-    api/*current-user-id*
-    :perms/data-access
-    :unrestricted
-    (:db_id instance)
-    (:id instance)))
+   (and (data-perms/user-has-permission-for-table?
+         api/*current-user-id*
+         :perms/view-data
+         :unrestricted
+         (:db_id instance)
+         (:id instance))
+        (data-perms/user-has-permission-for-table?
+         api/*current-user-id*
+         :perms/create-queries
+         :query-builder
+         (:db_id instance)
+         (:id instance))))
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Table pk))))
 

@@ -42,8 +42,10 @@
       (let [all-users-group-id (u/the-id (perms-group/all-users))]
         (is (= {all-users-group-id
                 {db-id
-                 {:perms/download-results      :one-million-rows
+                 {:perms/view-data             :unrestricted
+                  :perms/create-queries        :query-builder-and-native
                   :perms/data-access           :unrestricted
+                  :perms/download-results      :one-million-rows
                   :perms/native-query-editing  :yes
                   :perms/manage-table-metadata :no
                   :perms/manage-database       :no}}}
@@ -52,7 +54,9 @@
       ;; Other groups should have no DB-level perms
       (is (= {group-id
               {db-id
-               {:perms/download-results      :no
+               {:perms/view-data             :unrestricted
+                :perms/create-queries        :no
+                :perms/download-results      :no
                 :perms/data-access           :no-self-service
                 :perms/native-query-editing  :no
                 :perms/manage-table-metadata :no
