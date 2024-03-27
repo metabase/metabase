@@ -16,6 +16,7 @@ export default class EmailAttachmentPicker extends Component {
 
   state = {
     isEnabled: false,
+    isFormattingEnabled: true,
     selectedAttachmentType: this.DEFAULT_ATTACHMENT_TYPE,
     selectedCardIds: new Set(),
   };
@@ -71,6 +72,8 @@ export default class EmailAttachmentPicker extends Component {
    */
   updatePulseCards(attachmentType, selectedCardIds) {
     const { pulse, setPulse } = this.props;
+    const { isFormattingEnabled } = this.state;
+
     const isXls = attachmentType === "xls",
       isCsv = attachmentType === "csv";
 
@@ -81,6 +84,7 @@ export default class EmailAttachmentPicker extends Component {
       cards: pulse.cards.map(card => {
         card.include_csv = selectedCardIds.has(card.id) && isCsv;
         card.include_xls = selectedCardIds.has(card.id) && isXls;
+        card.format_rows = isFormattingEnabled;
         return card;
       }),
     });
@@ -165,6 +169,21 @@ export default class EmailAttachmentPicker extends Component {
     });
   };
 
+  onToggleFormatting = () => {
+    this.setState(
+      prevState => ({
+        ...prevState,
+        isFormattingEnabled: !prevState.isFormattingEnabled,
+      }),
+      () => {
+        this.updatePulseCards(
+          this.state.selectedAttachmentType,
+          this.state.selectedCardIds,
+        );
+      },
+    );
+  };
+
   disableAllCards() {
     const selectedCardIds = new Set();
     this.updatePulseCards(this.state.selectedAttachmentType, selectedCardIds);
@@ -181,7 +200,12 @@ export default class EmailAttachmentPicker extends Component {
 
   render() {
     const { cards } = this.props;
-    const { isEnabled, selectedAttachmentType, selectedCardIds } = this.state;
+    const {
+      isEnabled,
+      isFormattingEnabled,
+      selectedAttachmentType,
+      selectedCardIds,
+    } = this.state;
 
     return (
       <div>
@@ -203,6 +227,13 @@ export default class EmailAttachmentPicker extends Component {
                 onChange={this.setAttachmentType}
                 value={selectedAttachmentType}
                 fullWidth
+              />
+            </div>
+            <div className={cx(CS.mt2, CS.mb3)}>
+              <CheckBox
+                checked={!isFormattingEnabled}
+                label={t`Use unformatted values in attachments`}
+                onChange={this.onToggleFormatting}
               />
             </div>
             <div

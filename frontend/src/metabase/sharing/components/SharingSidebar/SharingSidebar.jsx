@@ -77,6 +77,7 @@ const cardsToPulseCards = (cards, pulseCards) => {
     const pulseCard = pulseCards.find(pc => pc.id === card.id) || card;
     return {
       ...card,
+      format_rows: pulseCard.format_rows,
       include_csv: pulseCard.include_csv,
       include_xls: pulseCard.include_xls,
     };
