@@ -407,7 +407,9 @@ export class DeleteAlertSection extends Component {
         <div className="ml1">
           <h4 className="text-bold mb1">{jt`Delete this alert`}</h4>
           <div className={CS.flex}>
-            <p className="h4 pr2">{jt`Stop delivery and delete this alert. There's no undo, so be careful.`}</p>
+            <p
+              className={cx(CS.h4, CS.pr2)}
+            >{jt`Stop delivery and delete this alert. There's no undo, so be careful.`}</p>
             <ModalWithTrigger
               ref={ref => (this.deleteModal = ref)}
               as={Button}

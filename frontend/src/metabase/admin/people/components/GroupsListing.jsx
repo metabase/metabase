@@ -155,7 +155,7 @@ function EditingGroupRow({
     <tr className="bordered border-brand rounded">
       <td>
         <Input
-          className="h3"
+          className={CS.h3}
           type="text"
           autoFocus={true}
           value={group.name}
