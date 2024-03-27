@@ -9,11 +9,15 @@
    [clojure.string :as str]
    [macaw.core :as mac]
    [metabase.config :as config]
+   [metabase.models.table :as table]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    [net.sf.jsqlparser JSQLParserException]))
+
+(comment
+  table/keep-me)
 
 (def ^:dynamic *parse-queries-in-test?*
   "Normally, a native card's query is parsed on every create/update. For most tests, this is an unnecessary
