@@ -24,7 +24,7 @@ export interface StepHeaderProps {
 
 export const StepContent = styled.div`
   width: 100%;
-  max-width: 960px;
+  max-width: 60rem;
 `;
 
 export const StepHeader = styled(StepContent)`
