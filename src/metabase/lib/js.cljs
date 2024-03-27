@@ -2048,6 +2048,18 @@
                                               expression-position)
           clj->js))))
 
+(defn ^:export preview-expression
+  "Evaluates `an-expression-clause` against a `row` of data as returned from a query. Both `row` and `columns` should be
+  in the same order, ie. `row[i]` should be the value for `columns[i]`.
+
+  Not all expression operators can be evaluated in memory outside the data warehouse. In addition, many operators that
+  *could* be supported have not been implemented yet - ask if you need something added.
+
+  Throws if `an-expression-clause` contains any subexpressions that can't be evaluated in memory."
+  [a-query stage-number an-expression-clause columns row]
+  (let [column-values (zipmap columns row)]
+    (lib.core/preview-expression a-query stage-number an-expression-clause columns column-values)))
+
 ;; TODO: [[field-values-search-info]] seems over-specific - I feel like we can do a better job of extracting search info
 ;; from arbitrary entities, akin to [[display-info]].
 
