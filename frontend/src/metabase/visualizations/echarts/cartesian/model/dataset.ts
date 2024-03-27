@@ -33,8 +33,8 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import { isMetric } from "metabase-lib/types/utils/isa";
-import { isCategoryAxis, isNumericAxis } from "./guards";
 import { signedLog, signedSquareRoot } from "./transforms";
+import { isCategoryAxis, isNumericAxis, isTimeSeriesAxis } from "./guards";
 
 /**
  * Sums two metric column values.
@@ -552,9 +552,9 @@ export const applyVisualizationSettingsDataTransformations = (
       }),
     },
     {
-      condition: isNumericAxis(xAxisModel),
+      condition: isNumericAxis(xAxisModel) || isTimeSeriesAxis(xAxisModel),
       fn: getKeyBasedDatasetTransform([X_AXIS_DATA_KEY], value => {
-        return isNumericAxis(xAxisModel)
+        return isNumericAxis(xAxisModel) || isTimeSeriesAxis(xAxisModel)
           ? xAxisModel.toEChartsAxisValue(value)
           : value;
       }),

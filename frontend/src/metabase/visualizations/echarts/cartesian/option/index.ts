@@ -20,6 +20,7 @@ import { getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLinesOption } from "./trend-line";
 
 export const getSharedEChartsOptions = (isPlaceholder: boolean) => ({
+  useUTC: true,
   animation: !isPlaceholder,
   animationDuration: 0,
   toolbox: {

@@ -27,7 +27,8 @@ const groupEventsByUnitStart = (
 ): TimelineEventGroup[] => {
   const groupedEvents = events.reduce<Map<string, TimelineEvent[]>>(
     (acc, event) => {
-      const unitStart = dayjs(event.timestamp)
+      const unitStart = dayjs
+        .utc(event.timestamp)
         .startOf(unit as OpUnitType)
         .toISOString();
 
@@ -75,7 +76,7 @@ export const mergeOverlappingTimelineEventGroups = (
   renderingContext: RenderingContext,
 ): TimelineEventGroup[] => {
   const sortedGroups = [...eventGroups].sort((a, b) =>
-    dayjs(a.date).isAfter(dayjs(b.date)) ? 1 : -1,
+    dayjs.utc(a.date).isAfter(dayjs.utc(b.date)) ? 1 : -1,
   );
 
   const mergedGroups: TimelineEventGroup[] = [];
@@ -91,8 +92,8 @@ export const mergeOverlappingTimelineEventGroups = (
       return;
     }
 
-    const lastGroupDate = dayjs(lastGroup.date);
-    const currentGroupDate = dayjs(currentGroup.date);
+    const lastGroupDate = dayjs.utc(lastGroup.date);
+    const currentGroupDate = dayjs.utc(currentGroup.date);
 
     const daysDiff = currentGroupDate.diff(lastGroupDate, "day");
     const pixelDiff = daysDiff * dayWidth;

@@ -496,7 +496,7 @@ export function getTimeSeriesXAxisModel(
     rawSeries,
     dimensionModel,
   );
-  const { interval: dataTimeSeriesInterval } = timeSeriesInfo;
+  const { interval: dataTimeSeriesInterval, timezone } = timeSeriesInfo;
   const formatter = (value: RowValue, unit?: DateTimeAbsoluteUnit) => {
     const formatUnit =
       unit ??
@@ -518,16 +518,26 @@ export function getTimeSeriesXAxisModel(
     return renderingContext.formatValue(value, params);
   };
 
-  const fromAxisValue = (rawValue: number) => {
-    // FIXME: properly fix timezone mismatch
-    return dayjs(rawValue);
+  // ECharts, when selecting chart ticks, can use either the browser timezone or UTC when `useUTC` is true.
+  // Although the dataset values are placed in the right place, ticks would look shifted based on where the user is from.
+  // So as a workaround we enable useUTC option and shift all dates like they are in UTC timezone.
+  const toEChartsAxisValue = (value: RowValue) => {
+    const date = tryGetDate(value);
+    if (!date) {
+      return null;
+    }
+    return date.tz(timezone).format("YYYY-MM-DDTHH:mm:ss[Z]");
+  };
+  const fromEChartsAxisValue = (rawValue: number) => {
+    return dayjs.utc(rawValue);
   };
 
   return {
     label,
     formatter,
     axisType: "time",
-    fromAxisValue,
+    toEChartsAxisValue,
+    fromEChartsAxisValue,
     ...timeSeriesInfo,
   };
 }
@@ -713,10 +723,7 @@ function getTimeSeriesXAxisInfo(
   if (range) {
     const [min, max] = range;
     // A single date counts as one interval
-    intervalsCount = Math.max(
-      1,
-      Math.ceil(max.diff(min, interval.unit) / interval.count),
-    );
+    intervalsCount = Math.ceil(max.diff(min, interval.unit) / interval.count);
   }
 
   return { interval, timezone, intervalsCount, range, unit };
