@@ -55,7 +55,7 @@ export function getLoginPageIllustration(
         isDefault: true,
       };
 
-    case "no-illustration":
+    case "none":
       return null;
 
     case "custom":
@@ -81,7 +81,7 @@ export function getLandingPageIllustration(
         isDefault: true,
       };
 
-    case "no-illustration":
+    case "none":
       return null;
 
     case "custom":
@@ -102,7 +102,7 @@ export function getNoDataIllustration(state: EnterpriseState): string | null {
     case "default":
       return noResultsSource;
 
-    case "no-illustration":
+    case "none":
       return null;
 
     case "custom":
@@ -120,7 +120,7 @@ export function getNoObjectIllustration(state: EnterpriseState): string | null {
     case "default":
       return noResultsSource;
 
-    case "no-illustration":
+    case "none":
       return null;
 
     case "custom":
