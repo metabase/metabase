@@ -442,7 +442,10 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
     // elasticY not compatible with log scale
     if (axis.setting("scale") !== "log") {
       // TODO: right axis?
-      chart.elasticY(true);
+      let points = series.map(seri => { return seri.data.rows.map(row => row[1]) }).reduce((prev, current) => { return prev.concat(current) });
+      let max = Math.max(...points)
+      let min = Math.min(...points)
+      axis.scale(scale.domain([min, max]));
     } else {
       const [min, max] = yExtent;
       if (!((min < 0 && max < 0) || (min > 0 && max > 0))) {
