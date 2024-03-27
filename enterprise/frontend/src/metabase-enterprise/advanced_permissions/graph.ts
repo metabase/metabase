@@ -1,6 +1,12 @@
+import _ from "underscore";
+
 import type {
-  DataPermission,
   DatabaseEntityId,
+  TableEntityId,
+} from "metabase/admin/permissions/types";
+import {
+  DataPermission,
+  DataPermissionValue,
 } from "metabase/admin/permissions/types";
 import {
   getSchemasPermission,
@@ -13,7 +19,7 @@ import type { GroupsPermissions, NativePermissions } from "metabase-types/api";
 export function updateNativePermission(
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: DatabaseEntityId,
+  entityId: DatabaseEntityId & TableEntityId,
   value: NativePermissions,
   database: Database,
   permission: DataPermission,
@@ -22,24 +28,30 @@ export function updateNativePermission(
     permissions,
     groupId,
     entityId,
-    permission,
+    DataPermission.VIEW_DATA,
   );
 
-  if (value === "write" && schemasPermission !== "impersonated") {
+  if (
+    (value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE ||
+      value === DataPermissionValue.QUERY_BUILDER) &&
+    schemasPermission !== DataPermissionValue.IMPERSONATED
+  ) {
     permissions = updateSchemasPermission(
       permissions,
       groupId,
       { databaseId: entityId.databaseId },
-      "all",
+      DataPermissionValue.UNRESTRICTED,
       database,
-      permission,
+      DataPermission.VIEW_DATA,
       false,
     );
   }
   return updatePermission(
     permissions,
     groupId,
-    [entityId.databaseId, permission, "native"],
+    entityId.databaseId,
+    permission,
+    _.compact([(entityId as any).schemaName, (entityId as any).tableId]),
     value,
   );
 }

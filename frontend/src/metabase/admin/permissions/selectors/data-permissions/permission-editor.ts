@@ -81,6 +81,9 @@ const getRouteParams = (
 const getDataPermissions = (state: State) =>
   state.admin.permissions.dataPermissions;
 
+const getOriginalDataPermissions = (state: State) =>
+  state.admin.permissions.originalDataPermissions;
+
 const getGroupRouteParams = (
   _state: State,
   props: { params: RawGroupRouteParams },
@@ -135,6 +138,7 @@ export const getDatabasesPermissionEditor = createSelector(
   getMetadataWithHiddenTables,
   getGroupRouteParams,
   getDataPermissions,
+  getOriginalDataPermissions,
   getGroup,
   Groups.selectors.getList,
   getIsLoadingDatabaseTables,
@@ -142,6 +146,7 @@ export const getDatabasesPermissionEditor = createSelector(
     metadata,
     params,
     permissions: GroupsPermissions,
+    originalPermissions: GroupsPermissions,
     group: Group,
     groups: Group[],
     isLoading,
@@ -169,8 +174,8 @@ export const getDatabasesPermissionEditor = createSelector(
     );
     const columns = [
       { name: getEditorEntityName(params, hasSingleSchema) },
-      { name: t`Data access` },
-      { name: t`Native query editing` },
+      { name: t`View data` },
+      { name: t`Create queries` },
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject),
     ];
 
@@ -197,6 +202,7 @@ export const getDatabasesPermissionEditor = createSelector(
               groupId,
               isAdmin,
               permissions,
+              originalPermissions,
               defaultGroup,
               database,
             ),
@@ -219,6 +225,7 @@ export const getDatabasesPermissionEditor = createSelector(
               groupId,
               isAdmin,
               permissions,
+              originalPermissions,
               defaultGroup,
             ),
           };
@@ -238,6 +245,7 @@ export const getDatabasesPermissionEditor = createSelector(
               groupId,
               isAdmin,
               permissions,
+              originalPermissions,
               defaultGroup,
               database,
             ),
@@ -302,8 +310,9 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
     getMetadataWithHiddenTables,
     getRouteParams,
     getDataPermissions,
+    getOriginalDataPermissions,
     getOrderedGroups,
-    (metadata, params, permissions, groups) => {
+    (metadata, params, permissions, originalPermissions, groups) => {
       const { databaseId, schemaName, tableId } = params;
       const database = metadata?.database(databaseId);
 
@@ -322,8 +331,8 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
       const permissionSubject = getPermissionSubject(params);
       const columns = [
         { name: t`Group name` },
-        { name: t`Data access` },
-        { name: t`Native query editing` },
+        { name: t`View data` },
+        { name: t`Create queries` },
         ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject),
       ];
 
@@ -341,6 +350,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
             group.id,
             isAdmin,
             permissions,
+            originalPermissions,
             defaultGroup,
             database,
           );
@@ -353,6 +363,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
             group.id,
             isAdmin,
             permissions,
+            originalPermissions,
             defaultGroup,
           );
         } else if (databaseId != null) {
@@ -363,6 +374,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
             group.id,
             isAdmin,
             permissions,
+            originalPermissions,
             defaultGroup,
             database,
           );

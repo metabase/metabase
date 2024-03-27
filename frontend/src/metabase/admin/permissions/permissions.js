@@ -20,14 +20,16 @@ import {
   handleActions,
   combineReducers,
 } from "metabase/lib/redux";
-import {
-  PLUGIN_DATA_PERMISSIONS,
-  PLUGIN_ADVANCED_PERMISSIONS,
-} from "metabase/plugins";
+import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { CollectionsApi, PermissionsApi } from "metabase/services";
 
 import { trackPermissionChange } from "./analytics";
+import {
+  DataPermissionType,
+  DataPermissionValue,
+  DataPermission,
+} from "./types";
 import { isDatabaseEntityId } from "./utils/data-entity-id";
 
 const INITIALIZE_DATA_PERMISSIONS =
@@ -90,26 +92,27 @@ export const loadCollectionPermissions = createThunkAction(
   },
 );
 
-export const LIMIT_DATABASE_PERMISSION =
-  "metabase/admin/permissions/LIMIT_DATABASE_PERMISSION";
-export const limitDatabasePermission = createThunkAction(
-  LIMIT_DATABASE_PERMISSION,
-  (groupId, entityId, accessPermissionValue) => dispatch => {
-    const newValue =
-      PLUGIN_ADVANCED_PERMISSIONS.getDatabaseLimitedAccessPermission(
-        accessPermissionValue,
-      );
-
-    if (newValue) {
+export const GRANULATE_DATABASE_TABLE_PERMISSIONS =
+  "metabase/admin/permissions/GRANULATE_DATABASE_TABLE_PERMISSIONS";
+export const granulateDatabasePermissions = createThunkAction(
+  GRANULATE_DATABASE_TABLE_PERMISSIONS,
+  (groupId, entityId, permission, value, defaultValue) => dispatch => {
+    // HACK: updatePermission fn sets entities of controlled values (schemas in this case
+    // to the previously set value of the parent (database in this case). if the db perm
+    // value is set to something other than restrictied before changing to controlled, the
+    // table's view data dropdowns will get locked in an unchangable state (e.g. blocked, impersonated)
+    if (value === DataPermissionValue.CONTROLLED) {
       dispatch(
         updateDataPermission({
           groupId,
-          permission: { type: "access", permission: "data" },
-          value: newValue,
+          permission,
+          value: defaultValue,
           entityId,
         }),
       );
     }
+
+    dispatch(updateDataPermission({ groupId, permission, value, entityId }));
 
     dispatch(push(getGroupFocusPermissionsUrl(groupId, entityId)));
   },
@@ -137,6 +140,7 @@ export const updateDataPermission = createThunkAction(
           entityId,
           groupId,
           view,
+          value,
         );
         if (action) {
           dispatch(action);
@@ -267,16 +271,18 @@ const dataPermissions = handleActions(
 
         const database = metadata.database(entityId.databaseId);
 
-        if (permissionInfo.type === "details") {
+        if (permissionInfo.type === DataPermissionType.DETAILS) {
           return updatePermission(
             state,
             groupId,
-            [entityId.databaseId, permissionInfo.type],
+            entityId.databaseId,
+            DataPermission.DETAILS,
+            [],
             value,
           );
         }
 
-        if (permissionInfo.type === "native") {
+        if (permissionInfo.type === DataPermissionType.NATIVE) {
           const updateFn =
             PLUGIN_DATA_PERMISSIONS.updateNativePermission ??
             updateNativePermission;
@@ -291,7 +297,8 @@ const dataPermissions = handleActions(
           );
         }
 
-        const shouldDowngradeNative = permissionInfo.type === "access";
+        const shouldDowngradeNative =
+          permissionInfo.type === DataPermissionType.ACCESS;
 
         if (entityId.tableId != null) {
           const updatedPermissions = updateFieldsPermission(

@@ -3,6 +3,7 @@ import type { State } from "metabase-types/store";
 import { state as mockState } from "./data-permissions.unit.spec.fixtures";
 
 import { getGroupsDataPermissionEditor } from ".";
+import { DataPermissionValue } from "../../types";
 
 const state = mockState as unknown as State;
 
@@ -43,41 +44,49 @@ describe("getGroupsDataPermissionEditor", () => {
 
     const [accessPermission, nativeQueryPermission] =
       entities?.[1].permissions ?? [];
-    expect(accessPermission.value).toEqual("all");
+    expect(accessPermission.value).toEqual(DataPermissionValue.UNRESTRICTED);
     expect(accessPermission.options).toEqual([
       {
         icon: "check",
         iconColor: "success",
         label: "Unrestricted",
-        value: "all",
+        value: DataPermissionValue.UNRESTRICTED,
       },
       {
         icon: "permissions_limited",
         iconColor: "warning",
         label: "Granular",
-        value: "controlled",
-      },
-      {
-        icon: "eye",
-        iconColor: "accent5",
-        label: "No self-service",
-        value: "none",
+        value: DataPermissionValue.CONTROLLED,
       },
     ]);
 
-    expect(nativeQueryPermission.value).toEqual("write");
+    expect(nativeQueryPermission.value).toEqual(
+      DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+    );
     expect(nativeQueryPermission.options).toEqual([
       {
+        label: `Query builder and native`,
+        value: DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
         icon: "check",
         iconColor: "success",
-        label: "Yes",
-        value: "write",
       },
       {
+        label: `Granular`,
+        value: DataPermissionValue.CONTROLLED,
+        icon: "permissions_limited",
+        iconColor: "warning",
+      },
+      {
+        label: `Query builder only`,
+        value: DataPermissionValue.QUERY_BUILDER,
+        icon: "permissions_limited",
+        iconColor: "warning",
+      },
+      {
+        label: `No`,
+        value: DataPermissionValue.NO,
         icon: "close",
         iconColor: "danger",
-        label: "No",
-        value: "none",
       },
     ]);
   });

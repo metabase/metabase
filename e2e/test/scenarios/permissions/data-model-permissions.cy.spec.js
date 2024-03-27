@@ -119,8 +119,6 @@ describeEE("scenarios > admin > permissions", () => {
     // Change data model permission
     modifyPermission("All Users", DATA_MODEL_PERMISSION_INDEX, "Granular");
     modifyPermission("Orders", DATA_MODEL_PERMISSION_INDEX, "Yes");
-    modifyPermission("Orders", DATA_ACCESS_PERMISSION_INDEX, "Unrestricted");
-    cy.button("Change").click();
 
     savePermissionsGraph();
 

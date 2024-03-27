@@ -39,11 +39,10 @@ describeEE("issue 17763", () => {
     );
 
     cy.findByTestId("permission-table").within(() => {
-      cy.findAllByText("No self-service").first().click();
+      cy.findAllByText("Unrestricted").first().click();
     });
 
     popover().within(() => {
-      cy.findByText("Unrestricted");
       cy.findByText("Sandboxed");
     });
   });

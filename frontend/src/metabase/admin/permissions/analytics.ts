@@ -3,7 +3,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import type { DataPermission, TableEntityId } from "./types";
 
 const getEventPrefix = (permission: DataPermission) => {
-  const shouldUseBackwardCompatibleEventName = permission === "data";
+  const shouldUseBackwardCompatibleEventName = permission === "view-data";
   if (shouldUseBackwardCompatibleEventName) {
     return "";
   }
@@ -13,7 +13,7 @@ const getEventPrefix = (permission: DataPermission) => {
 
 const getEventName = (entityId: Partial<TableEntityId>, isNative: boolean) => {
   if (isNative) {
-    return "native";
+    return "create-queries";
   }
   if (entityId.tableId != null) {
     return "fields";

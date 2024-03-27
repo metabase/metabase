@@ -5,6 +5,11 @@ import { push } from "react-router-redux";
 import { useAsyncFn, useMount } from "react-use";
 
 import { updateDataPermission } from "metabase/admin/permissions/permissions";
+import {
+  DataPermission,
+  DataPermissionType,
+  DataPermissionValue,
+} from "metabase/admin/permissions/types";
 import { useDatabaseQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { getParentPath } from "metabase/hoc/ModalRoute";
@@ -91,24 +96,26 @@ const _ImpersonationModal = ({ route, params }: ImpersonationModalProps) => {
       dispatch(
         updateDataPermission({
           groupId,
-          permission: { type: "access", permission: "data" },
-          value: "impersonated",
+          permission: {
+            type: DataPermissionType.ACCESS,
+            permission: DataPermission.VIEW_DATA,
+          },
+          value: DataPermissionValue.IMPERSONATED,
           entityId: { databaseId },
         }),
       );
 
-      if (attribute !== selectedAttribute) {
-        dispatch(
-          updateImpersonation({
-            attribute,
-            db_id: databaseId,
-            group_id: groupId,
-          }),
-        );
-      }
+      dispatch(
+        updateImpersonation({
+          attribute,
+          db_id: databaseId,
+          group_id: groupId,
+        }),
+      );
+
       close();
     },
-    [close, databaseId, dispatch, groupId, selectedAttribute],
+    [close, databaseId, dispatch, groupId],
   );
 
   const handleCancel = useCallback(() => {

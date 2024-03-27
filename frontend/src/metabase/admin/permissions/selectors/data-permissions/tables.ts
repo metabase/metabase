@@ -1,4 +1,5 @@
 import { push } from "react-router-redux";
+import _ from "underscore";
 
 import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
 import {
@@ -13,7 +14,12 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
-import type { PermissionSectionConfig, SchemaEntityId } from "../../types";
+import type {
+  DataPermissionValue,
+  PermissionSectionConfig,
+  SchemaEntityId,
+} from "../../types";
+import { DataPermission, DataPermissionType } from "../../types";
 import { getGroupFocusPermissionsUrl } from "../../utils/urls";
 import {
   getControlledDatabaseWarningModal,
@@ -26,14 +32,28 @@ const buildAccessPermission = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
+  originalPermissions: GroupsPermissions,
   defaultGroup: Group,
-) => {
-  const value = getTablesPermission(permissions, groupId, entityId, "data");
+): PermissionSectionConfig => {
+  const value = getTablesPermission(
+    permissions,
+    groupId,
+    entityId,
+    DataPermission.VIEW_DATA,
+  );
+
+  const originalValue = getTablesPermission(
+    originalPermissions,
+    groupId,
+    entityId,
+    DataPermission.VIEW_DATA,
+  );
+
   const defaultGroupValue = getTablesPermission(
     permissions,
     defaultGroup.id,
     entityId,
-    "data",
+    DataPermission.VIEW_DATA,
   );
 
   const warning = getPermissionWarning(
@@ -44,7 +64,7 @@ const buildAccessPermission = (
     groupId,
   );
 
-  const confirmations = (newValue: string) => [
+  const confirmations = (newValue: DataPermissionValue) => [
     getPermissionWarningModal(
       newValue,
       defaultGroupValue,
@@ -52,14 +72,25 @@ const buildAccessPermission = (
       defaultGroup,
       groupId,
     ),
-    getControlledDatabaseWarningModal(permissions, groupId, entityId),
+    getControlledDatabaseWarningModal(newValue, entityId),
   ];
 
+  const options = PLUGIN_ADVANCED_PERMISSIONS.addSchemaPermissionOptions(
+    _.compact([
+      DATA_PERMISSION_OPTIONS.unrestricted,
+      DATA_PERMISSION_OPTIONS.controlled,
+      originalValue === DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated.value &&
+        DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated,
+    ]),
+    value,
+  );
+
   return {
-    permission: "data",
-    type: "access",
+    permission: DataPermission.VIEW_DATA,
+    type: DataPermissionType.ACCESS,
     isDisabled:
       isAdmin ||
+      options.length <= 1 ||
       PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(value, "tables"),
     isHighlighted: isAdmin,
     disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
@@ -69,14 +100,7 @@ const buildAccessPermission = (
     postActions: {
       controlled: () => push(getGroupFocusPermissionsUrl(groupId, entityId)),
     },
-    options: PLUGIN_ADVANCED_PERMISSIONS.addSchemaPermissionOptions(
-      [
-        DATA_PERMISSION_OPTIONS.all,
-        DATA_PERMISSION_OPTIONS.controlled,
-        DATA_PERMISSION_OPTIONS.noSelfService,
-      ],
-      value,
-    ),
+    options,
   };
 };
 
@@ -86,18 +110,26 @@ const buildNativePermission = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   accessPermissionValue: string,
-) => {
+): PermissionSectionConfig => {
+  const { databaseId } = entityId;
+  const dbValue = getNativePermission(permissions, groupId, { databaseId });
+  const isControlledByDb = dbValue !== DATA_PERMISSION_OPTIONS.controlled.value;
+
   return {
-    permission: "data",
-    type: "native",
-    isDisabled: true,
+    permission: DataPermission.CREATE_QUERIES,
+    type: DataPermissionType.NATIVE,
+    isDisabled: isControlledByDb,
     disabledTooltip: getNativePermissionDisabledTooltip(
       isAdmin,
       accessPermissionValue,
     ),
     isHighlighted: isAdmin,
     value: getNativePermission(permissions, groupId, entityId),
-    options: [DATA_PERMISSION_OPTIONS.write, DATA_PERMISSION_OPTIONS.none],
+    options: _.compact([
+      isControlledByDb && DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
+      DATA_PERMISSION_OPTIONS.queryBuilder,
+      DATA_PERMISSION_OPTIONS.no,
+    ]),
   };
 };
 
@@ -106,6 +138,7 @@ export const buildTablesPermissions = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
+  originalPermissions: GroupsPermissions,
   defaultGroup: Group,
 ): PermissionSectionConfig[] => {
   const accessPermission = buildAccessPermission(
@@ -113,6 +146,7 @@ export const buildTablesPermissions = (
     groupId,
     isAdmin,
     permissions,
+    originalPermissions,
     defaultGroup,
   );
 
