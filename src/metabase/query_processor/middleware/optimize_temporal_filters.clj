@@ -4,7 +4,6 @@
   (:require
    [clojure.walk :as walk]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]

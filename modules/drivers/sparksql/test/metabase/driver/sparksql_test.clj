@@ -1,5 +1,6 @@
 (ns metabase.driver.sparksql-test
   (:require
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -104,4 +105,4 @@
                         (.getName (java.sql.JDBCType/valueOf (.getColumnType rsmeta 1)))))))
              (testing "Rows should come back as expected Java types"
                (is (= [[#t "2024-03-22"]]
-                      (into [] (sql-jdbc.execute/reducible-rows :sparksql rset rsmeta))))))))))))
+                      (into [] (sql-jdbc.execute/reducible-rows :sparksql rset rsmeta (a/promise-chan)))))))))))))

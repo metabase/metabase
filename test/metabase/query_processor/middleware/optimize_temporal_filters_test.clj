@@ -349,7 +349,7 @@
                 "  AND ("
                 "    \"PUBLIC\".\"ATTEMPTS\".\"DATETIME\" < DATE_TRUNC('month', NOW())"
                 "  )"]
-               (->> (qp/
+               (->> (qp/compile
                      (mt/mbql-query attempts
                        {:aggregation [[:count]]
                         :filter      [:time-interval $datetime :last :month]}))
