@@ -110,7 +110,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
       tabs={tabs}
       title={t`Pick your starting data`}
       onClose={onClose}
-      onConfirm={_.noop}
+      onConfirm={_.noop} // TODO allow undefined
       onItemSelect={handleItemSelect}
     />
   );
