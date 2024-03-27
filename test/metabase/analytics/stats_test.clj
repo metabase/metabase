@@ -78,26 +78,29 @@
                                        enable-embedding    false]
       (t2.with-temp/with-temp [:model/Database _ {:is_sample true}]
         (let [stats (anonymous-usage-stats)]
-          (is (partial= {:running_on               :unknown
-                         :check_for_updates                   true
-                         :startup_time_millis                 1234.0
-                         :friendly_names                      false
-                         :email_configured                    false
-                         :slack_configured                    false
-                         :sso_configured                      false
-                         :has_sample_data                     true
-                         :enable_embedding                    false
-                         :embedding_app_origin_set            false
-                         :appearance_site_name                false
-                         :appearance_help_link                :metabase
-                         :appearance_logo                     false
-                         :appareance_favicon                  false
-                         :apperance_loading_message           false
-                         :appearance_metabot_greeting         false
-                         :apparerance_lighthouse_illustration false
-                         :appearance_ui_colors                false
-                         :appearance_chart_colors             false
-                         :appearance_show_mb_links            false}
+          (is (partial= {:running_on                           :unknown
+                         :check_for_updates                    true
+                         :startup_time_millis                  1234.0
+                         :friendly_names                       false
+                         :email_configured                     false
+                         :slack_configured                     false
+                         :sso_configured                       false
+                         :has_sample_data                      true
+                         :enable_embedding                     false
+                         :embedding_app_origin_set             false
+                         :appearance_site_name                 false
+                         :appearance_help_link                 :metabase
+                         :appearance_logo                      false
+                         :appearance_favicon                   false
+                         :appearance_loading_message           false
+                         :appearance_metabot_greeting          false
+                         :appearance_login_page_illustration   "default"
+                         :appearance_landing_page_illustration "default"
+                         :appearance_no_data_illustration      "default"
+                         :appearance_no_object_illustration    "default"
+                         :appearance_ui_colors                 false
+                         :appearance_chart_colors              false
+                         :appearance_show_mb_links             false}
                         stats))
           (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
                       (-> stats :stats :database :dbms_versions))))))))
@@ -117,31 +120,37 @@
                                          application-favicon-url      "http://example.com/favicon.ico"
                                          loading-message              :running-query
                                          show-metabot                 false
-                                         show-lighthouse-illustration false
+                                         login-page-illustration      "default"
+                                         landing-page-illustration    "custom"
+                                         no-data-illustration         "none"
+                                         no-object-illustration       "custom"
                                          application-colors           {:brand "#123456"}
                                          show-metabase-links          false]
         (t2.with-temp/with-temp [:model/Database _ {:is_sample true}]
           (let [stats (anonymous-usage-stats)]
-            (is (partial= {:running_on               :unknown
-                           :check_for_updates                   true
-                           :startup_time_millis                 1234.0
-                           :friendly_names                      false
-                           :email_configured                    false
-                           :slack_configured                    false
-                           :sso_configured                      false
-                           :has_sample_data                     true
-                           :enable_embedding                    true
-                           :embedding_app_origin_set            false
-                           :appearance_site_name                true
-                           :appearance_help_link                :hidden
-                           :appearance_logo                     true
-                           :appareance_favicon                  true
-                           :apperance_loading_message           true
-                           :appearance_metabot_greeting         true
-                           :apparerance_lighthouse_illustration true
-                           :appearance_ui_colors                true
-                           :appearance_chart_colors             false
-                           :appearance_show_mb_links            true}
+            (is (partial= {:running_on                           :unknown
+                           :check_for_updates                    true
+                           :startup_time_millis                  1234.0
+                           :friendly_names                       false
+                           :email_configured                     false
+                           :slack_configured                     false
+                           :sso_configured                       false
+                           :has_sample_data                      true
+                           :enable_embedding                     true
+                           :embedding_app_origin_set             false
+                           :appearance_site_name                 true
+                           :appearance_help_link                 :hidden
+                           :appearance_logo                      true
+                           :appearance_favicon                   true
+                           :appearance_loading_message           true
+                           :appearance_metabot_greeting          true
+                           :appearance_login_page_illustration   "default"
+                           :appearance_landing_page_illustration "custom"
+                           :appearance_no_data_illustration      "none"
+                           :appearance_no_object_illustration    "custom"
+                           :appearance_ui_colors                 true
+                           :appearance_chart_colors              false
+                           :appearance_show_mb_links             true}
                           stats))
             (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
                         (-> stats :stats :database :dbms_versions)))))))))
