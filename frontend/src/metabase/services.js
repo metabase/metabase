@@ -607,7 +607,7 @@ export const ApiKeysApi = {
 };
 
 export const CacheConfigApi = {
-  list: GET("/api/ee/caching"),
-  update: PUT("/api/ee/caching"),
-  delete: DELETE("/api/ee/caching"),
+  list: GET("/api/cache"),
+  update: PUT("/api/cache"),
+  delete: DELETE("/api/cache"),
 };
