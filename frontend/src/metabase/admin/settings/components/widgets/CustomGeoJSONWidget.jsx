@@ -226,10 +226,10 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }) => (
           .filter(map => !map.builtin)
           .map(map => (
             <tr key={map.id}>
-              <td className="cursor-pointer" onClick={() => onEditMap(map)}>
+              <td className={CS.cursorPointer} onClick={() => onEditMap(map)}>
                 {map.name}
               </td>
-              <td className="cursor-pointer" onClick={() => onEditMap(map)}>
+              <td className={CS.cursorPointer} onClick={() => onEditMap(map)}>
                 <Ellipsified style={{ maxWidth: 600 }}>{map.url}</Ellipsified>
               </td>
               <td className={AdminS.TableActions}>

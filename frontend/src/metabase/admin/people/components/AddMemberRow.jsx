@@ -77,7 +77,12 @@ export default function AddMemberRow({ users, excludeIds, onCancel, onDone }) {
             >
               {user.common_name}
               <Icon
-                className="pl1 cursor-pointer text-slate text-medium-hover"
+                className={cx(
+                  CS.pl1,
+                  CS.cursorPointer,
+                  "text-slate",
+                  "text-medium-hover",
+                )}
                 name="close"
                 onClick={() => handleRemoveUser(user)}
               />

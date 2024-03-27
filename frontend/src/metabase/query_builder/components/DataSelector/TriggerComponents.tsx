@@ -45,7 +45,10 @@ export function Trigger({
 
   return (
     <span
-      className={className || "px2 py2 text-bold cursor-pointer text-default"}
+      className={
+        className ||
+        cx(CS.px2, CS.py2, CS.textBold, CS.cursorPointer, CS.textDefault)
+      }
       style={style}
     >
       {children}

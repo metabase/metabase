@@ -99,6 +99,7 @@ const Triggerable = ComposedComponent =>
         }, 250);
       }
     }
+
     _stopCheckObscured() {
       if (this._offscreenTimer != null) {
         clearInterval(this._offscreenTimer);
@@ -156,7 +157,7 @@ const Triggerable = ComposedComponent =>
               !isOpen && triggerClassesClose,
               CS.noDecoration,
               {
-                "cursor-default": this.props.disabled,
+                [CS.cursorDefault]: this.props.disabled,
               },
             )}
             aria-disabled={this.props.disabled}

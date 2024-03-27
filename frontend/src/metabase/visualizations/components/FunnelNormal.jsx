@@ -167,7 +167,7 @@ export default class FunnelNormal extends Component {
                 </Ellipsified>
               </Head>
               <GraphSection
-                className={cx({ "cursor-pointer": isClickable })}
+                className={cx({ [CS.cursorPointer]: isClickable })}
                 index={index}
                 info={info}
                 infos={infos}

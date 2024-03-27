@@ -146,7 +146,13 @@ export class DimensionList extends Component {
           <Tooltip tooltip={t`Add grouping`}>
             <Icon
               name="add"
-              className="mx1 cursor-pointer hover-child faded fade-in-hover"
+              className={cx(
+                CS.mx1,
+                CS.cursorPointer,
+                "hover-child",
+                "faded",
+                "fade-in-hover",
+              )}
               onClick={e => {
                 e.stopPropagation();
                 this.handleAdd(item);
@@ -157,7 +163,7 @@ export class DimensionList extends Component {
         {isSelected && onRemoveDimension && (
           <Icon
             name="close"
-            className="mx1 cursor-pointer faded fade-in-hover"
+            className={cx(CS.mx1, CS.cursorPointer, "faded", "fade-in-hover")}
             onClick={e => {
               e.stopPropagation();
               this.handleRemove(item);

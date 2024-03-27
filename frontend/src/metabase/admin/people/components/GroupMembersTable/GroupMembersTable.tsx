@@ -202,7 +202,7 @@ const UserRow = ({
       <td>{user.email}</td>
       {canRemove ? (
         <td
-          className="text-right cursor-pointer"
+          className={cx(CS.textRight, CS.cursorPointer)}
           onClick={() => onMembershipRemove(groupMembership?.membership_id)}
         >
           <Icon name="close" className="text-light" size={16} />
