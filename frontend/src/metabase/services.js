@@ -605,3 +605,9 @@ export const ApiKeysApi = {
   edit: PUT("/api/api-key/:id"),
   regenerate: PUT("/api/api-key/:id/regenerate"),
 };
+
+export const CacheConfigApi = {
+  list: GET("/api/ee/caching"),
+  update: PUT("/api/ee/caching"),
+  delete: DELETE("/api/ee/caching"),
+};

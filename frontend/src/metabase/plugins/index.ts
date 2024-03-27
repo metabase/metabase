@@ -67,6 +67,10 @@ export const PLUGIN_ADMIN_TOOLS = {
   EXTRA_ROUTES: [],
 };
 
+export const PLUGIN_ADMIN_CACHING = {
+  INDEX_ROUTE: "caching",
+};
+
 // functions that update the sections
 export const PLUGIN_ADMIN_SETTINGS_UPDATES: ((
   sections: typeof ADMIN_SETTINGS_SECTIONS,
@@ -309,7 +313,12 @@ export interface DashboardCacheSectionProps {
 }
 
 export const PLUGIN_CACHING = {
+<<<<<<< HEAD
   cacheTTLFormField: {} as any,
+||||||| parent of 237a1d32b5 (Apply branch as patch)
+=======
+  cacheTTLFormField: null as any,
+>>>>>>> 237a1d32b5 (Apply branch as patch)
   dashboardCacheTTLFormField: null,
   questionCacheTTLFormField: null,
   getQuestionsImplicitCacheTTL: (_question?: any) => null as number | null,
@@ -320,8 +329,20 @@ export const PLUGIN_CACHING = {
   DatabaseCacheTimeField: PluginPlaceholder as React.ComponentType<
     Record<string, never>
   >,
+  getQuestionsImplicitCacheTTL: (_question: any) => null as number | null,
+  QuestionCacheSection:
+    PluginPlaceholder as React.ComponentType<QuestionCacheSectionProps>,
+  DashboardCacheSection:
+    PluginPlaceholder as React.ComponentType<DashboardCacheSectionProps>,
+  DatabaseCacheTimeField: PluginPlaceholder as React.ComponentType<
+    Record<string, never>
+  >,
   isEnabled: () => false,
   hasQuestionCacheSection: (_question: Question) => false,
+  canOverrideRootCacheInvalidationStrategy: false,
+  showAd: true,
+  explanation:
+    t`Cache the results of queries to have them display instantly. Here you can choose when cached results should be invalidated.` as ReactNode,
 };
 
 export const PLUGIN_REDUCERS: {

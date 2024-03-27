@@ -32,6 +32,11 @@ export const getAdminPaths: () => AdminPath[] = () => {
       key: "data-model",
     },
     {
+      name: t`Performance`,
+      path: "/admin/performance",
+      key: "performance",
+    },
+    {
       name: t`People`,
       path: "/admin/people",
       key: "people",

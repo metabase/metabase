@@ -1,17 +1,20 @@
-import { PLUGIN_CACHING, PLUGIN_FORM_WIDGETS } from "metabase/plugins";
+import { t } from "ttag";
+
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { PLUGIN_CACHING, PLUGIN_FORM_WIDGETS } from "metabase/plugins";
+import { Stack, Title } from "metabase/ui";
 
 import CacheTTLField from "./components/CacheTTLField";
 import DashboardCacheSection from "./components/DashboardCacheSection";
-import DatabaseCacheTTLField from "./components/DatabaseCacheTTLField";
 import DatabaseCacheTimeField from "./components/DatabaseCacheTimeField";
+import DatabaseCacheTTLField from "./components/DatabaseCacheTTLField";
 import QuestionCacheSection from "./components/QuestionCacheSection";
 import QuestionCacheTTLField from "./components/QuestionCacheTTLField";
 import {
   getQuestionsImplicitCacheTTL,
   hasQuestionCacheSection,
   normalizeCacheTTL,
-  validateCacheTTL,
+  validateCacheTTL
 } from "./utils";
 
 if (hasPremiumFeature("cache_granular_controls")) {
@@ -29,4 +32,13 @@ if (hasPremiumFeature("cache_granular_controls")) {
   PLUGIN_CACHING.QuestionCacheSection = QuestionCacheSection;
   PLUGIN_CACHING.isEnabled = () => true;
   PLUGIN_CACHING.hasQuestionCacheSection = hasQuestionCacheSection;
+  PLUGIN_CACHING.canOverrideRootCacheInvalidationStrategy = true;
+  PLUGIN_CACHING.explanation = (
+    <Stack spacing="xl">
+      {t`Cache the results of queries to have them display instantly. Here you can choose when cached results should be invalidated. You can set up one rule for all your databases, or apply more specific settings to each database.`}
+      <Title
+        order={4}
+      >{t`Pick the policy for when cached query results should be invalidated.`}</Title>
+    </Stack>
+  );
 }
