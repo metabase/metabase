@@ -24,6 +24,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/model/axis";
 import { getScatterPlotDataset } from "metabase/visualizations/echarts/cartesian/scatter/model";
 import { getTrendLineModelAndDatasets } from "./trend-line";
+import { getYAxisScaleTransforms } from "./transforms";
 
 const SUPPORTED_AUTO_SPLIT_TYPES = ["line", "area", "bar", "combo"];
 
@@ -105,11 +106,16 @@ export const getCartesianChartModel = (
     settings,
     renderingContext,
   );
+  const yAxisScaleTransforms = getYAxisScaleTransforms(
+    settings["graph.y_axis.scale"],
+    settings["stackable.stack_type"],
+  );
 
   const transformedDataset = applyVisualizationSettingsDataTransformations(
     dataset,
     xAxisModel,
     seriesModels,
+    yAxisScaleTransforms,
     settings,
   );
 
@@ -131,6 +137,7 @@ export const getCartesianChartModel = (
   const { trendLinesSeries, trendLinesDataset } = getTrendLineModelAndDatasets(
     seriesModels,
     dataset,
+    yAxisScaleTransforms,
     insights,
     settings,
     renderingContext,
@@ -140,6 +147,7 @@ export const getCartesianChartModel = (
     dataset,
     transformedDataset,
     seriesModels,
+    yAxisScaleTransforms,
     columnByDataKey,
     dimensionModel,
     insights,
