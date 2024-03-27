@@ -180,7 +180,7 @@
     [:map
      [:include_csv                        ms/BooleanValue]
      [:include_xls                        ms/BooleanValue]
-     [:format_rows                        [:maybe ms/BooleanValue]]
+     [:format_rows       {:optional true} [:maybe ms/BooleanValue]]
      [:dashboard_card_id {:optional true} [:maybe ms/PositiveInt]]]
     (deferred-tru "value must be a map with the keys `{0}`, `{1}`, and `{2}`." "include_csv" "include_xls" "dashboard_card_id")))
 
@@ -207,7 +207,7 @@
       [:dashboard_id       [:maybe ms/PositiveInt]]
       [:parameter_mappings [:maybe [:sequential ms/Map]]]]]
     (deferred-tru "value must be a map with the following keys `({0})`"
-        (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "format_rows" "name"
+        (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "name"
                         "dashboard_id" "parameter_mappings"]))))
 
 (def CoercibleToCardRef

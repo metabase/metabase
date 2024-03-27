@@ -43,7 +43,7 @@
       (update :collection_id boolean)
       ;; why? these fields in this last assoc are from the PulseCard model and this function takes the Card model
       ;; because PulseCard is somewhat hidden behind the scenes
-      (assoc :include_csv false, :include_xls false, :dashboard_card_id nil, :dashboard_id nil,
+      (assoc :include_csv false, :include_xls false, :dashboard_card_id nil, :dashboard_id nil, :format_rows true
              :parameter_mappings nil)))
 
 (defn- pulse-channel-details [channel]
@@ -329,10 +329,12 @@
                                                                            :cards         [{:id                (u/the-id card-1)
                                                                                             :include_csv       true
                                                                                             :include_xls       true
+                                                                                            :format_rows       true
                                                                                             :dashboard_card_id nil}
                                                                                            {:id                (u/the-id card-2)
                                                                                             :include_csv       false
                                                                                             :include_xls       false
+                                                                                            :format_rows       true
                                                                                             :dashboard_card_id nil}]
                                                                            :channels      [daily-email-channel]
                                                                            :skip_if_empty false})
