@@ -1,8 +1,8 @@
 import type {
   UseEntityListQueryProps,
   UseEntityListQueryResult,
-} from "metabase/common/hooks/use-entity-list-query";
-import { useEntityListQuery } from "metabase/common/hooks/use-entity-list-query";
+} from "metabase/common/hooks/entity-framework/use-entity-list-query";
+import { useEntityListQuery } from "metabase/common/hooks/entity-framework/use-entity-list-query";
 import Users from "metabase/entities/users";
 import type {
   UserListQuery,

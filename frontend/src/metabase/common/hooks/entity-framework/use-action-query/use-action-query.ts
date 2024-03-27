@@ -1,8 +1,8 @@
 import type {
   UseEntityQueryProps,
   UseEntityQueryResult,
-} from "metabase/common/hooks/use-entity-query";
-import { useEntityQuery } from "metabase/common/hooks/use-entity-query";
+} from "metabase/common/hooks/entity-framework/use-entity-query";
+import { useEntityQuery } from "metabase/common/hooks/entity-framework/use-entity-query";
 import Actions from "metabase/entities/actions";
 import type { WritebackAction, WritebackActionId } from "metabase-types/api";
 

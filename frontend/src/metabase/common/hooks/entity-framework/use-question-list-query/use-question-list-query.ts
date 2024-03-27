@@ -1,8 +1,8 @@
 import type {
   UseEntityListQueryProps,
   UseEntityListQueryResult,
-} from "metabase/common/hooks/use-entity-list-query";
-import { useEntityListQuery } from "metabase/common/hooks/use-entity-list-query";
+} from "metabase/common/hooks/entity-framework/use-entity-list-query";
+import { useEntityListQuery } from "metabase/common/hooks/entity-framework/use-entity-list-query";
 import Questions from "metabase/entities/questions";
 import type Question from "metabase-lib/v1/Question";
 import type { CardListQuery } from "metabase-types/api";

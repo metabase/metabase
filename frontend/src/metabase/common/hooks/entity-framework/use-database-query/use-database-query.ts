@@ -1,8 +1,8 @@
 import type {
   UseEntityQueryProps,
   UseEntityQueryResult,
-} from "metabase/common/hooks/use-entity-query";
-import { useEntityQuery } from "metabase/common/hooks/use-entity-query";
+} from "metabase/common/hooks/entity-framework/use-entity-query";
+import { useEntityQuery } from "metabase/common/hooks/entity-framework/use-entity-query";
 import Databases from "metabase/entities/databases";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, DatabaseRequest } from "metabase-types/api";

@@ -1,8 +1,8 @@
 import type {
   UseEntityListQueryProps,
   UseEntityListQueryResult,
-} from "metabase/common/hooks/use-entity-list-query";
-import { useEntityListQuery } from "metabase/common/hooks/use-entity-list-query";
+} from "metabase/common/hooks/entity-framework/use-entity-list-query";
+import { useEntityListQuery } from "metabase/common/hooks/entity-framework/use-entity-list-query";
 import Groups from "metabase/entities/groups";
 import type { GroupListQuery } from "metabase-types/api";
 
