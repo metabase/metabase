@@ -39,7 +39,7 @@ export const MoveModal = ({
         id: initialCollectionId,
         model: "collection",
       }}
-      onChange={newCollection => onMove({ id: newCollection.id })}
+      onChange={async newCollection => await onMove({ id: newCollection.id })}
       options={{
         showSearch: true,
         allowCreateNew: true,

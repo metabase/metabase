@@ -1,10 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import Collections from "metabase/entities/collections";
 import { color } from "metabase/lib/colors";
-import { useSelector } from "metabase/lib/redux";
-import { Button, Flex } from "metabase/ui";
+import { Button, Flex, Text } from "metabase/ui";
 
 export const ButtonBar = ({
   onConfirm,
@@ -21,6 +19,7 @@ export const ButtonBar = ({
   confirmButtonText?: string;
   cancelButtonText?: string;
 }) => {
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     const handleEnter = (e: KeyboardEvent) => {
       if (canConfirm && e.key === "Enter") {
@@ -33,19 +32,21 @@ export const ButtonBar = ({
     };
   }, [canConfirm, onConfirm]);
 
-  const err = useSelector(Collections.selectors.getError);
-
-  console.log('err selector', err)
-
   return (
     <Flex
       justify="space-between"
+      align="center"
       p="md"
       style={{
         borderTop: `1px solid ${color("border")}`,
       }}
     >
       <Flex gap="md">{actionButtons}</Flex>
+      {error && (
+        <Text color="error" px="md" lh="1rem">
+          {error}
+        </Text>
+      )}
       <Flex gap="md">
         <Button onClick={onCancel} type="button">
           {cancelButtonText ?? t`Cancel`}
@@ -53,11 +54,12 @@ export const ButtonBar = ({
         <Button
           ml={1}
           variant="filled"
-          onClick={() => {
+          onClick={async () => {
             try {
-              onConfirm();
-            } catch(e) {
-              console.error('buttonbar', e)
+              setError(null);
+              await onConfirm();
+            } catch (e: any) {
+              setError(e?.data?.message ?? t`An error occurred`);
             }
           }}
           disabled={!canConfirm}
