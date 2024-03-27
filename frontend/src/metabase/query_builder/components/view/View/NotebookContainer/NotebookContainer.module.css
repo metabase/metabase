@@ -7,11 +7,12 @@
   position: absolute;
   inset: 0;
   z-index: 2;
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 
 .main {
   flex: 1;
+  overflow-y: auto;
 
   @media screen and (--breakpoint-min-lg) {
     min-width: var(--notebook-width);

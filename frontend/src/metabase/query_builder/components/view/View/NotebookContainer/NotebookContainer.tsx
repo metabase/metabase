@@ -42,7 +42,7 @@ export const NotebookContainer = ({
 
   return (
     <Flex
-      className={cx(NC.main)}
+      className={cx(NC.notebookContainer)}
       bg="white"
       opacity={isOpen ? 1 : 0}
       style={{
