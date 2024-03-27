@@ -15,7 +15,6 @@ import type {
   DateRange,
   TimeSeriesXAxisModel,
   NumericXAxisModel,
-  NumericAxisScaleTransforms,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
@@ -54,6 +53,8 @@ import {
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 import { computeNumericDataInverval } from "metabase/visualizations/lib/numeric";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+
+import { getAxisTransforms } from "./transforms";
 
 const KEYS_TO_COMPARE = new Set([
   "number_style",
@@ -530,48 +531,6 @@ export function getTimeSeriesXAxisModel(
     ...timeSeriesInfo,
   };
 }
-
-const getSign = (value: number) => (value >= 0 ? 1 : -1);
-
-const getAxisTransforms = (scale: NumericScale): NumericAxisScaleTransforms => {
-  if (scale === "pow") {
-    return {
-      toEChartsAxisValue: value => {
-        if (!isNumber(value)) {
-          return null;
-        }
-        return Math.sqrt(Math.abs(value)) * getSign(value);
-      },
-      fromEChartsAxisValue: value => {
-        return Math.pow(value, 2) * getSign(value);
-      },
-    };
-  }
-
-  if (scale === "log") {
-    return {
-      toEChartsAxisValue: value => {
-        if (!isNumber(value)) {
-          return null;
-        }
-        return Math.log10(Math.abs(value)) * getSign(value);
-      },
-      fromEChartsAxisValue: value => {
-        return Math.pow(10, Math.abs(value)) * getSign(value);
-      },
-    };
-  }
-
-  return {
-    toEChartsAxisValue: value => {
-      if (!isNumber(value)) {
-        return null;
-      }
-      return value;
-    },
-    fromEChartsAxisValue: value => value,
-  };
-};
 
 function getNumericXAxisModel(
   dimensionModel: DimensionModel,
