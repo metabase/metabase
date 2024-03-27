@@ -1,16 +1,23 @@
+/* eslint-disable react/prop-types */
+
 import { updateIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
+import * as Yup from "yup";
 
+import SettingHeader from "metabase/admin/settings/components/SettingHeader";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
+import { FormSwitch } from "metabase/forms";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_LDAP_FORM_FIELDS,
   PLUGIN_IS_PASSWORD_USER,
   PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
+import { Stack } from "metabase/ui";
 import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
 import {
   hasAnySsoPremiumFeature,
@@ -270,6 +277,27 @@ if (hasPremiumFeature("disable_password_login")) {
 }
 
 if (hasPremiumFeature("sso_ldap")) {
+  Object.assign(PLUGIN_LDAP_FORM_FIELDS, {
+    formFieldAttributes: ["ldap-user-provisioning-enabled?"],
+    defaultableFormFieldAttributes: ["ldap-user-provisioning-enabled?"],
+    formFieldsSchemas: {
+      "ldap-user-provisioning-enabled?": Yup.boolean().default(null),
+    },
+    UserProvisioning: ({ fields, settings }) => (
+      <Stack spacing="0.75rem" m="2.5rem 0">
+        <SettingHeader
+          id="ldap-user-provisioning-enabled?"
+          setting={settings["ldap-user-provisioning-enabled?"]}
+        />
+        <FormSwitch
+          id="ldap-user-provisioning-enabled?"
+          name={fields["ldap-user-provisioning-enabled?"].name}
+          defaultChecked={fields["ldap-user-provisioning-enabled?"].default}
+        />
+      </Stack>
+    ),
+  });
+
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
     updateIn(sections, ["authentication/ldap", "settings"], settings => [
       {
