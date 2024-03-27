@@ -1,0 +1,53 @@
+name: Embedding SDK
+
+on:
+  push:
+    branches:
+      - "master"
+      - "release-**"
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 3
+    outputs:
+      frontend_all: ${{ steps.changes.outputs.frontend_all }}
+      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  sdk-build:
+    needs: files-changed
+    if: needs.files-changed.outputs.frontend_all == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - name: Compile CLJS
+        run: yarn build-pure:cljs
+      - name: Build SDK bundle
+        run: yarn run build-release:sdk
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: embedding-sdk
+          path: resources/embedding-sdk
