@@ -13,7 +13,7 @@
 .main {
   flex: 1;
 
-  @media screen and (--breakpoint-min-md) {
+  @media screen and (--breakpoint-min-lg) {
     min-width: var(--notebook-width);
   }
 }
@@ -23,13 +23,13 @@
   inset: 0;
   background-color: white;
 
-  @media screen and (--breakpoint-min-md) {
+  @media screen and (--breakpoint-min-lg) {
     position: relative;
-    flex: 1;
+    flex: 0;
     border-left: 1px solid var(--color-border);
   }
 
   @media screen and (--breakpoint-min-lg) {
-    min-width: var(--sidebar-width);
+    flex-basis: var(--sidebar-width);
   }
 }
