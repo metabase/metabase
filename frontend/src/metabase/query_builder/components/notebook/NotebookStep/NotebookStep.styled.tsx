@@ -27,7 +27,7 @@ export const StepContent = styled.div`
   max-width: 960px;
 `;
 
-export const StepHeader = styled.div`
+export const StepHeader = styled(StepContent)`
   display: flex;
   color: ${props => props.color};
   font-weight: bold;
