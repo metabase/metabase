@@ -15,6 +15,7 @@
       "enum": [
         "new_user_created",
         "new_instance_created",
+        "db_connection_banner_click"
       ],
       "maxLength": 1024
     },
