@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { tableApi } from "metabase/api";
+import type { CollectionId } from "metabase-types/api";
 
 import type { EntityPickerOptions, EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
@@ -16,6 +17,7 @@ import type {
 import { TablePicker } from "./TablePicker";
 
 interface Props {
+  collectionId: CollectionId | null | undefined; // TODO: use it
   title?: string;
   onChange: (item: Value) => void;
   onClose: () => void;

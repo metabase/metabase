@@ -90,9 +90,7 @@ export const DataStep = ({
 
           {isDataPickerOpen && (
             <DataPickerModal
-              options={{
-                hasConfirmButtons: false,
-              }}
+              collectionId={collectionId}
               value={
                 table
                   ? {
