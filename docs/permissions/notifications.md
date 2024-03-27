@@ -6,7 +6,7 @@ title: Notification permissions
 
 Notifications in Metabase include [alerts](../questions/sharing/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md#setting-up-a-dashboard-subscription).
 
-## Editing dashboard subscriptions and alerts depends on whether you're an admin or sandboxed
+## Who can edit dashboard subscriptions and alerts
 
 What you can do with alerts and dashboard subscriptions depends on whether you're in the Administrators group or in a sandboxed group.
 
