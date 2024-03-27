@@ -31,10 +31,6 @@ export const getHasSessionCookies = (state: State) => {
   return getSetting(state, "session-cookies") ?? false;
 };
 
-export const getHasIllustration = (state: State) => {
-  return getSetting(state, "show-lighthouse-illustration");
-};
-
 export const getSiteLocale = (state: State) => {
   return getSetting(state, "site-locale");
 };

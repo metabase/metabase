@@ -283,7 +283,6 @@ interface PublicSettings {
   "report-timezone-short": string;
   "session-cookies": boolean | null;
   "setup-token": string | null;
-  "show-lighthouse-illustration": boolean;
   "show-metabase-links": boolean;
   "show-metabot": boolean;
   "site-locale": string;

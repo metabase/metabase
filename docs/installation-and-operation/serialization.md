@@ -252,7 +252,6 @@ site-name
 application-font-files
 loading-message
 report-timezone
-show-lighthouse-illustration
 persisted-models-enabled
 enable-content-management?
 subscription-allowed-domains

@@ -435,15 +435,6 @@
   :feature    :whitelabel
   :default    true)
 
-(defsetting show-lighthouse-illustration
-  (deferred-tru "Display the lighthouse illustration on the home and login pages.")
-  :visibility :public
-  :export?    true
-  :type       :boolean
-  :audit      :getter
-  :feature    :whitelabel
-  :default    true)
-
 (defsetting login-page-illustration
   (deferred-tru "Options for displaying the illustration on the login page.")
   :visibility :public

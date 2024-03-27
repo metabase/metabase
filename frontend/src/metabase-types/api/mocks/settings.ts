@@ -205,7 +205,6 @@ export const createMockSettings = (
   "show-homepage-data": false,
   "show-homepage-pin-message": false,
   "show-homepage-xrays": false,
-  "show-lighthouse-illustration": true,
   "show-metabase-links": true,
   "show-metabot": true,
   "site-locale": "en",
