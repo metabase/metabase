@@ -163,6 +163,48 @@ const getRotateAngle = (settings: ComputedVisualizationSettings) => {
   }
 };
 
+const X_LABEL_HEIGHT_RATIO_THRESHOLD = 0.7; // x-axis labels cannot be taller than 70% of chart height
+
+const checkHeight = (
+  chartMeasurements: ChartMeasurements,
+  rotation: "rotate-90" | "rotate-45",
+) => {
+  if (rotation === "rotate-90") {
+    return (
+      chartMeasurements.ticksDimensions.maxXTickWidth /
+        chartMeasurements.outerHeight <
+      X_LABEL_HEIGHT_RATIO_THRESHOLD
+    );
+  }
+  return (
+    chartMeasurements.ticksDimensions.maxXTickWidth /
+      Math.SQRT2 /
+      chartMeasurements.outerHeight <
+    X_LABEL_HEIGHT_RATIO_THRESHOLD
+  );
+};
+
+const X_LABEL_ROTATE_90_THRESHOLD = 2;
+const X_LABEL_ROTATE_45_THRESHOLD = 15;
+
+const getAutoAxisEnabledSetting = (
+  chartMeasurements: ChartMeasurements,
+  settings: ComputedVisualizationSettings,
+): ComputedVisualizationSettings["graph.x_axis.axis_enabled"] => {
+  const autoSelectSetting = settings["graph.x_axis.axis_enabled"] === true;
+  if (!autoSelectSetting) {
+    return settings["graph.x_axis.axis_enabled"];
+  }
+
+  if (chartMeasurements.minXTickSpacing < X_LABEL_ROTATE_90_THRESHOLD) {
+    return checkHeight(chartMeasurements, "rotate-90") ? "rotate-90" : false;
+  }
+  if (chartMeasurements.minXTickSpacing < X_LABEL_ROTATE_45_THRESHOLD) {
+    return checkHeight(chartMeasurements, "rotate-45") ? "rotate-45" : false;
+  }
+  return true;
+};
+
 const getCommonDimensionAxisOptions = (
   chartMeasurements: ChartMeasurements,
   settings: ComputedVisualizationSettings,
@@ -320,7 +362,7 @@ export const buildTimeSeriesDimensionAxis = (
 
 export const buildCategoricalDimensionAxis = (
   chartModel: BaseCartesianChartModel,
-  settings: ComputedVisualizationSettings,
+  originalSettings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
 ): CategoryAxisBaseOption => {
@@ -328,6 +370,15 @@ export const buildCategoricalDimensionAxis = (
     xAxisModel: { formatter },
     dimensionModel: { column },
   } = chartModel;
+
+  const autoAxisEnabled = getAutoAxisEnabledSetting(
+    chartMeasurements,
+    originalSettings,
+  );
+  const settings: ComputedVisualizationSettings = {
+    ...originalSettings,
+    "graph.x_axis.axis_enabled": autoAxisEnabled,
+  };
 
   return {
     ...getCommonDimensionAxisOptions(
@@ -340,6 +391,7 @@ export const buildCategoricalDimensionAxis = (
       margin: CHART_STYLE.axisTicksMarginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
       ...getHistogramTicksOptions(chartModel, settings, chartMeasurements),
+      interval: () => true,
       formatter: (value: string) => {
         const numberValue = parseNumberValue(value);
         if (isNumericBaseType(column) && numberValue !== null) {

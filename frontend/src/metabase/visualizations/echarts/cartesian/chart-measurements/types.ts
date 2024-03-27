@@ -11,6 +11,7 @@ export interface TicksDimensions {
   xTicksHeight: number;
   firstXTickWidth: number;
   lastXTickWidth: number;
+  maxXTickWidth: number;
 }
 
 export interface ChartBoundsCoords {
@@ -25,4 +26,6 @@ export interface ChartMeasurements {
   ticksDimensions: TicksDimensions;
   bounds: ChartBoundsCoords;
   boundaryWidth: number;
+  minXTickSpacing: number;
+  outerHeight: number;
 }
