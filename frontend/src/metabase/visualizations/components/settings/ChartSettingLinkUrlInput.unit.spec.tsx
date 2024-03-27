@@ -80,7 +80,7 @@ describe("ChartSettingLinkUrlInput", () => {
     const options = await getOptions();
 
     userEvent.click(options[1]);
-    userEvent.tab();
+    input.blur();
 
     expect(onChange).toHaveBeenCalledWith("Address - {{ZIP}}");
   });
