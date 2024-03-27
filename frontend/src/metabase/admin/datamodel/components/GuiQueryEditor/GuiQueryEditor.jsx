@@ -218,7 +218,7 @@ export class GuiQueryEditor extends Component {
           aggregations[index + 1].length > 0
         ) {
           aggregationList.push(
-            <span key={"and" + index} className="text-bold">{t`and`}</span>,
+            <span key={"and" + index} className={CS.textBold}>{t`and`}</span>,
           );
         }
       }

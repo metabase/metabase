@@ -120,7 +120,7 @@ export default class DatabaseList extends Component {
                             )}
                             <Link
                               to={"/admin/databases/" + database.id}
-                              className={cx("text-bold", CS.link)}
+                              className={cx(CS.textBold, CS.link)}
                             >
                               {database.name}
                             </Link>
@@ -148,7 +148,7 @@ export default class DatabaseList extends Component {
           {!hasSampleDatabase && isAdmin ? (
             <div className="pt4">
               <span
-                className={cx("p2 text-italic", {
+                className={cx("p2", CS.textItalic, {
                   [CS.borderTop]: databases && databases.length > 0,
                 })}
               >

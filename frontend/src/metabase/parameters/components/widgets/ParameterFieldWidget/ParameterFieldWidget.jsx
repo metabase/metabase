@@ -59,7 +59,7 @@ export default function ParameterFieldWidget({
     <WidgetRoot>
       <div className="p1">
         {verboseName && !isEqualsOp && (
-          <div className="text-bold mb1">{verboseName}...</div>
+          <div className={cx(CS.textBold, "mb1")}>{verboseName}...</div>
         )}
 
         {_.times(numFields, index => {

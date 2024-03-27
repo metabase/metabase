@@ -36,8 +36,8 @@ export const ErrorMessage = ({
           [QueryBuilderS.QueryErrorImageTimeout]: type === "timeout",
         })}
       />
-      <div className="text-centered">
-        {title && <h1 className="text-bold">{title}</h1>}
+      <div className={CS.textCentered}>
+        {title && <h1 className={CS.textBold}>{title}</h1>}
         <p className={QueryBuilderS.QueryErrorMessageText}>{message}</p>
         {action}
       </div>

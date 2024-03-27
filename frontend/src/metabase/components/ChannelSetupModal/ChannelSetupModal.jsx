@@ -6,6 +6,7 @@ import { t } from "ttag";
 
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 import ModalContent from "metabase/components/ModalContent";
+import CS from "metabase/css/core/index.css";
 
 export default class ChannelSetupModal extends Component {
   static propTypes = {
@@ -41,7 +42,7 @@ export default class ChannelSetupModal extends Component {
         <div
           className={cx("ml-auto mb4", {
             mr4: !fullPageModal,
-            "mr-auto text-centered": fullPageModal,
+            [cx("mr-auto", CS.textCentered)]: fullPageModal,
           })}
         >
           <ChannelSetupMessage user={this.props.user} />

@@ -148,7 +148,7 @@ const SemanticTypeAndTargetPicker = ({
           disabled={!hasIdFields}
           className={cx(
             AdminS.TableEditorFieldTarget,
-            "text-wrap",
+            CS.textWrap,
             hasSeparator ? CS.mt0 : CS.mt1,
             className,
           )}

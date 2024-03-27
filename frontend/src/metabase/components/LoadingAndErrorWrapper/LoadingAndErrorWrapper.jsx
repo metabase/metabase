@@ -153,7 +153,7 @@ export default class LoadingAndErrorWrapper extends Component {
           <div className={contentClassName}>
             {loadingScenes && loadingScenes[sceneIndex]}
             {!loadingScenes && showSpinner && <LoadingSpinner />}
-            <h2 className="text-normal text-light mt1">
+            <h2 className={cx(CS.textNormal, "text-light mt1")}>
               {loadingMessages[messageIndex]}
             </h2>
           </div>

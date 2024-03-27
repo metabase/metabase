@@ -1,8 +1,10 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Droppable, Draggable } from "react-beautiful-dnd";
 import { t } from "ttag";
 
 import { DragDropContext } from "metabase/core/components/DragDropContext";
+import CS from "metabase/css/core/index.css";
 import { moveElement } from "metabase/lib/arrays";
 
 import ChartSettingFieldPicker from "./ChartSettingFieldPicker";
@@ -108,7 +110,7 @@ const ChartSettingFieldsPicker = ({
       {addAnother && (
         <AddAnotherContainer>
           <a
-            className="text-brand text-bold py1"
+            className={cx("text-brand", CS.textBold, "py1")}
             onClick={() => {
               const remaining = options.filter(
                 o => fields.indexOf(o.value) < 0,

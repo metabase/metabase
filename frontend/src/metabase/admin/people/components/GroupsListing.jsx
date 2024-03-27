@@ -163,7 +163,7 @@ function EditingGroupRow({
         />
       </td>
       <td />
-      <td className="text-right">
+      <td className={CS.textRight}>
         <span className={CS.link} onClick={onCancelClicked}>{t`Cancel`}</span>
         <button
           className={cx(ButtonsS.Button, CS.ml2, {
@@ -218,14 +218,16 @@ function GroupRow({
               bg={backgroundColor}
             />
           </span>
-          <span className="ml2 text-bold">{getGroupNameLocalized(group)}</span>
+          <span className={cx("ml2", CS.textBold)}>
+            {getGroupNameLocalized(group)}
+          </span>
         </Link>
       </td>
       <td>
         {group.member_count || 0}
         <ApiKeyCount apiKeys={apiKeys} />
       </td>
-      <td className="text-right">
+      <td className={CS.textRight}>
         {showActionsButton ? (
           <ActionsPopover
             group={group}

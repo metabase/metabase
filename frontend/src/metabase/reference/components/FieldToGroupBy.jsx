@@ -5,6 +5,7 @@ import { memo } from "react";
 import { t } from "ttag";
 
 import Q from "metabase/components/QueryButton/QueryButton.module.css";
+import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
 import S from "./FieldToGroupBy.module.css";
@@ -21,7 +22,9 @@ const FieldToGroupBy = ({
   <div className={className}>
     <a className={Q.queryButton} onClick={onClick}>
       <div className={S.fieldToGroupByText}>
-        <div className="text-brand text-bold">{field.display_name}</div>
+        <div className={cx("text-brand", CS.textBold)}>
+          {field.display_name}
+        </div>
       </div>
       <Icon
         className={cx(iconClass, "pr1")}

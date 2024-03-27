@@ -61,7 +61,7 @@ class LegendHeader extends Component {
           styles.LegendHeader,
           "Card-title",
           CS.textDefault,
-          "text-smaller",
+          CS.textSmaller,
           CS.mx1,
           CS.flex,
           CS.flexNoShrink,

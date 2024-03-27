@@ -1,9 +1,10 @@
 /* eslint-disable react/prop-types */
+import CS from "metabase/css/core/index.css";
 import AutoLoadRemapped from "metabase/hoc/Remapped";
 import { formatValue } from "metabase/lib/formatting";
 
 const defaultRenderNormal = ({ value, column }) => (
-  <span className="text-bold">{value}</span>
+  <span className={CS.textBold}>{value}</span>
 );
 
 const defaultRenderRemapped = ({
@@ -13,7 +14,7 @@ const defaultRenderRemapped = ({
   displayColumn,
 }) => (
   <span>
-    <span className="text-bold">{displayValue}</span>
+    <span className={CS.textBold}>{displayValue}</span>
     {/* Show the underlying ID for PK/FK */}
     {column.isID() && <span style={{ opacity: 0.5 }}>{" - " + value}</span>}
   </span>

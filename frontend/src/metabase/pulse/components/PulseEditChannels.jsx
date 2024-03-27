@@ -165,7 +165,9 @@ export default class PulseEditChannels extends Component {
     return (
       <li key={index} className="py2">
         {channelSpec.error && (
-          <div className="pb2 text-bold text-error">{channelSpec.error}</div>
+          <div className={cx(CS.pb2, CS.textBold, "text-error")}>
+            {channelSpec.error}
+          </div>
         )}
         {channelSpec.recipients && (
           <div>
@@ -272,7 +274,7 @@ export default class PulseEditChannels extends Component {
         {channels.length > 0 && channelSpec.configured ? (
           <ul className="bg-light px3">{channels}</ul>
         ) : channels.length > 0 && !channelSpec.configured ? (
-          <div className="p4 text-centered">
+          <div className={cx(CS.p4, CS.textCentered)}>
             <h3 className="mb2">{t`${channelSpec.name} needs to be set up by an administrator.`}</h3>
             <ChannelSetupMessage user={user} channels={[channelSpec.name]} />
           </div>

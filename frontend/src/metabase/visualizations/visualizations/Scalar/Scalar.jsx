@@ -226,7 +226,7 @@ export class Scalar extends Component {
           className={cx(
             "Card-title",
             CS.textDefault,
-            "text-smaller",
+            CS.textSmaller,
             CS.absolute,
             CS.top,
             CS.right,
