@@ -97,7 +97,4 @@ describe("ListPicker", () => {
     await waitFor(() => expect(onSearchChange).toHaveBeenCalledTimes(1));
     expect(onSearchChange).toHaveBeenCalledWith("Bye");
   });
-
-  it.todo("onChange");
-  it.todo("onClear");
 });
