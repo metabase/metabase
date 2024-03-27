@@ -414,7 +414,7 @@
             viz-settings'               (assoc viz-settings :output-order output-order)]
         (qp.si/begin! w
                       (-> results
-                          (assoc-in [:data :format-rows?] format-rows?)
+                          (assoc-in [:data :format-rows?] (or format-rows? true))
                           (assoc-in [:data :ordered-cols] ordered-cols))
                       viz-settings')
         (dorun
