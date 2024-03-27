@@ -1,4 +1,5 @@
 import type {
+  CardId,
   CollectionId,
   SearchListQuery,
   SearchModelType,
@@ -11,28 +12,28 @@ import type {
   TypeWithModel,
 } from "../EntityPicker";
 
-export type CollectionPickerModel = Extract<SearchModelType, "collection">;
+export type QuestionPickerModel = Extract<SearchModelType, "card" | "dataset">;
 
-export type CollectionPickerItem = TypeWithModel<
-  CollectionId,
-  CollectionPickerModel
+export type QuestionPickerItem = TypeWithModel<
+  CollectionId | CardId,
+  SearchModelType
 > &
   Pick<Partial<SearchResult>, "description" | "can_write"> & {
     location?: string | null;
     effective_location?: string | null;
     is_personal?: boolean;
+    collection_id?: CollectionId;
   };
 
-export type CollectionPickerOptions = EntityPickerModalOptions & {
+export type QuestionPickerOptions = EntityPickerModalOptions & {
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;
-  namespace?: "snippets";
 };
 
-export type CollectionItemListProps = ListProps<
-  CollectionId,
-  CollectionPickerModel,
-  CollectionPickerItem,
+export type QuestionItemListProps = ListProps<
+  CollectionId | CardId,
+  SearchModelType,
+  QuestionPickerItem,
   SearchListQuery,
-  CollectionPickerOptions
+  QuestionPickerOptions
 >;
