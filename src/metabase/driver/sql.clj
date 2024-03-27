@@ -18,16 +18,17 @@
 
 (driver/register! :sql, :abstract? true)
 
-(doseq [feature [:standard-deviation-aggregations
-                 :foreign-keys
-                 :expressions
+(doseq [feature [:advanced-math-expressions
+                 :binning
                  :expression-aggregations
+                 :expressions
+                 :foreign-keys
                  :native-parameters
                  :nested-queries
-                 :binning
-                 :advanced-math-expressions
                  :percentile-aggregations
-                 :regex]]
+                 :regex
+                 :standard-deviation-aggregations
+                 :window-functions]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 
 (doseq [join-feature [:left-join

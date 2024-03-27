@@ -420,7 +420,7 @@
   of `honeysql-form`. Most drivers can use the default implementations for all of these methods, but some may need to
   override one or more (e.g. SQL Server needs to override this method for the `:limit` clause, since T-SQL uses `TOP`
   instead of `LIMIT`)."
-  {:added "0.32.0", :arglists '([driver top-level-clause honeysql-form query]), :style/indent 2}
+  {:added "0.32.0", :arglists '([driver top-level-clause honeysql-form query]), :style/indent [:form]}
   (fn [driver top-level-clause _ _]
     [(driver/dispatch-on-initialized-driver driver) top-level-clause])
   :hierarchy #'driver/hierarchy)
@@ -686,6 +686,46 @@
   [:power
    (->honeysql driver mbql-expr)
    (->honeysql driver power)])
+
+(defn- over-rows-with-order-by-for-current-stage
+  [driver expr]
+  (let [{:keys [order-by]} (apply-top-level-clause
+                            driver
+                            :order-by
+                            {}
+                            *inner-query*)]
+    [:over
+     [expr
+      (when (seq order-by)
+        {:order-by order-by})]]))
+
+;;;    cum-count()
+;;;
+;;; should compile to SQL like
+;;;
+;;;    sum(count()) OVER (ORDER BY ...)
+;;;
+;;; where the ORDER BY matches what's in the query (i.e., the breakouts)
+(defmethod ->honeysql [:sql :cum-count]
+  [driver [_cum-count expr-or-nil]]
+  (over-rows-with-order-by-for-current-stage
+   driver
+   [:sum (if expr-or-nil
+           [:count (->honeysql driver expr-or-nil)]
+           [:count :*])]))
+
+;;;    cum-sum(total)
+;;;
+;;; should compile to SQL like
+;;;
+;;;    sum(sum(total)) OVER (ORDER BY ...)
+;;;
+;;; where the ORDER BY matches what's in the query (i.e., the breakouts)
+(defmethod ->honeysql [:sql :cum-sum]
+  [driver [_cum-sum expr]]
+  (over-rows-with-order-by-for-current-stage
+   driver
+   [:sum [:sum (->honeysql driver expr)]]))
 
 (defn- interval? [expr]
   (mbql.u/is-clause? :interval expr))

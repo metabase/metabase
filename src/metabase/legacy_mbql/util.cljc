@@ -622,7 +622,6 @@
 
   Most often, `aggregation->name-fn` will be something like `annotate/aggregation-name`, but for purposes of keeping
   the `metabase.legacy-mbql` module seperate from the `metabase.query-processor` code we'll let you pass that in yourself."
-  {:style/indent 1}
   [aggregation->name-fn :- fn?
    aggregations         :- [:sequential mbql.s/Aggregation]]
   (lib.util.match/replace aggregations
@@ -638,7 +637,6 @@
 (mu/defn pre-alias-and-uniquify-aggregations :- UniquelyNamedAggregations
   "Wrap every aggregation clause in a `:named` clause with a unique name. Combines `pre-alias-aggregations` with
   `uniquify-named-aggregations`."
-  {:style/indent 1}
   [aggregation->name-fn :- fn?
    aggregations         :- [:sequential mbql.s/Aggregation]]
   (-> (pre-alias-aggregations aggregation->name-fn aggregations)

@@ -1,8 +1,11 @@
 (ns metabase.query-processor.middleware.cumulative-aggregations
   "Middlware for handling cumulative count and cumulative sum aggregations."
   (:require
+   [metabase.driver :as driver]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util.malli :as mu]))
 
 ;;;; Pre-processing
@@ -29,8 +32,16 @@
   "Pre-processing middleware. Rewrite `:cum-count` and `:cum-sum` aggregations as `:count` and `:sum` respectively. Add
   information about the indecies of the replaced aggregations under the `::replaced-indices` key."
   [{{breakouts :breakout, aggregations :aggregation} :query, :as query}]
-  (if-not (lib.util.match/match aggregations #{:cum-count :cum-sum})
+  (cond
+    ;; no need to rewrite `:cum-sum` and `:cum-count` functions, this driver supports native window function versions
+    (driver/database-supports? driver/*driver* :window-functions (lib.metadata/database (qp.store/metadata-provider)))
     query
+
+    ;; nothing to rewrite
+    (not (lib.util.match/match aggregations #{:cum-count :cum-sum}))
+    query
+
+    :else
     (let [query'            (replace-cumulative-ags query)
           ;; figure out which indexes are being changed in the results. Since breakouts always get included in
           ;; results first we need to offset the indexes to change by the number of breakouts

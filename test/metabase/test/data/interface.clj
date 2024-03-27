@@ -431,7 +431,9 @@
    {:base_type     :type/BigInteger
     :semantic_type :type/Quantity
     :name          "count"
-    :display_name  "Count"
+    :display_name  (case aggregation-type
+                     :count     "Count"
+                     :cum-count "Cumulative count")
     :source        :aggregation
     :field_ref     [:aggregation 0]})
 

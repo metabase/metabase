@@ -95,8 +95,8 @@
 (defmethod lib.metadata.calculation/column-name-method ::count-aggregation
   [_query _stage-number [tag :as _clause]]
   (case tag
-    :count     "count"
-    :cum-count "cum_count"
+    :count       "count"
+    :cum-count   "count"
     :count-where "count_where"))
 
 (defmethod lib.metadata.calculation/metadata-method ::quantity-aggregation

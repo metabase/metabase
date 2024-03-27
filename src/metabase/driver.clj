@@ -589,7 +589,10 @@
     :describe-fields
 
     ;; Does the driver support fingerprint the fields. Default is true
-    :fingerprint})
+    :fingerprint
+
+    ;; Does this driver support window functions like cumulative count and cumulative sum? (default: false)
+    :window-functions})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?

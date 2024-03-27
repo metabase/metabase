@@ -2,11 +2,16 @@
   "Tests for MBQL aggregations."
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [metabase.test.util :as tu]))
+   [metabase.test.util :as tu]
+   [metabase.query-processor :as qp]))
+
 
 (deftest ^:parallel no-aggregation-test
   (mt/test-drivers (mt/normal-drivers)
@@ -219,16 +224,36 @@
                  {:aggregation [[:cum-sum $id]]
                   :breakout    [$price]})))))))
 
+(deftest ^:parallel cumulative-sum-with-bucketed-breakout-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "cumulative sum with a temporally bucketed breakout"
+      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            orders            (lib.metadata/table metadata-provider (mt/id :orders))
+            orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
+            orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
+            query             (-> (lib/query metadata-provider orders)
+                                  (lib/breakout (lib/with-temporal-bucket orders-created-at :month))
+                                  (lib/aggregate (lib/cum-sum orders-total))
+                                  (lib/limit 3))]
+        (mt/with-native-query-testing-context query
+          (is (= [["2016-04-01T00:00:00Z" 52.76]
+                  ["2016-05-01T00:00:00Z" 1318.49]
+                  ["2016-06-01T00:00:00Z" 3391.41]]
+                 (mt/formatted-rows [str 2.0]
+                   (qp/process-query query)))))))))
+
 (deftest ^:parallel cumulative-count-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "cumulative count aggregations"
       (testing "w/o breakout should be treated the same as count"
-        (is (= {:rows [[15]]
-                :cols [(qp.test-util/aggregate-col :cum-count :users :id)]}
-               (qp.test-util/rows-and-cols
-                (mt/format-rows-by [int]
-                  (mt/run-mbql-query users
-                    {:aggregation [[:cum-count $id]]})))))))))
+        (let [query (mt/mbql-query users
+                      {:aggregation [[:cum-count $id]]})]
+          (mt/with-native-query-testing-context query
+            (is (= {:rows [[15]]
+                    :cols [(qp.test-util/aggregate-col :cum-count :users :id)]}
+                   (qp.test-util/rows-and-cols
+                    (mt/format-rows-by [int]
+                      (qp/process-query query)))))))))))
 
 (deftest ^:parallel cumulative-count-with-breakout-test
   (mt/test-drivers (mt/normal-drivers)
@@ -256,7 +281,6 @@
                    {:aggregation [[:cum-count $id]]
                     :breakout    [$name]}))))))))
 
-
 (deftest ^:parallel cumulative-count-with-breakout-test-2
   (mt/test-drivers (mt/normal-drivers)
     (testing "w/ breakout on field that requires grouping"
@@ -271,6 +295,65 @@
                  (mt/run-mbql-query venues
                    {:aggregation [[:cum-count $id]]
                     :breakout    [$price]}))))))))
+
+(deftest ^:parallel cumulative-count-without-field-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "cumulative count without a field"
+      (is (=? {:cols [(qp.test-util/breakout-col :venues :price)
+                      (qp.test-util/aggregate-col :cum-count)]
+               :rows [[1 22]
+                      [2 81]
+                      [3 94]
+                      [4 100]]}
+              (qp.test-util/rows-and-cols
+               (mt/format-rows-by [int int]
+                 (mt/run-mbql-query venues
+                   {:aggregation [[:cum-count]]
+                    :breakout    [$price]}))))))))
+
+(deftest ^:parallel cumulative-count-with-bucketed-breakout-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "cumulative count with a temporally bucketed breakout"
+      (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+        (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+              orders            (lib.metadata/table metadata-provider (mt/id :orders))
+              orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
+              query             (-> (lib/query metadata-provider orders)
+                                    (lib/breakout (lib/with-temporal-bucket orders-created-at :month))
+                                    (lib/aggregate (lib/cum-count))
+                                    (lib/limit 3))]
+          (mt/with-native-query-testing-context query
+            (is (= [["2016-04-01T00:00:00Z" 1]
+                    ["2016-05-01T00:00:00Z" 20]
+                    ["2016-06-01T00:00:00Z" 57]]
+                   (mt/formatted-rows [str int]
+                     (qp/process-query query))))))))))
+
+(deftest ^:parallel cumulative-count-and-sum-in-expressions-test
+  (testing "Cumulative count should work inside expressions (#15118)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            orders            (lib.metadata/table metadata-provider (mt/id :orders))
+            orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
+            orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
+            query             (-> (lib/query metadata-provider orders)
+                                  ;; 1. month
+                                  (lib/breakout (lib/with-temporal-bucket orders-created-at :month))
+                                  ;; 2. cumulative count of orders
+                                  (lib/aggregate (lib/cum-count))
+                                  ;; 3. cumulative sum of orders
+                                  (lib/aggregate (lib/cum-sum orders-total))
+                                  ;; 4. cumulative average order price (cumulative sum of total / cumulative count)
+                                  (lib/aggregate (lib// (lib/cum-sum orders-total)
+                                                        (lib/cum-count)))
+                                  (lib/limit 3))]
+        (mt/with-native-query-testing-context query
+          ;;       1                      2  3       4
+          (is (= [["2016-04-01T00:00:00Z" 1  52.76   52.76]
+                  ["2016-05-01T00:00:00Z" 20 1318.49 65.92]
+                  ["2016-06-01T00:00:00Z" 57 3391.41 59.50]]
+                 (mt/formatted-rows [str int 2.0 2.0]
+                   (qp/process-query query)))))))))
 
 (deftest field-settings-for-aggregate-fields-test
   (testing "Does `:settings` show up for aggregate Fields?"
