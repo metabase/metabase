@@ -13,6 +13,7 @@ import type {
 import { AutoScrollBox } from "../AutoScrollBox";
 
 import { ListBox } from "./NestedItemPicker.styled";
+import { findLastSelectedItem, isSameItem } from "./utils";
 
 export interface NestedItemPickerProps<
   Id,
@@ -54,6 +55,8 @@ export function NestedItemPicker<
     }
   };
 
+  const lastSelectedItem = findLastSelectedItem(path);
+
   return (
     <AutoScrollBox
       data-testid="nested-item-picker"
@@ -74,7 +77,7 @@ export function NestedItemPicker<
                   selectedItem={selectedItem}
                   options={options}
                   onClick={(item: Item) => handleClick(item)}
-                  isCurrentLevel={index === path.length - 2}
+                  isCurrentLevel={isSameItem(selectedItem, lastSelectedItem)}
                   isFolder={isFolder}
                 />
               </ErrorBoundary>

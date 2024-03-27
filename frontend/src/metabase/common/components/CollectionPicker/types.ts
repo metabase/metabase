@@ -19,6 +19,9 @@ export type CollectionPickerItem = TypeWithModel<
     location?: string | null;
     effective_location?: string | null;
     is_personal?: boolean;
+    collection_id?: CollectionId;
+    here: SearchModelType[];
+    below: SearchModelType[];
   };
 
 export type CollectionPickerOptions = EntityPickerModalOptions & {

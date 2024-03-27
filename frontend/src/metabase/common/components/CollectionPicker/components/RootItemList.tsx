@@ -15,6 +15,8 @@ const personalCollectionsRoot: CollectionPickerItem = {
   model: "collection",
   location: "/",
   description: "",
+  here: ["collection"],
+  below: ["collection"],
 };
 
 /**
@@ -53,6 +55,8 @@ export const RootItemList = ({
         collectionsData.push({
           ...rootCollection,
           model: "collection",
+          here: ["collection"],
+          below: ["collection"],
           location: "/",
           name:
             options.namespace === "snippets"
@@ -63,6 +67,8 @@ export const RootItemList = ({
         collectionsData.push({
           name: t`Collections`,
           id: "root",
+          here: ["collection"],
+          below: ["collection"],
           description: null,
           can_write: false,
           model: "collection",
@@ -80,6 +86,8 @@ export const RootItemList = ({
       collectionsData.push({
         ...personalCollection,
         model: "collection",
+        here: ["collection"],
+        below: ["collection"],
         location: personalCollection.location || "/",
       });
 

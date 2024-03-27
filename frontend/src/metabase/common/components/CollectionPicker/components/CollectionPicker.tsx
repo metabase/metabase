@@ -75,6 +75,19 @@ export const CollectionPickerInner = (
     [setPath, onItemSelect, options.namespace, userPersonalCollectionId],
   );
 
+  const handleItemSelect = (item: CollectionPickerItem) => {
+    // set selected item at the correct level
+    const pathLevel = path.findIndex(
+      level => level?.query?.collection === (item?.collection_id ?? "root"),
+    );
+
+    const newPath = path.slice(0, pathLevel + 1);
+    newPath[newPath.length - 1].selectedItem = item;
+
+    setPath(newPath);
+    onItemSelect(item);
+  };
+
   // Exposing onFolderSelect so that parent can select newly created
   // folder
   useImperativeHandle(
@@ -105,6 +118,8 @@ export const CollectionPickerInner = (
           // start with the current item selected if we can
           onItemSelect({
             ...currentCollection,
+            here: ["collection"],
+            below: ["collection"],
             model: "collection",
           });
         }
@@ -128,7 +143,7 @@ export const CollectionPickerInner = (
       options={options}
       generateKey={generateKey}
       onFolderSelect={onFolderSelect}
-      onItemSelect={onItemSelect}
+      onItemSelect={handleItemSelect}
       path={path}
       listResolver={CollectionItemPickerResolver}
     />
