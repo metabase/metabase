@@ -266,7 +266,7 @@
     (cond
       ;; if they're sandboxed OR if they're a superuser, ignore the setting and just give them nothing or everything,
       ;; respectively.
-      (premium-features/sandboxed-or-impersonated-user?)
+      (premium-features/sandboxed-user?)
       (just-me)
 
       api/*is-superuser?*
