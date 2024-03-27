@@ -2,10 +2,10 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Button from "metabase/core/components/Button";
 import Questions from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
+import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import {
@@ -86,7 +86,7 @@ const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
     <div className={cx(N.notebookRoot)}>
       <NotebookSteps updateQuestion={handleUpdateQuestion} {...props} />
       {hasVisualizeButton && isRunnable && (
-        <Button medium primary style={{ minWidth: 220 }} onClick={visualize}>
+        <Button variant="filled" style={{ minWidth: 220 }} onClick={visualize}>
           {t`Visualize`}
         </Button>
       )}
