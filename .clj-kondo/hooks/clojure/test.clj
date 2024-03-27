@@ -106,7 +106,8 @@
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
-     metabase.query-processor.store/store-database!})
+     metabase.query-processor.store/store-database!
+     next.jdbc/execute!})
 
 (defn- node->qualified-symbol [node]
   (try

@@ -251,8 +251,23 @@
                  (mt/run-mbql-query people
                    {:fields [$name $bird_id->birds.name]}))))))))
 
-(defn- default-table-result [table-name]
-  {:name table-name, :schema "public", :description nil})
+(defn- default-table-result
+  ([table-name]
+   (default-table-result table-name {}))
+  ([table-name opts]
+   (merge
+    {:name table-name :schema "public" :description nil
+     ;; estimated-row-count is estimated, so the value can't be known for sure "during" test without
+     ;; VACUUM-ing. So for tests that don't concern the exact value of estimated-row-count, use schema instead
+     :estimated_row_count (mt/malli=? [:maybe :int])}
+    opts)))
+
+(defn- describe-database->tables
+  "Returns a seq of tables sorted by name from calling [[driver/describe-database]]."
+  [& args]
+  (->> (apply driver/describe-database args)
+      :tables
+      (sort-by :name)))
 
 (deftest materialized-views-test
   (mt/test-driver :postgres
@@ -264,9 +279,9 @@
                        ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
                        CREATE MATERIALIZED VIEW test_mview AS
                        SELECT 'Toucans are the coolest type of bird.' AS true_facts;"])
-        (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
-          (is (= {:tables #{(default-table-result "test_mview")}}
-                 (driver/describe-database :postgres database))))))))
+        (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
+          (is (=? [(default-table-result "test_mview" {:estimated_row_count (mt/malli=? int?)})]
+                  (describe-database->tables :postgres database))))))))
 
 (deftest foreign-tables-test
   (mt/test-driver :postgres
@@ -276,7 +291,8 @@
         ;; You need to set `MB_POSTGRESQL_TEST_USER` in order for this to work apparently.
         ;;
         ;; make sure that the details include optional stuff like `:user`. Otherwise the test is going to FAIL. You can
-        ;; set it at run time from the REPL using [[mt/db-test-env-var!]].
+        ;; set it at run time from the REPL using [[mt/db-test-env-var!]]
+        ;; (mt/db-test-env-var! :postgresql :user "postgres").
         (is (mc/coerce [:map
                         [:port :int]
                         [:host :string]
@@ -297,8 +313,9 @@
                                 OPTIONS (user '" (:user details) "');
                               GRANT ALL ON public.local_table to PUBLIC;")])
         (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
-          (is (= {:tables (set (map default-table-result ["foreign_table" "local_table"]))}
-                 (driver/describe-database :postgres database))))))))
+          (is (=? [(default-table-result "foreign_table")
+                   (default-table-result "local_table" {:estimated_row_count (mt/malli=? int?)})]
+                  (describe-database->tables :postgres database))))))))
 
 (deftest recreated-views-test
   (mt/test-driver :postgres
@@ -363,8 +380,8 @@
                 ;; now sync the DB
                 (sync!)
                 ;; all three of these tables should appear in the metadata (including, importantly, the "main" table)
-                (is (= {:tables (set (map default-table-result ["part_vals" "part_vals_0" "part_vals_1"]))}
-                       (driver/describe-database :postgres database)))))
+                (is (=? (map default-table-result ["part_vals" "part_vals_0" "part_vals_1"])
+                        (describe-database->tables :postgres database)))))
             (log/warn
              (u/format-color
               'yellow
@@ -1304,12 +1321,18 @@
                                      "CREATE SCHEMA \"dotted.schema\";"
                                      "CREATE TABLE \"dotted.schema\".bar (id INTEGER);"
                                      "CREATE TABLE \"dotted.schema\".\"dotted.table\" (id INTEGER);"
+                                     "CREATE TABLE \"dotted.schema\".\"dotted.partial_select\" (id INTEGER);"
+                                     "CREATE TABLE \"dotted.schema\".\"dotted.partial_update\" (id INTEGER);"
+                                     "CREATE TABLE \"dotted.schema\".\"dotted.partial_insert\" (id INTEGER, text TEXT);"
                                      "CREATE VIEW \"dotted.schema\".\"dotted.view\" AS SELECT 'hello world';"
                                      "CREATE MATERIALIZED VIEW \"dotted.schema\".\"dotted.materialized_view\" AS SELECT 'hello world';"
                                      "DROP ROLE IF EXISTS privilege_rows_test_example_role;"
                                      "CREATE ROLE privilege_rows_test_example_role WITH LOGIN;"
                                      "GRANT SELECT ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
                                      "GRANT UPDATE ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
+                                     "GRANT SELECT (id) ON \"dotted.schema\".\"dotted.partial_select\" TO privilege_rows_test_example_role;"
+                                     "GRANT UPDATE (id) ON \"dotted.schema\".\"dotted.partial_update\" TO privilege_rows_test_example_role;"
+                                     "GRANT INSERT (text) ON \"dotted.schema\".\"dotted.partial_insert\" TO privilege_rows_test_example_role;"
                                      "GRANT SELECT ON \"dotted.schema\".\"dotted.view\" TO privilege_rows_test_example_role;"
                                      "GRANT SELECT ON \"dotted.schema\".\"dotted.materialized_view\" TO privilege_rows_test_example_role;"))
            (testing "check that without USAGE privileges on the schema, nothing is returned"
@@ -1317,27 +1340,26 @@
                     (get-privileges))))
            (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
              (jdbc/execute! conn-spec "GRANT USAGE ON SCHEMA \"dotted.schema\" TO privilege_rows_test_example_role;")
-             (is (= #{{:role   nil
-                       :schema "dotted.schema"
-                       :table  "dotted.materialized_view"
-                       :update false
-                       :select true
-                       :insert false
-                       :delete false}
-                      {:role   nil
-                       :schema "dotted.schema"
-                       :table  "dotted.view"
-                       :update false
-                       :select true
-                       :insert false
-                       :delete false}
-                      {:role   nil
-                       :schema "dotted.schema"
-                       :table  "dotted.table"
-                       :select true
-                       :update true
-                       :insert false
-                       :delete false}}
+             (is (= (into #{}
+                          (map #(merge {:role   nil
+                                        :schema "dotted.schema"
+                                        :update false
+                                        :select false
+                                        :insert false
+                                        :delete false} %)
+                               [{:table  "dotted.materialized_view"
+                                 :select true}
+                                {:table "dotted.view"
+                                 :select true}
+                                {:table "dotted.table"
+                                 :select true
+                                 :update true}
+                                {:table "dotted.partial_select"
+                                 :select true}
+                                {:table "dotted.partial_update"
+                                 :update true}
+                                {:table "dotted.partial_insert"
+                                 :insert true}]))
                     (get-privileges))))
            (finally
             (doseq [stmt ["REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"dotted.schema\" FROM privilege_rows_test_example_role;"
@@ -1378,7 +1400,9 @@
                            (is (= (into #{} (#'sql-jdbc.describe-database/jdbc-get-tables
                                              :postgres (.getMetaData conn) nil schema-pattern table-pattern
                                              ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))
-                                  (into #{} (#'postgres/get-tables (mt/db) schemas tables)))))]
+                                  (into #{} (map #(dissoc % :estimated_row_count))
+                                        (#'postgres/get-tables (mt/db) schemas tables)))))]
+
              (doseq [stmt ["CREATE TABLE public.table (id INTEGER, type TEXT);"
                            "CREATE UNIQUE INDEX idx_table_type ON public.table(type);"
                            "CREATE TABLE public.partition_table (id INTEGER) PARTITION BY RANGE (id);"

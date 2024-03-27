@@ -156,7 +156,7 @@
   [table-metadata :- i/DatabaseMetadataTable
    metabase-table :- (ms/InstanceOf :model/Table)]
   (log/infof "Updating table metadata for %s" (sync-util/name-for-logging metabase-table))
-  (let [to-update-keys [:description :database_require_filter]
+  (let [to-update-keys [:description :database_require_filter :estimated_row_count]
         old-table      (select-keys metabase-table to-update-keys)
         new-table      (select-keys (merge
                                      (zipmap to-update-keys (repeat nil))
@@ -193,10 +193,10 @@
         (remove metabase-metadata/is-metabase-metadata-table?)
         (:tables db-metadata)))
 
-(mu/defn ^:private db->our-metadata :- [:set i/DatabaseMetadataTable]
+(mu/defn ^:private db->our-metadata :- [:set (ms/InstanceOf :model/Table)]
   "Return information about what Tables we have for this DB in the Metabase application DB."
   [database :- i/DatabaseInstance]
-  (set (t2/select [:model/Table :id :name :schema :description :database_require_filter]
+  (set (t2/select [:model/Table :id :name :schema :description :database_require_filter :estimated_row_count]
                   :db_id  (u/the-id database)
                   :active true)))
 

@@ -205,7 +205,9 @@ describe("Notebook Editor > Join Step", () => {
     userEvent.click(screen.getByLabelText("Right table"));
     const popover = await screen.findByTestId("popover");
 
-    expect(within(popover).getByText("Sample Database")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(within(popover).getByText("Sample Database")).toBeInTheDocument();
+    });
     expect(within(popover).getByText("Products")).toBeInTheDocument();
     expect(within(popover).getByText("People")).toBeInTheDocument();
     expect(within(popover).getByText("Reviews")).toBeInTheDocument();

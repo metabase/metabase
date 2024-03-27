@@ -17,6 +17,9 @@ export const getIcon = item => {
   return entity.objectSelectors.getIcon(item.model_object, options);
 };
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const RecentItems = createEntity({
   name: "recentItems",
   nameOne: "recentItem",

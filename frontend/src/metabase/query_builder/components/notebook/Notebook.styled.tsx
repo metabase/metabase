@@ -6,7 +6,7 @@ export const NotebookRoot = styled.div`
   position: relative;
   padding: 0 1rem;
   margin-bottom: 2rem;
-
+  flex: 1;
   ${breakpointMinSmall} {
     padding: 0 2rem;
   }

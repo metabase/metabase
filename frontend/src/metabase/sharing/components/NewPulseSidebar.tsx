@@ -63,7 +63,11 @@ export function NewPulseSidebar({
             >
               {!emailConfigured &&
                 jt`You'll need to ${(
-                  <Link key="link" to="/admin/settings/email" className="link">
+                  <Link
+                    key="link"
+                    to="/admin/settings/email"
+                    className={CS.link}
+                  >
                     {t`set up email`}
                   </Link>
                 )} first.`}
@@ -101,7 +105,11 @@ export function NewPulseSidebar({
             >
               {!slackConfigured &&
                 jt`First, you'll have to ${(
-                  <Link key="link" to="/admin/settings/slack" className="link">
+                  <Link
+                    key="link"
+                    to="/admin/settings/slack"
+                    className={CS.link}
+                  >
                     {t`configure Slack`}
                   </Link>
                 )}.`}

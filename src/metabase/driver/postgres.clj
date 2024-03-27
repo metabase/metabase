@@ -227,10 +227,12 @@
                            [:inline "m"] [:inline "MATERIALIZED VIEW"]
                            :else nil]
                           :type]
-                         [:d.description :description]]
-             :from      [[:pg_catalog.pg_namespace :n]
-                         [:pg_catalog.pg_class :c]]
-             :left-join [[:pg_catalog.pg_description :d] [:and [:= :c.oid :d.objoid] [:= :d.objsubid 0] [:= :d.classoid [:raw "'pg_class'::regclass"]]]]
+                         [:d.description :description]
+                         [:stat.n_live_tup :estimated_row_count]]
+             :from      [[:pg_catalog.pg_class :c]]
+             :join      [[:pg_catalog.pg_namespace :n]   [:= :c.relnamespace :n.oid]]
+             :left-join [[:pg_catalog.pg_description :d] [:and [:= :c.oid :d.objoid] [:= :d.objsubid 0] [:= :d.classoid [:raw "'pg_class'::regclass"]]]
+                         [:pg_stat_user_tables :stat]    [:and [:= :n.nspname :stat.schemaname] [:= :c.relname :stat.relname]]]
              :where     [:and [:= :c.relnamespace :n.oid]
                          ;; filter out system tables
                          [(keyword "!~") :n.nspname "^pg_"] [:<> :n.nspname "information_schema"]
@@ -946,9 +948,9 @@
           "   NULL as role,"
           "   t.schemaname as schema,"
           "   t.objectname as table,"
-          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'update') as update,"
-          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'select') as select,"
-          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'insert') as insert,"
+          "   pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'update') as update,"
+          "   pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'select') as select,"
+          "   pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'insert') as insert,"
           "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'delete') as delete"
           " from ("
           "   select schemaname, tablename as objectname from pg_catalog.pg_tables"
@@ -963,7 +965,7 @@
           ")"
           "select t.*"
           "from table_privileges t"]))
-       (filter #(or (:select %) (:update %) (:delete %) (:update %)))))
+       (filter #(or (:select %) (:update %) (:delete %) (:insert %)))))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
