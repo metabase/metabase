@@ -45,12 +45,9 @@
 (def Permissions
   "Permissions which apply to individual databases or tables"
   {:perms/view-data             {:model :model/Table :values [:unrestricted :legacy-no-self-service :blocked]}
-   :perms/data-access           {:model :model/Table :values [:unrestricted :no-self-service :block]}
+   :perms/create-queries        {:model :model/Table :values [:query-builder-and-native :query-builder :no]}
    :perms/download-results      {:model :model/Table :values [:one-million-rows :ten-thousand-rows :no]}
    :perms/manage-table-metadata {:model :model/Table :values [:yes :no]}
-   :perms/create-queries        {:model :model/Table :values [:query-builder-and-native :query-builder :no]}
-
-   :perms/native-query-editing  {:model :model/Database :values [:yes :no]}
    :perms/manage-database       {:model :model/Database :values [:yes :no]}})
 
 (def PermissionType
@@ -173,16 +170,6 @@
              (not (perm-values :unrestricted)))
       ;; Block in one group overrides `legacy-no-self-service` in another, but not unrestricted
       :blocked
-      (first (filter perm-values ordered-values)))))
-
-(defmethod coalesce :perms/data-access
-  [perm-type perm-values]
-  (let [perm-values    (set perm-values)
-        ordered-values (-> Permissions perm-type :values)]
-    (if (and (perm-values :block)
-             (not (perm-values :unrestricted)))
-      ;; Block in one group overrides no-self-service in another, but not unrestricted
-      :block
       (first (filter perm-values ordered-values)))))
 
 (defn coalesce-most-restrictive
@@ -624,9 +611,6 @@
                                           :db_id      db-id})
       (when (= [:perms/view-data :blocked] [perm-type value])
         (set-database-permission! group-or-id db-or-id :perms/create-queries :no)
-        (set-database-permission! group-or-id db-or-id :perms/download-results :no))
-      (when (= [:perms/data-access :block] [perm-type value])
-        (set-database-permission! group-or-id db-or-id :perms/native-query-editing :no)
         (set-database-permission! group-or-id db-or-id :perms/download-results :no)))))
 
 (mu/defn set-table-permissions!
@@ -646,7 +630,7 @@
     (throw (ex-info (tru "Permission type {0} cannot be set on tables." perm-type)
                     {perm-type (Permissions perm-type)})))
   (let [values (set (vals table-perms))]
-    (when (values :block)
+    (when (values :blocked)
       (throw (ex-info (tru "Block permissions must be set at the database-level only.")
                       {})))
     ;; if `table-perms` is empty, there's nothing to do
@@ -756,7 +740,7 @@
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} cannot be set on tables." perm-type)
                     {perm-type (Permissions perm-type)})))
-  (when (= value :block)
+  (when (= value :blocked)
     (throw (ex-info (tru "Block permissions must be set at the database-level only.")
                     {})))
   (when (seq groups-or-ids)
