@@ -12,9 +12,9 @@ export const processResults = (results: (string | ActionImpl)[]) => {
   const search = processSection(t`Search results`, groupedResults["search"]);
   const recent = processSection(t`Recent items`, groupedResults["recent"]);
   const admin = processSection(t`Admin`, groupedResults["admin"]);
-  const docs = groupedResults["docs"] || [];
+  const docs = processSection(t`Documentation`, groupedResults["docs"]);
 
-  return [...actions.slice(0, 6), ...search, ...recent, ...admin, ...docs];
+  return [...actions.slice(0, 6), ...recent, ...admin, ...search, ...docs];
 };
 
 export const processSection = (sectionName: string, items?: ActionImpl[]) => {
