@@ -2,12 +2,15 @@
   "Logic for determining whether two pMBQL queries are equal."
   (:refer-clojure :exclude [=])
   (:require
+   #?(:clj [metabase.util.log :as log])
    [medley.core :as m]
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
@@ -15,8 +18,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]
-   #?@(:clj ([metabase.util.log :as log]))))
+   [metabase.util.malli :as mu]))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
@@ -45,6 +47,19 @@
                   (and (qualified-keyword? k)
                        (not= k :lib/type))))
         (keys m)))
+
+(defmethod = :field
+  [[_ opts-1 id-or-name-1]
+   [_ opts-2 id-or-name-2]]
+  ;; A mismatch of `:base-type` or `:effective-type` when both x and y have values for it is a failure.
+  ;; If either ref does not have the `:base-type` or `:effective-type` set, that key is ignored.
+  (letfn [(clean-opts [o1 o2]
+            (not-empty
+              (cond-> o1
+                (not (:base-type o2))      (dissoc :base-type)
+                (not (:effective-type o2)) (dissoc :effective-type))))]
+    (= [(clean-opts opts-1 opts-2) id-or-name-1]
+       [(clean-opts opts-2 opts-1) id-or-name-2])))
 
 (defmethod = :dispatch-type/map
   [m1 m2]
@@ -412,3 +427,42 @@
          (and (not (contains? matching nil))
               (= (count matching) (count columns))
               (every? #(= (count %) 1) (vals matching))))))
+
+(defn- make-fields-explicit
+  [query field-ids]
+  (if-let [fields (or (->> (lib.util/query-stage query -1)
+                           ;; using lib.field requires circular dep
+                           :fields
+                           (sort-by last)
+                           vec
+                           not-empty)
+                      (when (and (seq field-ids) (:lib/metadata query))
+                        (->> (lib.metadata.calculation/visible-columns query)
+                             (filter #(contains? field-ids (:id %)))
+                             (sort-by :id)
+                             (mapv lib.ref/ref)
+                             not-empty))
+                      (->> field-ids
+                           (sort)
+                           (mapv (fn [id] (lib.options/ensure-uuid [:field {} id])))
+                           not-empty))]
+    ;; using lib.field requires circular dep
+    (lib.util/update-query-stage query -1 assoc :fields fields)
+    query))
+
+(mu/defn query= :- boolean?
+  "Returns whether the provided queries should be considered equal.
+   Queries can be either legacy MBQL or pMBQL.
+   If `field-ids` is specified, an input query without `:fields` set defaults to the `field-ids`."
+  ([query1 query2]
+   (query= query1 query2 nil))
+  ([query1 query2
+    field-ids :- [:maybe [:sequential pos-int?]]]
+   (let [prep (fn [query]
+                (some-> query
+                        lib.convert/->pMBQL
+                        (make-fields-explicit field-ids)
+                        lib.normalize/normalize))
+         query1 (prep query1)
+         query2 (prep query2)]
+     (= query1 query2))))
