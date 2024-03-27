@@ -23,8 +23,12 @@ interface Props {
   value: Value | null;
 }
 
+const options = {
+  ...defaultOptions,
+  showConfirmButton: false,
+};
+
 export const DataPickerModal = ({
-  options = defaultOptions,
   title = t`Pick your starting data`,
   value,
   onChange,
@@ -52,16 +56,10 @@ export const DataPickerModal = ({
     onFolderSelect: (item: { folder: NotebookDataPickerItem }) => void;
   }>();
 
-  const handleItemSelect = useCallback(
-    (item: NotebookDataPickerValueItem) => {
-      if (options.hasConfirmButtons) {
-        setSelectedItem(item);
-      } else {
-        setValueId(item.id);
-      }
-    },
-    [options],
-  );
+  const handleItemSelect = useCallback((item: NotebookDataPickerValueItem) => {
+    setValueId(item.id);
+    setSelectedItem(item);
+  }, []);
 
   const tabs: [
     EntityTab<NotebookDataPickerValueItem["model"]>,
