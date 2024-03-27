@@ -1,7 +1,7 @@
 {
-  "name": "metabase-embedding-sdk",
+  "name": "@metabase/embedding-sdk-react",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Metabase Embedding SDK",
   "repository": "https://github.com/metabase/metabase",
   "license": "private",
