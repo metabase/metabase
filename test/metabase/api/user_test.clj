@@ -78,8 +78,10 @@
                    "rasta@metabase.com"}
                  (->> result (map :email) set))))
         (testing "with a query"
-          (is (= "lucky@metabase.com"
-                 (-> (mt/user-http-request :crowberto :get 200 "user" :query "lUck") :data first :email))))))
+          (is (=? [{:email "lucky@metabase.com"}]
+                  (->> (mt/user-http-request :crowberto :get 200 "user" :query "lUck")
+                       :data
+                       (filter mt/test-user?)))))))
     (testing "Check that non-admins cannot get a list of all active Users"
       (mt/with-non-admin-groups-no-root-collection-perms
         (is (= "You don't have permissions to do that."
