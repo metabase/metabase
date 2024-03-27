@@ -21,6 +21,7 @@ import {
   resetSnowplow,
   enableTracking,
   addOrUpdateDashboardCard,
+  createQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -72,6 +73,60 @@ describe("scenarios > question > download", () => {
         expect(sheet["A1"].v).to.eq("Count");
         expect(sheet["A2"].v).to.eq(18760);
       });
+    });
+  });
+
+  it("should allow downloading unformatted CSV data", () => {
+    const fieldRef = [
+      "field",
+      ORDERS.CREATED_AT,
+      { "base-type": "type/DateTime" },
+    ];
+    const columnKey = `["ref",${JSON.stringify(fieldRef)}]`;
+
+    createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          fields: [fieldRef],
+        },
+        visualization_settings: {
+          "table.cell_column": "CREATED_AT",
+          column_settings: {
+            [columnKey]: {
+              date_style: "M/D/YYYY",
+              time_enabled: null,
+            },
+          },
+        },
+      },
+      { visitQuestion: true, wrapId: true },
+    );
+
+    cy.get("@questionId").then(questionId => {
+      const opts = { questionId, fileType: "csv" };
+
+      downloadAndAssert(
+        {
+          ...opts,
+          enableFormatting: true,
+        },
+        sheet => {
+          expect(sheet["A1"].v).to.eq("Created At");
+          expect(sheet["A2"].w).to.eq("2/10/25");
+        },
+      );
+
+      downloadAndAssert(
+        {
+          ...opts,
+          enableFormatting: false,
+        },
+        sheet => {
+          expect(sheet["A1"].v).to.eq("Created At");
+          expect(sheet["A2"].v).to.eq("2025-02-11T21:40:27.892");
+        },
+      );
     });
   });
 
