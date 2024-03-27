@@ -10,9 +10,9 @@ Notifications in Metabase include [alerts](../questions/sharing/alerts.md) and [
 
 What you can do with alerts and dashboard subscriptions depends on whether you're in the Administrators group or in a sandboxed group.
 
-- [All Users group](#all-users-group)
-- [Sandboxed group]
-- [Administrators group](#administrators-group)
+- [All Users group](#all-users-group-notification-permissions)
+- [Sandboxed group](#sandboxed-accounts-notification-permissions)
+- [Administrators group](#administrators-group-notification-permissions)
 
 ### All Users group notification permissions
 
@@ -26,7 +26,7 @@ When a notification creator adds new recipients to an alert or subscription, Met
 
 ### Sandboxed accounts notification permissions
 
-Same as everyone, but with a special case: **people in sandboxed groups will only see themselves in the list of recipients** when creating an alert or subscription.
+Same as everyone in the All users group, but with a special case: **people in sandboxed groups will only see themselves in the list of recipients** when creating an alert or subscription.
 
 ### Administrators group notification permissions
 
