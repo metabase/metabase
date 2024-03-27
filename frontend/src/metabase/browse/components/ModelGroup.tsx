@@ -3,15 +3,7 @@ import { c, msgid, t } from "ttag";
 
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
-import {
-  Box,
-  Button,
-  FixedSizeIcon,
-  Flex,
-  Icon,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Box, Button, Flex, Icon, Text, Title } from "metabase/ui";
 import type {
   Card,
   CollectionEssentials,
@@ -27,6 +19,7 @@ import {
   CollectionHeaderContainer,
   CollectionHeaderToggleContainer,
   CollectionSummary,
+  FixedSizeIcon,
   HoverUnderlineLink,
   ModelCard,
   ModelCardLink,
