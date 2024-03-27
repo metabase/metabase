@@ -143,7 +143,7 @@ class SnippetSidebarInner extends React.Component {
                   />
                 </div>
                 <span
-                  className={cx({ [CS.hide]: showSearch }, "text-heavy h3")}
+                  className={cx({ [CS.hide]: showSearch }, "text-heavy", CS.h3)}
                 >
                   {snippetCollection.id === "root" ? (
                     t`Snippets`
