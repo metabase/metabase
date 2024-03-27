@@ -10,8 +10,6 @@ import NotebookStep from "../NotebookStep";
 import { getQuestionSteps } from "../lib/steps";
 import type { NotebookStep as INotebookStep, OpenSteps } from "../types";
 
-import { Container } from "./NotebookSteps.styled";
-
 interface NotebookStepsProps {
   className?: string;
   question: Question;
@@ -36,7 +34,6 @@ function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
 }
 
 function NotebookSteps({
-  className,
   question,
   sourceQuestion,
   reportTimezone,
@@ -92,7 +89,7 @@ function NotebookSteps({
   }
 
   return (
-    <Container className={className}>
+    <>
       {steps.map((step, index) => {
         const isLast = index === steps.length - 1;
         const isLastOpened = lastOpenedStep === step.id;
@@ -114,7 +111,7 @@ function NotebookSteps({
           />
         );
       })}
-    </Container>
+    </>
   );
 }
 
