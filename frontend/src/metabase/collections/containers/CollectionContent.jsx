@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { connect } from "react-redux";
 import { usePrevious } from "react-use";
+import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -22,6 +23,8 @@ import Search from "metabase/entities/search";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { useDispatch } from "metabase/lib/redux";
+import { addUndo } from "metabase/redux/undo";
 import { uploadFile } from "metabase/redux/uploads";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getSetting } from "metabase/selectors/settings";
@@ -142,7 +145,19 @@ function CollectionContent({
     setIsBookmarked(shouldBeBookmarked);
   }, [bookmarks, collectionId]);
 
+  const dispatch = useDispatch();
+
   const onDrop = acceptedFiles => {
+    if (!acceptedFiles.length) {
+      dispatch(
+        addUndo({
+          message: t`Invalid file type`,
+          toastColor: "error",
+          icon: "warning",
+        }),
+      );
+      return;
+    }
     saveFile(acceptedFiles[0]);
   };
 
