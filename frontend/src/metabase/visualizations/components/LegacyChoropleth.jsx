@@ -46,6 +46,7 @@ const LegacyChoropleth = ({
           >
             {geoJson.features.map((feature, index) => (
               <path
+                data-testid="choropleth-feature"
                 key={index}
                 d={geo(feature, index)}
                 stroke="white"
