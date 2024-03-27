@@ -98,7 +98,7 @@
                            :type     :query
                            :query    {:source-table (u/the-id audit-view)}})))))))))))))
 
-(deftest permissions-instance-analytics-audit-v2-test
+(deftest analytics-permissions-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [PermissionsGroup {group-id :id}    {}
                    Database         {database-id :id} {}
@@ -106,11 +106,13 @@
                    Collection       collection        {}]
       (with-redefs [perms/audit-db-id                 database-id
                     audit-db/default-audit-collection (constantly collection)]
-        (testing "Adding instance analytics adds audit db permissions"
-          (is (= :no-self-service (data-perms/table-permission-for-group group-id :perms/data-access database-id (:id view-table))))
+        (testing "Updating permissions for the audit collection also updates audit DB permissions"
+          ;; Audit DB starts with full data access but no query builder access
+          (is (= :unrestricted (data-perms/table-permission-for-group group-id :perms/view-data database-id (:id view-table))))
           (is (= :no (data-perms/table-permission-for-group group-id :perms/create-queries database-id (:id view-table))))
+          ;; Granting access to the audit collection also grants query builder access to the DB
           (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :read))
-          (is (= :unrestricted (data-perms/table-permission-for-group group-id :perms/data-access database-id (:id view-table))))
+          (is (= :unrestricted (data-perms/table-permission-for-group group-id :perms/view-data database-id (:id view-table))))
           (is (= :query-builder (data-perms/table-permission-for-group group-id :perms/create-queries database-id (:id view-table)))))
         (testing "Unable to update instance analytics to writable"
           (is (thrown-with-msg?

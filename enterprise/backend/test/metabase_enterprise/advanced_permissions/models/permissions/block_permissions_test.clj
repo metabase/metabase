@@ -92,7 +92,7 @@
           (testing "group has existing data permissions... :block should remove them"
             (mt/with-model-cleanup [Permissions]
               (mt/with-restored-data-perms-for-group! group-id
-                (data-perms/set-database-permission! group-id (mt/id) :perms/data-access :unrestricted)
+                (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
                 (grant! group-id)
                 (is (nil? (test-db-perms group-id)))
                 (is (= #{:blocked}
