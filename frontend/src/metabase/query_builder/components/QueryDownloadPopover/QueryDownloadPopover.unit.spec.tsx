@@ -98,7 +98,9 @@ describe("QueryDownloadPopover", () => {
       act(() => userEvent.hover(screen.getByText(/csv/)));
       expect(await screen.findByText(/Unformatted/i)).toBeInTheDocument();
 
-      act(() => userEvent.click(screen.getByText(new RegExp(format))));
+      act(() =>
+        userEvent.click(screen.getByText(new RegExp(format)), { altKey: true }),
+      );
 
       expect(onDownload).toHaveBeenCalledWith({
         type: format,

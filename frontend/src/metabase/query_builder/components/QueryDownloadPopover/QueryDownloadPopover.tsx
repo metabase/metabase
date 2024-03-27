@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { connect } from "react-redux";
 import { useEvent } from "react-use";
 import { t } from "ttag";
@@ -56,26 +56,30 @@ const QueryDownloadPopover = ({
   limitedDownloadSizeText,
   onDownload,
 }: QueryDownloadPopoverProps) => {
-  const [isFormattingEnabled, setFormattingEnabled] = useState(true);
+  const [isHoldingAltKey, setHoldingAltKey] = useState(true);
 
   useEvent("keydown", event => {
     if (event.key === "Alt") {
-      setFormattingEnabled(false);
+      setHoldingAltKey(true);
     }
   });
 
-  useEvent("keyup", () => {
-    setFormattingEnabled(true);
+  useEvent("keyup", event => {
+    if (event.key === "Alt") {
+      setHoldingAltKey(false);
+    }
   });
 
   const formats = canDownloadPng
     ? [...exportFormats, exportFormatPng]
     : exportFormats;
 
-  const handleDownload = (type: string) => {
+  const handleDownload = (type: string, enableFormatting: boolean) => {
     const canManageFormatting = checkCanManageFormatting(type);
-    const enableFormatting = canManageFormatting ? isFormattingEnabled : true;
-    onDownload({ type, enableFormatting });
+    onDownload({
+      type,
+      enableFormatting: canManageFormatting ? enableFormatting : true,
+    });
   };
 
   return (
@@ -96,9 +100,9 @@ const QueryDownloadPopover = ({
         <DownloadButton
           key={format}
           format={format}
+          hasUnformattedOption={checkCanManageFormatting(format)}
+          isHoldingAltKey={isHoldingAltKey}
           onDownload={handleDownload}
-          hasFormattingOption={checkCanManageFormatting(format)}
-          isFormattingEnabled={isFormattingEnabled}
         />
       ))}
     </DownloadPopoverRoot>
@@ -107,27 +111,26 @@ const QueryDownloadPopover = ({
 
 interface DownloadButtonProps {
   format: string;
-  hasFormattingOption: boolean;
-  isFormattingEnabled: boolean;
-  onDownload: (format: string) => void;
+  hasUnformattedOption: boolean;
+  isHoldingAltKey: boolean;
+  onDownload: (format: string, enableFormatting: boolean) => void;
 }
 
 const DownloadButton = ({
   format,
-  hasFormattingOption,
-  isFormattingEnabled,
+  hasUnformattedOption,
+  isHoldingAltKey,
   onDownload,
 }: DownloadButtonProps) => {
   const { hovered, ref } = useHover<HTMLButtonElement>();
 
-  const handleClick = useCallback(() => {
-    onDownload(format);
-  }, [format, onDownload]);
-
   return (
-    <DownloadButtonRoot onClick={handleClick} ref={ref}>
+    <DownloadButtonRoot
+      onClick={event => onDownload(format, !event.altKey)}
+      ref={ref}
+    >
       <DownloadButtonText>.{format}</DownloadButtonText>
-      {hovered && hasFormattingOption && !isFormattingEnabled && (
+      {hasUnformattedOption && isHoldingAltKey && hovered && (
         <DownloadButtonSecondaryText>{t`(Unformatted)`}</DownloadButtonSecondaryText>
       )}
     </DownloadButtonRoot>
