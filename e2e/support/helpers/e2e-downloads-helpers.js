@@ -29,6 +29,7 @@ export function downloadAndAssert(
     downloadUrl,
     isEmbed,
     isDashboard,
+    enableFormatting = true,
   } = {},
   callback,
 ) {
@@ -76,7 +77,7 @@ export function downloadAndAssert(
     cy.findByTestId("download-button").click();
   }
   // Initiate the file download
-  popover().findByText(`.${fileType}`).click();
+  popover().findByText(`.${fileType}`).click({ altKey: !enableFormatting });
 
   cy.wait("@fileDownload")
     .its("request")
