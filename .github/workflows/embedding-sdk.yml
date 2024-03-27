@@ -1,12 +1,12 @@
 name: Embedding SDK
 
 on:
-  push:
-    branches:
-      - "master"
-      - "release-**"
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Package version'
+        required: true
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -46,8 +46,18 @@ jobs:
         run: yarn build-pure:cljs
       - name: Build SDK bundle
         run: yarn run build-release:sdk
-      - name: Archive production artifacts
-        uses: actions/upload-artifact@v4
+
+  sdk-publish:
+    needs: sdk-build
+    name: Publish new version
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - name: Generate .npmrc
+        uses: actions/setup-node@v4
         with:
-          name: embedding-sdk
-          path: resources/embedding-sdk
+          registry-url: 'https://npm.pkg.github.com'
+      - name: Publish package
+        run: npm publish --dry-run
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
