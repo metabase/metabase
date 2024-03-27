@@ -161,12 +161,12 @@
        (add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id infos)
        (add-fk-remaps-rewrite-existing-fields-add-new-field-dimension-id infos)))
 
-(mu/defn ^:private add-fk-remaps-rewrite-order-by :- [:maybe [:sequential mbql.s/OrderBy]]
+(mu/defn ^:private add-fk-remaps-rewrite-order-by :- [:maybe [:sequential ::mbql.s/OrderBy]]
   "Order by clauses that include an external remapped column should be replace that original column in the order by with
   the newly remapped column. This should order by the text of the remapped column vs. the id of the source column
   before the remapping"
   [field->remapped-col :- [:map-of mbql.s/field mbql.s/field]
-   order-by-clauses    :- [:maybe [:sequential mbql.s/OrderBy]]]
+   order-by-clauses    :- [:maybe [:sequential ::mbql.s/OrderBy]]]
   (into []
         (comp (map (fn [[direction field, :as order-by-clause]]
                      (if-let [remapped-col (get field->remapped-col field)]

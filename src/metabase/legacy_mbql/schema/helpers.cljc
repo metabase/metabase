@@ -43,8 +43,9 @@
   "Impl of [[metabase.legacy-mbql.schema.macros/defclause]] macro. Creates a Malli schema."
   [tag & arg-schemas]
   [:and
+   {:doc/title [:span [:code (pr-str tag)] " clause"]}
    [:fn
-    {:error/message (str "not a " tag " clause")}
+    {:error/message (str "must be a `" tag "` clause")}
     (partial is-clause? tag)]
    (into
     [:catn
@@ -62,7 +63,12 @@
   [& tags+schemas]
   (into
    [:multi {:dispatch      clause-tag
-            :error/message (str "valid instance of one of these MBQL clauses: " (str/join ", " (map first tags+schemas)))}]
+            :error/message (str "valid instance of one of these MBQL clauses: " (str/join ", " (map first tags+schemas)))
+            :doc/schema    (into
+                            [:or
+                             {:doc/message "valid instance of one of these MBQL clauses:"}]
+                            (map second)
+                            tags+schemas)}]
    (for [[tag schema] tags+schemas]
      [tag (if (qualified-keyword? schema)
             [:ref schema]
@@ -98,10 +104,13 @@
 
 (mr/def ::distinct
   [:fn
-   {:error/message "distinct"}
+   {:doc/message   "values must be distinct"
+    :error/message "distinct"}
    empty-or-distinct?])
 
 (defn distinct
   "Add an additional constraint to `schema` (presumably an array) that requires all elements to be distinct."
   [schema]
-  [:and schema [:ref ::distinct]])
+  [:and
+   schema
+   [:ref ::distinct]])
