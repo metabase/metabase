@@ -99,7 +99,6 @@ export const NativeQueryPreviewSidebar = (): JSX.Element => {
               fontSize={12}
               style={{ backgroundColor: color("bg-light") }}
               showPrintMargin={false}
-              wrapEnabled={true}
             />
           </NativeQueryEditorRoot>
         )}
