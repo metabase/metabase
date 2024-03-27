@@ -1,4 +1,4 @@
-import type * as React from "react";
+import type { ChangeEvent, FocusEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -19,15 +19,15 @@ export function LimitStep({
   const limit = Lib.currentLimit(query, stageIndex);
   const [value, setValue] = useState(typeof limit === "number" ? limit : "");
 
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const nextLimit = parseInt(e.target.value, 0);
+  const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
+    const nextLimit = parseInt(event.target.value, 0);
     if (nextLimit >= 1) {
       updateQuery(Lib.limit(query, stageIndex, nextLimit));
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setValue(e.target.value);
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setValue(event.target.value);
   };
 
   return (
