@@ -354,7 +354,7 @@ describe("FileUploadStatus", () => {
 
     await setupCollectionContent({ collectionId: thirdCollection.id });
 
-    userEvent.upload(
+    await userEvent.upload(
       screen.getByTestId("upload-input"),
       new File(["foo, bar"], "test.csv", { type: "text/csv" }),
     );
@@ -363,20 +363,20 @@ describe("FileUploadStatus", () => {
       await screen.findByText("Select upload destination"),
     ).toBeInTheDocument();
 
-    userEvent.click(screen.getByText("Replace data in a model"));
+    await userEvent.click(screen.getByText("Replace data in a model"));
     const submitButton = await screen.findByRole("button", {
       name: "Replace model data",
     });
 
-    userEvent.click(await screen.findByPlaceholderText("Select a model"));
-    userEvent.click(
+    await userEvent.click(await screen.findByPlaceholderText("Select a model"));
+    await userEvent.click(
       await within(await screen.findByRole("listbox")).findByText(
         "my uploaded model",
       ),
     );
 
     await waitFor(() => expect(submitButton).toBeEnabled());
-    userEvent.click(submitButton);
+    await userEvent.click(submitButton);
 
     act(() => {
       jest.advanceTimersByTime(500);
