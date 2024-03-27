@@ -29,6 +29,12 @@ const validTestFiles = [
     humanName: "Star Wars Characters",
     rowCount: 87,
   },
+  {
+    fileName: "pokedex.tsv",
+    tableName: "pokedex_tsv", // TODO, remove _tsv extension when backend logic changes
+    humanName: "Pokedex.tsv", // TODO, remove .tsv extension when backend logic changes
+    rowCount: 202,
+  },
 ];
 
 const invalidTestFiles = [
