@@ -41,6 +41,9 @@ export interface UseEntityUpdateResult<
   ) => Promise<TEntity>;
 }
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export const useEntityUpdate = <
   TId,
   TEntity,

@@ -6,6 +6,9 @@ import { useEntityListQuery } from "metabase/common/hooks/use-entity-list-query"
 import Groups from "metabase/entities/groups";
 import type { GroupListQuery } from "metabase-types/api";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export const useGroupListQuery = (
   props: UseEntityListQueryProps<Record<string, never>> = {},
 ): UseEntityListQueryResult<GroupListQuery> => {

@@ -9,6 +9,9 @@ import type {
   WritebackActionListQuery,
 } from "metabase-types/api";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export const useActionListQuery = (
   props: UseEntityListQueryProps<WritebackActionListQuery> = {},
 ): UseEntityListQueryResult<WritebackAction> => {

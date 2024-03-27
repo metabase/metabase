@@ -6,6 +6,9 @@ import { useEntityQuery } from "metabase/common/hooks/use-entity-query";
 import Users from "metabase/entities/users";
 import type { UserId, User } from "metabase-types/api";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export const useUserQuery = (
   props: UseEntityQueryProps<UserId, null>,
 ): UseEntityQueryResult<User> => {

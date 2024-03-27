@@ -10,6 +10,9 @@ import type {
   UserListMetadata,
 } from "metabase-types/api";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export const useUserListQuery = (
   props: UseEntityListQueryProps<UserListQuery> = {},
 ): UseEntityListQueryResult<UserListResult, UserListMetadata> => {

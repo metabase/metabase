@@ -6,6 +6,9 @@ import { useEntityListQuery } from "metabase/common/hooks/use-entity-list-query"
 import RevisionEntity from "metabase/entities/revisions";
 import type { Revision, RevisionListQuery } from "metabase-types/api";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export const useRevisionListQuery = (
   props: UseEntityListQueryProps<RevisionListQuery> = {},
 ): UseEntityListQueryResult<Revision> => {

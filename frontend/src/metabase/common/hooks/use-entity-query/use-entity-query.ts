@@ -41,6 +41,9 @@ export interface UseEntityQueryResult<TItem> {
   error: unknown;
 }
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export const useEntityQuery = <TId, TItem, TQuery = never>(
   {
     id: entityId,

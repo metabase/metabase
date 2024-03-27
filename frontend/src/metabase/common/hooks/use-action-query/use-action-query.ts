@@ -6,6 +6,9 @@ import { useEntityQuery } from "metabase/common/hooks/use-entity-query";
 import Actions from "metabase/entities/actions";
 import type { WritebackAction, WritebackActionId } from "metabase-types/api";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export const useActionQuery = (
   props: UseEntityQueryProps<WritebackActionId, unknown> = {},
 ): UseEntityQueryResult<WritebackAction> => {

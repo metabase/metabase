@@ -7,6 +7,9 @@ import type {
 } from "../use-entity-list-query";
 import { useEntityListQuery } from "../use-entity-list-query";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export const usePopularItemListQuery = (
   props: UseEntityListQueryProps = {},
 ): UseEntityListQueryResult<PopularItem> => {

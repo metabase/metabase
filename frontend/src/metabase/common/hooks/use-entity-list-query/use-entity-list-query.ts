@@ -50,6 +50,9 @@ export interface UseEntityListQueryResult<TItem, TMetadata = never> {
   error: unknown;
 }
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export const useEntityListQuery = <TItem, TQuery = never, TMetadata = never>(
   {
     query: entityQuery,

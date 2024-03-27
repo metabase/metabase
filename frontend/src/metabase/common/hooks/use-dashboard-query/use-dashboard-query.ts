@@ -6,6 +6,9 @@ import { useEntityQuery } from "metabase/common/hooks/use-entity-query";
 import Dashboards from "metabase/entities/dashboards";
 import type { DashboardId, Dashboard } from "metabase-types/api";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export const useDashboardQuery = (
   props: UseEntityQueryProps<DashboardId, null>,
 ): UseEntityQueryResult<Dashboard> => {

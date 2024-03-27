@@ -7,6 +7,9 @@ import Questions from "metabase/entities/questions";
 import type Question from "metabase-lib/v1/Question";
 import type { CardId, CardQuery } from "metabase-types/api";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export const useQuestionQuery = (
   props: UseEntityQueryProps<CardId, CardQuery>,
 ): UseEntityQueryResult<Question> => {

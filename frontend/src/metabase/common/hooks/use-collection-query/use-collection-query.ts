@@ -7,6 +7,9 @@ import type {
 } from "../use-entity-query";
 import { useEntityQuery } from "../use-entity-query";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export const useCollectionQuery = (
   props: UseEntityQueryProps<CollectionId, unknown>,
 ): UseEntityQueryResult<Collection> => {
