@@ -32,7 +32,9 @@ const BUTTON_VARIANTS = [
   "fullWidth",
 ] as const;
 
-const VARIANT_TO_CLASS_MAP: { [key: string]: string } = {
+const VARIANT_TO_CLASS_MAP: {
+  [key: string]: string;
+} = {
   small: ButtonsS.ButtonSmall,
   medium: ButtonsS.ButtonMedium,
   large: ButtonsS.ButtonLarge,
@@ -48,7 +50,9 @@ const VARIANT_TO_CLASS_MAP: { [key: string]: string } = {
   fullWidth: ButtonsS.ButtonFullWidth,
 };
 
-const BREAKPOINT_TO_STYLE_MAP: { [key: string]: string } = {
+const BREAKPOINT_TO_STYLE_MAP: {
+  [key: string]: string;
+} = {
   sm: CS.smShow,
   md: CS.mdShow,
   lg: CS.lgShow,
@@ -138,7 +142,7 @@ const BaseButton = forwardRef(function BaseButton(
             className={
               labelBreakpoint
                 ? cx(CS.hide, BREAKPOINT_TO_STYLE_MAP[labelBreakpoint])
-                : null
+                : undefined
             }
           >
             {children}
