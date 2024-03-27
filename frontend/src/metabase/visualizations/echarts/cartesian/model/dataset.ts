@@ -13,8 +13,8 @@ import type {
   SeriesExtents,
   SeriesModel,
   Datum,
-  BaseCartesianChartModel,
   XAxisModel,
+  NumericAxisScaleTransforms,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -32,6 +32,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { isMetric } from "metabase-lib/types/utils/isa";
 import { isCategoryAxis, isNumericAxis } from "./guards";
+import { signedSquareRoot } from "./transforms";
 
 /**
  * Sums two metric column values.
@@ -309,19 +310,6 @@ const getStackedAreasInterpolateTransform = (
   };
 };
 
-function signedSquareRoot(value: number) {
-  const sign = value >= 0 ? 1 : -1;
-  return sign * Math.sqrt(Math.abs(value));
-}
-
-export const applySquareRootScaling = (value: RowValue): RowValue => {
-  if (typeof value !== "number") {
-    return value;
-  }
-
-  return signedSquareRoot(value);
-};
-
 function getStackedPowerTransform(seriesDataKeys: DataKey[]): TransformFn {
   return (datum: Datum) => {
     const transformedSeriesValues: Record<DataKey, number> = {};
@@ -414,6 +402,7 @@ export const applyVisualizationSettingsDataTransformations = (
   dataset: ChartDataset,
   xAxisModel: XAxisModel,
   seriesModels: SeriesModel[],
+  yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
 ) => {
   if (
@@ -436,12 +425,9 @@ export const applyVisualizationSettingsDataTransformations = (
       condition: settings["stackable.stack_type"] === "normalized",
       fn: getNormalizedDatasetTransform(seriesDataKeys),
     },
-    {
-      condition:
-        settings["graph.y_axis.scale"] === "pow" &&
-        settings["stackable.stack_type"] == null,
-      fn: getKeyBasedDatasetTransform(seriesDataKeys, applySquareRootScaling),
-    },
+    getKeyBasedDatasetTransform(seriesDataKeys, value =>
+      yAxisScaleTransforms.toEChartsAxisValue(value),
+    ),
     {
       condition:
         settings["graph.y_axis.scale"] === "pow" &&
@@ -522,36 +508,6 @@ const sortByDimension = (
   return dataset.sort((left, right) => {
     return compareFn(left[X_AXIS_DATA_KEY], right[X_AXIS_DATA_KEY]);
   });
-};
-
-export function getNumericDisplayValueGetter(
-  chartModel: BaseCartesianChartModel,
-  settings: ComputedVisualizationSettings,
-) {
-  const isPowerScale = settings["graph.x_axis.scale"] === "pow";
-
-  return (value: number) => {
-    if (isPowerScale) {
-      return Math.pow(value, 2);
-    }
-    return value;
-  };
-}
-
-export const getMetricDisplayValueGetter = (
-  settings: ComputedVisualizationSettings,
-) => {
-  const isPowerScale = settings["graph.y_axis.scale"] === "pow";
-
-  const powerScaleGetter = (value: RowValue) => {
-    if (typeof value !== "number") {
-      return value;
-    }
-    const sign = value >= 0 ? 1 : -1;
-    return Math.pow(value, 2) * sign;
-  };
-
-  return isPowerScale ? powerScaleGetter : (value: RowValue) => value;
 };
 
 /**
