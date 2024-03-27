@@ -14,7 +14,7 @@ import type {
 } from "metabase/visualizations/types";
 
 import { isTimeSeriesAxis } from "../model/guards";
-import { getAutoAxisEnabledSetting } from "../option/axis";
+import { getAutoAxisEnabledSetting } from "../utils/axis";
 
 import type {
   ChartBoundsCoords,
