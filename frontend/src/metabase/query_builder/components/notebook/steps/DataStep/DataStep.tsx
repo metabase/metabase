@@ -87,6 +87,9 @@ export const DataStep = ({
 
           {isDataPickerOpen && (
             <DataPickerModal
+              options={{
+                hasConfirmButtons: false,
+              }}
               value={table} // TODO
               onChange={(item: NotebookDataPickerItem) => {
                 const tableId =
