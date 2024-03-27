@@ -3,7 +3,6 @@ import { normalize } from "normalizr";
 import _ from "underscore";
 
 import { databaseApi } from "metabase/api";
-import Schemas from "metabase/entities/schemas";
 import { color } from "metabase/lib/colors";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import {
@@ -102,11 +101,13 @@ const Databases = createEntity({
       ),
       withNormalize(DatabaseSchema),
     )(({ id, ...params }) => async dispatch => {
-      const idFields = await MetabaseApi.db_idfields({ dbId: id, ...params });
+      const idFields = await entityCompatibleQuery(
+        { id, ...params },
+        dispatch,
+        databaseApi.endpoints.listDatabaseIdFields,
+      );
       return { id, idFields };
     }),
-
-    fetchSchemas: ({ id }) => Schemas.actions.fetchList({ dbId: id }),
   },
 
   objectSelectors: {
