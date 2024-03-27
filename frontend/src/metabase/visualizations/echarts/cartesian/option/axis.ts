@@ -19,12 +19,11 @@ import type {
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 
-import type { YAxisScale } from "metabase-types/api";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 
 import type { ChartMeasurements } from "../chart-measurements/types";
 import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
-import { applySquareRootScaling } from "../model/dataset";
+import { getAxisTransforms } from "../model/transforms";
 import { getTicksOptions } from "./ticks";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
@@ -64,33 +63,25 @@ export const getYAxisRange = (
     return isNormalized ? NORMALIZED_RANGE : {};
   }
 
-  const scale = settings["graph.y_axis.scale"];
-  const customMin = getScaledMin(settings["graph.y_axis.min"], scale);
-  const customMax = getScaledMax(settings["graph.y_axis.max"], scale);
+  const { customMin, customMax } = getScaledMinAndMax(settings);
 
   return axisModel.extent
     ? getCustomAxisRange({ axisExtent: axisModel.extent, customMin, customMax })
     : {};
 };
 
-function getScaledMin(customMin: number | undefined, scale?: YAxisScale) {
-  if (scale === "pow") {
-    return customMin
-      ? (applySquareRootScaling(customMin) as number)
-      : undefined;
-  }
+function getScaledMinAndMax(settings: ComputedVisualizationSettings) {
+  const min = settings["graph.y_axis.min"];
+  const max = settings["graph.y_axis.max"];
 
-  return customMin;
-}
+  const scale = settings["graph.y_axis.scale"];
+  const stackType = settings["stackable.stack_type"];
+  const { toEChartsAxisValue } = getAxisTransforms(scale, stackType);
 
-function getScaledMax(customMax: number | undefined, scale?: YAxisScale) {
-  if (scale === "pow") {
-    return customMax
-      ? (applySquareRootScaling(customMax) as number)
-      : undefined;
-  }
+  const customMin = min ? (toEChartsAxisValue(min) as number) : undefined;
+  const customMax = max ? (toEChartsAxisValue(max) as number) : undefined;
 
-  return customMax;
+  return { customMin, customMax };
 }
 
 export const getAxisNameDefaultOption = (
