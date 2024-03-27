@@ -1,23 +1,26 @@
-import { useCallback, useRef, useState } from "react";
+import { skipToken } from "@reduxjs/toolkit/dist/query";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
-import type { Table } from "metabase-types/api";
+import { tableApi } from "metabase/api";
 
 import type { EntityPickerOptions, EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import type {
   NotebookDataPickerItem,
   NotebookDataPickerValueItem,
+  Value,
 } from "../types";
 
 import { TablePicker } from "./TablePicker";
 
 interface Props {
   title?: string;
-  onChange: (item: NotebookDataPickerItem) => void;
+  onChange: (item: Value) => void;
   onClose: () => void;
   options?: EntityPickerOptions;
-  value: Table | null;
+  value: Value | null;
 }
 
 export const DataPickerModal = ({
@@ -29,6 +32,21 @@ export const DataPickerModal = ({
 }: Props) => {
   const [selectedItem, setSelectedItem] =
     useState<NotebookDataPickerValueItem | null>(null);
+  const [valueId, setValueId] = useState<
+    NotebookDataPickerValueItem["id"] | undefined
+  >(value?.id);
+
+  const shouldFetchNewMetadata = valueId != null && valueId !== value?.id;
+  const { data: table } = tableApi.useFetchMetadataQuery(
+    shouldFetchNewMetadata ? { id: valueId } : skipToken,
+  );
+
+  useEffect(() => {
+    if (table) {
+      onChange(table);
+      onClose();
+    }
+  }, [table, onChange, onClose]);
 
   const pickerRef = useRef<{
     onFolderSelect: (item: { folder: NotebookDataPickerItem }) => void;
@@ -39,18 +57,11 @@ export const DataPickerModal = ({
       if (options.hasConfirmButtons) {
         setSelectedItem(item);
       } else {
-        onChange(item);
+        setValueId(item.id);
       }
     },
-    [onChange, options],
+    [options],
   );
-
-  const handleConfirm = () => {
-    if (selectedItem) {
-      onChange(selectedItem);
-      onClose();
-    }
-  };
 
   const tabs: [
     EntityTab<NotebookDataPickerValueItem["model"]>,
@@ -105,7 +116,7 @@ export const DataPickerModal = ({
       tabs={tabs}
       title={title}
       onClose={onClose}
-      onConfirm={handleConfirm}
+      onConfirm={_.noop}
       onItemSelect={handleItemSelect}
     />
   );

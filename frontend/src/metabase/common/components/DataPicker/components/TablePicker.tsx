@@ -12,7 +12,6 @@ import type {
   DatabaseId,
   SchemaId,
   SchemaName,
-  Table,
   TableId,
 } from "metabase-types/api";
 
@@ -25,6 +24,7 @@ import type {
   NotebookDataPickerModel,
   NotebookDataPickerValueItem,
   PathEntry,
+  Value,
 } from "../types";
 import { generateKey, isFolder } from "../utils";
 
@@ -34,7 +34,7 @@ import { DataPickerListResolver } from "./DataPickerListResolver";
 const defaultOptions: EntityPickerModalOptions = {};
 
 interface Props {
-  value: Table | null;
+  value: Value | null;
   options?: EntityPickerModalOptions;
   onItemSelect: (item: NotebookDataPickerValueItem) => void;
 }

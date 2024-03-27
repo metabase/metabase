@@ -45,6 +45,7 @@ export const tableApi = Api.injectEndpoints({
 });
 
 export const {
+  useFetchMetadataQuery,
   useRescanTableFieldValuesMutation,
   useDiscardTableFieldValuesMutation,
 } = tableApi;

@@ -52,6 +52,12 @@ export type NotebookDataPickerFolderItem =
   | DatabaseItem
   | SchemaItem;
 
+export type Value = {
+  id: Table["id"];
+  db_id: Table["db_id"];
+  schema?: Table["schema"];
+};
+
 export type TablePickerFolderItem = DatabaseItem | SchemaItem;
 
 export type NotebookDataPickerValueItem = TableItem | QuestionItem | ModelItem;
@@ -62,7 +68,7 @@ export type NotebookDataPickerItem =
 
 export type NotebookDataPickerModel = NotebookDataPickerItem["model"];
 
-export type Value = NotebookDataPickerValueItem["id"];
+// export type Value = NotebookDataPickerValueItem["id"];
 
 export type PathEntry<Model extends NotebookDataPickerFolderItem["model"]> =
   PickerState<Model, NotebookDataPickerItem, NotebookDataPickerQuery<Model>>;
