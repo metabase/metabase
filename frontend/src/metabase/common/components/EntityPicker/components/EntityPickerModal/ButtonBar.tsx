@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import { t } from "ttag";
 
+import Collections from "metabase/entities/collections";
 import { color } from "metabase/lib/colors";
+import { useSelector } from "metabase/lib/redux";
 import { Button, Flex } from "metabase/ui";
 
 export const ButtonBar = ({
@@ -31,6 +33,10 @@ export const ButtonBar = ({
     };
   }, [canConfirm, onConfirm]);
 
+  const err = useSelector(Collections.selectors.getError);
+
+  console.log('err selector', err)
+
   return (
     <Flex
       justify="space-between"
@@ -47,7 +53,13 @@ export const ButtonBar = ({
         <Button
           ml={1}
           variant="filled"
-          onClick={onConfirm}
+          onClick={() => {
+            try {
+              onConfirm();
+            } catch(e) {
+              console.error('buttonbar', e)
+            }
+          }}
           disabled={!canConfirm}
         >
           {confirmButtonText ?? t`Select`}
