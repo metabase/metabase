@@ -767,7 +767,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    cy.get(".CardVisualization").get("path.cursor-pointer").first().click();
+    cy.findAllByTestId("choropleth-feature").first().click();
 
     popover().within(() => {
       cy.findByText("See these People").should("be.visible");
