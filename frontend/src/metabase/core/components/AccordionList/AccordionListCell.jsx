@@ -68,7 +68,6 @@ export const AccordionListCell = ({
             CS.flex,
             CS.alignCenter,
             CS.hoverParent,
-            "hover--opacity",
             {
               "List-section-header--cursor": hasCursor,
               [CS.cursorPointer]: canToggleSections,

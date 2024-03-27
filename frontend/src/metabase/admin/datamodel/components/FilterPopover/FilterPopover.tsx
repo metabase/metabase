@@ -238,7 +238,6 @@ export function FilterPopover({
                 CS.flex,
                 CS.alignCenter,
                 CS.hoverParent,
-                "hover--opacity",
                 CS.cursorPointer,
               )}
             >
