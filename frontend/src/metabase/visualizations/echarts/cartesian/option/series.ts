@@ -82,22 +82,21 @@ export function getDataLabelFormatter(
 ) {
   const isCompact = shouldRenderCompact({
     dataset,
+    getValue: (datum: Datum) => datum[labelDataKey],
     formattingOptions,
-    labelDataKey,
     renderingContext,
     seriesModel,
     settings,
   });
 
-  const valueFormatter = (value: unknown) =>
-    renderingContext.formatValue(value, {
+  const valueGetter = getMetricDisplayValueGetter(settings);
+  const valueFormatter = (value: RowValue) =>
+    renderingContext.formatValue(valueGetter(value), {
       ...(settings.column?.(seriesModel.column) ?? {}),
       jsx: false,
       compact: isCompact,
       ...formattingOptions,
     });
-
-  const valueGetter = getMetricDisplayValueGetter(settings);
 
   return (params: CallbackDataParams) => {
     const value = (params.data as Datum)[labelDataKey];
@@ -105,21 +104,21 @@ export function getDataLabelFormatter(
     if (value == null) {
       return " ";
     }
-    return valueFormatter(valueGetter(value));
+    return valueFormatter(value);
   };
 }
 
 function shouldRenderCompact({
   dataset,
+  getValue,
   formattingOptions = {},
-  labelDataKey,
   renderingContext,
   seriesModel,
   settings,
 }: {
   dataset: ChartDataset;
-  formattingOptions: OptionsType;
-  labelDataKey: DataKey;
+  getValue: (datum: Datum) => RowValue;
+  formattingOptions?: OptionsType;
   renderingContext: RenderingContext;
   seriesModel: SeriesModel;
   settings: ComputedVisualizationSettings;
@@ -133,7 +132,7 @@ function shouldRenderCompact({
   // for "auto" we use compact if it shortens avg label length by >3 chars
   const getAvgLength = (compact: boolean) => {
     const lengths = dataset.map(datum => {
-      const value = datum[labelDataKey];
+      const value = getValue(datum);
       return renderingContext.formatValue(value, {
         ...(settings.column?.(seriesModel.column) ?? {}),
         jsx: false,
@@ -434,35 +433,14 @@ const generateStackOption = (
       ...seriesOptionFromStack.label,
       position: signKey === POSITIVE_STACK_TOTAL_DATA_KEY ? "top" : "bottom",
       show: true,
-      formatter: (
-        params: LabelLayoutOptionCallbackParams & { data: Datum },
-      ) => {
-        let stackValue: number | null = null;
-        stackDataKeys.forEach(stackDataKeys => {
-          const seriesValue = params.data[stackDataKeys];
-          if (
-            typeof seriesValue === "number" &&
-            ((signKey === POSITIVE_STACK_TOTAL_DATA_KEY && seriesValue > 0) ||
-              (signKey === NEGATIVE_STACK_TOTAL_DATA_KEY && seriesValue < 0))
-          ) {
-            stackValue = (stackValue ?? 0) + seriesValue;
-          }
-        });
-
-        if (stackValue === null) {
-          return " ";
-        }
-
-        const valueGetter = getMetricDisplayValueGetter(settings);
-        const valueFormatter = (value: RowValue) =>
-          renderingContext.formatValue(valueGetter(value), {
-            ...(settings.column?.(seriesModel.column) ?? {}),
-            jsx: false,
-            compact: settings["graph.label_value_formatting"] === "compact",
-          });
-
-        return valueFormatter(stackValue);
-      },
+      formatter: getStackedDataLabelFormatter(
+        chartModel.transformedDataset,
+        seriesModel,
+        signKey,
+        stackDataKeys,
+        settings,
+        renderingContext,
+      ),
     },
     labelLayout: {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
@@ -475,6 +453,62 @@ const generateStackOption = (
     },
   };
 };
+
+function getStackedDataLabelFormatter(
+  dataset: ChartDataset,
+  seriesModel: SeriesModel,
+  signKey: StackTotalDataKey,
+  stackDataKeys: DataKey[],
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+) {
+  const isCompact = shouldRenderCompact({
+    dataset,
+    getValue: (datum: Datum) =>
+      getStackTotalValue(datum, stackDataKeys, signKey),
+    renderingContext,
+    seriesModel,
+    settings,
+  });
+
+  return (params: LabelLayoutOptionCallbackParams & { data: Datum }) => {
+    const stackValue = getStackTotalValue(params.data, stackDataKeys, signKey);
+
+    if (stackValue === null) {
+      return " ";
+    }
+
+    const valueGetter = getMetricDisplayValueGetter(settings);
+    const valueFormatter = (value: RowValue) =>
+      renderingContext.formatValue(valueGetter(value), {
+        ...(settings.column?.(seriesModel.column) ?? {}),
+        jsx: false,
+        compact: isCompact,
+      });
+
+    return valueFormatter(stackValue);
+  };
+}
+
+function getStackTotalValue(
+  data: Datum,
+  stackDataKeys: DataKey[],
+  signKey: StackTotalDataKey,
+): number | null {
+  let stackValue: number | null = null;
+  stackDataKeys.forEach(stackDataKey => {
+    const seriesValue = data[stackDataKey];
+    if (
+      typeof seriesValue === "number" &&
+      ((signKey === POSITIVE_STACK_TOTAL_DATA_KEY && seriesValue > 0) ||
+        (signKey === NEGATIVE_STACK_TOTAL_DATA_KEY && seriesValue < 0))
+    ) {
+      stackValue = (stackValue ?? 0) + seriesValue;
+    }
+  });
+
+  return stackValue;
+}
 
 export const getStackTotalsSeries = (
   chartModel: CartesianChartModel,
