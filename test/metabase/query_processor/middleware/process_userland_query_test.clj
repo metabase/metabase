@@ -12,6 +12,7 @@
     :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [methodical.core :as methodical]))
@@ -22,22 +23,23 @@
   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
     (let [original-hash (qp.util/query-hash query)
           result        (promise)]
-      (with-redefs [process-userland-query/save-query-execution!* (fn [query-execution]
-                                                                    (when-let [^bytes qe-hash (:hash query-execution)]
-                                                                      (deliver
-                                                                       result
-                                                                       (if (java.util.Arrays/equals qe-hash original-hash)
-                                                                         query-execution
-                                                                         ;; if you're seeing this there is probably some
-                                                                         ;; bug that is causing query hashes to get
-                                                                         ;; calculated in an inconsistent manner; check
-                                                                         ;; `:query` vs `:query-execution-query`
-                                                                         (ex-info (format "%s: Query hashes are not equal!" `do-with-query-execution)
-                                                                                  {:query                 query
-                                                                                   :original-hash         (some-> original-hash codecs/bytes->hex)
-                                                                                   :query-execution       query-execution
-                                                                                   :query-execution-hash  (some-> qe-hash codecs/bytes->hex)
-                                                                                   :query-execution-query (:json_query query-execution)})))))]
+      (with-redefs [process-userland-query/save-execution-metadata!*
+                    (fn [query-execution _field-usages]
+                      (when-let [^bytes qe-hash (:hash query-execution)]
+                        (deliver
+                         result
+                         (if (java.util.Arrays/equals qe-hash original-hash)
+                           query-execution
+                           ;; if you're seeing this there is probably some
+                           ;; bug that is causing query hashes to get
+                           ;; calculated in an inconsistent manner; check
+                           ;; `:query` vs `:query-execution-query`
+                           (ex-info (format "%s: Query hashes are not equal!" `do-with-query-execution)
+                                    {:query                 query
+                                     :original-hash         (some-> original-hash codecs/bytes->hex)
+                                     :query-execution       query-execution
+                                     :query-execution-hash  (some-> qe-hash codecs/bytes->hex)
+                                     :query-execution-query (:json_query query-execution)})))))]
         (run
          (fn qe-result* []
            (let [qe (deref result 1000 ::timed-out)]
@@ -60,7 +62,8 @@
                                                       (respond metadata rows))]
                       (qp.pipeline/*run* query rff))))]
     (binding [driver/*driver* :h2]
-      (qp query qp.reducible/default-rff))))
+      (qp.store/with-metadata-provider (mt/id)
+        (qp query qp.reducible/default-rff)))))
 
 (deftest success-test
   (let [query {:type ::success-test}]
@@ -140,8 +143,8 @@
 
 (deftest cancel-test
   (let [saved-query-execution? (atom false)]
-    (with-redefs [process-userland-query/save-query-execution! (fn [info]
-                                                                 (reset! saved-query-execution? info))]
+    (with-redefs [process-userland-query/save-execution-metadata! (fn [info _field-usages]
+                                                                    (reset! saved-query-execution? info))]
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
         (let [status (atom ::not-started)]
           (binding [qp.pipeline/*canceled-chan* canceled-chan
@@ -168,3 +171,29 @@
                 "val")))
         (testing "No QueryExecution should get saved when a query is canceled"
           (is (not @saved-query-execution?)))))))
+
+(deftest save-field-usage-test
+  (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query orders
+                                                                 {:filter      [:> $orders.product_id 1]
+                                                                  :breakout    [!month.orders.created_at]
+                                                                  :aggregation [:sum $orders.total]
+                                                                  :expression  {"exp" [:+ $orders.tax 1]}})}]
+    (let [field-usages (atom nil)]
+      (with-redefs [process-userland-query/save-execution-metadata! (fn [_info field-usages']
+                                                                      (reset! field-usages field-usages'))]
+        (process-userland-query (mt/mbql-query
+                                 nil
+                                 {:source-table (format "card__%d" (:id card))
+                                  :filter       [:time-interval $orders.created_at :current :day]}))
+        (is (= #{{:aggregation_function :sum
+                  :field_id             (mt/id :orders :total)
+                  :used_in              :aggregation}
+                 {:breakout_param {:temporal-unit :month}
+                  :field_id       (mt/id :orders :created_at)
+                  :used_in        :breakout}
+                 {:field_id      (mt/id :orders :product_id)
+                  :filter_clause [:> {} [:field {} (mt/id :orders :product_id)] 1]
+                  :used_in       :filter}
+                 {:field_id      (mt/id :orders :created_at)
+                  :filter_clause [:time-interval {} [:field {} (mt/id :orders :created_at)] :current :day]
+                  :used_in       :filter}} (set @field-usages)))))))

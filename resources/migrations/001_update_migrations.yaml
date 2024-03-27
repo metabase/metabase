@@ -6064,6 +6064,71 @@ databaseChangeLog:
             columnNames: model, model_id
 
   - changeSet:
+      id: v50.2024-03-22T00:38:28
+      author: qnkhuat
+      comment: Add field_usage table
+      changes:
+        - createTable:
+            tableName: field_usage
+            remarks: Used to store field usage during query execution
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: field_id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
+                    foreignKeyName: fk_field_usage_field_id_metabase_field_id
+              - column:
+                  name: query_execution_id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    referencedTableName: query_execution
+                    referencedColumnNames: id
+                    foreignKeyName: fk_field_usage_query_execution_id
+              - column:
+                  name: used_in
+                  type: varchar(25)
+              - column:
+                  name: filter_clause
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: aggregation_function
+                  type: varchar(25)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: breakout_param
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: expression_clause
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: timestamp
+                  type: ${timestamp_type}
+                  remarks: The time an event was recorded
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
       id: v50.2024-03-21T17:41:00
       author: qnkhuat
       comment: Add metabase_table.estimated_row_count
@@ -6075,6 +6140,19 @@ databaseChangeLog:
                   name: estimated_row_count
                   type: bigint
                   remarks: The estimated row count
+
+  - changeSet:
+      id: v50.2024-03-22T00:39:28
+      author: qnkhuat
+      comment: Add field_usage table
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: field_usage
+            indexName: idx_field_usage_field_id
+            columns:
+              column:
+                name: field_id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
