@@ -413,9 +413,7 @@
             [ordered-cols output-order] (qp.streaming/order-cols cols viz-settings)
             viz-settings'               (assoc viz-settings :output-order output-order)]
         (qp.si/begin! w
-                      (-> results
-                          (assoc :format-rows? )
-                          (assoc-in [:data :ordered-cols] ordered-cols))
+                      (assoc-in results [:data :ordered-cols] ordered-cols)
                       viz-settings')
         (dorun
          (map-indexed
