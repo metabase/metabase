@@ -44,8 +44,6 @@ export const NotebookContainer = ({
     <Flex
       className={cx(NC.main)}
       bg="white"
-      pos="absolute"
-      inset={0}
       opacity={isOpen ? 1 : 0}
       style={{
         transform: transformStyle,
