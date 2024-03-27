@@ -45,7 +45,7 @@ describe("scenarios > models query editor", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Row limit").click();
-      cy.findByPlaceholderText("Enter a limit").type("2");
+      cy.findByPlaceholderText("Enter a limit").type("2").blur();
 
       cy.findByTestId("run-button").click();
       cy.wait("@dataset");
@@ -81,7 +81,7 @@ describe("scenarios > models query editor", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Row limit").click();
-      cy.findByPlaceholderText("Enter a limit").type("2");
+      cy.findByPlaceholderText("Enter a limit").type("2").blur();
 
       cy.findByTestId("run-button").click();
       cy.wait("@dataset");

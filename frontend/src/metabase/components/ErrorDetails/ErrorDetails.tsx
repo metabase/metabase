@@ -2,6 +2,8 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
+
 import { ErrorBox } from "./ErrorBox";
 import type { ErrorDetailsProps } from "./types";
 
@@ -24,7 +26,7 @@ export default function ErrorDetails({
   return (
     <div className={className}>
       <div className={centered ? "text-centered" : "text-left"}>
-        <a onClick={toggleShowError} className="link cursor-pointer">
+        <a onClick={toggleShowError} className={cx(CS.link)}>
           {showError ? t`Hide error details` : t`Show error details`}
         </a>
       </div>

@@ -238,7 +238,7 @@ describe("FileUploadStatus", () => {
       await screen.findByText("Select upload destination"),
     ).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole("button", { name: "Create" }));
+    userEvent.click(screen.getByRole("button", { name: "Create model" }));
 
     act(() => {
       jest.advanceTimersByTime(500);
@@ -273,7 +273,9 @@ describe("FileUploadStatus", () => {
     ).toBeInTheDocument();
 
     userEvent.click(screen.getByText("Append to a model"));
-    const submitButton = await screen.findByRole("button", { name: "Append" });
+    const submitButton = await screen.findByRole("button", {
+      name: "Append to model",
+    });
 
     // only appendable model should be pre-selected
     await screen.findByText("my uploaded model");
@@ -314,7 +316,9 @@ describe("FileUploadStatus", () => {
     ).toBeInTheDocument();
 
     userEvent.click(screen.getByText("Append to a model"));
-    const submitButton = await screen.findByRole("button", { name: "Append" });
+    const submitButton = await screen.findByRole("button", {
+      name: "Append to model",
+    });
 
     userEvent.click(await screen.findByPlaceholderText("Select a model"));
     userEvent.click(
@@ -341,6 +345,55 @@ describe("FileUploadStatus", () => {
     expect(
       await screen.findByRole("link", { name: "Start exploring" }),
     ).toHaveAttribute("href", "/model/3");
+    await screen.findByText("Data added to Fancy Table");
+  });
+
+  it("Should allow replacing data in a model", async () => {
+    jest.useFakeTimers({ advanceTimers: true });
+    fetchMock.post("path:/api/table/123/replace-csv", "3", { delay: 1000 });
+
+    await setupCollectionContent({ collectionId: thirdCollection.id });
+
+    userEvent.upload(
+      screen.getByTestId("upload-input"),
+      new File(["foo, bar"], "test.csv", { type: "text/csv" }),
+    );
+
+    expect(
+      await screen.findByText("Select upload destination"),
+    ).toBeInTheDocument();
+
+    userEvent.click(screen.getByText("Replace data in a model"));
+    const submitButton = await screen.findByRole("button", {
+      name: "Replace model data",
+    });
+
+    userEvent.click(await screen.findByPlaceholderText("Select a model"));
+    userEvent.click(
+      await within(await screen.findByRole("listbox")).findByText(
+        "my uploaded model",
+      ),
+    );
+
+    await waitFor(() => expect(submitButton).toBeEnabled());
+    userEvent.click(submitButton);
+
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(
+      await screen.findByText(/Uploading data to Fancy Table/i),
+    ).toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(
+      await screen.findByRole("link", { name: "Start exploring" }),
+    ).toHaveAttribute("href", "/model/3");
+    await screen.findByText("Data replaced in Fancy Table");
   });
 
   it("Should show an error message on error", async () => {

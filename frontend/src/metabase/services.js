@@ -319,13 +319,8 @@ export const TimelineEventApi = {
 };
 
 export const MetabaseApi = {
-  db_list: GET("/api/database", res => res["data"]),
-  db_create: POST("/api/database"),
   db_validate: POST("/api/database/validate"),
   db_add_sample_database: POST("/api/database/sample_database"),
-  db_get: GET("/api/database/:dbId"),
-  db_update: PUT("/api/database/:id"),
-  db_delete: DELETE("/api/database/:dbId"),
   db_metadata: GET("/api/database/:dbId/metadata"),
   db_schemas: GET("/api/database/:dbId/schemas"),
   db_syncable_schemas: GET("/api/database/:dbId/syncable_schemas"),
@@ -356,6 +351,10 @@ export const MetabaseApi = {
     injectTableMetadata,
   ),
   tableAppendCSV: POST("/api/table/:tableId/append-csv", {
+    formData: true,
+    fetch: true,
+  }),
+  tableReplaceCSV: POST("/api/table/:tableId/replace-csv", {
     formData: true,
     fetch: true,
   }),
@@ -443,7 +442,6 @@ export const SessionApi = {
   properties: GET("/api/session/properties"),
   forgot_password: POST("/api/session/forgot_password"),
   reset_password: POST("/api/session/reset_password"),
-  password_reset_token_valid: GET("/api/session/password_reset_token_valid"),
   unsubscribe: POST("/api/session/pulse/unsubscribe"),
   undo_unsubscribe: POST("/api/session/pulse/unsubscribe/undo"),
 };

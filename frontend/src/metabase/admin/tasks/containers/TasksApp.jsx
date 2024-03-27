@@ -91,7 +91,7 @@ class TasksAppInner extends Component {
                   <td>{task.duration}</td>
                   <td>
                     <Link
-                      className="link text-bold"
+                      className={cx(CS.link, "text-bold")}
                       to={`/admin/troubleshooting/tasks/${task.id}`}
                     >{t`View`}</Link>
                   </td>
