@@ -23,6 +23,7 @@ import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants
 
 import type { ChartMeasurements } from "../chart-measurements/types";
 import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
+import { getAutoAxisEnabledSetting } from "../utils/axis";
 import { getTicksOptions } from "./ticks";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
@@ -292,13 +293,24 @@ export const buildTimeSeriesDimensionAxis = (
 
 export const buildCategoricalDimensionAxis = (
   chartModel: BaseCartesianChartModel,
-  settings: ComputedVisualizationSettings,
+  originalSettings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
 ): CategoryAxisBaseOption => {
   const {
     xAxisModel: { formatter },
   } = chartModel;
+
+  const autoAxisEnabled = getAutoAxisEnabledSetting(
+    chartMeasurements.ticksDimensions.minXTickSpacing,
+    chartMeasurements.ticksDimensions.maxXTickWidth,
+    chartMeasurements.outerHeight,
+    originalSettings,
+  );
+  const settings: ComputedVisualizationSettings = {
+    ...originalSettings,
+    "graph.x_axis.axis_enabled": autoAxisEnabled,
+  };
 
   return {
     ...getCommonDimensionAxisOptions(
@@ -311,6 +323,7 @@ export const buildCategoricalDimensionAxis = (
       margin: CHART_STYLE.axisTicksMarginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
       ...getHistogramTicksOptions(chartModel, settings, chartMeasurements),
+      interval: () => true,
       formatter: (value: string) => {
         return ` ${formatter(value)} `; // spaces force padding between ticks
       },
