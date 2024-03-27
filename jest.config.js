@@ -22,10 +22,7 @@ const config = {
   testPathIgnorePatterns: [
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",
   ],
-  testMatch: [
-    "<rootDir>/**/*.unit.spec.js",
-    "<rootDir>/**/*.unit.spec.{js,jsx,ts,tsx}",
-  ],
+  testMatch: ["<rootDir>/**/*.unit.spec.{js,jsx,ts,tsx}"],
   modulePaths: [
     "<rootDir>/frontend/test",
     "<rootDir>/frontend/src",
@@ -45,7 +42,7 @@ const config = {
     ace: {},
     ga: {},
   },
-  reporters: ['default', 'jest-junit'],
+  reporters: ["default", "jest-junit"],
   coverageDirectory: "./coverage",
   coverageReporters: ["html", "lcov"],
   collectCoverageFrom: [
