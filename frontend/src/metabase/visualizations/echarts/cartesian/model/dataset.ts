@@ -13,7 +13,6 @@ import type {
   SeriesExtents,
   SeriesModel,
   Datum,
-  BaseCartesianChartModel,
   XAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
@@ -523,20 +522,6 @@ const sortByDimension = (
     return compareFn(left[X_AXIS_DATA_KEY], right[X_AXIS_DATA_KEY]);
   });
 };
-
-export function getNumericDisplayValueGetter(
-  chartModel: BaseCartesianChartModel,
-  settings: ComputedVisualizationSettings,
-) {
-  const isPowerScale = settings["graph.x_axis.scale"] === "pow";
-
-  return (value: number) => {
-    if (isPowerScale) {
-      return Math.pow(value, 2);
-    }
-    return value;
-  };
-}
 
 export const getMetricDisplayValueGetter = (
   settings: ComputedVisualizationSettings,
