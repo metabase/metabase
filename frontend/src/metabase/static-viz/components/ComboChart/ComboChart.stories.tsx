@@ -42,6 +42,20 @@ LineLinearXScaleUnsorted.args = {
   renderingContext,
 };
 
+export const LineLogYScale = Template.bind({});
+LineLogYScale.args = {
+  rawSeries: data.lineLogYScale as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const LineLogYScaleNegative = Template.bind({});
+LineLogYScaleNegative.args = {
+  rawSeries: data.lineLogYScaleNegative as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const LineShowDotsAuto = Template.bind({});
 LineShowDotsAuto.args = {
   rawSeries: data.lineShowDotsAuto as any,
@@ -173,7 +187,7 @@ BarAutoFormattingCompact.args = {
   rawSeries: data.barAutoFormattingCompact as any,
   dashcardSettings: {},
   renderingContext,
-} as any;
+};
 
 export const BarAutoFormattingFull = Template.bind({});
 BarAutoFormattingFull.args = {
@@ -182,6 +196,20 @@ BarAutoFormattingFull.args = {
   renderingContext,
   getColor: color,
 } as any;
+
+export const BarLogYScaleStacked = Template.bind({});
+BarLogYScaleStacked.args = {
+  rawSeries: data.barLogYScaleStacked as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarLogYScaleStackedNegative = Template.bind({});
+BarLogYScaleStackedNegative.args = {
+  rawSeries: data.barLogYScaleStackedNegative as any,
+  dashcardSettings: {},
+  renderingContext,
+};
 
 export const BarStackedNormalizedEmptySpace37880 = Template.bind({});
 BarStackedNormalizedEmptySpace37880.args = {

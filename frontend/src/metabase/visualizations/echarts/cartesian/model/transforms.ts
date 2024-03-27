@@ -10,7 +10,11 @@ export function signedSquareRoot(value: number) {
   return getSign(value) * Math.sqrt(Math.abs(value));
 }
 
-export function getYAxisScaleTransforms(
+export function signedLog(value: number) {
+  return getSign(value) * Math.log10(Math.abs(value));
+}
+
+export function getAxisTransforms(
   scale: NumericScale | undefined,
   stackType?: StackType,
 ): NumericAxisScaleTransforms {
@@ -31,7 +35,23 @@ export function getYAxisScaleTransforms(
       },
     };
   }
-  // TODO re-implement log y-axis scale
+  if (scale === "log") {
+    return {
+      toEChartsAxisValue: value => {
+        if (!isNumber(value)) {
+          return null;
+        }
+        // Transformation for stacked charts occurs in model/dataset.ts
+        if (stackType != null) {
+          return value;
+        }
+        return signedLog(value);
+      },
+      fromEChartsAxisValue: value => {
+        return Math.pow(10, Math.abs(value)) * getSign(value);
+      },
+    };
+  }
 
   return {
     toEChartsAxisValue: value => {

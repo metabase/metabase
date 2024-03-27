@@ -331,11 +331,9 @@ export const buildMetricAxis = (
   const nameGap = getAxisNameGap(ticksWidth);
 
   const range = getYAxisRange(axisModel, settings);
-  // TODO remove this line once we migrate log scale to axisModel transforms
-  const axisType = settings["graph.y_axis.scale"] === "log" ? "log" : "value";
 
   return {
-    type: axisType,
+    type: "value",
     ...range,
     ...getAxisNameDefaultOption(
       renderingContext,

@@ -16,7 +16,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import { getYAxisModel } from "metabase/visualizations/echarts/cartesian/model/axis";
 import { WATERFALL_END_KEY, WATERFALL_TOTAL_KEY } from "../constants";
-import { getYAxisScaleTransforms } from "../../model/transforms";
+import { getAxisTransforms } from "../../model/transforms";
 import {
   extendOriginalDatasetWithTotalDatum,
   getWaterfallDataset,
@@ -54,7 +54,7 @@ export const getWaterfallChartModel = (
     settings,
     renderingContext,
   );
-  const yAxisScaleTransforms = getYAxisScaleTransforms(
+  const yAxisScaleTransforms = getAxisTransforms(
     settings["graph.y_axis.scale"],
   );
 

@@ -8,7 +8,10 @@ import type {
   WaterfallXAxisModel,
   NumericAxisScaleTransforms,
 } from "metabase/visualizations/echarts/cartesian/model/types";
-import { replaceValues } from "metabase/visualizations/echarts/cartesian/model/dataset";
+import {
+  replaceValues,
+  replaceZeroesForLogScale,
+} from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
   WATERFALL_DATA_KEYS,
   WATERFALL_END_KEY,
@@ -16,42 +19,8 @@ import {
   WATERFALL_TOTAL_KEY,
   WATERFALL_VALUE_KEY,
 } from "metabase/visualizations/echarts/cartesian/waterfall/constants";
-import { isNotNull } from "metabase/lib/types";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
-
-const replaceZerosForLogScale = (dataset: ChartDataset): ChartDataset => {
-  let hasZeros = false;
-  let minNonZeroValue = Infinity;
-
-  dataset.forEach(datum => {
-    const datumNumericValues = [
-      getNumberOr(datum[WATERFALL_START_KEY], null),
-      getNumberOr(datum[WATERFALL_END_KEY], null),
-    ].filter(isNotNull);
-
-    hasZeros = datumNumericValues.includes(0);
-
-    minNonZeroValue = Math.min(
-      minNonZeroValue,
-      ...datumNumericValues.filter(number => number !== 0),
-    );
-  });
-
-  if (!hasZeros && minNonZeroValue > 0) {
-    return dataset;
-  }
-
-  if (minNonZeroValue < 0) {
-    throw Error(t`X-axis must not cross 0 when using log scale.`);
-  }
-
-  const zeroReplacementValue = minNonZeroValue > 1 ? 1 : minNonZeroValue;
-
-  return replaceValues(dataset, (dataKey: DataKey, value: RowValue) =>
-    dataKey !== X_AXIS_DATA_KEY && value === 0 ? zeroReplacementValue : value,
-  );
-};
 
 export const getWaterfallDataset = (
   dataset: ChartDataset,
@@ -100,20 +69,20 @@ export const getWaterfallDataset = (
     });
   }
 
-  if (settings["graph.y_axis.scale"] === "pow") {
-    transformedDataset = replaceValues(
+  if (settings["graph.y_axis.scale"] === "log") {
+    transformedDataset = replaceZeroesForLogScale(
       transformedDataset,
-      (dataKey: DataKey, value: RowValue) =>
-        WATERFALL_DATA_KEYS.includes(dataKey)
-          ? // TODO use this more generally for both pow and log scales
-            yAxisScaleTransforms.toEChartsAxisValue(value)
-          : value,
+      WATERFALL_DATA_KEYS,
     );
-  } else if (settings["graph.y_axis.scale"] === "log") {
-    transformedDataset = replaceZerosForLogScale(transformedDataset);
   }
 
-  return transformedDataset;
+  return replaceValues(
+    transformedDataset,
+    (dataKey: DataKey, value: RowValue) =>
+      WATERFALL_DATA_KEYS.includes(dataKey)
+        ? yAxisScaleTransforms.toEChartsAxisValue(value)
+        : value,
+  );
 };
 
 export const extendOriginalDatasetWithTotalDatum = (
