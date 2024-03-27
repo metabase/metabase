@@ -16,7 +16,7 @@ What you can do with alerts and dashboard subscriptions depends on whether you'r
 
 ### All Users group notification permissions
 
-Everyone's in the All users group. Which means that everyone can:
+Everyone's in the All Users group. Which means that everyone can:
 
 - Create [alerts](../questions/sharing/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md#setting-up-a-dashboard-subscription).
 - Add new recipients to dashboard subscriptions that they created. Non-admins can only add themselves to alerts.
@@ -26,7 +26,7 @@ When a notification creator adds new recipients to an alert or subscription, Met
 
 ### Sandboxed accounts notification permissions
 
-Same as everyone in the All users group, but with a special case: **people in sandboxed groups will only see themselves in the list of recipients** when creating an alert or subscription.
+Same as everyone in the All Users group, but with a special case: **people in sandboxed groups will only see themselves in the list of recipients** when creating an alert or subscription.
 
 ### Administrators group notification permissions
 
