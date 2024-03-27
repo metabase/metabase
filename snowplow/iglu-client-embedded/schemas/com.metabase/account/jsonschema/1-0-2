@@ -5,7 +5,7 @@
     "vendor": "com.metabase",
     "name": "account",
     "format": "jsonschema",
-    "version": "1-0-1"
+    "version": "1-0-2"
   },
   "type": "object",
   "properties": {
@@ -15,7 +15,6 @@
       "enum": [
         "new_user_created",
         "new_instance_created",
-        "db_connection_banner_click"
       ],
       "maxLength": 1024
     },
