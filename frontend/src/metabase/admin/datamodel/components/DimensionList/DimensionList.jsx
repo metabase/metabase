@@ -129,7 +129,7 @@ export class DimensionList extends Component {
           >
             {({ onClose }) => (
               <DimensionPicker
-                className="scroll-y"
+                className={CS.scrollY}
                 dimension={sectionDimension}
                 dimensions={subDimensions}
                 onChangeDimension={dimension => {
