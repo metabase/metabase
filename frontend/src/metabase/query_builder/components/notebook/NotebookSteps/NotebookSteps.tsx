@@ -33,7 +33,7 @@ function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
   return {};
 }
 
-function NotebookSteps({
+export function NotebookSteps({
   question,
   sourceQuestion,
   reportTimezone,
@@ -114,6 +114,3 @@ function NotebookSteps({
     </>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default NotebookSteps;

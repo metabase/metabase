@@ -15,7 +15,7 @@ import {
 import type { State } from "metabase-types/store";
 
 import N from "./Notebook.module.css";
-import NotebookSteps from "./NotebookSteps";
+import { NotebookSteps } from "./NotebookSteps";
 
 interface NotebookOwnProps {
   className?: string;
