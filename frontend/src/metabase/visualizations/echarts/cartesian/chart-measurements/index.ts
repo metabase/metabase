@@ -14,6 +14,7 @@ import type {
 } from "metabase/visualizations/types";
 
 import { isTimeSeriesAxis } from "../model/guards";
+import { getAutoAxisEnabledSetting } from "../option/axis";
 
 import type {
   ChartBoundsCoords,
@@ -121,45 +122,36 @@ const getXAxisTicksWidth = (
 };
 
 const getXAxisTicksHeight = (
-  dataset: ChartDataset,
-  settings: ComputedVisualizationSettings,
-  formatter: AxisFormatter,
-  renderingContext: RenderingContext,
+  maxXTickWidth: number,
+  axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
 ) => {
-  const xAxisDisplay = settings["graph.x_axis.axis_enabled"];
-
-  if (!xAxisDisplay) {
+  if (!axisEnabledSetting) {
     return 0;
   }
 
-  if (xAxisDisplay === true || xAxisDisplay === "compact") {
+  if (axisEnabledSetting === true || axisEnabledSetting === "compact") {
     return CHART_STYLE.axisTicks.size;
   }
 
-  const tickWidths = dataset.map(datum => {
-    return renderingContext.measureText(formatter(datum[X_AXIS_DATA_KEY]), {
-      ...CHART_STYLE.axisTicks,
-      family: renderingContext.fontFamily,
-    });
-  });
-
-  const maxTickWidth = Math.max(...tickWidths);
-
-  if (xAxisDisplay === "rotate-90") {
-    return maxTickWidth;
+  if (axisEnabledSetting === "rotate-90") {
+    return maxXTickWidth;
   }
 
-  if (xAxisDisplay === "rotate-45") {
-    return maxTickWidth / Math.SQRT2;
+  if (axisEnabledSetting === "rotate-45") {
+    return maxXTickWidth / Math.SQRT2;
   }
 
-  console.warn(`Unexpected "graph.x_axis.axis_enabled" value ${xAxisDisplay}`);
+  console.warn(
+    `Unexpected "graph.x_axis.axis_enabled" value ${axisEnabledSetting}`,
+  );
 
   return CHART_STYLE.axisTicks.size + CHART_STYLE.axisNameMargin;
 };
 
 export const getTicksDimensions = (
   chartModel: BaseCartesianChartModel,
+  chartWidth: number,
+  outerHeight: number,
   settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
@@ -171,6 +163,7 @@ export const getTicksDimensions = (
     firstXTickWidth: 0,
     lastXTickWidth: 0,
     maxXTickWidth: 0,
+    minXTickSpacing: 0,
   };
 
   if (chartModel.leftAxisModel) {
@@ -193,21 +186,23 @@ export const getTicksDimensions = (
       ) + CHART_STYLE.axisTicksMarginY;
   }
 
+  const currentBoundaryWidth =
+    chartWidth -
+    CHART_STYLE.padding.x * 2 -
+    ticksDimensions.yTicksWidthLeft -
+    ticksDimensions.yTicksWidthRight;
+
+  ticksDimensions.minXTickSpacing = getMinXTickSpacing(
+    chartModel.dataset,
+    settings,
+    currentBoundaryWidth,
+    chartModel.xAxisModel.formatter,
+    renderingContext,
+  );
+
   const isTimeSeries = isTimeSeriesAxis(chartModel.xAxisModel);
   const hasBottomAxis = !!settings["graph.x_axis.axis_enabled"];
   if (hasBottomAxis) {
-    ticksDimensions.xTicksHeight =
-      getXAxisTicksHeight(
-        chartModel.dataset,
-        settings,
-        chartModel.xAxisModel.formatter,
-        renderingContext,
-      ) +
-      CHART_STYLE.axisTicksMarginX +
-      (isTimeSeries && hasTimelineEvents
-        ? CHART_STYLE.timelineEvents.height
-        : 0);
-
     const { firstXTickWidth, lastXTickWidth, maxXTickWidth } =
       getXAxisTicksWidth(
         chartModel.transformedDataset,
@@ -218,6 +213,20 @@ export const getTicksDimensions = (
     ticksDimensions.firstXTickWidth = firstXTickWidth;
     ticksDimensions.lastXTickWidth = lastXTickWidth;
     ticksDimensions.maxXTickWidth = maxXTickWidth;
+
+    const axisEnabledSetting = getAutoAxisEnabledSetting(
+      ticksDimensions.minXTickSpacing,
+      maxXTickWidth,
+      outerHeight,
+      settings,
+    );
+
+    ticksDimensions.xTicksHeight =
+      getXAxisTicksHeight(maxXTickWidth, axisEnabledSetting) +
+      CHART_STYLE.axisTicksMarginX +
+      (isTimeSeries && hasTimelineEvents
+        ? CHART_STYLE.timelineEvents.height
+        : 0);
   }
 
   return ticksDimensions;
@@ -379,6 +388,8 @@ export const getChartMeasurements = (
 ): ChartMeasurements => {
   const ticksDimensions = getTicksDimensions(
     chartModel,
+    width,
+    height,
     settings,
     hasTimelineEvents,
     renderingContext,
@@ -393,20 +404,11 @@ export const getChartMeasurements = (
     ticksDimensions.yTicksWidthLeft -
     ticksDimensions.yTicksWidthRight;
 
-  const minXTickSpacing = getMinXTickSpacing(
-    chartModel.dataset,
-    settings,
-    boundaryWidth,
-    chartModel.xAxisModel.formatter,
-    renderingContext,
-  );
-
   return {
     ticksDimensions,
     padding,
     bounds,
     boundaryWidth,
-    minXTickSpacing,
     outerHeight: height,
   };
 };
