@@ -1,5 +1,7 @@
 import lineLinearXScale from "./line-linear-x-scale.json";
 import lineLinearXScaleUnsorted from "./line-linear-x-scale-unsorted.json";
+import lineLogYScale from "./line-log-y-scale.json";
+import lineLogYScaleNegative from "./line-log-y-scale-negative.json";
 import lineShowDotsAuto from "./line-show-dots-auto.json";
 import lineShowDotsOn from "./line-show-dots-on.json";
 import lineShowDotsOff from "./line-show-dots-off.json";
@@ -23,6 +25,8 @@ import barAutoFormattingFull from "./bar-auto-formatting-full.json";
 import barStackedTotalFormattedValues from "./bar-stacked-total-formatted-values.json";
 import barStackedPowYAxis from "./bar-stacked-pow-y-axis.json";
 import barStackedPowYAxisNegatives from "./bar-stacked-pow-y-axis-negatives.json";
+import barLogYScaleStacked from "./bar-log-y-scale-stacked.json";
+import barLogYScaleStackedNegative from "./bar-log-y-scale-stacked-negative.json";
 import barFullyNullDimension37902 from "./bar-fully-null-dimension-37902.json";
 import autoYSplit from "./auto-y-split.json";
 import messedUpAxis from "./messed-up-axis.json";
@@ -67,6 +71,8 @@ import timeSeriesTicksCompactFormattingMixedTimezones from "./time-series-ticks-
 export const data = {
   lineLinearXScale,
   lineLinearXScaleUnsorted,
+  lineLogYScale,
+  lineLogYScaleNegative,
   lineShowDotsAuto,
   lineShowDotsOn,
   lineShowDotsOff,
@@ -87,6 +93,8 @@ export const data = {
   barStackedTotalFormattedValues,
   barStackedPowYAxis,
   barStackedPowYAxisNegatives,
+  barLogYScaleStacked,
+  barLogYScaleStackedNegative,
   barStackedNormalizedEmptySpace37880,
   barsBreakoutSortedWithNegativeValuesPowerYAxis,
   barFullyNullDimension37902,

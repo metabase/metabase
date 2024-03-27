@@ -1,0 +1,346 @@
+[
+  {
+    "card": {
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-03-21T21:04:15.906926Z",
+      "dataset": false,
+      "parameters": [],
+      "metabase_version": "vLOCAL_DEV (06d1ba2ae111e66253209c01c244d6379acfc6dcb1911fa9ab6012cec9ce52e5)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "slug": "line",
+        "name": "Line",
+        "personal_owner_id": null,
+        "type": null,
+        "id": 16,
+        "entity_id": "ZGzZ_san2Y2DqAAQpGVar",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2023-12-13T22:25:57.520827Z"
+      },
+      "visualization_settings": {
+        "graph.dimensions": ["date"],
+        "graph.show_values": true,
+        "graph.y_axis.scale": "log",
+        "waterfall.show_total": false,
+        "graph.metrics": ["Total Accident Inverted"]
+      },
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-03-21T21:05:01.252338Z"
+      },
+      "collection_preview": true,
+      "entity_id": "JWZnwvXdnwsOs09ntsTw4",
+      "display": "line",
+      "parameter_mappings": [],
+      "id": 296,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "expressions": {
+            "Total Accident Inverted": [
+              "-",
+              0,
+              [
+                "field",
+                "total_accident",
+                {
+                  "base-type": "type/BigInteger"
+                }
+              ]
+            ]
+          },
+          "fields": [
+            [
+              "field",
+              "date",
+              {
+                "base-type": "type/Date"
+              }
+            ],
+            ["expression", "Total Accident Inverted"]
+          ],
+          "source-table": "card__101",
+          "filter": [
+            "between",
+            [
+              "field",
+              1417,
+              {
+                "base-type": "type/Date"
+              }
+            ],
+            "2017-06-01",
+            "2017-06-30"
+          ]
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-03-21T21:05:01.042962Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 230.75,
+      "type": "question",
+      "dashboard_count": 1,
+      "last_query_start": "2024-03-25T16:27:04.344814Z",
+      "name": "Line Log Y-Scale Negative - UK Car Accidents",
+      "query_type": "query",
+      "collection_id": 16,
+      "enable_embedding": false,
+      "database_id": 2,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-03-22T21:21:40.815784Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": "type/CreationDate",
+          "coercion_strategy": null,
+          "unit": "default",
+          "name": "date",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            1417,
+            {
+              "temporal-unit": "default"
+            }
+          ],
+          "effective_type": "type/Date",
+          "id": 1417,
+          "visibility_type": "normal",
+          "display_name": "Date",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1460,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2014-01-01",
+                "latest": "2017-12-31"
+              }
+            }
+          },
+          "base_type": "type/Date"
+        },
+        {
+          "display_name": "Total Accident Inverted",
+          "field_ref": ["expression", "Total Accident Inverted"],
+          "name": "Total Accident Inverted",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 28,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": -439,
+                "q1": -401,
+                "q3": -349,
+                "max": -271,
+                "sd": 43.35737617713412,
+                "avg": -371
+              }
+            }
+          }
+        }
+      ],
+      "table_id": 154,
+      "collection_position": null,
+      "archived": false,
+      "description": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["2017-06-01T00:00:00-07:00", -378],
+        ["2017-06-02T00:00:00-07:00", -378],
+        ["2017-06-03T00:00:00-07:00", -338],
+        ["2017-06-04T00:00:00-07:00", -271],
+        ["2017-06-05T00:00:00-07:00", -379],
+        ["2017-06-06T00:00:00-07:00", -377],
+        ["2017-06-07T00:00:00-07:00", -344],
+        ["2017-06-08T00:00:00-07:00", -363],
+        ["2017-06-09T00:00:00-07:00", -383],
+        ["2017-06-10T00:00:00-07:00", -314],
+        ["2017-06-11T00:00:00-07:00", -287],
+        ["2017-06-12T00:00:00-07:00", -311],
+        ["2017-06-13T00:00:00-07:00", -403],
+        ["2017-06-14T00:00:00-07:00", -410],
+        ["2017-06-15T00:00:00-07:00", -430],
+        ["2017-06-16T00:00:00-07:00", -412],
+        ["2017-06-17T00:00:00-07:00", -394],
+        ["2017-06-18T00:00:00-07:00", -352],
+        ["2017-06-19T00:00:00-07:00", -431],
+        ["2017-06-20T00:00:00-07:00", -439],
+        ["2017-06-21T00:00:00-07:00", -415],
+        ["2017-06-22T00:00:00-07:00", -389],
+        ["2017-06-23T00:00:00-07:00", -401],
+        ["2017-06-24T00:00:00-07:00", -351],
+        ["2017-06-25T00:00:00-07:00", -291],
+        ["2017-06-26T00:00:00-07:00", -389],
+        ["2017-06-27T00:00:00-07:00", -349],
+        ["2017-06-28T00:00:00-07:00", -397],
+        ["2017-06-29T00:00:00-07:00", -372],
+        ["2017-06-30T00:00:00-07:00", -382]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": "type/CreationDate",
+          "table_id": 154,
+          "coercion_strategy": null,
+          "unit": "default",
+          "name": "date",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            1417,
+            {
+              "temporal-unit": "default"
+            }
+          ],
+          "effective_type": "type/Date",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1417,
+          "position": 1,
+          "visibility_type": "normal",
+          "display_name": "Date",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1460,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2014-01-01",
+                "latest": "2017-12-31"
+              }
+            }
+          },
+          "base_type": "type/Date"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "Total Accident Inverted",
+          "display_name": "Total Accident Inverted",
+          "expression_name": "Total Accident Inverted",
+          "field_ref": ["expression", "Total Accident Inverted"],
+          "source": "fields",
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT \"source\".\"date\" AS \"date\", \"source\".\"Total Accident Inverted\" AS \"Total Accident Inverted\" FROM (SELECT \"source\".\"date\" AS \"date\", \"source\".\"total_accident\" AS \"total_accident\", 0 - \"source\".\"total_accident\" AS \"Total Accident Inverted\" FROM (SELECT \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"date\" AS \"date\", \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"total_accident\" AS \"total_accident\" FROM \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\") AS \"source\" WHERE (\"source\".\"date\" >= timestamp with time zone '2017-06-01 00:00:00.000-07:00') AND (\"source\".\"date\" < timestamp with time zone '2017-07-01 00:00:00.000-07:00')) AS \"source\" LIMIT 2000",
+        "params": null
+      },
+      "results_timezone": "America/Los_Angeles",
+      "dataset": true,
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": "type/CreationDate",
+            "coercion_strategy": null,
+            "unit": "default",
+            "name": "date",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              1417,
+              {
+                "temporal-unit": "default"
+              }
+            ],
+            "effective_type": "type/Date",
+            "id": 1417,
+            "visibility_type": "normal",
+            "display_name": "Date",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1460,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2014-01-01",
+                  "latest": "2017-12-31"
+                }
+              }
+            },
+            "base_type": "type/Date"
+          },
+          {
+            "display_name": "Total Accident Inverted",
+            "field_ref": ["expression", "Total Accident Inverted"],
+            "name": "Total Accident Inverted",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 28,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": -439,
+                  "q1": -401,
+                  "q3": -349,
+                  "max": -271,
+                  "sd": 43.35737617713412,
+                  "avg": -371
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": -372,
+          "unit": "day",
+          "offset": 21083.872710418913,
+          "last-change": -0.02617801047120419,
+          "col": "Total Accident Inverted",
+          "slope": -1.2378197997775262,
+          "last-value": -382,
+          "best-fit": [
+            "+",
+            209073.3880762867,
+            ["*", -21458.684742002868, ["log", "x"]]
+          ]
+        }
+      ]
+    }
+  }
+]
