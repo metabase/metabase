@@ -1,9 +1,11 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component, Fragment } from "react";
 import _ from "underscore";
 
 import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isObscured } from "metabase/lib/dom";
 import { DelayGroup, Icon } from "metabase/ui";
@@ -139,7 +141,7 @@ function ExpressionEditorSuggestionsListItem({
       <ExpressionListItem
         onMouseDownCapture={onMouseDownCapture}
         isHighlighted={isHighlighted}
-        className="hover-parent hover--inherit"
+        className={cx(CS.hoverParent, CS.hoverInherit)}
         data-ignore-outside-clicks
         data-testid="expression-suggestions-list-item"
       >
