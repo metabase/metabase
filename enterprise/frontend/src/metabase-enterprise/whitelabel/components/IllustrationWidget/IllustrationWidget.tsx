@@ -52,12 +52,12 @@ interface SelectOption {
 const SELECT_OPTIONS: Record<IllustrationType, SelectOption[]> = {
   background: [
     { label: t`Lighthouse`, value: "default" },
-    { label: t`No illustration`, value: "no-illustration" },
+    { label: t`No illustration`, value: "none" },
     { label: t`Custom`, value: "custom" },
   ],
   icon: [
     { label: t`Sailboat`, value: "default" },
-    { label: t`No illustration`, value: "no-illustration" },
+    { label: t`No illustration`, value: "none" },
     { label: t`Custom`, value: "custom" },
   ],
 };
@@ -240,7 +240,7 @@ function getPreviewImage({
     return PREVIEW_ELEMENTS[defaultPreviewType];
   }
 
-  if (value === "no-illustration") {
+  if (value === "none") {
     return null;
   }
 
