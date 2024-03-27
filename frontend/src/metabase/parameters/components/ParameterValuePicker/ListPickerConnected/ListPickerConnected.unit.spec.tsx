@@ -1,4 +1,3 @@
-/* eslint-disable jest/no-conditional-expect */
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -216,12 +215,14 @@ describe("ListPickerConnected", () => {
       userEvent.click(select);
       userEvent.type(select, "Road");
 
-      STATIC_VALUES.forEach(value => {
+      STATIC_VALUES.filter(value => value.includes("Road")).forEach(value => {
         const listItem = screen.queryByText(value);
+        expect(listItem).toBeVisible();
+      });
 
-        value.indexOf("Road") !== -1
-          ? expect(listItem).toBeVisible()
-          : expect(listItem).not.toBeInTheDocument();
+      STATIC_VALUES.filter(value => !value.includes("Road")).forEach(value => {
+        const listItem = screen.queryByText(value);
+        expect(listItem).not.toBeInTheDocument();
       });
     });
 
