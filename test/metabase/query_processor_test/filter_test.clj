@@ -10,6 +10,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -676,7 +677,8 @@
                                     (lib/filter (lib/= checkins-date "2014-05-08"))
                                     (lib/order-by checkins-id)
                                     (lib/with-fields [checkins-id checkins-date]))
-              preprocessed      (qp/preprocess query)]
+              preprocessed      (qp.store/with-metadata-provider metadata-provider
+                                  (qp/preprocess query))]
           ;; skip this test for drivers that don't create checkins.date as a `DATETIME` (or equivalent), since we can't
           ;; really expect DateTime-specific stuff to work correctly. MongoDB is one example, since BSON only has the
           ;; one `org.bson.BsonDateTime` type, and checkins.date is created as a `:type/Instant`
@@ -690,12 +692,13 @@
                                           [:absolute-datetime #t "2014-05-08" :default]]}}
                         preprocessed)))
               (testing (format "\nPreprocessed =\n%s" (u/pprint-to-str preprocessed))
-                (mt/with-native-query-testing-context query
-                  (testing "Results: should return correct rows"
-                    (let [results (qp/process-query query)]
-                      (is (= [[629 "2014-05-08T00:00:00-07:00"]
-                              [733 "2014-05-08T00:00:00-07:00"]
-                              [813 "2014-05-08T00:00:00-07:00"]]
-                             ;; WRONG => [[991 "2014-05-09T00:00:00-07:00"]]
-                             (mt/formatted-rows [int str]
-                               results))))))))))))))
+                (qp.store/with-metadata-provider metadata-provider
+                  (mt/with-native-query-testing-context query
+                    (testing "Results: should return correct rows"
+                      (let [results (qp/process-query query)]
+                        (is (= [[629 "2014-05-08T00:00:00-07:00"]
+                                [733 "2014-05-08T00:00:00-07:00"]
+                                [813 "2014-05-08T00:00:00-07:00"]]
+                               ;; WRONG => [[991 "2014-05-09T00:00:00-07:00"]]
+                               (mt/formatted-rows [int str]
+                                 results)))))))))))))))
