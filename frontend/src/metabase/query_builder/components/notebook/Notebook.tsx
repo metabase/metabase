@@ -1,10 +1,11 @@
+import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Button from "metabase/core/components/Button";
 import Questions from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
+import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import {
@@ -13,8 +14,8 @@ import {
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { State } from "metabase-types/store";
 
-import { NotebookRoot } from "./Notebook.styled";
-import NotebookSteps from "./NotebookSteps";
+import N from "./Notebook.module.css";
+import { NotebookSteps } from "./NotebookSteps";
 
 interface NotebookOwnProps {
   className?: string;
@@ -82,14 +83,14 @@ const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
   };
 
   return (
-    <NotebookRoot className={className}>
+    <div className={cx(N.notebookRoot)}>
       <NotebookSteps updateQuestion={handleUpdateQuestion} {...props} />
       {hasVisualizeButton && isRunnable && (
-        <Button medium primary style={{ minWidth: 220 }} onClick={visualize}>
+        <Button variant="filled" style={{ minWidth: 220 }} onClick={visualize}>
           {t`Visualize`}
         </Button>
       )}
-    </NotebookRoot>
+    </div>
   );
 };
 
