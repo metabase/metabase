@@ -494,14 +494,10 @@ function ViewTitleHeaderRightSide(props) {
         />
       )}
       {QuestionNotebookButton.shouldRender(props) && (
-        <ViewHeaderIconButtonContainer>
-          <QuestionNotebookButton
-            iconSize={16}
-            question={question}
-            isShowingNotebook={isShowingNotebook}
-            setQueryBuilderMode={setQueryBuilderMode}
-          />
-        </ViewHeaderIconButtonContainer>
+        <QuestionNotebookButton
+          isShowingNotebook={isShowingNotebook}
+          setQueryBuilderMode={setQueryBuilderMode}
+        />
       )}
       {ToggleNativeQueryPreview.shouldRender(props) && (
         <ToggleNativeQueryPreview question={question} />

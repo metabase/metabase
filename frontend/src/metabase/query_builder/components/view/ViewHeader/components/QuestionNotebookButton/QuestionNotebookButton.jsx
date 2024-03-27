@@ -1,35 +1,27 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip, ActionIcon, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { ButtonRoot } from "./QuestionNotebookButton.styled";
-
 export function QuestionNotebookButton({
-  className,
-  question,
   isShowingNotebook,
   setQueryBuilderMode,
-  ...props
 }) {
   return (
     <Tooltip
-      tooltip={isShowingNotebook ? t`Hide editor` : t`Show editor`}
-      placement="top"
+      label={isShowingNotebook ? t`Hide editor` : t`Show editor`}
+      position="top"
     >
-      <ButtonRoot
-        borderless={!isShowingNotebook}
-        primary={isShowingNotebook}
-        medium
-        isSelected={isShowingNotebook}
-        className={className}
-        icon="notebook"
+      <ActionIcon
+        size="2rem"
+        variant={isShowingNotebook ? "filled" : "transparent"}
         onClick={() =>
           setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
         }
-        {...props}
-      />
+      >
+        <Icon name="notebook" size="1rem" />
+      </ActionIcon>
     </Tooltip>
   );
 }

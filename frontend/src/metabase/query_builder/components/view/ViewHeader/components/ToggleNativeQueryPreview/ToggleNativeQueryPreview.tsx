@@ -4,11 +4,9 @@ import { getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import { getUiControls } from "metabase/query_builder/selectors";
-import { Icon, Tooltip } from "metabase/ui";
+import { Icon, Tooltip, ActionIcon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-
-import { SqlButton } from "./ToggleNativeQueryPreview.styled";
 
 const BUTTON_TOOLTIP = {
   sql: t`View the SQL`,
@@ -46,13 +44,14 @@ export const ToggleNativeQueryPreview = ({
 
   return (
     <Tooltip label={tooltip} position="top">
-      <SqlButton
-        isSelected={isNativePreviewSidebarOpen}
+      <ActionIcon
+        size="2rem"
+        variant={isNativePreviewSidebarOpen ? "filled" : "transparent"}
         onClick={handleClick}
         aria-label={tooltip}
       >
         <Icon size="1rem" name="sql" />
-      </SqlButton>
+      </ActionIcon>
     </Tooltip>
   );
 };
