@@ -335,7 +335,7 @@
     "build:cljs": "yarn && yarn build-pure:cljs",
     "build:js": "yarn && NODE_OPTIONS=--max-old-space-size=8196 webpack --bail",
     "build-embedding-sdk": "yarn && yarn build-release:cljs && yarn build-embedding-sdk:pure",
-    "build-embedding-sdk:ci": "WEBPACK_BUNDLE=production webpack --config webpack.embedding-sdk.config.js",
+    "build-release:sdk": "WEBPACK_BUNDLE=production webpack --config webpack.embedding-sdk.config.js",
     "build-embedding-sdk:pure": "WEBPACK_BUNDLE=development webpack --config webpack.embedding-sdk.config.js",
     "build-embedding-sdk:watch": "WEBPACK_BUNDLE=development webpack --config webpack.embedding-sdk.config.js --watch",
     "chromatic": "yarn build:cljs && NODE_OPTIONS=--max-old-space-size=8196 chromatic",
