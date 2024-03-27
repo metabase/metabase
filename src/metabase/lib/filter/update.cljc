@@ -181,6 +181,7 @@
              query         (if (= unit breakout-unit)
                              query
                              (temporal-filter-update-breakouts query stage-number temporal-column breakout-unit))]
+         ;; TODO: This "same unit or multiple units" logic exists in `shared.ut` somewhere; reuse it here.
          (if (= (str start) (str end))
            ;; is the start and end are the same (in whatever the original unit was) then just do an "="
            (lib.filter/filter query stage-number (lib.filter/= temporal-column start))
