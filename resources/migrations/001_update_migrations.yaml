@@ -5530,6 +5530,20 @@ databaseChangeLog:
       rollback: # not needed
 
   - changeSet:
+      id: v49.2024-03-26T10:23:12
+      author: adam-james
+      comment: Add pulse_card.format_export
+      changes:
+        - addColumn:
+            tableName: pulse_card
+            columns:
+              - column:
+                  name: format_export
+                  type: ${boolean.type}
+                  defaultValue: true
+                  remarks: Whether or not to apply formatting to the rows of the export
+
+  - changeSet:
       id: v50.2024-01-04T13:52:51
       author: noahmoss
       comment: Data permissions table
@@ -6067,20 +6081,6 @@ databaseChangeLog:
                   name: estimated_row_count
                   type: bigint
                   remarks: The estimated row count
-
-  - changeSet:
-      id: v50.2024-03-26T10:23:12
-      author: adam-james
-      comment: Add pulse_card.format_export
-      changes:
-        - addColumn:
-            tableName: pulse_card
-            columns:
-              - column:
-                  name: format_export
-                  type: boolean
-                  defaultValue: true
-                  remarks: Whether or not to apply formatting to the rows of the export
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
