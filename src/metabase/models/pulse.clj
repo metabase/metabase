@@ -180,6 +180,7 @@
     [:map
      [:include_csv                        ms/BooleanValue]
      [:include_xls                        ms/BooleanValue]
+     [:format_export     {:optional true} [:maybe ms/BooleanValue]]
      [:dashboard_card_id {:optional true} [:maybe ms/PositiveInt]]]
     (deferred-tru "value must be a map with the keys `{0}`, `{1}`, and `{2}`." "include_csv" "include_xls" "dashboard_card_id")))
 
@@ -416,6 +417,7 @@
   {:id                (u/the-id card)
    :include_csv       (get card :include_csv false)
    :include_xls       (get card :include_xls false)
+   :format_export     (get card :format_export true)
    :dashboard_card_id (get card :dashboard_card_id nil)})
 
 
@@ -433,12 +435,13 @@
   (t2/delete! PulseCard :pulse_id (u/the-id notification-or-id))
   ;; now just insert all of the cards that were given to us
   (when (seq card-refs)
-    (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls dashboard_card_id]}]
+    (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls format_export dashboard_card_id]}]
                                {:pulse_id          (u/the-id notification-or-id)
                                 :card_id           card-id
                                 :position          i
                                 :include_csv       include_csv
                                 :include_xls       include_xls
+                                :format_export     format_export
                                 :dashboard_card_id dashboard_card_id})
                              card-refs)]
       (t2/insert! PulseCard cards))))
