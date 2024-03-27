@@ -16,9 +16,10 @@ import {
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
-import { applySquareRootScaling, replaceValues } from "./dataset";
+import { replaceValues } from "./dataset";
 import type {
   ChartDataset,
+  NumericAxisScaleTransforms,
   SeriesModel,
   TrendDataset,
   TrendLineSeriesModel,
@@ -100,33 +101,10 @@ function normalizeTrendDatasets(
   );
 }
 
-/**
- * Applies a square root function to all values in the datasets for all trend lines,
- * for use with the power y-axis scale.
- *
- * @param {TrendDataset[]} trendDatasets - Datasets for the trend lines for all series in the chart.
- * @param {ComputedVisualizationSettings} settings - Locally computed visualization settings for the chart
- * @returns {TrendDataset[]} Square-rooted datasets if the `graph.y_axis.scale` setting is `pow`,
- * otherwise the unchanged input datasets
- */
-function squareRootScaleDatasets(
-  trendDatasets: TrendDataset[],
-  settings: ComputedVisualizationSettings,
-): TrendDataset[] {
-  if (settings["graph.y_axis.scale"] !== "pow") {
-    return trendDatasets;
-  }
-
-  return trendDatasets.map(trendDataset =>
-    replaceValues(trendDataset, (dataKey, value) =>
-      dataKey === TREND_LINE_DATA_KEY ? applySquareRootScaling(value) : value,
-    ),
-  ) as TrendDataset[];
-}
-
 export function getTrendLineModelAndDatasets(
   seriesModels: SeriesModel[],
   dataset: ChartDataset,
+  yAxisScaleTransforms: NumericAxisScaleTransforms,
   rawInsights: Insight[],
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
@@ -168,9 +146,15 @@ export function getTrendLineModelAndDatasets(
     seriesModels,
     settings,
   );
-  const scaledDatasets = squareRootScaleDatasets(normalizedDatasets, settings);
+  const transformedDatasets = normalizedDatasets.map(dataset =>
+    replaceValues(dataset, (dataKey, value) =>
+      dataKey === TREND_LINE_DATA_KEY
+        ? yAxisScaleTransforms.toEChartsAxisValue(value)
+        : value,
+    ),
+  );
 
-  const trendLinesDataset = scaledDatasets.map(dataset => ({
+  const trendLinesDataset = transformedDatasets.map(dataset => ({
     dimensions: [X_AXIS_DATA_KEY, TREND_LINE_DATA_KEY],
     source: dataset,
   }));
