@@ -1,9 +1,11 @@
 (ns metabase.lib.equality-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [clojure.test.check.generators :as gen]
    [malli.generator :as mg]
    [medley.core :as m]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -11,9 +13,9 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util.malli.registry :as mr]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -618,3 +620,46 @@
                (lib.equality/find-matching-column (lib/ref created-at) columns)))
         (is (= ca-expr
                (lib.equality/find-matching-column (lib/ref ca-expr)    columns)))))))
+
+(deftest ^:parallel query=-test
+  (let [query (lib/aggregate lib.tu/venues-query (lib/sum (meta/field-metadata :venues :id)))]
+    (are [doc a b] (lib.equality/query= a b)
+      "fresh uuids"
+      query (lib.util/fresh-uuids query)
+
+      "pMBQL and legacy"
+      query (lib.convert/->legacy-MBQL query)
+
+      "legacy and pMBQL"
+      (lib.convert/->legacy-MBQL query) query
+
+      "legacy and legacy"
+      (lib.convert/->legacy-MBQL query) (lib.convert/->legacy-MBQL query)
+
+      "nils"
+      nil nil)))
+
+(deftest ^:parallel query=-with-fields-test
+  (let [query-without-fields lib.tu/venues-query
+        query-with-fields (lib/with-fields query-without-fields
+                                           (mapv #(meta/field-metadata :venues %)
+                                                 (meta/fields :venues)))
+        field-ids (keep #(:id (meta/field-metadata :venues %)) (meta/fields :venues))]
+    (testing "equal when given field-ids"
+      (is (lib.equality/query=
+            query-without-fields
+            query-with-fields
+            field-ids)))
+    (testing "legacy equal with field-ids"
+      (is (lib.equality/query=
+            (lib.convert/->legacy-MBQL query-with-fields)
+            (lib.convert/->legacy-MBQL query-without-fields)
+            field-ids)))
+    (testing "equal when fields are mixed up"
+      (is (lib.equality/query=
+            query-with-fields
+            (lib/with-fields query-with-fields (reverse (lib/fields query-with-fields))))))
+    (testing "not equal without field-ids"
+      (is (not (lib.equality/query=
+                 query-with-fields
+                 query-without-fields))))))

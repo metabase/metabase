@@ -11,7 +11,6 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [goog.object :as gobject]
-   [medley.core :as m]
    [metabase.legacy-mbql.js :as mbql.js]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.cache :as lib.cache]
@@ -381,89 +380,17 @@
   [a-query]
   (-> a-query normalize-to-clj (clj->js :keyword-fn u/qualified-name)))
 
-(defn- prep-query-for-equals-legacy [a-query field-ids]
-  (-> a-query
-      ;; If `:native` exists, but it doesn't have `:template-tags`, add it.
-      (m/update-existing :native #(merge {:template-tags {}} %))
-      (m/update-existing :query (fn [inner-query]
-                                  (let [fields (or (:fields inner-query)
-                                                   (for [id field-ids]
-                                                     [:field id nil]))]
-                                    ;; We ignore the order of the fields in the lists, but need to make sure any dupes
-                                    ;; match up. Therefore de-dupe with `frequencies` rather than simply `set`.
-                                    (assoc inner-query :fields (frequencies fields)))))))
-
-(defn- prep-query-for-equals-pMBQL
-  [a-query field-ids]
-  (let [fields (or (some->> (lib.core/fields a-query)
-                            (map #(assoc % 1 {})))
-                   (mapv (fn [id] [:field {} id]) field-ids))]
-    (lib.util/update-query-stage a-query -1 assoc :fields (frequencies fields))))
-
-(defn- prep-query-for-equals [a-query field-ids]
-  (when-let [normalized-query (some-> a-query normalize-to-clj)]
-    (if (contains? normalized-query :lib/type)
-      (prep-query-for-equals-pMBQL normalized-query field-ids)
-      (prep-query-for-equals-legacy normalized-query field-ids))))
-
-(defn- compare-field-refs
-  [[key1 id1 opts1]
-   [key2 id2 opts2]]
-  ;; A mismatch of `:base-type` or `:effective-type` when both x and y have values for it is a failure.
-  ;; If either ref does not have the `:base-type` or `:effective-type` set, that key is ignored.
-  (letfn [(clean-opts [o1 o2]
-            (not-empty
-             (cond-> o1
-               (not (:base-type o2))      (dissoc :base-type)
-               (not (:effective-type o2)) (dissoc :effective-type))))]
-    (if (map? id1)
-      (= [key1 (clean-opts id1 id2) opts1]
-         [key2 (clean-opts id2 id1) opts2])
-      (= [key1 id1 (clean-opts opts1 opts2)]
-         [key2 id2 (clean-opts opts2 opts1)]))))
-
-(defn- query=* [x y]
-  (cond
-    (and (vector? x)
-         (vector? y)
-         (= (first x) (first y) :field))
-    (compare-field-refs x y)
-
-    ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid values don't
-    ;; have to match.
-    (and (map? x) (map? y))
-    (let [x (dissoc x :lib/uuid)
-          y (dissoc y :lib/uuid)]
-      (and (= (set (keys x)) (set (keys y)))
-           (every? (fn [[k v]]
-                     (query=* v (get y k)))
-                   x)))
-
-    (and (sequential? x) (sequential? y))
-    (and (= (count x) (count y))
-         (every? true? (map query=* x y)))
-
-    ;; Either mismatched map/sequence/nil/etc., or primitives like strings.
-    ;; Either way, = does the right thing.
-    :else (= x y)))
-
 (defn ^:export query=
   "Returns whether the provided queries should be considered equal.
 
-  If `field-ids` is specified, an input MBQL query without `:fields` set defaults to the `field-ids`.
-
-  Currently this works only for legacy queries in JS form!
-  It duplicates the logic formerly found in `query_builder/selectors.js`.
-
-  TODO: This should evolve into a more robust, pMBQL-based sense of equality over time.
-  For now it pulls logic that touches query internals into `metabase.lib`."
+  If `field-ids` is specified, an input query without `:fields` set defaults to the `field-ids`."
   ([query1 query2] (query= query1 query2 nil))
   ([query1 query2 field-ids]
-   (and (= (some-> query1 (gobject/get "mbql/query"))
-           (some-> query2 (gobject/get "mbql/query")))
-        (let [n1 (prep-query-for-equals query1 field-ids)
-              n2 (prep-query-for-equals query2 field-ids)]
-          (query=* n1 n2)))))
+   (letfn [(prep [a-query]
+             (if (or (undefined? a-query) (nil? a-query))
+               nil
+               (some->> a-query normalize-to-clj)))]
+     (lib.core/query= (prep query1) (prep query2) (js->clj field-ids)))))
 
 (defn ^:export group-columns
   "Given a group of columns returned by a function like [[metabase.lib.js/orderable-columns]], group the columns
