@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { DataPickerModal } from "metabase/common/components/DataPicker";
 import { FieldPicker } from "metabase/common/components/FieldPicker";
-import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, TableId } from "metabase-types/api";
@@ -25,7 +24,6 @@ export const DataStep = ({
   const metadata = question.metadata();
   const collectionId = question.collectionId();
 
-  const databaseId = Lib.databaseID(query);
   const tableId = Lib.sourceTableOrCardId(query);
   const table = metadata.table(tableId);
   const tableMetadata = tableId
@@ -73,17 +71,6 @@ export const DataStep = ({
         data-testid="data-step-cell"
       >
         <>
-          <DataSourceSelector
-            hasTableSearch
-            collectionId={collectionId}
-            databaseQuery={{ saved: true }}
-            selectedDatabaseId={databaseId}
-            selectedTableId={tableId}
-            setSourceTableFn={handleTableSelect}
-            isInitiallyOpen={!tableMetadata}
-            triggerElement={<DataStepCell>{pickerLabel} - OLD</DataStepCell>}
-          />
-
           <DataStepCell onClick={() => setIsDataPickerOpen(true)}>
             {pickerLabel}
           </DataStepCell>
