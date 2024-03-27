@@ -180,6 +180,8 @@ export type BaseCartesianChartModel = {
   transformedDataset: ChartDataset;
   trendLinesDataset: TrendDataset;
   trendLinesSeries: TrendLineSeriesModel[];
+  yAxisScaleTransforms: NumericAxisScaleTransforms;
+
   leftAxisModel: YAxisModel | null;
   rightAxisModel: YAxisModel | null;
   xAxisModel: XAxisModel;

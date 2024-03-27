@@ -107,6 +107,7 @@ export const buildEChartsWaterfallSeries = (
     ...buildEChartsLabelOptions(
       seriesModel,
       dataset,
+      chartModel.yAxisScaleTransforms,
       settings,
       renderingContext,
       settings["graph.show_values"],
@@ -114,6 +115,7 @@ export const buildEChartsWaterfallSeries = (
     formatter: getDataLabelFormatter(
       seriesModel,
       dataset,
+      chartModel.yAxisScaleTransforms,
       settings,
       key,
       renderingContext,
