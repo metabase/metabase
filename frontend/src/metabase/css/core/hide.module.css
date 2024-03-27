@@ -1,32 +1,26 @@
-:global(.hide) {
+.hide {
   display: none !important;
 }
 
-:global(.show) {
+.show {
   display: inherit;
 }
 
-:global(.hidden) {
+.hidden {
   visibility: hidden;
 }
 
-:global(.sm-show),
-:global(.md-show),
-:global(.lg-show),
-:global(.xl-show) {
+.smShow,
+.mdShow,
+.lgShow,
+.xlShow {
   display: none;
 }
 
 /* extra-small */
 
 @media screen and (--breakpoint-min-xs) {
-  :global(.xs-hide) {
-    display: none !important;
-  }
-}
-
-@media screen and (--breakpoint-min-xs) {
-  :global(.xs-show) {
+  .xsShow {
     display: inherit !important;
   }
 }
@@ -34,13 +28,7 @@
 /* small */
 
 @media screen and (--breakpoint-min-sm) {
-  :global(.sm-hide) {
-    display: none !important;
-  }
-}
-
-@media screen and (--breakpoint-min-sm) {
-  :global(.sm-show) {
+  .smShow {
     display: inherit !important;
   }
 }
@@ -48,13 +36,7 @@
 /* medium */
 
 @media screen and (--breakpoint-min-md) {
-  :global(.md-hide) {
-    display: none !important;
-  }
-}
-
-@media screen and (--breakpoint-min-md) {
-  :global(.md-show) {
+  .mdShow {
     display: inherit !important;
   }
 }
@@ -62,26 +44,25 @@
 /* large */
 
 @media screen and (--breakpoint-min-lg) {
-  :global(.lg-hide) {
-    display: none !important;
-  }
-}
-
-@media screen and (--breakpoint-min-lg) {
-  :global(.lg-show) {
+  .lgShow {
     display: inherit !important;
   }
 }
 
 /* xl */
 @media screen and (--breakpoint-min-xl) {
-  :global(.xl-hide) {
-    display: none !important;
+  .xlShow {
+    display: inherit !important;
   }
 }
 
-@media screen and (--breakpoint-min-xl) {
-  :global(.xl-show) {
-    display: inherit !important;
-  }
+.TableInteractiveDetailButton {
+  color: var(--color-brand);
+  transition: opacity 0.2s ease-in-out;
+  margin: 0 4px;
+  opacity: 0;
+}
+
+.show .TableInteractiveDetailButton {
+  opacity: 1;
 }

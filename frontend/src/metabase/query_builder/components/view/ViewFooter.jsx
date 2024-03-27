@@ -113,14 +113,14 @@ const ViewFooter = ({
           QuestionLastUpdated.shouldRender({ result }) && (
             <QuestionLastUpdated
               key="last-updated"
-              className="hide sm-show"
+              className={cx(CS.hide, CS.smShow)}
               result={result}
             />
           ),
           QueryDownloadWidget.shouldRender({ result }) && (
             <QueryDownloadWidget
               key="download"
-              className="hide sm-show"
+              className={cx(CS.hide, CS.smShow)}
               question={question}
               result={result}
               visualizationSettings={visualizationSettings}
@@ -134,7 +134,7 @@ const ViewFooter = ({
           }) && (
             <QuestionAlertWidget
               key="alerts"
-              className="hide sm-show"
+              className={cx(CS.hide, CS.smShow)}
               canManageSubscriptions={canManageSubscriptions}
               question={question}
               questionAlerts={questionAlerts}
@@ -165,7 +165,7 @@ const ViewFooter = ({
           QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
             <QuestionTimelineWidget
               key="timelines"
-              className="hide sm-show"
+              className={cx(CS.hide, CS.smShow)}
               isShowingTimelineSidebar={isShowingTimelineSidebar}
               onOpenTimelines={onOpenTimelines}
               onCloseTimelines={onCloseTimelines}
