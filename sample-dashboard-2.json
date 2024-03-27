@@ -1,0 +1,6322 @@
+{
+  "description": "Quickly take an overview of an e-commerce reseller business and dive into separate tabs that focus on top selling products and demographic insights. Each vendor can log in as a tenant and see their own data sandboxed from all the others.",
+  "archived": false,
+  "collection_position": null,
+  "dashcards": [
+    {
+      "size_x": 24,
+      "dashboard_tab_id": 781,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "month",
+            "name": "CREATED_AT",
+            "settings": {
+              "time_enabled": "milliseconds"
+            },
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 25,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 9998,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2016-04-30T18:56:13.352Z",
+                  "latest": "2020-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+            "semantic_type": "type/Category",
+            "coercion_strategy": null,
+            "name": "CATEGORY",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 16,
+            "visibility_type": "normal",
+            "display_name": "Product → Category",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0.0,
+                  "percent-url": 0.0,
+                  "percent-email": 0.0,
+                  "percent-state": 0.0,
+                  "average-length": 6.375
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Sum of Subtotal",
+            "semantic_type": "type/Income",
+            "settings": {
+              "view_as": null
+            },
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 193,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 49.535942579421324,
+                  "q1": 3463.8102131826554,
+                  "q3": 11524.107856452836,
+                  "max": 15065.378395106733,
+                  "sd": 4354.76489750759,
+                  "avg": 7503.565626310381
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Order value before taxes over time",
+        "type": "question",
+        "query_average_duration": 488,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "source-table": 1,
+            "aggregation": [
+              [
+                "sum",
+                [
+                  "field",
+                  15,
+                  {
+                    "base-type": "type/Float"
+                  }
+                ]
+              ]
+            ],
+            "breakout": [
+              [
+                "field",
+                25,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month"
+                }
+              ],
+              [
+                "field",
+                16,
+                {
+                  "base-type": "type/Text",
+                  "source-field": 10
+                }
+              ]
+            ]
+          }
+        },
+        "id": 16740,
+        "parameter_mappings": [],
+        "display": "bar",
+        "entity_id": "n6zXk6OlLrFdAFlesSya6",
+        "collection_preview": true,
+        "visualization_settings": {
+          "graph.dimensions": [
+            "CREATED_AT",
+            "CATEGORY"
+          ],
+          "graph.series_order_dimension": null,
+          "graph.series_order": null,
+          "stackable.stack_type": "stacked",
+          "graph.metrics": [
+            "sum"
+          ]
+        },
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 0,
+      "id": 15460,
+      "parameter_mappings": [
+        {
+          "parameter_id": "fc2cd1be",
+          "card_id": 16740,
+          "target": [
+            "dimension",
+            [
+              "field",
+              20,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "5eeec658",
+          "card_id": 16740,
+          "target": [
+            "dimension",
+            [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "afa56954",
+          "card_id": 16740,
+          "target": [
+            "dimension",
+            [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "512c560a",
+          "card_id": 16740,
+          "target": [
+            "dimension",
+            [
+              "field",
+              33,
+              {
+                "base-type": "type/Text",
+                "source-field": 5
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16740,
+      "entity_id": "TDMpin-UlNZefjg09Ntuk",
+      "visualization_settings": {
+        "graph.dimensions": [
+          "CREATED_AT",
+          "CATEGORY"
+        ],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "stackable.stack_type": "stacked",
+        "series_settings": {
+          "Gadget": {
+            "color": "#A989C5"
+          },
+          "Doohickey": {
+            "color": "#7172AD"
+          },
+          "Gizmo": {
+            "color": "#C7EAEA"
+          },
+          "Widget": {
+            "color": "#227FD2"
+          }
+        },
+        "card.title": "Value of orders over time (before taxes)",
+        "graph.x_axis.labels_enabled": false,
+        "graph.metrics": [
+          "sum"
+        ]
+      },
+      "size_y": 7,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 19
+    },
+    {
+      "size_x": 24,
+      "dashboard_tab_id": 782,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "query_average_duration": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 0,
+      "id": 15474,
+      "parameter_mappings": [],
+      "card_id": null,
+      "entity_id": "110w02uCDTSXyKwgTPjnn",
+      "visualization_settings": {
+        "virtual_card": {
+          "name": null,
+          "display": "heading",
+          "visualization_settings": {},
+          "dataset_query": {},
+          "archived": false
+        },
+        "dashcard.background": false,
+        "text": "Product category insights"
+      },
+      "size_y": 1,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 12
+    },
+    {
+      "size_x": 17,
+      "dashboard_tab_id": 782,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "description": "The name of the product as it should be displayed to customers.",
+            "semantic_type": "type/Title",
+            "coercion_strategy": null,
+            "name": "TITLE",
+            "settings": {
+              "link_url": "",
+              "view_as": null
+            },
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              12,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 12,
+            "visibility_type": "normal",
+            "display_name": "Product → Title",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 199,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0.0,
+                  "percent-url": 0.0,
+                  "percent-email": 0.0,
+                  "percent-state": 0.0,
+                  "average-length": 21.495
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+            "semantic_type": "type/Category",
+            "coercion_strategy": null,
+            "name": "CATEGORY",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 16,
+            "visibility_type": "normal",
+            "display_name": "Product → Category",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0.0,
+                  "percent-url": 0.0,
+                  "percent-email": 0.0,
+                  "percent-state": 0.0,
+                  "average-length": 6.375
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": [
+              "field",
+              "count",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 8,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 109.0,
+                  "q1": 109.36150801752578,
+                  "q3": 117.41886116991581,
+                  "max": 120.0,
+                  "sd": 4.254710813035841,
+                  "avg": 113.53846153846153
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Top Products - row chart",
+        "type": "question",
+        "query_average_duration": null,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "filter": [
+              ">",
+              [
+                "field",
+                "count",
+                {
+                  "base-type": "type/Integer"
+                }
+              ],
+              108
+            ],
+            "source-query": {
+              "source-table": 1,
+              "aggregation": [
+                [
+                  "count"
+                ]
+              ],
+              "breakout": [
+                [
+                  "field",
+                  12,
+                  {
+                    "base-type": "type/Text",
+                    "source-field": 10
+                  }
+                ],
+                [
+                  "field",
+                  16,
+                  {
+                    "base-type": "type/Text",
+                    "source-field": 10
+                  }
+                ]
+              ],
+              "order-by": [
+                [
+                  "desc",
+                  [
+                    "aggregation",
+                    0
+                  ]
+                ]
+              ],
+              "filter": [
+                "!=",
+                [
+                  "field",
+                  12,
+                  {
+                    "base-type": "type/Text",
+                    "source-field": 10
+                  }
+                ],
+                "Incredible Aluminum Knife"
+              ]
+            }
+          }
+        },
+        "id": 16750,
+        "parameter_mappings": [],
+        "display": "row",
+        "entity_id": "iaHePu12R3qe6QnJ3g5_J",
+        "collection_preview": true,
+        "visualization_settings": {
+          "table.pivot": false,
+          "series_settings": {
+            "count": {
+              "color": "#999AC4"
+            }
+          },
+          "graph.dimensions": [
+            "TITLE"
+          ],
+          "graph.x_axis.title_text": "Products",
+          "graph.y_axis.title_text": "total orders",
+          "graph.metrics": [
+            "count"
+          ]
+        },
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 0,
+      "id": 15475,
+      "parameter_mappings": [
+        {
+          "parameter_id": "5eeec658",
+          "card_id": 16750,
+          "target": [
+            "dimension",
+            [
+              "field",
+              "PRODUCTS__via__PRODUCT_ID__CATEGORY",
+              {
+                "base-type": "type/Text"
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16750,
+      "entity_id": "mqC9uSTWItReaRsnOB6ZO",
+      "visualization_settings": {
+        "graph.y_axis.title_text": "number of orders",
+        "table.pivot": false,
+        "graph.x_axis.labels_enabled": false,
+        "graph.x_axis.title_text": "Products",
+        "card.title": "Best selling products",
+        "graph.metrics": [
+          "count"
+        ],
+        "card.description": "An ordered list of our most successful products",
+        "series_settings": {
+          "count": {
+            "color": "#999AC4"
+          }
+        },
+        "graph.dimensions": [
+          "TITLE"
+        ]
+      },
+      "size_y": 11,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 1
+    },
+    {
+      "size_x": 15,
+      "dashboard_tab_id": 783,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "display_name": "Age",
+            "field_ref": [
+              "expression",
+              "Age"
+            ],
+            "name": "Age",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 43,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 23.0,
+                  "q1": 33.4,
+                  "q3": 54.8,
+                  "max": 65.0,
+                  "sd": 12.384099159115298,
+                  "avg": 44.098130841121495
+                }
+              }
+            }
+          },
+          {
+            "description": "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter",
+            "semantic_type": "type/Source",
+            "coercion_strategy": null,
+            "name": "SOURCE",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              6,
+              {
+                "base-type": "type/Text",
+                "join-alias": "People - User"
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 6,
+            "visibility_type": "normal",
+            "display_name": "People - User → Source",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0.0,
+                  "percent-url": 0.0,
+                  "percent-email": 0.0,
+                  "percent-state": 0.0,
+                  "average-length": 7.4084
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 106,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 8.0,
+                  "q1": 61.66980674649235,
+                  "q3": 109.82842712474618,
+                  "max": 211.0,
+                  "sd": 37.95287857130708,
+                  "avg": 87.66355140186916
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Top Sources by age groups (not binned yet)",
+        "type": "question",
+        "query_average_duration": null,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "source-table": 1,
+            "joins": [
+              {
+                "strategy": "left-join",
+                "alias": "People - User",
+                "condition": [
+                  "=",
+                  [
+                    "field",
+                    5,
+                    {
+                      "base-type": "type/Integer"
+                    }
+                  ],
+                  [
+                    "field",
+                    30,
+                    {
+                      "base-type": "type/BigInteger",
+                      "join-alias": "People - User"
+                    }
+                  ]
+                ],
+                "source-table": 4
+              }
+            ],
+            "expressions": {
+              "Age": [
+                "datetime-diff",
+                [
+                  "field",
+                  17,
+                  {
+                    "base-type": "type/Date",
+                    "join-alias": "People - User"
+                  }
+                ],
+                [
+                  "now"
+                ],
+                "year"
+              ]
+            },
+            "aggregation": [
+              [
+                "count"
+              ]
+            ],
+            "breakout": [
+              [
+                "expression",
+                "Age"
+              ],
+              [
+                "field",
+                6,
+                {
+                  "base-type": "type/Text",
+                  "join-alias": "People - User"
+                }
+              ]
+            ]
+          }
+        },
+        "id": 16757,
+        "parameter_mappings": [],
+        "display": "bar",
+        "entity_id": "x9GO6Yd-UvTEHXKNuBwZE",
+        "collection_preview": true,
+        "visualization_settings": {
+          "graph.dimensions": [
+            "Age",
+            "SOURCE"
+          ],
+          "graph.series_order_dimension": null,
+          "graph.series_order": null,
+          "stackable.stack_type": "stacked",
+          "graph.metrics": [
+            "count"
+          ]
+        },
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 9,
+      "id": 15478,
+      "parameter_mappings": [
+        {
+          "parameter_id": "afa56954",
+          "card_id": 16757,
+          "target": [
+            "dimension",
+            [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "512c560a",
+          "card_id": 16757,
+          "target": [
+            "dimension",
+            [
+              "field",
+              33,
+              {
+                "base-type": "type/Text",
+                "join-alias": "People - User"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "5eeec658",
+          "card_id": 16757,
+          "target": [
+            "dimension",
+            [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "fc2cd1be",
+          "card_id": 16757,
+          "target": [
+            "dimension",
+            [
+              "field",
+              20,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16757,
+      "entity_id": "fGpmwY_xo9ukLwm1ysOjY",
+      "visualization_settings": {
+        "graph.y_axis.title_text": "Orders by Sources",
+        "graph.series_order_dimension": null,
+        "graph.x_axis.axis_enabled": true,
+        "card.title": "Orders by source per individual age",
+        "graph.metrics": [
+          "count"
+        ],
+        "graph.series_order": null,
+        "card.description": "Shows a distribution of orders broken down by source across our customers' age groups",
+        "graph.x_axis.scale": "ordinal",
+        "graph.dimensions": [
+          "Age",
+          "SOURCE"
+        ],
+        "stackable.stack_type": "normalized"
+      },
+      "size_y": 6,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 20
+    },
+    {
+      "size_x": 24,
+      "dashboard_tab_id": 783,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "query_average_duration": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 0,
+      "id": 15479,
+      "parameter_mappings": [],
+      "card_id": null,
+      "entity_id": "gkkqwcWApblS5vHpFjGNW",
+      "visualization_settings": {
+        "virtual_card": {
+          "name": null,
+          "display": "heading",
+          "visualization_settings": {},
+          "dataset_query": {},
+          "archived": false
+        },
+        "dashcard.background": false,
+        "text": "Age insights breakdowns"
+      },
+      "size_y": 1,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 7
+    },
+    {
+      "size_x": 9,
+      "dashboard_tab_id": 783,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "display_name": "Age",
+            "semantic_type": null,
+            "field_ref": [
+              "field",
+              "Age",
+              {
+                "base-type": "type/BigInteger",
+                "binning": {
+                  "strategy": "num-bins",
+                  "min-value": 22.5,
+                  "max-value": 67.5,
+                  "num-bins": 8,
+                  "bin-width": 7.5
+                }
+              }
+            ],
+            "name": "Age",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 42,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 24,
+                  "q1": 33.00603352619185,
+                  "q3": 55.200502396825456,
+                  "max": 65,
+                  "sd": 12.03482181912591,
+                  "avg": 44.4615
+                }
+              }
+            }
+          },
+          {
+            "description": "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter",
+            "semantic_type": "type/Source",
+            "coercion_strategy": null,
+            "name": "SOURCE",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              6,
+              {
+                "base-type": "type/Text",
+                "join-alias": "People - User"
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 6,
+            "visibility_type": "normal",
+            "display_name": "People - User → Source",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 7.4084
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 29,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 277,
+                  "q1": 550,
+                  "q3": 734,
+                  "max": 824,
+                  "sd": 126.348541831667,
+                  "avg": 625.3333333333334
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Orders by source per age groups",
+        "type": "question",
+        "query_average_duration": null,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "aggregation": [
+              [
+                "count"
+              ]
+            ],
+            "breakout": [
+              [
+                "field",
+                "Age",
+                {
+                  "base-type": "type/BigInteger",
+                  "binning": {
+                    "strategy": "default"
+                  }
+                }
+              ],
+              [
+                "field",
+                6,
+                {
+                  "base-type": "type/Text",
+                  "join-alias": "People - User"
+                }
+              ]
+            ],
+            "joins": [
+              {
+                "fields": "all",
+                "strategy": "left-join",
+                "alias": "People - User",
+                "condition": [
+                  "=",
+                  [
+                    "field",
+                    "USER_ID",
+                    {
+                      "base-type": "type/Integer"
+                    }
+                  ],
+                  [
+                    "field",
+                    30,
+                    {
+                      "base-type": "type/BigInteger",
+                      "join-alias": "People - User"
+                    }
+                  ]
+                ],
+                "source-table": 4
+              }
+            ],
+            "source-table": "card__15961"
+          }
+        },
+        "id": 16751,
+        "parameter_mappings": [],
+        "display": "bar",
+        "entity_id": "zVO-OKoeIjNsrljGwLuj6",
+        "collection_preview": true,
+        "visualization_settings": {
+          "graph.show_values": true,
+          "graph.x_axis.labels_enabled": true,
+          "table.cell_column": "SUBTOTAL",
+          "graph.series_order_dimension": null,
+          "graph.x_axis.axis_enabled": true,
+          "graph.metrics": [
+            "count"
+          ],
+          "graph.series_order": null,
+          "graph.y_axis.auto_range": true,
+          "graph.x_axis.scale": "ordinal",
+          "graph.dimensions": [
+            "Age",
+            "SOURCE"
+          ],
+          "stackable.stack_type": "stacked"
+        },
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 0,
+      "id": 15490,
+      "parameter_mappings": [
+        {
+          "parameter_id": "afa56954",
+          "card_id": 16751,
+          "target": [
+            "dimension",
+            [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "512c560a",
+          "card_id": 16751,
+          "target": [
+            "dimension",
+            [
+              "field",
+              33,
+              {
+                "base-type": "type/Text",
+                "join-alias": "People - User"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "5eeec658",
+          "card_id": 16751,
+          "target": [
+            "dimension",
+            [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "fc2cd1be",
+          "card_id": 16751,
+          "target": [
+            "dimension",
+            [
+              "field",
+              20,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16751,
+      "entity_id": "HZxmKOSy7FnDo6I_0_NCn",
+      "visualization_settings": {
+        "graph.y_axis.title_text": "Orders",
+        "graph.show_values": true,
+        "graph.x_axis.labels_enabled": true,
+        "table.cell_column": "SUBTOTAL",
+        "graph.series_order_dimension": null,
+        "graph.x_axis.axis_enabled": true,
+        "graph.y_axis.labels_enabled": false,
+        "graph.metrics": [
+          "count"
+        ],
+        "graph.label_value_formatting": "compact",
+        "graph.series_order": null,
+        "graph.y_axis.auto_range": true,
+        "graph.x_axis.scale": "ordinal",
+        "graph.dimensions": [
+          "Age",
+          "SOURCE"
+        ],
+        "stackable.stack_type": "stacked"
+      },
+      "size_y": 6,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 20
+    },
+    {
+      "size_x": 17,
+      "dashboard_tab_id": 782,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": "how customers have been reviewing their orders",
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "description": "The average rating users have given the product. This ranges from 1 - 5",
+            "semantic_type": "type/Score",
+            "coercion_strategy": null,
+            "name": "RATING",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              27,
+              {
+                "base-type": "type/Float",
+                "source-field": 10
+              }
+            ],
+            "effective_type": "type/Float",
+            "id": 27,
+            "visibility_type": "normal",
+            "display_name": "Product → Rating",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 23,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 0.0,
+                  "q1": 3.5120465053408525,
+                  "q3": 4.216124969497314,
+                  "max": 5.0,
+                  "sd": 1.3605488657451452,
+                  "avg": 3.4715
+                }
+              }
+            },
+            "base_type": "type/Float"
+          },
+          {
+            "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+            "semantic_type": "type/Category",
+            "coercion_strategy": null,
+            "name": "CATEGORY",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 16,
+            "visibility_type": "normal",
+            "display_name": "Product → Category",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0.0,
+                  "percent-url": 0.0,
+                  "percent-email": 0.0,
+                  "percent-state": 0.0,
+                  "average-length": 6.375
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 57,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 70.0,
+                  "q1": 105.0,
+                  "q3": 370.0,
+                  "max": 1093.0,
+                  "sd": 229.88812521865958,
+                  "avg": 281.6060606060606
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Customer Satisfaction",
+        "type": "question",
+        "query_average_duration": null,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "source-table": 1,
+            "aggregation": [
+              [
+                "count"
+              ]
+            ],
+            "breakout": [
+              [
+                "field",
+                27,
+                {
+                  "base-type": "type/Float",
+                  "source-field": 10
+                }
+              ],
+              [
+                "field",
+                16,
+                {
+                  "base-type": "type/Text",
+                  "source-field": 10
+                }
+              ]
+            ],
+            "order-by": [
+              [
+                "desc",
+                [
+                  "field",
+                  27,
+                  {
+                    "base-type": "type/Float",
+                    "source-field": 10
+                  }
+                ]
+              ]
+            ],
+            "filter": [
+              "!=",
+              [
+                "field",
+                12,
+                {
+                  "base-type": "type/Text",
+                  "source-field": 10
+                }
+              ],
+              "Incredible Aluminum Knife"
+            ]
+          }
+        },
+        "id": 16745,
+        "parameter_mappings": [],
+        "display": "bar",
+        "entity_id": "ksN7229c2NAAKk8pkdHeA",
+        "collection_preview": true,
+        "visualization_settings": {
+          "graph.y_axis.title_text": "total orders",
+          "table.pivot": false,
+          "graph.series_order_dimension": null,
+          "graph.x_axis.title_text": "Products",
+          "graph.metrics": [
+            "count"
+          ],
+          "graph.series_order": null,
+          "series_settings": {
+            "count": {
+              "color": "#999AC4"
+            }
+          },
+          "graph.y_axis.auto_range": true,
+          "graph.dimensions": [
+            "RATING",
+            "CATEGORY"
+          ],
+          "stackable.stack_type": "stacked"
+        },
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 0,
+      "id": 15476,
+      "parameter_mappings": [
+        {
+          "parameter_id": "afa56954",
+          "card_id": 16745,
+          "target": [
+            "dimension",
+            [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "512c560a",
+          "card_id": 16745,
+          "target": [
+            "dimension",
+            [
+              "field",
+              33,
+              {
+                "base-type": "type/Text",
+                "source-field": 5
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "5eeec658",
+          "card_id": 16745,
+          "target": [
+            "dimension",
+            [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "fc2cd1be",
+          "card_id": 16745,
+          "target": [
+            "dimension",
+            [
+              "field",
+              20,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16745,
+      "entity_id": "Th0yzWssuQuY3NNdt80xm",
+      "visualization_settings": {
+        "graph.y_axis.title_text": "Orders by category",
+        "table.pivot": false,
+        "graph.series_order_dimension": null,
+        "graph.x_axis.title_text": "Customer Ratings",
+        "card.title": "Customer Satisfaction per category",
+        "graph.metrics": [
+          "count"
+        ],
+        "graph.series_order": null,
+        "card.description": "Shows the distribution of the product categories along the scale of customer ratings",
+        "series_settings": {
+          "count": {
+            "color": "#999AC4"
+          },
+          "Doohickey": {
+            "color": "#7172AD"
+          },
+          "Gizmo": {
+            "color": "#C7EAEA"
+          },
+          "Widget": {
+            "color": "#227FD2"
+          },
+          "Gadget": {
+            "color": "#A989C5"
+          }
+        },
+        "graph.y_axis.auto_range": true,
+        "graph.dimensions": [
+          "RATING",
+          "CATEGORY"
+        ],
+        "stackable.stack_type": "stacked"
+      },
+      "size_y": 6,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 19
+    },
+    {
+      "size_x": 7,
+      "dashboard_tab_id": 782,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": 3,
+        "result_metadata": [
+          {
+            "display_name": "Average of Rating",
+            "semantic_type": "type/Score",
+            "settings": null,
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "avg",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 3.4715,
+                  "q1": 3.4715,
+                  "q3": 3.4715,
+                  "max": 3.4715,
+                  "sd": null,
+                  "avg": 3.4715
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Average product rating",
+        "type": "question",
+        "query_average_duration": null,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "source-table": 3,
+            "aggregation": [
+              [
+                "avg",
+                [
+                  "field",
+                  27,
+                  {
+                    "base-type": "type/Float"
+                  }
+                ]
+              ]
+            ]
+          }
+        },
+        "id": 16758,
+        "parameter_mappings": [],
+        "display": "gauge",
+        "entity_id": "2tAEdO9Jw6k_QSe8_2nuh",
+        "collection_preview": true,
+        "visualization_settings": {
+          "table.cell_column": "avg",
+          "gauge.segments": [
+            {
+              "min": 0,
+              "max": 1,
+              "color": "#EF8C8C",
+              "label": "awful"
+            },
+            {
+              "min": 1,
+              "max": 2,
+              "color": "#F2A86F",
+              "label": "bad"
+            },
+            {
+              "min": 2,
+              "max": 3,
+              "color": "#F9D45C",
+              "label": "alright"
+            },
+            {
+              "min": 3,
+              "max": 4,
+              "color": "#A7D07C",
+              "label": "good"
+            },
+            {
+              "min": 4,
+              "max": 5,
+              "color": "#689636",
+              "label": "great"
+            }
+          ]
+        },
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 17,
+      "id": 15477,
+      "parameter_mappings": [
+        {
+          "parameter_id": "5eeec658",
+          "card_id": 16758,
+          "target": [
+            "dimension",
+            [
+              "field",
+              16,
+              {
+                "base-type": "type/Text"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "fc2cd1be",
+          "card_id": 16758,
+          "target": [
+            "dimension",
+            [
+              "field",
+              20,
+              {
+                "base-type": "type/Text"
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16758,
+      "entity_id": "EphsKCDA70BVom-KN92i-",
+      "visualization_settings": {
+        "table.cell_column": "avg",
+        "gauge.segments": [
+          {
+            "min": 0,
+            "max": 1,
+            "color": "#EF8C8C",
+            "label": "awful"
+          },
+          {
+            "min": 1,
+            "max": 2,
+            "color": "#F2A86F",
+            "label": "bad"
+          },
+          {
+            "min": 2,
+            "max": 3,
+            "color": "#F9D45C",
+            "label": "alright"
+          },
+          {
+            "min": 3,
+            "max": 4,
+            "color": "#A7D07C",
+            "label": "good"
+          },
+          {
+            "min": 4,
+            "max": 5,
+            "color": "#689636",
+            "label": "great"
+          }
+        ],
+        "card.title": "Average product rating overall",
+        "card.description": "Indicates the average customer review of our products"
+      },
+      "size_y": 6,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 19
+    },
+    {
+      "size_x": 24,
+      "dashboard_tab_id": 781,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "description": "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter",
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "pivot-grouping",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "expression",
+              "pivot-grouping"
+            ],
+            "effective_type": "type/Text",
+            "id": 6,
+            "visibility_type": "normal",
+            "display_name": "pivot-grouping",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 3.0,
+                  "q1": 3.0,
+                  "q3": 3.0,
+                  "max": 3.0,
+                  "sd": null,
+                  "avg": 3.0
+                }
+              }
+            },
+            "base_type": "type/Integer"
+          },
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/Income",
+            "coercion_strategy": null,
+            "name": "sum",
+            "settings": {
+              "time_enabled": "milliseconds"
+            },
+            "fk_target_field_id": null,
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "effective_type": "type/DateTime",
+            "id": 25,
+            "visibility_type": "normal",
+            "display_name": "Sum of Subtotal",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1448188.1658779033,
+                  "q1": 1448188.1658779033,
+                  "q3": 1448188.1658779033,
+                  "max": 1448188.1658779033,
+                  "sd": null,
+                  "avg": 1448188.1658779033
+                }
+              }
+            },
+            "base_type": "type/Float"
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Orders according to sources per quarter",
+        "type": "question",
+        "query_average_duration": null,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "aggregation": [
+              [
+                "sum",
+                [
+                  "field",
+                  15,
+                  {
+                    "base-type": "type/Float"
+                  }
+                ]
+              ]
+            ],
+            "source-table": 1,
+            "breakout": [
+              [
+                "field",
+                6,
+                {
+                  "base-type": "type/Text",
+                  "source-field": 5
+                }
+              ],
+              [
+                "field",
+                25,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "quarter"
+                }
+              ]
+            ]
+          }
+        },
+        "id": 16741,
+        "parameter_mappings": [],
+        "display": "pivot",
+        "entity_id": "CjSTHiYlLE_yxC7mlrT0t",
+        "collection_preview": true,
+        "visualization_settings": {
+          "stackable.stack_type": "stacked",
+          "graph.series_labels": [
+            null
+          ],
+          "graph.dimensions": [
+            "CREATED_AT",
+            "SOURCE"
+          ],
+          "pivot_table.column_split": {
+            "rows": [
+              [
+                "field",
+                25,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "quarter"
+                }
+              ]
+            ],
+            "columns": [
+              [
+                "field",
+                6,
+                {
+                  "base-type": "type/Text",
+                  "source-field": 5
+                }
+              ]
+            ],
+            "values": [
+              [
+                "aggregation",
+                0
+              ]
+            ]
+          },
+          "pivot_table.column_widths": {
+            "leftHeaderWidths": [
+              141
+            ],
+            "totalLeftHeaderWidths": 141,
+            "valueHeaderWidths": {}
+          },
+          "table.column_formatting": [
+            {
+              "columns": [
+                "sum"
+              ],
+              "type": "single",
+              "operator": ">",
+              "value": 25000,
+              "color": "#A7D07C",
+              "highlight_row": false
+            }
+          ],
+          "graph.metrics": [
+            "sum"
+          ]
+        },
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 0,
+      "id": 15461,
+      "parameter_mappings": [
+        {
+          "parameter_id": "afa56954",
+          "card_id": 16741,
+          "target": [
+            "dimension",
+            [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "512c560a",
+          "card_id": 16741,
+          "target": [
+            "dimension",
+            [
+              "field",
+              33,
+              {
+                "base-type": "type/Text",
+                "source-field": 5
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "5eeec658",
+          "card_id": 16741,
+          "target": [
+            "dimension",
+            [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "fc2cd1be",
+          "card_id": 16741,
+          "target": [
+            "dimension",
+            [
+              "field",
+              20,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16741,
+      "entity_id": "M0A8tSxo-5aBxlJOByGLn",
+      "visualization_settings": {
+        "pivot_table.column_split": {
+          "rows": [
+            [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "quarter"
+              }
+            ]
+          ],
+          "columns": [
+            [
+              "field",
+              6,
+              {
+                "base-type": "type/Text",
+                "source-field": 5
+              }
+            ]
+          ],
+          "values": [
+            [
+              "aggregation",
+              0
+            ]
+          ]
+        },
+        "pivot_table.column_widths": {
+          "leftHeaderWidths": [
+            141
+          ],
+          "totalLeftHeaderWidths": 141,
+          "valueHeaderWidths": {
+            "0": 234,
+            "1": 263,
+            "2": 254,
+            "3": 236.3636474609375,
+            "4": 227,
+            "5": 170
+          }
+        },
+        "graph.metrics": [
+          "sum"
+        ],
+        "table.column_formatting": [
+          {
+            "max_value": 100,
+            "color": "#FBE499",
+            "columns": [
+              "sum"
+            ],
+            "value": 1000,
+            "type": "range",
+            "colors": [
+              "#ED6E6E",
+              "#FFFFFF",
+              "#84BB4C"
+            ],
+            "highlight_row": false,
+            "min_value": 0,
+            "min_type": null,
+            "operator": "<",
+            "max_type": null
+          }
+        ],
+        "graph.series_labels": [
+          null
+        ],
+        "pivot.show_row_totals": true,
+        "card.description": "Orders placed per quarter broken down by source and formatted to highlight best and worst quarters",
+        "graph.dimensions": [
+          "CREATED_AT",
+          "SOURCE"
+        ],
+        "stackable.stack_type": "stacked"
+      },
+      "size_y": 10,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 9
+    },
+    {
+      "size_x": 24,
+      "dashboard_tab_id": 781,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "query_average_duration": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 0,
+      "id": 15462,
+      "parameter_mappings": [],
+      "card_id": null,
+      "entity_id": "EVBju7T5-D8QgSgyWCNo6",
+      "visualization_settings": {
+        "virtual_card": {
+          "name": null,
+          "display": "heading",
+          "visualization_settings": {},
+          "dataset_query": {},
+          "archived": false
+        },
+        "dashcard.background": false,
+        "text": "Overall business health"
+      },
+      "size_y": 1,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 0
+    },
+    {
+      "size_x": 15,
+      "dashboard_tab_id": 783,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": 4,
+        "result_metadata": [
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": [
+              "field",
+              "count",
+              {
+                "base-type": "type/BigInteger",
+                "binning": {
+                  "strategy": "num-bins",
+                  "min-value": 15,
+                  "max-value": 75,
+                  "num-bins": 8,
+                  "bin-width": 7.5
+                }
+              }
+            ],
+            "name": "count",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 26,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 17,
+                  "q1": 53.44948974278318,
+                  "q3": 64.75,
+                  "max": 75,
+                  "sd": 10.273825724461716,
+                  "avg": 58.13953488372093
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "count_2",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 6,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 1.4188611699158102,
+                  "q3": 10.75,
+                  "max": 16,
+                  "sd": 5.871642911161278,
+                  "avg": 6.142857142857143
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Buyer's ages by segments",
+        "type": "question",
+        "query_average_duration": 508,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "aggregation": [
+              [
+                "count"
+              ]
+            ],
+            "breakout": [
+              [
+                "field",
+                "count",
+                {
+                  "base-type": "type/BigInteger",
+                  "binning": {
+                    "strategy": "default"
+                  }
+                }
+              ]
+            ],
+            "source-table": "card__15463"
+          }
+        },
+        "id": 16763,
+        "parameter_mappings": [],
+        "display": "bar",
+        "entity_id": "KEYNdk9tyiDI0KKoZDMLM",
+        "collection_preview": true,
+        "visualization_settings": {
+          "graph.dimensions": [
+            "count"
+          ],
+          "graph.metrics": [
+            "count_2"
+          ]
+        },
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 9,
+      "id": 15463,
+      "parameter_mappings": [],
+      "card_id": 16763,
+      "entity_id": "T9hfd-G609vV2BBmtnTtt",
+      "visualization_settings": {
+        "graph.dimensions": [
+          "count"
+        ],
+        "graph.x_axis.title_text": "Age groups",
+        "graph.y_axis.title_text": "People",
+        "series_settings": {
+          "count_2": {
+            "color": "#999AC4"
+          }
+        },
+        "card.title": "Buyer's ages by groups",
+        "card.description": "Shows a distribution of our customers in age groups",
+        "graph.x_axis.scale": "ordinal",
+        "graph.metrics": [
+          "count_2"
+        ]
+      },
+      "size_y": 6,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 1
+    },
+    {
+      "size_x": 24,
+      "dashboard_tab_id": 782,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "query_average_duration": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 0,
+      "id": 15464,
+      "parameter_mappings": [],
+      "card_id": null,
+      "entity_id": "uR0fRA4W1A_HwClbkgWha",
+      "visualization_settings": {
+        "virtual_card": {
+          "name": null,
+          "display": "heading",
+          "visualization_settings": {},
+          "dataset_query": {},
+          "archived": false
+        },
+        "dashcard.background": false,
+        "text": "Top performing products"
+      },
+      "size_y": 1,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 0
+    },
+    {
+      "size_x": 7,
+      "dashboard_tab_id": 782,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+            "semantic_type": "type/Category",
+            "coercion_strategy": null,
+            "name": "CATEGORY",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 16,
+            "visibility_type": "normal",
+            "display_name": "Product → Category",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0.0,
+                  "percent-url": 0.0,
+                  "percent-email": 0.0,
+                  "percent-state": 0.0,
+                  "average-length": 6.375
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 3976.0,
+                  "q1": 4380.0,
+                  "q3": 5000.0,
+                  "max": 5061.0,
+                  "sd": 489.3103990992493,
+                  "avg": 4690.0
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Orders by category",
+        "type": "question",
+        "query_average_duration": 56,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "source-table": 1,
+            "aggregation": [
+              [
+                "count"
+              ]
+            ],
+            "breakout": [
+              [
+                "field",
+                16,
+                {
+                  "base-type": "type/Text",
+                  "source-field": 10
+                }
+              ]
+            ]
+          }
+        },
+        "id": 16748,
+        "parameter_mappings": [],
+        "display": "pie",
+        "entity_id": "omToGX6Ets4EMN2lKM6RI",
+        "collection_preview": true,
+        "visualization_settings": {
+          "pie.colors": {
+            "Doohickey": "#7172AD",
+            "Gadget": "#A989C5",
+            "Gizmo": "#C7EAEA",
+            "Widget": "#227FD2"
+          }
+        },
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 17,
+      "id": 15465,
+      "parameter_mappings": [
+        {
+          "parameter_id": "afa56954",
+          "card_id": 16748,
+          "target": [
+            "dimension",
+            [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "512c560a",
+          "card_id": 16748,
+          "target": [
+            "dimension",
+            [
+              "field",
+              33,
+              {
+                "base-type": "type/Text",
+                "source-field": 5
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "5eeec658",
+          "card_id": 16748,
+          "target": [
+            "dimension",
+            [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "fc2cd1be",
+          "card_id": 16748,
+          "target": [
+            "dimension",
+            [
+              "field",
+              20,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16748,
+      "entity_id": "Rt9QuHLecDgZpWNLSMgPs",
+      "visualization_settings": {
+        "pie.colors": {
+          "Doohickey": "#7172AD",
+          "Gadget": "#A989C5",
+          "Gizmo": "#C7EAEA",
+          "Widget": "#227FD2"
+        },
+        "card.title": "Total orders by category",
+        "card.description": "Breaks down the overall performance of each of the product categories "
+      },
+      "size_y": 5,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 13
+    },
+    {
+      "size_x": 17,
+      "dashboard_tab_id": 782,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+            "semantic_type": "type/Category",
+            "coercion_strategy": null,
+            "name": "CATEGORY",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 16,
+            "visibility_type": "normal",
+            "display_name": "Product → Category",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0.0,
+                  "percent-url": 0.0,
+                  "percent-email": 0.0,
+                  "percent-state": 0.0,
+                  "average-length": 6.375
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "description": "The date the product was added to our catalog.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "quarter",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              29,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "quarter",
+                "source-field": 10
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 29,
+            "visibility_type": "normal",
+            "display_name": "Product → Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 200,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2016-04-26T19:29:55.147Z",
+                  "latest": "2019-04-15T13:34:19.931Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 50,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 92.0,
+                  "q1": 206.5,
+                  "q3": 465.0,
+                  "max": 1111.0,
+                  "sd": 181.15146949986575,
+                  "avg": 367.84313725490193
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Category order by quarter",
+        "type": "question",
+        "query_average_duration": null,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "source-table": 1,
+            "breakout": [
+              [
+                "field",
+                16,
+                {
+                  "base-type": "type/Text",
+                  "source-field": 10
+                }
+              ],
+              [
+                "field",
+                29,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "quarter",
+                  "source-field": 10
+                }
+              ]
+            ],
+            "aggregation": [
+              [
+                "count"
+              ]
+            ]
+          }
+        },
+        "id": 16752,
+        "parameter_mappings": [],
+        "display": "line",
+        "entity_id": "rLpWb6mU6IEJVqmmTyfUQ",
+        "collection_preview": true,
+        "visualization_settings": {
+          "graph.dimensions": [
+            "CREATED_AT",
+            "CATEGORY"
+          ],
+          "graph.metrics": [
+            "count"
+          ]
+        },
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 0,
+      "id": 15466,
+      "parameter_mappings": [
+        {
+          "parameter_id": "afa56954",
+          "card_id": 16752,
+          "target": [
+            "dimension",
+            [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "512c560a",
+          "card_id": 16752,
+          "target": [
+            "dimension",
+            [
+              "field",
+              33,
+              {
+                "base-type": "type/Text",
+                "source-field": 5
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "5eeec658",
+          "card_id": 16752,
+          "target": [
+            "dimension",
+            [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "fc2cd1be",
+          "card_id": 16752,
+          "target": [
+            "dimension",
+            [
+              "field",
+              20,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16752,
+      "entity_id": "85gsCR4wnRE7008SOp0SQ",
+      "visualization_settings": {
+        "graph.dimensions": [
+          "CREATED_AT",
+          "CATEGORY"
+        ],
+        "series_settings": {
+          "Doohickey": {
+            "color": "#7172AD"
+          },
+          "Widget": {
+            "color": "#227FD2"
+          },
+          "Gizmo": {
+            "color": "#C7EAEA"
+          },
+          "Gadget": {
+            "color": "#A989C5"
+          }
+        },
+        "graph.x_axis.title_text": "Created At",
+        "graph.x_axis.labels_enabled": false,
+        "graph.y_axis.title_text": "Number of orders",
+        "card.title": "Numbers of orders by category per quarter",
+        "card.description": "Compares the orders of each category quarter over quarter",
+        "graph.metrics": [
+          "count"
+        ]
+      },
+      "size_y": 5,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 13
+    },
+    {
+      "size_x": 7,
+      "dashboard_tab_id": 782,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "month",
+            "name": "CREATED_AT",
+            "settings": {
+              "time_enabled": "milliseconds"
+            },
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 25,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 9998,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2016-04-30T18:56:13.352Z",
+                  "latest": "2020-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Sum of Quantity",
+            "semantic_type": "type/Quantity",
+            "settings": {
+              "show_mini_bar": false
+            },
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "sum",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 11,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 3.0,
+                  "q1": 4.76393202250021,
+                  "q3": 17.0,
+                  "max": 21.0,
+                  "sd": 6.199964551476116,
+                  "avg": 10.142857142857142
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Enormous Wool Car trend",
+        "type": "question",
+        "query_average_duration": 465,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "source-table": 1,
+            "breakout": [
+              [
+                "field",
+                25,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month"
+                }
+              ]
+            ],
+            "aggregation": [
+              [
+                "sum",
+                [
+                  "field",
+                  15093,
+                  {
+                    "base-type": "type/Integer"
+                  }
+                ]
+              ]
+            ],
+            "filter": [
+              "and",
+              [
+                "between",
+                [
+                  "field",
+                  25,
+                  {
+                    "base-type": "type/DateTime"
+                  }
+                ],
+                "2021-01-01",
+                "2024-01-23"
+              ],
+              [
+                "=",
+                [
+                  "field",
+                  2,
+                  {
+                    "base-type": "type/BigInteger",
+                    "source-field": 10
+                  }
+                ],
+                17
+              ]
+            ]
+          }
+        },
+        "id": 16743,
+        "parameter_mappings": [],
+        "display": "smartscalar",
+        "entity_id": "Mbl5ty7Jn11ywlVyb4hte",
+        "collection_preview": true,
+        "visualization_settings": {},
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 17,
+      "id": 15467,
+      "parameter_mappings": [],
+      "card_id": 16743,
+      "entity_id": "Y6oaACdUk_ah7XK0AaFUQ",
+      "visualization_settings": {
+        "card.description": "Compares the total number of orders placed for this product this month with the previous period"
+      },
+      "size_y": 3,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 9
+    },
+    {
+      "size_x": 7,
+      "dashboard_tab_id": 782,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "month",
+            "name": "CREATED_AT",
+            "settings": {
+              "time_enabled": "milliseconds"
+            },
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 25,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 9998,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2016-04-30T18:56:13.352Z",
+                  "latest": "2020-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Sum of Quantity",
+            "semantic_type": "type/Quantity",
+            "settings": {
+              "show_mini_bar": false
+            },
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "sum",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 7,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1.0,
+                  "q1": 2.5,
+                  "q3": 9.414213562373096,
+                  "max": 10.0,
+                  "sd": 3.693623849670827,
+                  "avg": 5.75
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Heavy-Duty Silk Chair trend",
+        "type": "question",
+        "query_average_duration": 484,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "source-table": 1,
+            "breakout": [
+              [
+                "field",
+                25,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month"
+                }
+              ]
+            ],
+            "aggregation": [
+              [
+                "sum",
+                [
+                  "field",
+                  15093,
+                  {
+                    "base-type": "type/Integer"
+                  }
+                ]
+              ]
+            ],
+            "filter": [
+              "and",
+              [
+                "between",
+                [
+                  "field",
+                  25,
+                  {
+                    "base-type": "type/DateTime"
+                  }
+                ],
+                "2021-01-01",
+                "2024-01-23"
+              ],
+              [
+                "=",
+                [
+                  "field",
+                  2,
+                  {
+                    "base-type": "type/BigInteger",
+                    "source-field": 10
+                  }
+                ],
+                86
+              ]
+            ]
+          }
+        },
+        "id": 16761,
+        "parameter_mappings": [],
+        "display": "smartscalar",
+        "entity_id": "lXN9pqMgKY3mIvTLZM5dA",
+        "collection_preview": true,
+        "visualization_settings": {},
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 17,
+      "id": 15468,
+      "parameter_mappings": [],
+      "card_id": 16761,
+      "entity_id": "LO992nORN2tP2ds-9mLqk",
+      "visualization_settings": {
+        "card.description": "Compares the total number of orders placed for this product this month with the previous period"
+      },
+      "size_y": 3,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 6
+    },
+    {
+      "size_x": 7,
+      "dashboard_tab_id": 782,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "month",
+            "name": "CREATED_AT",
+            "settings": {
+              "time_enabled": "milliseconds"
+            },
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 25,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 9998,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2016-04-30T18:56:13.352Z",
+                  "latest": "2020-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Sum of Quantity",
+            "semantic_type": "type/Quantity",
+            "settings": {
+              "show_mini_bar": false
+            },
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "sum",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 7,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1.0,
+                  "q1": 3.25,
+                  "q3": 6.0,
+                  "max": 74.0,
+                  "sd": 22.086949389477336,
+                  "avg": 11.5
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Aerodynamic Copper Knife trend",
+        "type": "question",
+        "query_average_duration": 492,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "source-table": 1,
+            "breakout": [
+              [
+                "field",
+                25,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month"
+                }
+              ]
+            ],
+            "aggregation": [
+              [
+                "sum",
+                [
+                  "field",
+                  15093,
+                  {
+                    "base-type": "type/Integer"
+                  }
+                ]
+              ]
+            ],
+            "filter": [
+              "and",
+              [
+                "between",
+                [
+                  "field",
+                  25,
+                  {
+                    "base-type": "type/DateTime"
+                  }
+                ],
+                "2021-01-01",
+                "2024-01-23"
+              ],
+              [
+                "=",
+                [
+                  "field",
+                  2,
+                  {
+                    "base-type": "type/BigInteger",
+                    "source-field": 10
+                  }
+                ],
+                165
+              ]
+            ]
+          }
+        },
+        "id": 16749,
+        "parameter_mappings": [],
+        "display": "smartscalar",
+        "entity_id": "F3BpJ7lqEwFM5REgwcuZM",
+        "collection_preview": true,
+        "visualization_settings": {},
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 17,
+      "id": 15469,
+      "parameter_mappings": [],
+      "card_id": 16749,
+      "entity_id": "jVZaE-HcdWOvZR2FaZKCZ",
+      "visualization_settings": {
+        "card.description": "Compares the total number of orders placed for this product this month with the previous period"
+      },
+      "size_y": 3,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 3
+    },
+    {
+      "size_x": 7,
+      "dashboard_tab_id": 782,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "query_average_duration": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 17,
+      "id": 15470,
+      "parameter_mappings": [],
+      "card_id": null,
+      "entity_id": "u_qNDXNytmrMrtym-j77R",
+      "visualization_settings": {
+        "virtual_card": {
+          "name": null,
+          "display": "text",
+          "visualization_settings": {},
+          "dataset_query": {},
+          "archived": false
+        },
+        "text": "### Top three all time products \nMoM performance"
+      },
+      "size_y": 2,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 1
+    },
+    {
+      "size_x": 24,
+      "dashboard_tab_id": 783,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "query_average_duration": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 0,
+      "id": 15471,
+      "parameter_mappings": [],
+      "card_id": null,
+      "entity_id": "koMM8WwTXDSIz0h-u3M8Z",
+      "visualization_settings": {
+        "virtual_card": {
+          "name": null,
+          "display": "heading",
+          "visualization_settings": {},
+          "dataset_query": {},
+          "archived": false
+        },
+        "dashcard.background": false,
+        "text": "Who  and where are our customers"
+      },
+      "size_y": 1,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 0
+    },
+    {
+      "size_x": 15,
+      "dashboard_tab_id": 783,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "display_name": "Age",
+            "field_ref": [
+              "expression",
+              "Age"
+            ],
+            "name": "Age",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 43,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 23.0,
+                  "q1": 33.25,
+                  "q3": 54.75,
+                  "max": 65.0,
+                  "sd": 12.445906346880554,
+                  "avg": 44.0
+                }
+              }
+            }
+          },
+          {
+            "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+            "semantic_type": "type/Category",
+            "coercion_strategy": null,
+            "name": "CATEGORY",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 16,
+            "visibility_type": "normal",
+            "display_name": "Product → Category",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0.0,
+                  "percent-url": 0.0,
+                  "percent-email": 0.0,
+                  "percent-state": 0.0,
+                  "average-length": 6.375
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 80,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 15.0,
+                  "q1": 91.25,
+                  "q3": 125.63299316185545,
+                  "max": 183.0,
+                  "sd": 27.540598001366998,
+                  "avg": 109.06976744186046
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Count of orders by prod category and age - Maz",
+        "type": "question",
+        "query_average_duration": null,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "source-table": 1,
+            "joins": [
+              {
+                "strategy": "left-join",
+                "alias": "People - User",
+                "condition": [
+                  "=",
+                  [
+                    "field",
+                    5,
+                    {
+                      "base-type": "type/Integer"
+                    }
+                  ],
+                  [
+                    "field",
+                    30,
+                    {
+                      "base-type": "type/BigInteger",
+                      "join-alias": "People - User"
+                    }
+                  ]
+                ],
+                "source-table": 4
+              }
+            ],
+            "expressions": {
+              "Age": [
+                "datetime-diff",
+                [
+                  "field",
+                  17,
+                  {
+                    "base-type": "type/Date",
+                    "join-alias": "People - User"
+                  }
+                ],
+                [
+                  "now"
+                ],
+                "year"
+              ]
+            },
+            "aggregation": [
+              [
+                "count"
+              ]
+            ],
+            "breakout": [
+              [
+                "expression",
+                "Age"
+              ],
+              [
+                "field",
+                16,
+                {
+                  "base-type": "type/Text",
+                  "source-field": 10
+                }
+              ]
+            ]
+          }
+        },
+        "id": 16747,
+        "parameter_mappings": [],
+        "display": "bar",
+        "entity_id": "wBIzPA0nlf-uCHdrD2l0V",
+        "collection_preview": true,
+        "visualization_settings": {
+          "graph.dimensions": [
+            "Age",
+            "CATEGORY"
+          ],
+          "graph.series_order_dimension": null,
+          "graph.series_order": null,
+          "stackable.stack_type": "stacked",
+          "graph.metrics": [
+            "count"
+          ]
+        },
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 9,
+      "id": 15472,
+      "parameter_mappings": [
+        {
+          "parameter_id": "afa56954",
+          "card_id": 16747,
+          "target": [
+            "dimension",
+            [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "512c560a",
+          "card_id": 16747,
+          "target": [
+            "dimension",
+            [
+              "field",
+              33,
+              {
+                "base-type": "type/Text",
+                "join-alias": "People - User"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "5eeec658",
+          "card_id": 16747,
+          "target": [
+            "dimension",
+            [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "fc2cd1be",
+          "card_id": 16747,
+          "target": [
+            "dimension",
+            [
+              "field",
+              20,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16747,
+      "entity_id": "Qiu5Z2mq3wQ_zZ84jHO29",
+      "visualization_settings": {
+        "graph.y_axis.title_text": "Orders by category",
+        "graph.series_order_dimension": null,
+        "card.title": "Product category orders per individual age",
+        "graph.metrics": [
+          "count"
+        ],
+        "graph.series_order": null,
+        "card.description": "Shows a distribution of orders broken down by product category across our customers' age groups",
+        "series_settings": {
+          "Doohickey": {
+            "color": "#7172AD"
+          },
+          "Gadget": {
+            "color": "#A989C5"
+          },
+          "Gizmo": {
+            "color": "#C7EAEA"
+          },
+          "Widget": {
+            "color": "#227FD2"
+          }
+        },
+        "graph.x_axis.scale": "ordinal",
+        "graph.dimensions": [
+          "Age",
+          "CATEGORY"
+        ],
+        "stackable.stack_type": "normalized"
+      },
+      "size_y": 6,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 14
+    },
+    {
+      "size_x": 15,
+      "dashboard_tab_id": 783,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": "This question is supposed to show what age group is generating the most revenue. VB doesn't know how to group the X axis (age) into bins.",
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "display_name": "Age",
+            "field_ref": [
+              "expression",
+              "Age"
+            ],
+            "name": "Age",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 43,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 23.0,
+                  "q1": 33.25,
+                  "q3": 54.75,
+                  "max": 65.0,
+                  "sd": 12.556538801224908,
+                  "avg": 44.0
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Sum of Total",
+            "semantic_type": "type/Currency",
+            "settings": {
+              "currency": "USD"
+            },
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 43,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 6409.19483060206,
+                  "q1": 31109.68024485226,
+                  "q3": 39394.42691580618,
+                  "max": 52978.40821265376,
+                  "sd": 7861.916859605698,
+                  "avg": 35130.73681513096
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Revenue per age group (not binned yet)",
+        "type": "question",
+        "query_average_duration": null,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "source-table": 1,
+            "joins": [
+              {
+                "strategy": "left-join",
+                "alias": "People - User",
+                "condition": [
+                  "=",
+                  [
+                    "field",
+                    5,
+                    {
+                      "base-type": "type/Integer"
+                    }
+                  ],
+                  [
+                    "field",
+                    30,
+                    {
+                      "base-type": "type/BigInteger",
+                      "join-alias": "People - User"
+                    }
+                  ]
+                ],
+                "source-table": 4
+              }
+            ],
+            "expressions": {
+              "Age": [
+                "datetime-diff",
+                [
+                  "field",
+                  17,
+                  {
+                    "base-type": "type/Date",
+                    "join-alias": "People - User"
+                  }
+                ],
+                [
+                  "now"
+                ],
+                "year"
+              ]
+            },
+            "aggregation": [
+              [
+                "sum",
+                [
+                  "field",
+                  23,
+                  {
+                    "base-type": "type/Float"
+                  }
+                ]
+              ]
+            ],
+            "breakout": [
+              [
+                "expression",
+                "Age"
+              ]
+            ]
+          }
+        },
+        "id": 16755,
+        "parameter_mappings": [],
+        "display": "bar",
+        "entity_id": "wnKJlc3BlPHY9xBCNgmwn",
+        "collection_preview": true,
+        "visualization_settings": {
+          "graph.dimensions": [
+            "Age"
+          ],
+          "graph.series_order_dimension": null,
+          "graph.series_order": null,
+          "stackable.stack_type": "stacked",
+          "graph.show_values": true,
+          "graph.metrics": [
+            "sum"
+          ]
+        },
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 9,
+      "id": 15473,
+      "parameter_mappings": [
+        {
+          "parameter_id": "afa56954",
+          "card_id": 16755,
+          "target": [
+            "dimension",
+            [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "512c560a",
+          "card_id": 16755,
+          "target": [
+            "dimension",
+            [
+              "field",
+              33,
+              {
+                "base-type": "type/Text",
+                "join-alias": "People - User"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "5eeec658",
+          "card_id": 16755,
+          "target": [
+            "dimension",
+            [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "fc2cd1be",
+          "card_id": 16755,
+          "target": [
+            "dimension",
+            [
+              "field",
+              20,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16755,
+      "entity_id": "_lZGajlLkx9xMLIijm88R",
+      "visualization_settings": {
+        "graph.y_axis.title_text": "Total revenue",
+        "graph.show_values": true,
+        "graph.series_order_dimension": null,
+        "card.title": "Revenue per individual age",
+        "graph.metrics": [
+          "sum"
+        ],
+        "graph.label_value_formatting": "compact",
+        "graph.series_order": null,
+        "card.description": "Shows a distribution of revenue in age groups",
+        "graph.x_axis.scale": "ordinal",
+        "graph.dimensions": [
+          "Age"
+        ],
+        "stackable.stack_type": "stacked"
+      },
+      "size_y": 6,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 8
+    },
+    {
+      "size_x": 18,
+      "dashboard_tab_id": 781,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "month",
+            "name": "CREATED_AT",
+            "settings": {
+              "time_enabled": "milliseconds"
+            },
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 25,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 9998,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2016-04-30T18:56:13.352Z",
+                  "latest": "2020-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Sum of Total",
+            "semantic_type": "type/Currency",
+            "settings": {
+              "currency": "USD"
+            },
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 22,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 52.75594257942132,
+                  "q1": 5372.079269521636,
+                  "q3": 18976.961312687356,
+                  "max": 31136.881324495153,
+                  "sd": 8285.46360221467,
+                  "avg": 12661.353284119446
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Sum of Quantity",
+            "semantic_type": "type/Quantity",
+            "settings": {
+              "show_mini_bar": false
+            },
+            "field_ref": [
+              "aggregation",
+              1
+            ],
+            "name": "sum_2",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 22,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 2.0,
+                  "q1": 318.0,
+                  "q3": 1242.0,
+                  "max": 2260.0,
+                  "sd": 672.575886061062,
+                  "avg": 832.3181818181819
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Revenue and orders over time",
+        "type": "question",
+        "query_average_duration": null,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "source-table": 1,
+            "aggregation": [
+              [
+                "sum",
+                [
+                  "field",
+                  23,
+                  {
+                    "base-type": "type/Float"
+                  }
+                ]
+              ],
+              [
+                "sum",
+                [
+                  "field",
+                  15093,
+                  {
+                    "base-type": "type/Integer"
+                  }
+                ]
+              ]
+            ],
+            "breakout": [
+              [
+                "field",
+                25,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month"
+                }
+              ]
+            ],
+            "filter": [
+              "<",
+              [
+                "field",
+                25,
+                {
+                  "base-type": "type/DateTime"
+                }
+              ],
+              "2024-01-26"
+            ]
+          }
+        },
+        "id": 16754,
+        "parameter_mappings": [],
+        "display": "combo",
+        "entity_id": "jSsqNdzc5Qh2-ExlQTL1V",
+        "collection_preview": true,
+        "visualization_settings": {
+          "series_settings": {
+            "sum_2": {
+              "title": "Number of orders",
+              "color": "#51528D"
+            },
+            "sum": {
+              "title": "Revenue",
+              "line.interpolate": "linear",
+              "line.marker_enabled": false,
+              "display": "line",
+              "show_series_values": true
+            }
+          },
+          "graph.show_trendline": false,
+          "graph.x_axis.title_text": "Orders date",
+          "graph.y_axis.title_text": "Revenue",
+          "graph.dimensions": [
+            "CREATED_AT"
+          ],
+          "graph.metrics": [
+            "sum",
+            "sum_2"
+          ]
+        },
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 6,
+      "id": 15480,
+      "parameter_mappings": [
+        {
+          "parameter_id": "afa56954",
+          "card_id": 16754,
+          "target": [
+            "dimension",
+            [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "512c560a",
+          "card_id": 16754,
+          "target": [
+            "dimension",
+            [
+              "field",
+              33,
+              {
+                "base-type": "type/Text",
+                "source-field": 5
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "5eeec658",
+          "card_id": 16754,
+          "target": [
+            "dimension",
+            [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "fc2cd1be",
+          "card_id": 16754,
+          "target": [
+            "dimension",
+            [
+              "field",
+              20,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16754,
+      "entity_id": "VJljf7nGKhbHuu3jXmyKH",
+      "visualization_settings": {
+        "graph.show_trendline": false,
+        "graph.y_axis.title_text": "Revenue",
+        "graph.x_axis.labels_enabled": false,
+        "graph.x_axis.title_text": "Orders date",
+        "graph.y_axis.labels_enabled": false,
+        "graph.metrics": [
+          "sum",
+          "sum_2"
+        ],
+        "card.description": "Matches the cumulative revenue  month over month with the number of orders placed each month",
+        "series_settings": {
+          "sum_2": {
+            "title": "Number of orders",
+            "color": "#51528D"
+          },
+          "sum": {
+            "title": "Revenue",
+            "line.interpolate": "linear",
+            "line.marker_enabled": false,
+            "display": "line",
+            "show_series_values": true
+          }
+        },
+        "graph.dimensions": [
+          "CREATED_AT"
+        ]
+      },
+      "size_y": 5,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 4
+    },
+    {
+      "size_x": 24,
+      "dashboard_tab_id": 782,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "query_average_duration": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 0,
+      "id": 15481,
+      "parameter_mappings": [],
+      "card_id": null,
+      "entity_id": "1xRRR0Qo3pjlYXEikgrLi",
+      "visualization_settings": {
+        "virtual_card": {
+          "name": null,
+          "display": "heading",
+          "visualization_settings": {},
+          "dataset_query": {},
+          "archived": false
+        },
+        "dashcard.background": false,
+        "text": "Customer satisfaction insights"
+      },
+      "size_y": 1,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 18
+    },
+    {
+      "size_x": 6,
+      "dashboard_tab_id": 781,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": "Compares the number of orders of this period with the previous",
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "month",
+            "name": "CREATED_AT",
+            "settings": {
+              "time_enabled": "milliseconds"
+            },
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 25,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 9998,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2016-04-30T18:56:13.352Z",
+                  "latest": "2020-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Sum of Quantity",
+            "semantic_type": "type/Quantity",
+            "settings": {
+              "show_mini_bar": false
+            },
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "sum",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 487.0,
+                  "q1": 487.0,
+                  "q3": 487.0,
+                  "max": 487.0,
+                  "sd": null,
+                  "avg": 487.0
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Number of orders per month",
+        "type": "question",
+        "query_average_duration": null,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "aggregation": [
+              [
+                "sum",
+                [
+                  "field",
+                  15093,
+                  {
+                    "base-type": "type/Integer"
+                  }
+                ]
+              ]
+            ],
+            "breakout": [
+              [
+                "field",
+                25,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month"
+                }
+              ]
+            ],
+            "source-table": 1,
+            "filter": [
+              "time-interval",
+              [
+                "field",
+                25,
+                {
+                  "base-type": "type/DateTime"
+                }
+              ],
+              "current",
+              "month"
+            ]
+          }
+        },
+        "id": 16744,
+        "parameter_mappings": [],
+        "display": "smartscalar",
+        "entity_id": "om_3Okd2DlUhgNY8WVDjD",
+        "collection_preview": true,
+        "visualization_settings": {},
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 12,
+      "id": 15482,
+      "parameter_mappings": [
+        {
+          "parameter_id": "afa56954",
+          "card_id": 16744,
+          "target": [
+            "dimension",
+            [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "512c560a",
+          "card_id": 16744,
+          "target": [
+            "dimension",
+            [
+              "field",
+              33,
+              {
+                "base-type": "type/Text",
+                "source-field": 5
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "5eeec658",
+          "card_id": 16744,
+          "target": [
+            "dimension",
+            [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "fc2cd1be",
+          "card_id": 16744,
+          "target": [
+            "dimension",
+            [
+              "field",
+              20,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16744,
+      "entity_id": "OQJ6tk1YGWaMa70gOGbA_",
+      "visualization_settings": {
+        "card.description": "Compares the total number of orders placed this month with the previous period"
+      },
+      "size_y": 3,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 1
+    },
+    {
+      "size_x": 6,
+      "dashboard_tab_id": 781,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "quarter",
+            "name": "CREATED_AT",
+            "settings": {
+              "time_enabled": "milliseconds"
+            },
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "quarter"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 25,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 9998,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2016-04-30T18:56:13.352Z",
+                  "latest": "2020-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Sum of Discount",
+            "semantic_type": "type/Discount",
+            "settings": null,
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 795.9833992557524,
+                  "q1": 795.9833992557524,
+                  "q3": 795.9833992557524,
+                  "max": 795.9833992557524,
+                  "sd": null,
+                  "avg": 795.9833992557524
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Discount given by quarter",
+        "type": "question",
+        "query_average_duration": null,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "source-table": 1,
+            "aggregation": [
+              [
+                "sum",
+                [
+                  "field",
+                  15092,
+                  {
+                    "base-type": "type/Float"
+                  }
+                ]
+              ]
+            ],
+            "breakout": [
+              [
+                "field",
+                25,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "quarter"
+                }
+              ]
+            ],
+            "filter": [
+              "time-interval",
+              [
+                "field",
+                25,
+                {
+                  "base-type": "type/DateTime"
+                }
+              ],
+              "current",
+              "quarter"
+            ]
+          }
+        },
+        "id": 16742,
+        "parameter_mappings": [],
+        "display": "smartscalar",
+        "entity_id": "BKXZaoMnrmpkWocwq0ExB",
+        "collection_preview": true,
+        "visualization_settings": {},
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 6,
+      "id": 15483,
+      "parameter_mappings": [
+        {
+          "parameter_id": "afa56954",
+          "card_id": 16742,
+          "target": [
+            "dimension",
+            [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "512c560a",
+          "card_id": 16742,
+          "target": [
+            "dimension",
+            [
+              "field",
+              33,
+              {
+                "base-type": "type/Text",
+                "source-field": 5
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "5eeec658",
+          "card_id": 16742,
+          "target": [
+            "dimension",
+            [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "fc2cd1be",
+          "card_id": 16742,
+          "target": [
+            "dimension",
+            [
+              "field",
+              20,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16742,
+      "entity_id": "MiyzqPUUYLPcbhVSzhsYT",
+      "visualization_settings": {
+        "card.title": "Discount given per quarter",
+        "card.description": "Compares the total discount given this quarter with the previous period"
+      },
+      "size_y": 3,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 1
+    },
+    {
+      "size_x": 6,
+      "dashboard_tab_id": 781,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "quarter",
+            "name": "CREATED_AT",
+            "settings": {
+              "time_enabled": "milliseconds"
+            },
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "quarter"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 25,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 9998,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2016-04-30T18:56:13.352Z",
+                  "latest": "2020-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Sum of Total",
+            "semantic_type": "type/Currency",
+            "settings": {
+              "currency": "USD"
+            },
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 111121.25780141751,
+                  "q1": 111121.25780141751,
+                  "q3": 111121.25780141751,
+                  "max": 111121.25780141751,
+                  "sd": null,
+                  "avg": 111121.25780141751
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Revenue per quarter",
+        "type": "question",
+        "query_average_duration": null,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "aggregation": [
+              [
+                "sum",
+                [
+                  "field",
+                  23,
+                  {
+                    "base-type": "type/Float"
+                  }
+                ]
+              ]
+            ],
+            "source-table": 1,
+            "breakout": [
+              [
+                "field",
+                25,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "quarter"
+                }
+              ]
+            ],
+            "filter": [
+              "time-interval",
+              [
+                "field",
+                25,
+                {
+                  "base-type": "type/DateTime"
+                }
+              ],
+              "current",
+              "quarter"
+            ]
+          }
+        },
+        "id": 16753,
+        "parameter_mappings": [],
+        "display": "smartscalar",
+        "entity_id": "Rn-tKDxXImenLTYkHxYAN",
+        "collection_preview": true,
+        "visualization_settings": {},
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 0,
+      "id": 15484,
+      "parameter_mappings": [
+        {
+          "parameter_id": "afa56954",
+          "card_id": 16753,
+          "target": [
+            "dimension",
+            [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "512c560a",
+          "card_id": 16753,
+          "target": [
+            "dimension",
+            [
+              "field",
+              33,
+              {
+                "base-type": "type/Text",
+                "source-field": 5
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "5eeec658",
+          "card_id": 16753,
+          "target": [
+            "dimension",
+            [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "fc2cd1be",
+          "card_id": 16753,
+          "target": [
+            "dimension",
+            [
+              "field",
+              20,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16753,
+      "entity_id": "NFtO2YbPCKkUFS7F81ymE",
+      "visualization_settings": {
+        "card.description": "Compares the total revenue this quarter with the previous period"
+      },
+      "size_y": 3,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 1
+    },
+    {
+      "size_x": 6,
+      "dashboard_tab_id": 781,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": "Number of unique customers per quarter",
+        "archived": false,
+        "collection_position": null,
+        "table_id": 4,
+        "result_metadata": [
+          {
+            "description": "The date the user record was created. Also referred to as the user’s \"join date\"",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "month",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              3,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 3,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 2500,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2016-04-19T21:35:18.752Z",
+                  "latest": "2019-04-19T14:06:27.3Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Distinct values of Name",
+            "semantic_type": "type/Quantity",
+            "settings": null,
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 70.0,
+                  "q1": 70.0,
+                  "q3": 70.0,
+                  "max": 70.0,
+                  "sd": null,
+                  "avg": 70.0
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Unique customers per month",
+        "type": "question",
+        "query_average_duration": null,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "source-table": 4,
+            "aggregation": [
+              [
+                "distinct",
+                [
+                  "field",
+                  11,
+                  {
+                    "base-type": "type/Text"
+                  }
+                ]
+              ]
+            ],
+            "breakout": [
+              [
+                "field",
+                3,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month"
+                }
+              ]
+            ],
+            "filter": [
+              "time-interval",
+              [
+                "field",
+                3,
+                {
+                  "base-type": "type/DateTime"
+                }
+              ],
+              "current",
+              "month"
+            ]
+          }
+        },
+        "id": 16756,
+        "parameter_mappings": [],
+        "display": "smartscalar",
+        "entity_id": "xTD_epn71QsLNw2oDZ0BV",
+        "collection_preview": true,
+        "visualization_settings": {},
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 18,
+      "id": 15485,
+      "parameter_mappings": [
+        {
+          "parameter_id": "512c560a",
+          "card_id": 16756,
+          "target": [
+            "dimension",
+            [
+              "field",
+              33,
+              {
+                "base-type": "type/Text"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "afa56954",
+          "card_id": 16756,
+          "target": [
+            "dimension",
+            [
+              "field",
+              3,
+              {
+                "base-type": "type/DateTime"
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16756,
+      "entity_id": "XPx16ymEe11MDx9OSggzY",
+      "visualization_settings": {
+        "card.title": "Unique customers per month",
+        "card.description": "Compares the number of unique customers placing orders this month with the previous period"
+      },
+      "size_y": 3,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 1
+    },
+    {
+      "size_x": 6,
+      "dashboard_tab_id": 781,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "display_name": "Cumulative sum of Total",
+            "semantic_type": "type/Currency",
+            "settings": {
+              "currency": "USD"
+            },
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 111121.25780141751,
+                  "q1": 111121.25780141751,
+                  "q3": 111121.25780141751,
+                  "max": 111121.25780141751,
+                  "sd": null,
+                  "avg": 111121.25780141751
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Revenue goal for this quarter",
+        "type": "question",
+        "query_average_duration": null,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "source-table": 1,
+            "aggregation": [
+              [
+                "cum-sum",
+                [
+                  "field",
+                  23,
+                  {
+                    "base-type": "type/Float"
+                  }
+                ]
+              ]
+            ],
+            "filter": [
+              "time-interval",
+              [
+                "field",
+                25,
+                {
+                  "base-type": "type/DateTime"
+                }
+              ],
+              "current",
+              "quarter"
+            ]
+          }
+        },
+        "id": 16760,
+        "parameter_mappings": [],
+        "display": "progress",
+        "entity_id": "sUQyQf5Jw0-aQZ2x87WM1",
+        "collection_preview": true,
+        "visualization_settings": {
+          "progress.goal": 120000
+        },
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 0,
+      "id": 15486,
+      "parameter_mappings": [
+        {
+          "parameter_id": "afa56954",
+          "card_id": 16760,
+          "target": [
+            "dimension",
+            [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "512c560a",
+          "card_id": 16760,
+          "target": [
+            "dimension",
+            [
+              "field",
+              33,
+              {
+                "base-type": "type/Text",
+                "source-field": 5
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "5eeec658",
+          "card_id": 16760,
+          "target": [
+            "dimension",
+            [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "fc2cd1be",
+          "card_id": 16760,
+          "target": [
+            "dimension",
+            [
+              "field",
+              20,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16760,
+      "entity_id": "ZEAq8aeShnSe8YVjJ-IBm",
+      "visualization_settings": {
+        "progress.goal": 250000,
+        "card.description": "Compares the current total in revenue with the set goal for the quarter",
+        "column_settings": {
+          "[\"name\",\"sum\"]": {
+            "number_style": "currency"
+          }
+        }
+      },
+      "size_y": 5,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 4
+    },
+    {
+      "size_x": 9,
+      "dashboard_tab_id": 783,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": null,
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "description": "The state or province of the account’s billing address",
+            "semantic_type": "type/State",
+            "coercion_strategy": null,
+            "name": "STATE",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              33,
+              {
+                "base-type": "type/Text",
+                "source-field": 5
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 33,
+            "visibility_type": "normal",
+            "display_name": "User → State",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 49,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0.0,
+                  "percent-url": 0.0,
+                  "percent-email": 0.0,
+                  "percent-state": 1.0,
+                  "average-length": 2.0
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Sum of Total",
+            "semantic_type": "type/Currency",
+            "settings": {
+              "currency": "USD"
+            },
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 48,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1358.6880585850759,
+                  "q1": 14606.102496036605,
+                  "q3": 45423.71594332504,
+                  "max": 108466.5974651383,
+                  "sd": 21267.69039176716,
+                  "avg": 31471.285063554824
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Revenue by State",
+        "type": "question",
+        "query_average_duration": null,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "source-table": 1,
+            "aggregation": [
+              [
+                "sum",
+                [
+                  "field",
+                  23,
+                  {
+                    "base-type": "type/Float"
+                  }
+                ]
+              ]
+            ],
+            "breakout": [
+              [
+                "field",
+                33,
+                {
+                  "base-type": "type/Text",
+                  "source-field": 5
+                }
+              ]
+            ]
+          }
+        },
+        "id": 16762,
+        "parameter_mappings": [],
+        "display": "map",
+        "entity_id": "3oNd6gNPnJodXv1yxVN_z",
+        "collection_preview": true,
+        "visualization_settings": {
+          "map.colors": [
+            "#e5e5f1",
+            "#c0c0da",
+            "#9b9cc3",
+            "#7677ab",
+            "hsl(239, 29.5%, 39.3%)"
+          ]
+        },
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 0,
+      "id": 15487,
+      "parameter_mappings": [
+        {
+          "parameter_id": "afa56954",
+          "card_id": 16762,
+          "target": [
+            "dimension",
+            [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "512c560a",
+          "card_id": 16762,
+          "target": [
+            "dimension",
+            [
+              "field",
+              33,
+              {
+                "base-type": "type/Text",
+                "source-field": 5
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "5eeec658",
+          "card_id": 16762,
+          "target": [
+            "dimension",
+            [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "fc2cd1be",
+          "card_id": 16762,
+          "target": [
+            "dimension",
+            [
+              "field",
+              20,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16762,
+      "entity_id": "64P4qJXJCBAPqSNMCSyBh",
+      "visualization_settings": {},
+      "size_y": 6,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 1
+    },
+    {
+      "size_x": 9,
+      "dashboard_tab_id": 783,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": "Shows the revenue distributed by age groups",
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "display_name": "Age",
+            "semantic_type": null,
+            "field_ref": [
+              "field",
+              "Age",
+              {
+                "base-type": "type/BigInteger",
+                "binning": {
+                  "strategy": "num-bins",
+                  "min-value": 22.5,
+                  "max-value": 67.5,
+                  "num-bins": 8,
+                  "bin-width": 7.5
+                }
+              }
+            ],
+            "name": "Age",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 42,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 24,
+                  "q1": 33.00603352619185,
+                  "q3": 55.200502396825456,
+                  "max": 65,
+                  "sd": 12.03482181912591,
+                  "avg": 44.4615
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Sum of Total",
+            "settings": {
+              "currency": "USD"
+            },
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 6,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 201255.69917371924,
+                  "q1": 206806.5122784001,
+                  "q3": 280796.7525118558,
+                  "max": 298599.7418437766,
+                  "sd": 39965.91471454696,
+                  "avg": 251770.2805084385
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Revenue per age group",
+        "type": "question",
+        "query_average_duration": null,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "aggregation": [
+              [
+                "sum",
+                [
+                  "field",
+                  "TOTAL",
+                  {
+                    "base-type": "type/Float"
+                  }
+                ]
+              ]
+            ],
+            "breakout": [
+              [
+                "field",
+                "Age",
+                {
+                  "base-type": "type/BigInteger",
+                  "binning": {
+                    "strategy": "default"
+                  }
+                }
+              ]
+            ],
+            "source-table": "card__15961"
+          }
+        },
+        "id": 16746,
+        "parameter_mappings": [],
+        "display": "bar",
+        "entity_id": "fY3sQ0e6ywW2ZVXhCdOTp",
+        "collection_preview": true,
+        "visualization_settings": {
+          "graph.dimensions": [
+            "Age"
+          ],
+          "graph.series_order_dimension": null,
+          "graph.series_order": null,
+          "stackable.stack_type": "stacked",
+          "graph.show_values": true,
+          "table.cell_column": "SUBTOTAL",
+          "graph.metrics": [
+            "sum"
+          ]
+        },
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 0,
+      "id": 15488,
+      "parameter_mappings": [
+        {
+          "parameter_id": "afa56954",
+          "card_id": 16746,
+          "target": [
+            "dimension",
+            [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "512c560a",
+          "card_id": 16746,
+          "target": [
+            "dimension",
+            [
+              "field",
+              33,
+              {
+                "base-type": "type/Text",
+                "source-field": 5
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "5eeec658",
+          "card_id": 16746,
+          "target": [
+            "dimension",
+            [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "fc2cd1be",
+          "card_id": 16746,
+          "target": [
+            "dimension",
+            [
+              "field",
+              20,
+              {
+                "base-type": "type/Text",
+                "source-field": 10
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16746,
+      "entity_id": "4VhYWwAFsDKT0NNYFR5oZ",
+      "visualization_settings": {
+        "graph.dimensions": [
+          "Age"
+        ],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "stackable.stack_type": "stacked",
+        "graph.show_values": true,
+        "table.cell_column": "SUBTOTAL",
+        "graph.x_axis.scale": "ordinal",
+        "graph.metrics": [
+          "sum"
+        ]
+      },
+      "size_y": 6,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 8
+    },
+    {
+      "size_x": 9,
+      "dashboard_tab_id": 783,
+      "series": [],
+      "action_id": null,
+      "collection_authority_level": null,
+      "card": {
+        "description": "Shows a distribution of orders broken down by product categories across our customers' age groups",
+        "archived": false,
+        "collection_position": null,
+        "table_id": 1,
+        "result_metadata": [
+          {
+            "display_name": "Age",
+            "semantic_type": null,
+            "field_ref": [
+              "field",
+              "Age",
+              {
+                "base-type": "type/BigInteger",
+                "binning": {
+                  "strategy": "num-bins",
+                  "min-value": 22.5,
+                  "max-value": 67.5,
+                  "num-bins": 8,
+                  "bin-width": 7.5
+                }
+              }
+            ],
+            "name": "Age",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 42,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 24,
+                  "q1": 33.00603352619185,
+                  "q3": 55.200502396825456,
+                  "max": 65,
+                  "sd": 12.03482181912591,
+                  "avg": 44.4615
+                }
+              }
+            }
+          },
+          {
+            "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+            "semantic_type": "type/Category",
+            "coercion_strategy": null,
+            "name": "CATEGORY",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "join-alias": "Products"
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 16,
+            "visibility_type": "normal",
+            "display_name": "Products → Category",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 6.375
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 24,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 517,
+                  "q1": 678,
+                  "q3": 891,
+                  "max": 1034,
+                  "sd": 139.46065883366117,
+                  "avg": 781.6666666666666
+                }
+              }
+            }
+          }
+        ],
+        "initially_published_at": null,
+        "can_write": true,
+        "database_id": 1,
+        "enable_embedding": false,
+        "collection_id": 1409,
+        "query_type": "query",
+        "name": "Product category orders per age group",
+        "type": "question",
+        "query_average_duration": null,
+        "creator_id": 379,
+        "moderation_reviews": [],
+        "updated_at": "2024-03-27T09:56:41.556942Z",
+        "made_public_by_id": null,
+        "embedding_params": null,
+        "cache_ttl": null,
+        "dataset_query": {
+          "database": 1,
+          "type": "query",
+          "query": {
+            "aggregation": [
+              [
+                "count"
+              ]
+            ],
+            "breakout": [
+              [
+                "field",
+                "Age",
+                {
+                  "base-type": "type/BigInteger",
+                  "binning": {
+                    "strategy": "default"
+                  }
+                }
+              ],
+              [
+                "field",
+                16,
+                {
+                  "base-type": "type/Text",
+                  "join-alias": "Products"
+                }
+              ]
+            ],
+            "joins": [
+              {
+                "fields": "all",
+                "strategy": "left-join",
+                "alias": "Products",
+                "condition": [
+                  "=",
+                  [
+                    "field",
+                    "PRODUCT_ID",
+                    {
+                      "base-type": "type/Integer"
+                    }
+                  ],
+                  [
+                    "field",
+                    2,
+                    {
+                      "base-type": "type/BigInteger",
+                      "join-alias": "Products"
+                    }
+                  ]
+                ],
+                "source-table": 3
+              }
+            ],
+            "source-table": "card__15961"
+          }
+        },
+        "id": 16759,
+        "parameter_mappings": [],
+        "display": "bar",
+        "entity_id": "OlbIVaE8D7n55e6HUgt6d",
+        "collection_preview": true,
+        "visualization_settings": {
+          "graph.show_values": true,
+          "graph.x_axis.labels_enabled": true,
+          "table.cell_column": "SUBTOTAL",
+          "graph.series_order_dimension": null,
+          "graph.x_axis.axis_enabled": true,
+          "graph.metrics": [
+            "count"
+          ],
+          "graph.series_order": null,
+          "graph.y_axis.auto_range": true,
+          "graph.x_axis.scale": "ordinal",
+          "graph.dimensions": [
+            "Age",
+            "CATEGORY"
+          ],
+          "stackable.stack_type": "stacked"
+        },
+        "metabase_version": "vUNKNOWN (cc1f9f0)",
+        "parameters": [],
+        "created_at": "2024-03-27T09:56:41.556942Z",
+        "public_uuid": null
+      },
+      "updated_at": "2024-03-27T09:56:41.556942Z",
+      "col": 0,
+      "id": 15489,
+      "parameter_mappings": [
+        {
+          "parameter_id": "afa56954",
+          "card_id": 16759,
+          "target": [
+            "dimension",
+            [
+              "field",
+              25,
+              {
+                "base-type": "type/DateTime"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "5eeec658",
+          "card_id": 16759,
+          "target": [
+            "dimension",
+            [
+              "field",
+              16,
+              {
+                "base-type": "type/Text",
+                "join-alias": "Products"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "fc2cd1be",
+          "card_id": 16759,
+          "target": [
+            "dimension",
+            [
+              "field",
+              20,
+              {
+                "base-type": "type/Text",
+                "join-alias": "Products"
+              }
+            ]
+          ]
+        },
+        {
+          "parameter_id": "512c560a",
+          "card_id": 16759,
+          "target": [
+            "dimension",
+            [
+              "field",
+              33,
+              {
+                "base-type": "type/Text",
+                "source-field": 5
+              }
+            ]
+          ]
+        }
+      ],
+      "card_id": 16759,
+      "entity_id": "oJqvP2DdcQBykliMHAkdC",
+      "visualization_settings": {
+        "graph.show_values": true,
+        "graph.x_axis.labels_enabled": true,
+        "table.cell_column": "SUBTOTAL",
+        "graph.series_order_dimension": null,
+        "graph.x_axis.axis_enabled": true,
+        "graph.y_axis.labels_enabled": false,
+        "card.title": "Product category orders per age groups",
+        "graph.metrics": [
+          "count"
+        ],
+        "graph.series_order": null,
+        "series_settings": {
+          "Doohickey": {
+            "color": "#7172AD"
+          },
+          "Gizmo": {
+            "color": "#C7EAEA"
+          },
+          "Widget": {
+            "color": "#227FD2"
+          },
+          "Gadget": {
+            "color": "#A989C5"
+          }
+        },
+        "graph.y_axis.auto_range": true,
+        "graph.x_axis.scale": "ordinal",
+        "graph.dimensions": [
+          "Age",
+          "CATEGORY"
+        ],
+        "stackable.stack_type": "stacked"
+      },
+      "size_y": 6,
+      "dashboard_id": 2345,
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "row": 14
+    }
+  ],
+  "param_values": {
+    "16": {
+      "field_id": 16,
+      "human_readable_values": [],
+      "values": [
+        "Doohickey",
+        "Gadget",
+        "Gizmo",
+        "Widget"
+      ]
+    },
+    "33": {
+      "field_id": 33,
+      "human_readable_values": [],
+      "values": [
+        "AK",
+        "AL",
+        "AR",
+        "AZ",
+        "CA",
+        "CO",
+        "CT",
+        "DE",
+        "FL",
+        "GA",
+        "IA",
+        "ID",
+        "IL",
+        "IN",
+        "KS",
+        "KY",
+        "LA",
+        "MA",
+        "MD",
+        "ME",
+        "MI",
+        "MN",
+        "MO",
+        "MS",
+        "MT",
+        "NC",
+        "ND",
+        "NE",
+        "NH",
+        "NJ",
+        "NM",
+        "NV",
+        "NY",
+        "OH",
+        "OK",
+        "OR",
+        "PA",
+        "RI",
+        "SC",
+        "SD",
+        "TN",
+        "TX",
+        "UT",
+        "VA",
+        "VT",
+        "WA",
+        "WI",
+        "WV",
+        "WY"
+      ]
+    }
+  },
+  "initially_published_at": null,
+  "can_write": true,
+  "tabs": [
+    {
+      "id": 781,
+      "dashboard_id": 2345,
+      "name": "Overview",
+      "position": 0,
+      "entity_id": "_9yKObE4VnT4z7jphUIFJ",
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "updated_at": "2024-03-27T09:56:41.556942Z"
+    },
+    {
+      "id": 782,
+      "dashboard_id": 2345,
+      "name": "Portfolio performance",
+      "position": 1,
+      "entity_id": "Y-d5U9lLX45MOqEBBMuVW",
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "updated_at": "2024-03-27T09:56:41.556942Z"
+    },
+    {
+      "id": 783,
+      "dashboard_id": 2345,
+      "name": "Demographics",
+      "position": 2,
+      "entity_id": "KasSNb_IKnR2CLF3ZJLOT",
+      "created_at": "2024-03-27T09:56:41.556942Z",
+      "updated_at": "2024-03-27T09:56:41.556942Z"
+    }
+  ],
+  "enable_embedding": false,
+  "collection_id": 1409,
+  "show_in_getting_started": false,
+  "name": "E-commerce insights  - Duplicate",
+  "width": "fixed",
+  "caveats": null,
+  "collection_authority_level": null,
+  "creator_id": 379,
+  "updated_at": "2024-03-27T09:56:41.556942Z",
+  "made_public_by_id": null,
+  "embedding_params": null,
+  "cache_ttl": null,
+  "id": 2345,
+  "position": null,
+  "entity_id": "3krHeCp8WDnRqfcwyHbfX",
+  "param_fields": {
+    "3": {
+      "id": 3,
+      "table_id": 4,
+      "display_name": "Created At",
+      "base_type": "type/DateTime",
+      "semantic_type": "type/CreationTimestamp",
+      "has_field_values": "none",
+      "name_field": null,
+      "dimensions": []
+    },
+    "16": {
+      "id": 16,
+      "table_id": 3,
+      "display_name": "Category",
+      "base_type": "type/Text",
+      "semantic_type": "type/Category",
+      "has_field_values": "list",
+      "name_field": null,
+      "dimensions": []
+    },
+    "20": {
+      "id": 20,
+      "table_id": 3,
+      "display_name": "Vendor",
+      "base_type": "type/Text",
+      "semantic_type": "type/Company",
+      "has_field_values": "search",
+      "name_field": null,
+      "dimensions": []
+    },
+    "25": {
+      "id": 25,
+      "table_id": 1,
+      "display_name": "Created At",
+      "base_type": "type/DateTime",
+      "semantic_type": "type/CreationTimestamp",
+      "has_field_values": "none",
+      "name_field": null,
+      "dimensions": []
+    },
+    "33": {
+      "id": 33,
+      "table_id": 4,
+      "display_name": "State",
+      "base_type": "type/Text",
+      "semantic_type": "type/State",
+      "has_field_values": "list",
+      "name_field": null,
+      "dimensions": []
+    }
+  },
+  "last-edit-info": {
+    "id": 379,
+    "email": "chris@metabase.com",
+    "first_name": "Chris",
+    "last_name": "Truter",
+    "timestamp": "2024-03-27T09:56:42.419281Z"
+  },
+  "collection": {
+    "authority_level": null,
+    "description": null,
+    "archived": false,
+    "slug": "chris_truter_s_personal_collection",
+    "name": "Chris Truter's Personal Collection",
+    "personal_owner_id": 379,
+    "type": null,
+    "id": 1409,
+    "entity_id": "kiOwe4B3wUaIIpS747EXA",
+    "location": "/",
+    "namespace": null,
+    "is_personal": true,
+    "created_at": "2024-01-03T07:23:22.350437Z"
+  },
+  "parameters": [
+    {
+      "name": "Vendor",
+      "slug": "vendor",
+      "id": "fc2cd1be",
+      "type": "string/=",
+      "sectionId": "string",
+      "isMultiSelect": false
+    },
+    {
+      "name": "Date Range",
+      "slug": "date_range",
+      "id": "afa56954",
+      "type": "date/range",
+      "sectionId": "date"
+    },
+    {
+      "name": "Category",
+      "slug": "category",
+      "id": "5eeec658",
+      "type": "string/=",
+      "sectionId": "string",
+      "values_query_type": "list"
+    },
+    {
+      "name": "Location",
+      "slug": "location",
+      "id": "512c560a",
+      "type": "string/=",
+      "sectionId": "location",
+      "values_query_type": "none"
+    }
+  ],
+  "auto_apply_filters": true,
+  "created_at": "2024-03-27T09:56:41.556942Z",
+  "public_uuid": null,
+  "points_of_interest": null
+}

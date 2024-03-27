@@ -1,0 +1,26 @@
+[
+  {
+    "Created At": "January 2, 2024, 8:19 PM",
+    "Creator ID": "151",
+    "Parameters": "[{\"name\":\"Vendor\",\"slug\":\"vendor\",\"id\":\"fc2cd1be\",\"type\":\"string/=\",\"sectionId\":\"string\",\"isMultiSelect\":false},{\"name\":\"Date Range\",\"slug\":\"date_range\",\"id\":\"afa56954\",\"type\":\"date/range\",\"sectionId\":\"date\"},{\"name\":\"Category\",\"slug\":\"category\",\"id\":\"5eeec658\",\"type\":\"string/=\",\"sectionId\":\"string\",\"values_query_type\":\"list\"},{\"name\":\"Location\",\"slug\":\"location\",\"id\":\"512c560a\",\"type\":\"string/=\",\"sectionId\":\"location\",\"values_query_type\":\"none\"}]",
+    "Caveats": "",
+    "Updated At": "February 19, 2024, 9:00 AM",
+    "Collection Position": "2",
+    "Show In Getting Started": "false",
+    "Width": "full",
+    "ID": "2190",
+    "Description": "Quickly take an overview of an e-commerce reseller business and dive into separate tabs that focus on top selling products and demographic insights. Each vendor can log in as a tenant and see their own data sandboxed from all the others.",
+    "Position": null,
+    "Public UUID": "",
+    "Entity ID": "DlK2jXoIHPXyVkEuo6Uy6",
+    "Points Of Interest": "",
+    "Enable Embedding": "false",
+    "Cache Ttl": null,
+    "Collection ID": "1449",
+    "Name": "E-commerce insights ",
+    "Auto Apply Filters": "true",
+    "Made Public By ID": null,
+    "Archived": "false",
+    "Initially Published At": ""
+  }
+]
