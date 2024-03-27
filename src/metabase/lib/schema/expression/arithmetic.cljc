@@ -1,7 +1,6 @@
 (ns metabase.lib.schema.expression.arithmetic
   "Arithmetic expressions like `:+`."
   (:require
-   [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.common :as common]
@@ -17,7 +16,7 @@
                       (isa? expr-type :type/Time)     ::temporal-bucketing/unit.time.interval
                       (isa? expr-type :type/DateTime) ::temporal-bucketing/unit.date-time.interval)]
     (if unit-schema
-      (mc/validate unit-schema unit)
+      (mr/validate unit-schema unit)
       true)))
 
 (mr/def ::args.numbers

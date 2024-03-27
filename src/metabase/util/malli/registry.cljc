@@ -18,7 +18,12 @@
   you used namespaced keys if you are using it elsewhere."
   [k schema value-thunk]
   (or (get-in @cache [k schema])
-      (let [v (value-thunk)]
+      (let [v  (value-thunk)
+            cv @cache]
+        #?(:clj (when (zero? (rand-int 1000))
+                  (spit (str "cache_log." (rand-int 100000) ".txt")
+                        (str "Cache size: " (count cv) "\n" (pr-str (take 50 (shuffle (keys cv)))))))
+           :cljs (comment cv))
         (swap! cache assoc-in [k schema] v)
         v)))
 

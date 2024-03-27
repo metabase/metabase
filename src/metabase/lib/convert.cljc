@@ -3,7 +3,6 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [clojure.string :as str]
-   [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -17,7 +16,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr])
   #?@(:cljs [(:require-macros [metabase.lib.convert :refer [with-aggregation-list]])]))
 
 (def ^:private ^:dynamic *pMBQL-uuid->legacy-index*
@@ -51,7 +51,7 @@
 (defn- clean-stage-schema-errors [almost-stage]
   (loop [almost-stage almost-stage
          removals []]
-    (if-let [[error-type error-location] (->> (mc/explain ::lib.schema/stage.mbql almost-stage)
+    (if-let [[error-type error-location] (->> (mr/explain ::lib.schema/stage.mbql almost-stage)
                                               :errors
                                               (filter (comp stage-keys first :in))
                                               (map (juxt :type :in))
@@ -62,7 +62,7 @@
                    (u/colorize :yellow (pr-str (or error-type
                                                    ;; if `error-type` is missing, which seems to happen sometimes,
                                                    ;; fall back to humanizing the entire error.
-                                                   (me/humanize (mc/explain ::lib.schema/stage.mbql almost-stage)))))
+                                                   (me/humanize (mr/explain ::lib.schema/stage.mbql almost-stage)))))
                    (u/colorize :red (u/pprint-to-str (first (data/diff almost-stage new-stage)))))
         (if (= new-stage almost-stage)
           almost-stage
