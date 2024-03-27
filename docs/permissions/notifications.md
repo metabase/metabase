@@ -6,37 +6,45 @@ title: Notification permissions
 
 Notifications in Metabase include [alerts](../questions/sharing/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md#setting-up-a-dashboard-subscription).
 
+## Editing dashboard subscriptions and alerts depends on whether you're an admin or sandboxed
+
+What you can do with alerts and dashboard subscriptions depends on whether you're in the Administrators group or in a sandboxed group.
+
+- [All Users group](#all-users-group)
+- [Sandboxed group]
+- [Administrators group](#administrators-group)
+
+### All Users group notification permissions
+
+Everyone's in the All users group. Which means that everyone can:
+
+- Create [alerts](../questions/sharing/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md#setting-up-a-dashboard-subscription).
+- Add new recipients to dashboard subscriptions that they created. Non-admins can only add themselves to alerts.
+- Unsubscribe from any alert or subscription in their [Account settings](../people-and-groups/account-settings.md).
+
+When a notification creator adds new recipients to an alert or subscription, Metabase will display data to the recipients using the **creator's** [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md).
+
+### Sandboxed accounts notification permissions
+
+Same as everyone, but with a special case: **people in sandboxed groups will only see themselves in the list of recipients** when creating an alert or subscription.
+
+### Administrators group notification permissions
+
+People in the admin group can:
+
+- View all subscriptions and alerts.
+- Add or remove recipients from an existing subscription or alert. Admins can safely add and remove recipients without changing the permissions of the alert or subscription. For example, if an admin adds Anya to a subscription created by Beau, Anya will receive emails with the same data that Beau can see (not what the admin can see).
+- Delete subscriptions or alerts.
+
+Admins can also use Metabase's [auditing tools](../usage-and-performance-tools/audit.md#subscriptions-and-alerts) to manage notifications.
+
+## What notification recipients can see
+
 Notification **recipients** can see whatever the notification **creator** can see. For example, if:
 
 - Beau creates a subscription to a dashboard saved in their [personal collection](../exploration-and-organization/collections.md#your-personal-collection).
 - Beau adds Anya to the dashboard subscription.
-- Anya will see the dashboard in her email, even though she doesn't have permissions to view that dashboard in Beau's personal collection.
-
-## All accounts
-
-From [Account settings](../people-and-groups/account-settings.md), all accounts can:
-
-- Create [alerts](../questions/sharing/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md#setting-up-a-dashboard-subscription).
-- Add new recipients to dashboard subscriptions that they own. Non-admins can only add themselves to alerts.
-- Unsubscribe from any alert or subscription.
-
-When a notification creator adds new recipients to an alert or subscription, Metabase will display data to the recipients using the **creator's** [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md).
-
-## Sandboxed accounts
-
-Same as [all accounts](#all-accounts), but **people using sandboxed accounts will only see themselves in the list of recipients** when creating an alert or subscription.
-
-## Admins
-
-{% include plans-blockquote.html feature="Auditing tools" %}
-
-From Metabase's [auditing tools](../usage-and-performance-tools/audit.md#subscriptions-and-alerts), admins can:
-
-- View all subscriptions and alerts
-- Add or remove recipients from an existing subscription or alert
-- Delete subscriptions or alerts
-
-Admins can add recipients without changing the permissions of the alert or subscription. For example, if an admin adds Anya to a subscription created by Beau, Anya will receive emails with the same data that the Beau can see.
+- Anya will see the dashboard results in her email, even though she doesn't have permissions to view that dashboard in Beau's personal collection.
 
 ## More control over email options
 
