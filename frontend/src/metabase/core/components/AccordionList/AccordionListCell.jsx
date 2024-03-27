@@ -50,7 +50,14 @@ export const AccordionListCell = ({
     if (alwaysExpanded) {
       content = (
         <div
-          className={cx("pt2 mb1 mx2 h5", CS.textUppercase, CS.textBold)}
+          className={cx(
+            CS.pt2,
+            CS.mb1,
+            CS.mx2,
+            CS.h5,
+            CS.textUppercase,
+            CS.textBold,
+          )}
           style={{ color: color }}
         >
           {section.name}
@@ -182,10 +189,10 @@ export const AccordionListCell = ({
           )}
           <div className="List-item-content">
             {name && (
-              <h4 className={cx("List-item-title ml1", CS.textWrap)}>{name}</h4>
+              <h4 className={cx("List-item-title", CS.ml1, CS.textWrap)}>{name}</h4>
             )}
             {description && (
-              <p className={cx("List-item-description ml1", CS.textWrap)}>
+              <p className={cx("List-item-description", CS.ml1, CS.textWrap)}>
                 {description}
               </p>
             )}

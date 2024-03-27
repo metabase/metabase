@@ -165,13 +165,13 @@ export default class PulseEditChannels extends Component {
     return (
       <li key={index} className="py2">
         {channelSpec.error && (
-          <div className={cx("pb2", CS.textBold, "text-error")}>
+          <div className={cx(CS.pb2, CS.textBold, "text-error")}>
             {channelSpec.error}
           </div>
         )}
         {channelSpec.recipients && (
           <div>
-            <div className={cx("h4", CS.textBold, "mb1")}>
+            <div className={cx(CS.h4, CS.textBold, CS.mb1)}>
               {this.props.emailRecipientText || t`To:`}
             </div>
             <RecipientPicker
@@ -274,7 +274,7 @@ export default class PulseEditChannels extends Component {
         {channels.length > 0 && channelSpec.configured ? (
           <ul className="bg-light px3">{channels}</ul>
         ) : channels.length > 0 && !channelSpec.configured ? (
-          <div className={cx("p4", CS.textCentered)}>
+          <div className={cx(CS.p4, CS.textCentered)}>
             <h3 className="mb2">{t`${channelSpec.name} needs to be set up by an administrator.`}</h3>
             <ChannelSetupMessage user={user} channels={[channelSpec.name]} />
           </div>

@@ -433,7 +433,7 @@ class Table extends Component<TableProps, TableState> {
             className="mb2"
           />
           <span
-            className={cx("h4", CS.textBold)}
+            className={cx(CS.h4, CS.textBold)}
           >{t`Every field is hidden right now`}</span>
         </div>
       );

@@ -29,12 +29,12 @@ export function FieldSet({
         <legend
           data-testid="field-set-legend"
           className={cx(
-            "h5",
+            CS.h5,
             CS.textBold,
             CS.textUppercase,
-            "px1",
+            CS.px1,
             CS.textNoWrap,
-            "text-medium",
+            CS.textMedium,
           )}
         >
           {legend}
