@@ -1067,3 +1067,13 @@
       (run! rollback! (t2/reducible-query {:select [:*]
                                            :from   [:revision]
                                            :where  [:= :model "Card"]})))))
+
+;; This was renamed to TruncateAuditTables, so we need to delete the old job & trigger
+(define-migration DeleteTruncateAuditLogTask
+  (classloader/the-classloader)
+  (set-jdbc-backend-properties!)
+  (let [scheduler (qs/initialize)]
+    (qs/start scheduler)
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.truncate-audit-log.trigger"))
+    (qs/delete-job scheduler (jobs/key "metabase.task.truncate-audit-log.job"))
+    (qs/shutdown scheduler)))

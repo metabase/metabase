@@ -6,7 +6,7 @@ import _ from "underscore";
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 import { canArchiveItem, canMoveItem } from "metabase/collections/utils";
 import Modal from "metabase/components/Modal";
-import { MoveModal } from "metabase/containers/MoveModal";
+import { BulkMoveModal } from "metabase/containers/MoveModal";
 import { Transition } from "metabase/ui";
 
 import {
@@ -49,7 +49,7 @@ function BulkActions({
       >
         {styles => (
           <BulkActionsToast style={styles} isNavbarOpen={isNavbarOpen}>
-            <ToastCard dark>
+            <ToastCard dark data-testid="toast-card">
               <CardSide>
                 {ngettext(
                   msgid`${selected.length} item selected`,
@@ -88,17 +88,12 @@ function BulkActions({
         </Modal>
       )}
       {!_.isEmpty(selectedItems) && selectedAction === "move" && (
-        <Modal onClose={onCloseModal}>
-          <MoveModal
-            title={
-              selectedItems.length > 1
-                ? t`Move ${selectedItems.length} items?`
-                : t`Move "${selectedItems[0].getName()}"?`
-            }
-            onClose={onCloseModal}
-            onMove={onMove}
-          />
-        </Modal>
+        <BulkMoveModal
+          selectedItems={selectedItems}
+          onClose={onCloseModal}
+          onMove={onMove}
+          initialCollectionId={collection.id}
+        />
       )}
     </>
   );
