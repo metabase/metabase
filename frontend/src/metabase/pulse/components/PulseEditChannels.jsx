@@ -274,7 +274,7 @@ export default class PulseEditChannels extends Component {
         {channels.length > 0 && channelSpec.configured ? (
           <ul className={cx(CS.bgLight, CS.px3)}>{channels}</ul>
         ) : channels.length > 0 && !channelSpec.configured ? (
-          <div className="p4 text-centered">
+          <div className={cx(CS.p4, CS.textCentered)}>
             <h3 className="mb2">{t`${channelSpec.name} needs to be set up by an administrator.`}</h3>
             <ChannelSetupMessage user={user} channels={[channelSpec.name]} />
           </div>

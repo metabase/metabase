@@ -27,7 +27,7 @@ export default class CollectionOptionsButton extends Component {
         style={{ height: ICON_SIZE }}
       >
         <TippyPopoverWithTrigger
-          triggerClasses="hover-child"
+          triggerClasses={CS.hoverChild}
           triggerContent={<Icon name="ellipsis" size={20} />}
           placement="bottom-end"
           popoverContent={({ closePopover }) => (

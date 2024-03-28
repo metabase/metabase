@@ -9,7 +9,7 @@ import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 import ArchiveModelModal from "metabase/questions/containers/ArchiveQuestionModal";
 import type Question from "metabase-lib/v1/Question";
-import type { Collection } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
 import {
   ModelHeader,
@@ -22,7 +22,7 @@ interface Props {
   model: Question;
   hasEditDefinitionLink: boolean;
   onChangeName: (name?: string) => void;
-  onChangeCollection: (collection: Collection) => void;
+  onChangeCollection: ({ id }: { id: CollectionId }) => void;
 }
 
 type HeaderModal = "move" | "archive";
@@ -59,7 +59,7 @@ function ModelDetailHeader({
   const handleCloseModal = useCallback(() => setModal(null), []);
 
   const handleCollectionChange = useCallback(
-    (collection: Collection) => {
+    (collection: { id: CollectionId }) => {
       onChangeCollection(collection);
       handleCloseModal();
     },

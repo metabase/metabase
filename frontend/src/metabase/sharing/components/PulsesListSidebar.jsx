@@ -97,7 +97,7 @@ function _PulsesListSidebar({
               }
             >
               <div
-                className={cx(CS.px3, CS.py2, "hover-parent hover--inherit", {
+                className={cx(CS.px3, CS.py2, CS.hoverParent, CS.hoverInherit, {
                   [CS.textWhiteHover]: canEdit,
                 })}
               >
@@ -105,7 +105,8 @@ function _PulsesListSidebar({
                   className={cx(
                     CS.flex,
                     CS.alignCenter,
-                    "hover-child hover--inherit",
+                    CS.hoverChild,
+                    CS.hoverInherit,
                   )}
                 >
                   <Icon
@@ -118,7 +119,7 @@ function _PulsesListSidebar({
                     style={{ paddingBottom: "5px" }}
                     size={16}
                   />
-                  <Label className="hover-child hover--inherit">
+                  <Label className={cx(CS.hoverChild, CS.hoverInherit)}>
                     {friendlySchedule(pulse.channels[0])}
                   </Label>
                 </div>
@@ -199,7 +200,7 @@ function PulseDetails({ pulse, parameters }) {
   const filterText = buildFilterText(pulse, parameters);
 
   return (
-    <div className={cx(CS.textMedium, "hover-child")}>
+    <div className={cx(CS.textMedium, CS.hoverChild)}>
       <ul
         className={cx(
           CS.flex,
@@ -218,20 +219,20 @@ function PulseDetails({ pulse, parameters }) {
               CS.mr1,
               CS.textBold,
               CS.textMedium,
-              "hover-child hover--inherit",
+              CS.hoverChild,
+              CS.hoverInherit,
             )}
           >
             <Icon
               name="group"
-              className={cx(CS.textMedium, "hover-child hover--inherit")}
+              className={cx(CS.textMedium, CS.hoverChild, CS.hoverInherit)}
               size={12}
             />
             <span
               className={cx(
                 CS.ml1,
                 CS.textMedium,
-                "hover-child hover--inherit",
-              )}
+                CS.hoverChild, CS.hoverInherit)}
               style={{ fontSize: "12px" }}
             >
               {recipientText}
@@ -247,19 +248,20 @@ function PulseDetails({ pulse, parameters }) {
               CS.mr1,
               CS.textBold,
               CS.textMedium,
-              "hover-child hover--inherit",
+              CS.hoverChild,
+              CS.hoverInherit,
             )}
           >
             <Icon
               name="filter"
-              className={cx(CS.textMedium, "hover-child hover--inherit")}
+              className={cx(CS.textMedium, CS.hoverChild, CS.hoverInherit)}
               size={12}
             />
             <span
               className={cx(
                 CS.ml1,
                 CS.textMedium,
-                "hover-child hover--inherit",
+                  CS.hoverChild, CS.hoverInherit
               )}
               style={{ fontSize: "12px" }}
             >

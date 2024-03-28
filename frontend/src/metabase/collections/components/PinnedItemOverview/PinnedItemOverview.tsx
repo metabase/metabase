@@ -7,6 +7,7 @@ import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItem
 import PinnedQuestionCard from "metabase/collections/components/PinnedQuestionCard";
 import { isPreviewShown, isRootCollection } from "metabase/collections/utils";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
+import CS from "metabase/css/core/index.css";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
@@ -58,7 +59,7 @@ function PinnedItemOverview({
           cardGroup.length > 0 && (
             <Grid key={cardGroupIndex}>
               {cardGroup.map(item => (
-                <div key={item.id} className="relative">
+                <div key={item.id} className={CS.relative}>
                   <PinnedItemSortDropTarget
                     isFrontTarget
                     itemModel="card"
@@ -98,7 +99,7 @@ function PinnedItemOverview({
           </SectionHeader>
           <Grid>
             {dashboardItems.map(item => (
-              <div key={item.id} className="relative">
+              <div key={item.id} className={CS.relative}>
                 <PinnedItemSortDropTarget
                   isFrontTarget
                   itemModel="dashboard"
@@ -145,7 +146,7 @@ function PinnedItemOverview({
           </SectionHeader>
           <Grid>
             {dataModelItems.map(item => (
-              <div key={item.id} className="relative">
+              <div key={item.id} className={CS.relative}>
                 <PinnedItemSortDropTarget
                   isFrontTarget
                   itemModel="dataset"

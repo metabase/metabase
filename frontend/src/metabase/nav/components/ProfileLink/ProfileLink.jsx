@@ -107,7 +107,9 @@ function ProfileLink({ adminItems, onLogout }) {
       />
       {modalOpen === "about" ? (
         <Modal small onClose={closeModal}>
-          <div className="px4 pt4 pb2 text-centered relative">
+          <div
+            className={cx(CS.px4, CS.pt4, CS.pb2, CS.textCentered, CS.relative)}
+          >
             <div className={cx(CS.textBrand, CS.pb2)}>
               <LogoIcon height={48} />
             </div>
@@ -144,9 +146,9 @@ function ProfileLink({ adminItems, onLogout }) {
                 CS.borderTop,
               )}
             >
-              <span className="block">
+              <span className={CS.block}>
                 {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows on OSS instance */}
-                <span className="text-bold">Metabase</span>{" "}
+                <span className={CS.textBold}>Metabase</span>{" "}
                 {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows on OSS instance */}
                 {t`is a Trademark of`} Metabase, Inc
               </span>

@@ -326,7 +326,7 @@ const RuleDescription = ({ rule }) => {
         ? t`Cells in this column will be tinted based on their values.`
         : rule.type === "single"
         ? jt`When a cell in these columns ${(
-            <span className="text-bold">
+            <span className={CS.textBold}>
               {ALL_OPERATOR_NAMES[rule.operator]}
               {getValueForDescription(rule)}
             </span>

@@ -126,7 +126,8 @@ class LogoIcon extends Component {
       <span
         ref={c => (this._container = c)}
         className={cx(
-          "Icon text-centered",
+          "Icon",
+          CS.textCentered,
           { [CS.textBrand]: !dark },
           { [CS.textWhite]: dark },
           className,

@@ -247,7 +247,7 @@ class FieldRemappingSettings extends Component {
             onChange={this.handleChangeMappingType}
             options={this.getAvailableMappingTypes()}
             optionValueFn={o => o}
-            className="inline-block"
+            className={CS.inlineBlock}
           />
           {mappingType === MAP_OPTIONS.foreign && (
             <>

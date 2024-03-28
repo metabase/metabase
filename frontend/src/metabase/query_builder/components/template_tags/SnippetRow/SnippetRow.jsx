@@ -38,8 +38,8 @@ class SnippetRowInner extends Component {
             CS.justifyBetween,
             CS.py2,
             CS.px3,
-            "hover-parent",
-            "hover--display",
+            CS.hoverParent,
+            CS.hoverDisplay,
           )}
           onClick={() => this.setState({ isOpen: !isOpen })}
         >
@@ -55,17 +55,17 @@ class SnippetRowInner extends Component {
           >
             <Icon
               name="snippet"
-              className={cx("hover-child--hidden", CS.textLight)}
+              className={cx(CS.hoverChildHidden,  CS.textLight)}
             />
             <Icon
               name={insertSnippet ? "arrow_left_to_line" : "snippet"}
-              className="hover-child"
+              className={CS.hoverChild}
             />
             <span className={cx(CS.flexFull, CS.ml1)}>{snippet.name}</span>
           </SnippetContent>
           <Icon
             name={isOpen ? "chevronup" : "chevrondown"}
-            className={cx({ "hover-child": !isOpen })}
+            className={cx({ [CS.hoverChild]: !isOpen })}
           />
         </div>
         {isOpen && (
@@ -81,7 +81,7 @@ class SnippetRowInner extends Component {
                 CS.p1,
                 CS.textMonospace,
                 CS.textSmall,
-                "text-pre-wrap",
+                CS.textPreWrap,
                 CS.overflowAuto,
               )}
               style={{ maxHeight: 320 }}

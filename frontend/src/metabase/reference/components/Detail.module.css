@@ -21,7 +21,7 @@
 }
 
 .detailSubtitle {
-  composes: textDark text-paragraph from "style";
+  composes: textDark textParagraph from "style";
   white-space: pre-wrap;
   font-size: 16px;
   line-height: 24px;

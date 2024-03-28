@@ -19,6 +19,7 @@ export default class ObjectActionsSelect extends Component {
 
     this.retireModal = createRef();
   }
+
   static propTypes = {
     object: PropTypes.object.isRequired,
     objectType: PropTypes.string.isRequired,

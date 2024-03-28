@@ -205,17 +205,16 @@ export class AuditTableVisualization extends Component {
                     onClick={handleClick}
                   >
                     <div
-                      className={
-                        column["code"] &&
-                        cx(
+                      className={cx({
+                        [cx(
                           CS.rounded,
                           CS.p1,
                           CS.textDark,
                           CS.textMonospace,
                           CS.textSmall,
                           CS.bgLight,
-                        )
-                      }
+                        )]: column["code"],
+                      })}
                     >
                       {formatValue(value, {
                         ...columnSettings,

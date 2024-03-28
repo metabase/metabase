@@ -17,7 +17,7 @@
 }
 
 .guideEmptyMessage {
-  composes: textDark text-paragraph mt3 from "style";
+  composes: textDark textParagraph mt3 from "style";
   text-align: center;
 }
 
@@ -84,7 +84,7 @@
 }
 
 .guideTitleBody {
-  composes: text-dark text-bold from "style";
+  composes: text-dark textBold from "style";
   width: 100%;
   composes: guideLeftPaddedBody;
 }
@@ -95,7 +95,7 @@
 }
 
 .guideSeeAllBody {
-  composes: text-dark text-bold mt4 from "style";
+  composes: text-dark textBold mt4 from "style";
   width: 100%;
   display: flex;
   composes: guideLeftPaddedBody;
@@ -121,14 +121,14 @@
 }
 
 .guideEditHeader {
-  composes: text-body my4 from "style";
+  composes: textBody my4 from "style";
   width: 100%;
   max-width: 550px;
   color: var(--color-text-dark);
 }
 
 .guideEditHeaderTitle {
-  composes: text-bold mb2 from "style";
+  composes: textBold mb2 from "style";
   font-size: 24px;
 }
 
@@ -141,7 +141,7 @@
 }
 
 .guideEditLabel {
-  composes: text-bold mb2 from "style";
+  composes: textBold mb2 from "style";
   display: block;
   font-size: 16px;
   color: var(--title-color);
@@ -152,7 +152,7 @@
 }
 
 .guideEditTitle {
-  composes: text-body text-bold from "style";
+  composes: textBody textBold from "style";
   display: block;
   color: var(--title-color);
   font-size: 16px;
@@ -160,7 +160,7 @@
 }
 
 .guideEditSubtitle {
-  composes: text-body from "style";
+  composes: textBody from "style";
   color: var(--color-text-light);
   font-size: 16px;
   max-width: 700px;

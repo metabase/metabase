@@ -26,6 +26,7 @@ interface ItemListProps<
   selectedItem: Item | null;
   isFolder: (item: Item) => boolean;
   isCurrentLevel: boolean;
+  shouldDisableItem?: (item: Item) => boolean;
 }
 
 export const ItemList = <
@@ -40,6 +41,7 @@ export const ItemList = <
   selectedItem,
   isFolder,
   isCurrentLevel,
+  shouldDisableItem,
 }: ItemListProps<Id, Model, Item>) => {
   const activeItemIndex = useMemo(() => {
     if (!items) {
@@ -87,6 +89,7 @@ export const ItemList = <
       {items.map((item: Item) => (
         <div key={`${item.model}-${item.id}`}>
           <NavLink
+            disabled={shouldDisableItem?.(item)}
             rightSection={
               isFolder(item) ? <Icon name="chevronright" size={10} /> : null
             }

@@ -44,7 +44,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                 <td>
                   <NumericInput
                     type="number"
-                    className="full"
+                    className={CS.full}
                     value={segment.min}
                     onChange={value => onChangeProperty(index, "min", value)}
                     placeholder={t`Min`}
@@ -53,7 +53,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                 <td>
                   <NumericInput
                     type="number"
-                    className="full"
+                    className={CS.full}
                     value={segment.max}
                     onChange={value => onChangeProperty(index, "max", value)}
                     placeholder={t`Max`}

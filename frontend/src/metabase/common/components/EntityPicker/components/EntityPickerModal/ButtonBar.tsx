@@ -9,11 +9,15 @@ export const ButtonBar = ({
   onCancel,
   canConfirm,
   actionButtons,
+  confirmButtonText,
+  cancelButtonText,
 }: {
   onConfirm: () => void;
   onCancel: () => void;
   canConfirm?: boolean;
   actionButtons: JSX.Element[];
+  confirmButtonText?: string;
+  cancelButtonText?: string;
 }) => {
   useEffect(() => {
     const handleEnter = (e: KeyboardEvent) => {
@@ -37,14 +41,16 @@ export const ButtonBar = ({
     >
       <Flex gap="md">{actionButtons}</Flex>
       <Flex gap="md">
-        <Button onClick={onCancel}>{t`Cancel`}</Button>
+        <Button onClick={onCancel} type="button">
+          {cancelButtonText ?? t`Cancel`}
+        </Button>
         <Button
           ml={1}
           variant="filled"
           onClick={onConfirm}
           disabled={!canConfirm}
         >
-          {t`Select`}
+          {confirmButtonText ?? t`Select`}
         </Button>
       </Flex>
     </Flex>

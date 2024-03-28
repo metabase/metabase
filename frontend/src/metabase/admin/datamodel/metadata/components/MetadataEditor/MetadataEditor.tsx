@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -67,7 +68,7 @@ const MetadataEditor = ({ databases, params }: MetadataEditorProps) => {
               selectedTableId={tableId}
             />
           ) : (
-            <div className="full text-centered">
+            <div className={cx(CS.full, CS.textCentered)}>
               <h2 className={CS.textMedium}>
                 {hasDatabases
                   ? t`Select any table to see its schema and add or edit metadata.`

@@ -195,7 +195,7 @@ export default class Progress extends Component {
               {formatValue(value, settings.column(column))}
             </div>
           </div>
-          <div className="relative" style={{ height: 10, marginBottom: 5 }}>
+          <div className={CS.relative} style={{ height: 10, marginBottom: 5 }}>
             <div
               ref={this.pointerRef}
               style={{
@@ -212,7 +212,7 @@ export default class Progress extends Component {
           </div>
           <div
             ref={this.barRef}
-            className={cx("relative", { "cursor-pointer": isClickable })}
+            className={cx(CS.relative, { [CS.cursorPointer]: isClickable })}
             style={{
               backgroundColor: restColor,
               borderRadius: BORDER_RADIUS,

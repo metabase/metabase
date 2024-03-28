@@ -566,7 +566,8 @@ class TableInteractive extends Component {
         className={cx(
           "TableInteractive-cellWrapper",
           CS.textDark,
-          "hover-parent hover--visibility",
+          CS.hoverParent,
+          CS.hoverVisibility,
           {
             "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
             padLeft: columnIndex === 0 && !showDetailShortcut,
@@ -594,7 +595,7 @@ class TableInteractive extends Component {
         {isCollapsed && (
           <ExpandButton
             data-testid="expand-column"
-            className="hover-child"
+            className={CS.hoverChild}
             small
             borderless
             iconSize={10}
@@ -993,7 +994,7 @@ class TableInteractive extends Component {
             }
             return (
               <TableInteractiveRoot
-                className={cx(className, "TableInteractive relative", {
+                className={cx(className, "TableInteractive", CS.relative, {
                   "TableInteractive--pivot": this.props.isPivoted,
                   "TableInteractive--ready": this.state.contentWidths,
                   // no hover if we're dragging a column
@@ -1051,7 +1052,7 @@ class TableInteractive extends Component {
                     overflow: "hidden",
                     paddingRight: getScrollBarSize(),
                   }}
-                  className="TableInteractive-header scroll-hide-all"
+                  className={cx("TableInteractive-header", CS.scrollHideAll)}
                   width={width || 0}
                   height={headerHeight}
                   rowCount={1}

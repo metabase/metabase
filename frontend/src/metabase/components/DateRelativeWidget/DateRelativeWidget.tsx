@@ -89,7 +89,9 @@ export class PredefinedRelativeDatePicker extends Component<PredefinedRelativeDa
           {SHORTCUTS.map((s, index) => (
             <span
               key={index}
-              className={cx("inline-block half pb1", { pr1: index % 2 === 0 })}
+              className={cx(CS.inlineBlock, CS.half, CS.pb1, {
+                [CS.pr1]: index % 2 === 0,
+              })}
             >
               <button
                 key={index}

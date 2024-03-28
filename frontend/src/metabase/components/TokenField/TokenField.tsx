@@ -638,7 +638,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
             CS.overflowAuto,
             CS.pl1,
             CS.my1,
-            "scroll-hide",
+            CS.scrollHide,
           )}
           style={{ maxHeight: 300, ...optionsStyle }}
           onMouseEnter={() => this.setState({ listIsHovered: true })}
@@ -648,7 +648,6 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
             <li className="mr1" key={this._key(option)}>
               <div
                 className={cx(
-                  `text-${color}-hover`,
                   CS.py1,
                   CS.pl1,
                   CS.pr2,
@@ -658,7 +657,8 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
                   CS.inlineBlock,
                   CS.full,
                   CS.cursorPointer,
-                  CS.bgLightHover,
+                  `text-${color}-hover`,
+                    CS.bgLightHover,
                   {
                     [`text-${color} bg-light`]:
                       !this.state.listIsHovered &&

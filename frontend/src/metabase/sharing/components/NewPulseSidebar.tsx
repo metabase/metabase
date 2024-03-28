@@ -35,7 +35,7 @@ export function NewPulseSidebar({
         <ChannelCard
           flat
           className={cx("mt1 mb3", {
-            "hover-parent hover--inherit": emailConfigured,
+            [cx(CS.hoverParent, CS.hoverInherit)]: emailConfigured,
           })}
           isConfigured={emailConfigured}
           onClick={onNewEmailPulse}
@@ -47,7 +47,7 @@ export function NewPulseSidebar({
                 className={cx(
                   [CS.mr1],
                   {
-                    [cx(CS.textBrand, "hover-child hover--inherit")]:
+                    [cx(CS.textBrand, CS.hoverChild, CS.hoverInherit)]:
                       emailConfigured,
                   },
                   { [CS.textLight]: !emailConfigured },
@@ -59,7 +59,7 @@ export function NewPulseSidebar({
             </div>
             <Text
               className={cx(CS.textMedium, {
-                "hover-child hover--inherit": emailConfigured,
+                [cx(CS.hoverChild, CS.hoverInherit)]: emailConfigured,
               })}
             >
               {!emailConfigured &&
@@ -80,7 +80,7 @@ export function NewPulseSidebar({
         <ChannelCard
           flat
           className={cx({
-            "hover-parent hover--inherit": slackConfigured,
+            [cx(CS.hoverParent, CS.hoverInherit)]: slackConfigured,
           })}
           isConfigured={slackConfigured}
           onClick={onNewSlackPulse}
@@ -92,7 +92,7 @@ export function NewPulseSidebar({
                 size={16}
                 className={cx(CS.mr1, {
                   [CS.textLight]: !slackConfigured,
-                  "hover-child hover--inherit": slackConfigured,
+                  [cx(CS.hoverChild, CS.hoverInherit)]: slackConfigured,
                 })}
               />
               <h3
@@ -101,7 +101,7 @@ export function NewPulseSidebar({
             </div>
             <Text
               className={cx(CS.textMedium, {
-                "hover-child hover--inherit": slackConfigured,
+                [cx(CS.hoverChild, CS.hoverInherit)]: slackConfigured,
               })}
             >
               {!slackConfigured &&

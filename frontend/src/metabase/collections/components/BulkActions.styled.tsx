@@ -13,7 +13,7 @@ export const BulkActionsToast = styled.div<{ isNavbarOpen: boolean }>`
   margin-left: ${props =>
     props.isNavbarOpen ? `${parseInt(NAV_SIDEBAR_WIDTH) / 2}px` : "0"};
   margin-bottom: ${space(2)};
-  z-index: 999;
+  z-index: 400; // needed to put this over popovers (z-index: 300)
 `;
 
 export const ToastCard = styled(Card)`

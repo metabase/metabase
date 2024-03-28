@@ -112,7 +112,7 @@ function Relationship({
       >
         <div>
           <h2>{isLoaded ? fkCountValue : <LoadingSpinner size={25} />}</h2>
-          <h5 className="block">
+          <h5 className={CS.block}>
             {relationName}
             {via}
           </h5>

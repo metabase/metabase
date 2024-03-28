@@ -22,7 +22,7 @@ function DefaultParametersSection({ className, parameters }) {
   const formattedParameterValues = formatDefaultParamValues(parameters);
 
   return (
-    <div className={cx(className, "text-bold")}>
+    <div className={cx(className, CS.textBold)}>
       <Heading>
         {t`Filter values`}
         <Icon
@@ -33,7 +33,7 @@ function DefaultParametersSection({ className, parameters }) {
         />
       </Heading>
       <div
-        className={cx(CS.pt1, "text-small", CS.textNormal, CS.textMedium)}
+        className={cx(CS.pt1, CS.textSmall, CS.textNormal, CS.textMedium)}
       >{t`If a dashboard filter has a default value, it’ll be applied when your subscription is sent.`}</div>
       {formattedParameterValues.map((formattedValue, index) => {
         return (
