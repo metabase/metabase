@@ -243,15 +243,19 @@
                     result))))))
 
 (deftest ^:parallel execute-dashboard-test-2
-  (testing "hides empty card when card.hide_empty is true"
+  (testing "hides empty card when card.hide_empty is true and there are no results."
     (mt/with-temp [Card          {card-id-1 :id} {:dataset_query (mt/mbql-query venues)}
-                   Card          {card-id-2 :id} {:dataset_query (mt/mbql-query venues)}
+                   Card          {card-id-2 :id} {:dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
+                   Card          {card-id-3 :id} {:dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
+                   Card          {card-id-4 :id} {:dataset_query (mt/mbql-query venues)}
                    Dashboard     {dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1}
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :visualization_settings {:card.hide_empty true}}
+                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-3}
+                   DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-4}
                    User {user-id :id} {}]
       (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
-        (is (= (count result) 1))))))
+        (is (= 3 (count result)))))))
 
 (deftest ^:parallel execute-dashboard-test-3
   (testing "dashboard cards are ordered correctly -- by rows, and then by columns (#17419)"
