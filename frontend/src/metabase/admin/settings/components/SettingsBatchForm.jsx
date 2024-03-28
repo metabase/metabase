@@ -300,7 +300,9 @@ class SettingsBatchForm extends Component {
         )}
 
         {formErrors && formErrors.message && (
-          <div className="m2 text-error text-bold">{formErrors.message}</div>
+          <div className={cx("m2 text-error", CS.textBold)}>
+            {formErrors.message}
+          </div>
         )}
 
         <div className="m2 mb4">

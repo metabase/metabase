@@ -133,7 +133,9 @@ export const Help = () => {
         <AdminHeader title={t`Diagnostic Info`} className="mb2" />
         <p>{t`Please include these details in support requests. Thank you!`}</p>
         <InfoBlock>{detailString}</InfoBlock>
-        <div className="text-medium text-bold text-uppercase py2">{t`Advanced Details (click to download)`}</div>
+        <div
+          className={cx("text-medium", CS.textBold, CS.textUppercase, "py2")}
+        >{t`Advanced Details (click to download)`}</div>
         <ol>
           <HelpLink
             title={t`Connection Pool Details`}

@@ -25,14 +25,14 @@ export default function ErrorDetails({
 
   return (
     <div className={className}>
-      <div className={centered ? "text-centered" : "text-left"}>
+      <div className={centered ? CS.textCentered : CS.textLeft}>
         <a onClick={toggleShowError} className={cx(CS.link)}>
           {showError ? t`Hide error details` : t`Show error details`}
         </a>
       </div>
       <div
         style={{ display: showError ? "inherit" : "none" }}
-        className={cx("pt3", centered ? "text-centered" : "text-left")}
+        className={cx("pt3", centered ? CS.textCentered : CS.textLeft)}
       >
         <h2>{t`Here's the full error message`}</h2>
         <ErrorBox>{details}</ErrorBox>

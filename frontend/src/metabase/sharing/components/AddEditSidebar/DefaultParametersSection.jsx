@@ -2,6 +2,7 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { conjunct } from "metabase/lib/formatting";
 import { Icon } from "metabase/ui";
 
@@ -21,7 +22,7 @@ function DefaultParametersSection({ className, parameters }) {
   const formattedParameterValues = formatDefaultParamValues(parameters);
 
   return (
-    <div className={cx(className, "text-bold")}>
+    <div className={cx(className, CS.textBold)}>
       <Heading>
         {t`Filter values`}
         <Icon
@@ -31,7 +32,9 @@ function DefaultParametersSection({ className, parameters }) {
           tooltip={t`You can customize filter values for each subscription with paid plans.`}
         />
       </Heading>
-      <div className="pt1 text-small text-normal text-medium">{t`If a dashboard filter has a default value, it’ll be applied when your subscription is sent.`}</div>
+      <div
+        className={cx("pt1", CS.textSmall, CS.textNormal, "text-medium")}
+      >{t`If a dashboard filter has a default value, it’ll be applied when your subscription is sent.`}</div>
       {formattedParameterValues.map((formattedValue, index) => {
         return (
           <div className="pt1 text-medium" key={index}>

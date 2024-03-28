@@ -23,6 +23,7 @@ class UserSuccessModal extends Component {
   componentWillUnmount() {
     this.props.clearTemporaryPassword(this.props.params.userId);
   }
+
   render() {
     const { onClose, user, temporaryPassword } = this.props;
     const isSsoEnabled =
@@ -75,10 +76,10 @@ const PasswordSuccess = ({ user, temporaryPassword }) => (
     <PasswordReveal password={temporaryPassword} />
     <div
       style={{ paddingLeft: "5em", paddingRight: "5em" }}
-      className="pt4 text-centered"
+      className={cx("pt4", CS.textCentered)}
     >
       {jt`If you want to be able to send email invites, just go to the ${(
-        <Link to="/admin/settings/email" className={cx(CS.link, "text-bold")}>
+        <Link to="/admin/settings/email" className={cx(CS.link, CS.textBold)}>
           Email Settings
         </Link>
       )} page.`}
