@@ -43,7 +43,7 @@ jobs:
         with:
           m2-cache-key: "cljs"
       - name: Compile CLJS
-        run: yarn build-pure:cljs
+        run: yarn run build-release-pure:cljs
       - name: Build SDK bundle
         run: yarn run build-release:sdk
       - name: Generate SDK package.json
