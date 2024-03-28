@@ -77,7 +77,10 @@ const MetadataTableColumn = ({
       data-testid={`column-${field.name}`}
     >
       <div className={cx(CS.flex, CS.flexColumn, CS.flexAuto)}>
-        <div className="text-monospace mb1" style={{ fontSize: "12px" }}>
+        <div
+          className={cx(CS.textMonospace, "mb1")}
+          style={{ fontSize: "12px" }}
+        >
           {getFieldRawName(field)}
         </div>
         <div className={cx(CS.flex, CS.flexColumn)}>

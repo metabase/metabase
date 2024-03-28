@@ -1,4 +1,8 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
+
+import CS from "metabase/css/core/index.css";
+
 import {
   BrowserCrumbsIcon,
   BrowserCrumbsItem,
@@ -9,7 +13,10 @@ import {
 // TODO: merge with Breadcrumbs
 
 const Crumb = ({ children }) => (
-  <h5 className="text-uppercase text-medium" style={{ fontWeight: 900 }}>
+  <h5
+    className={cx(CS.textUppercase, "text-medium")}
+    style={{ fontWeight: 900 }}
+  >
     {children}
   </h5>
 );

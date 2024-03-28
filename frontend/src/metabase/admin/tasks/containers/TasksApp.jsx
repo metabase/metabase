@@ -83,7 +83,7 @@ class TasksAppInner extends Component {
               // only want unknown if there is a db on the task and we don't have info
               return (
                 <tr key={task.id}>
-                  <td className="text-bold">{task.task}</td>
+                  <td className={CS.textBold}>{task.task}</td>
                   <td>{task.db_id ? name || t`Unknown name` : null}</td>
                   <td>{task.db_id ? engine || t`Unknown engine` : null}</td>
                   <td>{task.started_at}</td>
@@ -91,7 +91,7 @@ class TasksAppInner extends Component {
                   <td>{task.duration}</td>
                   <td>
                     <Link
-                      className={cx(CS.link, "text-bold")}
+                      className={cx(CS.link, CS.textBold)}
                       to={`/admin/troubleshooting/tasks/${task.id}`}
                     >{t`View`}</Link>
                   </td>

@@ -191,7 +191,7 @@ const UserRow = ({
 
   return (
     <tr>
-      <td className="text-bold">{getName(user)}</td>
+      <td className={CS.textBold}>{getName(user)}</td>
       {canEditMembership(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell && (
         <PLUGIN_GROUP_MANAGERS.UserTypeCell
           isManager={groupMembership.is_group_manager}
@@ -202,7 +202,7 @@ const UserRow = ({
       <td>{user.email}</td>
       {canRemove ? (
         <td
-          className="text-right cursor-pointer"
+          className={cx(CS.textRight, "cursor-pointer")}
           onClick={() => onMembershipRemove(groupMembership?.membership_id)}
         >
           <Icon name="close" className="text-light" size={16} />
@@ -232,7 +232,7 @@ const ApiKeyRow = ({ apiKey }: { apiKey: ApiKey }) => {
         <Text weight="bold" color="text-medium">{t`API Key`}</Text>
       </td>
       <td>{/* api keys don't have real emails */}</td>
-      <td className="text-right">
+      <td className={CS.textRight}>
         <Link to="/admin/settings/authentication/api-keys">
           <Tooltip label={t`Manage API keys`} position="left">
             <Icon name="link" size={16} />
