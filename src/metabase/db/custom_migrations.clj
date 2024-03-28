@@ -10,7 +10,9 @@
   (:require
    [cheshire.core :as json]
    [clojure.core.match :refer [match]]
+   [clojure.edn :as edn]
    [clojure.java.io :as io]
+   [clojure.pprint :as pprint]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -96,12 +98,11 @@
   (when s
     (.toUpperCase (str s) Locale/US)))
 
-
 ;; metabase.util/lower-case-en
 (defn- lower-case-en
   ^String [s]
   (when s
-   (.toLowerCase (str s) Locale/US)))
+    (.toLowerCase (str s) Locale/US)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  MIGRATIONS                                                    |
@@ -288,9 +289,9 @@
                             (t2/reducible-query {:select [:id :result_metadata]
                                                  :from   [:report_card]
                                                  :where  [:or
-                                                           [:like :result_metadata "%field-id%"]
-                                                           [:like :result_metadata "%field-literal%"]
-                                                           [:like :result_metadata "%fk->%"]]})))))
+                                                          [:like :result_metadata "%field-id%"]
+                                                          [:like :result_metadata "%field-literal%"]
+                                                          [:like :result_metadata "%fk->%"]]})))))
 
 (defn- remove-opts
   "Removes options from the `field_ref` options map. If the resulting map is empty, it's replaced it with nil."
@@ -421,7 +422,7 @@
     ;; need to wrap it a try catch in case anything weird could go wrong, for example
     ;; sizes are string
     (try
-     (merge
+      (merge
        (dissoc card :sizeX :sizeY) ;; remove those legacy keys if exists
        {:size_x (- (+ size_x
                       (quot (+ col size_x 1) 3))
@@ -429,8 +430,8 @@
         :col    (+ col (quot (+ col 1) 3))
         :size_y size_y
         :row    row})
-     (catch Throwable _
-       card))))
+      (catch Throwable _
+        card))))
 
 (defn- migrate-dashboard-grid-from-24-to-18
   "Mirror of the rollback algorithm we have in sql."
@@ -439,7 +440,7 @@
     ;; new_size_x = size_x - ((size_x + col + 1) // 4 - (col + 1) // 4)
     ;; new_col = col - (col + 1) // 4
     (try
-     (merge
+      (merge
        card
        {:size_x (if (= size_x 1)
                   1
@@ -450,8 +451,8 @@
         :col    (- col (quot (+ col 1) 4))
         :size_y size_y
         :row    row})
-     (catch Throwable _
-       card))))
+      (catch Throwable _
+        card))))
 
 (define-reversible-migration RevisionDashboardMigrateGridFrom18To24
   (let [migrate! (fn [revision]
@@ -467,8 +468,8 @@
                      (let [object (json/parse-string (:object revision) keyword)]
                        (when (seq (:cards object))
                          (t2/query {:update :revision
-                                     :set {:object (json/generate-string (update object :cards #(map migrate-dashboard-grid-from-24-to-18 %)))}
-                                     :where [:= :id (:id revision)]}))))]
+                                    :set {:object (json/generate-string (update object :cards #(map migrate-dashboard-grid-from-24-to-18 %)))}
+                                    :where [:= :id (:id revision)]}))))]
     (run! roll-back! (t2/reducible-query {:select [:*]
                                           :from   [:revision]
                                           :where  [:= :model "Dashboard"]}))))
@@ -762,64 +763,64 @@
   (let [remove-nil-keys (fn [m]
                           (into {} (remove #(nil? (val %)) m)))
         existing-fixed  (fn [settings]
-                         (-> settings
-                             (m/update-existing "column_settings"
-                                                (fn [column_settings]
-                                                  (m/map-vals
-                                                   #(select-keys % ["click_behavior"])
-                                                   column_settings)))
+                          (-> settings
+                              (m/update-existing "column_settings"
+                                                 (fn [column_settings]
+                                                   (m/map-vals
+                                                    #(select-keys % ["click_behavior"])
+                                                    column_settings)))
                              ;; select click behavior top level and in column settings
-                             (select-keys ["column_settings" "click_behavior"])
-                             (remove-nil-keys)))
+                              (select-keys ["column_settings" "click_behavior"])
+                              (remove-nil-keys)))
         fix-top-level   (fn [toplevel]
-                         (if (= (get toplevel "click") "link")
-                           (assoc toplevel
+                          (if (= (get toplevel "click") "link")
+                            (assoc toplevel
                                   ;; add new shape top level
-                                  "click_behavior"
-                                  {"type"         (get toplevel "click")
-                                   "linkType"     "url"
-                                   "linkTemplate" (get toplevel "click_link_template")})
-                           toplevel))
+                                   "click_behavior"
+                                   {"type"         (get toplevel "click")
+                                    "linkType"     "url"
+                                    "linkTemplate" (get toplevel "click_link_template")})
+                            toplevel))
         fix-cols        (fn [column-settings]
-                         (reduce-kv
-                          (fn [m col field-settings]
-                            (assoc m col
+                          (reduce-kv
+                           (fn [m col field-settings]
+                             (assoc m col
                                    ;; add the click stuff under the new click_behavior entry or keep the
                                    ;; field settings as is
-                                   (if (and (= (get field-settings "view_as") "link")
-                                            (contains? field-settings "link_template"))
+                                    (if (and (= (get field-settings "view_as") "link")
+                                             (contains? field-settings "link_template"))
                                      ;; remove old shape and add new shape under click_behavior
-                                     (assoc field-settings
-                                            "click_behavior"
-                                            {"type"             (get field-settings "view_as")
-                                             "linkType"         "url"
-                                             "linkTemplate"     (get field-settings "link_template")
-                                             "linkTextTemplate" (get field-settings "link_text")})
-                                     field-settings)))
-                          {}
-                          column-settings))
+                                      (assoc field-settings
+                                             "click_behavior"
+                                             {"type"             (get field-settings "view_as")
+                                              "linkType"         "url"
+                                              "linkTemplate"     (get field-settings "link_template")
+                                              "linkTextTemplate" (get field-settings "link_text")})
+                                      field-settings)))
+                           {}
+                           column-settings))
         fixed-card      (-> (if (contains? dashcard "click")
-                             (dissoc card "click_behavior") ;; throw away click behavior if dashcard has click
+                              (dissoc card "click_behavior") ;; throw away click behavior if dashcard has click
                              ;; behavior added
-                             (fix-top-level card))
-                           (update "column_settings" fix-cols) ;; fix columns and then select only the new shape from
+                              (fix-top-level card))
+                            (update "column_settings" fix-cols) ;; fix columns and then select only the new shape from
                            ;; the settings tree
-                           existing-fixed)
+                            existing-fixed)
         fixed-dashcard  (update (fix-top-level dashcard) "column_settings" fix-cols)
         final-settings  (->> (m/deep-merge fixed-card fixed-dashcard (existing-fixed dashcard))
                             ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
                             ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
                             ;; doesn't have link text
-                            (walk/postwalk (fn [form]
-                                             (if (map? form)
-                                               (into {} (for [[k v] form
-                                                              :when (if (seqable? v)
+                             (walk/postwalk (fn [form]
+                                              (if (map? form)
+                                                (into {} (for [[k v] form
+                                                               :when (if (seqable? v)
                                                                       ;; remove keys with empty maps. must be postwalk
-                                                                      (seq v)
+                                                                       (seq v)
                                                                       ;; remove nils
-                                                                      (some? v))]
-                                                          [k v]))
-                                               form))))]
+                                                                       (some? v))]
+                                                           [k v]))
+                                                form))))]
     (when (not= final-settings dashcard)
       {:id                     id
        :visualization_settings final-settings})))
@@ -878,9 +879,9 @@
   [mapping-setting-key]
   (let [admin-group-id (t2/select-one-pk :permissions_group :name "Administrators")
         mapping        (try
-                        (json/parse-string (raw-setting mapping-setting-key))
-                        (catch Exception _e
-                          {}))]
+                         (json/parse-string (raw-setting mapping-setting-key))
+                         (catch Exception _e
+                           {}))]
     (when-not (empty? mapping)
       (t2/update! :setting {:key (name mapping-setting-key)}
                   {:value
@@ -943,10 +944,10 @@
   [db-type table column ttype nullable?]
   (let [ttype (name ttype)
         db-type (if (and (= db-type :mysql)
-                     (with-open [conn (.getConnection (mdb.connection/data-source))]
-                       (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
-                 :mariadb
-                 db-type)]
+                         (with-open [conn (.getConnection (mdb.connection/data-source))]
+                           (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
+                  :mariadb
+                  db-type)]
     (case db-type
       :postgres
       (format "ALTER TABLE \"%s\" ALTER COLUMN \"%s\" TYPE %s USING (\"%s\"::%s), ALTER COLUMN %s %s"
@@ -1044,7 +1045,7 @@
 
     :mysql
     (do
-     (t2/query ["UPDATE revision
+      (t2/query ["UPDATE revision
                  SET object = JSON_SET(
                      object,
                      '$.dataset',
@@ -1053,7 +1054,7 @@
                          THEN true ELSE false
                      END)
                  WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"])
-     (t2/query ["UPDATE revision
+      (t2/query ["UPDATE revision
                  SET object = JSON_REMOVE(object, '$.type')
                  WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"]))
 
@@ -1112,6 +1113,84 @@
     (let [all-users-id (first (vals (t2/query-one {:select [:id] :from :permissions_group :where [:= :name "All Users"]})))
           perms-group  {:user_id config/internal-mb-user-id :group_id all-users-id}]
       (t2/query {:insert-into :permissions_group_membership :values [perms-group]}))))
+
+(defn- load-edn
+  "Load edn from an io/reader source (filename or io/resource)."
+  [source]
+  (with-open [r (io/reader source)]
+    (edn/read (java.io.PushbackReader. r))))
+
+(defn- replace-generated-values [m v]
+  (-> m
+      (m/update-existing :updated_at (constantly v))
+      (m/update-existing :date_joined (constantly v)) ; user
+      (m/update-existing :created_at (constantly v))
+      (m/update-existing :last_analyzed (constantly v)))) ; field
+
+(comment
+  (defn- pretty-spit [file-name data]
+    (with-open [writer (io/writer file-name)]
+      (binding [*out* writer]
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (pprint/pprint data))))
+  ;; STEPS to prepareresources/sample-data.edn
+  ;; write data
+  ;; start a fresh metabase instance without the :ee alias
+  ;; create a dashboard called 'dash', with some dashcards
+  ;; evaluate (install-internal-user!) to create the internal user
+  (let [data (-> (into {}
+                       (for [table-name [:metabase_database
+                                         :metabase_table
+                                         :metabase_field
+                                         :report_dashboard
+                                         :report_dashboardcard
+                                         :report_card
+                                         :parameter_card
+                                         :dashboard_tab
+                                         :dashboardcard_series]]
+                         [table-name (t2/query {:select [:*] :from table-name})]))
+                 ;; TODO: handle password, password salt, settings
+                 (assoc :core_user (t2/query {:select [:*]
+                                              :from   :core_user
+                                              :where  [:= :id config/internal-mb-user-id]}))
+                 (update-vals (fn [v] (mapv #(replace-generated-values (into {} %) nil) v))))]
+    (pretty-spit "resources/sample-data.edn" data))
+  ;; replace :creator_id 1 with :creator_id 13371338
+  (let [sample-data (load-edn "resources/sample-data.edn")]
+    (doall (for [table-name [:core_user ; TODO: update password, password_salt, setting
+                             :metabase_database ;; details will get cleaned up on sync
+                             :metabase_table
+                             :metabase_field
+                             :report_card ; TODO: update metabase_version
+                             :parameter_card
+                             :report_dashboard
+                             :dashboard_tab
+                             :report_dashboardcard
+                             :dashboardcard_series]]
+             (do (if (= table-name :core_user)
+                   (t2/delete! :core_user :id config/internal-mb-user-id)
+                   (t2/delete! table-name))
+                 (when-let [values (seq (map (fn [v] (replace-generated-values v :%now))
+                                             (table-name sample-data)))]
+                   (t2/query {:insert-into table-name :values values}))))))
+  )
+
+(define-reversible-migration CreateSampleDashboard
+  (let [dashdata (load-edn "resources/sample-data.edn")]
+    (doall (for [table-name [:core_user ; password, password_salt, setting need updating
+                             :metabase_database ; details and dbms_version need updating
+                             :metabase_table
+                             :metabase_field
+                             :report_card ; metabase_version needs updating
+                             :parameter_card
+                             :report_dashboard
+                             :dashboard_tab
+                             :report_dashboardcard
+                             :dashboardcard_series]]
+             (when-let [values (seq (map (fn [v] (replace-generated-values v :%now))
+                                         (table-name dashdata)))]
+               (t2/query {:insert-into table-name :values values})))))
+  :no-op)
 
 ;; This was renamed to TruncateAuditTables, so we need to delete the old job & trigger
 (define-migration DeleteTruncateAuditLogTask

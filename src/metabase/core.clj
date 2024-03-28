@@ -136,7 +136,7 @@
     ;; deal with our sample database as needed
     (if new-install?
       ;; add the sample database DB for fresh installs
-      (sample-data/add-sample-database!)
+      (sample-data/extract-and-sync-sample-database!)
       ;; otherwise update if appropriate
       (sample-data/update-sample-database-if-needed!))
     (init-status/set-progress! 0.9))

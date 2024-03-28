@@ -15,7 +15,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^String sample-database-name     "Sample Database")
 (def ^:private ^String sample-database-filename "sample-database.db.mv.db")
 
 ;; Reuse the plugins directory for the destination to extract the sample database because it's pretty much guaranteed
@@ -65,22 +64,19 @@
                              "Please set MB_PLUGINS_DIR to a writable directory and restart Metabase.")))
          (jar-db-details resource)))}))
 
-(defn add-sample-database!
+(defn extract-and-sync-sample-database!
   "Add the sample database as a Metabase DB if it doesn't already exist."
   []
-  (when-not (t2/exists? Database :is_sample true)
-    (try
-      (log/info (trs "Loading sample database"))
-      (let [details (try-to-extract-sample-database!)]
-        (log/debug "Syncing Sample Database...")
-        (sync/sync-database! (first (t2/insert-returning-instances! Database
-                                                                    :name      sample-database-name
-                                                                    :details   details
-                                                                    :engine    :h2
-                                                                    :is_sample true))))
-      (log/debug "Finished adding Sample Database.")
-      (catch Throwable e
-        (log/error e (trs "Failed to load sample database"))))))
+  (try
+    (log/info (trs "Loading sample database"))
+    (let [details (try-to-extract-sample-database!)
+            ;; the sample database is inserted during db setup as a migration, but we need to update its details
+          db      (t2/select-one Database (first (t2/update-returning-pks! Database :is_sample true {:details details})))]
+      (log/debug "Syncing Sample Database...")
+      (sync/sync-database! db))
+    (log/debug "Finished adding Sample Database.")
+    (catch Throwable e
+      (log/error e (trs "Failed to load sample database")))))
 
 (defn update-sample-database-if-needed!
   "Update the path to the sample database DB if it exists in case the JAR has moved."
