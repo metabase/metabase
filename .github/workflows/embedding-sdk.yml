@@ -38,21 +38,16 @@ jobs:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-#      - name: Prepare back-end environment
-#        uses: ./.github/actions/prepare-backend
-#        with:
-#          m2-cache-key: "cljs"
-#      - name: Compile CLJS
-#        run: yarn run build-release-pure:cljs
-#      - name: Build SDK bundle
-#        run: yarn run build-release:sdk
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - name: Compile CLJS
+        run: yarn run build-release-pure:cljs
+      - name: Build SDK bundle
+        run: yarn run build-release:sdk
       - name: Generate SDK package.json
         run: yarn run embedding-sdk:generate-package "$GITHUB_SHA"
-#      - name: Archive production artifacts
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: embedding-sdk
-#          path: resources/embedding-sdk
       - name: Generate .npmrc
         uses: actions/setup-node@v4
         with:
