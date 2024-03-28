@@ -15,6 +15,7 @@ export const CommandPaletteTrigger = ({
   return (
     <Tooltip label={t`Search and quickly jump to things`}>
       <Button
+        tabIndex={-1}
         onClick={onClick}
         p="0.25rem"
         bg={color("bg-light")}
