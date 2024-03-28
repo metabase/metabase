@@ -7,7 +7,7 @@ import { findWhere } from "underscore";
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { CacheConfigApi } from "metabase/services";
-import { Flex, Group, Icon, Text } from "metabase/ui";
+import { Box, Flex, Group, Icon, Text } from "metabase/ui";
 
 import { rootId } from "../constants";
 import { Strategies, type Config } from "../types";
@@ -47,14 +47,14 @@ export const ResetAllToDefaultButton = ({
   }, [configs, setConfigs]);
 
   return (
-    <>
+    <Box py=".75rem" mt="auto" style={{ marginInlineStart: "auto" }}>
       <FormProvider initialValues={{}} onSubmit={resetAllToDefault}>
         <ResetAllToDefaultButtonFormBody
           rootConfig={rootConfig}
           setConfigs={setConfigs}
         />
       </FormProvider>
-    </>
+    </Box>
   );
 };
 

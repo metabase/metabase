@@ -21,6 +21,7 @@ import {
 import { color } from "metabase/lib/colors";
 import {
   Button,
+  Flex,
   Group,
   Icon,
   Loader,
@@ -28,6 +29,7 @@ import {
   Stack,
   Text,
   Title,
+  Tooltip,
 } from "metabase/ui";
 
 import { rootId } from "../constants";
@@ -35,6 +37,7 @@ import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
 import type { Strat, StrategyType } from "../types";
 import { Strategies } from "../types";
 import { strategyValidationSchema } from "../validation";
+import Link from "metabase/core/components/Link";
 
 export const StrategyForm = ({
   targetId,
@@ -116,7 +119,18 @@ const StrategyFormBody = ({
             {/* TODO: Add link to example */}
             <Field
               title={t`Cache time-to-live (TTL) multiplier`}
-              subtitle={t`To determine how long each cached result should stick around, we take that query's average execution time and multiply that by what you input here. The result is how many seconds the cache should remain valid for.`}
+              subtitle={
+                <div style={{ display: "inline" }}>
+                  {t`To determine how long each cached result should stick around, we take that query's average execution time and multiply that by what you input here. The result is how many seconds the cache should remain valid for.`}&nbsp;
+                  <Tooltip
+                    inline={true}
+                    styles={{tooltip: {height: "4rem", maxWidth: "20rem"}}}
+                    label={t`If a query takes on average 120 seconds (2 minutes) to run, and you input 10 for your multiplier, its cache entry will persist for 1,200 seconds (20 minutes).`}
+                  >
+                    <Text display="inline" c="brand">Example</Text>
+                  </Tooltip>
+                </div>
+              }
             >
               <PositiveNumberInput strategyType="ttl" fieldName="multiplier" />
             </Field>
@@ -259,7 +273,7 @@ export const PositiveNumberInput = ({
         input: {
           // This is like `text-align: right` but it's RTL-friendly
           textAlign: "end",
-          maxWidth: "3.5rem",
+          maxWidth: "4.5rem",
         },
       }}
       autoComplete="off"

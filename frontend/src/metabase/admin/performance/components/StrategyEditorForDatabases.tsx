@@ -19,7 +19,7 @@ import type {
   Config,
   SafelyUpdateTargetId,
   Strat,
-  StrategyType,
+  StrategyType
 } from "../types";
 import { Strategies } from "../types";
 
@@ -234,13 +234,13 @@ export const StrategyEditorForDatabases = ({
                   key={`database_${db.id}`}
                 />
               ))}
-              {shouldShowResetButton && (
-                <ResetAllToDefaultButton
-                  configs={configs}
-                  setConfigs={setConfigs}
-                />
-              )}
             </Stack>
+            {shouldShowResetButton && (
+              <ResetAllToDefaultButton
+                configs={configs}
+                setConfigs={setConfigs}
+              />
+            )}
           </Panel>
         )}
         <Panel
