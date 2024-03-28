@@ -4,6 +4,8 @@ import type {
   GetTableRequest,
   Table,
   TableId,
+  UpdateTableListRequest,
+  UpdateTableRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -42,17 +44,41 @@ export const tableApi = Api.injectEndpoints({
       }),
       providesTags: (response, error, id) => [idTag("table-foreign-keys", id)],
     }),
+    updateTable: builder.mutation<Table, UpdateTableRequest>({
+      query: ({ id, ...body }) => ({
+        method: "PUT",
+        url: `/api/table/${id}`,
+        body,
+      }),
+      invalidatesTags: (response, error, { id }) => [
+        idTag("table", id),
+        idTag("table-metadata", id),
+        tag("database-metadata"),
+      ],
+    }),
+    updateTableList: builder.mutation<Table[], UpdateTableListRequest>({
+      query: body => ({
+        method: "PUT",
+        url: `/api/table`,
+        body,
+      }),
+      invalidatesTags: (response, error, { ids }) => [
+        ...ids.map(id => idTag("table", id)),
+        ...ids.map(id => idTag("table-metadata", id)),
+        tag("database-metadata"),
+      ],
+    }),
     rescanTableFieldValues: builder.mutation<void, TableId>({
-      query: tableId => ({
+      query: id => ({
         method: "POST",
-        url: `/api/table/${tableId}/rescan_values`,
+        url: `/api/table/${id}/rescan_values`,
       }),
       invalidatesTags: [tag("field-values")],
     }),
     discardTableFieldValues: builder.mutation<void, TableId>({
-      query: tableId => ({
+      query: id => ({
         method: "POST",
-        url: `/api/table/${tableId}/discard_values`,
+        url: `/api/table/${id}/discard_values`,
       }),
       invalidatesTags: [tag("field-values")],
     }),
@@ -62,6 +88,10 @@ export const tableApi = Api.injectEndpoints({
 export const {
   useListTablesQuery,
   useGetTableQuery,
+  useGetTableMetadataQuery,
+  useLazyListTableForeignKeysQuery,
+  useUpdateTableMutation,
+  useUpdateTableListMutation,
   useRescanTableFieldValuesMutation,
   useDiscardTableFieldValuesMutation,
 } = tableApi;

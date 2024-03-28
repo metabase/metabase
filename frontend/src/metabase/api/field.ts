@@ -96,9 +96,9 @@ export const fieldApi = Api.injectEndpoints({
 
 export const {
   useGetFieldQuery,
-  useUpdateFieldMutation,
   useGetFieldValuesQuery,
   useSearchFieldValuesQuery,
+  useUpdateFieldMutation,
   useCreateFieldDimensionMutation,
   useDeleteFieldDimensionMutation,
   useRescanFieldValuesMutation,
