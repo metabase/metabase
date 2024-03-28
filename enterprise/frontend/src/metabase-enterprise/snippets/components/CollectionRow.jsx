@@ -20,7 +20,8 @@ class CollectionRow extends Component {
       <div
         className={cx(
           { [`bg-light-hover ${CS.cursorPointer}`]: !collection.archived },
-          "hover-parent hover--visibility",
+          CS.hoverParent,
+          CS.hoverVisibility,
           CS.flex,
           CS.alignCenter,
           CS.py2,

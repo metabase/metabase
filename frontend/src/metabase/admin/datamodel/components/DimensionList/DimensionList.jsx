@@ -149,7 +149,7 @@ export class DimensionList extends Component {
               className={cx(
                 CS.mx1,
                 CS.cursorPointer,
-                "hover-child",
+                CS.hoverChild,
                 "faded",
                 "fade-in-hover",
               )}
@@ -264,7 +264,7 @@ export class DimensionList extends Component {
         onChange={this.handleChange}
         itemIsSelected={this.itemIsSelected}
         renderItemExtra={this.renderItemExtra}
-        getItemClassName={() => "hover-parent hover--display"}
+        getItemClassName={() => cx(CS.hoverParent, CS.hoverDisplay)}
       />
     );
   }

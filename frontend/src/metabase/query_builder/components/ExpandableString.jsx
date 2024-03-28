@@ -46,7 +46,7 @@ export default class ExpandableString extends Component {
         <span>
           {this.props.str}{" "}
           <span
-            className={cx("block mt1", CS.link)}
+            className={cx(CS.block, CS.mt1, CS.link)}
             onClick={this.toggleExpansion}
           >{t`View less`}</span>
         </span>
@@ -56,7 +56,7 @@ export default class ExpandableString extends Component {
         <span>
           {truncated}{" "}
           <span
-            className={cx("block mt1", CS.link)}
+            className={cx(CS.block, CS.mt1, CS.link)}
             onClick={this.toggleExpansion}
           >{t`View more`}</span>
         </span>

@@ -188,7 +188,10 @@ export default class PinMap extends Component {
       <div
         className={cx(
           className,
-          "PinMap relative hover-parent hover--visibility",
+          "PinMap",
+          CS.relative,
+          CS.hoverParent,
+          CS.hoverVisibility,
         )}
         onMouseDownCapture={e => e.stopPropagation() /* prevent dragging */}
       >
@@ -227,7 +230,7 @@ export default class PinMap extends Component {
             CS.z2,
             CS.flex,
             CS.flexColumn,
-            "hover-child",
+            CS.hoverChild,
           )}
         >
           {isEditing || !isDashboard ? (

@@ -98,7 +98,7 @@ export default class LegendItem extends Component {
             {description && (
               <div
                 className={cx(
-                  "hover-child",
+                  CS.hoverChild,
                   CS.ml1,
                   CS.flex,
                   CS.alignCenter,

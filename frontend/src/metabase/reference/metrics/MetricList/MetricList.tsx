@@ -39,7 +39,7 @@ export function MetricList({ style }: MetricListProps) {
   );
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   return (
-    <div style={style} className="full">
+    <div style={style} className={CS.full}>
       <ReferenceHeader name={t`Metrics`} />
       <LoadingAndErrorWrapper
         loading={!loadingError && loading}

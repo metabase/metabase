@@ -121,7 +121,7 @@ function ActionsPopover({
 }) {
   return (
     <PopoverWithTrigger
-      className="block"
+      className={CS.block}
       triggerElement={<Icon className="text-light" name="ellipsis" />}
     >
       <ul className={cx(AdminS.UserActionsSelect, CS.py1)}>

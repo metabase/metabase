@@ -130,24 +130,22 @@
                  (mt/user-http-request :rasta :get 403 "user" :group_id group-id2))))
         (if config/ee-available?
           ;; Group management is an EE feature
-          (testing "manager can get users from their groups"
-            (is (= #{"lucky@metabase.com"
-                     "rasta@metabase.com"}
-                   (->> ((mt/user-http-request :rasta :get 200 "user" :group_id group-id1) :data)
-                        (filter mt/test-user?)
-                        (map :email)
-                        set)))
-            (is (= #{"lucky@metabase.com"
-                     "rasta@metabase.com"}
-                   (->> ((mt/user-http-request :rasta :get 200 "user") :data)
-                        (filter mt/test-user?)
-                        (map :email)
-                        set)))
-            (testing "see users from all groups the user manages"
+          (do
+            (testing "manager can get all users in their group"
+              (is (= #{"lucky@metabase.com"
+                       "rasta@metabase.com"}
+                     (->> ((mt/user-http-request :rasta :get 200 "user" :group_id group-id1) :data)
+                          (filter mt/test-user?)
+                          (map :email)
+                          set))))
+            (testing "manager can't get all users in another group"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403 "user" :group_id group-id2))))
+            (testing "manager can get all users"
               (is (= #{"lucky@metabase.com"
                        "rasta@metabase.com"
                        "crowberto@metabase.com"}
-                     (->> ((mt/user-http-request :lucky :get 200 "user") :data)
+                     (->> ((mt/user-http-request :rasta :get 200 "user") :data)
                           (filter mt/test-user?)
                           (map :email)
                           set)))))
