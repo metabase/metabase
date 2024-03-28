@@ -69,18 +69,15 @@
                                                  {:where [:and
                                                           [:= :t.db_id db-id]
                                                           [:= true :f.active]
-                                                          (if (seq table-names)
-                                                            [:in :%lower.t/name (map normalize-name table-names)]
-                                                            ;; if no tables, nothing is selectable
-                                                            false)]})))]
-
-    (if has-wildcard?
+                                                          [:in :%lower.t/name
+                                                               (map normalize-name table-names)]]})))]
+    (cond
       ;; select * from ...
       ;; so, get everything in all the tables
-      (active-fields-from-tables tables)
-      ;; select foo.* from ..
+      (and has-wildcard? (seq tables)) (active-fields-from-tables tables)
+      ;; select foo.* from ...
       ;; limit to the named tables
-      (active-fields-from-tables table-wildcards))))
+      (seq table-wildcards)            (active-fields-from-tables table-wildcards))))
 
 (defn- field-ids-for-card
   "Returns a `{:direct #{...} :indirect #{...}}` map with field IDs that (may) be referenced in the given cards's query. Errs on the side of optimism:

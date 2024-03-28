@@ -95,7 +95,7 @@
           (is (set/subset? #{total-qf tax-qf} qfs)))))))
 
 (deftest table-wildcard-test
-    (with-test-setup
+  (with-test-setup
     (let [total-qf {:card_id          card-id
                     :field_id         total-id
                     :direct_reference true}
@@ -112,4 +112,5 @@
           ;; 13 total, but id is referenced directly
           (is (= 12 (t2/count :model/QueryField :card_id card-id :direct_reference false)))
           ;; subset since it also includes the PKs/FKs
-          (is (set/subset? #{total-qf tax-qf} (t2/select-fn-set qf->map :model/QueryField :card_id card-id :direct_reference true))))))))
+          (is (set/subset? #{total-qf tax-qf}
+                           (t2/select-fn-set qf->map :model/QueryField :card_id card-id :direct_reference true))))))))
