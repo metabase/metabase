@@ -30,6 +30,7 @@ export interface NestedItemPickerProps<
   path: PickerState<Model, Item, Query>;
   isFolder: IsFolder<Id, Model, Item>;
   listResolver: ComponentType<ListProps<Id, Model, Item, Query, Options>>;
+  shouldDisableItem?: (item: Item) => boolean;
 }
 
 export function NestedItemPicker<
@@ -46,6 +47,7 @@ export function NestedItemPicker<
   path,
   isFolder,
   listResolver: ListResolver,
+  shouldDisableItem,
 }: NestedItemPickerProps<Id, Model, Item, Query, Options>) {
   const lastPathItem = path.at(-1);
 
@@ -80,6 +82,7 @@ export function NestedItemPicker<
                   options={options}
                   onClick={(item: Item) => handleClick(item)}
                   isCurrentLevel={isCurrentLevel}
+                  shouldDisableItem={shouldDisableItem}
                   isFolder={isFolder}
                 />
               </ErrorBoundary>

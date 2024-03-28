@@ -49,4 +49,5 @@ export type ListProps<
   isFolder: IsFolder<Id, Model, Item>;
   isCurrentLevel: boolean;
   options: Options;
+  shouldDisableItem?: (item: Item) => boolean;
 };
