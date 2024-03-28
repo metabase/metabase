@@ -73,15 +73,17 @@
     x]
    (available-binning-strategies-method query stage-number x)))
 
-(mu/defn default-auto-bin :- ::lib.schema.binning/binning-option
+(mu/defn auto-bin :- ::lib.schema.binning/binning-option
   "Returns the basic auto-binning strategy.
 
   Public because it's used directly by some drill-thrus."
   []
   {:lib/type     :option/binning
    :display-name (i18n/tru "Auto bin")
-   :default      true
    :mbql         {:strategy :default}})
+
+(defn- with-default-binning-option [m]
+  (assoc m :default true))
 
 (defn- with-binning-option-type [m]
   (assoc m :lib/type :option/binning))
@@ -90,7 +92,7 @@
   "List of binning options for numeric fields. These split the data evenly into a fixed number of bins."
   []
   (mapv with-binning-option-type
-        [(default-auto-bin)
+        [(auto-bin)
          {:display-name (i18n/tru "10 bins")  :mbql {:strategy :num-bins :num-bins 10}}
          {:display-name (i18n/tru "50 bins")  :mbql {:strategy :num-bins :num-bins 50}}
          {:display-name (i18n/tru "100 bins") :mbql {:strategy :num-bins :num-bins 100}}]))
@@ -100,7 +102,7 @@
   ranges as necessary, with each range being a certain number of degrees wide."
   []
   (mapv with-binning-option-type
-        [(default-auto-bin)
+        [(with-default-binning-option (auto-bin))
          {:display-name (i18n/tru "Bin every 0.1 degrees") :mbql {:strategy :bin-width :bin-width 0.1}}
          {:display-name (i18n/tru "Bin every 1 degree")    :mbql {:strategy :bin-width :bin-width 1.0}}
          {:display-name (i18n/tru "Bin every 10 degrees")  :mbql {:strategy :bin-width :bin-width 10.0}}

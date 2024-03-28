@@ -68,7 +68,7 @@
 
     (and (lib.types.isa/numeric? column)
          (not (lib.types.isa/foreign-key? column)))
-    (lib.binning/with-binning column (lib.binning/default-auto-bin))
+    (lib.binning/with-binning column (lib.binning/auto-bin))
 
     :else
     column))
