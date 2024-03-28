@@ -490,19 +490,20 @@
 
 (deftest no-op-partial-graph-updates
   (testing "Partial permission graphs with no changes to the existing graph do not error when run repeatedly (#25221)"
-    (mt/with-temp [:model/PermissionsGroup group]
-      ;; Bind *current-user* so that permission revisions are written, which was the source of the original error
-      (mt/with-current-user (mt/user->id :rasta)
-        (is (nil? (data-perms.graph/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:view-data :blocked
-                                                                                                  :create-queries :no}}}
-                                                              :revision (:revision (data-perms.graph/api-graph))})))
-        (is (nil? (data-perms.graph/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:view-data :blocked
-                                                                                                  :create-queries :no}}}
-                                                              :revision (:revision (data-perms.graph/api-graph))})))
-        (data-perms/set-database-permission! group (mt/id) :perms/view-data :unrestricted)
-        (is (nil? (data-perms.graph/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:view-data :unrestricted
-                                                                                                  :create-queries :query-builder}}}
-                                                              :revision (:revision (data-perms.graph/api-graph))})))
-        (is (nil? (data-perms.graph/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:view-data :unrestricted
-                                                                                                  :create-queries :query-builder}}}
-                                                              :revision (:revision (data-perms.graph/api-graph))})))))))
+    (mt/with-additional-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/PermissionsGroup group]
+        ;; Bind *current-user* so that permission revisions are written, which was the source of the original error
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (nil? (data-perms.graph/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:view-data :blocked
+                                                                                                    :create-queries :no}}}
+                                                                :revision (:revision (data-perms.graph/api-graph))})))
+          (is (nil? (data-perms.graph/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:view-data :blocked
+                                                                                                    :create-queries :no}}}
+                                                                :revision (:revision (data-perms.graph/api-graph))})))
+          (data-perms/set-database-permission! group (mt/id) :perms/view-data :unrestricted)
+          (is (nil? (data-perms.graph/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:view-data :unrestricted
+                                                                                                    :create-queries :query-builder}}}
+                                                                :revision (:revision (data-perms.graph/api-graph))})))
+          (is (nil? (data-perms.graph/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:view-data :unrestricted
+                                                                                                    :create-queries :query-builder}}}
+                                                                :revision (:revision (data-perms.graph/api-graph))}))))))))

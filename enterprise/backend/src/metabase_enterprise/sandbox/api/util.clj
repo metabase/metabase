@@ -57,11 +57,11 @@
   is bound."
   :feature :sandboxes
   []
-  (boolean
-   (when-not *is-superuser?*
-     (if *current-user-id*
-       (seq (enforced-sandboxes-for *current-user-id*))
-       ;; If no *current-user-id* is bound we can't check for sandboxes, so we should throw in this case to avoid
-       ;; returning `false` for users who should actually be sandboxes.
-       (throw (ex-info (str (tru "No current user found"))
-                       {:status-code 403}))))))
+  (when-not *is-superuser?*
+    (if *current-user-id*
+      (let [enforced-sandboxes (enforced-sandboxes-for *current-user-id*)]
+        (boolean (seq enforced-sandboxes)))
+      ;; If no *current-user-id* is bound we can't check for sandboxes, so we should throw in this case to avoid
+      ;; returning `false` for users who should actually be sandboxes.
+      (throw (ex-info (str (tru "No current user found"))
+                      {:status-code 403})))))

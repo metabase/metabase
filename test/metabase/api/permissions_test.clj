@@ -274,9 +274,9 @@
          :crowberto :put 200 "permissions/graph"
          (assoc-in (data-perms.graph/api-graph)
                    [:groups (u/the-id group) (mt/id)]
-                   {:view-data :blocked
+                   {:view-data :unrestricted
                     :create-queries :no}))
-        (is (= #{:blocked}
+        (is (= #{:unrestricted}
                (set (t2/select-fn-set :perm_value :model/DataPermissions
                                       :group_id  (u/the-id group)
                                       :db_id     (mt/id)
