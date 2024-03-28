@@ -117,6 +117,11 @@ export type NumericAxisScaleTransforms = {
   fromEChartsAxisValue: (value: number) => number;
 };
 
+export type TimeSeriesAxisScaleTransforms = {
+  toEChartsAxisValue: (value: RowValue) => string | null;
+  fromEChartsAxisValue: (value: number) => Dayjs;
+};
+
 export type BaseXAxisModel = {
   label?: string;
   axisType: OptionAxisType;
@@ -141,16 +146,16 @@ export type NumericXAxisModel = BaseXAxisModel &
     formatter: AxisFormatter;
   };
 
-export type TimeSeriesXAxisModel = BaseXAxisModel & {
-  axisType: "time";
-  columnUnit?: DateTimeAbsoluteUnit;
-  timezone: string;
-  interval: TimeSeriesInterval;
-  intervalsCount: number;
-  range: DateRange;
-  fromAxisValue: (value: number) => Dayjs;
-  formatter: TimeSeriesAxisFormatter;
-};
+export type TimeSeriesXAxisModel = BaseXAxisModel &
+  TimeSeriesAxisScaleTransforms & {
+    axisType: "time";
+    columnUnit?: DateTimeAbsoluteUnit;
+    timezone: string;
+    interval: TimeSeriesInterval;
+    intervalsCount: number;
+    range: DateRange;
+    formatter: TimeSeriesAxisFormatter;
+  };
 
 export type XAxisModel =
   | CategoryXAxisModel
