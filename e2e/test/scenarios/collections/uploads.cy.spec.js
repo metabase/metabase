@@ -31,8 +31,8 @@ const validTestFiles = [
   },
   {
     fileName: "pokedex.tsv",
-    tableName: "pokedex_tsv", // TODO, remove _tsv extension when backend logic changes
-    humanName: "Pokedex.tsv", // TODO, remove .tsv extension when backend logic changes
+    tableName: "pokedex",
+    humanName: "Pokedex",
     rowCount: 202,
   },
 ];
