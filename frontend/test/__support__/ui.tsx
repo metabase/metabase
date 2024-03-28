@@ -243,4 +243,14 @@ export const mockScrollBy = () => {
   window.Element.prototype.scrollBy = jest.fn();
 };
 
+/**
+ * jsdom doesn't have DataTransfer
+ */
+export function createMockClipboardData(
+  opts?: Partial<DataTransfer>,
+): DataTransfer {
+  const clipboardData = { ...opts };
+  return clipboardData as unknown as DataTransfer;
+}
+
 export * from "@testing-library/react";

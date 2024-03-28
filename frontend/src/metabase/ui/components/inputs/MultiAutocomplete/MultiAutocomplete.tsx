@@ -59,9 +59,10 @@ export function MultiAutocomplete({
   const handleSearchChange = (newSearchValue: string) => {
     setSearchValue(newSearchValue);
 
-    const isValid = shouldCreate?.(newSearchValue, []);
+    const newValue = getFreeFormValue(searchValue);
+    const isValid = shouldCreate?.(newValue, []);
     if (isValid) {
-      setSelectedValues([...lastSelectedValues, newSearchValue]);
+      setSelectedValues([...lastSelectedValues, newValue]);
     } else {
       setSelectedValues(lastSelectedValues);
     }
@@ -71,10 +72,9 @@ export function MultiAutocomplete({
     const text = event.clipboardData.getData("Text");
     const values = text.split(/[\n,]/g);
     if (values.length > 1) {
-      const uniqueValues = [...new Set(values)];
-      const validValues = uniqueValues.filter(value =>
-        shouldCreate?.(value, []),
-      );
+      const validValues = [...new Set(values)]
+        .map(getFreeFormValue)
+        .filter(value => shouldCreate?.(value, []));
       if (validValues.length > 0) {
         event.preventDefault();
         const newSelectedValues = [...lastSelectedValues, ...validValues];
@@ -127,4 +127,8 @@ function getAvailableSelectItems(
   }, new Map<string, string>());
 
   return [...mapping.entries()].map(([value, label]) => ({ value, label }));
+}
+
+function getFreeFormValue(searchValue: string) {
+  return searchValue.trim();
 }
