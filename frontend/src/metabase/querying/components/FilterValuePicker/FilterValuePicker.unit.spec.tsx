@@ -136,7 +136,7 @@ describe("StringFilterValuePicker", () => {
         fieldValues: PRODUCT_CATEGORY_VALUES,
       });
 
-      userEvent.click(screen.getByText("Widget"));
+      await userEvent.click(screen.getByText("Widget"));
 
       expect(onChange).toHaveBeenCalledWith(["Widget"]);
     });
@@ -150,11 +150,11 @@ describe("StringFilterValuePicker", () => {
         fieldValues: PRODUCT_CATEGORY_VALUES,
       });
 
-      userEvent.type(screen.getByPlaceholderText("Search the list"), "G");
+      await userEvent.type(screen.getByPlaceholderText("Search the list"), "G");
       expect(screen.getByText("Gadget")).toBeInTheDocument();
       expect(screen.queryByText("Doohickey")).not.toBeInTheDocument();
 
-      userEvent.click(screen.getByText("Gadget"));
+      await userEvent.click(screen.getByText("Gadget"));
       expect(onChange).toHaveBeenCalledWith(["Gadget"]);
     });
 
@@ -168,11 +168,14 @@ describe("StringFilterValuePicker", () => {
         fieldValues: PEOPLE_STATE_VALUES,
       });
 
-      userEvent.type(screen.getByPlaceholderText("Search the list"), "CA");
+      await userEvent.type(
+        screen.getByPlaceholderText("Search the list"),
+        "CA",
+      );
       expect(screen.getByText("CA")).toBeInTheDocument();
       expect(screen.queryByText("GA")).not.toBeInTheDocument();
 
-      userEvent.click(screen.getByText("CA"));
+      await userEvent.click(screen.getByText("CA"));
       expect(onChange).toHaveBeenCalledWith(["CA"]);
     });
 
@@ -189,7 +192,7 @@ describe("StringFilterValuePicker", () => {
         screen.getByRole("checkbox", { name: "Widget" }),
       ).not.toBeChecked();
 
-      userEvent.click(screen.getByText("Widget"));
+      await userEvent.click(screen.getByText("Widget"));
       expect(onChange).toHaveBeenCalledWith(["Gadget", "Widget"]);
     });
 
@@ -206,12 +209,12 @@ describe("StringFilterValuePicker", () => {
         screen.getByRole("checkbox", { name: "Gadget" }),
       ).not.toBeChecked();
 
-      userEvent.type(screen.getByPlaceholderText("Search the list"), "T");
+      await userEvent.type(screen.getByPlaceholderText("Search the list"), "T");
       expect(screen.getByText("Test")).toBeInTheDocument();
       expect(screen.getByText("Gadget")).toBeInTheDocument();
       expect(screen.queryByText("Gizmo")).not.toBeInTheDocument();
 
-      userEvent.click(screen.getByText("Gadget"));
+      await userEvent.click(screen.getByText("Gadget"));
       expect(onChange).toHaveBeenCalledWith(["Test", "Gadget"]);
     });
 
@@ -235,11 +238,14 @@ describe("StringFilterValuePicker", () => {
         screen.getByRole("checkbox", { name: "In-progress" }),
       ).not.toBeChecked();
 
-      userEvent.type(screen.getByPlaceholderText("Search the list"), "in");
+      await userEvent.type(
+        screen.getByPlaceholderText("Search the list"),
+        "in",
+      );
       expect(screen.getByText("In-progress")).toBeInTheDocument();
       expect(screen.queryByText("Completed")).not.toBeInTheDocument();
 
-      userEvent.click(screen.getByText("In-progress"));
+      await userEvent.click(screen.getByText("In-progress"));
       expect(onChange).toHaveBeenCalledWith(["t", "p"]);
     });
 
@@ -354,8 +360,8 @@ describe("StringFilterValuePicker", () => {
         screen.queryByPlaceholderText("Search the list"),
       ).not.toBeInTheDocument();
 
-      userEvent.type(input, "Test");
-      userEvent.tab();
+      await userEvent.type(input, "Test");
+      await userEvent.tab();
       expect(onFocus).toHaveBeenCalled();
       expect(onChange).toHaveBeenLastCalledWith(["Test"]);
       expect(onBlur).toHaveBeenCalled();
@@ -407,9 +413,9 @@ describe("StringFilterValuePicker", () => {
         screen.queryByPlaceholderText("Search the list"),
       ).not.toBeInTheDocument();
 
-      userEvent.type(input, "g");
+      await userEvent.type(input, "g");
       act(() => jest.advanceTimersByTime(1000));
-      userEvent.click(await screen.findByText("Gizmo"));
+      await userEvent.click(await screen.findByText("Gizmo"));
       expect(onChange).toHaveBeenLastCalledWith(["Gizmo"]);
     });
   });
@@ -431,9 +437,9 @@ describe("StringFilterValuePicker", () => {
         },
       });
 
-      userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
+      await userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
       act(() => jest.advanceTimersByTime(1000));
-      userEvent.click(await screen.findByText("a@metabase.test"));
+      await userEvent.click(await screen.findByText("a@metabase.test"));
 
       expect(onChange).toHaveBeenLastCalledWith(["a@metabase.test"]);
     });
@@ -453,9 +459,9 @@ describe("StringFilterValuePicker", () => {
       });
       expect(screen.getByText("b@metabase.test")).toBeInTheDocument();
 
-      userEvent.type(screen.getByLabelText("Filter value"), "a");
+      await userEvent.type(screen.getByLabelText("Filter value"), "a");
       act(() => jest.advanceTimersByTime(1000));
-      userEvent.click(await screen.findByText("a@metabase.test"));
+      await userEvent.click(await screen.findByText("a@metabase.test"));
 
       expect(onChange).toHaveBeenLastCalledWith([
         "b@metabase.test",
@@ -477,9 +483,9 @@ describe("StringFilterValuePicker", () => {
         },
       });
 
-      userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
+      await userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
       act(() => jest.advanceTimersByTime(1000));
-      userEvent.click(await screen.findByText("a@metabase.test"));
+      await userEvent.click(await screen.findByText("a@metabase.test"));
 
       expect(onChange).toHaveBeenLastCalledWith(["a-test"]);
     });
@@ -498,7 +504,10 @@ describe("StringFilterValuePicker", () => {
         },
       });
 
-      userEvent.type(screen.getByPlaceholderText("Search by Email"), "a@b.com");
+      await userEvent.type(
+        screen.getByPlaceholderText("Search by Email"),
+        "a@b.com",
+      );
       expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
     });
 
@@ -516,7 +525,7 @@ describe("StringFilterValuePicker", () => {
         },
       });
 
-      userEvent.type(screen.getByLabelText("Filter value"), "a@b.com");
+      await userEvent.type(screen.getByLabelText("Filter value"), "a@b.com");
       expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
     });
 
@@ -534,7 +543,7 @@ describe("StringFilterValuePicker", () => {
         },
       });
 
-      userEvent.type(screen.getByLabelText("Filter value"), "a@b");
+      await userEvent.type(screen.getByLabelText("Filter value"), "a@b");
       act(() => jest.advanceTimersByTime(1000));
       expect(screen.getByText("a@b.com")).toBeInTheDocument();
       expect(screen.queryByText("a@b")).not.toBeInTheDocument();
@@ -552,9 +561,8 @@ describe("StringFilterValuePicker", () => {
       const clipboardData = createMockClipboardData({
         getData: () => " abc\r\ndef",
       });
-      userEvent.paste(screen.getByLabelText("Filter value"), "", {
-        clipboardData,
-      });
+      await userEvent.click(screen.getByLabelText("Filter value"));
+      await userEvent.paste(clipboardData);
       expect(onChange).toHaveBeenLastCalledWith(["abc", "def"]);
     });
   });
@@ -570,8 +578,11 @@ describe("StringFilterValuePicker", () => {
         values: [],
       });
 
-      userEvent.type(screen.getByPlaceholderText("Enter some text"), "abc");
-      userEvent.tab();
+      await userEvent.type(
+        screen.getByPlaceholderText("Enter some text"),
+        "abc",
+      );
+      await userEvent.tab();
 
       expect(onFocus).toHaveBeenCalled();
       expect(onChange).toHaveBeenLastCalledWith(["abc"]);
@@ -586,8 +597,8 @@ describe("StringFilterValuePicker", () => {
         values: ["abc"],
       });
 
-      userEvent.type(screen.getByLabelText("Filter value"), "bce");
-      userEvent.tab();
+      await userEvent.type(screen.getByLabelText("Filter value"), "bce");
+      await userEvent.tab();
 
       expect(onFocus).toHaveBeenCalled();
       expect(onChange).toHaveBeenLastCalledWith(["abc", "bce"]);
@@ -603,9 +614,9 @@ describe("StringFilterValuePicker", () => {
       });
 
       const input = screen.getByPlaceholderText("Enter some text");
-      userEvent.type(input, "abc");
-      userEvent.clear(input);
-      userEvent.tab();
+      await userEvent.type(input, "abc");
+      await userEvent.clear(input);
+      await userEvent.tab();
 
       expect(onFocus).toHaveBeenCalled();
       expect(onChange).toHaveBeenLastCalledWith([]);
@@ -621,8 +632,8 @@ describe("StringFilterValuePicker", () => {
       });
 
       const input = screen.getByPlaceholderText("Enter some text");
-      userEvent.type(input, " ");
-      userEvent.tab();
+      await userEvent.type(input, " ");
+      await userEvent.tab();
 
       expect(onFocus).toHaveBeenCalled();
       expect(onChange).toHaveBeenLastCalledWith([]);
@@ -637,7 +648,10 @@ describe("StringFilterValuePicker", () => {
         values: ["abc", "bce"],
       });
 
-      userEvent.type(screen.getByLabelText("Filter value"), "{backspace}");
+      await userEvent.type(
+        screen.getByLabelText("Filter value"),
+        "{backspace}",
+      );
 
       expect(onChange).toHaveBeenLastCalledWith(["abc"]);
     });
@@ -650,7 +664,10 @@ describe("StringFilterValuePicker", () => {
         values: ["abc"],
       });
 
-      userEvent.type(screen.getByLabelText("Filter value"), "{backspace}");
+      await userEvent.type(
+        screen.getByLabelText("Filter value"),
+        "{backspace}",
+      );
 
       expect(onChange).toHaveBeenLastCalledWith([]);
     });
@@ -686,7 +703,7 @@ describe("NumberFilterValuePicker", () => {
         }),
       });
 
-      userEvent.click(screen.getByText("20"));
+      await userEvent.click(screen.getByText("20"));
 
       expect(onChange).toHaveBeenCalledWith([20]);
     });
@@ -711,11 +728,14 @@ describe("NumberFilterValuePicker", () => {
         screen.getByRole("checkbox", { name: "In-progress" }),
       ).not.toBeChecked();
 
-      userEvent.type(screen.getByPlaceholderText("Search the list"), "in");
+      await userEvent.type(
+        screen.getByPlaceholderText("Search the list"),
+        "in",
+      );
       expect(screen.getByText("In-progress")).toBeInTheDocument();
       expect(screen.queryByText("Completed")).not.toBeInTheDocument();
 
-      userEvent.click(screen.getByText("In-progress"));
+      await userEvent.click(screen.getByText("In-progress"));
       expect(onChange).toHaveBeenCalledWith([10, 20]);
     });
 
@@ -757,8 +777,8 @@ describe("NumberFilterValuePicker", () => {
       });
 
       const input = screen.getByPlaceholderText("Enter a number");
-      userEvent.type(input, "123");
-      userEvent.tab();
+      await userEvent.type(input, "123");
+      await userEvent.tab();
 
       expect(onFocus).toHaveBeenCalled();
       expect(onChange).toHaveBeenLastCalledWith([123]);
@@ -774,9 +794,9 @@ describe("NumberFilterValuePicker", () => {
       });
 
       const input = screen.getByPlaceholderText("Enter a number");
-      userEvent.type(input, "123");
-      userEvent.clear(input);
-      userEvent.tab();
+      await userEvent.type(input, "123");
+      await userEvent.clear(input);
+      await userEvent.tab();
 
       expect(onFocus).toHaveBeenCalled();
       expect(onChange).toHaveBeenLastCalledWith([]);
@@ -792,8 +812,8 @@ describe("NumberFilterValuePicker", () => {
       });
 
       const input = screen.getByPlaceholderText("Enter a number");
-      userEvent.type(input, "abc");
-      userEvent.tab();
+      await userEvent.type(input, "abc");
+      await userEvent.tab();
 
       expect(onFocus).toHaveBeenCalled();
       expect(onChange).toHaveBeenLastCalledWith([]);
@@ -809,8 +829,8 @@ describe("NumberFilterValuePicker", () => {
       });
 
       const input = screen.getByPlaceholderText("Enter a number");
-      userEvent.type(input, " ");
-      userEvent.tab();
+      await userEvent.type(input, " ");
+      await userEvent.tab();
 
       expect(onFocus).toHaveBeenCalled();
       expect(onChange).toHaveBeenLastCalledWith([]);

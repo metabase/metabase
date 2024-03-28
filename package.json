@@ -154,7 +154,7 @@
     "@testing-library/jest-dom": "^6.1.5",
     "@testing-library/react": "^11.0.2",
     "@testing-library/react-hooks": "^8.0.0",
-    "@testing-library/user-event": "^13.1.3",
+    "@testing-library/user-event": "^14.5.2",
     "@types/babel__core": "^7.20.4",
     "@types/babel__preset-env": "^7.9.5",
     "@types/color": "^3.0.2",
