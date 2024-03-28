@@ -72,7 +72,7 @@ interface StrategyBase {
 export interface TTLStrategy extends StrategyBase {
   type: "ttl";
   multiplier: number;
-  min_duration: number; // TODO: Change to min_duration_ms
+  min_duration_ms: number;
 }
 
 export interface DoNotCacheStrategy extends StrategyBase {

@@ -5,9 +5,8 @@ import { findWhere, pick } from "underscore";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
 import { useDatabaseListQuery } from "metabase/common/hooks";
-import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import Modal from "metabase/components/Modal";
+import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { color } from "metabase/lib/colors";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { CacheConfigApi } from "metabase/services";
@@ -17,11 +16,10 @@ import { rootId } from "../constants";
 import { useDelayedLoadingSpinner } from "../hooks/useDelayedLoadingSpinner";
 import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
 import type {
-  StrategyType,
   Config,
-  LeaveConfirmationData,
   SafelyUpdateTargetId,
   Strat,
+  StrategyType,
 } from "../types";
 import { Strategies } from "../types";
 
@@ -60,6 +58,7 @@ export const StrategyEditorForDatabases = ({
     };
     const configs = [rootConfig];
     configs.push(...(savedConfigsFromAPI?.data ?? []));
+
     return configs;
   }, []);
 
@@ -92,9 +91,8 @@ export const StrategyEditorForDatabases = ({
     savedStrategy.unit = "hours";
   }
 
-  const [confirmation, setConfirmation] = useState<LeaveConfirmationData>({
-    isModalOpen: false,
-  });
+  const { show: askConfirmation, modalContent: confirmationModal } =
+    useConfirmation();
   const [isStrategyFormDirty, setIsStrategyFormDirty] = useState(false);
   const showStrategyForm = targetId !== null;
 
@@ -108,7 +106,12 @@ export const StrategyEditorForDatabases = ({
     }
     const update = () => setTargetId(newTargetId);
     if (isFormDirty) {
-      setConfirmation({ isModalOpen: true, onConfirm: update });
+      askConfirmation({
+        title: t`Discard your changes?`,
+        message: t`Your changes haven't been saved, so you'll lose them if you navigate away.`,
+        confirmButtonText: "Discard",
+        onConfirm: update,
+      });
     } else {
       update();
     }
@@ -141,6 +144,7 @@ export const StrategyEditorForDatabases = ({
       } else {
         const validFields = getFieldsForStrategyType(values.type);
         const newStrategy = pick(values, validFields) as Strat;
+
         const validatedStrategy =
           Strategies[values.type].validateWith.validateSync(newStrategy);
 
@@ -192,14 +196,7 @@ export const StrategyEditorForDatabases = ({
       <Stack spacing="xl" lh="1.5rem" maw="32rem" mb="1.5rem">
         <aside>{PLUGIN_CACHING.explanation}</aside>
       </Stack>
-      <Modal isOpen={confirmation.isModalOpen}>
-        <LeaveConfirmationModalContent
-          onAction={
-            confirmation.isModalOpen ? confirmation.onConfirm : undefined
-          }
-          onClose={() => setConfirmation({ isModalOpen: false })}
-        />
-      </Modal>
+      {confirmationModal}
       <Box
         style={{
           display: "grid",

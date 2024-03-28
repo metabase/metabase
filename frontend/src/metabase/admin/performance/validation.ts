@@ -22,8 +22,8 @@ export const doNotCacheStrategyValidationSchema = Yup.object({
 
 export const ttlStrategyValidationSchema = Yup.object({
   type: Yup.string().equals(["ttl"]),
-  min_duration: positiveInteger.default(100), // TODO: Correct
-  multiplier: positiveInteger.default(10), // TODO: Correct
+  min_duration_ms: positiveInteger.default(60000),
+  multiplier: positiveInteger.default(10),
 });
 
 export const durationStrategyValidationSchema = Yup.object({

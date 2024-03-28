@@ -79,7 +79,17 @@ const StrategyFormBody = ({
     if (selectedStrategyType === "duration") {
       setFieldValue("unit", "hours");
     }
-  }, [selectedStrategyType, setFieldValue]);
+  }, [selectedStrategyType, values, setFieldValue]);
+
+  useEffect(() => {
+    Object.entries(values).forEach(([fieldName, value]) => {
+      // eslint-disable-next-line eqeqeq
+      if (value == getDefaultValueForField(selectedStrategyType, fieldName)) {
+        setFieldValue(fieldName, "");
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Form
@@ -96,16 +106,19 @@ const StrategyFormBody = ({
           <>
             <Field
               title={t`Minimum query duration`}
-              subtitle={t`Metabase will cache all saved questions with an average query execution time greater than this many seconds.`}
+              subtitle={t`Metabase will cache all saved questions with an average query execution time greater than this many milliseconds.`}
             >
-              <PositiveNumberInput fieldName="min_duration" />
+              <PositiveNumberInput
+                strategyType="ttl"
+                fieldName="min_duration_ms"
+              />
             </Field>
             {/* TODO: Add link to example */}
             <Field
               title={t`Cache time-to-live (TTL) multiplier`}
               subtitle={t`To determine how long each cached result should stick around, we take that query's average execution time and multiply that by what you input here. The result is how many seconds the cache should remain valid for.`}
             >
-              <PositiveNumberInput fieldName="multiplier" />
+              <PositiveNumberInput strategyType="ttl" fieldName="multiplier" />
             </Field>
           </>
         )}
@@ -113,8 +126,8 @@ const StrategyFormBody = ({
           <>
             <Field title={t`Cache result for this many hours`}>
               <PositiveNumberInput
+                strategyType="duration"
                 fieldName="duration"
-                placeholder={getDefaultValueForField("duration", "duration")}
               />
               {/* TODO: remove this? */}
             </Field>
@@ -229,8 +242,12 @@ const StrategySelector = ({ targetId }: { targetId: number | null }) => {
 
 export const PositiveNumberInput = ({
   fieldName,
+  strategyType,
   ...props
-}: { fieldName: string } & Partial<FormTextInputProps>) => {
+}: {
+  fieldName: string;
+  strategyType: StrategyType;
+} & Partial<FormTextInputProps>) => {
   // NOTE: Known bug: on Firefox, if you type invalid input, the error
   // message will be "Required field" instead of "must be a positive number".
   // BUG: if you blank out the input and press save, there is no user feedback
@@ -246,6 +263,7 @@ export const PositiveNumberInput = ({
         },
       }}
       autoComplete="off"
+      placeholder={getDefaultValueForField(strategyType, fieldName)}
       {...props}
       name={fieldName}
     />
