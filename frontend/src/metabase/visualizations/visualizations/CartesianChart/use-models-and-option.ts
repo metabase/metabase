@@ -59,6 +59,7 @@ export function useModelsAndOption({
           seriesToRender,
           settings,
           renderingContext,
+          showWarning,
         );
       default:
         return getCartesianChartModel(
