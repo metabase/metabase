@@ -27,18 +27,25 @@ export const getTicksOptions = (
   xAxisModel: TimeSeriesXAxisModel,
   chartWidth: number,
 ) => {
-  const { range } = xAxisModel;
+  const { range, toEChartsAxisValue, interval, intervalsCount } = xAxisModel;
 
   let formatter: TimeSeriesAxisFormatter = xAxisModel.formatter;
   let minInterval: number | undefined;
   let maxInterval: number | undefined;
 
-  const xDomain: ContinuousDomain = [range[0].valueOf(), range[1].valueOf()];
+  const xDomain = range.map(day => {
+    const adjustedDate = dayjs(toEChartsAxisValue(day.valueOf()));
+    if (!adjustedDate) {
+      throw new Error(`Invalid range dates: ${JSON.stringify(range)}`);
+    }
+    return adjustedDate.valueOf();
+  }) as ContinuousDomain;
+
   const isSingleItem = xDomain[0] === xDomain[1];
-  const padding = getPadding(xAxisModel.intervalsCount);
+  const padding = getPadding(intervalsCount);
   const xDomainPadded = [
-    xDomain[0] - getTimeSeriesIntervalDuration(xAxisModel.interval) * padding,
-    xDomain[1] + getTimeSeriesIntervalDuration(xAxisModel.interval) * padding,
+    xDomain[0] - getTimeSeriesIntervalDuration(interval) * padding,
+    xDomain[1] + getTimeSeriesIntervalDuration(interval) * padding,
   ];
   const paddedMin = dayjs(xDomainPadded[0]);
   const paddedMax = dayjs(xDomainPadded[1]);
@@ -46,18 +53,15 @@ export const getTicksOptions = (
   // Compute ticks interval based on the X-axis range, original interval, and the chart width.
   const computedInterval = computeTimeseriesTicksInterval(
     xDomain,
-    xAxisModel.interval,
+    interval,
     chartWidth,
     xAxisModel.formatter,
   );
-  const largestInterval = getLargestInterval([
-    computedInterval,
-    xAxisModel.interval,
-  ]);
+  const largestInterval = getLargestInterval([computedInterval, interval]);
 
   // If the data interval is week but due to available space and the range of the chart
   // we decide to show monthly, yearly or even larger ticks, we should format ticks values as months.
-  if (xAxisModel.interval.unit === "week" && largestInterval.unit !== "week") {
+  if (interval.unit === "week" && largestInterval.unit !== "week") {
     formatter = value => {
       return xAxisModel.formatter(value, "month");
     };

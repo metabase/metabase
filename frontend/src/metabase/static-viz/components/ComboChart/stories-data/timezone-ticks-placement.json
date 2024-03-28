@@ -1,0 +1,223 @@
+[
+  {
+    "card": {
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-03-27T22:40:48.613639Z",
+      "dataset": false,
+      "parameters": [],
+      "metabase_version": "v0.48.1-SNAPSHOT (04238f7)",
+      "collection": null,
+      "visualization_settings": {
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["Y"],
+        "column_settings": {
+          "[\"name\",\"X\"]": {
+            "time_enabled": "minutes",
+            "time_style": "h:mm A"
+          }
+        }
+      },
+      "collection_preview": true,
+      "entity_id": "27ZhmQRaAJWZr8KVdhHUp",
+      "display": "line",
+      "parameter_mappings": [],
+      "dataset_query": {
+        "database": 1,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "SELECT CAST('2022-01-01 00:00:00+10:00' AS TIMESTAMP WITH TIME ZONE) AS x, 10 y"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-03-27T22:56:17.119493Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 41.75,
+      "type": "question",
+      "dashboard_count": 0,
+      "last_query_start": "2024-03-27T22:50:14.270518Z",
+      "query_type": "native",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": 1,
+      "can_write": true,
+      "initially_published_at": null,
+      "result_metadata": [
+        {
+          "display_name": "X",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/DateTimeWithLocalTZ"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/DateTimeWithLocalTZ",
+          "effective_type": "type/DateTimeWithLocalTZ",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-01-01T00:00:00+10:00",
+                "latest": "2022-01-01T00:00:00+10:00"
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Y",
+          "field_ref": [
+            "field",
+            "Y",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 10,
+                "q1": 10,
+                "q3": 10,
+                "max": 10,
+                "sd": null,
+                "avg": 10
+              }
+            }
+          }
+        }
+      ],
+      "table_id": null,
+      "collection_position": null,
+      "archived": false
+    },
+    "data": {
+      "rows": [["2022-01-01T00:00:00+10:00", 10]],
+      "cols": [
+        {
+          "display_name": "X",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/DateTimeWithLocalTZ"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/DateTimeWithLocalTZ",
+          "effective_type": "type/DateTimeWithLocalTZ"
+        },
+        {
+          "display_name": "Y",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "Y",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT CAST('2022-01-01 00:00:00+10:00' AS TIMESTAMP WITH TIME ZONE) AS x, 10 y",
+        "params": null
+      },
+      "results_timezone": "Pacific/Guam",
+      "requested_timezone": "Pacific/Guam",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "X",
+            "field_ref": [
+              "field",
+              "X",
+              {
+                "base-type": "type/DateTimeWithLocalTZ"
+              }
+            ],
+            "name": "X",
+            "base_type": "type/DateTimeWithLocalTZ",
+            "effective_type": "type/DateTimeWithLocalTZ",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-01-01T00:00:00+10:00",
+                  "latest": "2022-01-01T00:00:00+10:00"
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Y",
+            "field_ref": [
+              "field",
+              "Y",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "Y",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 10,
+                  "q1": 10,
+                  "q3": 10,
+                  "max": 10,
+                  "sd": null,
+                  "avg": 10
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": null,
+          "unit": null,
+          "offset": null,
+          "last-change": null,
+          "col": "Y",
+          "slope": null,
+          "last-value": 10,
+          "best-fit": null
+        }
+      ]
+    }
+  }
+]
