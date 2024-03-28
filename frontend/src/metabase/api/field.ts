@@ -10,7 +10,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag } from "./tags";
+import { idTag, listTag } from "./tags";
 
 export const fieldApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -48,6 +48,7 @@ export const fieldApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (field, error, { id }) => [
+        listTag("field"),
         idTag("field", id),
         idTag("field-values", id),
         ...(field ? [idTag("table", field.table_id)] : []),
