@@ -97,37 +97,39 @@ export const useCommandPalette = ({
         keywords: query,
         section: "search",
       });
-    } else if (searchError) {
-      ret.push({
-        id: "search-error",
-        name: t`Could not load search results`,
-        section: "search",
-      });
-    } else if (debouncedSearchText) {
-      if (searchResults?.length) {
-        ret.push(
-          ...searchResults.map(result => {
-            const wrappedResult = Search.wrapEntity(result, dispatch);
-            return {
-              id: `search-result-${result.id}`,
-              name: result.name,
-              icon: wrappedResult.getIcon().name,
-              section: "search",
-              perform: () => {
-                dispatch(closeModal());
-                dispatch(push(wrappedResult.getUrl()));
-              },
-            };
-          }),
-        );
-      } else {
+    } else {
+      if (searchError) {
         ret.push({
-          id: "no-search-results",
-          name: t`No results for “${query}”`,
-          keywords: query,
+          id: "search-error",
+          name: t`Could not load search results`,
           section: "search",
-          perform: () => {}, // will simply close the command palette. It's possible we can remove this item
         });
+      } else if (debouncedSearchText) {
+        if (searchResults?.length) {
+          ret.push(
+            ...searchResults.map(result => {
+              const wrappedResult = Search.wrapEntity(result, dispatch);
+              return {
+                id: `search-result-${result.id}`,
+                name: result.name,
+                icon: wrappedResult.getIcon().name,
+                section: "search",
+                perform: () => {
+                  dispatch(closeModal());
+                  dispatch(push(wrappedResult.getUrl()));
+                },
+              };
+            }),
+          );
+        } else {
+          ret.push({
+            id: "no-search-results",
+            name: t`No results for “${debouncedSearchText}”`,
+            keywords: debouncedSearchText,
+            section: "search",
+            perform: () => {}, // will simply close the command palette. It's possible we can remove this item
+          });
+        }
       }
     }
     return ret;

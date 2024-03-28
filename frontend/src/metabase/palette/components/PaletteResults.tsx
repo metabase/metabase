@@ -75,28 +75,53 @@ export const PaletteResults = () => {
                 <Flex
                   p=".75rem"
                   mx="1.5rem"
-                  w="100%"
+                  miw="0"
                   align="center"
                   justify="space-between"
+                  gap="0.5rem"
                   fw={700}
                   style={{
                     cursor: "pointer",
                     borderRadius: "0.5rem",
+                    flexGrow: 1,
+                    flexBasis: 0,
                   }}
                   bg={active ? color("brand") : "none"}
                   c={active ? color("white") : color("text-dark")}
                 >
-                  <Flex gap=".5rem">
-                    <Icon
-                      name={(item.icon as IconName) || "click"}
-                      color={
-                        active ? color("brand-light") : color("text-light")
-                      }
-                    />
-                    {item.name}
+                  <Flex gap=".5rem" style={{ minWidth: 0 }}>
+                    {item.icon && (
+                      <Icon
+                        name={(item.icon as IconName) || "click"}
+                        color={
+                          active ? color("brand-light") : color("text-light")
+                        }
+                        style={{
+                          flexBasis: "16px",
+                        }}
+                      />
+                    )}
+                    <Box
+                      component="span"
+                      style={{
+                        flexGrow: 1,
+                        flexBasis: 0,
+                        textOverflow: "ellipsis",
+                        overflowX: "hidden",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {item.name}
+                    </Box>
                   </Flex>
                   {active && (
-                    <Flex gap="0.5rem" fw={400}>
+                    <Flex
+                      gap="0.5rem"
+                      fw={400}
+                      style={{
+                        flexBasis: 60,
+                      }}
+                    >
                       {t`Open`} <Icon name="enter_or_return" />
                     </Flex>
                   )}
