@@ -2,10 +2,12 @@ import type {
   Database,
   DatabaseCreateRequest,
   DatabaseId,
+  DatabaseIdFieldListRequest,
   DatabaseListRequest,
   DatabaseListResponse,
   DatabaseRequest,
   DatabaseUpdateRequest,
+  Field,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -35,6 +37,16 @@ export const databaseApi = Api.injectEndpoints({
       }),
       providesTags: (response, error, { id }) => [idTag("database", id)],
     }),
+    listDatabaseIdFields: builder.query<Field[], DatabaseIdFieldListRequest>({
+      query: ({ id, ...body }) => ({
+        method: "GET",
+        url: `/api/database/${id}/idfields`,
+        body,
+      }),
+      providesTags: (response, error, { id }) => [
+        idTag("database-id-fields", id),
+      ],
+    }),
     createDatabase: builder.mutation<Database, DatabaseCreateRequest>({
       query: body => ({
         method: "POST",
@@ -52,6 +64,8 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (response, error, { id }) => [
         listTag("database"),
         idTag("database", id),
+        idTag("database-id-fields", id),
+        tag("field-values"),
       ],
     }),
     deleteDatabase: builder.mutation<void, DatabaseId>({
@@ -62,6 +76,8 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (response, error, id) => [
         listTag("database"),
         idTag("database", id),
+        idTag("database-id-fields", id),
+        tag("field-values"),
       ],
     }),
     rescanDatabaseFieldValues: builder.mutation<void, DatabaseId>({
@@ -83,6 +99,11 @@ export const databaseApi = Api.injectEndpoints({
 
 export const {
   useListDatabasesQuery,
+  useGetDatabaseQuery,
+  useListDatabaseIdFieldsQuery,
+  useCreateDatabaseMutation,
+  useUpdateDatabaseMutation,
+  useDeleteDatabaseMutation,
   useRescanDatabaseFieldValuesMutation,
   useDiscardDatabaseFieldValuesMutation,
 } = databaseApi;

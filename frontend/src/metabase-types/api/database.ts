@@ -105,6 +105,11 @@ export interface DatabaseListResponse {
   total: number;
 }
 
+export interface DatabaseIdFieldListRequest {
+  id: DatabaseId;
+  include_editable_data_model?: boolean;
+}
+
 export interface DatabaseCreateRequest {
   name: string;
   engine: string;

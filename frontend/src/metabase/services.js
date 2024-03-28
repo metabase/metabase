@@ -328,7 +328,6 @@ export const MetabaseApi = {
   db_virtual_dataset_tables: GET("/api/database/:dbId/datasets/:schemaName"),
   //db_tables:   GET("/api/database/:dbId/tables"),
   db_fields: GET("/api/database/:dbId/fields"),
-  db_idfields: GET("/api/database/:dbId/idfields"),
   db_autocomplete_suggestions: GET(
     "/api/database/:dbId/autocomplete_suggestions?:matchStyle=:query",
   ),
