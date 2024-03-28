@@ -1,6 +1,7 @@
 export const TAG_TYPES = [
   "api-key",
   "database",
+  "database-metadata",
   "database-id-fields",
   "field-values",
 ] as const;

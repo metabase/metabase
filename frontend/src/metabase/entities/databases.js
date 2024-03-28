@@ -19,7 +19,6 @@ import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
-import { MetabaseApi } from "metabase/services";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 // OBJECT ACTIONS
@@ -83,10 +82,11 @@ const Databases = createEntity({
             requestStatePath: ["metadata", "databases", id],
             existingStatePath: ["metadata", "databases", id],
             getData: async () => {
-              const databaseMetadata = await MetabaseApi.db_metadata({
-                dbId: id,
-                ...params,
-              });
+              const databaseMetadata = await entityCompatibleQuery(
+                { id, ...params },
+                dispatch,
+                databaseApi.endpoints.getDatabaseMetadata,
+              );
               return normalize(databaseMetadata, DatabaseSchema);
             },
             reload,

@@ -110,6 +110,13 @@ export interface DatabaseIdFieldListRequest {
   include_editable_data_model?: boolean;
 }
 
+export interface DatabaseMetadataRequest {
+  id: DatabaseId;
+  include_hidden?: boolean;
+  include_editable_data_model?: boolean;
+  remove_inactive?: boolean;
+}
+
 export interface DatabaseCreateRequest {
   name: string;
   engine: string;

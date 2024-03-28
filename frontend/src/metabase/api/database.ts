@@ -5,6 +5,7 @@ import type {
   DatabaseIdFieldListRequest,
   DatabaseListRequest,
   DatabaseListResponse,
+  DatabaseMetadataRequest,
   DatabaseRequest,
   DatabaseUpdateRequest,
   Field,
@@ -37,6 +38,16 @@ export const databaseApi = Api.injectEndpoints({
       }),
       providesTags: (response, error, { id }) => [idTag("database", id)],
     }),
+    getDatabaseMetadata: builder.query<Database, DatabaseMetadataRequest>({
+      query: ({ id, ...body }) => ({
+        method: "GET",
+        url: `/api/database/${id}/metadata`,
+        body,
+      }),
+      providesTags: (response, error, { id }) => [
+        idTag("database-metadata", id),
+      ],
+    }),
     listDatabaseIdFields: builder.query<Field[], DatabaseIdFieldListRequest>({
       query: ({ id, ...body }) => ({
         method: "GET",
@@ -64,6 +75,7 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (response, error, { id }) => [
         listTag("database"),
         idTag("database", id),
+        idTag("database-metadata", id),
         idTag("database-id-fields", id),
         tag("field-values"),
       ],
@@ -76,6 +88,7 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (response, error, id) => [
         listTag("database"),
         idTag("database", id),
+        idTag("database-metadata", id),
         idTag("database-id-fields", id),
         tag("field-values"),
       ],
