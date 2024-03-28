@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { connect } from "react-redux";
 import { useEvent } from "react-use";
 import { t } from "ttag";
@@ -20,7 +20,6 @@ import {
   DownloadPopoverMessage,
   DownloadPopoverRoot,
 } from "./QueryDownloadPopover.styled";
-import { useEventListener, useWindowEvent } from "@mantine/hooks";
 
 interface OwnProps {
   question: Question;
@@ -60,43 +59,21 @@ const QueryDownloadPopover = ({
 }: QueryDownloadPopoverProps) => {
   const [isHoldingAltKey, setHoldingAltKey] = useState(false);
 
-  // useEvent(
-  //   "keydown",
-  //   event => {
-  //     if (event.key === "Alt") {
-  //       setHoldingAltKey(true);
-  //     }
-  //   },
-  //   window,
-  //   { once: false },
-  // );
-
-  // useEvent(
-  //   "keyup",
-  //   (event: KeyboardEvent) => {
-  //     if (event.key === "Alt") {
-  //       setHoldingAltKey(false);
-  //     }
-  //   },
-  //   window,
-  //   { once: false },
-  // );
-
-  useWindowEvent("keydown", event => {
-    console.log("down", event);
+  const handleKeyDown = useCallback(event => {
     if (event.key === "Alt") {
       setHoldingAltKey(true);
     }
-  });
+  }, []);
 
-  useWindowEvent("keyup", event => {
-    console.log("up", event);
+  const handleKeyUp = useCallback(event => {
     if (event.key === "Alt") {
       setHoldingAltKey(false);
     }
-  });
+  }, []);
 
-  console.log(isHoldingAltKey);
+  useEvent("keydown", handleKeyDown);
+
+  useEvent("keyup", handleKeyUp);
 
   const formats = canDownloadPng
     ? [...exportFormats, exportFormatPng]
@@ -158,7 +135,7 @@ const DownloadButton = ({
 
   return (
     <DownloadButtonRoot
-      onClick={event => onDownload(format, !isHoldingAltKey)}
+      onClick={() => onDownload(format, !isHoldingAltKey)}
       ref={ref}
     >
       <DownloadButtonText>.{format}</DownloadButtonText>
