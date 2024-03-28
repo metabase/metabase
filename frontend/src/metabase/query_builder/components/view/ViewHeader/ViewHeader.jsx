@@ -80,8 +80,6 @@ const viewTitleHeaderPropTypes = {
 
   className: PropTypes.string,
   style: PropTypes.object,
-
-  requiredTemplateTags: PropTypes.array,
 };
 
 export function ViewTitleHeader(props) {
@@ -396,7 +394,6 @@ ViewTitleHeaderRightSide.propTypes = {
   isShowingQuestionInfoSidebar: PropTypes.bool,
   onModelPersistenceChange: PropTypes.func,
   onQueryChange: PropTypes.func,
-  requiredTemplateTags: PropTypes.array,
 };
 
 function ViewTitleHeaderRightSide(props) {
@@ -429,7 +426,6 @@ function ViewTitleHeaderRightSide(props) {
     onCloseQuestionInfo,
     onOpenQuestionInfo,
     onModelPersistenceChange,
-    requiredTemplateTags,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const { isEditable } = Lib.queryDisplayInfo(question.query());
@@ -462,11 +458,7 @@ function ViewTitleHeaderRightSide(props) {
 
   const canSave = Lib.canSave(question.query());
   const isSaveDisabled = !canSave;
-  const disabledSaveTooltip = getDisabledSaveTooltip(
-    isEditable,
-    requiredTemplateTags,
-    canSave,
-  );
+  const disabledSaveTooltip = getDisabledSaveTooltip(isEditable);
 
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
@@ -556,39 +548,8 @@ function ViewTitleHeaderRightSide(props) {
 
 ViewTitleHeader.propTypes = viewTitleHeaderPropTypes;
 
-function getDisabledSaveTooltip(
-  isEditable,
-  requiredTemplateTags = [],
-  canSave,
-) {
+function getDisabledSaveTooltip(isEditable) {
   if (!isEditable) {
     return t`You don't have permission to save this question.`;
   }
-
-  const missingValueRequiredTTags = requiredTemplateTags.filter(
-    tag => tag.required && !tag.default,
-  );
-
-  if (!canSave) {
-    return getMissingRequiredTemplateTagsTooltip(missingValueRequiredTTags);
-  }
-
-  // Having an empty tooltip text is ok because it won't be shown.
-  return "";
-}
-
-function getMissingRequiredTemplateTagsTooltip(requiredTemplateTags = []) {
-  if (!requiredTemplateTags.length) {
-    return "";
-  }
-
-  const names = requiredTemplateTags
-    .map(tag => `"${tag["display-name"] ?? tag.name}"`)
-    .join(", ");
-
-  return ngettext(
-    msgid`The ${names} variable requires a default value but none was provided.`,
-    `The ${names} variables require default values but none were provided.`,
-    requiredTemplateTags.length,
-  );
 }
