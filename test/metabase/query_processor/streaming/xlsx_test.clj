@@ -579,17 +579,16 @@
   (testing "LocalDateTime formatted as a string; should be parsed when *parse-temporal-string-values* is true"
     (is (= ["2020-03-28T10:12:06.681"]
            (second (xlsx-export [{:id 0, :name "Col"}] {} [["2020-03-28T10:12:06.681"]]))))
-    (binding [qp.xlsx/*parse-temporal-string-values* true]
-      (is (= [#inst "2020-03-28T10:12:06.681"]
-             (second (xlsx-export [{:id 0, :name "Col" :effective_type :type/Temporal}]
-                                  {}
-                                  [["2020-03-28T10:12:06.681"]]))))
-      (testing "Values that are parseable as dates are not when effective_type is not temporal (#29708)"
-        (doseq [value ["0001" "4161" "02" "2020-03-28T10:12:06.681"]]
-          (is (= [value]
-                 (second (xlsx-export [{:id 0, :name "Col" :effective_type :type/Text}]
-                                      {}
-                                      [[value]]))))))))
+    (is (= [#inst "2020-03-28T10:12:06.681"]
+           (second (xlsx-export [{:id 0, :name "Col" :effective_type :type/Temporal}]
+                                {}
+                                [["2020-03-28T10:12:06.681"]]))))
+    (testing "Values that are parseable as dates are not when effective_type is not temporal (#29708)"
+      (doseq [value ["0001" "4161" "02" "2020-03-28T10:12:06.681"]]
+        (is (= [value]
+               (second (xlsx-export [{:id 0, :name "Col" :effective_type :type/Text}]
+                                    {}
+                                    [[value]])))))))
   (mt/with-metadata-provider (mt/id)
     (binding [driver/*driver* :h2]
       (testing "OffsetDateTime"
@@ -602,11 +601,10 @@
         (is (= [#inst "2020-03-28T10:12:06.000-00:00"]
                (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "2020-03-28T10:12:06Z"]])))))))
   (testing "Strings representing country names/codes don't error when *parse-temporal-string-values* is true (#18724)"
-    (binding [qp.xlsx/*parse-temporal-string-values* true]
-      (is (= ["GB"]
-             (second (xlsx-export [{:id 0, :name "Col"}] {} [["GB"]]))))
-      (is (= ["Portugal"]
-             (second (xlsx-export [{:id 0, :name "Col"}] {} [["Portugal"]]))))))
+    (is (= ["GB"]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [["GB"]]))))
+    (is (= ["Portugal"]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [["Portugal"]])))))
   (testing "NaN and infinity values (#21343)"
     ;; These values apparently are represented as error codes, which are parsed here into keywords
     (is (= [:NUM]

@@ -634,3 +634,22 @@
                                      (some->> s
                                               (driver/prettify-native-form :h2)
                                               str/split-lines))))))))))
+
+(deftest ^:parallel format-export-middleware-test
+  (testing "The `:format-export?` query processor middleware has the intended effect on file exports."
+    (let [q             {:database (mt/id)
+                         :type     :native
+                         :native   {:query "SELECT 2000 AS number, '2024-03-26'::DATE AS date;"}}
+          output-helper {:csv  (fn [output] (->> output csv/read-csv last))
+                         :json (fn [output] (->> output (map (juxt :NUMBER :DATE)) last))}]
+      (doseq [[export-format apply-formatting? expected] [[:csv true ["2,000" "March 26, 2024"]]
+                                                          [:csv false ["2000" "2024-03-26"]]
+                                                          [:json true ["2,000" "March 26, 2024"]]
+                                                          [:json false [2000 "2024-03-26"]]]]
+        (testing (format "export_format %s yields expected output for %s exports." apply-formatting? export-format)
+          (is (= expected
+                 (->> (mt/user-http-request
+                       :crowberto :post 200
+                       (format "dataset/%s?format_rows=%s" (name export-format) apply-formatting?)
+                       :query (json/generate-string q))
+                      ((get output-helper export-format))))))))))

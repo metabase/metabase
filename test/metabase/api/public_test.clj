@@ -2,6 +2,7 @@
   "Tests for `api/public/` (public links) endpoints."
   (:require
    [cheshire.core :as json]
+   [clojure.data.csv :as csv]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -1736,3 +1737,23 @@
                                  "type"      "query"}
                         :user-id nil}
                        (last (snowplow-test/pop-event-data-and-user-id!))))))))))))
+
+(deftest format-export-middleware-test
+  (mt/with-temporary-setting-values [enable-public-sharing true]
+    (testing "The `:format-export?` query processor middleware has the intended effect on file exports."
+      (let [q             {:database (mt/id)
+                           :type     :native
+                           :native   {:query "SELECT 2000 AS number, '2024-03-26'::DATE AS date;"}}
+            output-helper {:csv  (fn [output] (->> output csv/read-csv last))
+                           :json (fn [output] (->> output (map (juxt :NUMBER :DATE)) last))}]
+        (with-temp-public-card [{uuid :public_uuid} {:display :table :dataset_query q}]
+          (doseq [[export-format apply-formatting? expected] [[:csv true ["2,000" "March 26, 2024"]]
+                                                              [:csv false ["2000" "2024-03-26"]]
+                                                              [:json true ["2,000" "March 26, 2024"]]
+                                                              [:json false [2000 "2024-03-26"]]]]
+              (testing (format "export_format %s yields expected output for %s exports." apply-formatting? export-format)
+                (is (= expected
+                       (->> (mt/user-http-request
+                             :crowberto :get 200
+                             (format "public/card/%s/query/%s?format_rows=%s" uuid (name export-format) apply-formatting?))
+                            ((get output-helper export-format))))))))))))

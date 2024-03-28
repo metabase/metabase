@@ -368,11 +368,6 @@
 (defmethod set-cell! nil [^Cell cell _value _styles _typed-styles]
   (.setBlank cell))
 
-(def ^:dynamic *parse-temporal-string-values*
-  "When true, XLSX exports will attempt to parse string values into corresponding java.time classes so that
-  formatting can be applied. This should be enabled for generation of pulse/dashboard subscription attachments."
-  false)
-
 (defn- maybe-parse-coordinate-value [value {:keys [semantic_type]}]
   (when (isa? semantic_type :type/Coordinate)
     (try (formatter/format-geographic-coordinates semantic_type value)
@@ -381,9 +376,15 @@
                             value))))
 
 (defn- maybe-parse-temporal-value
+  "The format-rows qp middleware formats rows into strings, which circumvents the formatting done in this namespace.
+  To gain the formatting back, we parse the temporal strings back into their java.time objects.
+
+  TODO: find a way to avoid this java.time -> string -> java.time conversion by making sure the format-rows middlware
+        works effectively with the streaming-results-writer implementations for CSV, JSON, and XLSX.
+        A hint towards a better solution is to add into the format-rows middleware the use of
+        viz-settings/column-formatting that is used inside `metabase.formatter/create-formatter`."
   [value col]
-  (when (and *parse-temporal-string-values*
-             (isa? (:effective_type col) :type/Temporal)
+  (when (and (isa? (or (:base_type col) (:effective_type col)) :type/Temporal)
              (string? value))
     (try (u.date/parse value)
          ;; Fallback to plain string value if it couldn't be parsed
