@@ -35,8 +35,8 @@ export const tableApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/table/${id}/query_metadata`,
       }),
-      providesTags: table => [
-        ...(table ? [idTag("table", table.id)] : []),
+      providesTags: (table, error, { id }) => [
+        idTag("table", id),
         ...(table?.fields
           ? table.fields.flatMap(field =>
               field.id ? [idTag("field", field.id)] : [],
@@ -49,8 +49,12 @@ export const tableApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/table/${id}/fks`,
       }),
-      providesTags: (fields = []) =>
-        fields.flatMap(field => (field.id ? [idTag("field", field.id)] : [])),
+      providesTags: (fields = []) => [
+        listTag("field"),
+        ...fields.flatMap(field =>
+          field.id ? [idTag("field", field.id)] : [],
+        ),
+      ],
     }),
     updateTable: builder.mutation<Table, UpdateTableRequest>({
       query: ({ id, ...body }) => ({
