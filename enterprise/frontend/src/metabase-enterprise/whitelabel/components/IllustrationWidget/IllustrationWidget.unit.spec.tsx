@@ -13,16 +13,16 @@ interface SetupOpts {
       EnterpriseSettings,
       | "login-page-illustration-custom"
       | "landing-page-illustration-custom"
-      | "no-question-results-illustration-custom"
-      | "no-search-results-illustration-custom"
+      | "no-data-illustration-custom"
+      | "no-object-illustration-custom"
     >
   >;
   type: "background" | "icon";
   customIllustrationSetting:
     | "login-page-illustration-custom"
     | "landing-page-illustration-custom"
-    | "no-question-results-illustration-custom"
-    | "no-search-results-illustration-custom";
+    | "no-data-illustration-custom"
+    | "no-object-illustration-custom";
 }
 function setup({
   setting,

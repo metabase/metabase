@@ -19,7 +19,10 @@ import {
   getIsWhiteLabeling,
   getLoadingMessage,
   getLoginPageIllustration,
+  getLandingPageIllustration,
   getShowMetabaseLinks,
+  getNoDataIllustration,
+  getNoObjectIllustration,
 } from "metabase-enterprise/settings/selectors";
 
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
@@ -243,12 +246,12 @@ if (hasPremiumFeature("whitelabel")) {
             },
           },
           {
-            key: "no-question-results-illustration",
+            key: "no-data-illustration",
             tab: "conceal-metabase",
             display_name: (
               <IllustrationTitle
-                title={t`No-results image for questions`}
-                errorMessageContainerId="no-question-results-illustration-error-container"
+                title={t`When calculations return no results`}
+                errorMessageContainerId="no-data-illustration-error-container"
               />
             ),
             description: null,
@@ -256,19 +259,17 @@ if (hasPremiumFeature("whitelabel")) {
             widget: IllustrationWidget,
             props: {
               type: "icon",
-              customIllustrationSetting:
-                "no-question-results-illustration-custom",
-              errorMessageContainerId:
-                "no-question-results-illustration-error-container",
+              customIllustrationSetting: "no-data-illustration-custom",
+              errorMessageContainerId: "no-data-illustration-error-container",
             },
           },
           {
-            key: "no-search-results-illustration",
+            key: "no-object-illustration",
             tab: "conceal-metabase",
             display_name: (
               <IllustrationTitle
-                title={t`No search results`}
-                errorMessageContainerId="no-search-results-illustration-error-container"
+                title={t`When no objects can be found`}
+                errorMessageContainerId="no-object-illustration-error-container"
               />
             ),
             description: null,
@@ -276,10 +277,8 @@ if (hasPremiumFeature("whitelabel")) {
             widget: IllustrationWidget,
             props: {
               type: "icon",
-              customIllustrationSetting:
-                "no-search-results-illustration-custom",
-              errorMessageContainerId:
-                "no-search-results-illustration-error-container",
+              customIllustrationSetting: "no-object-illustration-custom",
+              errorMessageContainerId: "no-object-illustration-error-container",
             },
           },
         ],
@@ -318,4 +317,7 @@ if (hasPremiumFeature("whitelabel")) {
   PLUGIN_SELECTORS.getApplicationName = getApplicationName;
   PLUGIN_SELECTORS.getShowMetabaseLinks = getShowMetabaseLinks;
   PLUGIN_SELECTORS.getLoginPageIllustration = getLoginPageIllustration;
+  PLUGIN_SELECTORS.getLandingPageIllustration = getLandingPageIllustration;
+  PLUGIN_SELECTORS.getNoDataIllustration = getNoDataIllustration;
+  PLUGIN_SELECTORS.getNoObjectIllustration = getNoObjectIllustration;
 }

@@ -40,15 +40,21 @@ export const LayoutBody = styled.div`
   }
 `;
 
-export const LayoutIllustration = styled.div`
+export const LayoutIllustration = styled.div<{
+  backgroundImageSrc: string;
+  isDefault: boolean;
+}>`
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  filter: hue-rotate(${hueRotate("brand")}deg);
-  background-image: url("app/img/bridge.svg");
-  background-size: max(min(1728px, 260vh), 100%) auto;
+  filter: ${({ isDefault }) =>
+    isDefault && `hue-rotate(${hueRotate("brand")}deg)`};
+  background-image: ${({ backgroundImageSrc }) =>
+    `url("${backgroundImageSrc}")`};
+  background-size: ${({ isDefault }) =>
+    isDefault ? "max(min(1728px, 260vh), 100%) auto" : "cover"};
   background-repeat: no-repeat;
   background-position: bottom;
 `;
