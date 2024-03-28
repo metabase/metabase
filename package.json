@@ -123,6 +123,7 @@
     "tippy.js": "^6.3.5",
     "ttag": "1.7.21",
     "underscore": "~1.13.3",
+    "use-debounce": "^10.0.0",
     "yup": "^0.32.11"
   },
   "devDependencies": {

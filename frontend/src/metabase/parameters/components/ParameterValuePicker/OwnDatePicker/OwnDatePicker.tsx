@@ -1,6 +1,5 @@
 import { useClickOutside } from "@mantine/hooks";
 import { useState } from "react";
-import { t } from "ttag";
 
 import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
 import { DateMonthYearWidget } from "metabase/components/DateMonthYearWidget";
@@ -14,37 +13,40 @@ import type {
   ParameterType,
 } from "metabase-types/api";
 
-import {
-  TextInputIcon,
-  TextInputTrirgger,
-} from "./ParameterValuePicker.styled";
+import { PickerIcon, TextInputTrirgger } from "../ParameterValuePicker.styled";
 
-export function OwnDatePicker(props: {
+interface OwnDatePickerProps {
   value: string;
-  onValueChange: (value: string | null) => void;
+  onChange: (value: string | null) => void;
   parameter: Parameter;
-}) {
-  const { value, parameter, onValueChange } = props;
+  placeholder: string;
+}
+
+export function OwnDatePicker(props: OwnDatePickerProps) {
+  const { value, parameter, onChange, placeholder } = props;
   const [isOpen, setIsOpen] = useState(false);
   const formatted = formatParameterValue(value, parameter);
-  const parameterType = parameter.type as DateParameterType; // TODO fix types in Parameter
+  // TODO fix Parameter types (metabase#40226)
+  const parameterType = parameter.type as DateParameterType;
 
   const openPopover = () => setIsOpen(true);
   const closePopover = () => setIsOpen(false);
 
   const [triggerRef, setTriggerRef] = useState<HTMLDivElement | null>(null);
+
+  // TODO this should be not needed (metabase#40226)
   const dropdownRef = useClickOutside(closePopover, null, [triggerRef]);
 
   const icon = value ? (
-    <TextInputIcon
+    <PickerIcon
       name="close"
       onClick={() => {
-        onValueChange(null);
+        onChange(null);
         closePopover();
       }}
     />
   ) : (
-    <TextInputIcon name="chevrondown" />
+    <PickerIcon name="chevrondown" />
   );
   // This is required to allow clicking through the "chevrondown" icon.
   // Must be replaced with `rightSectionPointerEvents=none` after upgrade
@@ -52,7 +54,8 @@ export function OwnDatePicker(props: {
     ? undefined
     : { style: { pointerEvents: "none" } };
 
-  // TODO this should be removed as soon as we reconcile all dropdowns and make them use Mantine
+  // TODO this should be removed as soon as we reconcile all dropdowns
+  // and make them use Mantine (metabase#40226)
   const zIndex = hasInnerPopovers(parameterType) ? 3 : undefined;
 
   return (
@@ -62,7 +65,7 @@ export function OwnDatePicker(props: {
           ref={setTriggerRef}
           value={typeof formatted === "string" ? formatted : value ?? ""} // required by Mantine
           readOnly
-          placeholder={t`Select a default value…`}
+          placeholder={placeholder}
           onClick={openPopover}
           rightSection={icon}
           rightSectionProps={rightSectionProps}
@@ -75,7 +78,7 @@ export function OwnDatePicker(props: {
             type={parameterType}
             value={value}
             onClose={closePopover}
-            setValue={onValueChange}
+            setValue={onChange}
           />
         </div>
       </Popover.Dropdown>
@@ -100,7 +103,7 @@ function DateComponentRouter(props: {
       return (
         <DateRelativeWidget
           {...componentProps}
-          // TODO fix types
+          // TODO fix types (metabase#40226)
           setValue={val => props.setValue(val ?? null)}
         />
       );
@@ -129,7 +132,7 @@ function hasInnerPopovers(type: DateParameterType) {
   );
 }
 
-// TODO this should be in the Lib or somewhere else
+// TODO this should be in the Lib or somewhere else (metabase#40226)
 function DEPRECATED_getInitialDateValue(
   value: string | undefined,
   parameterType: ParameterType,

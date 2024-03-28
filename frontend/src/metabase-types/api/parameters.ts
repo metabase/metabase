@@ -47,6 +47,7 @@ export interface Parameter extends ParameterValuesConfig {
   filteringParameters?: ParameterId[];
   isMultiSelect?: boolean;
   value?: any;
+  target?: ParameterTarget;
 }
 
 export interface ParameterValuesConfig {
