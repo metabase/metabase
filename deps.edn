@@ -349,6 +349,9 @@
    :main-opts ["-m" "marginalia.main" "-m" "-n" "Metabase" "-d" "backend-docs" "-D"
                "The simplest, fastest way to get business intelligence and analytics to everyone in your company 😋"]}
 
+  ;; Generate legacy MBQL documentation with
+  ;; clj -X metabase.util.malli.doc/generate-legacy-mbql-dox
+
   ;; Find outdated versions of dependencies. Run with `clojure -M:outdated`
   :outdated {;; Note that it is `:deps`, not `:extra-deps`
              :deps {com.github.liquidz/antq {:mvn/version "RELEASE"}}
