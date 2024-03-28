@@ -452,41 +452,42 @@
 
 (deftest update-graph-validate-db-perms-test
   (testing "Check that validation of native query perms doesn't fail if only one of them changes"
-    (mt/with-temp [:model/Database {db-id :id}]
-      (mt/with-no-data-perms-for-all-users!
-        (let [ks [:groups (u/the-id (perms-group/all-users)) db-id]]
-          (letfn [(perms []
-                    (get-in (data-perms.graph/api-graph) ks))
-                  (set-perms! [new-perms]
-                    (data-perms.graph/update-data-perms-graph! (assoc-in (data-perms.graph/api-graph) ks new-perms))
-                    (perms))]
-            (testing "Should initially have no perms"
-              (is (= nil
-                     (perms))))
-            (testing "grant unrestricted data perms"
-              (is (= {:view-data :unrestricted}
-                     (set-perms! {:view-data :unrestricted}))))
-            (testing "grant native query perms"
-              (is (= {:view-data :unrestricted
-                      :create-queries :query-builder-and-native}
-                     (set-perms! {:view-data :unrestricted
-                                  :create-queries :query-builder-and-native}))))
-            (testing "revoke native perms"
-              (is (= {:view-data :unrestricted
-                      :create-queries :query-builder}
-                     (set-perms! {:view-data :unrestricted
-                                  :create-queries :query-builder}))))
-            (testing "revoke schema perms"
-              (is (= nil
-                     (set-perms! {:view-data :blocked}))))
-            (testing "disallow blocked data access + native querying"
-              (is (thrown-with-msg?
-                   Exception
-                   #"Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."
-                   (set-perms! {:view-data :blocked
-                                :create-queries :query-builder-and-native})))
-              (is (= nil
-                     (perms))))))))))
+    (mt/with-additional-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Database {db-id :id}]
+        (mt/with-no-data-perms-for-all-users!
+          (let [ks [:groups (u/the-id (perms-group/all-users)) db-id]]
+            (letfn [(perms []
+                      (get-in (data-perms.graph/api-graph) ks))
+                    (set-perms! [new-perms]
+                      (data-perms.graph/update-data-perms-graph! (assoc-in (data-perms.graph/api-graph) ks new-perms))
+                      (perms))]
+              (testing "Should initially have no perms"
+                (is (= nil
+                       (perms))))
+              (testing "grant unrestricted data perms"
+                (is (= {:view-data :unrestricted}
+                       (set-perms! {:view-data :unrestricted}))))
+              (testing "grant native query perms"
+                (is (= {:view-data :unrestricted
+                        :create-queries :query-builder-and-native}
+                       (set-perms! {:view-data :unrestricted
+                                    :create-queries :query-builder-and-native}))))
+              (testing "revoke native perms"
+                (is (= {:view-data :unrestricted
+                        :create-queries :query-builder}
+                       (set-perms! {:view-data :unrestricted
+                                    :create-queries :query-builder}))))
+              (testing "revoke schema perms"
+                (is (= nil
+                       (set-perms! {:view-data :blocked}))))
+              (testing "disallow blocked data access + native querying"
+                (is (thrown-with-msg?
+                     Exception
+                     #"Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."
+                     (set-perms! {:view-data :blocked
+                                  :create-queries :query-builder-and-native})))
+                (is (= nil
+                       (perms)))))))))))
 
 (deftest no-op-partial-graph-updates
   (testing "Partial permission graphs with no changes to the existing graph do not error when run repeatedly (#25221)"
