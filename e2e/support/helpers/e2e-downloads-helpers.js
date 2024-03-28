@@ -77,7 +77,10 @@ export function downloadAndAssert(
     cy.findByTestId("download-button").click();
   }
   // Initiate the file download
-  popover().findByText(`.${fileType}`).click({ altKey: !enableFormatting });
+  if (!enableFormatting) {
+    cy.window().trigger("keydown", { key: "Alt" });
+  }
+  popover().findByText(`.${fileType}`).click();
 
   cy.wait("@fileDownload")
     .its("request")
