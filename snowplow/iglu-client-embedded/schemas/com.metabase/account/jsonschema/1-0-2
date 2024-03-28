@@ -1,0 +1,46 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Account creation",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "account",
+    "format": "jsonschema",
+    "version": "1-0-2"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": [
+        "new_user_created",
+        "new_instance_created",
+      ],
+      "maxLength": 1024
+    },
+    "version": {
+      "description": "String describing the version of database connection banner we're on",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    },
+    "link": {
+      "description": "String identifying the link where the user clicked",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "nav",
+        "help"
+      ],
+      "maxLength": 1024
+    }
+  },
+  "required": [
+    "event"
+  ],
+  "additionalProperties": true
+}

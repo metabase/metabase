@@ -308,7 +308,7 @@
     "@types/react": "^17.0.77",
     "@types/react-dom": "^17.0.11",
     "set-value": "4.0.1",
-    "source-map-js": "git+https://github.com/7rulnik/source-map-js#6e5dfccf75f84f619d3646188aef7ef7cf8f6376",
+    "source-map-js": "1.2.0",
     "unset-value": "2.0.1"
   },
   "scripts": {
