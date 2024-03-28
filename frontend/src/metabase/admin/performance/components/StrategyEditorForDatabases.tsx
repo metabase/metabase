@@ -23,7 +23,7 @@ import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
 import type {
   Config,
   SafelyUpdateTargetId,
-  Strat,
+  Strategy,
   StrategyType,
 } from "../types";
 import { Strategies } from "../types";
@@ -35,13 +35,13 @@ import { StrategyFormLauncher } from "./StrategyFormLauncher";
 
 export const StrategyEditorForDatabases = withRouter(
   ({
-    canOverrideRootCacheInvalidationStrategy,
+    canOverrideRootStrategy,
     router,
     route,
   }: {
-    canOverrideRootCacheInvalidationStrategy: boolean;
+    canOverrideRootStrategy: boolean;
     router: InjectedRouter;
-    route: Route;
+    route?: Route;
   }) => {
     const [
       // The targetId is the id of the model that is currently being edited
@@ -52,12 +52,11 @@ export const StrategyEditorForDatabases = withRouter(
     const databasesResult = useDatabaseListQuery();
     const databases = databasesResult.data;
 
-    const shouldShowStrategyFormLaunchers =
-      canOverrideRootCacheInvalidationStrategy;
+    const shouldShowStrategyFormLaunchers = canOverrideRootStrategy;
 
     const configsResult = useAsync(async () => {
       const lists = [CacheConfigApi.list({ model: "root" })];
-      if (canOverrideRootCacheInvalidationStrategy) {
+      if (canOverrideRootStrategy) {
         lists.push(CacheConfigApi.list({ model: "database" }));
       }
       const [rootConfigsFromAPI, savedConfigsFromAPI] = await Promise.all(
@@ -127,6 +126,9 @@ export const StrategyEditorForDatabases = withRouter(
     const [isConfirmed, setIsConfirmed] = useState(false);
 
     useEffect(() => {
+      if (!route) {
+        return;
+      }
       const removeLeaveHook = router.setRouteLeaveHook(route, location => {
         if (isStrategyFormDirty && !isConfirmed) {
           askBeforeDiscardingChanges(() => {
@@ -175,13 +177,13 @@ export const StrategyEditorForDatabases = withRouter(
     };
 
     useEffect(() => {
-      if (!canOverrideRootCacheInvalidationStrategy && targetId === null) {
+      if (!canOverrideRootStrategy && targetId === null) {
         setTargetId(rootId);
       }
-    }, [canOverrideRootCacheInvalidationStrategy, targetId]);
+    }, [canOverrideRootStrategy, targetId]);
 
     const saveStrategy = useCallback(
-      async (values: Strat) => {
+      async (values: Strategy) => {
         if (targetId === null) {
           return;
         }
@@ -202,7 +204,7 @@ export const StrategyEditorForDatabases = withRouter(
           );
         } else {
           const validFields = getFieldsForStrategyType(values.type);
-          const newStrategy = pick(values, validFields) as Strat;
+          const newStrategy = pick(values, validFields) as Strategy;
 
           const validatedStrategy =
             Strategies[values.type].validateWith.validateSync(newStrategy);

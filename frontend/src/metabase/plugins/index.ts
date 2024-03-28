@@ -329,17 +329,9 @@ export const PLUGIN_CACHING = {
   DatabaseCacheTimeField: PluginPlaceholder as React.ComponentType<
     Record<string, never>
   >,
-  getQuestionsImplicitCacheTTL: (_question: any) => null as number | null,
-  QuestionCacheSection:
-    PluginPlaceholder as React.ComponentType<QuestionCacheSectionProps>,
-  DashboardCacheSection:
-    PluginPlaceholder as React.ComponentType<DashboardCacheSectionProps>,
-  DatabaseCacheTimeField: PluginPlaceholder as React.ComponentType<
-    Record<string, never>
-  >,
   isEnabled: () => false,
   hasQuestionCacheSection: (_question: Question) => false,
-  canOverrideRootCacheInvalidationStrategy: false,
+  canOverrideRootStrategy: false,
   showAd: true,
   explanation:
     t`Cache the results of queries to have them display instantly. Here you can choose when cached results should be invalidated.` as ReactNode,

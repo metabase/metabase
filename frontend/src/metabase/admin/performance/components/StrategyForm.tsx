@@ -32,7 +32,7 @@ import {
 
 import { rootId } from "../constants";
 import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
-import type { Strat, StrategyType } from "../types";
+import type { Strategy, StrategyType } from "../types";
 import { Strategies } from "../types";
 import { strategyValidationSchema } from "../validation";
 
@@ -44,11 +44,11 @@ export const StrategyForm = ({
 }: {
   targetId: number | null;
   setIsDirty: (isDirty: boolean) => void;
-  saveStrategy: (values: Strat) => Promise<void>;
-  savedStrategy?: Strat;
+  saveStrategy: (values: Strategy) => Promise<void>;
+  savedStrategy?: Strategy;
 }) => {
   return (
-    <FormProvider<Strat>
+    <FormProvider<Strategy>
       key={targetId}
       initialValues={savedStrategy ?? { type: "inherit" }}
       validationSchema={strategyValidationSchema}
@@ -67,7 +67,7 @@ const StrategyFormBody = ({
   targetId: number | null;
   setIsDirty: (isDirty: boolean) => void;
 }) => {
-  const { dirty, values, setFieldValue } = useFormikContext<Strat>();
+  const { dirty, values, setFieldValue } = useFormikContext<Strategy>();
 
   const selectedStrategyType = values.type;
 
@@ -153,7 +153,7 @@ const StrategyFormBody = ({
 };
 
 export const FormButtons = () => {
-  const { dirty } = useFormikContext<Strat>();
+  const { dirty } = useFormikContext<Strategy>();
   const { status } = useFormContext();
 
   const isFormPending = status === "pending";
@@ -200,7 +200,7 @@ export const FormButtons = () => {
 };
 
 const StrategySelector = ({ targetId }: { targetId: number | null }) => {
-  const { values } = useFormikContext<Strat>();
+  const { values } = useFormikContext<Strategy>();
 
   const availableStrategies =
     targetId === rootId ? _.omit(Strategies, "inherit") : Strategies;

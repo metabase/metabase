@@ -15,7 +15,7 @@ export const PerformanceApp = ({ route }: { route: Route }) => {
   const [tabsHeight, setTabsHeight] = useState<number>(300);
   const tabsRef = useRef<HTMLDivElement>(null);
 
-  const { canOverrideRootCacheInvalidationStrategy } = PLUGIN_CACHING;
+  const { canOverrideRootStrategy } = PLUGIN_CACHING;
 
   useLayoutEffect(() => {
     const handleResize = () => {
@@ -62,9 +62,7 @@ export const PerformanceApp = ({ route }: { route: Route }) => {
         <Flex style={{ flex: 1 }} bg="bg-light" h="100%">
           <StrategyEditorForDatabases
             route={route}
-            canOverrideRootCacheInvalidationStrategy={
-              canOverrideRootCacheInvalidationStrategy
-            }
+            canOverrideRootStrategy={canOverrideRootStrategy}
           />
         </Flex>
       </TabsPanel>

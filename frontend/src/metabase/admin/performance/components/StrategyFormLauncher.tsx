@@ -70,7 +70,7 @@ export const StrategyFormLauncher = ({
     >
       <Flex gap="0.5rem" color="text-medium" align="center">
         <FixedSizeIcon name={forRoot ? "star" : "database"} color="inherit" />
-        <Title color="inherit" order={5}>
+        <Title color="inherit" order={6}>
           {title}
         </Title>
       </Flex>

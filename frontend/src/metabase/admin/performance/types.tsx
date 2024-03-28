@@ -40,11 +40,11 @@ export const Strategies: Record<StrategyType, StrategyData> = {
   },
 };
 
-export const getStrategyLabel = (strategy?: Strat) => {
+export const getStrategyLabel = (strategy?: Strategy) => {
   return strategy ? Strategies[strategy.type].label : null;
 };
 
-export const getShortStrategyLabel = (strategy?: Strat) => {
+export const getShortStrategyLabel = (strategy?: Strategy) => {
   if (!strategy) {
     return null;
   }
@@ -89,9 +89,8 @@ export interface InheritStrategy extends StrategyBase {
   type: "inherit";
 }
 
-// TODO: rename to Strategy. I've shortened the name temporarily because I keep misspelling 'strategy'
 /** Cache invalidation strategy */
-export type Strat =
+export type Strategy =
   | DoNotCacheStrategy
   | TTLStrategy
   | DurationStrategy
@@ -103,10 +102,10 @@ export interface Config {
   model: Model;
   model_id: number;
   /** Cache invalidation strategy */
-  strategy: Strat;
+  strategy: Strategy;
 }
 
-export const isValidStrategy = (x: unknown): x is Strat => {
+export const isValidStrategy = (x: unknown): x is Strategy => {
   return strategyValidationSchema.isValidSync(x);
 };
 

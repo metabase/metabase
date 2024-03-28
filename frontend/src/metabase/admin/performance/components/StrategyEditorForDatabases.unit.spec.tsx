@@ -40,10 +40,9 @@ function setup() {
   setupEnterprisePlugins();
 
   return renderWithProviders(
-    <StrategyEditorForDatabases
-      canOverrideRootCacheInvalidationStrategy={true}
-    />,
+    <StrategyEditorForDatabases canOverrideRootStrategy={true} />,
     {
+      withRouter: true,
       storeInitialState,
     },
   );
