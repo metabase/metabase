@@ -6093,7 +6093,12 @@ databaseChangeLog:
                   name: used_in
                   type: varchar(25)
               - column:
-                  name: filter_clause
+                  name: filter_op
+                  type: varchar(25)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: filter_args
                   type: text
                   constraints:
                     nullable: true

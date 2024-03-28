@@ -14,7 +14,8 @@
 (t2/deftransforms :model/FieldUsage
   {:used_in              mi/transform-keyword
    :aggregation_function mi/transform-keyword
-   :filter_clause        mi/transform-json
+   :filter_op            mi/transform-keyword
+   :filter_args          mi/transform-json
    :breakout_param       mi/transform-json
    :expression_clause    mi/transform-json})
 

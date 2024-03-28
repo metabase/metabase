@@ -54,12 +54,12 @@
   (let [{:keys [aggregation
                 breakout
                 filters
-                expressions]} (->> (lib/walk query
+                expression]} (->> (lib/walk query
                                              (fn [_query _path-type _path stage-or-join]
                                                (select-keys stage-or-join
-                                                            [:aggregation :breakout :filters :expressions])))
-                                   :stages
-                                   (apply merge-with concat))
+                                                            [:aggregation :breakout :filters :expression])))
+                                  :stages
+                                  (apply merge-with concat))
         field-with-id?         (fn [x]
                                  (and (seq x)
                                       (= (first x) :field)
@@ -78,18 +78,19 @@
         :field_id       field-id-or-name
         :breakout_param (select-keys opts [:temporal-unit :binning])})
      ;; filters
-     (for [[_op _opts [_field _opts field-id-or-name :as clause] :as filter-clause] filters
-           :when (field-with-id? clause)]
-       {:used_in       :filter
-        :field_id      field-id-or-name
-        :filter_clause (remove-lib-uuids filter-clause)})
+     (for [[op _opts [_field _opts field-id-or-name :as filter-field] & args :as _filter-clause] filters
+           :when (field-with-id? filter-field)]
+       {:used_in     :filter
+        :field_id    field-id-or-name
+        :filter_op   op
+        :filter_args args})
      ;; expressions
-     (for [expression expressions
-           :let [field-id (lib.util.match/match-one expression [:field _ (id :guard int?)] id)]
+     (for [[_ expression-def] expression
+           :let [field-id (lib.util.match/match-one expression-def [:field (id :guard int?) _] id)]
            :when (int? field-id)]
        {:used_in           :expression
         :field_id          field-id
-        :expression_clause (remove-lib-uuids expression)}))))
+        :expression_clause (remove-lib-uuids expression-def)}))))
 
 (defn- query->field-usages
   [query]
