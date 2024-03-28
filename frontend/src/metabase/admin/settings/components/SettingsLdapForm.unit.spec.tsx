@@ -254,7 +254,6 @@ describe("SettingsLdapForm", () => {
       "ldap-sync-admin-group": true,
     };
 
-    await userEvent.click(screen.getByLabelText(/User Provisioning/));
     await userEvent.type(
       await screen.findByRole("textbox", { name: /LDAP Host/ }),
       ATTRS["ldap-host"],

@@ -561,9 +561,8 @@ describe("StringFilterValuePicker", () => {
       const clipboardData = createMockClipboardData({
         getData: () => " abc\r\ndef",
       });
-      userEvent.paste(screen.getByLabelText("Filter value"), "", {
-        clipboardData,
-      });
+      await userEvent.click(screen.getByLabelText("Filter value"));
+      await userEvent.paste(clipboardData);
       expect(onChange).toHaveBeenLastCalledWith(["abc", "def"]);
     });
   });
