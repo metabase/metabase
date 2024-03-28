@@ -18,9 +18,9 @@ export const tableApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/table",
       }),
-      providesTags: response => [
+      providesTags: (tables = []) => [
         listTag("table"),
-        ...(response?.map(({ id }) => idTag("table", id)) ?? []),
+        ...(tables.map(({ id }) => idTag("table", id)) ?? []),
       ],
     }),
     getTable: builder.query<Table, GetTableRequest>({
@@ -28,21 +28,29 @@ export const tableApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/table/${id}`,
       }),
-      providesTags: (response, error, { id }) => [idTag("table", id)],
+      providesTags: table => (table ? [idTag("table", table.id)] : []),
     }),
     getTableMetadata: builder.query<Table, GetTableMetadataRequest>({
       query: ({ id }) => ({
         method: "GET",
         url: `/api/table/${id}/query_metadata`,
       }),
-      providesTags: (response, error, { id }) => [idTag("table-metadata", id)],
+      providesTags: table => [
+        ...(table ? [idTag("table", table.id)] : []),
+        ...(table?.fields
+          ? table.fields.flatMap(field =>
+              field.id ? [idTag("field", field.id)] : [],
+            )
+          : []),
+      ],
     }),
     listTableForeignKeys: builder.query<Field[], TableId>({
       query: id => ({
         method: "GET",
         url: `/api/table/${id}/fks`,
       }),
-      providesTags: (response, error, id) => [idTag("table-foreign-keys", id)],
+      providesTags: (fields = []) =>
+        fields.flatMap(field => (field.id ? [idTag("field", field.id)] : [])),
     }),
     updateTable: builder.mutation<Table, UpdateTableRequest>({
       query: ({ id, ...body }) => ({
@@ -50,11 +58,8 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}`,
         body,
       }),
-      invalidatesTags: (response, error, { id }) => [
-        idTag("table", id),
-        idTag("table-metadata", id),
-        tag("database-metadata"),
-      ],
+      invalidatesTags: table =>
+        table ? [idTag("table", table.id), idTag("database", table.db_id)] : [],
     }),
     updateTableList: builder.mutation<Table[], UpdateTableListRequest>({
       query: body => ({
@@ -62,11 +67,11 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table`,
         body,
       }),
-      invalidatesTags: (response, error, { ids }) => [
-        ...ids.map(id => idTag("table", id)),
-        ...ids.map(id => idTag("table-metadata", id)),
-        tag("database-metadata"),
-      ],
+      invalidatesTags: (tables = []) =>
+        tables.flatMap(table => [
+          idTag("table", table.id),
+          idTag("database", table.db_id),
+        ]),
     }),
     rescanTableFieldValues: builder.mutation<void, TableId>({
       query: id => ({

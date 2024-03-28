@@ -36,7 +36,7 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${id}`,
         body,
       }),
-      providesTags: (response, error, { id }) => [idTag("database", id)],
+      providesTags: (database, error, { id }) => [idTag("database", id)],
     }),
     getDatabaseMetadata: builder.query<Database, GetDatabaseMetadataRequest>({
       query: ({ id, ...body }) => ({
@@ -44,8 +44,14 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${id}/metadata`,
         body,
       }),
-      providesTags: (response, error, { id }) => [
-        idTag("database-metadata", id),
+      providesTags: database => [
+        ...(database ? [idTag("database", database.id)] : []),
+        ...(database?.tables ?? []).flatMap(table => [
+          idTag("table", table.id),
+          ...(table.fields ?? []).flatMap(field =>
+            field.id ? [idTag("field", field.id)] : [],
+          ),
+        ]),
       ],
     }),
     listDatabaseIdFields: builder.query<Field[], ListDatabaseIdFieldsRequest>({
@@ -54,9 +60,7 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${id}/idfields`,
         body,
       }),
-      providesTags: (response, error, { id }) => [
-        idTag("database-id-fields", id),
-      ],
+      providesTags: [listTag("field")],
     }),
     createDatabase: builder.mutation<Database, CreateDatabaseRequest>({
       query: body => ({
@@ -75,11 +79,7 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (response, error, { id }) => [
         listTag("database"),
         idTag("database", id),
-        idTag("database-metadata", id),
-        idTag("database-id-fields", id),
         tag("table"),
-        tag("table-metadata"),
-        tag("table-foreign-keys"),
         tag("field"),
         tag("field-values"),
       ],
@@ -92,11 +92,7 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (response, error, id) => [
         listTag("database"),
         idTag("database", id),
-        idTag("database-metadata", id),
-        idTag("database-id-fields", id),
         tag("table"),
-        tag("table-metadata"),
-        tag("table-foreign-keys"),
         tag("field"),
         tag("field-values"),
       ],

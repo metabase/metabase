@@ -10,7 +10,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag, tag } from "./tags";
+import { idTag } from "./tags";
 
 export const fieldApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -47,13 +47,10 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${id}`,
         body,
       }),
-      invalidatesTags: (response, error, { id }) => [
+      invalidatesTags: (field, error, { id }) => [
         idTag("field", id),
         idTag("field-values", id),
-        tag("table-metadata"),
-        tag("table-foreign-keys"),
-        tag("database-metadata"),
-        tag("database-id-fields"),
+        ...(field ? [idTag("table", field.table_id)] : []),
       ],
     }),
     createFieldDimension: builder.mutation<void, CreateFieldDimensionRequest>({
