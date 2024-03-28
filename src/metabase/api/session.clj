@@ -283,7 +283,7 @@
   [:as {{:keys [token password]} :body, :as request}]
   {token    ms/NonBlankString
    password ms/ValidPassword}
-  (let [request-source (req.util/ip-address request)]
+  (let [request-source (request.u/ip-address request)]
     (throttle-check reset-password-throttler request-source))
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
         (let [reset-token (t2/select-one-fn :reset_token :model/User :id user-id)]
