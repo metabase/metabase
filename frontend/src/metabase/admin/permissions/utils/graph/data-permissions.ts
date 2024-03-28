@@ -34,7 +34,7 @@ function getPermissionPath(
 }
 
 const elludedDefaultValues: Record<DataPermission, DataPermissionValue> = {
-  [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED,
+  [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
   [DataPermission.CREATE_QUERIES]: DataPermissionValue.NO,
   [DataPermission.DOWNLOAD]: DataPermissionValue.NONE,
   [DataPermission.DATA_MODEL]: DataPermissionValue.NONE,
@@ -206,9 +206,7 @@ export function downgradeNativePermissionsIfNeeded(
   const currentSchemas = getSchemasPermission(
     permissions,
     groupId,
-    {
-      databaseId,
-    },
+    { databaseId },
     permission,
   );
   const currentNative = getNativePermission(permissions, groupId, {

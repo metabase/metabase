@@ -9,7 +9,7 @@ export const DATA_PERMISSION_OPTIONS = {
   unrestricted: {
     label: t`Can view`,
     value: DataPermissionValue.UNRESTRICTED,
-    icon: "check",
+    icon: "eye",
     iconColor: "success",
   },
   controlled: {

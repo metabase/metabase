@@ -1,11 +1,11 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
 } from "metabase/admin/permissions/utils/urls";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import {
   PLUGIN_REDUCERS,
@@ -31,7 +31,7 @@ const IMPERSONATED_PERMISSION_OPTION = {
 };
 
 const BLOCK_PERMISSION_OPTION = {
-  label: t`Block`,
+  label: t`Blocked`,
   value: DataPermissionValue.BLOCKED,
   icon: "close",
   iconColor: "danger",

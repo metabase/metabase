@@ -1,4 +1,5 @@
 import { createMockSettingsState } from "metabase-types/store/mocks";
+
 import { DataPermission, DataPermissionValue } from "../../types";
 
 // Database 2 contains an imaginary multi-schema database (like Redshift for instance)

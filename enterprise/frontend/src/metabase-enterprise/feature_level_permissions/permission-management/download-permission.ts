@@ -10,11 +10,11 @@ import {
   DataPermission,
   DataPermissionType,
   DataPermissionValue,
-  EntityId,
-  PermissionSectionConfig,
-  PermissionSubject,
-  SchemaEntityId,
-  TableEntityId,
+  type EntityId,
+  type PermissionSectionConfig,
+  type PermissionSubject,
+  type SchemaEntityId,
+  type TableEntityId,
 } from "metabase/admin/permissions/types";
 import {
   getFieldsPermission,

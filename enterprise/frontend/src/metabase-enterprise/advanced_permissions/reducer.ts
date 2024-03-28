@@ -9,7 +9,7 @@ import {
 } from "metabase/admin/permissions/permissions";
 import {
   DataPermissionValue,
-  EntityId,
+  type EntityId,
 } from "metabase/admin/permissions/types";
 import {
   DATABASES_BASE_PATH,

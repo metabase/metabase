@@ -1,5 +1,5 @@
-import type { Group, GroupsPermissions } from "metabase-types/api";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
+import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import {
   buildDataModelPermission,

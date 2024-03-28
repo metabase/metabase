@@ -330,6 +330,31 @@ const dataPermissions = handleActions(
         }
         // TODO: consolidate this block somehow...
 
+        // if view permissions are now going to sandboxed
+        // and the permissions for the db is qb + native
+        // then granulte perms to query builder only
+        //
+
+        //TODO: make this check happen in enterprise code
+        if (
+          value === DataPermissionValue.SANDBOXED &&
+          currDbNativePermission ===
+            DataPermissionValue.QUERY_BUILDER_AND_NATIVE
+        ) {
+          state = updateTablesPermission(
+            state,
+            groupId,
+            {
+              databaseId: entityId.databaseId,
+              schemaName: entityId.schemaName,
+            },
+            DataPermissionValue.QUERY_BUILDER,
+            database,
+            DataPermission.CREATE_QUERIES,
+          );
+        }
+        //TODO: make this check happen in enterprise code
+
         const shouldDowngradeNative =
           permissionInfo.type === DataPermissionType.ACCESS;
 

@@ -10,9 +10,9 @@ import {
   DataPermission,
   DataPermissionType,
   DataPermissionValue,
-  EntityId,
-  PermissionSectionConfig,
-  PermissionSubject,
+  type EntityId,
+  type PermissionSectionConfig,
+  type PermissionSubject,
 } from "metabase/admin/permissions/types";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 

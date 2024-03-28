@@ -9,11 +9,12 @@ import {
 import {
   DataPermission,
   DataPermissionType,
-  EntityId,
-  PermissionSectionConfig,
-  PermissionSubject,
-  SchemaEntityId,
-  TableEntityId,
+  DataPermissionValue,
+  type EntityId,
+  type PermissionSectionConfig,
+  type PermissionSubject,
+  type SchemaEntityId,
+  type TableEntityId,
 } from "metabase/admin/permissions/types";
 import {
   getFieldsPermission,
@@ -22,7 +23,6 @@ import {
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import type { Group, GroupsPermissions } from "metabase-types/api";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 
 export const DATA_MODEL_PERMISSION_OPTIONS = {
   none: {

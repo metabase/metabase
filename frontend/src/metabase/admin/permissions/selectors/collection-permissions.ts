@@ -33,9 +33,9 @@ import type {
 
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../constants/messages";
+import type { DataPermissionValue } from "../types";
 
 import { getPermissionWarningModal } from "./confirmations";
-import type { DataPermissionValue } from "../types";
 
 export const collectionsQuery = {
   tree: true,

@@ -1,10 +1,10 @@
-import Database from "metabase-lib/v1/metadata/Database";
-import type { SchemasPermissions, NativePermissions } from "metabase-types/api";
-import { createMockDatabase } from "metabase-types/api/mocks";
 import {
   DataPermission,
   DataPermissionValue,
 } from "metabase/admin/permissions/types";
+import Database from "metabase-lib/v1/metadata/Database";
+import type { SchemasPermissions, NativePermissions } from "metabase-types/api";
+import { createMockDatabase } from "metabase-types/api/mocks";
 
 import { updateNativePermission } from "./graph";
 const groupId = 10;

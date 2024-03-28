@@ -1,7 +1,8 @@
 import { render, fireEvent, screen, getIcon } from "__support__/ui";
 
-import { PermissionsSelect } from "./PermissionsSelect";
 import { DataPermissionValue } from "../../types";
+
+import { PermissionsSelect } from "./PermissionsSelect";
 
 const options = [
   {
