@@ -186,7 +186,7 @@ export function DetailsTable({
                   value={row[columnIndex] ?? t`Empty`}
                   isColumnName
                   settings={settings}
-                  className="text-bold text-medium"
+                  className={cx(CS.textBold, "text-medium")}
                   onVisualizationClick={onVisualizationClick}
                   visualizationIsClickable={visualizationIsClickable}
                 />
@@ -197,7 +197,12 @@ export function DetailsTable({
                   value={columnValue}
                   isColumnName={false}
                   settings={settings}
-                  className="text-bold text-dark text-spaced text-wrap"
+                  className={cx(
+                    CS.textBold,
+                    "text-dark",
+                    CS.textSpaced,
+                    CS.textWrap,
+                  )}
                   onVisualizationClick={onVisualizationClick}
                   visualizationIsClickable={visualizationIsClickable}
                 />

@@ -78,8 +78,8 @@ class SnippetRowInner extends Component {
                 CS.rounded,
                 CS.p1,
                 CS.textMonospace,
-                "text-small",
-                "text-pre-wrap",
+                CS.textSmall,
+                CS.textPreWrap,
                 CS.overflowAuto,
               )}
               style={{ maxHeight: 320 }}

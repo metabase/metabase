@@ -638,7 +638,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
             CS.overflowAuto,
             CS.pl1,
             CS.my1,
-            "scroll-hide",
+            CS.scrollHide,
           )}
           style={{ maxHeight: 300, ...optionsStyle }}
           onMouseEnter={() => this.setState({ listIsHovered: true })}

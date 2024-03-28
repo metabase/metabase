@@ -65,7 +65,7 @@ function ApiKeysTable({
         <tbody>
           {apiKeys?.map(apiKey => (
             <tr key={apiKey.id} className="border-bottom">
-              <td className="text-bold" style={{ maxWidth: 400 }}>
+              <td className={CS.textBold} style={{ maxWidth: 400 }}>
                 <Ellipsified>{apiKey.name}</Ellipsified>
               </td>
               <td>{apiKey.group.name}</td>

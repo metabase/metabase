@@ -91,7 +91,7 @@ class AlertListPopoverContent extends Component {
                 CS.flex,
                 CS.alignCenter,
                 CS.textBold,
-                "text-small",
+                CS.textSmall,
               )}
               onClick={this.onAdd}
             >
@@ -180,7 +180,7 @@ class AlertListItemInner extends Component {
               <AlertCreatorTitle alert={alert} user={user} />
             </div>
             <div
-              className="ml-auto text-bold text-small"
+              className={cx("ml-auto", CS.textBold, CS.textSmall)}
               style={{
                 transform: `translateY(4px)`,
               }}
@@ -203,7 +203,7 @@ class AlertListItemInner extends Component {
           {
             // To-do: @kdoh wants to look into overall alignment
           }
-          <ul className={cx(CS.flex, CS.mt2, "text-small")}>
+          <ul className={cx(CS.flex, CS.mt2, CS.textSmall)}>
             <li className={cx(CS.flex, CS.alignCenter)}>
               <Icon name="clock" size="12" className="mr1" />{" "}
               <AlertScheduleText

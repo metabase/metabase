@@ -237,7 +237,9 @@ interface PolicySummaryProps {
 const PolicySummary = ({ policy }: PolicySummaryProps) => {
   return (
     <div>
-      <div className="px1 pb2 text-uppercase text-small text-grey-4">
+      <div
+        className={cx("px1 pb2", CS.textUppercase, CS.textSmall, "text-grey-4")}
+      >
         {t`Summary`}
       </div>
       <SummaryRow
@@ -281,14 +283,14 @@ const PolicySummary = ({ policy }: PolicySummaryProps) => {
                 ? jt`where ${(
                     <TargetName key="target" policy={policy} target={target} />
                   )} equals ${(
-                    <span key="attr" className="text-code">
+                    <span key="attr" className={CS.textCode}>
                       {attribute}
                     </span>
                   )}`
                 : jt`and ${(
                     <TargetName key="target" policy={policy} target={target} />
                   )} equals ${(
-                    <span key="attr" className="text-code">
+                    <span key="attr" className={CS.textCode}>
                       {attribute}
                     </span>
                   )}`

@@ -1,5 +1,7 @@
 import PropTypes from "prop-types";
 
+import CS from "metabase/css/core/index.css";
+
 import { BadgeIcon, BadgeText, MaybeLink } from "./Badge.styled";
 
 const iconProp = PropTypes.oneOfType([PropTypes.string, PropTypes.object]);
@@ -44,7 +46,7 @@ function Badge({
     >
       {icon && <BadgeIcon {...getIconProps(icon)} hasMargin={!!children} />}
       {children && (
-        <BadgeText className="text-wrap" isSingleLine={isSingleLine}>
+        <BadgeText className={CS.textWrap} isSingleLine={isSingleLine}>
           {children}
         </BadgeText>
       )}

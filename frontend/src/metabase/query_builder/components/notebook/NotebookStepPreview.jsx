@@ -54,7 +54,7 @@ const NotebookStepPreview = ({ step, onClose }) => {
   return (
     <PreviewRoot data-testid="preview-root">
       <PreviewHeader>
-        <span className="text-bold">{t`Preview`}</span>
+        <span className={CS.textBold}>{t`Preview`}</span>
         <PreviewIconContainer>
           <Icon
             name="close"

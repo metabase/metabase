@@ -29,7 +29,7 @@ const MetadataTableSchema = ({ table }: MetadataTableSchemaProps) => {
   return (
     <div className={cx(CS.mt3, CS.full)}>
       <table className={cx(CS.mt2, CS.full)}>
-        <thead className="text-uppercase text-medium py1">
+        <thead className={cx(CS.textUppercase, "text-medium py1")}>
           <tr>
             <HeaderCell>{t`Column`}</HeaderCell>
             <HeaderCell>{t`Data Type`}</HeaderCell>

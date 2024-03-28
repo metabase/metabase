@@ -91,7 +91,7 @@ function ErrorDetailDisplay(props) {
           <td align="right" className="m0 mt1 text-medium">
             {idx === 0 && formatColumn(resCols[nameToResCol.dash_name_str])}
           </td>
-          <td className="text-bold">
+          <td className={CS.textBold}>
             {formatValue(x, { column: resCols[nameToResCol.dash_name_str] })}
           </td>
         </tr>
@@ -120,7 +120,7 @@ function ErrorDetailDisplay(props) {
           CS.p2,
           CS.textDark,
           CS.textMonospace,
-          "text-small",
+          CS.textSmall,
           "bg-light",
         )}
       >

@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { isPositiveInteger } from "metabase/lib/number";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -221,7 +222,7 @@ function TableSimpleInner({
   return (
     <Root className={className}>
       <ContentContainer>
-        <TableContainer className="scroll-show scroll-show--hover">
+        <TableContainer className={cx(CS.scrollShow, CS.scrollShowHover)}>
           <Table
             className={cx(
               DashboardS.fullscreenNormalText,

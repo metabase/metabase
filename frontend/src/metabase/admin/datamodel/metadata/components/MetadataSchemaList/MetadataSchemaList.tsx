@@ -125,7 +125,7 @@ const SchemaRow = ({ schema, isSelected, onSelectSchema }: SchemaRowProps) => {
     <li key={schema.id}>
       <a
         className={cx(
-          "text-wrap",
+          CS.textWrap,
           AdminS.AdminListItem,
           { [AdminS.selected]: isSelected },
           CS.flex,
