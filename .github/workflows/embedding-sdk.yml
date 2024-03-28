@@ -35,9 +35,9 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-#      - uses: actions/checkout@v4
-#      - name: Prepare front-end environment
-#        uses: ./.github/actions/prepare-frontend
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
 #      - name: Prepare back-end environment
 #        uses: ./.github/actions/prepare-backend
 #        with:
