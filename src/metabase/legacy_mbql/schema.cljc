@@ -1522,8 +1522,10 @@
    ;; should we skip adding results_metadata to query results after running the query? Used by
    ;; [[metabase.query-processor.middleware.results-metadata]]; default `false`
    [:skip-results-metadata? {:optional true} :boolean]
-   ;; should we skip converting datetime types to ISO-8601 strings with appropriate timezone when post-processing
-   ;; results? Used by [[metabase.query-processor.middleware.format-rows]]; default `false`
+   ;; should we convert datetime types to ISO-8601 strings with appropriate timezone when post-processing results?
+   ;; additionally, should we apply formatting specified in column/viz settings to exports (csv/json)?
+   ;; See [[metabase.query-processor.streaming.csv]]
+   ;; Used by [[metabase.query-processor.middleware.format-rows]]; defaults to `true`
    [:format-rows? {:optional true} [:maybe :boolean]]
    ;; disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where
    ;; you should set this yourself. This is only used by the [[metabase.query-processor.preprocess/preprocess]]
