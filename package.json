@@ -268,6 +268,7 @@
     "mutationobserver-shim": "^0.3.7",
     "mysql2": "^3.6.3",
     "node-polyfill-webpack-plugin": "2.0.1",
+    "null-loader": "^4.0.1",
     "pg": "^8.8.0",
     "postcss": "8.4.19",
     "postcss-color-mod-function": "^3.0.3",
