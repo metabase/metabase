@@ -32,6 +32,18 @@ const options: EntityPickerModalOptions = {
   hasConfirmButtons: false,
 };
 
+const isValueEqual = (value1: Value | null, value2: Value | null) => {
+  if (!value1 || !value2) {
+    return value1 === value2;
+  }
+
+  return (
+    value1.db_id === value2.db_id &&
+    value1.id === value2.id &&
+    value1.schema === value2.schema
+  );
+};
+
 export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
   const [selectedItem, setSelectedItem] =
     useState<NotebookDataPickerValueItem | null>(null);
@@ -51,14 +63,18 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
 
   useEffect(() => {
     if (table) {
-      onChange({
+      const valueFromTable = {
         db_id: table.db_id,
         id: table.id,
         schema: table.schema_name,
-      });
-      onClose();
+      };
+
+      if (!isValueEqual(value, valueFromTable)) {
+        onChange(valueFromTable);
+        onClose();
+      }
     }
-  }, [table, onChange, onClose]);
+  }, [table, value, onChange, onClose]);
 
   const pickerRef = useRef<{
     onFolderSelect: (item: { folder: NotebookDataPickerItem }) => void;
