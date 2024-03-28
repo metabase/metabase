@@ -135,6 +135,7 @@ don't, (and shouldn't) care that those are expressions. They are just another fi
                                  additions-part)))))
           (t2/update! ModelIndex (:id model-index)
                       {:indexed_at :%now
+                       :error      nil
                        :state      (if (> (count values-to-index) max-indexed-values)
                                      "overflow"
                                      "indexed")}))
