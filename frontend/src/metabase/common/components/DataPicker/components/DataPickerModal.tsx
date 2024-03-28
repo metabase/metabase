@@ -1,9 +1,8 @@
-import { skipToken } from "@reduxjs/toolkit/dist/query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { tableApi } from "metabase/api";
+import { useTableQuery } from "metabase/common/hooks";
 import type { CollectionId } from "metabase-types/api";
 
 import type {
@@ -41,13 +40,22 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
   >(value?.id);
 
   const shouldFetchNewMetadata = valueId != null && valueId !== value?.id;
-  const { data: table } = tableApi.useFetchMetadataQuery(
-    shouldFetchNewMetadata ? { id: valueId } : skipToken,
-  );
+  // TODO: using RTK is difficult because parent component does not use the same cache
+  // const { data: table } = tableApi.useFetchMetadataQuery(
+  //   shouldFetchNewMetadata ? { id: valueId } : skipToken,
+  // );
+  const { data: table } = useTableQuery({
+    id: valueId,
+    enabled: shouldFetchNewMetadata,
+  });
 
   useEffect(() => {
     if (table) {
-      onChange(table);
+      onChange({
+        db_id: table.db_id,
+        id: table.id,
+        schema: table.schema_name,
+      });
       onClose();
     }
   }, [table, onChange, onClose]);
