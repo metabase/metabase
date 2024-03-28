@@ -1,3 +1,4 @@
+import { useFormikContext } from "formik";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
@@ -19,20 +20,6 @@ export const ResetAllToDefaultButton = ({
   setConfigs: Dispatch<SetStateAction<Config[]>>;
 }) => {
   const rootConfig = findWhere(configs, { model_id: rootId });
-  const { show: askConfirmation, modalContent: confirmationModal } =
-    useConfirmation();
-
-  const rootConfigLabel = rootConfig?.strategy.type
-    ? Strategies[rootConfig?.strategy.type].shortLabel
-    : "default";
-  const confirmResetAllToDefault = () => {
-    askConfirmation({
-      title: t`Reset all database caching policies to ${rootConfigLabel}?`,
-      message: "",
-      confirmButtonText: t`Reset`,
-      onConfirm: resetAllToDefault,
-    });
-  };
 
   const resetAllToDefault = useCallback(async () => {
     // TODO: Add confirmation
@@ -61,29 +48,67 @@ export const ResetAllToDefaultButton = ({
 
   return (
     <>
-      <FormProvider initialValues={{}} onSubmit={confirmResetAllToDefault}>
-        <Form>
-          <Flex justify="flex-end">
-            <FormSubmitButton
-              label={
-                <Text
-                  fw="normal"
-                  color="error"
-                  // TODO: Add confirmation modal?
-                >{t`Reset all to default`}</Text>
-              }
-              successLabel={
-                <Text fw="bold" color="success">
-                  <Group spacing="xs">
-                    <Icon name="check" /> {t`Success`}
-                  </Group>
-                </Text>
-              }
-              variant="subtle"
-            />
-          </Flex>
-        </Form>
+      <FormProvider initialValues={{}} onSubmit={resetAllToDefault}>
+        <ResetAllToDefaultButtonFormBody
+          rootConfig={rootConfig}
+          setConfigs={setConfigs}
+        />
       </FormProvider>
+    </>
+  );
+};
+
+const ResetAllToDefaultButtonFormBody = ({
+  rootConfig,
+}: {
+  rootConfig: Config | undefined;
+  setConfigs: Dispatch<SetStateAction<Config[]>>;
+}) => {
+  const { submitForm } = useFormikContext();
+  const { show: askConfirmation, modalContent: confirmationModal } =
+    useConfirmation();
+
+  const rootConfigLabel = rootConfig?.strategy.type
+    ? Strategies[rootConfig?.strategy.type].shortLabel
+    : "default";
+
+  const confirmResetAllToDefault = () => {
+    askConfirmation({
+      title: t`Reset all database caching policies to ${rootConfigLabel}?`,
+      message: "",
+      confirmButtonText: t`Reset`,
+      onConfirm: submitForm,
+    });
+  };
+
+  return (
+    <>
+      <Form>
+        <Flex justify="flex-end">
+          <FormSubmitButton
+            onClick={e => {
+              confirmResetAllToDefault();
+              e.preventDefault();
+              return false;
+            }}
+            label={
+              <Text
+                fw="normal"
+                color="error"
+                // TODO: Add confirmation modal?
+              >{t`Reset all to default`}</Text>
+            }
+            successLabel={
+              <Text fw="bold" color="success">
+                <Group spacing="xs">
+                  <Icon name="check" /> {t`Success`}
+                </Group>
+              </Text>
+            }
+            variant="subtle"
+          />
+        </Flex>
+      </Form>
       {confirmationModal}
     </>
   );

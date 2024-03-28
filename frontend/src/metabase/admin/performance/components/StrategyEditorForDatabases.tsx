@@ -15,12 +15,13 @@ import { Box, Stack } from "metabase/ui";
 
 import { rootId } from "../constants";
 import { useDelayedLoadingSpinner } from "../hooks/useDelayedLoadingSpinner";
+import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
 import type {
   StrategyType,
-  type Config,
-  type LeaveConfirmationData,
-  type SafelyUpdateTargetId,
-  type Strat,
+  Config,
+  LeaveConfirmationData,
+  SafelyUpdateTargetId,
+  Strat,
 } from "../types";
 import { Strategies } from "../types";
 
@@ -66,9 +67,16 @@ export const StrategyEditorForDatabases = ({
 
   const [configs, setConfigs] = useState<Config[]>([]);
 
-  const rootConfigOverriddenOnce = configs.some(
+  const rootStrategyOverriddenOnce = configs.some(
     config => config.model_id !== rootId,
   );
+
+  const [rootStrategyRecentlyOverridden] = useRecentlyTrue(
+    rootStrategyOverriddenOnce,
+    3000,
+  );
+  const shouldShowResetButton =
+    rootStrategyOverriddenOnce || rootStrategyRecentlyOverridden;
 
   useEffect(() => {
     if (configsFromAPI) {
@@ -229,7 +237,7 @@ export const StrategyEditorForDatabases = ({
                   key={`database_${db.id}`}
                 />
               ))}
-              {rootConfigOverriddenOnce && (
+              {shouldShowResetButton && (
                 <ResetAllToDefaultButton
                   configs={configs}
                   setConfigs={setConfigs}

@@ -1,6 +1,6 @@
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -31,6 +31,7 @@ import {
 } from "metabase/ui";
 
 import { rootId } from "../constants";
+import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
 import type { Strat, StrategyType } from "../types";
 import { Strategies } from "../types";
 import { strategyValidationSchema } from "../validation";
@@ -142,22 +143,7 @@ export const FormButtons = () => {
   const { status } = useFormContext();
 
   const isFormPending = status === "pending";
-  const [wasFormEverPending, setWasFormEverPending] = useState(false);
-  const [wasFormRecentlyPending, setWasFormRecentlyPending] = useState(false);
-
-  useEffect(() => {
-    if (isFormPending) {
-      setWasFormEverPending(true);
-    } else {
-      if (wasFormEverPending) {
-        setWasFormRecentlyPending(true);
-        const timeout = setTimeout(() => {
-          setWasFormRecentlyPending(false);
-        }, 500);
-        return () => clearTimeout(timeout);
-      }
-    }
-  }, [isFormPending, wasFormEverPending]);
+  const [wasFormRecentlyPending] = useRecentlyTrue(isFormPending, 500);
 
   const shouldShowButtons = dirty || isFormPending || wasFormRecentlyPending;
 
