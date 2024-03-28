@@ -1,8 +1,8 @@
 import type {
   FieldId,
-  FieldSearchInput,
+  SearchFieldValuesRequest,
   FieldValue,
-  FieldValuesResult,
+  FieldValuesResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -10,7 +10,7 @@ import { idTag } from "./tags";
 
 export const fieldApi = Api.injectEndpoints({
   endpoints: builder => ({
-    getFieldValues: builder.query<FieldValuesResult, FieldId>({
+    getFieldValues: builder.query<FieldValuesResponse, FieldId>({
       query: fieldId => ({
         method: "GET",
         url: `/api/field/${fieldId}/values`,
@@ -19,7 +19,7 @@ export const fieldApi = Api.injectEndpoints({
         idTag("field-values", fieldId),
       ],
     }),
-    searchFieldValues: builder.query<FieldValue[], FieldSearchInput>({
+    searchFieldValues: builder.query<FieldValue[], SearchFieldValuesRequest>({
       query: ({ fieldId, searchFieldId, ...body }) => ({
         method: "GET",
         url: `/api/field/${fieldId}/search/${searchFieldId}`,

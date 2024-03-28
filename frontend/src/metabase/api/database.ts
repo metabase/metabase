@@ -1,13 +1,13 @@
 import type {
   Database,
-  DatabaseCreateRequest,
+  CreateDatabaseRequest,
   DatabaseId,
-  DatabaseIdFieldListRequest,
-  DatabaseListRequest,
-  DatabaseListResponse,
-  DatabaseMetadataRequest,
-  DatabaseRequest,
-  DatabaseUpdateRequest,
+  ListDatabaseIdFieldsRequest,
+  ListDatabasesRequest,
+  ListDatabasesResponse,
+  GetDatabaseMetadataRequest,
+  GetDatabaseRequest,
+  UpdateDatabaseRequest,
   Field,
 } from "metabase-types/api";
 
@@ -17,8 +17,8 @@ import { tag, idTag, listTag } from "./tags";
 export const databaseApi = Api.injectEndpoints({
   endpoints: builder => ({
     listDatabases: builder.query<
-      DatabaseListResponse,
-      DatabaseListRequest | void
+      ListDatabasesResponse,
+      ListDatabasesRequest | void
     >({
       query: body => ({
         method: "GET",
@@ -30,7 +30,7 @@ export const databaseApi = Api.injectEndpoints({
         ...(response?.data?.map(({ id }) => idTag("database", id)) ?? []),
       ],
     }),
-    getDatabase: builder.query<Database, DatabaseRequest>({
+    getDatabase: builder.query<Database, GetDatabaseRequest>({
       query: ({ id, ...body }) => ({
         method: "GET",
         url: `/api/database/${id}`,
@@ -38,7 +38,7 @@ export const databaseApi = Api.injectEndpoints({
       }),
       providesTags: (response, error, { id }) => [idTag("database", id)],
     }),
-    getDatabaseMetadata: builder.query<Database, DatabaseMetadataRequest>({
+    getDatabaseMetadata: builder.query<Database, GetDatabaseMetadataRequest>({
       query: ({ id, ...body }) => ({
         method: "GET",
         url: `/api/database/${id}/metadata`,
@@ -48,7 +48,7 @@ export const databaseApi = Api.injectEndpoints({
         idTag("database-metadata", id),
       ],
     }),
-    listDatabaseIdFields: builder.query<Field[], DatabaseIdFieldListRequest>({
+    listDatabaseIdFields: builder.query<Field[], ListDatabaseIdFieldsRequest>({
       query: ({ id, ...body }) => ({
         method: "GET",
         url: `/api/database/${id}/idfields`,
@@ -58,7 +58,7 @@ export const databaseApi = Api.injectEndpoints({
         idTag("database-id-fields", id),
       ],
     }),
-    createDatabase: builder.mutation<Database, DatabaseCreateRequest>({
+    createDatabase: builder.mutation<Database, CreateDatabaseRequest>({
       query: body => ({
         method: "POST",
         url: "/api/database",
@@ -66,7 +66,7 @@ export const databaseApi = Api.injectEndpoints({
       }),
       invalidatesTags: [listTag("database")],
     }),
-    updateDatabase: builder.mutation<Database, DatabaseUpdateRequest>({
+    updateDatabase: builder.mutation<Database, UpdateDatabaseRequest>({
       query: ({ id, ...body }) => ({
         method: "PUT",
         url: `/api/database/${id}`,
