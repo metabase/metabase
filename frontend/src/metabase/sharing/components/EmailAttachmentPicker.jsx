@@ -85,7 +85,7 @@ export default class EmailAttachmentPicker extends Component {
       cards: pulse.cards.map(card => {
         card.include_csv = selectedCardIds.has(card.id) && isCsv;
         card.include_xls = selectedCardIds.has(card.id) && isXls;
-        card.format_rows = isFormattingEnabled;
+        card.format_rows = isCsv && isFormattingEnabled; // Excel always uses formatting
         return card;
       }),
     });
@@ -230,13 +230,15 @@ export default class EmailAttachmentPicker extends Component {
                 fullWidth
               />
             </div>
-            <div className={cx(CS.mt2, CS.mb3)}>
-              <CheckBox
-                checked={!isFormattingEnabled}
-                label={t`Use unformatted values in attachments`}
-                onChange={this.onToggleFormatting}
-              />
-            </div>
+            {selectedAttachmentType === "csv" && (
+              <div className={cx(CS.mt2, CS.mb3)}>
+                <CheckBox
+                  checked={!isFormattingEnabled}
+                  label={t`Use unformatted values in attachments`}
+                  onChange={this.onToggleFormatting}
+                />
+              </div>
+            )}
             <div
               className={cx(
                 CS.textBold,
