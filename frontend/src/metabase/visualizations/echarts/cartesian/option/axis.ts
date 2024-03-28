@@ -23,7 +23,6 @@ import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants
 
 import type { ChartMeasurements } from "../chart-measurements/types";
 import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
-import { getAxisTransforms } from "../model/transforms";
 import { getTicksOptions } from "./ticks";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
@@ -54,6 +53,7 @@ const getCustomAxisRange = ({
 
 export const getYAxisRange = (
   axisModel: YAxisModel,
+  yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
 ) => {
   const isNormalized = settings["stackable.stack_type"] === "normalized";
@@ -63,20 +63,24 @@ export const getYAxisRange = (
     return isNormalized ? NORMALIZED_RANGE : {};
   }
 
-  const { customMin, customMax } = getScaledMinAndMax(settings);
+  const { customMin, customMax } = getScaledMinAndMax(
+    settings,
+    yAxisScaleTransforms,
+  );
 
   return axisModel.extent
     ? getCustomAxisRange({ axisExtent: axisModel.extent, customMin, customMax })
     : {};
 };
 
-function getScaledMinAndMax(settings: ComputedVisualizationSettings) {
+function getScaledMinAndMax(
+  settings: ComputedVisualizationSettings,
+  yAxisScaleTransforms: NumericAxisScaleTransforms,
+) {
   const min = settings["graph.y_axis.min"];
   const max = settings["graph.y_axis.max"];
 
-  const scale = settings["graph.y_axis.scale"];
-  const stackType = settings["stackable.stack_type"];
-  const { toEChartsAxisValue } = getAxisTransforms(scale, stackType);
+  const { toEChartsAxisValue } = yAxisScaleTransforms;
 
   const customMin = min ? (toEChartsAxisValue(min) as number) : undefined;
   const customMax = max ? (toEChartsAxisValue(max) as number) : undefined;
@@ -350,7 +354,7 @@ export const buildMetricAxis = (
   const shouldFlipAxisName = position === "right";
   const nameGap = getAxisNameGap(ticksWidth);
 
-  const range = getYAxisRange(axisModel, settings);
+  const range = getYAxisRange(axisModel, yAxisScaleTransforms, settings);
 
   return {
     type: "value",
