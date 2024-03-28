@@ -9,15 +9,62 @@ redirect_from:
 The application database is where Metabase stores information about users, saved questions, dashboards, and any other
 data needed to run the application. The default settings use an embedded H2 database, but this is configurable.
 
-## Notes
+## Avoid using the default H2 application database in production deployments
 
-- Using Metabase with an H2 application database is not recommended for production deployments. For production
-  deployments, we highly recommend using Postgres, MySQL, or MariaDB instead. If you decide to continue to use H2,
-  please be sure to back up the database file regularly.
-- You cannot change the application database while the application is running. Connection configuration information is
-  read only once when the application starts up and will remain constant throughout the running of the application.
-- Metabase provides limited support for migrating from H2 to Postgres or MySQL if you decide to upgrade to a more
-  production-ready database. See [Migrating from H2 to MySQL or Postgres](migrating-from-h2.md) for more details.
+- Use PostgreSQL, MySQL, or MariaDB in production.
+- Metabase reads the connection configuration once when Metabase starts up. You cannot change the application database while the application is running.
+
+See [Migrating from H2 to MySQL or Postgres](migrating-from-h2.md)
+
+## Required privileges for the database role Metabase uses to connect to its application database
+
+Here are the privileges Metabase must have in order to store its application data.
+
+- `ALTER`
+- `CREATE`
+- `DELETE`
+- `DROP`
+- `INSERT`
+- `INDEX`
+- `REFERENCES`
+- `SELECT`
+- `UPDATE`
+
+### Example Metabase application database, user, and role
+
+```sql
+-- Create a database for Metabase to store its application data
+CREATE DATABASE metabaseappdb
+
+-- Create a user for Metabase
+CREATE USER metabase WITH PASSWORD 'password'
+
+-- Create a role to bundle the privileges Metabase will need
+-- to store its application in your database
+CREATE ROLE applicationrole WITH LOGIN;
+
+-- Allow the role to connect to the database and create schema
+-- and tables in that database
+GRANT CREATE, CONNECT ON DATABASE metabaseappdb TO applicationrole;
+
+-- Allow the role to create and manage tables in the default public schema
+GRANT CREATE ON SCHEMA public to applicationrole;
+
+-- Grant the role to the user you'll use for your Metabase connection
+GRANT applicationrole TO metabase;
+```
+
+With your database, user, and role set up, you could then start Metabase using the following [environment variables](../configuring-metabase/environment-variables.md) (in this case, when running the JAR).
+
+```sh
+export MB_DB_TYPE=postgres
+export MB_DB_DBNAME=metabaseappdb
+export MB_DB_PORT=5432
+export MB_DB_USER=metabase
+export MB_DB_PASS=password
+export MB_DB_HOST=localhost
+java -jar metabase.jar
+```
 
 ## [H2](https://www.h2database.com/) (default)
 
