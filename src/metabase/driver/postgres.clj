@@ -33,7 +33,7 @@
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.upload :as upload]
+   [metabase.upload.types :as upload-types]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -854,15 +854,15 @@
 (defmethod driver/upload-type->database-type :postgres
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar-255              [[:varchar 255]]
-    ::upload/text                     [:text]
-    ::upload/int                      [:bigint]
-    ::upload/auto-incrementing-int-pk [:bigserial]
-    ::upload/float                    [:float]
-    ::upload/boolean                  [:boolean]
-    ::upload/date                     [:date]
-    ::upload/datetime                 [:timestamp]
-    ::upload/offset-datetime          [:timestamp-with-time-zone]))
+    ::upload-types/varchar-255              [[:varchar 255]]
+    ::upload-types/text                     [:text]
+    ::upload-types/int                      [:bigint]
+    ::upload-types/auto-incrementing-int-pk [:bigserial]
+    ::upload-types/float                    [:float]
+    ::upload-types/boolean                  [:boolean]
+    ::upload-types/date                     [:date]
+    ::upload-types/datetime                 [:timestamp]
+    ::upload-types/offset-datetime          [:timestamp-with-time-zone]))
 
 (defmethod driver/create-auto-pk-with-append-csv? :postgres
   [driver]

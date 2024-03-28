@@ -1093,8 +1093,8 @@
       :or {table-name       (mt/random-name)
            schema-name      (sql.tx/session-schema driver/*driver*)
            col->upload-type (ordered-map/ordered-map
-                             upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk
-                             :name ::upload/varchar-255)
+                             upload/auto-pk-column-keyword auto-pk-type
+                             :name vchar-type)
            rows             [["Obi-Wan Kenobi"]]}}]
   (let [driver driver/*driver*
         db-id (mt/id)
@@ -1198,9 +1198,9 @@
                         ["name,id" "Luke Skywalker,20" "Darth Vader,30"]]]  ;; different order
         (with-upload-table!
           [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
-                                                           :_mb_row_id ::upload/auto-incrementing-int-pk
-                                                           :id ::upload/int
-                                                           :name ::upload/varchar-255)
+                                                           :_mb_row_id auto-pk-type
+                                                           :id int-type
+                                                           :name vchar-type)
                                         :rows             [[10 "Obi-Wan Kenobi"]]})]
           (let [file (csv-file-with csv-rows (mt/random-name))]
             (is (some? (append-csv! {:file     file
@@ -1249,8 +1249,8 @@
           (with-upload-table!
             [table (create-upload-table!
                     {:col->upload-type (ordered-map/ordered-map
-                                        :id         ::upload/int
-                                        :name       ::upload/varchar-255)
+                                        :id         int-type
+                                        :name       vchar-type)
                      :rows [[1,"some_text"]]})]
 
             (let [file (csv-file-with csv-rows (mt/random-name))]
@@ -1279,14 +1279,14 @@
             (with-upload-table!
               [table (create-upload-table!
                       {:col->upload-type (ordered-map/ordered-map
-                                          :_mb_row_id      ::upload/auto-incrementing-int-pk
-                                          :biginteger      ::upload/int
-                                          :float           ::upload/float
-                                          :text            ::upload/varchar-255
-                                          :boolean         ::upload/boolean
-                                          :date            ::upload/date
-                                          :datetime        ::upload/datetime
-                                          :offset_datetime ::upload/offset-datetime)
+                                          :_mb_row_id      auto-pk-type
+                                          :biginteger      int-type
+                                          :float           float-type
+                                          :text            vchar-type
+                                          :boolean         bool-type
+                                          :date            date-type
+                                          :datetime        datetime-type
+                                          :offset_datetime offset-dt-type)
                        :rows [[1000000,1.0,"some_text",false,#t "2020-01-01",#t "2020-01-01T00:00:00",#t "2020-01-01T00:00:00"]]})]
               (let [csv-rows ["biginteger,float,text,boolean,date,datetime,offset_datetime"
                               "2000000,2.0,some_text,true,2020-02-02,2020-02-02T02:02:02,2020-02-02T02:02:02+02:00"]
@@ -1320,7 +1320,7 @@
     (testing "If the table doesn't have _mb_row_id but the CSV does, ignore the CSV _mb_row_id but create the column anyway"
       (with-upload-table!
         [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
-                                                         :name ::upload/varchar-255)
+                                                         :name vchar-type)
                                       :rows             [["Obi-Wan Kenobi"]]})]
         (let [csv-rows ["_MB-row ID,name" "1000,Luke Skywalker"]
               file     (csv-file-with csv-rows (mt/random-name))]
@@ -1360,7 +1360,7 @@
     (testing "If the table doesn't have _mb_row_id and a failure occurs, we shouldn't create a _mb_row_id column"
       (with-upload-table!
         [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
-                                                         :bool_column ::upload/boolean)
+                                                         :bool_column bool-type)
                                       :rows [[true]]})]
         (let [csv-rows    ["bool_column" "not a bool"]
               file        (csv-file-with csv-rows (mt/random-name))
@@ -1505,9 +1505,9 @@
     (testing "Append should handle the columns in the CSV file being reordered"
       (with-upload-table! [table (create-upload-table!
                                   :col->upload-type (ordered-map/ordered-map
-                                                     upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk
-                                                     :name ::upload/varchar-255
-                                                     :shame ::upload/varchar-255)
+                                                     upload/auto-pk-column-keyword auto-pk-type
+                                                     :name vchar-type
+                                                     :shame vchar-type)
                                   :rows [["Obi-Wan Kenobi" "No one really knows me"]])]
 
         (let [csv-rows ["shame,name" "Nothing - you can't prove it,Puke Nightstalker"]
@@ -1545,27 +1545,27 @@
           (doseq [auto-pk-column? [true false]]
             (testing (str "\nFor a table that has " (if auto-pk-column? "an" " no") " automatically generated PK already")
               (doseq [{:keys [upload-type valid invalid msg]}
-                      [{:upload-type ::upload/int
+                      [{:upload-type int-type
                         :valid       1
                         :invalid     "not an int"
                         :msg         "'not an int' is not a recognizable number"}
-                       {:upload-type ::upload/float
+                       {:upload-type float-type
                         :valid       1.1
                         :invalid     "not a float"
                         :msg         "'not a float' is not a recognizable number"}
-                       {:upload-type ::upload/boolean
+                       {:upload-type bool-type
                         :valid       true
                         :invalid     "correct"
                         :msg         "'correct' is not a recognizable boolean"}
-                       {:upload-type ::upload/date
+                       {:upload-type date-type
                         :valid       #t "2000-01-01"
                         :invalid     "2023-01-01T00:00:00"
                         :msg         "'2023-01-01T00:00:00' is not a recognizable date"}
-                       {:upload-type ::upload/datetime
+                       {:upload-type datetime-type
                         :valid       #t "2000-01-01T00:00:00"
                         :invalid     "2023-01-01T00:00:00+01"
                         :msg         "'2023-01-01T00:00:00+01' is not a recognizable datetime"}
-                       {:upload-type ::upload/offset-datetime
+                       {:upload-type offset-dt-type
                         :valid       #t "2000-01-01T00:00:00+01"
                         :invalid     "2023-01-01T00:00:00[Europe/Helsinki]"
                         :msg         "'2023-01-01T00:00:00[Europe/Helsinki]' is not a recognizable zoned datetime"}]]
@@ -1574,9 +1574,9 @@
                     [table (create-upload-table!
                             {:col->upload-type (cond-> (ordered-map/ordered-map
                                                         :test_column upload-type
-                                                        :name        ::upload/varchar-255)
+                                                        :name        vchar-type)
                                                  auto-pk-column?
-                                                 (assoc upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk))
+                                                 (assoc upload/auto-pk-column-keyword auto-pk-type))
                              :rows             [[valid "Obi-Wan Kenobi"]]})]
                     (let [;; The CSV contains 50 valid rows and 1 invalid row
                           csv-rows `["test_column,name" ~@(repeat 50 (str valid ",Darth Vadar")) ~(str invalid ",Luke Skywalker")]
@@ -1599,7 +1599,7 @@
   (mt/test-drivers (filter (fn [driver]
                              ;; use of varchar(255) is not universal for all drivers, so only test drivers that
                              ;; have different database types for varchar(255) and text
-                             (apply not= (map (partial driver/upload-type->database-type driver) [::upload/varchar-255 ::upload/text])))
+                             (apply not= (map (partial driver/upload-type->database-type driver) [vchar-type text-type])))
                            (mt/normal-drivers-with-feature :uploads))
     (with-mysql-local-infile-off
       (testing "Append fails if the CSV file contains string values that are too long for the column"
@@ -1608,8 +1608,8 @@
         (binding [driver/*insert-chunk-rows* 1]
           (with-upload-table!
             [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
-                                                             upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk
-                                                             :test_column ::upload/varchar-255)
+                                                             upload/auto-pk-column-keyword auto-pk-type
+                                                             :test_column vchar-type)
                                           :rows             [["valid"]]})]
             (let [csv-rows `["test_column" ~@(repeat 50 "valid too") ~(apply str (repeat 256 "x"))]
                   file  (csv-file-with csv-rows (mt/random-name))]
@@ -1630,14 +1630,14 @@
         ;; for drivers that insert rows in chunks, we change the chunk size to 1 so that we can test that the
         ;; inserted rows are rolled back
         (binding [driver/*insert-chunk-rows* 1]
-          (let [upload-type ::upload/varchar-255,
+          (let [upload-type vchar-type,
                 uncoerced   (apply str (repeat 256 "x"))
                 coerced     (apply str (repeat 255 "x"))]
             (testing (format "\nUploading %s into a column of type %s should be coerced to %s"
                              uncoerced (name upload-type) coerced)
               (with-upload-table!
                 [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
-                                                                 upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk
+                                                                 upload/auto-pk-column-keyword auto-pk-type
                                                                  :test_column upload-type)
                                               :rows             []})]
                 (let [csv-rows ["test_column" uncoerced]
@@ -1659,16 +1659,16 @@
         ;; inserted rows are rolled back
         (binding [driver/*insert-chunk-rows* 1]
           (doseq [{:keys [upload-type uncoerced coerced fail-msg] :as args}
-                  [{:upload-type ::upload/int,     :uncoerced "2.0",        :coerced 2} ;; value is coerced to int
-                   {:upload-type ::upload/int,     :uncoerced "2.1",        :coerced 2.1} ;; column is promoted to float
-                   {:upload-type ::upload/float,   :uncoerced "2",          :coerced 2.0}
-                   {:upload-type ::upload/boolean, :uncoerced "0",          :coerced false}
-                   {:upload-type ::upload/boolean, :uncoerced "1.0",        :fail-msg "'1.0' is not a recognizable boolean"}
-                   {:upload-type ::upload/boolean, :uncoerced "0.0",        :fail-msg "'0.0' is not a recognizable boolean"}
-                   {:upload-type ::upload/int,     :uncoerced "01/01/2012", :fail-msg "'01/01/2012' is not a recognizable number"}]]
+                  [{:upload-type int-type,   :uncoerced "2.0",        :coerced 2} ;; value is coerced to int
+                   {:upload-type int-type,   :uncoerced "2.1",        :coerced 2.1} ;; column is promoted to float
+                   {:upload-type float-type, :uncoerced "2",          :coerced 2.0}
+                   {:upload-type bool-type,  :uncoerced "0",          :coerced false}
+                   {:upload-type bool-type,  :uncoerced "1.0",        :fail-msg "'1.0' is not a recognizable boolean"}
+                   {:upload-type bool-type,  :uncoerced "0.0",        :fail-msg "'0.0' is not a recognizable boolean"}
+                   {:upload-type int-type,   :uncoerced "01/01/2012", :fail-msg "'01/01/2012' is not a recognizable number"}]]
             (with-upload-table!
               [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
-                                                               upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk
+                                                               upload/auto-pk-column-keyword auto-pk-type
                                                                :test_column upload-type)
                                             :rows             []})]
               (let [csv-rows ["test_column" uncoerced]
@@ -1735,9 +1735,9 @@
     (testing "Append should handle a mix of int and float-or-int values being appended to an int column"
       (with-upload-table! [table (create-upload-table!
                                   :col->upload-type (ordered-map/ordered-map
-                                                     :_mb_row_id ::upload/auto-incrementing-int-pk
-                                                     :number_1 ::upload/int
-                                                     :number_2 ::upload/int)
+                                                     :_mb_row_id auto-pk-type
+                                                     :number_1 int-type
+                                                     :number_2 int-type)
                                   :rows [[1, 1]])]
 
         (let [csv-rows ["number-1, number-2"
@@ -1757,9 +1757,9 @@
     (testing "Append should handle a mix of int and float-or-int values being appended to an int column"
       (with-upload-table! [table (create-upload-table!
                                   :col->upload-type (ordered-map/ordered-map
-                                                     :_mb_row_id ::upload/auto-incrementing-int-pk
-                                                     :number_1 ::upload/int
-                                                     :number_2 ::upload/int)
+                                                     :_mb_row_id auto-pk-type
+                                                     :number_1 int-type
+                                                     :number_2 int-type)
                                   :rows [[1, 1]])]
 
         (let [csv-rows ["number-1, number-2"

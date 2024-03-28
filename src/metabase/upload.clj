@@ -76,7 +76,7 @@
         col-name+type-pairs (->> (upload-types/column-types-from-rows settings initial-types rows)
                                  (map vector unique-header))]
     {:extant-columns    (ordered-map/ordered-map col-name+type-pairs)
-     :generated-columns (ordered-map/ordered-map auto-pk-column-keyword ::auto-incrementing-int-pk)}))
+     :generated-columns (ordered-map/ordered-map auto-pk-column-keyword ::upload-types/auto-incrementing-int-pk)}))
 
 ;;;; +------------------+
 ;;;; |  Parsing values  |
@@ -108,10 +108,20 @@
     (str truncated-name-without-time
          (t/format time-format (strictly-monotonic-now)))))
 
+(mu/defn ^:private database-type
+  [driver
+   column-type :- (into [:enum] upload-types/column-types)]
+  (try
+    (driver/upload-type->database-type driver column-type)
+    (catch IllegalArgumentException _
+      ;; TODO: we can remove this workaround in a future version (52?)
+      (let [legacy-type (keyword "metabase.upload" (name column-type))]
+        (driver/upload-type->database-type driver legacy-type)))))
+
 (defn- column-definitions
   "Returns a map of column-name -> column-definition from a map of column-name -> upload-type."
   [driver col->upload-type]
-  (update-vals col->upload-type (partial driver/upload-type->database-type driver)))
+  (update-vals col->upload-type (partial database-type driver)))
 
 (defn current-database
   "The database being used for uploads (as per the `uploads-database-id` setting)."
@@ -421,20 +431,6 @@
 ;;; |  appending to uploaded table
 ;;; +-----------------------------
 
-(defn- base-type->upload-type
-  "Returns the most specific upload type for the given base type."
-  [base-type]
-  (when base-type
-    (condp #(isa? %2 %1) base-type
-      :type/Float                  ::float
-      :type/BigInteger             ::int
-      :type/Integer                ::int
-      :type/Boolean                ::boolean
-      :type/DateTimeWithTZ         ::offset-datetime
-      :type/DateTime               ::datetime
-      :type/Date                   ::date
-      :type/Text                   ::text)))
-
 (defn- not-blank [s]
   (when-not (str/blank? s)
     s))
@@ -486,7 +482,7 @@
   (m/map-kv
    (fn [field-name col-type]
      [(keyword field-name)
-      (driver/upload-type->database-type driver col-type)])
+      (database-type driver col-type)])
    field->col-type))
 
 (defn- add-columns! [driver database table field->type & args]
@@ -516,7 +512,7 @@
                                   (not (contains? normed-name->field auto-pk-column-name)))
               _                  (check-schema (dissoc normed-name->field auto-pk-column-name) header)
               settings           (upload-parsing/get-settings)
-              old-types          (map (comp base-type->upload-type :base_type normed-name->field) normed-header)
+              old-types          (map (comp upload-types/base-type->upload-type :base_type normed-name->field) normed-header)
               ;; in the happy, and most common, case all the values will match the existing types
               ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
               ;; we can come back and optimize this to an optimistic-with-fallback approach later.
@@ -548,7 +544,7 @@
 
           (when create-auto-pk?
             (add-columns! driver database table
-                          {auto-pk-column-keyword ::auto-incrementing-int-pk}
+                          {auto-pk-column-keyword ::upload-types/auto-incrementing-int-pk}
                           :primary-key [auto-pk-column-keyword]))
 
           (scan-and-sync-table! database table)

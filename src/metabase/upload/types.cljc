@@ -269,6 +269,20 @@
   (->> (reduce (type-relaxer settings) existing-types rows)
        (u/map-all concretize existing-types)))
 
+(defn base-type->upload-type
+  "Returns the most specific upload type for the given base type."
+  [base-type]
+  (when base-type
+    (condp #(isa? %2 %1) base-type
+      :type/Float                  ::float
+      :type/BigInteger             ::int
+      :type/Integer                ::int
+      :type/Boolean                ::boolean
+      :type/DateTimeWithTZ         ::offset-datetime
+      :type/DateTime               ::datetime
+      :type/Date                   ::date
+      :type/Text                   ::text)))
+
 (defn- promotable?
   "Are we allowed to promote a column's schema from `current-type` to `inferred-type`?"
   [current-type inferred-type]
