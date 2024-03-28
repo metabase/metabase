@@ -48,9 +48,9 @@ describe("getGroupsDataPermissionEditor", () => {
     expect(accessPermission.value).toEqual(DataPermissionValue.UNRESTRICTED);
     expect(accessPermission.options).toEqual([
       {
-        icon: "check",
+        icon: "eye",
         iconColor: "success",
-        label: "Unrestricted",
+        label: "Can view",
         value: DataPermissionValue.UNRESTRICTED,
       },
       {

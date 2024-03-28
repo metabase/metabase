@@ -45,7 +45,6 @@ describe("updateNativePermission", () => {
       entityId,
       DataPermissionValue.NO,
       database,
-      DataPermission.CREATE_QUERIES,
     );
 
     expect(updatedGraph).toStrictEqual({
@@ -69,7 +68,6 @@ describe("updateNativePermission", () => {
       entityId,
       DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
       database,
-      DataPermission.CREATE_QUERIES,
     );
 
     expect(updatedGraph).toStrictEqual({
@@ -98,7 +96,6 @@ describe("updateNativePermission", () => {
         entityId,
         DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
         database,
-        DataPermission.CREATE_QUERIES,
       );
 
       expect(updatedGraph).toStrictEqual({
@@ -121,7 +118,6 @@ describe("updateNativePermission", () => {
       entityId,
       DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
       database,
-      DataPermission.CREATE_QUERIES,
     );
 
     expect(updatedGraph).toStrictEqual({
