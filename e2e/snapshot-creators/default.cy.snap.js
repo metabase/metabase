@@ -166,35 +166,30 @@ describe("snapshots", () => {
       [ALL_USERS_GROUP]: {
         [SAMPLE_DB_ID]: {
           // set the data permission so the UI doesn't warn us that "all users has higher permissions than X"
-          data: { schemas: "none", native: "none" },
           "view-data": lowest_read_data_permission,
           "create-queries": "no",
         },
       },
       [DATA_GROUP]: {
         [SAMPLE_DB_ID]: {
-          data: { schemas: "all", native: "write" },
           "view-data": "unrestricted",
           "create-queries": "query-builder-and-native",
         },
       },
       [NOSQL_GROUP]: {
         [SAMPLE_DB_ID]: {
-          data: { schemas: "all", native: "none" },
           "view-data": "unrestricted",
           "create-queries": "query-builder",
         },
       },
       [COLLECTION_GROUP]: {
         [SAMPLE_DB_ID]: {
-          data: { schemas: "none", native: "none" },
           "view-data": lowest_read_data_permission,
           "create-queries": "no",
         },
       },
       [READONLY_GROUP]: {
         [SAMPLE_DB_ID]: {
-          data: { schemas: "none", native: "none" },
           "view-data": lowest_read_data_permission,
           "create-queries": "no",
         },

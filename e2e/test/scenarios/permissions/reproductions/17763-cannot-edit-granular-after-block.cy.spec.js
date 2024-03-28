@@ -17,7 +17,6 @@ describeEE("issue 17763", () => {
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
         1: {
-          data: { schemas: "block", native: "none" },
           "view-data": "blocked",
           "create-queries": "no",
         },

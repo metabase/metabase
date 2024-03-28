@@ -131,9 +131,7 @@
                                       (when-not audit? [:not [:= :t.db_id config/audit-db-id]])]})]
     ;; Incorporate each sandbox policy into the permissions graph.
     (reduce (fn [acc {:keys [group_id table_id db_id schema]}]
-              (-> acc
-                (merge-sandbox-into-graph group_id table_id db_id schema [:data :schemas] {:query :segmented, :read :all})
-                (merge-sandbox-into-graph group_id table_id db_id schema [:view-data] :sandboxed)))
+              (merge-sandbox-into-graph acc group_id table_id db_id schema [:view-data] :sandboxed))
             graph
             sandboxes)))
 

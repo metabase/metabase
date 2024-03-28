@@ -243,14 +243,12 @@ describe(
       cy.updatePermissionsGraph({
         [USER_GROUPS.ALL_USERS_GROUP]: {
           [WRITABLE_DB_ID]: {
-            data: { schemas: "none", native: "none" },
             "view-data": "blocked",
             "create-queries": "no",
           },
         },
         [USER_GROUPS.DATA_GROUP]: {
           [WRITABLE_DB_ID]: {
-            data: { schemas: "all", native: "write" },
             "view-data": "unrestricted",
             "create-queries": "query-builder-and-native",
           },
