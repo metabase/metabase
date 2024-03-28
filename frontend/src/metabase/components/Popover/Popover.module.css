@@ -1,10 +1,10 @@
 /* afaik popover needs a positioning context to be able to calculate the transform */
-:global(.PopoverContainer) {
+.PopoverContainer {
   position: absolute;
   z-index: 4;
 }
 
-:global(.PopoverBody) {
+.PopoverBody {
   pointer-events: auto;
   min-width: 1em; /* ewwwwwwww */
   display: flex;
@@ -15,7 +15,7 @@
   max-width: 500px;
 }
 
-:global(.PopoverBody.PopoverBody--withBackground) {
+.PopoverBody:global(.PopoverBody--withBackground) {
   border: 1px solid #edf2f5;
   box-shadow: 0 4px 10px var(--color-shadow);
   background-color: var(--color-bg-white);
@@ -68,11 +68,11 @@
  * initially added  for date pickers so the dual date picker can fully
  * expand as necessary - metabase#5971
  */
-:global(.PopoverBody.PopoverBody--autoWidth) {
+.PopoverBody:global(.PopoverBody--autoWidth) {
   max-width: none;
 }
 
-:global(.PopoverBody.PopoverBody--tooltip) {
+.PopoverBody:global(.PopoverBody--tooltip) {
   color: white;
   font-weight: bold;
   background-color: var(--color-bg-black);
@@ -82,7 +82,7 @@
   padding: 10px 12px;
 }
 
-:global(.PopoverBody.PopoverBody--tooltip.PopoverBody--tooltipConstrainedWidth) {
+.PopoverBody:global(.PopoverBody--tooltip.PopoverBody--tooltipConstrainedWidth) {
   font-size: 12px;
   max-width: 200px;
 }
@@ -108,7 +108,7 @@
   margin-bottom: 60px;
 }
 
-:global(.PopoverBody) .FormField {
+.PopoverBody .FormField {
   margin-bottom: 0.75rem;
 }
 

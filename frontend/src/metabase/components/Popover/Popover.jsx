@@ -8,7 +8,7 @@ import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import CS from "metabase/css/core/index.css";
 import { isCypressActive } from "metabase/env";
 
-import "./Popover.module.css";
+import PopoverS from "./Popover.module.css";
 
 // space we should leave between page edge and popover edge
 const PAGE_PADDING = 10;
@@ -97,7 +97,10 @@ export default class Popover extends Component {
 
     if (!this._popoverElement && isOpen) {
       this._popoverElement = document.createElement("span");
-      this._popoverElement.className = `PopoverContainer ${this.props.containerClassName}`;
+      this._popoverElement.className = cx(
+        PopoverS.PopoverContainer,
+        this.props.containerClassName,
+      );
       this._popoverElement.dataset.testid = "popover";
       document.body.appendChild(this._popoverElement);
 
@@ -231,7 +234,7 @@ export default class Popover extends Component {
       <div
         id={this.props.id}
         className={cx(
-          "PopoverBody",
+          PopoverS.PopoverBody,
           {
             "PopoverBody--withBackground": this.props.hasBackground,
             "PopoverBody--withArrow":
@@ -384,7 +387,9 @@ export default class Popover extends Component {
   }
 
   constrainPopoverToBetweenViewportAndTarget(tetherOptions, direction) {
-    const body = tetherOptions.element.querySelector(".PopoverBody");
+    const body = tetherOptions.element.querySelector(
+      `.${PopoverS.PopoverBody}`,
+    );
     const target = this._getTargetElement();
     const bodyHeight = body.getBoundingClientRect().height;
     const space =
