@@ -4,9 +4,9 @@ import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
 import PaginationControls from "metabase/components/PaginationControls";
+import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import Search from "metabase/entities/search";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useDispatch } from "metabase/lib/redux";
@@ -91,11 +91,7 @@ function SearchApp({ location }) {
                   <EmptyState
                     title={t`Didn't find anything`}
                     message={t`There weren't any results for your search.`}
-                    illustrationElement={
-                      <Box mb={"-2.5rem"}>
-                        <img src={NoResults} />
-                      </Box>
-                    }
+                    illustrationElement={<NoObjectError mb="-1.5rem" />}
                   />
                 </Paper>
               ) : (

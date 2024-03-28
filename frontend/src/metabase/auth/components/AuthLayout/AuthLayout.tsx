@@ -22,7 +22,7 @@ export const AuthLayout = ({ children }: AuthLayoutProps): JSX.Element => {
     <LayoutRoot>
       {loginPageIllustration && (
         <LayoutIllustration
-          data-testid="login-page-container"
+          data-testid="login-page-illustration"
           backgroundImageSrc={loginPageIllustration.src}
           isDefault={loginPageIllustration.isDefault}
         />

@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
+import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import Search from "metabase/entities/search";
 import { useDebouncedEffectWithCleanup } from "metabase/hooks/use-debounced-effect";
 import { defer } from "metabase/lib/promise";
@@ -140,11 +140,7 @@ export const EntityPickerSearchResults = <
           <EmptyState
             title={t`Didn't find anything`}
             message={t`There weren't any results for your search.`}
-            illustrationElement={
-              <Box mb={"-2.5rem"}>
-                <img src={NoResults} />
-              </Box>
-            }
+            illustrationElement={<NoObjectError mb="-1.5rem" />}
           />
         </Flex>
       )}

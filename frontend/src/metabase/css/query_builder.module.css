@@ -151,12 +151,6 @@
   margin-bottom: 1rem;
 }
 
-.QueryErrorImageNoRows {
-  width: 120px;
-  height: 120px;
-  background-image: url("~assets/img/no_results.svg");
-}
-
 .QueryErrorImageQueryError {
   width: 120px;
   height: 120px;

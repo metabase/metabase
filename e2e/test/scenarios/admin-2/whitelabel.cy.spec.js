@@ -2,12 +2,16 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   appBar,
   describeEE,
+  entityPickerModal,
   main,
   mantinePopover,
+  modal,
   popover,
   restore,
   setTokenFeatures,
   undoToast,
+  visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 function checkFavicon(url) {
@@ -138,118 +142,355 @@ describeEE("formatting > whitelabel", () => {
       });
     });
 
-    describe("login page illustration", () => {
-      it("should only allow uploading a valid image files (PNG, JPG, SVG)", () => {
-        /**
-         * Unfortunately, we couldn't test the browser file selector with Cypress yet.
-         * With `input.selectFile`, we still can select any files unlike the browser file selector
-         * which would respect the `accept` attribute (which specifies the accepted MIME types).
-         */
-        cy.visit("/admin/settings/whitelabel/conceal-metabase");
-
-        cy.findByTestId("login-page-illustration-setting").within(() => {
-          cy.log("test error message for file size > 2MB");
+    describe("custom illustrations", () => {
+      describe("login page illustration", () => {
+        it("should only allow uploading a valid image files (PNG, JPG, SVG) and display on login page", () => {
           /**
-           * This makes sure we scroll to the component which sits at the bottom of the page.
+           * Unfortunately, we couldn't test the browser file selector with Cypress yet.
+           * With `input.selectFile`, we still can select any files unlike the browser file selector
+           * which would respect the `accept` attribute (which specifies the accepted MIME types).
            */
-          cy.findByLabelText("Login and unsubscribe pages").click();
-        });
-        mantinePopover().findByText("Custom").click();
-        cy.findByTestId("login-page-illustration-setting").within(() => {
-          cy.findByTestId("file-input").selectFile(
-            {
-              contents: Cypress.Buffer.from("a".repeat(2 * MB + 1)),
-              fileName: "big-file.jpg",
-              mimeType: "image/jpeg",
+          cy.visit("/admin/settings/whitelabel/conceal-metabase");
+
+          cy.log("test error message for file size > 2MB");
+          cy.findByRole("searchbox", {
+            name: "Login and unsubscribe pages",
+          }).click();
+          mantinePopover().findByText("Custom").click();
+          /**
+           * Clicking "Choose File" doesn't actually open the file browser on Cypress,
+           * so I need to use `selectFile` with the file input instead.
+           */
+          cy.findByTestId("login-page-illustration-setting").within(() => {
+            cy.findByTestId("file-input").selectFile(
+              {
+                contents: Cypress.Buffer.from("a".repeat(2 * MB + 1)),
+                fileName: "big-file.jpg",
+                mimeType: "image/jpeg",
+              },
+              { force: true },
+            );
+            cy.findByText(
+              "The image you chose is larger than 2MB. Please choose another one.",
+            ).should("be.visible");
+            cy.findByText("big-file.jpg").should("not.exist");
+          });
+          cy.findByRole("searchbox", {
+            name: "Login and unsubscribe pages",
+          }).click();
+          mantinePopover().findByText("Custom").click();
+          cy.log("test uploading a corrupted file");
+          cy.findByTestId("login-page-illustration-setting").within(() => {
+            cy.findByTestId("file-input").selectFile(
+              {
+                contents: Cypress.Buffer.from("a".repeat(2 * MB)),
+                fileName: "corrupted-file.jpg",
+                mimeType: "image/jpeg",
+              },
+              { force: true },
+            );
+            cy.findByText(
+              "The image you chose is corrupted. Please choose another one.",
+            )
+              .scrollIntoView()
+              .should("be.visible");
+            cy.findByText("corrupted-file.jpg").should("not.exist");
+          });
+
+          cy.log('test replacing the "corrupted" file with a valid one');
+          cy.findByTestId("login-page-illustration-setting").within(() => {
+            cy.findByTestId("file-input").selectFile(
+              {
+                contents: "e2e/support/assets/logo.jpeg",
+                mimeType: "image/jpeg",
+              },
+              { force: true },
+            );
+            cy.findByText("logo.jpeg").should("be.visible");
+
+            cy.findByText(
+              "The image you chose is corrupted. Please choose another one.",
+            ).should("not.exist");
+          });
+          undoToast().findByText("Changes saved").should("be.visible");
+          undoToast().icon("close").click();
+
+          cy.log("test removing the custom illustration");
+          cy.findByTestId("login-page-illustration-setting").within(() => {
+            cy.button("Remove custom illustration").click();
+            cy.log(
+              "the default option should be selected once removing the custom illustration",
+            );
+            cy.findByDisplayValue("Lighthouse").should("be.visible");
+          });
+          undoToast().findByText("Changes saved").should("be.visible");
+          undoToast().icon("close").click();
+
+          cy.log("test uploading a valid image file");
+          cy.findByTestId("login-page-illustration-setting")
+            .findByRole("searchbox", { name: "Login and unsubscribe pages" })
+            .click();
+          mantinePopover().findByText("Custom").click();
+          cy.findByTestId("login-page-illustration-setting").within(() => {
+            cy.findByTestId("file-input").selectFile(
+              {
+                contents: "e2e/support/assets/logo.jpeg",
+                mimeType: "image/jpeg",
+              },
+              { force: true },
+            );
+            cy.findByText("logo.jpeg").should("be.visible");
+          });
+          undoToast().findByText("Changes saved").should("be.visible");
+
+          cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
+            logo_data => {
+              const backgroundImage = `url("data:image/jpeg;base64,${logo_data}")`;
+              cy.signOut();
+              cy.visit("/");
+              cy.findByTestId("login-page-illustration").should(
+                "have.css",
+                "background-image",
+                backgroundImage,
+              );
+
+              cy.visit("/unsubscribe?hash=hash&email=email&pulse-id=pulse-id");
+              cy.findByTestId("unsubscribe-page-illustration").should(
+                "have.css",
+                "background-image",
+                backgroundImage,
+              );
             },
-            { force: true },
           );
-          cy.findByText(
-            "The image you chose is larger than 2MB. Please choose another one.",
-          ).should("be.visible");
-          cy.findByText("big-file.jpg").should("not.exist");
+
+          cy.log("test no illustration");
+          cy.signInAsAdmin();
+          cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
           cy.findByRole("searchbox", {
             name: "Login and unsubscribe pages",
           }).click();
+          mantinePopover().findByText("No illustration").click();
+
+          cy.signOut();
+          cy.visit("/");
+          cy.findByTestId("login-page-illustration").should("not.exist");
+
+          cy.visit("/unsubscribe?hash=hash&email=email&pulse-id=pulse-id");
+          cy.findByTestId("unsubscribe-page-illustration").should("not.exist");
         });
-        mantinePopover().findByText("Custom").click();
-        cy.log("test uploading a corrupted file");
-        cy.findByTestId("login-page-illustration-setting").within(() => {
-          cy.findByTestId("file-input").selectFile(
-            {
-              contents: Cypress.Buffer.from("a".repeat(2 * MB)),
-              fileName: "corrupted-file.jpg",
-              mimeType: "image/jpeg",
-            },
-            { force: true },
+      });
+
+      describe("landing page illustration", () => {
+        it("should allow display the selected illustration on the landing page", () => {
+          cy.visit("/admin/settings/whitelabel/conceal-metabase");
+
+          cy.findByRole("searchbox", { name: "Landing page" }).should(
+            "have.value",
+            "Lighthouse",
           );
-          cy.findByText(
-            "The image you chose is corrupted. Please choose another one.",
-          )
-            .scrollIntoView()
-            .should("be.visible");
-          cy.findByText("corrupted-file.jpg").should("not.exist");
-        });
 
-        cy.log('test replacing the "corrupted" file with a valid one');
-        cy.findByTestId("login-page-illustration-setting").within(() => {
-          cy.findByTestId("file-input").selectFile(
-            {
-              contents: "e2e/support/assets/logo.jpeg",
-              mimeType: "image/jpeg",
-            },
-            { force: true },
-          );
-          cy.findByText("logo.jpeg").should("be.visible");
+          cy.findByRole("searchbox", { name: "Landing page" }).click();
+          mantinePopover().findByText("Custom").click();
 
-          cy.findByText(
-            "The image you chose is corrupted. Please choose another one.",
-          ).should("not.exist");
-        });
-        undoToast().findByText("Changes saved").should("be.visible");
-        undoToast().icon("close").click();
-
-        cy.log("test removing the custom illustration");
-        cy.findByTestId("login-page-illustration-setting").within(() => {
-          cy.button("Remove custom illustration").click();
-          cy.log(
-            "the default option should be selected once removing the custom illustration",
-          );
-          cy.findByDisplayValue("Lighthouse").should("be.visible");
-        });
-        undoToast().findByText("Changes saved").should("be.visible");
-        undoToast().icon("close").click();
-
-        cy.log("test uploading a valid image file");
-        cy.findByTestId("login-page-illustration-setting")
-          .findByRole("searchbox", { name: "Login and unsubscribe pages" })
-          .click();
-        mantinePopover().findByText("Custom").click();
-        cy.findByTestId("login-page-illustration-setting").within(() => {
-          cy.findByTestId("file-input").selectFile(
-            {
-              contents: "e2e/support/assets/logo.jpeg",
-              mimeType: "image/jpeg",
-            },
-            { force: true },
-          );
-          cy.findByText("logo.jpeg").should("be.visible");
-        });
-        undoToast().findByText("Changes saved").should("be.visible");
-
-        cy.signOut();
-        cy.visit("/");
-
-        cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
-          logo_data => {
-            cy.findByTestId("login-page-container").should(
-              "have.css",
-              "background-image",
-              `url("data:image/jpeg;base64,${logo_data}")`,
+          cy.findByTestId("landing-page-illustration-setting").within(() => {
+            cy.findByTestId("file-input").selectFile(
+              {
+                contents: "e2e/support/assets/logo.jpeg",
+                mimeType: "image/jpeg",
+              },
+              { force: true },
             );
-          },
-        );
+            cy.findByText("logo.jpeg").should("be.visible");
+          });
+          undoToast().findByText("Changes saved").should("be.visible");
+
+          cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
+            logo_data => {
+              const backgroundImage = `url("data:image/jpeg;base64,${logo_data}")`;
+              cy.visit("/");
+              cy.findByTestId("landing-page-illustration").should(
+                "have.css",
+                "background-image",
+                backgroundImage,
+              );
+            },
+          );
+
+          cy.log("test no illustration");
+          cy.visit("/admin/settings/whitelabel/conceal-metabase");
+
+          cy.findByLabelText("Landing page").click();
+          mantinePopover().findByText("No illustration").click();
+
+          cy.visit("/");
+          cy.findByTestId("landing-page-illustration").should("not.exist");
+        });
+      });
+
+      describe("no data illustration", () => {
+        it("should allow display the selected illustration at relevant places", () => {
+          cy.visit("/admin/settings/whitelabel/conceal-metabase");
+
+          cy.findByRole("searchbox", {
+            name: "When calculations return no results",
+          }).should("have.value", "Sailboat");
+
+          cy.findByRole("searchbox", {
+            name: "When calculations return no results",
+          }).click();
+          mantinePopover().findByText("Custom").click();
+
+          cy.findByTestId("no-data-illustration-setting").within(() => {
+            cy.findByTestId("file-input").selectFile(
+              {
+                contents: "e2e/support/assets/logo.jpeg",
+                mimeType: "image/jpeg",
+              },
+              { force: true },
+            );
+            cy.findByText("logo.jpeg").should("be.visible");
+          });
+          undoToast().findByText("Changes saved").should("be.visible");
+
+          cy.createDashboardWithQuestions({
+            dashboardName: "No results dashboard",
+            questions: [
+              {
+                name: "No results question",
+                native: {
+                  query: "select * from products where id = 999999999",
+                },
+              },
+            ],
+          }).then(({ dashboard, questions }) => {
+            cy.wrap(dashboard.id).as("dashboardId");
+            cy.wrap(questions[0].id).as("questionId");
+          });
+
+          cy.log("test custom illustration");
+
+          visitDashboard("@dashboardId");
+          cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
+            logo_data => {
+              const imageDataUrl = `data:image/jpeg;base64,${logo_data}`;
+              cy.wrap(imageDataUrl).as("imageDataUrl");
+              cy.findByAltText("No results").should(
+                "have.attr",
+                "src",
+                imageDataUrl,
+              );
+            },
+          );
+
+          visitQuestion("@questionId");
+          cy.get("@imageDataUrl").then(imageDataUrl => {
+            cy.findByAltText("No results").should(
+              "have.attr",
+              "src",
+              imageDataUrl,
+            );
+          });
+
+          cy.log("test no illustration");
+
+          cy.visit("/admin/settings/whitelabel/conceal-metabase");
+          cy.findByRole("searchbox", {
+            name: "When calculations return no results",
+          }).click();
+          mantinePopover().findByText("No illustration").click();
+
+          visitDashboard("@dashboardId");
+          cy.findByAltText("No results").should("not.exist");
+
+          visitQuestion("@questionId");
+          cy.findByAltText("No results").should("not.exist");
+        });
+      });
+
+      describe("no object illustration", () => {
+        it("should allow display the selected illustration at relevant places", () => {
+          const emptyCollectionName = "Empty Collection";
+          cy.request("POST", "/api/collection", { name: emptyCollectionName });
+          cy.visit("/admin/settings/whitelabel/conceal-metabase");
+
+          cy.findByRole("searchbox", {
+            name: "When no objects can be found",
+          }).should("have.value", "Sailboat");
+
+          cy.findByRole("searchbox", {
+            name: "When no objects can be found",
+          }).click();
+          mantinePopover().findByText("Custom").click();
+
+          cy.findByTestId("no-object-illustration-setting").within(() => {
+            cy.findByTestId("file-input").selectFile(
+              {
+                contents: "e2e/support/assets/logo.jpeg",
+                mimeType: "image/jpeg",
+              },
+              { force: true },
+            );
+            cy.findByText("logo.jpeg").should("be.visible");
+          });
+          undoToast().findByText("Changes saved").should("be.visible");
+
+          cy.log("test custom illustration");
+
+          cy.findByRole("navigation").findByText("Exit admin").click();
+          appBar().findByText("New").click();
+          popover().findByText("Dashboard").click();
+          modal().findByTestId("collection-picker-button").click();
+          entityPickerModal().within(() => {
+            cy.findByText(emptyCollectionName).click();
+            cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
+              logo_data => {
+                const imageDataUrl = `data:image/jpeg;base64,${logo_data}`;
+                cy.wrap(imageDataUrl).as("imageDataUrl");
+                cy.findByAltText("No results").should(
+                  "have.attr",
+                  "src",
+                  imageDataUrl,
+                );
+              },
+            );
+
+            cy.log("test search not found illustration");
+            cy.findByPlaceholderText("Search…").type(
+              "This aren't the objects you're looking for",
+            );
+            cy.get("@imageDataUrl").then(imageDataUrl => {
+              cy.findByAltText("No results").should(
+                "have.attr",
+                "src",
+                imageDataUrl,
+              );
+            });
+          });
+
+          cy.log("test no illustration");
+
+          cy.visit("/admin/settings/whitelabel/conceal-metabase");
+          cy.findByRole("searchbox", {
+            name: "When no objects can be found",
+          }).click();
+          mantinePopover().findByText("No illustration").click();
+
+          cy.findByRole("navigation").findByText("Exit admin").click();
+          appBar().findByText("New").click();
+          popover().findByText("Dashboard").click();
+          modal().findByTestId("collection-picker-button").click();
+          entityPickerModal().within(() => {
+            cy.findByText(emptyCollectionName).click();
+            cy.findByAltText("No results").should("not.exist");
+
+            cy.log("test search not found illustration");
+            cy.findByPlaceholderText("Search…").type(
+              "This aren't the objects you're looking for",
+            );
+            cy.findByAltText("No results").should("not.exist");
+          });
+        });
       });
     });
   });
