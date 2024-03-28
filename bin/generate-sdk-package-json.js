@@ -19,7 +19,12 @@ function filterReactDependencies(object) {
 }
 
 function generateSdkPackage() {
-  const maybeCommitHash = process.argv[2];
+  let maybeCommitHash = process.argv[2];
+
+  if (maybeCommitHash) {
+    // get short commit hash
+    maybeCommitHash = maybeCommitHash.slice(0, 7);
+  }
 
   const mainPackageJson = fs.readFileSync(
     path.resolve("./package.json"),
@@ -51,8 +56,13 @@ function generateSdkPackage() {
   console.log("Generated SDK package.json:");
   console.log(mergedContentString);
 
+  const sdkDistDirPath = path.resolve("./resources/embedding-sdk");
+  if (!fs.existsSync(sdkDistDirPath)) {
+    fs.mkdirSync(sdkDistDirPath);
+  }
+
   fs.writeFileSync(
-    path.resolve("./resources/embedding-sdk/package.json"),
+    path.resolve(path.join(sdkDistDirPath), "package.json"),
     mergedContentString,
     "utf-8",
   );
