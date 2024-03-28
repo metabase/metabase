@@ -59,10 +59,6 @@ export interface SchemaListQuery {
   include_editable_data_model?: boolean;
 }
 
-export interface TableQuery {
-  include_editable_data_model?: boolean;
-}
-
 export interface TableMetadataQuery {
   include_sensitive_fields?: boolean;
   include_hidden_fields?: boolean;
@@ -83,4 +79,16 @@ export interface ForeignKey {
   destination?: Field;
   destination_id: FieldId;
   relationship: "Mt1";
+}
+
+export interface GetTableRequest {
+  id: TableId;
+  include_editable_data_model?: boolean;
+}
+
+export interface GetTableMetadataRequest {
+  id: TableId;
+  include_sensitive_fields?: boolean;
+  include_hidden_fields?: boolean;
+  include_editable_data_model?: boolean;
 }

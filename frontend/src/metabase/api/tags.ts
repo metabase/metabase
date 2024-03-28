@@ -3,6 +3,9 @@ export const TAG_TYPES = [
   "database",
   "database-metadata",
   "database-id-fields",
+  "table",
+  "table-metadata",
+  "table-foreign-keys",
   "field",
   "field-values",
 ] as const;

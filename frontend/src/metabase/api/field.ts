@@ -31,6 +31,8 @@ export const fieldApi = Api.injectEndpoints({
       invalidatesTags: (response, error, { id }) => [
         idTag("field", id),
         idTag("field-values", id),
+        tag("table-metadata"),
+        tag("table-foreign-keys"),
         tag("database-metadata"),
         tag("database-id-fields"),
       ],
