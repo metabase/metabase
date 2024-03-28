@@ -1,8 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { Button, Flex } from "metabase/ui";
+import { Button, Flex, Text } from "metabase/ui";
 
 export const ButtonBar = ({
   onConfirm,
@@ -19,6 +19,7 @@ export const ButtonBar = ({
   confirmButtonText?: string;
   cancelButtonText?: string;
 }) => {
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     const handleEnter = (e: KeyboardEvent) => {
       if (canConfirm && e.key === "Enter") {
@@ -34,12 +35,18 @@ export const ButtonBar = ({
   return (
     <Flex
       justify="space-between"
+      align="center"
       p="md"
       style={{
         borderTop: `1px solid ${color("border")}`,
       }}
     >
       <Flex gap="md">{actionButtons}</Flex>
+      {error && (
+        <Text color="error" px="md" lh="1rem">
+          {error}
+        </Text>
+      )}
       <Flex gap="md">
         <Button onClick={onCancel} type="button">
           {cancelButtonText ?? t`Cancel`}
@@ -47,7 +54,14 @@ export const ButtonBar = ({
         <Button
           ml={1}
           variant="filled"
-          onClick={onConfirm}
+          onClick={async () => {
+            try {
+              setError(null);
+              await onConfirm();
+            } catch (e: any) {
+              setError(e?.data?.message ?? t`An error occurred`);
+            }
+          }}
           disabled={!canConfirm}
         >
           {confirmButtonText ?? t`Select`}

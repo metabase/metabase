@@ -75,9 +75,9 @@ export const MoveCollectionModal = ({
   return (
     <MoveCollectionModalView
       collection={collection}
-      onMove={(source, destination) =>
-        dispatch(Collections.actions.setCollection(source, destination))
-      }
+      onMove={async (source, destination) => {
+        await dispatch(Collections.actions.setCollection(source, destination));
+      }}
       onClose={onClose}
     />
   );
