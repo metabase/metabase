@@ -27,7 +27,7 @@ export const fieldApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/field/${fieldId}/values`,
       }),
-      providesTags: (result, error, fieldId) => [
+      providesTags: (response, error, fieldId) => [
         idTag("field-values", fieldId),
       ],
     }),
@@ -37,7 +37,7 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${fieldId}/search/${searchFieldId}`,
         body,
       }),
-      providesTags: (result, error, { fieldId }) => [
+      providesTags: (response, error, { fieldId }) => [
         idTag("field-values", fieldId),
       ],
     }),
@@ -60,7 +60,7 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${id}/dimension`,
         body,
       }),
-      invalidatesTags: (result, error, { id }) => [
+      invalidatesTags: (response, error, { id }) => [
         idTag("field", id),
         idTag("field-values", id),
       ],
@@ -70,7 +70,7 @@ export const fieldApi = Api.injectEndpoints({
         method: "DELETE",
         url: `/api/field/${id}/dimension`,
       }),
-      invalidatesTags: (result, error, id) => [
+      invalidatesTags: (response, error, id) => [
         idTag("field", id),
         idTag("field-values", id),
       ],
@@ -80,14 +80,14 @@ export const fieldApi = Api.injectEndpoints({
         method: "POST",
         url: `/api/field/${id}/rescan_values`,
       }),
-      invalidatesTags: (result, error, id) => [idTag("field-values", id)],
+      invalidatesTags: (response, error, id) => [idTag("field-values", id)],
     }),
     discardFieldValues: builder.mutation<void, FieldId>({
       query: id => ({
         method: "POST",
         url: `/api/field/${id}/discard_values`,
       }),
-      invalidatesTags: (result, error, id) => [idTag("field-values", id)],
+      invalidatesTags: (response, error, id) => [idTag("field-values", id)],
     }),
   }),
 });
