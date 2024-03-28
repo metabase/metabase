@@ -66,16 +66,17 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(doseq [[feature supported?] {:full-join                 false
-                              :regex                     true
-                              :percentile-aggregations   false
-                              :actions                   true
-                              :actions/custom            true
-                              :datetime-diff             true
-                              :now                       true
-                              :test/jvm-timezone-setting false
-                              :uploads                   true
-                              :index-info                true}]
+(doseq [[feature supported?] {::sql.qp/order-by-select-position true
+                              :actions                          true
+                              :actions/custom                   true
+                              :datetime-diff                    true
+                              :full-join                        false
+                              :index-info                       true
+                              :now                              true
+                              :percentile-aggregations          false
+                              :regex                            true
+                              :test/jvm-timezone-setting        false
+                              :uploads                          true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))

@@ -389,11 +389,13 @@
 (mu/defn add-order-by-clause :- mbql.s/MBQLQuery
   "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
   already being used in another order-by clause, this function does nothing."
-  [inner-query                                        :- mbql.s/MBQLQuery
-   [_ [_ id-or-name :as _field], :as order-by-clause] :- mbql.s/OrderBy]
-  (let [existing-fields (set (for [[_ [_ id-or-name]] (:order-by inner-query)]
-                               id-or-name))]
-    (if (existing-fields id-or-name)
+  [inner-query                           :- mbql.s/MBQLQuery
+   [_dir orderable, :as order-by-clause] :- mbql.s/OrderBy]
+  (let [existing-orderables (into #{}
+                                  (map (fn [[_dir orderable]]
+                                         orderable))
+                                  (:order-by inner-query))]
+    (if (existing-orderables orderable)
       ;; Field already referenced, nothing to do
       inner-query
       ;; otherwise add new clause at the end

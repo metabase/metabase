@@ -121,25 +121,30 @@
                              [:asc [:field 20 nil]]]}
              (mbql.u/add-order-by-clause {:source-table 1
                                           :order-by     [[:asc [:field 10 nil]]]}
-                                         [:asc [:field 20 nil]]))))
+                                         [:asc [:field 20 nil]])))))
 
+(t/deftest ^:parallel add-order-by-clause-test-2
   (t/testing "duplicate clauses should get ignored"
     (t/is (= {:source-table 1
               :order-by     [[:asc [:field 10 nil]]]}
              (mbql.u/add-order-by-clause {:source-table 1
                                           :order-by     [[:asc [:field 10 nil]]]}
-                                         [:asc [:field 10 nil]]))))
+                                         [:asc [:field 10 nil]])))))
 
+(t/deftest ^:parallel add-order-by-clause-test-3
   (t/testing "as should clauses that reference the same Field"
     (t/is (= {:source-table 1
               :order-by     [[:asc [:field 10 nil]]]}
              (mbql.u/add-order-by-clause {:source-table 1
                                           :order-by     [[:asc [:field 10 nil]]]}
-                                         [:desc [:field 10 nil]])))
+                                         [:desc [:field 10 nil]])))))
 
-    (t/testing "fields with different amounts of wrapping (plain field vs datetime-field)"
+(t/deftest ^:parallel add-order-by-clause-test-4
+  (t/testing "as should clauses that reference the same Field"
+    (t/testing "fields with different temporal-units should still get added"
       (t/is (= {:source-table 1
-                :order-by     [[:asc [:field 10 nil]]]}
+                :order-by     [[:asc [:field 10 nil]]
+                               [:asc [:field 10 {:temporal-unit :day}]]]}
                (mbql.u/add-order-by-clause {:source-table 1
                                             :order-by     [[:asc [:field 10 nil]]]}
                                            [:asc [:field 10 {:temporal-unit :day}]]))))))

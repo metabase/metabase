@@ -34,11 +34,12 @@
 
 (driver/register! :redshift, :parent #{:postgres ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(doseq [[feature supported?] {:test/jvm-timezone-setting false
-                              :nested-field-columns      false
-                              :describe-fields           true
-                              :describe-fks              true
-                              :connection-impersonation  true}]
+(doseq [[feature supported?] {:test/jvm-timezone-setting        false
+                              :nested-field-columns             false
+                              :describe-fields                  true
+                              :describe-fks                     true
+                              :connection-impersonation         true
+                              ::sql.qp/order-by-select-position true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
