@@ -1,4 +1,4 @@
-(ns metabase.upload.types-test
+(ns ^:mb/once metabase.upload.types-test
   (:require
    [clojure.test :refer [deftest is testing]]
    [clojure.walk :as walk]
@@ -18,7 +18,7 @@
 (def ^:private offset-dt-type    ::upload-types/offset-datetime)
 (def ^:private text-type         ::upload-types/text)
 
-(deftest type-detection-and-parse-test
+(deftest ^:parallel type-detection-and-parse-test
   (doseq [[string-value expected-value expected-type separators]
           ;; Number-related
           [["0.0"        0              float-or-int-type "."]
@@ -201,7 +201,7 @@
     (is (= expected (ordered-hierarchy/first-common-ancestor upload-types/h type-a type-b))
         (format "%s + %s = %s" (name type-a) (name type-b) (name expected)))))
 
-(deftest coercion-soundness-test
+(deftest ^:parallel coercion-soundness-test
   (testing "Every coercion maps to a stricter type that is a direct descendant"
     (is (empty?
          ;; Build a set of all type-pairs that violate this constraint
@@ -216,7 +216,7 @@
                                (contains? (ordered-hierarchy/children upload-types/h value-type) column-type))))
                @#'upload-types/column-type->coercible-value-types)))))
 
-(deftest initial-column-type-test
+(deftest ^:parallel initial-column-type-test
   (let [column-type (partial upload-types/concretize nil)]
     (testing "Unknown value types are treated as text"
       (is (= ::upload-types/text (column-type nil))))
@@ -231,7 +231,7 @@
         ;; traverses through abstract nodes, but it's much simpler to enforce this stronger condition.
         (is (contains? (parents upload-types/h value-type) expected-column-type))))))
 
-(deftest append-column-type-test
+(deftest ^:parallel append-column-type-test
   (doseq [existing-type upload-types/value-types
           value-type    upload-types/value-types]
     (case [existing-type value-type]
