@@ -52,7 +52,7 @@ export const getWaterfallChartModel = (
   );
 
   let dataset = getJoinedCardsDataset(rawSeries, cardsColumns, showWarning);
-  dataset = sortDataset(dataset, settings["graph.x_axis.scale"]);
+  dataset = sortDataset(dataset, settings["graph.x_axis.scale"], showWarning);
 
   const xAxisModel = getWaterfallXAxisModel(
     dimensionModel,
