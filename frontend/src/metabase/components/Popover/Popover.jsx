@@ -394,8 +394,8 @@ export default class Popover extends Component {
     const maxHeight = space - PAGE_PADDING;
     if (bodyHeight > maxHeight) {
       body.style.maxHeight = maxHeight + "px";
-      body.classList.add("scroll-y");
-      body.classList.add("scroll-show");
+      body.classList.add(CS.scrollY);
+      body.classList.add(CS.scrollShow);
     }
   }
 

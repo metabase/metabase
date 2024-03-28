@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
@@ -7,6 +8,7 @@ import { useSetting } from "metabase/common/hooks";
 import AdminHeader from "metabase/components/AdminHeader";
 import Code from "metabase/components/Code";
 import { CopyButton } from "metabase/components/CopyButton";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { UtilApi } from "metabase/services";
@@ -82,7 +84,9 @@ interface InfoBlockProps {
 }
 
 const InfoBlock = ({ children }: InfoBlockProps) => (
-  <InfoBlockRoot className="bordered rounded bg-light relative">
+  <InfoBlockRoot
+    className={cx(CS.bordered, CS.rounded, "bg-light", CS.relative)}
+  >
     <InfoBlockButton>
       <CopyButton value={children} />
     </InfoBlockButton>
@@ -129,7 +133,9 @@ export const Help = () => {
         <AdminHeader title={t`Diagnostic Info`} className="mb2" />
         <p>{t`Please include these details in support requests. Thank you!`}</p>
         <InfoBlock>{detailString}</InfoBlock>
-        <div className="text-medium text-bold text-uppercase py2">{t`Advanced Details (click to download)`}</div>
+        <div
+          className={cx("text-medium", CS.textBold, CS.textUppercase, "py2")}
+        >{t`Advanced Details (click to download)`}</div>
         <ol>
           <HelpLink
             title={t`Connection Pool Details`}

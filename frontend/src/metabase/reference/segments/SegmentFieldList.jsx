@@ -110,7 +110,7 @@ const SegmentFieldList = props => {
   });
 
   return (
-    <form style={style} className="full" onSubmit={handleSubmit}>
+    <form style={style} className={CS.full} onSubmit={handleSubmit}>
       {isEditing && (
         <EditHeader
           hasRevisionHistory={false}
@@ -154,7 +154,7 @@ const SegmentFieldList = props => {
                       entity &&
                       entity.id &&
                       entity.name && (
-                        <li className="relative" key={entity.id}>
+                        <li className={CS.relative} key={entity.id}>
                           <Field
                             field={entity}
                             foreignKeys={foreignKeys}

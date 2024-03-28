@@ -995,7 +995,7 @@ class TableInteractive extends Component {
             }
             return (
               <TableInteractiveRoot
-                className={cx(className, "TableInteractive relative", {
+                className={cx(className, "TableInteractive", CS.relative, {
                   "TableInteractive--pivot": this.props.isPivoted,
                   "TableInteractive--ready": this.state.contentWidths,
                   // no hover if we're dragging a column
@@ -1053,7 +1053,7 @@ class TableInteractive extends Component {
                     overflow: "hidden",
                     paddingRight: getScrollBarSize(),
                   }}
-                  className="TableInteractive-header scroll-hide-all"
+                  className={cx("TableInteractive-header", CS.scrollHideAll)}
                   width={width || 0}
                   height={headerHeight}
                   rowCount={1}

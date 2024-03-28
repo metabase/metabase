@@ -247,7 +247,7 @@ class FieldRemappingSettings extends Component {
             onChange={this.handleChangeMappingType}
             options={this.getAvailableMappingTypes()}
             optionValueFn={o => o}
-            className="inline-block"
+            className={CS.inlineBlock}
           />
           {mappingType === MAP_OPTIONS.foreign && (
             <>
@@ -457,7 +457,7 @@ class FieldValueMapping extends Component {
 
 const RemappingNamingTip = () => (
   <div className="bordered rounded p1 mt1 mb2 border-brand">
-    <span className="text-brand text-bold">{t`Tip: `}</span>
+    <span className={cx("text-brand", CS.textBold)}>{t`Tip: `}</span>
     {t`You might want to update the field name to make sure it still makes sense based on your remapping choices.`}
   </div>
 );

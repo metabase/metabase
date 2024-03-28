@@ -45,7 +45,10 @@ export function Trigger({
 
   return (
     <span
-      className={className || "px2 py2 text-bold cursor-pointer text-default"}
+      className={
+        className ||
+        cx(CS.px2, CS.py2, CS.textBold, CS.cursorPointer, "text-default")
+      }
       style={style}
     >
       {children}
@@ -83,7 +86,7 @@ export function FieldTrigger({
 export function DatabaseTrigger({ database }: { database: Database }) {
   return database ? (
     <span
-      className={cx("text-wrap text-grey", CS.noDecoration)}
+      className={cx(CS.textWrap, "text-grey", CS.noDecoration)}
       data-testid="selected-database"
     >
       {database.name}
@@ -98,7 +101,7 @@ export function DatabaseTrigger({ database }: { database: Database }) {
 export function TableTrigger({ table }: { table: Table }) {
   return table ? (
     <span
-      className={cx("text-wrap text-grey", CS.noDecoration)}
+      className={cx(CS.textWrap, "text-grey", CS.noDecoration)}
       data-testid="selected-table"
     >
       {table.display_name || table.name}

@@ -203,7 +203,7 @@ export default class SelectionModule extends Component {
             <ul
               className={cx(
                 QueryBuilderS.SelectionList,
-                "scroll-show",
+                CS.scrollShow,
                 CS.scrollY,
               )}
             >
