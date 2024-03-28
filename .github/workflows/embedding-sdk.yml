@@ -53,3 +53,11 @@ jobs:
 #        with:
 #          name: embedding-sdk
 #          path: resources/embedding-sdk
+      - name: Generate .npmrc
+        uses: actions/setup-node@v4
+        with:
+          registry-url: 'https://npm.pkg.github.com'
+      - name: Publish package
+        run: npm publish --dry-run
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
