@@ -34,13 +34,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
           getHidden: () => true,
         },
         {
-          key: "ldap-user-provisioning-enabled?",
-          display_name: t`User Provisioning`,
-          // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
-          description: t`When a user logs in via LDAP, create a Metabase account for them automatically if they don't have one.`,
-          type: "boolean",
-        },
-        {
           key: "ldap-host",
           display_name: t`LDAP Host`,
           placeholder: "ldap.yourdomain.org",

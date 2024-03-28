@@ -29,6 +29,12 @@ const validTestFiles = [
     humanName: "Star Wars Characters",
     rowCount: 87,
   },
+  {
+    fileName: "pokedex.tsv",
+    tableName: "pokedex",
+    humanName: "Pokedex",
+    rowCount: 202,
+  },
 ];
 
 const invalidTestFiles = [
@@ -45,6 +51,7 @@ describeWithSnowplow(
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.intercept("POST", "/api/card/from-csv").as("uploadCSV");
       cy.intercept("POST", "/api/table/*/append-csv").as("appendCSV");
+      cy.intercept("POST", "/api/table/*/replace-csv").as("replaceCSV");
     });
 
     it("Can upload a CSV file to an empty postgres schema", () => {
@@ -173,7 +180,10 @@ describeWithSnowplow(
               `Showing ${validTestFiles[0].rowCount} rows`,
             );
 
-            appendFile(validTestFiles[0]);
+            uploadToExisting({
+              testFile: validTestFiles[0],
+              uploadMode: "append",
+            });
             cy.findByTestId("view-footer").findByText(
               `Showing ${validTestFiles[0].rowCount * 2} rows`,
             );
@@ -185,7 +195,44 @@ describeWithSnowplow(
               `Showing ${validTestFiles[0].rowCount} rows`,
             );
 
-            appendFile(validTestFiles[1], false);
+            uploadToExisting({
+              testFile: validTestFiles[1],
+              valid: false,
+              uploadMode: "append",
+            });
+            cy.findByTestId("view-footer").findByText(
+              `Showing ${validTestFiles[0].rowCount} rows`,
+            );
+          });
+        });
+
+        describe("CSV replacement", () => {
+          it("Can replace data in an existing table", () => {
+            uploadFile(validTestFiles[0]);
+            cy.findByTestId("view-footer").findByText(
+              `Showing ${validTestFiles[0].rowCount} rows`,
+            );
+
+            uploadToExisting({
+              testFile: validTestFiles[0],
+              uploadMode: "replace",
+            });
+            cy.findByTestId("view-footer").findByText(
+              `Showing ${validTestFiles[0].rowCount} rows`,
+            );
+          });
+
+          it("Cannot data in a table with a different schema", () => {
+            uploadFile(validTestFiles[0]);
+            cy.findByTestId("view-footer").findByText(
+              `Showing ${validTestFiles[0].rowCount} rows`,
+            );
+
+            uploadToExisting({
+              testFile: validTestFiles[1],
+              valid: false,
+              uploadMode: "replace",
+            });
             cy.findByTestId("view-footer").findByText(
               `Showing ${validTestFiles[0].rowCount} rows`,
             );
@@ -332,12 +379,24 @@ function uploadFile(testFile, valid = true) {
   }
 }
 
-function appendFile(testFile, valid = true) {
+function uploadToExisting({ testFile, valid = true, uploadMode = "append" }) {
   // assumes we're already looking at an uploadable model page
-  cy.findByTestId("qb-header").icon("upload");
+  cy.findByTestId("qb-header").icon("upload").click();
+
+  const uploadOptions = {
+    append: "Append data to this model",
+    replace: "Replace all data in this model",
+  };
+
+  const uploadEndpoints = {
+    append: "@appendCSV",
+    replace: "@replaceCSV",
+  };
+
+  popover().findByText(uploadOptions[uploadMode]).click();
 
   cy.fixture(`${FIXTURE_PATH}/${testFile.fileName}`).then(file => {
-    cy.get("#append-file-input").selectFile(
+    cy.get("#upload-file-input").selectFile(
       {
         contents: Cypress.Buffer.from(file),
         fileName: testFile.fileName,
@@ -352,13 +411,16 @@ function appendFile(testFile, valid = true) {
       .should("contain", "Uploading data to")
       .and("contain", testFile.fileName);
 
-    cy.wait("@appendCSV");
+    cy.wait(uploadEndpoints[uploadMode]);
 
-    cy.findByTestId("status-root-container").findByText(/Data added to/i, {
-      timeout: 10 * 1000,
-    });
+    cy.findByTestId("status-root-container").findByText(
+      /Data (added|replaced)/i,
+      {
+        timeout: 10 * 1000,
+      },
+    );
   } else {
-    cy.wait("@appendCSV");
+    cy.wait(uploadEndpoints[uploadMode]);
 
     cy.findByTestId("status-root-container").findByText(
       "Error uploading your file",

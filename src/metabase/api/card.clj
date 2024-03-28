@@ -135,7 +135,9 @@
                                                     :from   [[(t2/table-name :model/QueryField) :qf]]
                                                     :join   [[(t2/table-name :model/Field) :f] [:= :f.id :qf.field_id]
                                                              [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
-                                                    :where  [:= :f.active false]}))
+                                                    :where  [:and
+                                                             [:= :f.active false]
+                                                             [:= :qf.direct_reference true]]}))
         card-ids              (keys card-id->query-fields)
         add-query-fields      (fn [{:keys [id] :as card}]
                                 (assoc card :query_fields (card-id->query-fields id)))]

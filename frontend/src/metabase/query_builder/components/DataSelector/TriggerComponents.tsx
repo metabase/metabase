@@ -97,7 +97,10 @@ export function DatabaseTrigger({ database }: { database: Database }) {
 
 export function TableTrigger({ table }: { table: Table }) {
   return table ? (
-    <span className={cx("text-wrap text-grey", CS.noDecoration)}>
+    <span
+      className={cx("text-wrap text-grey", CS.noDecoration)}
+      data-testid="selected-table"
+    >
       {table.display_name || table.name}
     </span>
   ) : (

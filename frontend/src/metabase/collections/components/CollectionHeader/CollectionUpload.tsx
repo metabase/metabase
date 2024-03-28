@@ -14,7 +14,7 @@ import { CollectionHeaderButton } from "./CollectionHeader.styled";
 import { UploadInput } from "./CollectionUpload.styled";
 import { UploadInfoModal } from "./CollectionUploadInfoModal";
 
-const UPLOAD_FILE_TYPES = [".csv"];
+const UPLOAD_FILE_TYPES = [".csv", ".tsv"];
 
 export function CollectionUpload({
   collection,
@@ -78,7 +78,7 @@ export function CollectionUpload({
         id="upload-csv"
         ref={uploadInputRef}
         type="file"
-        accept="text/csv"
+        accept="text/csv,text/tab-separated-values"
         onChange={handleFileUpload}
         data-testid="upload-input"
       />
@@ -98,7 +98,7 @@ const UploadTooltip = ({
       <TooltipContainer>
         <TooltipTitle>{t`Upload data to ${collection.name}`}</TooltipTitle>
         <TooltipSubtitle>{t`${UPLOAD_FILE_TYPES.join(
-          ",",
+          ", ",
         )} (${MAX_UPLOAD_STRING} MB max)`}</TooltipSubtitle>
       </TooltipContainer>
     }

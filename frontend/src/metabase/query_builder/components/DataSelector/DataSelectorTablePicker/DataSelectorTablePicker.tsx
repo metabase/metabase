@@ -164,7 +164,7 @@ const LinkToDocsOnReferencingSavedQuestionsInQueries = () => (
         "questions/native-editor/referencing-saved-questions-in-queries",
       )}
       target="_blank"
-      className={cx("block", CS.link)}
+      className={cx(CS.block, CS.link)}
     >
       {t`Learn more about nested queries`}
     </ExternalLink>

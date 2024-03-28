@@ -4,7 +4,7 @@ import { Component } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { useListApiKeyQuery } from "metabase/api";
+import { useListApiKeysQuery } from "metabase/api";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
@@ -121,7 +121,7 @@ function ActionsPopover({
 }) {
   return (
     <PopoverWithTrigger
-      className="block"
+      className={CS.block}
       triggerElement={<Icon className="text-light" name="ellipsis" />}
     >
       <ul className={cx(AdminS.UserActionsSelect, CS.py1)}>
@@ -155,7 +155,7 @@ function EditingGroupRow({
     <tr className="bordered border-brand rounded">
       <td>
         <Input
-          className="h3"
+          className={CS.h3}
           type="text"
           autoFocus={true}
           value={group.name}
@@ -274,7 +274,7 @@ function GroupsTable({
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
 }) {
-  const { isLoading, data: apiKeys } = useListApiKeyQuery();
+  const { isLoading, data: apiKeys } = useListApiKeysQuery();
 
   if (isLoading) {
     return <LoadingAndErrorWrapper loading={isLoading} />;

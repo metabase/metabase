@@ -102,7 +102,7 @@ export class FullPageModal extends Component<
                 closeOnClickOutside={this.props.closeOnClickOutside}
               >
                 <div
-                  className={cx("full-height relative", CS.scrollY)}
+                  className={cx(CS.fullHeight, CS.relative, CS.scrollY)}
                   style={styles}
                 >
                   {getModalContent({
