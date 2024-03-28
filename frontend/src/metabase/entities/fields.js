@@ -150,18 +150,22 @@ const Fields = createEntity({
     updateFieldDimension: createThunkAction(
       UPDATE_FIELD_DIMENSION,
       ({ id }, dimension) =>
-        () => {
-          return MetabaseApi.field_dimension_update({
-            fieldId: id,
-            ...dimension,
-          });
-        },
+        dispatch =>
+          entityCompatibleQuery(
+            { id, ...dimension },
+            dispatch,
+            fieldApi.endpoints.createFieldDimension,
+          ),
     ),
     deleteFieldDimension: createThunkAction(
       DELETE_FIELD_DIMENSION,
       ({ id }) =>
-        async () => {
-          await MetabaseApi.field_dimension_delete({ fieldId: id });
+        async dispatch => {
+          await entityCompatibleQuery(
+            id,
+            dispatch,
+            fieldApi.endpoints.deleteFieldDimension,
+          );
           return { id };
         },
     ),

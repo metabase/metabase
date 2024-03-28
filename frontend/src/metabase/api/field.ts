@@ -6,6 +6,7 @@ import type {
   Field,
   GetFieldRequest,
   UpdateFieldRequest,
+  CreateFieldDimensionRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -53,23 +54,40 @@ export const fieldApi = Api.injectEndpoints({
         idTag("field-values", fieldId),
       ],
     }),
-    rescanFieldValues: builder.mutation<void, FieldId>({
-      query: fieldId => ({
+    createFieldDimension: builder.mutation<void, CreateFieldDimensionRequest>({
+      query: ({ id, ...body }) => ({
         method: "POST",
-        url: `/api/field/${fieldId}/rescan_values`,
+        url: `/api/field/${id}/dimension`,
+        body,
       }),
-      invalidatesTags: (result, error, fieldId) => [
-        idTag("field-values", fieldId),
+      invalidatesTags: (result, error, { id }) => [
+        idTag("field", id),
+        idTag("field-values", id),
       ],
     }),
-    discardFieldValues: builder.mutation<void, FieldId>({
-      query: fieldId => ({
-        method: "POST",
-        url: `/api/field/${fieldId}/discard_values`,
+    deleteFieldDimension: builder.mutation<void, FieldId>({
+      query: id => ({
+        method: "DELETE",
+        url: `/api/field/${id}/dimension`,
       }),
-      invalidatesTags: (result, error, fieldId) => [
-        idTag("field-values", fieldId),
+      invalidatesTags: (result, error, id) => [
+        idTag("field", id),
+        idTag("field-values", id),
       ],
+    }),
+    rescanFieldValues: builder.mutation<void, FieldId>({
+      query: id => ({
+        method: "POST",
+        url: `/api/field/${id}/rescan_values`,
+      }),
+      invalidatesTags: (result, error, id) => [idTag("field-values", id)],
+    }),
+    discardFieldValues: builder.mutation<void, FieldId>({
+      query: id => ({
+        method: "POST",
+        url: `/api/field/${id}/discard_values`,
+      }),
+      invalidatesTags: (result, error, id) => [idTag("field-values", id)],
     }),
   }),
 });
@@ -79,6 +97,8 @@ export const {
   useUpdateFieldMutation,
   useGetFieldValuesQuery,
   useSearchFieldValuesQuery,
+  useCreateFieldDimensionMutation,
+  useDeleteFieldDimensionMutation,
   useRescanFieldValuesMutation,
   useDiscardFieldValuesMutation,
 } = fieldApi;

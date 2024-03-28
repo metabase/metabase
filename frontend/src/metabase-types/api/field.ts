@@ -120,6 +120,10 @@ export interface Field {
   updated_at: string;
 }
 
+export interface FieldFormattingSettings {
+  currency?: string;
+}
+
 export interface GetFieldRequest {
   id: FieldId;
   include_editable_data_model?: boolean;
@@ -154,6 +158,9 @@ export interface SearchFieldValuesRequest {
   limit: number;
 }
 
-export interface FieldFormattingSettings {
-  currency?: string;
+export interface CreateFieldDimensionRequest {
+  id: FieldId;
+  type: FieldDimensionType;
+  name: string;
+  human_readable_field_id?: FieldId;
 }
