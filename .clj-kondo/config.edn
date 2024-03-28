@@ -97,7 +97,6 @@
    me.flowthing.pp/pprint                             {:message "Use metabase.util.log instead of me.flowthing.pp/pprint"}
    medley.core/random-uuid                            {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
    metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}
-   metabase.test/with-temp*                           {:message "Use mt/with-temp instead of mt/with-temp*"}
    toucan2.tools.with-temp                            {:message "Use mt/with-temp instead of t2.with-temp/with-temp"}}
 
   :discouraged-namespace
@@ -571,6 +570,7 @@
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
+   metabase.test/with-temp!-persisted                                                                                        hooks.toucan2.tools.with-temp/with-temp
    metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def}
 
   :macroexpand
@@ -649,6 +649,10 @@
     :metabase/defsetting-must-specify-export             {:level :off}
     :hooks.metabase.test.data/mbql-query-first-arg       {:level :error}
     :metabase/test-helpers-use-non-thread-safe-functions {:level :warning}}
+
+   :discouraged-var
+   {metabase.test/with-temp!-persisted {:message "Do not commit this, should only be used during development."}}
+
    :hooks
    {:analyze-call
     {clojure.core/defmacro hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation

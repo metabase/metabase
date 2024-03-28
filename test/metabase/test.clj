@@ -315,7 +315,10 @@
   with-test-drivers]
 
  [schema-migrations-test.impl
-  with-temp-empty-app-db])
+  with-temp-empty-app-db]
+
+ [test.redefs
+  with-temp!-persisted])
 
 ;; Rename this instead of using `import-vars` to make it clear that it's related to `=?`
 (p/import-fn hawk.approx/malli malli=?)
