@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
 
 import PinDropZone from "metabase/collections/components/PinDropZone";
+import CS from "metabase/css/core/index.css";
 
 import BaseItemsTable from "./BaseItemsTable";
 import { ItemsTableRoot } from "./ItemsTable.styled";
@@ -35,7 +36,7 @@ function ItemsTable(props) {
   }
 
   return (
-    <div className="relative">
+    <div className={CS.relative}>
       <PinDropZone variant="unpin" />
       <BaseItemsTable {...props} renderItem={Item} />
     </div>

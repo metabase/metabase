@@ -99,7 +99,7 @@ const DatabaseDetail = props => {
   });
 
   return (
-    <form style={style} className="full" onSubmit={handleSubmit}>
+    <form style={style} className={CS.full} onSubmit={handleSubmit}>
       {isEditing && (
         <EditHeader
           hasRevisionHistory={false}
@@ -132,7 +132,7 @@ const DatabaseDetail = props => {
           <div className={CS.wrapper}>
             <div className="pl4 pr3 pt4 mb4 mb1 bg-white rounded bordered">
               <List>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="description"
                     name={t`Description`}
@@ -142,7 +142,7 @@ const DatabaseDetail = props => {
                     field={getFormField("description")}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="points_of_interest"
                     name={t`Why this database is interesting`}
@@ -152,7 +152,7 @@ const DatabaseDetail = props => {
                     field={getFormField("points_of_interest")}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="caveats"
                     name={t`Things to be aware of about this database`}
