@@ -68,6 +68,7 @@
                                              :exclusions  [org.apache.poi/poi
                                                            org.apache.poi/poi-ooxml]}
   environ/environ                           {:mvn/version "1.2.0"}              ; env vars/Java properties abstraction
+  etaoin/etaoin                             {:mvn/version "1.0.40"}             ; Pure Clojure webdriver
   hiccup/hiccup                             {:mvn/version "1.0.5"}              ; HTML templating
   inflections/inflections                   {:mvn/version "0.14.1"}             ; Clojure/Script library used for prularizing words
   instaparse/instaparse                     {:mvn/version "1.4.12"}             ; Make your own parser

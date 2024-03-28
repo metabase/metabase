@@ -42,7 +42,10 @@ RUN apk add -U bash fontconfig curl font-noto font-noto-arabic font-noto-hebrew 
     /opt/java/openjdk/bin/keytool -noprompt -import -trustcacerts -alias aws-rds -file /app/certs/rds-combined-ca-bundle.pem -keystore /etc/ssl/certs/java/cacerts -keypass changeit -storepass changeit && \
     curl https://cacerts.digicert.com/DigiCertGlobalRootG2.crt.pem -o /app/certs/DigiCertGlobalRootG2.crt.pem  && \
     /opt/java/openjdk/bin/keytool -noprompt -import -trustcacerts -alias azure-cert -file /app/certs/DigiCertGlobalRootG2.crt.pem -keystore /etc/ssl/certs/java/cacerts -keypass changeit -storepass changeit && \
-    mkdir -p /plugins && chmod a+rwx /plugins
+    mkdir -p /plugins && chmod a+rwx /plugins && \
+    apk add firefox && \
+    wget https://github.com/mozilla/geckodriver/releases/download/v0.34.0/geckodriver-v0.34.0-linux64.tar.gz && \
+    tar -zxf geckodriver-v0.34.0-linux64.tar.gz -C /usr/bin
 
 # add Metabase script and uberjar
 COPY --from=builder /home/node/target/uberjar/metabase.jar /app/

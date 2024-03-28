@@ -61,6 +61,7 @@ import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import { BrowseRedirect } from "./browse/components/BrowseRedirect";
+import { SubscriptionsDashboard } from "./dashboard/components/SubscriptionsDashboard";
 import {
   CanAccessMetabot,
   CanAccessSettings,
@@ -87,6 +88,11 @@ export const getRoutes = store => {
         onChange={(prevState, nextState) => {
           trackPageView(nextState.location.pathname);
         }}
+      />
+
+      <Route
+        path="/subscriptions_dashboard"
+        component={SubscriptionsDashboard}
       />
 
       {/* PUBLICLY SHARED LINKS */}
