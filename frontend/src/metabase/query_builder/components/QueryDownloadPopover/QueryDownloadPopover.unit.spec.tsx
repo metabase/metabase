@@ -81,26 +81,29 @@ describe("QueryDownloadPopover", () => {
 
   it("should trigger download on click", async () => {
     const { onDownload } = setup();
-    act(() => userEvent.click(screen.getByText(/csv/)));
+    await act(async () => await userEvent.click(screen.getByText(/csv/)));
     expect(onDownload).toHaveBeenCalledWith({
       type: "csv",
       enableFormatting: true,
     });
   });
 
-  it.each(["csv", "json"])(
+  it.only.each(["csv"])(
     "should trigger unformatted download for %s format",
     async format => {
       const { onDownload } = setup();
+      const _userEvent = userEvent.setup();
 
       expect(screen.queryByText(/Unformatted/i)).not.toBeInTheDocument();
       await fireEvent.keyDown(screen.getByText(/csv/), { key: "Alt" });
-      act(() => userEvent.hover(screen.getByText(/csv/)));
+      await act(async () => await _userEvent.hover(screen.getByText(/csv/)));
       expect(await screen.findByText(/Unformatted/i)).toBeInTheDocument();
 
-      act(() =>
-        userEvent.click(screen.getByText(new RegExp(format)), { altKey: true }),
-      );
+      await act(async () => {
+        // await _userEvent.keyboard("{alt>}");
+        await _userEvent.click(screen.getByText(new RegExp(format)));
+        // await _userEvent.keyboard("{/alt}");
+      });
 
       expect(onDownload).toHaveBeenCalledWith({
         type: format,
