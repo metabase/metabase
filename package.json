@@ -313,7 +313,7 @@
     "unset-value": "2.0.1"
   },
   "scripts": {
-    "go-do-css-things": "rm frontend/src/metabase/css/core/index.css.d.ts; hcm 'frontend/src/metabase/**/index.css' --localsConvention=camelCaseOnly --webpackResolveAlias='{\"style\": \"frontend/src/metabase/css/core/index\"}'",
+    "go-do-css-things": "rm frontend/src/metabase/css/core/index.css.d.ts; hcm 'frontend/src/metabase/**/index.css' --declarationMap=false --webpackResolveAlias='{\"style\": \"frontend/src/metabase/css/core/index\"}'",
     "build": "yarn build:cljs && yarn build:js",
     "build-hot": "rm -f target/cljs_dev/cljs.core.js && yarn concurrently -n 'cljs,js' -c 'yellow,green' 'yarn build-hot:cljs' 'yarn build-hot:js-wait'",
     "build-hot:cljs": "yarn && shadow-cljs watch app",
