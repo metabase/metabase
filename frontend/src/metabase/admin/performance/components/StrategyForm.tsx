@@ -1,4 +1,4 @@
-import { useField, useFormikContext } from "formik";
+import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
@@ -31,7 +31,7 @@ import {
 } from "metabase/ui";
 
 import { rootId } from "../constants";
-import type { Strat } from "../types";
+import type { Strat, StrategyType } from "../types";
 import { Strategies } from "../types";
 import { strategyValidationSchema } from "../validation";
 
@@ -111,7 +111,10 @@ const StrategyFormBody = ({
         {selectedStrategyType === "duration" && (
           <>
             <Field title={t`Cache result for this many hours`}>
-              <PositiveNumberInput fieldName="duration" placeholder="24" />
+              <PositiveNumberInput
+                fieldName="duration"
+                placeholder={getDefaultValueForField("duration", "duration")}
+              />
               {/* TODO: remove this? */}
             </Field>
             <input type="hidden" name="unit" />
@@ -284,3 +287,8 @@ const Field = ({
     </label>
   );
 };
+
+const getDefaultValueForField = (
+  strategyType: StrategyType,
+  fieldName: string,
+) => Strategies[strategyType].validateWith.cast({})[fieldName];

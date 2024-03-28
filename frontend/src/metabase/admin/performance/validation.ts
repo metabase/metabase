@@ -22,13 +22,13 @@ export const doNotCacheStrategyValidationSchema = Yup.object({
 
 export const ttlStrategyValidationSchema = Yup.object({
   type: Yup.string().equals(["ttl"]),
-  min_duration: positiveInteger.required(t`Required field: Minimum duration`),
-  multiplier: positiveInteger.required(t`Required field: Multiplier`),
+  min_duration: positiveInteger.default(100), // TODO: Correct
+  multiplier: positiveInteger.default(10), // TODO: Correct
 });
 
 export const durationStrategyValidationSchema = Yup.object({
   type: Yup.string().equals(["duration"]),
-  duration: positiveInteger.required(t`Required field: Duration`),
+  duration: positiveInteger.default(24),
   unit: Yup.string().matches(unitOfTimeRegex),
 });
 

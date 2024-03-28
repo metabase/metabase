@@ -15,13 +15,14 @@ import { Box, Stack } from "metabase/ui";
 
 import { rootId } from "../constants";
 import { useDelayedLoadingSpinner } from "../hooks/useDelayedLoadingSpinner";
-import {
-  Strategies,
+import type {
+  StrategyType,
   type Config,
   type LeaveConfirmationData,
   type SafelyUpdateTargetId,
   type Strat,
 } from "../types";
+import { Strategies } from "../types";
 
 import { ResetAllToDefaultButton } from "./ResetAllToDefaultButton";
 import { Panel, TabWrapper } from "./StrategyEditorForDatabases.styled";
@@ -64,6 +65,10 @@ export const StrategyEditorForDatabases = ({
   const configsFromAPI = configsResult.value;
 
   const [configs, setConfigs] = useState<Config[]>([]);
+
+  const rootConfigOverriddenOnce = configs.some(
+    config => config.model_id !== rootId,
+  );
 
   useEffect(() => {
     if (configsFromAPI) {
@@ -113,15 +118,6 @@ export const StrategyEditorForDatabases = ({
         return;
       }
 
-      const validFields = Object.keys(
-        (
-          Strategies[
-            values.type
-          ]?.validateWith.describe() as SchemaObjectDescription
-        ).fields,
-      );
-      const newStrategy = pick(values, validFields) as Strat;
-
       const baseConfig: Pick<Config, "model" | "model_id"> = {
         model: targetId === rootId ? "root" : "database",
         model_id: targetId,
@@ -130,14 +126,19 @@ export const StrategyEditorForDatabases = ({
       const otherConfigs = configs.filter(
         config => config.model_id !== targetId,
       );
-      if (newStrategy.type === "inherit") {
+      if (values.type === "inherit") {
         await CacheConfigApi.delete(baseConfig, { hasBody: true }).then(() => {
           setConfigs(otherConfigs);
         });
       } else {
+        const validFields = getFieldsForStrategyType(values.type);
+        const newStrategy = pick(values, validFields) as Strat;
+        const validatedStrategy =
+          Strategies[values.type].validateWith.validateSync(newStrategy);
+
         const newConfig = {
           ...baseConfig,
-          strategy: newStrategy,
+          strategy: validatedStrategy,
         };
 
         await CacheConfigApi.update(newConfig).then(() => {
@@ -228,10 +229,12 @@ export const StrategyEditorForDatabases = ({
                   key={`database_${db.id}`}
                 />
               ))}
-              <ResetAllToDefaultButton
-                configs={configs}
-                setConfigs={setConfigs}
-              />
+              {rootConfigOverriddenOnce && (
+                <ResetAllToDefaultButton
+                  configs={configs}
+                  setConfigs={setConfigs}
+                />
+              )}
             </Stack>
           </Panel>
         )}
@@ -251,4 +254,13 @@ export const StrategyEditorForDatabases = ({
       </Box>
     </TabWrapper>
   );
+};
+
+const getFieldsForStrategyType = (strategyType: StrategyType) => {
+  const strategy = Strategies[strategyType];
+  const validationSchemaDescription =
+    strategy.validateWith.describe() as SchemaObjectDescription;
+  const fieldRecord = validationSchemaDescription.fields;
+  const fields = Object.keys(fieldRecord);
+  return fields;
 };
