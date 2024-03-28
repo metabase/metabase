@@ -687,29 +687,6 @@
    (->honeysql driver mbql-expr)
    (->honeysql driver power)])
 
-(defn- database-supports-ordering-by-select-column-position? [driver]
-  (driver/database-supports? driver ::order-by-select-position (lib.metadata/database (qp.store/metadata-provider))))
-
-(defn- over-rows-with-order-by-for-current-stage
-  "e.g.
-
-    OVER (ORDER BY date_trunc('month', my_column))"
-  [driver expr]
-  (let [{:keys [group-by]} (apply-top-level-clause
-                            driver
-                            :breakout
-                            {}
-                            *inner-query*)]
-    [:over
-     [expr
-      (when (seq group-by)
-        {:order-by (mapv (fn [expr]
-                           [expr :asc])
-                         group-by)})]]))
-
-;;; For databases that do something intelligent with ORDER BY 1, 2: we can take advantage of that functionality
-;;; implement the window function versions of cumulative sum and cumulative sum more simply.
-
 (defn- format-rows-unbounded-preceding [_clause _args]
   ["ROWS UNBOUNDED PRECEDING"])
 
@@ -736,43 +713,25 @@
 ;;;
 ;;; should compile to SQL like
 ;;;
-;;;    sum(count()) OVER (ORDER BY ...)
-;;;
-;;; where the ORDER BY matches what's in the query (i.e., the breakouts), or
-;;;
 ;;;    sum(count()) OVER (ORDER BY 1 ROWS UNBOUNDED PRECEDING)
-;;;
-;;; if the database supports ordering by SELECT expression position
 (defmethod ->honeysql [:sql :cum-count]
   [driver [_cum-count expr-or-nil]]
-  (let [over-rows (if (database-supports-ordering-by-select-column-position? driver)
-                    over-rows-with-order-by-select-expression-positions
-                    over-rows-with-order-by-for-current-stage)]
-    (over-rows
-     driver
-     [:sum (if expr-or-nil
-             [:count (->honeysql driver expr-or-nil)]
-             [:count :*])])))
+  (over-rows-with-order-by-select-expression-positions
+   driver
+   [:sum (if expr-or-nil
+           [:count (->honeysql driver expr-or-nil)]
+           [:count :*])]))
 
 ;;;    cum-sum(total)
 ;;;
 ;;; should compile to SQL like
 ;;;
-;;;    sum(sum(total)) OVER (ORDER BY ...)
-;;;
-;;; where the ORDER BY matches what's in the query (i.e., the breakouts), or
-;;;
 ;;;    sum(sum(total)) OVER (ORDER BY 1 ROWS UNBOUNDED PRECEDING)
-;;;
-;;; if the database supports ordering by SELECT expression position
 (defmethod ->honeysql [:sql :cum-sum]
   [driver [_cum-sum expr]]
-  (let [over-rows (if (database-supports-ordering-by-select-column-position? driver)
-                    over-rows-with-order-by-select-expression-positions
-                    over-rows-with-order-by-for-current-stage)]
-    (over-rows
-     driver
-     [:sum [:sum (->honeysql driver expr)]])))
+  (over-rows-with-order-by-select-expression-positions
+   driver
+   [:sum [:sum (->honeysql driver expr)]]))
 
 (defn- interval? [expr]
   (mbql.u/is-clause? :interval expr))

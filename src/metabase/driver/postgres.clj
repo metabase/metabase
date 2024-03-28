@@ -625,6 +625,51 @@
                      clause)]
     ((get-method sql.qp/->honeysql [:sql :asc]) driver new-clause)))
 
+(defn- over-rows-with-order-by-for-current-stage
+  "e.g.
+
+    OVER (ORDER BY date_trunc('month', my_column))"
+  [driver expr]
+  (let [{:keys [group-by]} (sql.qp/apply-top-level-clause
+                            driver
+                            :breakout
+                            {}
+                            sql.qp/*inner-query*)]
+    [:over
+     [expr
+      (when (seq group-by)
+        {:order-by (mapv (fn [expr]
+                           [expr :asc])
+                         group-by)})]]))
+
+;;;    cum-count()
+;;;
+;;; should compile to SQL like
+;;;
+;;;    sum(count()) OVER (ORDER BY ...)
+;;;
+;;; where the ORDER BY matches what's in the query (i.e., the breakouts), or
+(defmethod sql.qp/->honeysql [:postgres :cum-count]
+  [driver [_cum-count expr-or-nil]]
+  (over-rows-with-order-by-for-current-stage
+   driver
+   [:sum (if expr-or-nil
+           [:count (sql.qp/->honeysql driver expr-or-nil)]
+           [:count :*])]))
+
+;;;    cum-sum(total)
+;;;
+;;; should compile to SQL like
+;;;
+;;;    sum(sum(total)) OVER (ORDER BY ...)
+;;;
+;;; where the ORDER BY matches what's in the query (i.e., the breakouts), or
+(defmethod sql.qp/->honeysql [:postgres :cum-sum]
+  [driver [_cum-sum expr]]
+  (over-rows-with-order-by-for-current-stage
+   driver
+   [:sum [:sum (sql.qp/->honeysql driver expr)]]))
+
 (defmethod unprepare/unprepare-value [:postgres Date]
   [_ value]
   (format "'%s'::timestamp" (u.date/format value)))
