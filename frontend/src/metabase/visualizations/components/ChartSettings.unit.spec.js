@@ -125,7 +125,7 @@ describe("ChartSettings", () => {
     expect(screen.queryByText("Foo")).not.toBeInTheDocument();
   });
 
-  it("reset settings should revert to the original card settings with click behavior", () => {
+  it("reset settings should revert to the original card settings with click behavior", async () => {
     const onChange = jest.fn();
 
     const originalVizSettings = createMockVisualizationSettings({
@@ -152,7 +152,7 @@ describe("ChartSettings", () => {
       onChange,
     });
 
-    userEvent.click(screen.getByText("Reset to defaults"));
+    await userEvent.click(screen.getByText("Reset to defaults"));
 
     expect(onChange).toHaveBeenCalledWith({
       ...originalVizSettings,

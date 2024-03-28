@@ -10,11 +10,11 @@ describe("DatabaseSyncModal", () => {
     expect(screen.getByText("Explore sample data")).toBeInTheDocument();
   });
 
-  it("should render with no sample database", () => {
+  it("should render with no sample database", async () => {
     const onClose = jest.fn();
 
     render(<DatabaseSyncModal onClose={onClose} />);
-    userEvent.click(screen.getByText("Got it"));
+    await userEvent.click(screen.getByText("Got it"));
 
     expect(onClose).toHaveBeenCalled();
   });

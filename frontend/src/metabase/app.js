@@ -67,14 +67,12 @@ function _init(reducers, getRoutes, callback) {
   const routes = getRoutes(store);
   const history = syncHistoryWithStore(browserHistory, store);
 
-  let root;
-
   createTracker(store);
 
   initializeEmbedding(store);
 
   ReactDOM.render(
-    <Provider store={store} ref={ref => (root = ref)}>
+    <Provider store={store}>
       <EmotionCacheProvider>
         <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
           <ThemeProvider>
@@ -91,7 +89,7 @@ function _init(reducers, getRoutes, callback) {
 
   store.dispatch(refreshSiteSettings());
 
-  PLUGIN_APP_INIT_FUCTIONS.forEach(init => init({ root }));
+  PLUGIN_APP_INIT_FUCTIONS.forEach(init => init());
 
   window.Metabase = window.Metabase || {};
   window.Metabase.store = store;

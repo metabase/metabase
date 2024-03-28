@@ -150,8 +150,10 @@ describe("QueryBuilder", () => {
 
       expect(inputArea).toHaveValue("SELECT 1");
 
-      userEvent.click(screen.getByTestId("download-button"));
-      userEvent.click(await screen.findByRole("button", { name: ".csv" }));
+      await userEvent.click(screen.getByTestId("download-button"));
+      await userEvent.click(
+        await screen.findByRole("button", { name: ".csv" }),
+      );
 
       expect(mockDownloadEndpoint.called()).toBe(true);
     });
@@ -169,15 +171,17 @@ describe("QueryBuilder", () => {
         screen.getByTestId("mock-native-query-editor"),
       ).getByRole("textbox");
 
-      userEvent.click(inputArea);
-      userEvent.type(inputArea, " union SELECT 2");
+      await userEvent.click(inputArea);
+      await userEvent.type(inputArea, " union SELECT 2");
 
-      userEvent.tab();
+      await userEvent.tab();
 
       expect(inputArea).toHaveValue("SELECT 1 union SELECT 2");
 
-      userEvent.click(screen.getByTestId("download-button"));
-      userEvent.click(await screen.findByRole("button", { name: ".csv" }));
+      await userEvent.click(screen.getByTestId("download-button"));
+      await userEvent.click(
+        await screen.findByRole("button", { name: ".csv" }),
+      );
 
       expect(
         mockDownloadEndpoint.called((url, options) => {

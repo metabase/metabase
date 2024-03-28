@@ -45,8 +45,8 @@ describe("FormNumericInput", () => {
     const onSubmit = jest.fn();
 
     render(<TestFormNumericInput onSubmit={onSubmit} />);
-    userEvent.type(screen.getByRole("textbox"), "10");
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.type(screen.getByRole("textbox"), "10");
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       const values = { value: 10 };
@@ -66,8 +66,8 @@ describe("FormNumericInput", () => {
     const onSubmit = jest.fn();
 
     render(<TestFormNumericInput initialValue={10} onSubmit={onSubmit} />);
-    userEvent.clear(screen.getByRole("textbox"));
-    userEvent.tab();
+    await userEvent.clear(screen.getByRole("textbox"));
+    await userEvent.tab();
 
     expect(await screen.findByText(": error")).toBeInTheDocument();
   });

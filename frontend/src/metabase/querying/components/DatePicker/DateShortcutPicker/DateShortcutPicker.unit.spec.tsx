@@ -32,9 +32,9 @@ function setup({
 }
 
 describe("DateShortcutPicker", () => {
-  it("should be able to create a filter via shortcuts", () => {
+  it("should be able to create a filter via shortcuts", async () => {
     const { onChange } = setup();
-    userEvent.click(screen.getByText("Today"));
+    await userEvent.click(screen.getByText("Today"));
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
       value: "current",
@@ -42,9 +42,9 @@ describe("DateShortcutPicker", () => {
     });
   });
 
-  it("should be able to navigate to a more specific filter type", () => {
+  it("should be able to navigate to a more specific filter type", async () => {
     const { onSelectType } = setup();
-    userEvent.click(screen.getByText("Specific dates…"));
+    await userEvent.click(screen.getByText("Specific dates…"));
     expect(onSelectType).toHaveBeenCalledWith("specific");
   });
 });

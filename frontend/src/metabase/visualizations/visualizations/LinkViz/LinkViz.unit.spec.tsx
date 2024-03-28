@@ -227,14 +227,14 @@ describe("LinkViz", () => {
 
       const searchInput = screen.getByPlaceholderText("https://example.com");
 
-      userEvent.click(searchInput);
+      await userEvent.click(searchInput);
       // There's a race here: as soon the search input is clicked into the text
       // "Loading..." appears and is then replaced by "Question Uno". On CI,
       // `findByText` was sometimes running while "Loading..." was still
       // visible, so the extra expectation ensures good timing
       await waitForLoaderToBeRemoved();
 
-      userEvent.click(await screen.findByText("Question Uno"));
+      await userEvent.click(await screen.findByText("Question Uno"));
 
       expect(changeSpy).toHaveBeenCalledWith({
         link: {
@@ -284,10 +284,10 @@ describe("LinkViz", () => {
 
       const searchInput = screen.getByPlaceholderText("https://example.com");
 
-      userEvent.click(searchInput);
+      await userEvent.click(searchInput);
 
       await screen.findByText("Dashboard Uno");
-      userEvent.click(await screen.findByText("Table Uno"));
+      await userEvent.click(await screen.findByText("Table Uno"));
 
       expect(changeSpy).toHaveBeenCalledWith({
         link: {
