@@ -54,7 +54,7 @@ export const LayoutIllustration = styled.div<{
   background-image: ${({ backgroundImageSrc }) =>
     `url("${backgroundImageSrc}")`};
   background-size: ${({ isDefault }) =>
-    isDefault ? "max(min(1728px, 260vh), 100%) auto" : "cover"};
+    isDefault ? "max(min(1728px, 260vh), 100%) auto" : "100% auto"};
   background-repeat: no-repeat;
   background-position: bottom;
 `;
