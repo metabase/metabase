@@ -3,6 +3,7 @@ import { connect } from "react-redux";
 import { useEvent } from "react-use";
 import { t } from "ttag";
 
+import { isMac } from "metabase/lib/browser";
 import { exportFormats, exportFormatPng } from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Icon, Tooltip, useHover } from "metabase/ui";
@@ -82,11 +83,15 @@ const QueryDownloadPopover = ({
     });
   };
 
+  const formattingInfoTooltipLabel = isMac()
+    ? t`Option click to download without formatting applied`
+    : t`Alt click to download without formatting applied`;
+
   return (
     <DownloadPopoverRoot isExpanded={hasTruncatedResults}>
       <DownloadPopoverHeader>
         <h4>{t`Download full results`}</h4>
-        <Tooltip label={t`Option click to download without formatting applied`}>
+        <Tooltip label={formattingInfoTooltipLabel}>
           <Icon name="info_filled" />
         </Tooltip>
       </DownloadPopoverHeader>
