@@ -9,15 +9,11 @@
    [clojure.string :as str]
    [macaw.core :as mac]
    [metabase.config :as config]
-   [metabase.models.table :as table]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    [net.sf.jsqlparser JSQLParserException]))
-
-(comment
-  table/keep-me)
 
 (def ^:dynamic *parse-queries-in-test?*
   "Normally, a native card's query is parsed on every create/update. For most tests, this is an unnecessary
@@ -44,8 +40,9 @@
 
 (def ^:private field-and-table-fragment
   "HoneySQL fragment to get the Field and Table"
-  {:from [[(t2/table-name :model/Field) :f]]
-   :join [[(t2/table-name :model/Table) :t] [:= :table_id :t.id]]})
+  {:from [[:metabase_field :f]]
+   ;; (t2/table-name :model/Table) doesn't work on CI since models/table.clj hasn't been loaded
+   :join [[:metabase_table :t] [:= :table_id :t.id]]})
 
 (defn- direct-field-ids-for-query
   "Very naively selects the IDs of Fields that could be used in the query. Improvements to this are planned for Q2 2024,
