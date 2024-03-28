@@ -50,15 +50,6 @@ const VARIANT_TO_CLASS_MAP: {
   fullWidth: ButtonsS.ButtonFullWidth,
 };
 
-const BREAKPOINT_TO_STYLE_MAP: {
-  [key: string]: string;
-} = {
-  sm: CS.smShow,
-  md: CS.mdShow,
-  lg: CS.lgShow,
-  xl: CS.xlShow,
-};
-
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   as?: ElementType;
   className?: string;
@@ -71,7 +62,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   iconColor?: string;
   iconRight?: IconName;
   iconVertical?: boolean;
-  labelBreakpoint?: string;
+  labelBreakpoint?: "sm";
   children?: ReactNode;
 
   small?: boolean;
@@ -140,9 +131,7 @@ const BaseButton = forwardRef(function BaseButton(
             hasRightIcon={!!iconRight}
             iconVertical={iconVertical}
             className={
-              labelBreakpoint
-                ? cx(CS.hide, BREAKPOINT_TO_STYLE_MAP[labelBreakpoint])
-                : undefined
+              labelBreakpoint === "sm" ? cx(CS.hide, CS.smShow) : undefined
             }
           >
             {children}
