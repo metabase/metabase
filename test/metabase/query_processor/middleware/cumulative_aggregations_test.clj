@@ -1,9 +1,12 @@
 (ns metabase.query-processor.middleware.cumulative-aggregations-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.middleware.cumulative-aggregations
     :as
-    qp.cumulative-aggregations]))
+    qp.cumulative-aggregations]
+   [metabase.query-processor.store :as qp.store]))
 
 (deftest ^:parallel add-values-from-last-row-test
   (are [expected indecies] (= expected
@@ -80,16 +83,23 @@
              :type     :query
              :query    {:source-table 1, :aggregation [[:* [:cum-count] 1]]}})))))
 
+(driver/register! ::no-window-function-driver)
+
+(defmethod driver/database-supports? [::no-window-function-driver :window-functions]
+  [_driver _feature _database]
+  false)
 
 (defn- handle-cumulative-aggregations [query]
-  (let [query (#'qp.cumulative-aggregations/rewrite-cumulative-aggregations query)
-        rff   (qp.cumulative-aggregations/sum-cumulative-aggregation-columns query (constantly conj))
-        rf    (rff nil)]
-    (transduce identity rf [[1 1]
-                            [2 2]
-                            [3 3]
-                            [4 4]
-                            [5 5]])))
+  (driver/with-driver ::no-window-function-driver
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (let [query (#'qp.cumulative-aggregations/rewrite-cumulative-aggregations query)
+            rff   (qp.cumulative-aggregations/sum-cumulative-aggregation-columns query (constantly conj))
+            rf    (rff nil)]
+        (transduce identity rf [[1 1]
+                                [2 2]
+                                [3 3]
+                                [4 4]
+                                [5 5]])))))
 
 (deftest ^:parallel e2e-test
   (testing "make sure we take breakout fields into account"
@@ -99,7 +109,9 @@
              :type     :query
              :query    {:source-table 1
                         :breakout     [[:field 1 nil]]
-                        :aggregation  [[:cum-sum [:field 1 nil]]]}}))))
+                        :aggregation  [[:cum-sum [:field 1 nil]]]}})))))
+
+(deftest ^:parallel e2e-test-2
   (testing "make sure we sum up cumulative aggregations inside expressions correctly"
     (testing "we shouldn't be doing anything special with the expressions, let the database figure that out. We will just SUM"
       (is (= [[1 1] [2 3] [3 6] [4 10] [5 15]]

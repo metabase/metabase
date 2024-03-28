@@ -688,12 +688,6 @@
    (->honeysql driver power)])
 
 (defn- database-supports-ordering-by-select-column-position? [driver]
-  (println (pr-str (list `driver/database-supports?
-                         driver
-                         ::order-by-select-position
-                         'database))
-           '=>
-           (driver/database-supports? driver ::order-by-select-position (lib.metadata/database (qp.store/metadata-provider))))
   (driver/database-supports? driver ::order-by-select-position (lib.metadata/database (qp.store/metadata-provider))))
 
 (defn- over-rows-with-order-by-for-current-stage
