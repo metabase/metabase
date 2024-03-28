@@ -58,7 +58,7 @@
   max-width: 500px;
 }
 
-.PopoverBody.PopoverBody--withBackground {
+.PopoverBody.PopoverBodyWithBackground {
   border: 1px solid #edf2f5;
   box-shadow: 0 4px 10px var(--color-shadow);
   background-color: var(--color-bg-white);
@@ -70,7 +70,7 @@
  * initially added  for date pickers so the dual date picker can fully
  * expand as necessary - metabase#5971
  */
-.PopoverBody:global(.PopoverBody--autoWidth) {
+.PopoverBody.PopoverBodyAutoWidth {
   max-width: none;
 }
 
@@ -181,7 +181,7 @@
   z-index: 1;
 }
 
-:global(.PopoverBody--withBackground .PopoverFooterWhenIsNotEqualOps),
+.PopoverBodyWithBackground :global(.PopoverFooterWhenIsNotEqualOps),
 :global(.popover .PopoverFooterWhenIsNotEqualOps) {
   bottom: 0;
   padding-bottom: 12px;

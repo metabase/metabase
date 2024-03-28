@@ -236,10 +236,10 @@ export default class Popover extends Component {
         className={cx(
           PopoverS.PopoverBody,
           {
-            "PopoverBody--withBackground": this.props.hasBackground,
+            [PopoverS.PopoverBodyWithBackground]: this.props.hasBackground,
             "PopoverBody--withArrow":
               this.props.hasArrow && this.props.hasBackground,
-            "PopoverBody--autoWidth": this.props.autoWidth,
+            [PopoverS.PopoverBodyAutoWidth]: this.props.autoWidth,
           },
           // TODO kdoh 10/16/2017 we should eventually remove this
           this.props.className,
