@@ -234,7 +234,7 @@
   "Returns the effective permission value for a given *group*, permission type, and database ID"
   [group-id perm-type database-id]
   (when (not= :model/Database (model-by-perm-type perm-type))
-    (throw (ex-info (tru "Permission type {0} is not a data-level permission." perm-type)
+    (throw (ex-info (tru "Permission type {0} is not a database-level permission." perm-type)
                     {perm-type (Permissions perm-type)})))
   (let [perm-values (t2/select-fn-set :value
                                       :model/DataPermissions

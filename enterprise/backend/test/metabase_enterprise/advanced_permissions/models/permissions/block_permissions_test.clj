@@ -104,7 +104,7 @@
                                                   [:= :perm_type (u/qualified-name :perms/view-data)]]})))))))))))
 
 (deftest update-graph-delete-sandboxes-test
-  (testing "When setting `:block` permissions any GTAP rows for that Group/Database should get deleted."
+  (testing "When setting `:blocked` permissions any GTAP rows for that Group/Database should get deleted."
     (mt/with-premium-features #{:sandboxes :advanced-permissions}
       (mt/with-model-cleanup [Permissions]
         (mt/with-temp [PermissionsGroup       {group-id :id} {}

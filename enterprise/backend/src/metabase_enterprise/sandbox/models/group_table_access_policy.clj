@@ -198,7 +198,9 @@
 (t2/define-before-insert :model/GroupTableAccessPolicy
   [{:keys [table_id group_id], :as gtap}]
   (let [db-id (database/table-id->database-id table_id)]
-    (data-perms/set-database-permission! group_id db-id :perms/native-query-editing :no))
+    ;; Remove native query access to the DB when saving a sandbox
+    (when (= (data-perms/table-permission-for-group group_id :perms/create-queries db-id table_id) :query-builder-and-native)
+      (data-perms/set-database-permission! group_id db-id :perms/create-queries :query-builder)))
   (u/prog1 gtap
     (check-columns-match-table gtap)))
 
