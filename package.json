@@ -340,6 +340,7 @@
     "build-embedding-sdk:pure": "WEBPACK_BUNDLE=development webpack --config webpack.embedding-sdk.config.js",
     "build-embedding-sdk:watch": "WEBPACK_BUNDLE=development webpack --config webpack.embedding-sdk.config.js --watch",
     "embedding-sdk:generate-package": "node ./bin/generate-sdk-package-json.js",
+    "embedding-sdk:publish": "cd ./resources/embedding-sdk && npm publish --dry-run",
     "chromatic": "yarn build:cljs && NODE_OPTIONS=--max-old-space-size=8196 chromatic",
     "ci": "yarn ci-frontend && yarn ci-backend",
     "ci-backend": "clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood && clojure -X:dev:test",

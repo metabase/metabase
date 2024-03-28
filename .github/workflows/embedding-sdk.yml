@@ -58,6 +58,6 @@ jobs:
         with:
           registry-url: 'https://npm.pkg.github.com'
       - name: Publish package
-        run: npm publish --dry-run
+        run: yarn run embedding-sdk:publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
