@@ -1,20 +1,37 @@
 name: Embedding SDK
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Package version'
-        required: true
-        type: string
+  push:
+    branches:
+      - "master"
+      - "release-**"
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 3
+    outputs:
+      frontend_all: ${{ steps.changes.outputs.frontend_all }}
+      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
   sdk-build:
-#    if: needs.files-changed.outputs.frontend_all == 'true'
+    needs: files-changed
+    if: needs.files-changed.outputs.frontend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -29,18 +46,10 @@ jobs:
         run: yarn build-pure:cljs
       - name: Build SDK bundle
         run: yarn run build-release:sdk
-
-  sdk-publish:
-    needs: sdk-build
-    name: Publish new version
-    runs-on: ubuntu-22.04
-    timeout-minutes: 20
-    steps:
-      - name: Generate .npmrc
-        uses: actions/setup-node@v4
+      - name: Generate SDK package.json
+        run: yarn run embedding-sdk:generate-package $COMMIT
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v4
         with:
-          registry-url: 'https://npm.pkg.github.com'
-      - name: Publish package
-        run: npm publish --dry-run
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: embedding-sdk
+          path: resources/embedding-sdk
