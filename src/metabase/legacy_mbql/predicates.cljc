@@ -23,4 +23,4 @@
 
 (def ^{:arglists '([field-clause])} FieldOrExpressionDef?
   "Is this a something that is valid as a top-level expression definition?"
-  (mr/validator mbql.s/FieldOrExpressionDef))
+  (mr/validator ::mbql.s/FieldOrExpressionDef))

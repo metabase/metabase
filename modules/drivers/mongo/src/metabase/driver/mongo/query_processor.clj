@@ -1231,7 +1231,7 @@
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
 (mu/defn ^:private order-by->$sort :- $SortStage
-  [order-by :- [:sequential mbql.s/OrderBy]]
+  [order-by :- [:sequential ::mbql.s/OrderBy]]
   {$sort (into
           (ordered-map/ordered-map)
           (for [[direction field] order-by]

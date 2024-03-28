@@ -9,7 +9,7 @@
 
 (deftest ^:parallel temporal-literal-test
   (testing "Make sure our schema validates temporal literal clauses correctly"
-    (doseq [[schema-var cases] {#'mbql.s/TemporalLiteral       [[true "00:00:00"]
+    (doseq [[schema-var cases] {::mbql.s/TemporalLiteral       [[true "00:00:00"]
                                                                 [true "00:00:00Z"]
                                                                 [true "00:00:00+00:00"]
                                                                 [true "2022-01-01"]
@@ -18,7 +18,7 @@
                                                                 [true "2022-01-01T00:00:00Z"]
                                                                 [false "2022-01-01 00:00:00"]
                                                                 [false "a string"]]
-                                #'mbql.s/DateOrDatetimeLiteral [[false "00:00:00"]
+                                ::mbql.s/DateOrDatetimeLiteral [[false "00:00:00"]
                                                                 [false "00:00:00Z"]
                                                                 [false "00:00:00+00:00"]
                                                                 [true "2022-01-01"]
@@ -27,7 +27,7 @@
                                                                 [true "2022-01-01T00:00:00Z"]
                                                                 [false "2022-01-01 00:00:00"]
                                                                 [false "a string"]]
-                                #'mbql.s/TimeLiteral           [[true "00:00:00"]
+                                ::mbql.s/TimeLiteral           [[true "00:00:00"]
                                                                 [true "00:00:00Z"]
                                                                 [true "00:00:00+00:00"]
                                                                 [false "2022-01-01"]
