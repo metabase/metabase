@@ -704,4 +704,6 @@
 
     :discouraged-var
     {metabase.db.query/query           {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
-     metabase.db.query/reducible-query {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}}}}}
+     metabase.db.query/reducible-query {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}}}
+
+  dev.malli {:ignore true}}}
