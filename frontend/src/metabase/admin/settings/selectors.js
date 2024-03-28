@@ -1,5 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
@@ -18,8 +18,8 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { PersistedModelsApi, UtilApi } from "metabase/services";
 
 import {
-  trackTrackingPermissionChanged,
   trackCustomHomepageDashboardEnabled,
+  trackTrackingPermissionChanged,
 } from "./analytics";
 import { BccToggleWidget } from "./components/Email/BccToggleWidget";
 import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
@@ -36,14 +36,13 @@ import FormattingWidget from "./components/widgets/FormattingWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
 import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
 import {
+  EmbeddedResources,
+  PublicLinksActionListing,
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
-  PublicLinksActionListing,
-  EmbeddedResources,
 } from "./components/widgets/PublicLinksListing";
 import RedirectWidget from "./components/widgets/RedirectWidget";
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
-import SectionDivider from "./components/widgets/SectionDivider";
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
 import { updateSetting } from "./settings";
@@ -563,35 +562,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
     name: t`Caching`,
     order: 120,
     settings: [
-      {
-        key: "enable-query-caching",
-        display_name: t`Saved questions`,
-        type: "boolean",
-      },
-      {
-        key: "query-caching-min-ttl",
-        display_name: t`Minimum Query Duration`,
-        type: "number",
-        getHidden: settings => !settings["enable-query-caching"],
-        allowValueCollection: true,
-      },
-      {
-        key: "query-caching-ttl-ratio",
-        display_name: t`Cache Time-To-Live (TTL) multiplier`,
-        type: "number",
-        getHidden: settings => !settings["enable-query-caching"],
-        allowValueCollection: true,
-      },
-      {
-        key: "query-caching-max-kb",
-        display_name: t`Max Cache Entry Size`,
-        type: "number",
-        getHidden: settings => !settings["enable-query-caching"],
-        allowValueCollection: true,
-      },
-      {
-        widget: SectionDivider,
-      },
       {
         key: "persisted-models-enabled",
         display_name: t`Models`,

@@ -21,7 +21,6 @@ import {
 import { color } from "metabase/lib/colors";
 import {
   Button,
-  Flex,
   Group,
   Icon,
   Loader,
@@ -29,7 +28,6 @@ import {
   Stack,
   Text,
   Title,
-  Tooltip,
 } from "metabase/ui";
 
 import { rootId } from "../constants";
@@ -37,7 +35,6 @@ import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
 import type { Strat, StrategyType } from "../types";
 import { Strategies } from "../types";
 import { strategyValidationSchema } from "../validation";
-import Link from "metabase/core/components/Link";
 
 export const StrategyForm = ({
   targetId,
@@ -47,7 +44,7 @@ export const StrategyForm = ({
 }: {
   targetId: number | null;
   setIsDirty: (isDirty: boolean) => void;
-  saveStrategy: (values: Strat) => void;
+  saveStrategy: (values: Strat) => Promise<void>;
   savedStrategy?: Strat;
 }) => {
   return (
@@ -84,15 +81,18 @@ const StrategyFormBody = ({
     }
   }, [selectedStrategyType, values, setFieldValue]);
 
-  useEffect(() => {
-    Object.entries(values).forEach(([fieldName, value]) => {
-      // eslint-disable-next-line eqeqeq
-      if (value == getDefaultValueForField(selectedStrategyType, fieldName)) {
-        setFieldValue(fieldName, "");
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // TODO: This was useful for showing the placeholder if the user has chosen
+  // the default value but it means the form is considered dirty (because this
+  // value will be different)
+  // useEffect(() => {
+  //   Object.entries(values).forEach(([fieldName, value]) => {
+  //     // eslint-disable-next-line eqeqeq
+  //     if (value == getDefaultValueForField(selectedStrategyType, fieldName)) {
+  //       setFieldValue(fieldName, "");
+  //     }
+  //   });
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []);
 
   return (
     <Form
@@ -116,21 +116,9 @@ const StrategyFormBody = ({
                 fieldName="min_duration_ms"
               />
             </Field>
-            {/* TODO: Add link to example */}
             <Field
               title={t`Cache time-to-live (TTL) multiplier`}
-              subtitle={
-                <div style={{ display: "inline" }}>
-                  {t`To determine how long each cached result should stick around, we take that query's average execution time and multiply that by what you input here. The result is how many seconds the cache should remain valid for.`}&nbsp;
-                  <Tooltip
-                    inline={true}
-                    styles={{tooltip: {height: "4rem", maxWidth: "20rem"}}}
-                    label={t`If a query takes on average 120 seconds (2 minutes) to run, and you input 10 for your multiplier, its cache entry will persist for 1,200 seconds (20 minutes).`}
-                  >
-                    <Text display="inline" c="brand">Example</Text>
-                  </Tooltip>
-                </div>
-              }
+              subtitle={t`To determine how long each cached result should stick around, we take that query's average execution time and multiply that by what you input here. The result is how many seconds the cache should remain valid for.`}
             >
               <PositiveNumberInput strategyType="ttl" fieldName="multiplier" />
             </Field>
@@ -143,7 +131,6 @@ const StrategyFormBody = ({
                 strategyType="duration"
                 fieldName="duration"
               />
-              {/* TODO: remove this? */}
             </Field>
             <input type="hidden" name="unit" />
           </>
