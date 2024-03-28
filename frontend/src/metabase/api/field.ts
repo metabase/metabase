@@ -2,15 +2,39 @@ import type {
   FieldId,
   SearchFieldValuesRequest,
   FieldValue,
-  FieldValuesResponse,
+  GetFieldValuesResponse,
+  Field,
+  GetFieldRequest,
+  UpdateFieldRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag } from "./tags";
+import { idTag, tag } from "./tags";
 
 export const fieldApi = Api.injectEndpoints({
   endpoints: builder => ({
-    getFieldValues: builder.query<FieldValuesResponse, FieldId>({
+    getField: builder.query<Field, GetFieldRequest>({
+      query: ({ id, ...body }) => ({
+        method: "GET",
+        url: `/api/field/${id}`,
+        body,
+      }),
+      providesTags: (response, error, { id }) => [idTag("field", id)],
+    }),
+    updateField: builder.mutation<Field, UpdateFieldRequest>({
+      query: ({ id, ...body }) => ({
+        method: "PUT",
+        url: `/api/field/${id}`,
+        body,
+      }),
+      invalidatesTags: (response, error, { id }) => [
+        idTag("field", id),
+        idTag("field-values", id),
+        tag("database-metadata"),
+        tag("database-id-fields"),
+      ],
+    }),
+    getFieldValues: builder.query<GetFieldValuesResponse, FieldId>({
       query: fieldId => ({
         method: "GET",
         url: `/api/field/${fieldId}/values`,
@@ -51,6 +75,8 @@ export const fieldApi = Api.injectEndpoints({
 });
 
 export const {
+  useGetFieldQuery,
+  useUpdateFieldMutation,
   useGetFieldValuesQuery,
   useSearchFieldValuesQuery,
   useRescanFieldValuesMutation,

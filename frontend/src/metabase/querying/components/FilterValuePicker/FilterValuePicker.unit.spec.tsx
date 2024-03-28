@@ -12,7 +12,7 @@ import {
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
-import type { FieldValuesResponse } from "metabase-types/api";
+import type { GetFieldValuesResponse } from "metabase-types/api";
 import { createMockFieldValues } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -33,8 +33,8 @@ interface SetupOpts<T> {
   column: Lib.ColumnMetadata;
   values: T[];
   compact?: boolean;
-  fieldValues?: FieldValuesResponse;
-  searchValues?: Record<string, FieldValuesResponse>;
+  fieldValues?: GetFieldValuesResponse;
+  searchValues?: Record<string, GetFieldValuesResponse>;
 }
 
 async function setupStringPicker({

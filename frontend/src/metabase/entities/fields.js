@@ -2,12 +2,17 @@ import { assocIn, updateIn } from "icepick";
 import { normalize } from "normalizr";
 import { t } from "ttag";
 
+import { fieldApi } from "metabase/api";
 import {
   field_visibility_types,
   field_semantic_types,
   has_field_values_options,
 } from "metabase/lib/core";
-import { createEntity, notify } from "metabase/lib/entities";
+import {
+  createEntity,
+  entityCompatibleQuery,
+  notify,
+} from "metabase/lib/entities";
 import {
   compose,
   withAction,
@@ -51,6 +56,17 @@ const Fields = createEntity({
   name: "fields",
   path: "/api/field",
   schema: FieldSchema,
+
+  api: {
+    get: (entityQuery, options, dispatch) =>
+      entityCompatibleQuery(entityQuery, dispatch, fieldApi.endpoints.getField),
+    update: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        fieldApi.endpoints.updateField,
+      ),
+  },
 
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).field(entityId),

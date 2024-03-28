@@ -4,7 +4,7 @@ import type {
   Field,
   FieldId,
   FieldValue,
-  FieldValuesResponse,
+  GetFieldValuesResponse,
 } from "metabase-types/api";
 
 import { PERMISSION_ERROR } from "./constants";
@@ -15,7 +15,7 @@ export function setupFieldEndpoints(field: Field) {
   fetchMock.post(`path:/api/field/${field.id}/discard_values`, {});
 }
 
-export function setupFieldValuesEndpoints(fieldValues: FieldValuesResponse) {
+export function setupFieldValuesEndpoints(fieldValues: GetFieldValuesResponse) {
   fetchMock.get(`path:/api/field/${fieldValues.field_id}/values`, fieldValues);
 }
 
@@ -27,7 +27,7 @@ export function setupFieldValuesGeneralEndpoint() {
 }
 
 export function setupUnauthorizedFieldValuesEndpoints(
-  fieldValues: FieldValuesResponse,
+  fieldValues: GetFieldValuesResponse,
 ) {
   fetchMock.get(`path:/api/field/${fieldValues.field_id}/values`, {
     status: 403,
@@ -36,7 +36,7 @@ export function setupUnauthorizedFieldValuesEndpoints(
 }
 
 export function setupFieldsValuesEndpoints(
-  fieldsValues: FieldValuesResponse[],
+  fieldsValues: GetFieldValuesResponse[],
 ) {
   fieldsValues.forEach(fieldValues => setupFieldValuesEndpoints(fieldValues));
 }

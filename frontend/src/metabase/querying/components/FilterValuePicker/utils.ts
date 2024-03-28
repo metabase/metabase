@@ -1,7 +1,7 @@
 import type { SelectItem } from "metabase/ui";
 import type { FieldValuesSearchInfo } from "metabase-lib";
 import * as Lib from "metabase-lib";
-import type { FieldValue, FieldValuesResponse } from "metabase-types/api";
+import type { FieldValue, GetFieldValuesResponse } from "metabase-types/api";
 
 export function canLoadFieldValues({
   fieldId,
@@ -13,13 +13,13 @@ export function canLoadFieldValues({
 export function canListFieldValues({
   values,
   has_more_values,
-}: FieldValuesResponse): boolean {
+}: GetFieldValuesResponse): boolean {
   return values.length > 0 && !has_more_values;
 }
 
 export function canSearchFieldValues(
   { fieldId, searchFieldId, hasFieldValues }: FieldValuesSearchInfo,
-  fieldData: FieldValuesResponse | undefined,
+  fieldData: GetFieldValuesResponse | undefined,
 ): boolean {
   return (
     fieldId != null &&
