@@ -80,7 +80,7 @@
 
 (def command
   "GitHub CLI command to list all releases, exluding RCs"
-  "gh release list --repo metabase/metabase --limit 10000 --exclude-pre-releases --exclude-drafts")
+  "gh release list --repo metabase/metabase --limit 10000 --exclude-pre-releases")
 
 (def list-of-releases
   "Run GitHub CLI command to retrieve list of Metabase releases."

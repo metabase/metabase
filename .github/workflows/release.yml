@@ -648,3 +648,32 @@ jobs:
             repo: context.repo.repo,
             version,
           });
+
+  update-version-list:
+    runs-on: ubuntu-22.04
+    needs: [draft-release-notes]
+    timeout-minutes: 10
+    steps:
+      - name: install babashka
+        run: bash < <(curl -s https://raw.githubusercontent.com/babashka/babashka/master/install)
+      - uses: actions/checkout@v3
+      - name: update version list
+        run: | # bash
+          cd bin/release-list
+          bb -m release-list.main
+      - name: open a pull request
+        run: | # bash
+          git config --global user.email "metabase-bot@metabase.com"
+          git config --global user.name "Metabase bot"
+
+          branchName="update-version-list-${{ inputs.version }}-${{ inputs.commit }}"
+          git checkout -b $branchName
+          git add .
+          git commit -m "update version list for ${{ inputs.version }}"
+          git push origin $branchName
+          gh pr create \
+            --title "Update docs version list for ${{ inputs.version }}" \
+            --body "Update version list for ${{ inputs.version }}" \
+            --reviewer "${GITHUB_ACTOR}" \
+            --base master \
+            --head $branchName
