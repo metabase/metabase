@@ -46,7 +46,8 @@ export function Trigger({
   return (
     <span
       className={
-        className || cx(CS.px2, CS.py2, CS.textBold, CS.cursorPointer, "text-default")
+        className ||
+        cx(CS.px2, CS.py2, CS.textBold, CS.cursorPointer, "text-default")
       }
       style={style}
     >
