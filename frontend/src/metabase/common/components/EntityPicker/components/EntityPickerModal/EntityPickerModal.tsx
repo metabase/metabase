@@ -27,6 +27,8 @@ export type EntityPickerModalOptions = {
   showSearch?: boolean;
   hasConfirmButtons?: boolean;
   allowCreateNew?: boolean;
+  confirmButtonText?: string;
+  cancelButtonText?: string;
 };
 
 export const defaultOptions: EntityPickerModalOptions = {
@@ -99,6 +101,7 @@ export function EntityPickerModal<
       onClose={onClose}
       data-testid="entity-picker-modal"
       trapFocus={trapFocus}
+      zIndex={400} // needed to put this above the BulkActionsToast
       closeOnEscape={false} // we're doing this manually in useWindowEvent
     >
       <Modal.Overlay />
@@ -137,6 +140,8 @@ export function EntityPickerModal<
                 onCancel={onClose}
                 canConfirm={canSelectItem}
                 actionButtons={actionButtons}
+                confirmButtonText={options?.confirmButtonText}
+                cancelButtonText={options?.cancelButtonText}
               />
             )}
           </ErrorBoundary>

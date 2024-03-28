@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import ExpandingContent from "metabase/components/ExpandingContent";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { color as c } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
@@ -111,14 +112,19 @@ function NotebookStep({
   return (
     <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
       <StepRoot
-        className="hover-parent hover--visibility"
+        className={cx(CS.hoverParent, CS.hoverVisibility)}
         data-testid={step.testID}
       >
         <StepHeader color={color}>
           {title}
           {canRevert && (
             <IconButtonWrapper
-              className="ml-auto text-light text-medium-hover hover-child"
+              className={cx(
+                "ml-auto",
+                "text-light",
+                "text-medium-hover",
+                CS.hoverChild,
+              )}
               onClick={handleClickRevert}
             >
               <Icon

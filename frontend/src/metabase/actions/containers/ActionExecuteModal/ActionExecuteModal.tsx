@@ -1,7 +1,7 @@
 import type { FormikHelpers } from "formik";
 import { useCallback } from "react";
 
-import { useActionQuery } from "metabase/common/hooks/use-action-query";
+import { useActionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";

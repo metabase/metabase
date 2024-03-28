@@ -278,7 +278,7 @@ const TableRow = ({
   }, [table, onSelectTable]);
 
   return (
-    <li className="hover-parent hover--visibility">
+    <li className={cx(CS.hoverParent, CS.hoverVisibility)}>
       <AdminListItem
         disabled={!isSyncCompleted(table)}
         onClick={handleSelect}
@@ -295,7 +295,7 @@ const TableRow = ({
       >
         {table.displayName()}
         {isSyncCompleted(table) && (
-          <div className="hover-child float-right">
+          <div className={cx(CS.hoverChild, "float-right")}>
             <ToggleVisibilityButton
               tables={tables}
               isHidden={table.visibility_type != null}

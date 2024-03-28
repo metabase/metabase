@@ -217,7 +217,7 @@ function EntityItemMenu({
       <EntityMenu
         triggerAriaLabel={t`Actions`}
         className={className}
-        closedClassNames="hover-child hover-child--smooth"
+        closedClassNames={cx(CS.hoverChild, CS.hoverChildSmooth)}
         triggerIcon="ellipsis"
         items={actions}
       />
@@ -247,7 +247,7 @@ const EntityItem = ({
 
   return (
     <EntityItemWrapper
-      className={cx("hover-parent hover--visibility", {
+      className={cx(CS.hoverParent, CS.hoverVisibility, {
         "bg-light-hover": variant === "list",
       })}
       variant={variant}
