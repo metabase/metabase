@@ -22,21 +22,6 @@ export const fieldApi = Api.injectEndpoints({
       }),
       providesTags: (response, error, { id }) => [idTag("field", id)],
     }),
-    updateField: builder.mutation<Field, UpdateFieldRequest>({
-      query: ({ id, ...body }) => ({
-        method: "PUT",
-        url: `/api/field/${id}`,
-        body,
-      }),
-      invalidatesTags: (response, error, { id }) => [
-        idTag("field", id),
-        idTag("field-values", id),
-        tag("table-metadata"),
-        tag("table-foreign-keys"),
-        tag("database-metadata"),
-        tag("database-id-fields"),
-      ],
-    }),
     getFieldValues: builder.query<GetFieldValuesResponse, FieldId>({
       query: fieldId => ({
         method: "GET",
@@ -54,6 +39,21 @@ export const fieldApi = Api.injectEndpoints({
       }),
       providesTags: (result, error, { fieldId }) => [
         idTag("field-values", fieldId),
+      ],
+    }),
+    updateField: builder.mutation<Field, UpdateFieldRequest>({
+      query: ({ id, ...body }) => ({
+        method: "PUT",
+        url: `/api/field/${id}`,
+        body,
+      }),
+      invalidatesTags: (response, error, { id }) => [
+        idTag("field", id),
+        idTag("field-values", id),
+        tag("table-metadata"),
+        tag("table-foreign-keys"),
+        tag("database-metadata"),
+        tag("database-id-fields"),
       ],
     }),
     createFieldDimension: builder.mutation<void, CreateFieldDimensionRequest>({
