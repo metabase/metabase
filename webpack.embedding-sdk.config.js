@@ -18,8 +18,6 @@ const BUILD_PATH = __dirname + "/resources/embedding-sdk";
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const isDevMode = WEBPACK_BUNDLE !== "production";
 
-// TODO: add package.json generation to CI
-
 // TODO: Reuse babel and css configs from webpack.config.js
 // Babel:
 const BABEL_CONFIG = {
