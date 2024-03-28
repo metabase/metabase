@@ -17,12 +17,12 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
 import { granulateDatabasePermissions } from "../../permissions";
-import type {
-  DatabaseEntityId,
+import type { DatabaseEntityId, PermissionSectionConfig } from "../../types";
+import {
   DataPermissionValue,
-  PermissionSectionConfig,
+  DataPermission,
+  DataPermissionType,
 } from "../../types";
-import { DataPermission, DataPermissionType } from "../../types";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
@@ -105,7 +105,7 @@ const buildAccessPermission = (
             permission: DataPermission.VIEW_DATA,
           },
           accessPermissionValue,
-          DATA_PERMISSION_OPTIONS.unrestricted.value,
+          DataPermissionValue.UNRESTRICTED,
         ),
       ...PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
     },
@@ -172,7 +172,7 @@ const buildNativePermission = (
       DATA_PERMISSION_OPTIONS.no,
     ],
     postActions: {
-      controlled: (_, __, ___, accessPermissionValue) =>
+      controlled: (_, __, ___, newValue) =>
         granulateDatabasePermissions(
           groupId,
           entityId,
@@ -180,8 +180,10 @@ const buildNativePermission = (
             type: DataPermissionType.NATIVE,
             permission: DataPermission.CREATE_QUERIES,
           },
-          accessPermissionValue,
-          DATA_PERMISSION_OPTIONS.queryBuilder.value,
+          newValue,
+          nativePermissionValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
+            ? DataPermissionValue.QUERY_BUILDER
+            : nativePermissionValue,
         ),
     },
   };

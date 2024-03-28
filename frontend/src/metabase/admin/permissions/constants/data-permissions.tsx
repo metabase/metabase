@@ -2,11 +2,12 @@ import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+
 import { DataPermissionValue } from "../types";
 
 export const DATA_PERMISSION_OPTIONS = {
   unrestricted: {
-    label: t`Unrestricted`,
+    label: t`Can view`,
     value: DataPermissionValue.UNRESTRICTED,
     icon: "check",
     iconColor: "success",

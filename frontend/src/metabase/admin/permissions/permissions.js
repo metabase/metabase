@@ -1,14 +1,15 @@
 import { assocIn, merge } from "icepick";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import {
   inferAndUpdateEntityPermissions,
   updateFieldsPermission,
-  updateNativePermission,
   updateSchemasPermission,
   updateTablesPermission,
   updatePermission,
+  getNativePermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import Group from "metabase/entities/groups";
@@ -96,26 +97,27 @@ export const GRANULATE_DATABASE_TABLE_PERMISSIONS =
   "metabase/admin/permissions/GRANULATE_DATABASE_TABLE_PERMISSIONS";
 export const granulateDatabasePermissions = createThunkAction(
   GRANULATE_DATABASE_TABLE_PERMISSIONS,
-  (groupId, entityId, permission, value, defaultValue) => dispatch => {
-    // HACK: updatePermission fn sets entities of controlled values (schemas in this case
-    // to the previously set value of the parent (database in this case). if the db perm
-    // value is set to something other than restrictied before changing to controlled, the
-    // table's view data dropdowns will get locked in an unchangable state (e.g. blocked, impersonated)
-    if (value === DataPermissionValue.CONTROLLED) {
-      dispatch(
-        updateDataPermission({
-          groupId,
-          permission,
-          value: defaultValue,
-          entityId,
-        }),
-      );
-    }
+  (groupId, entityId, permission, value, defaultValue) =>
+    (dispatch, getState) => {
+      // HACK: updatePermission fn sets entities of controlled values (schemas in this case
+      // to the previously set value of the parent (database in this case). if the db perm
+      // value is set to something other than restrictied before changing to controlled, the
+      // table's view data dropdowns will get locked in an unchangable state (e.g. blocked, impersonated)
+      if (value === DataPermissionValue.CONTROLLED) {
+        dispatch(
+          updateDataPermission({
+            groupId,
+            permission,
+            value: defaultValue,
+            entityId,
+          }),
+        );
+      }
 
-    dispatch(updateDataPermission({ groupId, permission, value, entityId }));
+      dispatch(updateDataPermission({ groupId, permission, value, entityId }));
 
-    dispatch(push(getGroupFocusPermissionsUrl(groupId, entityId)));
-  },
+      dispatch(push(getGroupFocusPermissionsUrl(groupId, entityId)));
+    },
 );
 
 export const UPDATE_DATA_PERMISSION =
@@ -141,6 +143,7 @@ export const updateDataPermission = createThunkAction(
           groupId,
           view,
           value,
+          getState,
         );
         if (action) {
           dispatch(action);
@@ -166,8 +169,14 @@ export const saveDataPermissions = createThunkAction(
   SAVE_DATA_PERMISSIONS,
   () => async (_dispatch, getState) => {
     MetabaseAnalytics.trackStructEvent("Permissions", "save");
+    const state = getState();
+    const groupIds = Object.keys(state.entities.groups);
     const { dataPermissions, dataPermissionsRevision } =
       getState().admin.permissions;
+
+    // catch edge case where user has deleted a group but has loaded the permissions graph
+    // with state for the now deleted group still in the graph
+    const groupDataPermissions = _.pick(dataPermissions, groupIds);
 
     const extraData =
       PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.reduce(
@@ -181,7 +190,7 @@ export const saveDataPermissions = createThunkAction(
       );
 
     const permissionsGraph = {
-      groups: dataPermissions,
+      groups: groupDataPermissions,
       revision: dataPermissionsRevision,
       ...extraData,
     };
@@ -282,12 +291,12 @@ const dataPermissions = handleActions(
           );
         }
 
-        if (permissionInfo.type === DataPermissionType.NATIVE) {
-          const updateFn =
-            PLUGIN_DATA_PERMISSIONS.updateNativePermission ??
-            updateNativePermission;
-
-          return updateFn(
+        if (
+          permissionInfo.type === DataPermissionType.NATIVE &&
+          PLUGIN_DATA_PERMISSIONS.updateNativePermission
+        ) {
+          // TODO: rename plugin...
+          PLUGIN_DATA_PERMISSIONS.updateNativePermission(
             state,
             groupId,
             entityId,
@@ -296,6 +305,30 @@ const dataPermissions = handleActions(
             permissionInfo.permission,
           );
         }
+
+        // TODO: consolidate this block somehow...
+        const currDbNativePermission = getNativePermission(state, groupId, {
+          databaseId: entityId.databaseId,
+        });
+        const shouldGranulateNative =
+          permissionInfo.permission === DataPermission.CREATE_QUERIES &&
+          (entityId.tableId != null || entityId.schemaName != null) &&
+          currDbNativePermission ===
+            DataPermissionValue.QUERY_BUILDER_AND_NATIVE;
+        if (shouldGranulateNative) {
+          state = updateTablesPermission(
+            state,
+            groupId,
+            {
+              databaseId: entityId.databaseId,
+              schemaName: entityId.schemaName,
+            },
+            DataPermissionValue.QUERY_BUILDER,
+            database,
+            permissionInfo.permission,
+          );
+        }
+        // TODO: consolidate this block somehow...
 
         const shouldDowngradeNative =
           permissionInfo.type === DataPermissionType.ACCESS;

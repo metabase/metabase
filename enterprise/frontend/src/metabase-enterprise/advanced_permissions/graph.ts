@@ -10,48 +10,38 @@ import {
 } from "metabase/admin/permissions/types";
 import {
   getSchemasPermission,
-  updatePermission,
   updateSchemasPermission,
 } from "metabase/admin/permissions/utils/graph";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { GroupsPermissions, NativePermissions } from "metabase-types/api";
 
+// TODO: rename this as it's more about downgrading certain permissions at this point
 export function updateNativePermission(
   permissions: GroupsPermissions,
   groupId: number,
   entityId: DatabaseEntityId & TableEntityId,
   value: NativePermissions,
   database: Database,
-  permission: DataPermission,
 ) {
   const schemasPermission = getSchemasPermission(
     permissions,
     groupId,
-    entityId,
+    { databaseId: entityId.databaseId },
     DataPermission.VIEW_DATA,
   );
 
   if (
-    (value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE ||
-      value === DataPermissionValue.QUERY_BUILDER) &&
+    value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
     schemasPermission !== DataPermissionValue.IMPERSONATED
   ) {
     permissions = updateSchemasPermission(
       permissions,
       groupId,
-      { databaseId: entityId.databaseId },
+      entityId,
       DataPermissionValue.UNRESTRICTED,
       database,
       DataPermission.VIEW_DATA,
       false,
     );
   }
-  return updatePermission(
-    permissions,
-    groupId,
-    entityId.databaseId,
-    permission,
-    _.compact([(entityId as any).schemaName, (entityId as any).tableId]),
-    value,
-  );
 }

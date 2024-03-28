@@ -18,12 +18,12 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
-import type {
-  TableEntityId,
-  PermissionSectionConfig,
+import type { TableEntityId, PermissionSectionConfig } from "../../types";
+import {
   DataPermissionValue,
+  DataPermission,
+  DataPermissionType,
 } from "../../types";
-import { DataPermission, DataPermissionType } from "../../types";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
@@ -129,13 +129,23 @@ const buildNativePermission = (
   accessPermissionValue: string,
 ): PermissionSectionConfig => {
   const { databaseId } = entityId;
-  const dbValue = getNativePermission(permissions, groupId, { databaseId });
-  const isControlledByDb = dbValue !== DATA_PERMISSION_OPTIONS.controlled.value;
+  const dbViewValue = getSchemasPermission(
+    permissions,
+    groupId,
+    { databaseId },
+    DataPermission.VIEW_DATA,
+  );
+  const dbCreateValue = getNativePermission(permissions, groupId, {
+    databaseId,
+  });
+
+  const isDbViewDataBlocked = dbViewValue === DataPermissionValue.BLOCKED;
+  const isControlledByDb = dbCreateValue !== DataPermissionValue.CONTROLLED;
 
   return {
     permission: DataPermission.CREATE_QUERIES,
     type: DataPermissionType.NATIVE,
-    isDisabled: isControlledByDb,
+    isDisabled: isDbViewDataBlocked,
     disabledTooltip: getNativePermissionDisabledTooltip(
       isAdmin,
       accessPermissionValue,
@@ -147,6 +157,7 @@ const buildNativePermission = (
       DATA_PERMISSION_OPTIONS.queryBuilder,
       DATA_PERMISSION_OPTIONS.no,
     ]),
+    // TODO: confirmation for no / queryBuilder options will downgrade all other tables to query-builder
   };
 };
 
