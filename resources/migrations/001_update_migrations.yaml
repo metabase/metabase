@@ -6113,11 +6113,6 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  name: expression_clause
-                  type: text
-                  constraints:
-                    nullable: true
-              - column:
                   name: timestamp
                   type: ${timestamp_type}
                   remarks: The time an event was recorded

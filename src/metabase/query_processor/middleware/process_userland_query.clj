@@ -6,7 +6,6 @@
   ViewLog recording is triggered indirectly by the call to [[events/publish-event!]] with the `:event/card-query`
   event -- see [[metabase.events.view-log]]."
   (:require
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.events :as events]
    [metabase.lib.core :as lib]
@@ -36,18 +35,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Save Query Execution                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; Should be somewhere in metabase.lib
-(defn- remove-lib-uuids
-  "Two queries should be the same even if they have different :lib/uuids, because they might have both been converted
-  from the same legacy query."
-  [x]
-  (walk/postwalk
-   (fn [x]
-     (if (map? x)
-       (dissoc x :lib/uuid)
-       x))
-   x))
 
 (defn- pmbql->field-usages
   [query]
@@ -88,9 +75,8 @@
      (for [[_ expression-def] expression
            :let [field-id (lib.util.match/match-one expression-def [:field (id :guard int?) _] id)]
            :when (int? field-id)]
-       {:used_in           :expression
-        :field_id          field-id
-        :expression_clause (remove-lib-uuids expression-def)}))))
+       {:used_in  :expression
+        :field_id field-id}))))
 
 (defn- query->field-usages
   [query]

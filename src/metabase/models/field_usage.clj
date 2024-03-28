@@ -16,8 +16,7 @@
    :aggregation_function mi/transform-keyword
    :filter_op            mi/transform-keyword
    :filter_args          mi/transform-json
-   :breakout_param       mi/transform-json
-   :expression_clause    mi/transform-json})
+   :breakout_param       mi/transform-json})
 
 (t2/define-before-insert :model/FieldUsage
   [instance]

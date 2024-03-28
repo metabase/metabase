@@ -188,17 +188,17 @@
         (is (= #{{:used_in              :aggregation
                   :field_id             (mt/id :orders :total)
                   :aggregation_function :sum}
-                 {:used_in        :breakout
-                  :field_id       (mt/id :orders :created_at)
-                  :breakout_param {:temporal-unit :month}}
-                 {:used_in            :filter
-                  :field_id           (mt/id :orders :product_id)
-                  :filter_op          :>
-                  :filter_args        [1]}
-                 {:used_in            :filter
-                  :field_id           (mt/id :orders :created_at)
-                  :filter_op          :time-interval
-                  :filter_args        [:current :day]}
-                 {:used_in            :expression
-                  :field_id           (mt/id :orders :tax)
-                  :expression_clause  [:+ [:field (mt/id :orders :tax) nil] 1]}} (set @field-usages)))))))
+                 {:used_in              :breakout
+                  :field_id             (mt/id :orders :created_at)
+                  :breakout_param       {:temporal-unit :month}}
+                 {:used_in              :filter
+                  :field_id             (mt/id :orders :product_id)
+                  :filter_op            :>
+                  :filter_args          [1]}
+                 {:used_in              :filter
+                  :field_id             (mt/id :orders :created_at)
+                  :filter_op            :time-interval
+                  :filter_args          [:current :day]}
+                 {:used_in              :expression
+                  :field_id             (mt/id :orders :tax)}}
+               (set @field-usages)))))))
