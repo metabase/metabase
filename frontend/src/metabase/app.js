@@ -109,3 +109,35 @@ export function init(...args) {
 }
 
 captureConsoleErrors();
+
+function partyMode() {
+  const partyLeader =
+    "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaHduajhkaDVnbWRtMHFmanZhbHBod3g0Nmlwejl6bDQ3cXdpaGN3MiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/eiBPiTPWuRyEaDXnuS/source.gif";
+
+  const getPartyColor = () => `hsl(${Math.random() * 360}, 100%, 50%)`;
+
+  setInterval(() => {
+    document.querySelector("link[rel~='icon']").href = partyLeader;
+
+    document.querySelectorAll(".Icon").forEach(partyLeaderFrame => {
+      partyLeaderFrame.outerHTML = `<img width="20" height="20" src=${partyLeader} />`;
+    });
+
+    document.querySelectorAll("body, *").forEach(partyBox => {
+      partyBox.style.backgroundColor = getPartyColor();
+      partyBox.style.color = getPartyColor();
+    });
+  }, 500);
+}
+
+let ringBuffer = "";
+document.addEventListener("keydown", function (e) {
+  if ("party".includes(e.key)) {
+    ringBuffer += e.key;
+  }
+
+  if (ringBuffer.includes("party")) {
+    partyMode();
+    ringBuffer = "";
+  }
+});
