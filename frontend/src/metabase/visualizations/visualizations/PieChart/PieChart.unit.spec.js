@@ -136,7 +136,7 @@ describe("PieChart", () => {
     userEvent.click(screen.getByLabelText("Show total"));
 
     await waitFor(() => {
-      expect(screen.getByTestId("detail-value")).not.toBeVisible();
+      expect(screen.queryByTestId("detail-value")).not.toBeInTheDocument();
     });
 
     userEvent.click(screen.getByLabelText("Show total"));
