@@ -91,10 +91,10 @@
                          :appearance_site_name                false
                          :appearance_help_link                :metabase
                          :appearance_logo                     false
-                         :appareance_favicon                  false
-                         :apperance_loading_message           false
+                         :appearance_favicon                  false
+                         :appearance_loading_message          false
                          :appearance_metabot_greeting         false
-                         :apparerance_lighthouse_illustration false
+                         :appearance_lighthouse_illustration  false
                          :appearance_ui_colors                false
                          :appearance_chart_colors             false
                          :appearance_show_mb_links            false}
@@ -135,10 +135,10 @@
                            :appearance_site_name                true
                            :appearance_help_link                :hidden
                            :appearance_logo                     true
-                           :appareance_favicon                  true
-                           :apperance_loading_message           true
+                           :appearance_favicon                  true
+                           :appearance_loading_message          true
                            :appearance_metabot_greeting         true
-                           :apparerance_lighthouse_illustration true
+                           :appearance_lighthouse_illustration  true
                            :appearance_ui_colors                true
                            :appearance_chart_colors             false
                            :appearance_show_mb_links            true}
