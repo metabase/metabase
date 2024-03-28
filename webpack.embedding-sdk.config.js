@@ -37,121 +37,121 @@ const CSS_CONFIG = {
 
 const shouldAnalyzeBundles = process.env.SHOULD_ANALYZE_BUNDLES === "true";
 
-module.exports = env => {
-  return {
-    ...mainConfig,
+const config = {
+  ...mainConfig,
 
-    context: SDK_SRC_PATH,
+  context: SDK_SRC_PATH,
 
-    entry: "./index.ts",
+  entry: "./index.ts",
 
-    output: {
-      path: BUILD_PATH + "/dist",
-      publicPath: "",
-      filename: "[name].bundle.js",
-      library: {
-        type: "commonjs2",
+  output: {
+    path: BUILD_PATH + "/dist",
+    publicPath: "",
+    filename: "[name].bundle.js",
+    library: {
+      type: "commonjs2",
+    },
+  },
+
+  module: {
+    rules: [
+      {
+        test: /\.(tsx?|jsx?)$/,
+        exclude: /node_modules|cljs/,
+        use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
       },
-    },
+      {
+        test: /\.(svg|png|eot|woff2?|ttf)$/,
+        type: "asset/inline",
+        resourceQuery: { not: [/component|source/] },
+      },
+      {
+        test: /\.css$/,
+        use: [
+          {
+            loader: "style-loader",
+          },
+          { loader: "css-loader", options: CSS_CONFIG },
+          { loader: "postcss-loader" },
+        ],
+      },
 
-    module: {
-      rules: [
-        {
-          test: /\.(tsx?|jsx?)$/,
-          exclude: /node_modules|cljs/,
-          use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
-        },
-        {
-          test: /\.(svg|png|eot|woff2?|ttf)$/,
-          type: "asset/inline",
-          resourceQuery: { not: [/component|source/] },
-        },
-        {
-          test: /\.css$/,
-          use: [
-            {
-              loader: "style-loader",
+      {
+        test: /\.js$/,
+        exclude: /node_modules/,
+        enforce: "pre",
+        use: ["source-map-loader"],
+      },
+
+      {
+        test: /\.svg/,
+        type: "asset/source",
+        resourceQuery: /source/, // *.svg?source
+      },
+      {
+        test: /\.svg$/i,
+        issuer: /\.[jt]sx?$/,
+        resourceQuery: /component/, // *.svg?component
+        use: [
+          {
+            loader: "@svgr/webpack",
+            options: {
+              ref: true,
             },
-            { loader: "css-loader", options: CSS_CONFIG },
-            { loader: "postcss-loader" },
-          ],
-        },
+          },
+        ],
+      },
+    ],
+  },
 
-        ...(isDevMode
-          ? [
-              {
-                test: /\.js$/,
-                exclude: /node_modules/,
-                enforce: "pre",
-                use: ["source-map-loader"],
-              },
-            ]
-          : []),
+  externals: {
+    ...mainConfig.externals,
+    react: "react",
+    "react-dom": "react-dom",
+    "react/jsx-runtime": "react/jsx-runtime",
+  },
 
-        {
-          test: /\.svg/,
-          type: "asset/source",
-          resourceQuery: /source/, // *.svg?source
-        },
-        {
-          test: /\.svg$/i,
-          issuer: /\.[jt]sx?$/,
-          resourceQuery: /component/, // *.svg?component
-          use: [
-            {
-              loader: "@svgr/webpack",
-              options: {
-                ref: true,
-              },
-            },
-          ],
-        },
-      ],
-    },
+  optimization: !isDevMode
+    ? {
+        minimizer: [
+          new TerserPlugin({
+            minify: TerserPlugin.swcMinify,
+            parallel: true,
+            test: /\.(tsx?|jsx?)($|\?)/i,
+          }),
+        ],
+      }
+    : undefined,
 
-    externals: {
-      ...mainConfig.externals,
-      react: "react",
-      "react-dom": "react-dom",
-      "react/jsx-runtime": "react/jsx-runtime",
-    },
+  plugins: [
+    new webpack.BannerPlugin({
+      banner:
+        "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
+    }),
+    new NodePolyfillPlugin(), // for crypto, among others
+    // https://github.com/remarkjs/remark/discussions/903
+    new webpack.ProvidePlugin({
+      process: "process/browser.js",
+    }),
 
-    optimization: !isDevMode
-      ? {
-          minimizer: [
-            new TerserPlugin({
-              minify: TerserPlugin.swcMinify,
-              parallel: true,
-              test: /\.(tsx?|jsx?)($|\?)/i,
-            }),
-          ],
-        }
-      : undefined,
+    // TODO: enable this to add types generation (but we also need a separate step to bundle types into a single module)
+    // new ForkTsCheckerWebpackPlugin({
+    //   async: isDevMode,
+    //   typescript: {
+    //     configFile: path.resolve(__dirname, "./tsconfig.sdk.json"),
+    //     // mode: "write-dts",
+    //     memoryLimit: 4096,
+    //   },
+    // }),
 
-    plugins: [
-      new webpack.BannerPlugin({
-        banner:
-          "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
+    shouldAnalyzeBundles &&
+      new BundleAnalyzerPlugin({
+        analyzerMode: "static",
+        reportFilename: BUILD_PATH + "/dist/report.html",
       }),
-      new NodePolyfillPlugin(), // for crypto, among others
-      // https://github.com/remarkjs/remark/discussions/903
-      new webpack.ProvidePlugin({
-        process: "process/browser.js",
-      }),
-      new ForkTsCheckerWebpackPlugin({
-        async: isDevMode,
-        typescript: {
-          configFile: path.resolve(__dirname, "./tsconfig.sdk.json"),
-          // mode: "write-dts", // TODO: enable this to add types generation (but we also need a separate step to bundle types into a single module)
-          memoryLimit: 4096,
-        },
-      }),
-
-      shouldAnalyzeBundles &&
-        new BundleAnalyzerPlugin({
-          analyzerMode: "static",
-          reportFilename: BUILD_PATH + "/dist/report.html",
-        }),
-    ].filter(Boolean),
-  };
+  ].filter(Boolean),
 };
+
+// console.log(config);
+
+module.exports = config;
