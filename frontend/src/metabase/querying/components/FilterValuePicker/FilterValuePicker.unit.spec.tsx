@@ -541,18 +541,6 @@ describe("StringFilterValuePicker", () => {
       expect(onChange).toHaveBeenLastCalledWith(["a@b.com", "a@b"]);
     });
 
-    it("should trim free-form input", async () => {
-      const { onChange } = await setupStringPicker({
-        query,
-        stageIndex,
-        column,
-        values: [],
-      });
-
-      userEvent.type(screen.getByLabelText("Filter value"), " abc \t");
-      expect(onChange).toHaveBeenLastCalledWith(["abc"]);
-    });
-
     it("should trim clipboard data", async () => {
       const { onChange } = await setupStringPicker({
         query,
