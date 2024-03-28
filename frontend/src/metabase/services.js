@@ -361,8 +361,6 @@ export const MetabaseApi = {
   // field_summary:               GET("/api/field/:fieldId/summary"),
   field_values: GET("/api/field/:fieldId/values"),
   field_values_update: POST("/api/field/:fieldId/values"),
-  field_update: PUT("/api/field/:id"),
-  field_dimension_delete: DELETE("/api/field/:fieldId/dimension"),
   field_search: GET("/api/field/:fieldId/search/:searchFieldId"),
   field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
