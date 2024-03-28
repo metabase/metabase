@@ -46,7 +46,7 @@ function SchemaBrowser(props) {
           </BrowseHeaderContent>
           {schemas.length === 0 ? (
             <h2
-              className={cx("full", CS.textCentered, "text-medium")}
+              className={cx(CS.full, CS.textCentered, CS.textMedium)}
             >{t`This database doesn't have any tables.`}</h2>
           ) : (
             <Grid>

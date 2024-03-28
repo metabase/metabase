@@ -64,7 +64,7 @@ const SlackChannelField = ({
   const applicationName = useSelector(getApplicationName);
   return (
     <div>
-      <span className={cx("block", CS.textBold, "pb2")}>
+      <span className={cx(CS.block, CS.textBold, CS.pb2)}>
         {channelField?.displayName}
       </span>
       <AutocompleteInput

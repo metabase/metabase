@@ -997,7 +997,7 @@ function formatMajorMinor(
       <span>
         <span
           style={{ minWidth: options.majorWidth + "em" }}
-          className={cx("inline-block", CS.textRight, CS.textBold)}
+          className={cx(CS.inlineBlock, CS.textRight, CS.textBold)}
         >
           {major}
         </span>

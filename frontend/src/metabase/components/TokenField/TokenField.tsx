@@ -648,17 +648,17 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
             <li className="mr1" key={this._key(option)}>
               <div
                 className={cx(
-                  "py1",
-                  "pl1",
-                  "pr2",
-                  "block",
-                  "rounded",
+                  CS.py1,
+                  CS.pl1,
+                  CS.pr2,
+                  CS.block,
+                  CS.rounded,
                   CS.textBold,
+                  CS.inlineBlock,
+                  CS.full,
+                  CS.cursorPointer,
                   `text-${color}-hover`,
-                  "inline-block",
-                  "full",
-                  "cursor-pointer",
-                  "bg-light-hover",
+                  `bg-light-hover`,
                   {
                     [`text-${color} bg-light`]:
                       !this.state.listIsHovered &&

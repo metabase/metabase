@@ -68,7 +68,7 @@ const MetadataEditor = ({ databases, params }: MetadataEditorProps) => {
               selectedTableId={tableId}
             />
           ) : (
-            <div className={cx("full", CS.textCentered)}>
+            <div className={cx(CS.full, CS.textCentered)}>
               <h2 className="text-medium">
                 {hasDatabases
                   ? t`Select any table to see its schema and add or edit metadata.`
