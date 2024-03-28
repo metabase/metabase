@@ -55,6 +55,7 @@ export default class EmailAttachmentPicker extends Component {
       selectedAttachmentType:
         this.attachmentTypeFor(selectedCards) || this.DEFAULT_ATTACHMENT_TYPE,
       selectedCardIds: new Set(selectedCards.map(card => card.id)),
+      isFormattingEnabled: getInitialFormattingState(selectedCards),
     };
   }
 
@@ -294,4 +295,11 @@ export default class EmailAttachmentPicker extends Component {
       </div>
     );
   }
+}
+
+function getInitialFormattingState(cards) {
+  if (cards.length > 0) {
+    return cards.some(card => !!card.format_rows);
+  }
+  return true;
 }
