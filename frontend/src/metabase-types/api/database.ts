@@ -110,6 +110,19 @@ export interface ListDatabaseIdFieldsRequest {
   include_editable_data_model?: boolean;
 }
 
+export interface ListDatabaseSchemasRequest {
+  id: DatabaseId;
+  include_hidden?: boolean;
+  include_editable_data_model?: boolean;
+}
+
+export interface ListDatabaseSchemaTablesRequest {
+  id: DatabaseId;
+  schema: string;
+  include_hidden?: boolean;
+  include_editable_data_model?: boolean;
+}
+
 export interface GetDatabaseMetadataRequest {
   id: DatabaseId;
   include_hidden?: boolean;

@@ -9,6 +9,9 @@ import type {
   GetDatabaseRequest,
   UpdateDatabaseRequest,
   Field,
+  Table,
+  ListDatabaseSchemaTablesRequest,
+  ListDatabaseSchemasRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -54,13 +57,43 @@ export const databaseApi = Api.injectEndpoints({
         ]),
       ],
     }),
+    listDatabaseSchemas: builder.query<string[], ListDatabaseSchemasRequest>({
+      query: ({ id, ...body }) => ({
+        method: "GET",
+        url: `/api/database/${id}/schemas`,
+        body,
+      }),
+      providesTags: (schemas = []) => [
+        listTag("schema"),
+        ...schemas.map(schema => idTag("schema", schema)),
+      ],
+    }),
+    listDatabaseSchemaTables: builder.query<
+      Table[],
+      ListDatabaseSchemaTablesRequest
+    >({
+      query: ({ id, schema, ...body }) => ({
+        method: "GET",
+        url: `/api/database/${id}/schema/${schema}`,
+        body,
+      }),
+      providesTags: (tables = []) => [
+        listTag("table"),
+        ...tables.map(table => idTag("table", table.id)),
+      ],
+    }),
     listDatabaseIdFields: builder.query<Field[], ListDatabaseIdFieldsRequest>({
       query: ({ id, ...body }) => ({
         method: "GET",
         url: `/api/database/${id}/idfields`,
         body,
       }),
-      providesTags: [listTag("field")],
+      providesTags: (fields = []) => [
+        listTag("field"),
+        ...fields.flatMap(field =>
+          field.id ? [idTag("field", field.id)] : [],
+        ),
+      ],
     }),
     createDatabase: builder.mutation<Database, CreateDatabaseRequest>({
       query: body => ({
@@ -117,6 +150,8 @@ export const databaseApi = Api.injectEndpoints({
 export const {
   useListDatabasesQuery,
   useGetDatabaseQuery,
+  useListDatabaseSchemasQuery,
+  useListDatabaseSchemaTablesQuery,
   useListDatabaseIdFieldsQuery,
   useCreateDatabaseMutation,
   useUpdateDatabaseMutation,
