@@ -312,12 +312,34 @@
     (when new-db-perms
       (data-perms/set-database-permission! group-id db-id :perms/create-queries new-db-perms))))
 
+(defn- update-table-level-view-data-permissions!
+  [group-id db-id schema new-table-perms]
+  (let [new-table-perms (->
+                         (update-keys
+                          new-table-perms
+                          (fn [table-id] {:id table-id :db_id db-id :schema schema}))
+                         (update-vals (fn [table-perm]
+                                        (case table-perm
+                                          :unrestricted           :unrestricted
+                                          ;; If the table is sandboxed, we set `view-data` to `unrestricted` since
+                                          ;; sandboxes are stored separately in the `sandboxes` table
+                                          :sandboxed              :unrestricted
+                                          :legacy-no-self-service :legacy-no-self-service))))]
+    (data-perms/set-table-permissions! group-id :perms/view-data new-table-perms)))
+
+(defn- update-schema-level-view-data-permissions!
+  [group-id db-id schema new-schema-perms]
+  (if (map? new-schema-perms)
+    (update-table-level-view-data-permissions! group-id db-id schema new-schema-perms)
+    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
+      (when (seq tables)
+        (data-perms/set-table-permissions! group-id :perms/view-data (zipmap tables (repeat new-schema-perms)))))))
+
 (defn- update-db-level-view-data-permissions!
   [group-id db-id new-db-perms]
   (if (map? new-db-perms)
-    ;; view-data is only set granularly when some tables are sandboxed, but sandboxes are stored in the `sandboxes`
-    ;; table, so we treat the DB as unrestricted in `data_permissions` and apply sandboxing policies separately
-    (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+    (doseq [[schema new-schema-perms] new-db-perms]
+      (update-schema-level-view-data-permissions! group-id db-id schema new-schema-perms))
     (case new-db-perms
       (:unrestricted :impersonated)
       (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)

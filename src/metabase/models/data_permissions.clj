@@ -43,7 +43,9 @@
 
 
 (def Permissions
-  "Permissions which apply to individual databases or tables"
+  "Permissions which apply to individual databases or tables."
+  ;; `legacy-no-self-service` is a deprecated permission which behaves the same as `:unrestricted` but does not override
+  ;; `:blocked` in other groups
   {:perms/view-data             {:model :model/Table :values [:unrestricted :legacy-no-self-service :blocked]}
    :perms/create-queries        {:model :model/Table :values [:query-builder-and-native :query-builder :no]}
    :perms/download-results      {:model :model/Table :values [:one-million-rows :ten-thousand-rows :no]}
@@ -186,10 +188,7 @@
 
 (mu/defn database-permission-for-user :- PermissionValue
   "Returns the effective permission value for a given user, permission type, and database ID. If the user has
-  multiple permissions for the given type in different groups, they are coalesced into a single value.
-
-  For permissions which can be set at the table-level or the database-level, this function will return the database-level
-  permission if the user has it."
+  multiple permissions for the given type in different groups, they are coalesced into a single value."
   [user-id perm-type database-id]
   (when (not= :model/Database (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is a table-level permission." perm-type)
