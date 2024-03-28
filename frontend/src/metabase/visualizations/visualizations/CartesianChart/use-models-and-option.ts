@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
@@ -26,10 +26,16 @@ export function useModelsAndOption({
   height,
   timelineEvents,
   selectedTimelineEventIds,
+  onRender,
 }: VisualizationProps) {
   const seriesToRender = useMemo(
     () => (isPlaceholder ? transformedSeries : rawSeries),
     [isPlaceholder, transformedSeries, rawSeries],
+  );
+
+  const showWarning = useCallback(
+    (warning: string) => onRender({ warnings: [warning] }),
+    [onRender],
   );
 
   const renderingContext: RenderingContext = useMemo(
@@ -59,9 +65,10 @@ export function useModelsAndOption({
           seriesToRender,
           settings,
           renderingContext,
+          showWarning,
         );
     }
-  }, [card.display, seriesToRender, settings, renderingContext]);
+  }, [card.display, seriesToRender, settings, renderingContext, showWarning]);
 
   const chartMeasurements = useMemo(
     () =>
