@@ -74,21 +74,6 @@
   max-width: none;
 }
 
-.PopoverBody:global(.PopoverBody--tooltip) {
-  color: white;
-  font-weight: bold;
-  background-color: var(--color-bg-black);
-  border: none;
-  pointer-events: none;
-  line-height: 1.26;
-  padding: 10px 12px;
-}
-
-.PopoverBody:global(.PopoverBody--tooltip.PopoverBody--tooltipConstrainedWidth) {
-  font-size: 12px;
-  max-width: 200px;
-}
-
 /* shared arrow styles */
 :global(.PopoverBody--withArrow::before),
 :global(.PopoverBody--withArrow::after) {
@@ -200,18 +185,10 @@
   border-bottom-color: var(--color-border);
 }
 
-:global(.tether-element-attached-top .PopoverBody--tooltip::before) {
-  border-bottom: none;
-}
-
 /* create a smaller inset arrow on the top */
 :global(.tether-element-attached-top .PopoverBody--withArrow::after) {
   top: -18px;
   border-bottom-color: var(--color-bg-white);
-}
-
-:global(.tether-element-attached-top .PopoverBody--tooltip::after) {
-  border-bottom-color: var(--color-bg-black);
 }
 
 /* create a slightly larger arrow on the bottom for border purposes */
@@ -220,18 +197,10 @@
   border-top-color: var(--color-border);
 }
 
-:global(.tether-element-attached-bottom .PopoverBody--tooltip::before) {
-  border-top: none;
-}
-
 /* create a smaller inset arrow on the bottom */
 :global(.tether-element-attached-bottom .PopoverBody--withArrow::after) {
   bottom: -18px;
   border-top-color: var(--color-bg-white);
-}
-
-:global(.tether-element-attached-bottom .PopoverBody--tooltip::after) {
-  border-top-color: var(--color-bg-black);
 }
 
 /* if the tether element is attached right, move our arrows right */
