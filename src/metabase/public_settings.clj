@@ -478,7 +478,7 @@
   :audit      :getter
   :feature    :whitelabel)
 
-(defsetting no-question-results-illustration
+(defsetting no-data-illustration
   (deferred-tru "Options for displaying the illustration when there are no results after running a question.")
   :visibility :public
   :export?    true
@@ -487,7 +487,7 @@
   :feature    :whitelabel
   :default    "default")
 
-(defsetting no-question-results-illustration-custom
+(defsetting no-data-illustration-custom
   (deferred-tru "The custom illustration for when there are no results after running a question.")
   :visibility :public
   :export?    true
@@ -495,7 +495,7 @@
   :audit      :getter
   :feature    :whitelabel)
 
-(defsetting no-search-results-illustration
+(defsetting no-object-illustration
   (deferred-tru "Options for displaying the illustration when there are no results after searching.")
   :visibility :public
   :export?    true
@@ -504,7 +504,7 @@
   :feature    :whitelabel
   :default    "default")
 
-(defsetting no-search-results-illustration-custom
+(defsetting no-object-illustration-custom
   (deferred-tru "The custom illustration for when there are no results after searching.")
   :visibility :public
   :export?    true

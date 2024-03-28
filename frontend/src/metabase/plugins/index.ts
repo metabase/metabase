@@ -168,6 +168,20 @@ export const PLUGIN_SELECTORS = {
       isDefault: true,
     };
   },
+  getLandingPageIllustration: (_state: State): IllustrationValue => {
+    return {
+      src: "app/img/bridge.svg",
+      isDefault: true,
+    };
+  },
+  getNoDataIllustration: (_state: State): string => {
+    // Can't import any SVG file because it would fail to build static viz
+    return "app/img/no_results.svg";
+  },
+  getNoObjectIllustration: (_state: State): string => {
+    // Can't import any SVG file because it would fail to build static viz
+    return "app/img/no_results.svg";
+  },
 };
 
 export type IllustrationValue = {
