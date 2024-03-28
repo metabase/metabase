@@ -246,6 +246,7 @@
     "fetch-mock": "^9.11.0",
     "fork-ts-checker-webpack-plugin": "^9.0.2",
     "glob": "^7.1.1",
+    "happy-css-modules": "^2.1.2",
     "html-webpack-plugin": "5.5.0",
     "husky": "^8.0.2",
     "jest": "^29.5.0",
@@ -312,6 +313,7 @@
     "unset-value": "2.0.1"
   },
   "scripts": {
+    "go-do-css-things": "rm frontend/src/metabase/css/core/index.css.d.ts; hcm 'frontend/src/metabase/**/index.css' --localsConvention=camelCaseOnly --webpackResolveAlias='{\"style\": \"frontend/src/metabase/css/core/index\"}'",
     "build": "yarn build:cljs && yarn build:js",
     "build-hot": "rm -f target/cljs_dev/cljs.core.js && yarn concurrently -n 'cljs,js' -c 'yellow,green' 'yarn build-hot:cljs' 'yarn build-hot:js-wait'",
     "build-hot:cljs": "yarn && shadow-cljs watch app",
