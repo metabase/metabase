@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
+import type { Route } from "react-router";
 import { t } from "ttag";
 
 import { PLUGIN_CACHING } from "metabase/plugins";
@@ -9,7 +10,7 @@ import { isValidTabId, TabId } from "../types";
 import { Tab, TabsList, TabsPanel } from "./PerformanceApp.styled";
 import { StrategyEditorForDatabases } from "./StrategyEditorForDatabases";
 
-export const PerformanceApp = () => {
+export const PerformanceApp = ({ route }: { route: Route }) => {
   const [tabId, setTabId] = useState<TabId>(TabId.DataCachingSettings);
   const [tabsHeight, setTabsHeight] = useState<number>(300);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -60,6 +61,7 @@ export const PerformanceApp = () => {
       <TabsPanel key={tabId} value={tabId} p="1rem 2.5rem">
         <Flex style={{ flex: 1 }} bg="bg-light" h="100%">
           <StrategyEditorForDatabases
+            route={route}
             canOverrideRootCacheInvalidationStrategy={
               canOverrideRootCacheInvalidationStrategy
             }
