@@ -91,6 +91,7 @@ export const databaseApi = Api.injectEndpoints({
         idTag("database", id),
         idTag("database-metadata", id),
         idTag("database-id-fields", id),
+        tag("field"),
         tag("field-values"),
       ],
     }),
