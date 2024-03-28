@@ -21,12 +21,12 @@ describe("command palette", () => {
 
     cy.findByPlaceholderText("Search…").click();
 
-    cy.findByTestId("search-results-floating-container").should(
-      "contain.text",
-      "Open command palette",
-    );
+    //Not sure if this is the best way to target this button
+    cy.findByRole("button", { name: / \+ K/ }).should("exist").click();
 
-    cy.get("body").type("{esc}");
+    cy.findByTestId("search-results-floating-container").should("not.exist");
+    commandPalette().should("exist");
+    closeCommandPalette();
 
     cy.log("open the command palette with keybinding");
     openCommandPalette();
@@ -96,11 +96,7 @@ describe("command palette", () => {
     });
 
     cy.findByPlaceholderText("Search…").click();
-
-    cy.findByTestId("search-results-floating-container").should(
-      "not.contain.text",
-      "Open command palette",
-    );
+    cy.findByRole("button", { name: / \+ K/ }).should("not.exist");
 
     cy.get("body").type("{esc}");
 
