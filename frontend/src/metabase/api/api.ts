@@ -1,4 +1,5 @@
-import { createApi } from "@reduxjs/toolkit/query/react";
+import { createApi, skipToken } from "@reduxjs/toolkit/query/react";
+export { skipToken };
 
 import { apiQuery } from "./query";
 import { TAG_TYPES } from "./tags";
