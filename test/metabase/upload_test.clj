@@ -1809,6 +1809,35 @@
                 (is (= 1 (count (rows-for-table table)))))
               (io/delete-file file))))))))
 
+(deftest replacement-failure-test
+  (mt/test-drivers (filter (fn [driver]
+                             ;; use of varchar(255) is not universal for all drivers, so only test drivers that
+                             ;; have different database types for varchar(255) and text
+                             (apply not= (map (partial driver/upload-type->database-type driver) [::upload/varchar-255 ::upload/text])))
+                           (mt/normal-drivers-with-feature :uploads))
+    (with-mysql-local-infile-off
+     ;; TODO we are abusing this detail in order to trigger a failure, and should decouple these tests in future
+     (testing "Replace fails if the CSV file contains string values that are too long for the column"
+       ;; for drivers that insert rows in chunks, we change the chunk size to 1 so that we can test that the
+       ;; inserted rows are rolled back
+       (binding [driver/*insert-chunk-rows* 1]
+         (with-upload-table!
+           [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
+                                                            upload/auto-pk-column-keyword ::upload/auto-incrementing-int-pk
+                                                            :test_column ::upload/varchar-255)
+                                         :rows             [["valid"]]})]
+           (let [csv-rows `["test_column" ~@(repeat 50 "valid too") ~(apply str (repeat 256 "x"))]
+                 file  (csv-file-with csv-rows (mt/random-name))]
+             (testing "\nShould return an appropriate error message"
+               (is (=? {;; the error message is different for different drivers, but postgres and mysql have "too long" in the message
+                        :message #"[\s\S]*too long[\s\S]*"
+                        :data    {:status-code 422}}
+                       (catch-ex-info (replace-csv! {:file     file
+                                                    :table-id (:id table)})))))
+             (testing "\nCheck the previous data is still present in the table"
+               (is (= 1 (count (rows-for-table table)))))
+             (io/delete-file file))))))))
+
 (deftest append-too-long-for-varchar-255-mysql-local-infile-test
   (mt/test-driver :mysql
     (with-mysql-local-infile-on

@@ -27,11 +27,20 @@
 ;;; |                                                  Run a Query                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private ^:dynamic *tx-connections* {})
+
+(defn- local-conn
+  "If called with a transaction for the given database in dynamic scope, return the corresponding connection.
+  Otherwise, return a non-transactional connection."
+  [db-id]
+  (or (get *tx-connections* db-id)
+      (sql-jdbc.conn/db->pooled-connection-spec db-id)))
+
 ;; TODO - Seems like this is only used in a handful of places, consider moving to util namespace
 (defn query
   "Execute a `honeysql-form` query against `database`, `driver`, and optionally `table`."
   ([driver database honeysql-form]
-   (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+   (jdbc/query (local-conn database)
                (sql.qp/format-honeysql driver honeysql-form)))
 
   ([driver database table honeysql-form]
@@ -148,14 +157,20 @@
                                :dialect (sql.qp/quote-style driver)))]
     (qp.writeback/execute-write-sql! db-id sql)))
 
-(defmethod driver/truncate! :sql-jdbc
-  [driver db-id table-name]
+(defmethod driver/with-transaction* :sql-jdbc
+  [_ db-id thunk]
+  (jdbc/with-db-transaction [conn (local-conn db-id)]
+    (binding [*tx-connections* (assoc *tx-connections* db-id conn)]
+      (thunk))))
+
+(defmethod driver/delete! :sql-jdbc
+  [driver db-id table-name & _args]
   (let [table-name (keyword table-name)
-        sql        (sql/format {:truncate table-name}
+        sql        (sql/format {:delete-from table-name}
                                :quoted true
                                :dialect (sql.qp/quote-style driver))]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-      (jdbc/execute! conn sql))))
+    (driver/with-transaction driver db-id
+      (jdbc/execute! (local-conn db-id) sql))))
 
 (defmethod driver/insert-into! :sql-jdbc
   [driver db-id table-name column-names values]
@@ -176,9 +191,9 @@
                                      :quoted true
                                      :dialect (sql.qp/quote-style driver))
                         chunks)]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (driver/with-transaction driver db-id
       (doseq [sql sqls]
-        (jdbc/execute! conn sql)))))
+        (jdbc/execute! (local-conn db-id) sql)))))
 
 (defmethod driver/add-columns! :sql-jdbc
   [driver db-id table-name column-definitions & {:keys [primary-key]}]
