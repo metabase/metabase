@@ -122,9 +122,12 @@
 
 (defn- content-security-policy-header-with-frame-ancestors
   [allow-iframes? nonce]
-  (update (content-security-policy-header nonce)
-          "Content-Security-Policy"
-          #(format "%s frame-ancestors %s;" % (if allow-iframes? "*" (or (embedding-app-origin) "'none'")))))
+  (let [base-header (content-security-policy-header nonce)]
+    (if allow-iframes?
+      base-header
+      (update base-header
+              "Content-Security-Policy"
+              #(format "%s frame-ancestors %s;" % (or (embedding-app-origin) "'none'"))))))
 
 (defn- access-control-headers
   []
