@@ -22,6 +22,7 @@ import {
   enableTracking,
   addOrUpdateDashboardCard,
   createQuestion,
+  queryBuilderMain,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -77,11 +78,7 @@ describe("scenarios > question > download", () => {
   });
 
   it("should allow downloading unformatted CSV data", () => {
-    const fieldRef = [
-      "field",
-      ORDERS.CREATED_AT,
-      { "base-type": "type/DateTime" },
-    ];
+    const fieldRef = ["field", ORDERS.TOTAL, null];
     const columnKey = `["ref",${JSON.stringify(fieldRef)}]`;
 
     createQuestion(
@@ -91,17 +88,20 @@ describe("scenarios > question > download", () => {
           fields: [fieldRef],
         },
         visualization_settings: {
-          "table.cell_column": "CREATED_AT",
           column_settings: {
             [columnKey]: {
-              date_style: "M/D/YYYY",
-              time_enabled: null,
+              currency: "USD",
+              currency_in_header: false,
+              currency_style: "code",
+              number_style: "currency",
             },
           },
         },
       },
       { visitQuestion: true, wrapId: true },
     );
+
+    queryBuilderMain().findByText("USD 39.72").should("exist");
 
     cy.get("@questionId").then(questionId => {
       const opts = { questionId, fileType: "csv" };
@@ -112,8 +112,8 @@ describe("scenarios > question > download", () => {
           enableFormatting: true,
         },
         sheet => {
-          expect(sheet["A1"].v).to.eq("Created At");
-          expect(sheet["A2"].w).to.eq("2/10/25");
+          expect(sheet["A1"].v).to.eq("Total");
+          expect(sheet["A2"].v).to.eq("USD 39.72");
         },
       );
 
@@ -123,8 +123,9 @@ describe("scenarios > question > download", () => {
           enableFormatting: false,
         },
         sheet => {
-          expect(sheet["A1"].v).to.eq("Created At");
-          expect(sheet["A2"].v).to.eq("2025-02-11T21:40:27.892");
+          expect(sheet["A1"].v).to.eq("Total");
+          expect(sheet["A2"].v).to.eq(39.718145389078366);
+          expect(sheet["A2"].w).to.eq("39.718145389078366");
         },
       );
     });
