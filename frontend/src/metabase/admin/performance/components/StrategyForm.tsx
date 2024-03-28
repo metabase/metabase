@@ -1,4 +1,4 @@
-import { useFormikContext } from "formik";
+import { useField, useFormikContext } from "formik";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
@@ -6,6 +6,8 @@ import _ from "underscore";
 
 // BUG: Errors are not displayed on the submit button when the input is invalid
 // To trigger an error, enter '1e5'
+//
+// BUG: When you put invalid input in, it resets to the default
 
 import type { FormTextInputProps } from "metabase/forms";
 import {
@@ -72,25 +74,11 @@ const StrategyFormBody = ({
     setIsDirty(dirty);
   }, [dirty, setIsDirty]);
 
-  useEffect(
-    function addDefaultValues() {
-      if (selectedStrategyType === "duration") {
-        setFieldValue("unit", "hours");
-        if (values.duration === undefined) {
-          setFieldValue("duration", 24);
-        }
-      }
-      if (selectedStrategyType === "ttl") {
-        if (values.min_duration === undefined) {
-          setFieldValue("min_duration", 60);
-        }
-        if (values.multiplier === undefined) {
-          setFieldValue("multiplier", 10);
-        }
-      }
-    },
-    [selectedStrategyType, setFieldValue, values],
-  );
+  useEffect(() => {
+    if (selectedStrategyType === "duration") {
+      setFieldValue("unit", "hours");
+    }
+  }, [selectedStrategyType, setFieldValue]);
 
   return (
     <Form
@@ -123,7 +111,7 @@ const StrategyFormBody = ({
         {selectedStrategyType === "duration" && (
           <>
             <Field title={t`Cache result for this many hours`}>
-              <PositiveNumberInput fieldName="duration" />
+              <PositiveNumberInput fieldName="duration" placeholder="24" />
               {/* TODO: remove this? */}
             </Field>
             <input type="hidden" name="unit" />
