@@ -274,11 +274,17 @@
             (when (< token-age (reset-token-ttl-ms))
               user)))))))
 
+(def reset-password-throttler
+  "Throttler for password_reset. There's no good field to mark so use password as a default."
+  (throttle/make-throttler :password :attempts-threshold 10))
+
 (api/defendpoint POST "/reset_password"
   "Reset password with a reset token."
   [:as {{:keys [token password]} :body, :as request}]
   {token    ms/NonBlankString
    password ms/ValidPassword}
+  (let [request-source (request.u/ip-address request)]
+    (throttle-check reset-password-throttler request-source))
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
         (let [reset-token (t2/select-one-fn :reset_token :model/User :id user-id)]
           (user/set-password! user-id password)
