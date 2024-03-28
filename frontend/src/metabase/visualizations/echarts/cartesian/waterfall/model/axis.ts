@@ -6,6 +6,7 @@ import type {
   DateRange,
   DimensionModel,
   Extent,
+  ShowWarning,
   TimeSeriesXAxisModel,
   WaterfallXAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -34,6 +35,7 @@ export const getWaterfallXAxisModel = (
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
+  showWarning?: ShowWarning,
 ): WaterfallXAxisModel => {
   const xAxisModel = getXAxisModel(
     dimensionModel,
@@ -41,6 +43,7 @@ export const getWaterfallXAxisModel = (
     dataset,
     settings,
     renderingContext,
+    showWarning,
   );
 
   const hasTotal = !!settings["waterfall.show_total"];
