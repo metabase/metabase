@@ -4,6 +4,7 @@ import dataLabelsMixed from "./data-labels-mixed.json";
 import dataLabelsTimeseries from "./data-labels-timeseries.json";
 import dataLabels from "./data-labels.json";
 import enormousDataset from "./enormous-dataset.json";
+import linearNullDimension from "./linear-null-dimension.json";
 import logYScaleNegative from "./log-y-scale-negative.json";
 import logYScale from "./log-y-scale.json";
 import mixedAboveZero from "./mixed-above-zero.json";
@@ -15,6 +16,7 @@ import noTotalOrdinal from "./no-total-ordinal.json";
 import noTotalTimeseries from "./no-total-timeseries.json";
 import nullXAxisValue from "./null-x-axis-value.json";
 import nulls from "./nulls.json";
+import ordinalNullDimension from "./ordinal-null-dimension.json";
 import ordinalXScale from "./ordinal-x-scale.json";
 import powYScaleMixed from "./pow-y-scale-mixed.json";
 import powYScaleNegativeOnly from "./pow-y-scale-negative-only.json";
@@ -66,4 +68,6 @@ export const data = {
   enormousDataset,
   nulls,
   nullXAxisValue,
+  linearNullDimension,
+  ordinalNullDimension,
 };
