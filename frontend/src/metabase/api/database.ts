@@ -12,6 +12,7 @@ import type {
   Table,
   ListDatabaseSchemaTablesRequest,
   ListDatabaseSchemasRequest,
+  ListVirtualDatabaseTablesRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -64,6 +65,16 @@ export const databaseApi = Api.injectEndpoints({
         ...schemas.map(schema => idTag("schema", schema)),
       ],
     }),
+    listSyncableDatabaseSchemas: builder.query<string[], DatabaseId>({
+      query: id => ({
+        method: "GET",
+        url: `/api/database/${id}/syncable_schemas`,
+      }),
+      providesTags: (schemas = []) => [
+        listTag("schema"),
+        ...schemas.map(schema => idTag("schema", schema)),
+      ],
+    }),
     listDatabaseSchemaTables: builder.query<
       Table[],
       ListDatabaseSchemaTablesRequest
@@ -71,6 +82,20 @@ export const databaseApi = Api.injectEndpoints({
       query: ({ id, schema, ...body }) => ({
         method: "GET",
         url: `/api/database/${id}/schema/${schema}`,
+        body,
+      }),
+      providesTags: (tables = []) => [
+        listTag("table"),
+        ...tables.map(table => idTag("table", table.id)),
+      ],
+    }),
+    listVirtualDatabaseTables: builder.query<
+      Table[],
+      ListVirtualDatabaseTablesRequest
+    >({
+      query: ({ id, schema, ...body }) => ({
+        method: "GET",
+        url: `/api/database/${id}/datasets/${schema}`,
         body,
       }),
       providesTags: (tables = []) => [
@@ -142,7 +167,9 @@ export const {
   useListDatabasesQuery,
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
+  useListSyncableDatabaseSchemasQuery,
   useListDatabaseSchemaTablesQuery,
+  useListVirtualDatabaseTablesQuery,
   useListDatabaseIdFieldsQuery,
   useCreateDatabaseMutation,
   useUpdateDatabaseMutation,
