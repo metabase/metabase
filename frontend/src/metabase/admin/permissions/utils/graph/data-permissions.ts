@@ -431,7 +431,7 @@ export function updateSchemasPermission(
     schemaNames.length > 0 &&
     !(schemaNames.length === 1 && schemaNames[0] === null)
       ? schemaNames
-      : [""];
+      : [];
 
   if (downgradeNative) {
     permissions = downgradeNativePermissionsIfNeeded(

@@ -98,7 +98,18 @@ export const GRANULATE_DATABASE_TABLE_PERMISSIONS =
 export const granulateDatabasePermissions = createThunkAction(
   GRANULATE_DATABASE_TABLE_PERMISSIONS,
   (groupId, entityId, permission, value, defaultValue) =>
-    (dispatch, getState) => {
+    async (dispatch, getState) => {
+      // NOTE: need to have table and schema data before updates are called as update fns load the values async
+      // without awaiting, meaning the data most likely won't be loaded the first the first time we need it
+      // resulting in a perms graph that is invalid
+      await dispatch(
+        Tables.actions.fetchList({
+          dbId: entityId.databaseId,
+          include_hidden: true,
+          remove_inactive: true,
+        }),
+      );
+
       // HACK: updatePermission fn sets entities of controlled values (schemas in this case
       // to the previously set value of the parent (database in this case). if the db perm
       // value is set to something other than restrictied before changing to controlled, the
