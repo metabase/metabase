@@ -6107,12 +6107,19 @@ databaseChangeLog:
                   defaultValue: true
 
   - changeSet:
-      id: v50.2024-03-28T16:30:35
-      author: calherries
-      comment: Create internal user
+      id: v50.2024-03-29T10:00:00
+      author: piranha
+      comment: 'Granular cache invalidation'
       changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.CreateInternalUser"
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: cache_invalidated_at
+                  type: ${timestamp_type}
+                  remarks: 'If cache should be invalidated earlier than strategy expects it to'
+                  constraints:
+                    nullable: true
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
