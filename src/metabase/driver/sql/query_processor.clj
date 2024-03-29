@@ -687,6 +687,38 @@
    (->honeysql driver mbql-expr)
    (->honeysql driver power)])
 
+(defn- window-function-order-by-strategy [driver]
+  (case driver
+    (:postgres :athena :mysql)
+    ::over-order-by-strategy.copy-expressions
+
+    (:h2 :sqlite)
+    ::over-order-by-strategy.use-output-column-numbers
+
+    ;; the rest are unknown; try using output column numbers.
+    ::over-order-by-strategy.use-output-column-numbers
+    ))
+
+(defn- over-rows-with-order-by-for-current-stage
+  "e.g.
+
+    OVER (ORDER BY date_trunc('month', my_column))"
+  [driver expr]
+  (let [{:keys [group-by]} (apply-top-level-clause
+                            driver
+                            :breakout
+                            {}
+                            *inner-query*)]
+    [:over
+     [expr
+      (when (seq group-by)
+        {:order-by (mapv (fn [expr]
+                           [expr :asc])
+                         group-by)})]]))
+
+;;; For databases that do something intelligent with ORDER BY 1, 2: we can take advantage of that functionality
+;;; implement the window function versions of cumulative sum and cumulative sum more simply.
+
 (defn- format-rows-unbounded-preceding [_clause _args]
   ["ROWS UNBOUNDED PRECEDING"])
 
@@ -709,14 +741,26 @@
                         (range (count (:breakout *inner-query*))))})
      {::rows-unbounded-preceding []})]])
 
+(defn- cumulative-aggregation-window-function [driver expr]
+  (let [over-rows-with-order-by (case (window-function-order-by-strategy driver)
+                                  ::over-order-by-strategy.copy-expressions          over-rows-with-order-by-for-current-stage
+                                  ::over-order-by-strategy.use-output-column-numbers over-rows-with-order-by-select-expression-positions)]
+    (over-rows-with-order-by driver expr)))
+
 ;;;    cum-count()
 ;;;
 ;;; should compile to SQL like
 ;;;
+;;;    sum(count()) OVER (ORDER BY ...)
+;;;
+;;; where the ORDER BY matches what's in the query (i.e., the breakouts), or
+;;;
 ;;;    sum(count()) OVER (ORDER BY 1 ROWS UNBOUNDED PRECEDING)
+;;;
+;;; if the database supports ordering by SELECT expression position
 (defmethod ->honeysql [:sql :cum-count]
   [driver [_cum-count expr-or-nil]]
-  (over-rows-with-order-by-select-expression-positions
+  (cumulative-aggregation-window-function
    driver
    [:sum (if expr-or-nil
            [:count (->honeysql driver expr-or-nil)]
@@ -726,10 +770,16 @@
 ;;;
 ;;; should compile to SQL like
 ;;;
+;;;    sum(sum(total)) OVER (ORDER BY ...)
+;;;
+;;; where the ORDER BY matches what's in the query (i.e., the breakouts), or
+;;;
 ;;;    sum(sum(total)) OVER (ORDER BY 1 ROWS UNBOUNDED PRECEDING)
+;;;
+;;; if the database supports ordering by SELECT expression position
 (defmethod ->honeysql [:sql :cum-sum]
   [driver [_cum-sum expr]]
-  (over-rows-with-order-by-select-expression-positions
+  (cumulative-aggregation-window-function
    driver
    [:sum [:sum (->honeysql driver expr)]]))
 
