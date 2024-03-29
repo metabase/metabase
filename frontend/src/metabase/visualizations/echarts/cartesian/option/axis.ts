@@ -21,6 +21,7 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 
+import { parseNumberValue } from "metabase/components/TokenField";
 import type { ChartMeasurements } from "../chart-measurements/types";
 import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
 
@@ -337,6 +338,11 @@ export const buildCategoricalDimensionAxis = (
       ...getDimensionTicksDefaultOption(settings, renderingContext),
       ...getHistogramTicksOptions(chartModel, settings, chartMeasurements),
       formatter: (value: string) => {
+        const numberValue = parseNumberValue(value);
+        if (parseNumberValue(value)) {
+          return ` ${formatter(numberValue)} `;
+        }
+
         return ` ${formatter(value)} `; // spaces force padding between ticks
       },
     },
