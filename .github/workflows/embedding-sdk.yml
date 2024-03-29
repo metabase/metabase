@@ -31,7 +31,7 @@ jobs:
 
   sdk-build:
     needs: files-changed
-    if: needs.files-changed.outputs.frontend_all == 'true'
+    if: needs.files-changed.outputs.frontend_all == 'true' && github.event.label.name == 'embedding-sdk-build'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
