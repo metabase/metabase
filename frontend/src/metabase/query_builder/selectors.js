@@ -1016,16 +1016,6 @@ export const getTemplateTags = createSelector([getCard], card =>
   getIn(card, ["dataset_query", "native", "template-tags"]),
 );
 
-export const getRequiredTemplateTags = createSelector(
-  [getTemplateTags],
-  templateTags =>
-    templateTags
-      ? Object.keys(templateTags)
-          .filter(key => templateTags[key].required)
-          .map(key => templateTags[key])
-      : [],
-);
-
 export const getEmbeddingParameters = createSelector([getCard], card => {
   if (!card?.enable_embedding) {
     return {};
