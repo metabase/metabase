@@ -2,6 +2,7 @@ import type { ComponentType, HTMLAttributes, ReactNode } from "react";
 import { t } from "ttag";
 import type { AnySchema } from "yup";
 
+import noResultsSource from "assets/img/no_results.svg";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import type {
   DataPermission,
@@ -175,12 +176,10 @@ export const PLUGIN_SELECTORS = {
     };
   },
   getNoDataIllustration: (_state: State): string => {
-    // Can't import any SVG file because it would fail to build static viz
-    return "app/img/no_results.svg";
+    return noResultsSource;
   },
   getNoObjectIllustration: (_state: State): string => {
-    // Can't import any SVG file because it would fail to build static viz
-    return "app/img/no_results.svg";
+    return noResultsSource;
   },
 };
 
