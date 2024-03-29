@@ -44,6 +44,14 @@ import {
 import type { ChartMeasurements } from "../chart-measurements/types";
 import { getSeriesYAxisIndex } from "./utils";
 
+const getBlurLabelStyle = (
+  settings: ComputedVisualizationSettings,
+  hasMultipleSeries: boolean,
+) => ({
+  show: settings["graph.show_values"] && !hasMultipleSeries,
+  opacity: 1,
+});
+
 export const getBarLabelLayout =
   (
     dataset: ChartDataset,
@@ -258,9 +266,7 @@ const buildEChartsBarSeries = (
       },
     },
     blur: {
-      label: {
-        show: settings["graph.show_values"] && !hasMultipleSeries,
-      },
+      label: getBlurLabelStyle(settings, hasMultipleSeries),
       itemStyle: {
         opacity: CHART_STYLE.opacity.blur,
       },
@@ -356,9 +362,7 @@ const buildEChartsLineAreaSeries = (
       },
     },
     blur: {
-      label: {
-        show: settings["graph.show_values"] && !hasMultipleSeries,
-      },
+      label: getBlurLabelStyle(settings, hasMultipleSeries),
       itemStyle: {
         opacity: isSymbolVisible ? blurOpacity : 0,
       },
