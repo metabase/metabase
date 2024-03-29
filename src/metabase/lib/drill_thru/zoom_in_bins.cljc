@@ -129,6 +129,5 @@
    stage-number                                 :- :int
    {:keys [column min-value max-value new-binning]} :- ::lib.schema.drill-thru/drill-thru.zoom-in.binning]
   (-> query
-      (lib.filter/filter stage-number (lib.filter/>= column min-value))
-      (lib.filter/filter stage-number (lib.filter/< column max-value))
+      (lib.filter/filter stage-number (lib.filter/between column min-value max-value))
       (update-breakout stage-number column new-binning)))
