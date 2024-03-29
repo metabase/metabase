@@ -191,7 +191,6 @@ export const getStackedTooltipModel = (
       formatter,
     };
   });
-
   const [headerRows, bodyRows] = _.partition(
     rows,
     (_row, index) => index === seriesIndex,
@@ -210,7 +209,7 @@ export const getStackedTooltipModel = (
   return {
     headerTitle,
     headerRows,
-    bodyRows,
+    bodyRows: bodyRows.filter(row => row.value != null),
     totalFormatter: formatter,
     showTotal: true,
     showPercentages: true,
