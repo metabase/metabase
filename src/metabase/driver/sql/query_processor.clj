@@ -689,7 +689,7 @@
 
 (defn- window-function-order-by-strategy [driver]
   (case driver
-    (:postgres :athena :mysql)
+    (:postgres :athena :mysql #_:bigquery-cloud-sdk)
     ::over-order-by-strategy.copy-expressions
 
     (:h2 :sqlite)
@@ -720,7 +720,8 @@
 ;;; implement the window function versions of cumulative sum and cumulative sum more simply.
 
 (defn- format-rows-unbounded-preceding [_clause _args]
-  ["ROWS UNBOUNDED PRECEDING"])
+  ["ROWS UNBOUNDED PRECEDING"
+   #_"RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW"])
 
 (sql/register-clause!
  ::rows-unbounded-preceding

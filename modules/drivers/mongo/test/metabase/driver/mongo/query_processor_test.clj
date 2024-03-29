@@ -153,10 +153,7 @@
                                       {"$project" {"_id"        false
                                                    "datetime"   "$_id.datetime"
                                                    "datetime_2" "$_id.datetime_2"
-                                                   "count"      true}}
-                                      ;; there should be two sorts, one for datetime (month) and one for datetime_2 (day)
-                                      {"$sort" {"datetime"   1
-                                                "datetime_2" 1}}]
+                                                   "count"      true}}]
                         :collection  "attempts"
                         :mbql?       true}
                        query))

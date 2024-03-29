@@ -8,6 +8,12 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
+(defn- ->local-date [t]
+  (t/local-date
+   (cond-> t
+     (instance? java.time.Instant t)
+     (t/zoned-date-time (t/zone-id "UTC")))))
+
 (deftest ^:parallel cumulative-sum-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "cum_sum w/o breakout should be treated the same as sum"
@@ -43,7 +49,7 @@
                   [14 105]
                   [15 120]]
                  (mt/formatted-rows [int int]
-                                    (qp/process-query query)))))))))
+                   (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-sum-test-3
   (mt/test-drivers (mt/normal-drivers)
@@ -98,7 +104,7 @@
           (is (= [[#t "2016-04-01" 52.76]
                   [#t "2016-05-01" 1318.49]
                   [#t "2016-06-01" 3391.41]]
-                 (mt/formatted-rows [t/local-date 2.0]
+                 (mt/formatted-rows [->local-date 2.0]
                    (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-test
@@ -158,7 +164,7 @@
         (is (= [[#t "2016-01-01" #t "2016-04-01" 1]
                 [#t "2016-01-01" #t "2016-05-01" 20]
                 [#t "2016-01-01" #t "2016-06-01" 57]]
-               (mt/formatted-rows [t/local-date t/local-date int]
+               (mt/formatted-rows [->local-date ->local-date int]
                  (qp/process-query query))))))))
 
 (deftest ^:parallel cumulative-count-without-field-test
@@ -189,7 +195,7 @@
             (is (= [[#t "2016-04-01" 1]
                     [#t "2016-05-01" 20]
                     [#t "2016-06-01" 57]]
-                   (mt/formatted-rows [t/local-date int]
+                   (mt/formatted-rows [->local-date int]
                      (qp/process-query query))))))))))
 
 (deftest ^:parallel cumulative-sum-with-multiple-breakouts-test
@@ -203,7 +209,7 @@
         (is (= [[#t "2016-01-01" #t "2016-04-01" 52]
                 [#t "2016-01-01" #t "2016-05-01" 1318]
                 [#t "2016-01-01" #t "2016-06-01" 3391]]
-               (mt/formatted-rows [t/local-date t/local-date int]
+               (mt/formatted-rows [->local-date ->local-date int]
                  (qp/process-query query))))))))
 
 (deftest ^:parallel cumulative-count-and-sum-in-expressions-test
@@ -226,9 +232,9 @@
                                   (lib/limit 3)
                                   (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
-          ;;       1                      2  3       4
+          ;;       1               2  3       4
           (is (= [[#t "2016-04-01" 1  52.76   52.76]
                   [#t "2016-05-01" 20 1318.49 65.92]
                   [#t "2016-06-01" 57 3391.41 59.50]]
-                 (mt/formatted-rows [t/local-date int 2.0 2.0]
+                 (mt/formatted-rows [->local-date int 2.0 2.0]
                    (qp/process-query query)))))))))
