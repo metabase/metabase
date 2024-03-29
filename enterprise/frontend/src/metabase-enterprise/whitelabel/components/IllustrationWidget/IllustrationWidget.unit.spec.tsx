@@ -73,20 +73,20 @@ describe("IllustrationWidget", () => {
       ).toBeInTheDocument();
     });
 
-    it("should render options", () => {
+    it("should render options", async () => {
       setup({
         setting: defaultSetting,
         settingValues: defaultSettingValues,
         type: defaultType,
         customIllustrationSetting,
       });
-      userEvent.click(screen.getByRole("searchbox"));
+      await userEvent.click(screen.getByRole("searchbox"));
       expect(screen.getByText(defaultIllustrationLabel)).toBeInTheDocument();
       expect(screen.getByText("No illustration")).toBeInTheDocument();
       expect(screen.getByText("Custom")).toBeInTheDocument();
     });
 
-    it("should allow setting 'No illustration' option", () => {
+    it("should allow setting 'No illustration' option", async () => {
       const noIllustrationOption = {
         label: "No illustration",
         value: "no-illustration",
@@ -98,12 +98,12 @@ describe("IllustrationWidget", () => {
         type: defaultType,
         customIllustrationSetting,
       });
-      userEvent.click(screen.getByRole("searchbox"));
-      userEvent.click(screen.getByText(noIllustrationOption.label));
+      await userEvent.click(screen.getByRole("searchbox"));
+      await userEvent.click(screen.getByText(noIllustrationOption.label));
       expect(onChange).toHaveBeenCalledWith(noIllustrationOption.value);
     });
 
-    it("should not set anything after selecting 'Custom' option, but not uploading any file", () => {
+    it("should not set anything after selecting 'Custom' option, but not uploading any file", async () => {
       const customOption = { label: "Custom", value: "custom" };
 
       const { onChange } = setup({
@@ -112,8 +112,8 @@ describe("IllustrationWidget", () => {
         type: defaultType,
         customIllustrationSetting,
       });
-      userEvent.click(screen.getByRole("searchbox"));
-      userEvent.click(screen.getByText(customOption.label));
+      await userEvent.click(screen.getByRole("searchbox"));
+      await userEvent.click(screen.getByText(customOption.label));
       expect(onChange).not.toHaveBeenCalled();
     });
 
@@ -144,8 +144,8 @@ describe("IllustrationWidget", () => {
         customIllustrationSetting,
       });
 
-      userEvent.click(screen.getByRole("searchbox"));
-      userEvent.click(screen.getByText(noIllustrationOption.label));
+      await userEvent.click(screen.getByRole("searchbox"));
+      await userEvent.click(screen.getByText(noIllustrationOption.label));
 
       expect(onChange).toHaveBeenCalledWith(noIllustrationOption.value);
       expect(onChangeSetting).not.toHaveBeenCalled();
@@ -172,8 +172,8 @@ describe("IllustrationWidget", () => {
         customIllustrationSetting,
       });
 
-      userEvent.click(screen.getByRole("searchbox"));
-      userEvent.click(screen.getByText(defaultOption.label));
+      await userEvent.click(screen.getByRole("searchbox"));
+      await userEvent.click(screen.getByText(defaultOption.label));
 
       expect(onChange).toHaveBeenCalledWith(defaultOption.value);
       expect(onChangeSetting).not.toHaveBeenCalled();
@@ -196,7 +196,7 @@ describe("IllustrationWidget", () => {
         customIllustrationSetting,
       });
 
-      userEvent.click(screen.getByLabelText("close icon"));
+      await userEvent.click(screen.getByLabelText("close icon"));
 
       await waitFor(() => {
         expect(onChange).toHaveBeenCalledWith("default");
@@ -209,7 +209,7 @@ describe("IllustrationWidget", () => {
   });
 
   describe("select the same option twice", () => {
-    it("should not call callbacks when selecting the default option twice", () => {
+    it("should not call callbacks when selecting the default option twice", async () => {
       const { onChange, onChangeSetting } = setup({
         setting: defaultSetting,
         settingValues: defaultSettingValues,
@@ -217,8 +217,8 @@ describe("IllustrationWidget", () => {
         customIllustrationSetting,
       });
 
-      userEvent.click(screen.getByRole("searchbox"));
-      userEvent.click(screen.getByText(defaultIllustrationLabel));
+      await userEvent.click(screen.getByRole("searchbox"));
+      await userEvent.click(screen.getByText(defaultIllustrationLabel));
       expect(
         screen.queryByText(defaultIllustrationLabel),
       ).not.toBeInTheDocument();
@@ -227,7 +227,7 @@ describe("IllustrationWidget", () => {
       expect(onChangeSetting).not.toHaveBeenCalled();
     });
 
-    it("should not call callbacks when selecting 'No illustration' option twice", () => {
+    it("should not call callbacks when selecting 'No illustration' option twice", async () => {
       const setting = {
         ...defaultSetting,
         value: "no-illustration",
@@ -239,15 +239,15 @@ describe("IllustrationWidget", () => {
         customIllustrationSetting,
       });
 
-      userEvent.click(screen.getByRole("searchbox"));
-      userEvent.click(screen.getByText("No illustration"));
+      await userEvent.click(screen.getByRole("searchbox"));
+      await userEvent.click(screen.getByText("No illustration"));
       expect(screen.queryByText("No illustration")).not.toBeInTheDocument();
 
       expect(onChange).not.toHaveBeenCalled();
       expect(onChangeSetting).not.toHaveBeenCalled();
     });
 
-    it("should not call callbacks when selecting 'Custom' option twice", () => {
+    it("should not call callbacks when selecting 'Custom' option twice", async () => {
       const setting = {
         ...defaultSetting,
         value: "custom",
@@ -259,8 +259,8 @@ describe("IllustrationWidget", () => {
         customIllustrationSetting,
       });
 
-      userEvent.click(screen.getByRole("searchbox"));
-      userEvent.click(screen.getByText("Custom"));
+      await userEvent.click(screen.getByRole("searchbox"));
+      await userEvent.click(screen.getByText("Custom"));
       expect(screen.queryByText("Custom")).not.toBeInTheDocument();
 
       expect(onChange).not.toHaveBeenCalled();
