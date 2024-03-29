@@ -376,7 +376,7 @@
 (defn field-name-for-logging
   "Return an appropriate string for logging a field in sync logging messages."
   [& {:keys [id name]}]
-  (format ":Field %s ''%s''" (or (str id) "") name))
+  (format "Field %s ''%s''" (or (str id) "") name))
 
 (defmethod name-for-logging :model/Field [field]
   (field-name-for-logging field))

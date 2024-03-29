@@ -36,37 +36,38 @@
       :type/Date     [:> field-form "0001-01-01"]
       :type/DateTime [:> field-form "0001-01-01T00:00:00"])))
 
-(defn- query-with-default-partitioned-field-filter
-  [query table-id]
-  (let [;; In bigquery, range or datetime partitioned table can have only one partioned field,
-        ;; Ingestion time partitioned table can use either _PARTITIONDATE or _PARTITIONTIME as
-        ;; partitioned field
-        partition-field (or (t2/select-one :model/Field
-                                           :table_id table-id
-                                           :database_partitioned true
-                                           :active true
-                                           ;; prefer _PARTITIONDATE over _PARTITIONTIME for ingestion time query
-                                           {:order-by [[:name :asc]]})
-                            (throw (ex-info (format "No partitioned field found for table: %d" table-id)
-                                            {:table_id table-id})))
-        filter-form     (partition-field->filter-form partition-field)]
-    (update query :filter (fn [existing-filter]
-                            (if (some? existing-filter)
-                              [:and existing-filter filter-form]
-                              filter-form)))))
+(defn add-required-filter-if-needed
+  "If the table requires a filter, add a dummy filter clause so the query can be executed.
+  Currently this only apply to partitioned tables on bigquery that requires a partition filter."
+  [query {:keys [id] :as table}]
+  (if (:database_require_filter table)
+    (let [;; In bigquery, range or datetime partitioned table can have only one partioned field,
+          ;; Ingestion time partitioned table can use either _PARTITIONDATE or _PARTITIONTIME as
+          ;; partitioned field
+          partition-field (or (t2/select-one :model/Field
+                                             :table_id id
+                                             :database_partitioned true
+                                             :active true
+                                             ;; prefer _PARTITIONDATE over _PARTITIONTIME for ingestion time query
+                                             {:order-by [[:name :asc]]})
+                              (throw (ex-info (format "No partitioned field found for table: %d" id)
+                                              {:table_id id})))
+          filter-form     (partition-field->filter-form partition-field)]
+      (update query :filter (fn [existing-filter]
+                              (if (some? existing-filter)
+                                [:and existing-filter filter-form]
+                                filter-form))))
+    query))
 
 (defn- field-mbql-query
   [table mbql-query]
-  (cond-> mbql-query
-    true
-    (assoc :source-table (:id table))
-
-    ;; Some table requires a filter to be able to query the data
-    ;; Currently this only applied to Partitioned table in bigquery where the partition field
-    ;; is required as a filter.
-    ;; In the future we probably want this to be dispatched by database engine type
-    (:database_require_filter table)
-    (query-with-default-partitioned-field-filter (:id table))))
+  (-> mbql-query
+      (assoc :source-table (:id table))
+      ;; Some table requires a filter to be able to query the data
+      ;; Currently this only applied to Partitioned table in bigquery where the partition field
+      ;; is required as a filter.
+      ;; In the future we probably want this to be dispatched by database engine type
+      (add-required-filter-if-needed table)))
 
 (defn- field-query
   [{table-id :table_id} mbql-query]
@@ -188,8 +189,8 @@
                    order-by
                    (assoc :order-by order-by)
 
-                   (:database_require_filter table)
-                   (query-with-default-partitioned-field-filter (:id table)))
+                   true
+                   (add-required-filter-if-needed table))
      :middleware {:format-rows?           false
                   :skip-results-metadata? true}}))
 

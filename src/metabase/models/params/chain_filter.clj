@@ -67,6 +67,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.db :as mdb]
+   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -384,6 +385,7 @@
   {:database (field/field-id->database-id field-id)
    :type     :query
    :query    (let [source-table-id       (field/field-id->table-id field-id)
+                   source-table          (t2/select-one :model/Table source-table-id)
                    joins                 (find-all-joins source-table-id (cond-> (set (map :field-id constraints))
                                                                            original-field-id (conj original-field-id)))
                    joined-table-ids      (set (map #(get-in % [:rhs :table]) joins))
@@ -423,7 +425,8 @@
                              ;; but sort by [remapped-value]
                              :order-by [[:asc [:field field-id nil]]]}))
                    (add-joins source-table-id joins)
-                   (add-filters source-table-id joined-table-ids constraints)))
+                   (add-filters source-table-id joined-table-ids constraints)
+                   (metadata-queries/add-required-filter-if-needed source-table)))
    :middleware {:disable-remaps? true}})
 
 
