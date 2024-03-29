@@ -95,11 +95,7 @@ const ResetAllToDefaultButtonFormBody = ({
               return false;
             }}
             label={
-              <Text
-                fw="normal"
-                color="error"
-                // TODO: Add confirmation modal?
-              >{t`Reset all to default`}</Text>
+              <Text fw="normal" color="error">{t`Reset all to default`}</Text>
             }
             successLabel={
               <Text fw="bold" color="success">
