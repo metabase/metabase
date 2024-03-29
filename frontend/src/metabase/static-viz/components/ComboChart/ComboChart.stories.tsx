@@ -520,6 +520,13 @@ TimeSeriesTicksCompactFormattingMixedTimezones.args = {
   renderingContext,
 };
 
+export const TimezoneTicksPlacement = Template.bind({});
+TimezoneTicksPlacement.args = {
+  rawSeries: data.timezoneTicksPlacement as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,

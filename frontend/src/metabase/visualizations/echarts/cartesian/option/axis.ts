@@ -237,7 +237,7 @@ export const buildNumericDimensionAxis = (
   renderingContext: RenderingContext,
 ): ValueAxisBaseOption => {
   const {
-    fromEChartsAxisValue: fromAxisValue,
+    fromEChartsAxisValue,
     isPadded,
     extent,
     interval,
@@ -263,7 +263,7 @@ export const buildNumericDimensionAxis = (
         if (isPadded && (rawValue < min || rawValue > max)) {
           return "";
         }
-        return ` ${formatter(fromAxisValue(rawValue))} `;
+        return ` ${formatter(fromEChartsAxisValue(rawValue))} `;
       },
     },
     ...(isPadded
@@ -300,9 +300,9 @@ export const buildTimeSeriesDimensionAxis = (
         (hasTimelineEvents ? CHART_STYLE.timelineEvents.height : 0),
       ...getDimensionTicksDefaultOption(settings, renderingContext),
       formatter: (rawValue: number) => {
-        const value = xAxisModel.fromAxisValue(rawValue);
+        const value = xAxisModel.fromEChartsAxisValue(rawValue);
         if (canRender(value)) {
-          return ` ${formatter(value.format("YYYY-MM-DDTHH:mm:ss"))} `; // spaces force padding between ticks
+          return ` ${formatter(value.format("YYYY-MM-DDTHH:mm:ss[Z]"))} `; // spaces force padding between ticks
         }
         return "";
       },
