@@ -11,6 +11,8 @@ import ActionButton from "metabase/components/ActionButton";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Button from "metabase/core/components/Button";
+import Tables from "metabase/entities/tables";
+import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseData, DatabaseId } from "metabase-types/api";
@@ -55,9 +57,16 @@ const DatabaseEditAppSidebar = ({
   const hasModelCachingSection =
     isModelPersistenceEnabled && database.supportsPersistence();
 
+  const dispatch = useDispatch();
   const [syncDatabaseSchema] = useSyncDatabaseSchemaMutation();
   const [rescanDatabaseFieldValues] = useRescanDatabaseFieldValuesMutation();
   const [discardDatabaseFieldValues] = useDiscardDatabaseFieldValuesMutation();
+
+  const handleSyncDatabaseSchema = async () => {
+    await syncDatabaseSchema(database.id);
+    // FIXME remove when MetadataEditor uses RTK query directly to load tables
+    dispatch({ type: Tables.actionTypes.INVALIDATE_LISTS_ACTION });
+  };
 
   const handleDismissSyncSpinner = useCallback(
     () => dismissSyncSpinner(database.id),
@@ -98,7 +107,7 @@ const DatabaseEditAppSidebar = ({
             )}
             <SidebarGroup.ListItem hasMarginTop={false}>
               <ActionButton
-                actionFn={() => syncDatabaseSchema(database.id)}
+                actionFn={() => handleSyncDatabaseSchema()}
                 normalText={t`Sync database schema now`}
                 activeText={t`Starting…`}
                 failedText={t`Failed to sync`}
