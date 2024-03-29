@@ -277,7 +277,7 @@ export const PLUGIN_MODERATION = {
 
 export interface QuestionCacheSectionProps {
   question: Question;
-  onSave: (cache_ttl: number | null) => Promise<Question> | undefined;
+  onSave: (cache_ttl: number | null) => Promise<Question>;
 }
 
 export interface DashboardCacheSectionProps {
