@@ -1,11 +1,17 @@
 import type {
   Database,
-  DatabaseCreateRequest,
+  CreateDatabaseRequest,
   DatabaseId,
-  DatabaseListRequest,
-  DatabaseListResponse,
-  DatabaseRequest,
-  DatabaseUpdateRequest,
+  ListDatabaseIdFieldsRequest,
+  ListDatabasesRequest,
+  ListDatabasesResponse,
+  GetDatabaseMetadataRequest,
+  GetDatabaseRequest,
+  UpdateDatabaseRequest,
+  Field,
+  Table,
+  ListDatabaseSchemaTablesRequest,
+  ListDatabaseSchemasRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -14,8 +20,8 @@ import { tag, idTag, listTag } from "./tags";
 export const databaseApi = Api.injectEndpoints({
   endpoints: builder => ({
     listDatabases: builder.query<
-      DatabaseListResponse,
-      DatabaseListRequest | void
+      ListDatabasesResponse,
+      ListDatabasesRequest | void
     >({
       query: body => ({
         method: "GET",
@@ -27,15 +33,60 @@ export const databaseApi = Api.injectEndpoints({
         ...(response?.data?.map(({ id }) => idTag("database", id)) ?? []),
       ],
     }),
-    getDatabase: builder.query<Database, DatabaseRequest>({
+    getDatabase: builder.query<Database, GetDatabaseRequest>({
       query: ({ id, ...body }) => ({
         method: "GET",
         url: `/api/database/${id}`,
         body,
       }),
-      providesTags: (response, error, { id }) => [idTag("database", id)],
+      providesTags: (database, error, { id }) => [idTag("database", id)],
     }),
-    createDatabase: builder.mutation<Database, DatabaseCreateRequest>({
+    getDatabaseMetadata: builder.query<Database, GetDatabaseMetadataRequest>({
+      query: ({ id, ...body }) => ({
+        method: "GET",
+        url: `/api/database/${id}/metadata`,
+        body,
+      }),
+      providesTags: database => [
+        ...(database ? [idTag("database", database.id)] : []),
+        ...(database?.tables ?? []).map(table => idTag("table", table.id)),
+        listTag("field"),
+      ],
+    }),
+    listDatabaseSchemas: builder.query<string[], ListDatabaseSchemasRequest>({
+      query: ({ id, ...body }) => ({
+        method: "GET",
+        url: `/api/database/${id}/schemas`,
+        body,
+      }),
+      providesTags: (schemas = []) => [
+        listTag("schema"),
+        ...schemas.map(schema => idTag("schema", schema)),
+      ],
+    }),
+    listDatabaseSchemaTables: builder.query<
+      Table[],
+      ListDatabaseSchemaTablesRequest
+    >({
+      query: ({ id, schema, ...body }) => ({
+        method: "GET",
+        url: `/api/database/${id}/schema/${schema}`,
+        body,
+      }),
+      providesTags: (tables = []) => [
+        listTag("table"),
+        ...tables.map(table => idTag("table", table.id)),
+      ],
+    }),
+    listDatabaseIdFields: builder.query<Field[], ListDatabaseIdFieldsRequest>({
+      query: ({ id, ...body }) => ({
+        method: "GET",
+        url: `/api/database/${id}/idfields`,
+        body,
+      }),
+      providesTags: [listTag("field")],
+    }),
+    createDatabase: builder.mutation<Database, CreateDatabaseRequest>({
       query: body => ({
         method: "POST",
         url: "/api/database",
@@ -43,7 +94,7 @@ export const databaseApi = Api.injectEndpoints({
       }),
       invalidatesTags: [listTag("database")],
     }),
-    updateDatabase: builder.mutation<Database, DatabaseUpdateRequest>({
+    updateDatabase: builder.mutation<Database, UpdateDatabaseRequest>({
       query: ({ id, ...body }) => ({
         method: "PUT",
         url: `/api/database/${id}`,
@@ -52,6 +103,9 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (response, error, { id }) => [
         listTag("database"),
         idTag("database", id),
+        tag("table"),
+        tag("field"),
+        tag("field-values"),
       ],
     }),
     deleteDatabase: builder.mutation<void, DatabaseId>({
@@ -62,6 +116,9 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (response, error, id) => [
         listTag("database"),
         idTag("database", id),
+        tag("table"),
+        tag("field"),
+        tag("field-values"),
       ],
     }),
     rescanDatabaseFieldValues: builder.mutation<void, DatabaseId>({
@@ -83,6 +140,13 @@ export const databaseApi = Api.injectEndpoints({
 
 export const {
   useListDatabasesQuery,
+  useGetDatabaseQuery,
+  useListDatabaseSchemasQuery,
+  useListDatabaseSchemaTablesQuery,
+  useListDatabaseIdFieldsQuery,
+  useCreateDatabaseMutation,
+  useUpdateDatabaseMutation,
+  useDeleteDatabaseMutation,
   useRescanDatabaseFieldValuesMutation,
   useDiscardDatabaseFieldValuesMutation,
 } = databaseApi;
