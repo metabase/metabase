@@ -1,6 +1,11 @@
-import type { DashboardCacheSectionProps } from "metabase/plugins";
+import type { Dashboard } from "metabase-types/api";
 
 import CacheSection from "../CacheSection";
+
+interface DashboardCacheSectionProps {
+  dashboard: Dashboard;
+  onSave: (cache_ttl: number | null) => Promise<Dashboard>;
+}
 
 const DashboardCacheSection = ({
   dashboard,
