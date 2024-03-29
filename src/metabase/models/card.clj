@@ -189,7 +189,8 @@
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (def ^:private excluded-columns-for-card-revision
-  [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version :initially_published_at])
+  [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version
+   :initially_published_at :cache_invalidated_at])
 
 (defmethod revision/revert-to-revision! :model/Card
   [model id user-id serialized-card]
@@ -914,7 +915,8 @@ saved later when it is ready."
         (update :parameters             serdes/export-parameters)
         (update :parameter_mappings     serdes/export-parameter-mappings)
         (update :visualization_settings serdes/export-visualization-settings)
-        (update :result_metadata        (partial export-result-metadata card)))
+        (update :result_metadata        (partial export-result-metadata card))
+        (dissoc :cache_invalidated_at))
     (catch Exception e
       (throw (ex-info (format "Failed to export Card: %s" (ex-message e)) {:card card} e)))))
 

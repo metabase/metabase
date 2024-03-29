@@ -2,10 +2,12 @@
   (:require
    [clojure.walk :as walk]
    [compojure.core :refer [GET]]
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
+   [metabase.models :refer [CacheConfig Card]]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -147,5 +149,48 @@
                              (select-keys item [:strategy :config :model :model_id])
                              nil)))
   nil)
+
+(api/defendpoint POST "/invalidate"
+  "Invalidate cache entries"
+  [include database dashboard question]
+  {include   [:maybe [:= :overrides]]
+   database  [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
+   dashboard [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
+   question  [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]}
+
+  (when-not (premium-features/enable-cache-granular-controls?)
+    (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
+
+  (if-not (= include :overrides)
+    (let [conditions (for [[k vs] [[:database database]
+                                   [:dashboard dashboard]
+                                   [:question question]]
+                           v      vs]
+                       [:and [:= :model (name k)] [:= :model_id v]])
+          cnt        (when (seq conditions)
+                       ;; using JVM date rather than DB time since it's what are used in cache tasks
+                       (t2/query-one {:update (t2/table-name CacheConfig)
+                                      :set    {:invalidated_at (t/offset-date-time)}
+                                      :where  (into [:or] conditions)}))]
+      (if-not (and cnt (pos? cnt))
+        {:status 400
+         :body   {:message (tru "Could not find a cache configuration to invalidate.")}}
+        {:message (tru "Updated {0} cache configuration(s)." cnt)
+         :count   cnt}))
+
+    (let [card-ids (concat
+                    question
+                    (when (seq database)
+                      (t2/select-fn-vec :id [:model/Card :id] :database_id [:in database]))
+                    (when (seq dashboard)
+                      (t2/select-fn-vec :card_id [:model/DashboardCard :card_id] :dashboard_id [:in dashboard])))]
+      (if (empty? card-ids)
+        {:status 400
+         :body   {:message (tru "You have to provide correct database, dashboard or question ids to invalidate cache.")}}
+
+        (let [cnt (t2/update! Card :id [:in card-ids]
+                              {:cache_invalidated_at (t/offset-date-time)})]
+          {:message (tru "Marked {0} questions for cache invalidation." cnt)
+           :count   cnt})))))
 
 (api/define-routes)
