@@ -16,7 +16,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn- qp-query [db-id mbql-query]
+(defn- qp-query
+  [db-id mbql-query]
   {:pre [(integer? db-id)]}
   (-> (binding [qp.i/*disable-qp-logging* true]
         (qp/process-query
@@ -68,7 +69,8 @@
     (:database_require_filter table)
     (query-with-default-partitioned-field-filter (:id table))))
 
-(defn- field-query [{table-id :table_id} mbql-query]
+(defn- field-query
+  [{table-id :table_id} mbql-query]
   {:pre [(integer? table-id)]}
   (let [table (t2/select-one :model/Table :id table-id)]
     (qp-query (:db_id table)
@@ -103,6 +105,24 @@
   ([field max-results :- ms/PositiveInt]
    (field-query field {:breakout [[:field (u/the-id field) nil]]
                        :limit    (min max-results absolute-max-distinct-values-limit)})))
+
+;; TODO this function and field-distinct-values should be in metabase.models.field-values
+(defn search-values-query
+  "Generate the MBQL query used to power FieldValues search in [[search-values]] below. The actual query generated
+  differs slightly based on whether the two Fields are the same Field.
+
+  Note: the generated MBQL query assume that both `field` and `search-field` are from the same table."
+  [field search-field value limit]
+  (field-query field {:filter   (when (some? value)
+                                  [:contains [:field (u/the-id search-field) nil] value {:case-sensitive false}])
+                      ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
+                      ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
+                      ;; identifiers/aliases
+                      :breakout (if (= (u/the-id field) (u/the-id search-field))
+                                  [[:field (u/the-id field) nil]]
+                                  [[:field (u/the-id field) nil]
+                                   [:field (u/the-id search-field) nil]])
+                      :limit    limit}))
 
 (defn field-distinct-count
   "Return the distinct count of `field`."

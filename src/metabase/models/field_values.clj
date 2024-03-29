@@ -28,6 +28,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
+   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.plugins.classloader :as classloader]
@@ -345,7 +346,7 @@
   [field]
   (classloader/require 'metabase.db.metadata-queries)
   (try
-    (let [distinct-values         ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)
+    (let [distinct-values         (metadata-queries/field-distinct-values field)
           limited-distinct-values (take-by-length *total-max-length* distinct-values)]
       {:values          limited-distinct-values
        ;; has_more_values=true means the list of values we return is a subset of all possible values.
@@ -359,7 +360,7 @@
                           ;; So, if the returned `distinct-values` has length equal to that exact limit,
                           ;; we assume the returned values is just a subset of what we have in DB.
                           (= (count distinct-values)
-                             @(resolve 'metabase.db.metadata-queries/absolute-max-distinct-values-limit)))})
+                             metadata-queries/absolute-max-distinct-values-limit))})
     (catch Throwable e
       (log/error e (trs "Error fetching field values"))
       nil)))
