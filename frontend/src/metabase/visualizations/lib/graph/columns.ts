@@ -1,3 +1,4 @@
+import _ from "underscore";
 import type {
   DatasetColumn,
   DatasetData,
@@ -91,7 +92,7 @@ export const getCartesianChartColumns = (
   );
 
   const metrics = getColumnDescriptors(
-    (settings["graph.metrics"] ?? []).filter(isNotNull),
+    _.uniq((settings["graph.metrics"] ?? []).filter(isNotNull)),
     columns,
   );
 
