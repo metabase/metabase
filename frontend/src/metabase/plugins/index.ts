@@ -277,12 +277,12 @@ export const PLUGIN_MODERATION = {
 
 export interface QuestionCacheSectionProps {
   question: Question;
-  onSave: (cache_ttl?: number) => Promise<Question> | undefined;
+  onSave: (cache_ttl: number | null) => Promise<Question> | undefined;
 }
 
 export interface DashboardCacheSectionProps {
   dashboard: Dashboard;
-  onSave: (cache_ttl?: number) => Promise<Dashboard>;
+  onSave: (cache_ttl: number | null) => Promise<Dashboard>;
 }
 
 export const PLUGIN_CACHING = {
