@@ -2,7 +2,7 @@
 
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import { createMockSettingDefinition } from "metabase-types/api/mocks";
 
 import {
@@ -16,6 +16,7 @@ import {
   skipWelcomeScreen,
   submitUserInfoStep,
   getLastSettingsPutPayload,
+  MOCK_RANDOM_TOKEN,
 } from "./setup";
 
 describe("setup (OSS)", () => {
@@ -141,9 +142,14 @@ describe("setup (OSS)", () => {
 
       screen.getByText("Finish").click();
 
+      await waitFor(async () =>
+        expect(await getLastSettingsPutPayload()).toBeTruthy(),
+      );
+
       expect(await getLastSettingsPutPayload()).toEqual({
         "embedding-homepage": "visible",
         "enable-embedding": true,
+        "embedding-secret-key": MOCK_RANDOM_TOKEN,
         "setup-embedding-autoenabled": true,
         "setup-license-active-at-setup": false,
       });

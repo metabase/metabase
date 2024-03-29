@@ -58,6 +58,7 @@ export async function setup({
   fetchMock.post("path:/api/util/password_check", { valid: true });
   fetchMock.post("path:/api/setup", {});
   fetchMock.put("path:/api/setting/anon-tracking-enabled", 200);
+  fetchMock.get("path:/api/util/random_token", { token: MOCK_RANDOM_TOKEN });
   setupPropertiesEndpoints(
     createMockSettings({ "token-features": tokenFeatures }),
   );
@@ -150,3 +151,5 @@ export const getLastSettingsPutPayload = async () => {
 
   return JSON.parse((await lastSettingsCall![1]!.body!) as string);
 };
+
+export const MOCK_RANDOM_TOKEN = "X".repeat(64);

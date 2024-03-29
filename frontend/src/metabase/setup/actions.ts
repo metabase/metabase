@@ -12,7 +12,7 @@ import { loadLocalization } from "metabase/lib/i18n";
 import { createAsyncThunk } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { getSetting } from "metabase/selectors/settings";
-import { SetupApi } from "metabase/services";
+import { SetupApi, UtilApi } from "metabase/services";
 import type { DatabaseData, Settings, UsageReason } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 
@@ -234,6 +234,7 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
     const usageReason = getUsageReason(getState());
     const tokenFeatures = getSetting(getState(), "token-features");
     const adminSettings = getSettings(getState());
+    const embeddingSecretKey = getSetting(getState(), "embedding-secret-key");
     const enableEmbeddingSetByEnv = adminSettings.find(
       (setting: { key: string }) => setting.key === "enable-embedding",
     )?.is_env_setting;
@@ -251,6 +252,10 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
     if (interestedInEmbedding && !enableEmbeddingSetByEnv) {
       settingsToChange["enable-embedding"] = true;
       settingsToChange["setup-embedding-autoenabled"] = true;
+      if (!embeddingSecretKey) {
+        const { token } = await UtilApi.random_token();
+        settingsToChange["embedding-secret-key"] = token;
+      }
     }
 
     settingsToChange["setup-license-active-at-setup"] = isLicenseActive;

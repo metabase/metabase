@@ -1,7 +1,5 @@
 /* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "expectSectionToHaveLabel", "expectSectionsToHaveLabelsInOrder"] }] */
-
-import { screen } from "@testing-library/react";
-
+import { screen, waitFor } from "__support__/ui";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import type { SetupOpts } from "./setup";
@@ -10,6 +8,7 @@ import {
   expectSectionsToHaveLabelsInOrder,
   expectSectionToHaveLabel,
   getLastSettingsPutPayload,
+  MOCK_RANDOM_TOKEN,
   selectUsageReason,
   setup,
   skipLanguageStep,
@@ -57,9 +56,14 @@ describe("setup (EE, hosting and embedding feature)", () => {
 
     screen.getByText("Finish").click();
 
+    await waitFor(async () =>
+      expect(await getLastSettingsPutPayload()).toBeTruthy(),
+    );
+
     expect(await getLastSettingsPutPayload()).toEqual({
       "embedding-homepage": "visible",
       "enable-embedding": true,
+      "embedding-secret-key": MOCK_RANDOM_TOKEN,
       "setup-embedding-autoenabled": true,
       "setup-license-active-at-setup": true,
     });
