@@ -19,7 +19,7 @@ import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
   Database,
   Field,
-  FieldValuesResult,
+  GetFieldValuesResponse,
   Table,
 } from "metabase-types/api";
 import {
@@ -113,7 +113,7 @@ interface SetupOpts {
   database?: Database;
   table?: Table;
   field?: Field;
-  fieldValues?: FieldValuesResult;
+  fieldValues?: GetFieldValuesResponse;
   hasDataAccess?: boolean;
 }
 
