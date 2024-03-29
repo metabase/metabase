@@ -29,6 +29,7 @@ export interface NestedItemPickerProps<
   path: PickerState<Item, Query>;
   isFolder: IsFolder<Id, Model, Item>;
   listResolver: ComponentType<ListProps<Id, Model, Item, Query, Options>>;
+  shouldDisableItem?: (item: Item) => boolean;
 }
 
 export function NestedItemPicker<
@@ -45,6 +46,7 @@ export function NestedItemPicker<
   path,
   isFolder,
   listResolver: ListResolver,
+  shouldDisableItem,
 }: NestedItemPickerProps<Id, Model, Item, Query, Options>) {
   const handleClick = (item: Item) => {
     if (isFolder(item)) {
@@ -75,6 +77,7 @@ export function NestedItemPicker<
                   options={options}
                   onClick={(item: Item) => handleClick(item)}
                   isCurrentLevel={index === path.length - 2}
+                  shouldDisableItem={shouldDisableItem}
                   isFolder={isFolder}
                 />
               </ErrorBoundary>

@@ -99,7 +99,7 @@ class PartialQueryBuilder extends Component {
           canChangeTable={this.props.canChangeTable}
         >
           <div className={cx(CS.flex, CS.alignCenter, CS.mx2, CS.my2)}>
-            <span className="text-bold px3">{previewSummary}</span>
+            <span className={cx(CS.textBold, "px3")}>{previewSummary}</span>
             <Link
               to={previewUrl}
               target={window.OSX ? null : "_blank"}

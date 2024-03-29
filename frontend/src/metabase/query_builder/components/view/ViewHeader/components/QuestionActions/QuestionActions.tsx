@@ -284,7 +284,7 @@ export const QuestionActions = ({
         <>
           <input
             type="file"
-            accept="text/csv"
+            accept="text/csv,text/tab-separated-values"
             id="upload-file-input"
             ref={fileInputRef}
             onChange={handleFileUpload}

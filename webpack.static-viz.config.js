@@ -48,6 +48,10 @@ module.exports = env => {
     module: {
       rules: [
         {
+          test: /\.css$/i,
+          use: "null-loader",
+        },
+        {
           test: /\.(tsx?|jsx?)$/,
           exclude: /node_modules|cljs/,
           use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
@@ -90,10 +94,6 @@ module.exports = env => {
       ],
     },
     plugins: [
-      new IgnorePlugin({
-        resourceRegExp: /\.css$/, // regular expression to ignore all CSS files
-        contextRegExp: /./,
-      }),
       new StatsWriterPlugin({
         stats: {
           modules: true,

@@ -20,50 +20,37 @@
 }
 
 /* set height full relative to the parent */
-:global(.full-height),
-.full-height,
 .fullHeight {
   height: 100%;
 }
 
 /* display utilities */
-:global(.block),
 .block {
   display: block;
 }
 
-:global(.inline),
 .inline {
   display: inline;
 }
 
-:global(.inline-block),
-.inline-block {
+.inlineBlock {
   display: inline-block;
 }
 
-:global(.table) {
-  display: table;
-}
-
-:global(.full),
-:global(.full-width),
 .full,
-.full-width {
+.fullWidth {
   width: 100%;
 }
 
-:global(.half) {
+.half {
   width: 50%;
 }
 
 /* position utilities */
-:global(.fixed),
 .fixed {
   position: fixed;
 }
 
-:global(.relative),
 .relative {
   position: relative;
 }
@@ -72,22 +59,18 @@
   position: absolute;
 }
 
-:global(.top),
 .top {
   top: 0;
 }
 
-:global(.right),
 .right {
   right: 0;
 }
 
-:global(.bottom),
 .bottom {
   bottom: 0;
 }
 
-:global(.left),
 .left {
   left: 0;
 }

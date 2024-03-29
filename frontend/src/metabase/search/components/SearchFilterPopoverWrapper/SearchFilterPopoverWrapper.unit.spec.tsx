@@ -37,11 +37,11 @@ describe("SearchFilterPopoverWrapper", () => {
     expect(childrenContent).toBeInTheDocument();
   });
 
-  it('should call onApply when the "Apply" button is clicked', () => {
+  it('should call onApply when the "Apply" button is clicked', async () => {
     const { onApply } = setup();
 
     const applyButton = screen.getByText("Apply");
-    userEvent.click(applyButton);
+    await userEvent.click(applyButton);
 
     expect(onApply).toHaveBeenCalledTimes(1);
   });

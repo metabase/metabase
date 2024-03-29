@@ -237,7 +237,7 @@ export function FilterPopover({
                 CS.py2,
                 CS.flex,
                 CS.alignCenter,
-                "hover-parent hover--opacity",
+                CS.hoverParent,
                 CS.cursorPointer,
               )}
             >
@@ -251,7 +251,7 @@ export function FilterPopover({
               >
                 <Icon name="filter" />
               </span>
-              <h3 className="List-section-title text-wrap">
+              <h3 className={cx("List-section-title", CS.textWrap)}>
                 {CUSTOM_SECTION_NAME}
               </h3>
             </div>

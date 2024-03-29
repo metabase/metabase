@@ -286,7 +286,7 @@ describe("FieldValuesWidget", () => {
         searchValue,
       });
 
-      userEvent.type(
+      await userEvent.type(
         screen.getByPlaceholderText(`Search by ${displayName}`),
         searchValue,
       );
@@ -308,7 +308,7 @@ describe("FieldValuesWidget", () => {
         searchValue,
       });
 
-      userEvent.type(screen.getByPlaceholderText("Search"), searchValue);
+      await userEvent.type(screen.getByPlaceholderText("Search"), searchValue);
 
       expect(await screen.findByText(`No matching result`)).toBeInTheDocument();
     });

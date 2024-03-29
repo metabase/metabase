@@ -202,7 +202,7 @@ const GraphSection = ({
   className,
 }) => {
   return (
-    <div className="relative full-height">
+    <div className={cx(CS.relative, CS.fullHeight)}>
       <svg
         height="100%"
         width="100%"

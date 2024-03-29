@@ -42,7 +42,7 @@ export function ImpossibleToCreateModelModal({ onClose }: Props) {
       title={t`Variables in models aren't supported yet`}
       onClose={onClose}
     >
-      <p className="text-paragraph">
+      <p className={CS.textParagraph}>
         {showMetabaseLinks
           ? jt`To solve this, just remove the variables in this question and try again. (It's okay to use ${(
               <SQLSnippetsDocLink key="link-1" />
