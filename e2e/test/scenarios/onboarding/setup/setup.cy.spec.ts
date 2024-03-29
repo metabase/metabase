@@ -315,7 +315,17 @@ describe("scenarios > setup", () => {
       cy.button("Finish").click();
 
       // Finish & Subscribe
+      cy.intercept("GET", "/api/session/properties").as("properties");
       cy.findByText("Take me to Metabase").click();
+    });
+
+    cy.log(
+      "Make sure the embedding secret key is set after embedding has been autoenabled",
+    );
+    cy.wait("@properties").then(request => {
+      expect(request.response?.body["embedding-secret-key"]?.length).to.equal(
+        64,
+      );
     });
 
     cy.location("pathname").should("eq", "/");
