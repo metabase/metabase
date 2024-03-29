@@ -1,16 +1,28 @@
 # Embedding SDK
 
-### Build
+## Build
 `yarn build-embedding-sdk`
 
 Build results are located at `<root>/resources/embedding-sdk`
 
-### Dev build with watch mode
-`yarn build:cljs`
+### Local development
 
-`yarn build-embedding-sdk:watch`
+Run dev build in watch mode:
 
-### Release
+    `yarn build:cljs`
+
+    `yarn embedding-sdk:generate-package`
+
+    `yarn build-embedding-sdk:watch`
+
+Run `yarn link` in `<root>/resources/embedding-sdk`
+
+In the host app:
+
+    `yarn link @metabase/embedding-sdk-react`
+
+
+## Release
 
 Embedding SDK package build happens with Github actions if `embedding-sdk-build` label has been set on the PR.
 
