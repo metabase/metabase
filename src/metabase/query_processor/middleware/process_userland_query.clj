@@ -9,7 +9,7 @@
    [java-time.api :as t]
    [metabase.events :as events]
    [metabase.lib.core :as lib]
-   [metabase.lib.util.match :as lib.util.match]
+   [metabase.models.field-usage :as field-usage]
    [metabase.models.query :as query]
    [metabase.models.query-execution
     :as query-execution
@@ -35,54 +35,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Save Query Execution                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- pmbql->field-usages
-  [query]
-  (let [{:keys [aggregation
-                breakout
-                filters
-                expression]} (->> (lib/walk query
-                                             (fn [_query _path-type _path stage-or-join]
-                                               (select-keys stage-or-join
-                                                            [:aggregation :breakout :filters :expression])))
-                                  :stages
-                                  (apply merge-with concat))
-        field-with-id?         (fn [x]
-                                 (and (seq x)
-                                      (= (first x) :field)
-                                      (pos-int? (nth x 2))))]
-    (concat
-     ;; aggregation
-     (for [[op _opts [_field _opts field-id-or-name :as clause]] aggregation
-           :when (field-with-id? clause)]
-       {:used_in              :aggregation
-        :field_id             field-id-or-name
-        :aggregation_function op})
-     ;; breakouts
-     (for [[_field opts field-id-or-name :as clause] breakout
-           :when (field-with-id? clause)]
-       {:used_in        :breakout
-        :field_id       field-id-or-name
-        :breakout_param (select-keys opts [:temporal-unit :binning])})
-     ;; filters
-     (for [[op _opts [_field _opts field-id-or-name :as filter-field] & args :as _filter-clause] filters
-           :when (field-with-id? filter-field)]
-       {:used_in     :filter
-        :field_id    field-id-or-name
-        :filter_op   op
-        :filter_args args})
-     ;; expressions
-     (for [[_ expression-def] expression
-           :let [field-id (lib.util.match/match-one expression-def [:field (id :guard int?) _] id)]
-           :when (int? field-id)]
-       {:used_in  :expression
-        :field_id field-id}))))
-
-(defn- query->field-usages
-  [query]
-  (-> (lib/query (qp.store/metadata-provider) query)
-      fetch-source-query/resolve-source-cards
-      pmbql->field-usages))
 
 ;; TODO - I'm not sure whether this should happen async as is currently the case, or should happen synchronously e.g.
 ;; in the completing arity of the rf
@@ -194,6 +146,10 @@
    :running_time      0
    :result_rows       0
    :start_time_millis (System/currentTimeMillis)})
+
+(defn- query->field-usages
+  [query]
+  (field-usage/pquery->field-usages (->> query (lib/query (qp.store/metadata-provider)) fetch-source-query/resolve-source-cards)))
 
 (mu/defn process-userland-query-middleware :- ::qp.schema/qp
   "Around middleware.

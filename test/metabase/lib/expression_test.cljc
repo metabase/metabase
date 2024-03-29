@@ -255,18 +255,18 @@
   ;; expressions in the same stage; probably not with tables or earlier stages. De-duplicating names is supported by the
   ;; QP code, and it should be powered by MLv2 in due course.
   #_(testing "collisions with other column names are detected and rejected"
-    (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))
-          ex    (try
-                  (lib/expression query "ID" (meta/field-metadata :categories :name))
-                  nil
-                  (catch #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) e
-                    e))]
-      (is (some? ex)
-          "Expected adding a conflicting expression to throw")
-      (is (= "Expression name conflicts with a column in the same query stage"
-             (ex-message ex)))
-      (is (= {:expression-name "ID"}
-             (ex-data ex))))))
+     (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))
+           ex    (try
+                   (lib/expression query "ID" (meta/field-metadata :categories :name))
+                   nil
+                   (catch #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) e
+                     e))]
+       (is (some? ex)
+           "Expected adding a conflicting expression to throw")
+       (is (= "Expression name conflicts with a column in the same query stage"
+              (ex-message ex)))
+       (is (= {:expression-name "ID"}
+              (ex-data ex))))))
 
 (deftest ^:parallel literal-expression-test
   (is (=? [{:lib/type :metadata/column,

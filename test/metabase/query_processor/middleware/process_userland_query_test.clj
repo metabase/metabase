@@ -173,32 +173,49 @@
           (is (not @saved-query-execution?)))))))
 
 (deftest save-field-usage-test
-  (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query orders
-                                                                 {:filter      [:> $orders.product_id 1]
-                                                                  :breakout    [!month.orders.created_at]
-                                                                  :aggregation [:sum $orders.total]
-                                                                  :expression  {"exp" [:+ $orders.tax 1]}})}]
+  (mt/with-temp [:model/Card join-card {:dataset_query (mt/mbql-query products
+                                                                      {:filter [:= $products.category "Gizmo"]})}
+                 :model/Card base-card {:dataset_query (mt/mbql-query orders
+                                                                      {:filter      [:> $orders.product_id 1]
+                                                                       :breakout    [!month.orders.created_at]
+                                                                       :aggregation [:sum $orders.tax]
+                                                                       :expressions {"exp" [:+ $orders.total 1]}
+                                                                       :joins       [{:fields       "all",
+                                                                                      :source-table (format "card__%d" (:id join-card))
+                                                                                      :condition    [:= $orders.product_id &product.products.id]
+                                                                                      :alias        "product"}]})}
+                 :model/Card card      {:dataset_query (mt/mbql-query
+                                                        nil
+                                                        {:source-table (format "card__%d" (:id base-card))
+                                                         :filter       [:between $orders.created_at "2019-01-01" "2019-12-31"]})}]
     (let [field-usages (atom nil)]
       (with-redefs [process-userland-query/save-execution-metadata! (fn [_info field-usages']
                                                                       (reset! field-usages field-usages'))]
         (process-userland-query (mt/mbql-query
                                  nil
-                                 {:source-table (format "card__%d" (:id card))
-                                  :filter       [:time-interval $orders.created_at :current :day]}))
-        (is (= #{{:used_in              :aggregation
-                  :field_id             (mt/id :orders :total)
-                  :aggregation_function :sum}
-                 {:used_in              :breakout
-                  :field_id             (mt/id :orders :created_at)
-                  :breakout_param       {:temporal-unit :month}}
-                 {:used_in              :filter
-                  :field_id             (mt/id :orders :product_id)
-                  :filter_op            :>
-                  :filter_args          [1]}
-                 {:used_in              :filter
-                  :field_id             (mt/id :orders :created_at)
-                  :filter_op            :time-interval
-                  :filter_args          [:current :day]}
-                 {:used_in              :expression
-                  :field_id             (mt/id :orders :tax)}}
+                                 {:source-table (format "card__%d" (:id card))}))
+        (is (= #{;; from join-card
+                 {:used_in                :filter
+                  :field_id               (mt/id :products :category)
+                  :filter_op              :=
+                  :filter_args            ["Gizmo"]}
+                 ;; from base-card
+                 {:used_in                :filter
+                  :field_id               (mt/id :orders :product_id)
+                  :filter_op              :>
+                  :filter_args            [1]}
+                 {:used_in                :breakout
+                  :field_id               (mt/id :orders :created_at)
+                  :breakout_temporal_unit :month,
+                  :breakout_binning       nil}
+                 {:used_in                :aggregation
+                  :field_id               (mt/id :orders :tax)
+                  :aggregation_function   :sum}
+                 {:used_in                :expression
+                  :field_id               (mt/id :orders :total)}
+                 ;; from top level card
+                 {:used_in                :filter
+                  :field_id               (mt/id :orders :created_at)
+                  :filter_op              :between
+                  :filter_args            ["2019-01-01" "2019-12-31"]}}
                (set @field-usages)))))))

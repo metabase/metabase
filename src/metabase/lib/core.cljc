@@ -303,6 +303,7 @@
   describe-temporal-interval
   describe-relative-datetime
   available-temporal-buckets
+  raw-temporal-bucket
   temporal-bucket
   with-temporal-bucket]
  [lib.util
