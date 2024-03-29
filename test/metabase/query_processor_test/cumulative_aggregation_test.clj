@@ -79,14 +79,16 @@
 (deftest ^:parallel cumulative-sum-test-4
   (mt/test-drivers (mt/normal-drivers)
     (testing "Cumulative sum w/ a different breakout field that requires grouping"
-      (is (= [[1 1211]
-              [2 4066]
-              [3 4681]
-              [4 5050]]
-             (mt/formatted-rows [int int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:cum-sum $id]]
-                  :breakout    [$price]})))))))
+      (let [query (mt/mbql-query venues
+                    {:aggregation [[:cum-sum $id]]
+                     :breakout    [$price]})]
+        (mt/with-native-query-testing-context query
+          (is (= [[1 1211]
+                  [2 4066]
+                  [3 4681]
+                  [4 5050]]
+                 (mt/formatted-rows [int int]
+                   (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-sum-with-bucketed-breakout-test
   (mt/test-drivers (mt/normal-drivers)
@@ -121,37 +123,41 @@
 (deftest ^:parallel cumulative-count-with-breakout-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "w/ breakout on field with distinct values"
-      (is (= [["Broen Olujimi"        1]
-              ["Conchúr Tihomir"      2]
-              ["Dwight Gresham"       3]
-              ["Felipinho Asklepios"  4]
-              ["Frans Hevel"          5]
-              ["Kaneonuskatew Eiran"  6]
-              ["Kfir Caj"             7]
-              ["Nils Gotam"           8]
-              ["Plato Yeshua"         9]
-              ["Quentin Sören"       10]
-              ["Rüstem Hebel"        11]
-              ["Shad Ferdynand"      12]
-              ["Simcha Yan"          13]
-              ["Spiros Teofil"       14]
-              ["Szymon Theutrich"    15]]
-             (mt/formatted-rows [str int]
-               (mt/run-mbql-query users
-                 {:aggregation [[:cum-count $id]]
-                  :breakout    [$name]})))))))
+      (let [query (mt/mbql-query users
+                    {:aggregation [[:cum-count $id]]
+                     :breakout    [$name]})]
+        (mt/with-native-query-testing-context query
+          (is (= [["Broen Olujimi"        1]
+                  ["Conchúr Tihomir"      2]
+                  ["Dwight Gresham"       3]
+                  ["Felipinho Asklepios"  4]
+                  ["Frans Hevel"          5]
+                  ["Kaneonuskatew Eiran"  6]
+                  ["Kfir Caj"             7]
+                  ["Nils Gotam"           8]
+                  ["Plato Yeshua"         9]
+                  ["Quentin Sören"       10]
+                  ["Rüstem Hebel"        11]
+                  ["Shad Ferdynand"      12]
+                  ["Simcha Yan"          13]
+                  ["Spiros Teofil"       14]
+                  ["Szymon Theutrich"    15]]
+                 (mt/formatted-rows [str int]
+                   (qp/process-query query)))))))))
 
- (deftest ^:parallel cumulative-count-with-breakout-test-2
-   (mt/test-drivers (mt/normal-drivers)
-     (testing "w/ breakout on field that requires grouping"
-       (is (= [[1 22]
-               [2 81]
-               [3 94]
-               [4 100]]
-              (mt/formatted-rows [int int]
-                (mt/run-mbql-query venues
-                  {:aggregation [[:cum-count $id]]
-                   :breakout    [$price]})))))))
+(deftest ^:parallel cumulative-count-with-breakout-test-2
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "w/ breakout on field that requires grouping"
+      (let [query (mt/mbql-query venues
+                    {:aggregation [[:cum-count $id]]
+                     :breakout    [$price]})]
+        (mt/with-native-query-testing-context query
+          (is (= [[1 22]
+                  [2 81]
+                  [3 94]
+                  [4 100]]
+                 (mt/formatted-rows [int int]
+                   (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-with-multiple-breakouts-test
   (mt/test-drivers (mt/normal-drivers)
@@ -170,14 +176,16 @@
 (deftest ^:parallel cumulative-count-without-field-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "cumulative count without a field"
-      (is (= [[1 22]
-              [2 81]
-              [3 94]
-              [4 100]]
-             (mt/formatted-rows [int int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:cum-count]]
-                  :breakout    [$price]})))))))
+      (let [query (mt/mbql-query venues
+                    {:aggregation [[:cum-count]]
+                     :breakout    [$price]})]
+        (mt/with-native-query-testing-context query
+          (is (= [[1 22]
+                  [2 81]
+                  [3 94]
+                  [4 100]]
+                 (mt/formatted-rows [int int]
+                   (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-with-bucketed-breakout-test
   (mt/test-drivers (mt/normal-drivers)
@@ -213,7 +221,7 @@
                  (qp/process-query query))))))))
 
 (deftest ^:parallel cumulative-count-and-sum-in-expressions-test
-  (testing "Cumulative count should work inside expressions (#15118)"
+  (testing "Cumulative count should work inside expressions (#13634, #15118)"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
       (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             orders            (lib.metadata/table metadata-provider (mt/id :orders))

@@ -689,15 +689,28 @@
 
 (defn- window-function-order-by-strategy [driver]
   (case driver
-    (:postgres :athena :mysql #_:bigquery-cloud-sdk)
+    (:postgres :athena :mysql :presto-jdbc :redshift :sqlserver)
     ::over-order-by-strategy.copy-expressions
 
-    (:h2 :sqlite)
+    (:h2 :sqlite :bigquery :oracle)
     ::over-order-by-strategy.use-output-column-numbers
+
+    ;; NOT SURE ABOUT THESE!
+    (:snowflake :sparksql :vertica)
+    ::over-order-by-strategy.copy-expressions
 
     ;; the rest are unknown; try using output column numbers.
     ::over-order-by-strategy.use-output-column-numbers
     ))
+
+(defn- format-rows-unbounded-preceding [_clause _args]
+  ["ROWS UNBOUNDED PRECEDING"
+   #_"RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW"])
+
+(sql/register-clause!
+ ::rows-unbounded-preceding
+ #'format-rows-unbounded-preceding
+ nil)
 
 (defn- over-rows-with-order-by-for-current-stage
   "e.g.
@@ -711,22 +724,13 @@
                             *inner-query*)]
     [:over
      [expr
-      (when (seq group-by)
-        {:order-by (mapv (fn [expr]
-                           [expr :asc])
-                         group-by)})]]))
+      {:order-by                  (mapv (fn [expr]
+                                          [expr :asc])
+                                        group-by)
+       ::rows-unbounded-preceding []}]]))
 
 ;;; For databases that do something intelligent with ORDER BY 1, 2: we can take advantage of that functionality
 ;;; implement the window function versions of cumulative sum and cumulative sum more simply.
-
-(defn- format-rows-unbounded-preceding [_clause _args]
-  ["ROWS UNBOUNDED PRECEDING"
-   #_"RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW"])
-
-(sql/register-clause!
- ::rows-unbounded-preceding
- #'format-rows-unbounded-preceding
- nil)
 
 (defn- over-rows-with-order-by-select-expression-positions
   "e.g.
@@ -735,12 +739,10 @@
   [_driver expr]
   [:over
    [expr
-    (merge
-     (when (seq (:breakout *inner-query*))
-       {:order-by (mapv (fn [i]
-                          [[:inline (inc i)] :asc])
-                        (range (count (:breakout *inner-query*))))})
-     {::rows-unbounded-preceding []})]])
+    {:order-by                  (mapv (fn [i]
+                                        [[:inline (inc i)] :asc])
+                                      (range (count (:breakout *inner-query*))))
+     ::rows-unbounded-preceding []}]])
 
 (defn- cumulative-aggregation-window-function [driver expr]
   (let [over-rows-with-order-by (case (window-function-order-by-strategy driver)
@@ -761,11 +763,14 @@
 ;;; if the database supports ordering by SELECT expression position
 (defmethod ->honeysql [:sql :cum-count]
   [driver [_cum-count expr-or-nil]]
-  (cumulative-aggregation-window-function
-   driver
-   [:sum (if expr-or-nil
-           [:count (->honeysql driver expr-or-nil)]
-           [:count :*])]))
+  ;; a cumulative count with no breakouts doesn't really mean anything, just compile it as a normal count.
+  (if (empty? (:breakout *inner-query*))
+    (->honeysql driver [:count expr-or-nil])
+    (cumulative-aggregation-window-function
+     driver
+     [:sum (if expr-or-nil
+             [:count (->honeysql driver expr-or-nil)]
+             [:count :*])])))
 
 ;;;    cum-sum(total)
 ;;;
@@ -780,9 +785,12 @@
 ;;; if the database supports ordering by SELECT expression position
 (defmethod ->honeysql [:sql :cum-sum]
   [driver [_cum-sum expr]]
-  (cumulative-aggregation-window-function
-   driver
-   [:sum [:sum (->honeysql driver expr)]]))
+  ;; a cumulative sum with no breakouts doesn't really mean anything, just compile it as a normal sum.
+  (if (empty? (:breakout *inner-query*))
+    (->honeysql driver [:sum expr])
+    (cumulative-aggregation-window-function
+     driver
+     [:sum [:sum (->honeysql driver expr)]])))
 
 (defn- interval? [expr]
   (mbql.u/is-clause? :interval expr))
