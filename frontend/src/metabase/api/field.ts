@@ -7,6 +7,7 @@ import type {
   GetFieldRequest,
   UpdateFieldRequest,
   CreateFieldDimensionRequest,
+  UpdateFieldValuesRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -53,6 +54,14 @@ export const fieldApi = Api.injectEndpoints({
         idTag("field-values", id),
       ],
     }),
+    updateFieldValues: builder.mutation<void, UpdateFieldValuesRequest>({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/field/${id}/values`,
+        body,
+      }),
+      invalidatesTags: (field, error, { id }) => [idTag("field-values", id)],
+    }),
     createFieldDimension: builder.mutation<void, CreateFieldDimensionRequest>({
       query: ({ id, ...body }) => ({
         method: "POST",
@@ -96,6 +105,7 @@ export const {
   useGetFieldValuesQuery,
   useSearchFieldValuesQuery,
   useUpdateFieldMutation,
+  useUpdateFieldValuesMutation,
   useCreateFieldDimensionMutation,
   useDeleteFieldDimensionMutation,
   useRescanFieldValuesMutation,

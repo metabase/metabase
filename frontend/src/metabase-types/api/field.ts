@@ -164,3 +164,8 @@ export interface CreateFieldDimensionRequest {
   name: string;
   human_readable_field_id?: FieldId;
 }
+
+export interface UpdateFieldValuesRequest {
+  id: FieldId;
+  values: FieldValue[];
+}

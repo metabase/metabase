@@ -141,10 +141,14 @@ const Fields = createEntity({
             requestStatePath: ["entities", "fields", id, "dimension"],
             existingStatePath: ["entities", "fields", id],
             putData: () =>
-              MetabaseApi.field_values_update({
-                fieldId: id,
-                values: fieldValuePairs,
-              }),
+              entityCompatibleQuery(
+                {
+                  id,
+                  values: fieldValuePairs,
+                },
+                dispatch,
+                fieldApi.endpoints.updateFieldValues,
+              ),
           }),
     ),
     updateFieldDimension: createThunkAction(
