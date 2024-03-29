@@ -419,6 +419,29 @@
            (finally
             (drop-table-if-exists! table-name))))))))
 
+(deftest search-field-values-and-chain-filter-on-partitioned-tables-test
+  (testing "Search field values or getting values for chained-filter for a table "
+    (mt/test-driver :bigquery-cloud-sdk
+      (mt/with-model-cleanup [:model/Table]
+        (let [normal-table      "normal_table"
+              partitioned-table "fv_partitioned_table"]
+          (try
+           (doseq [sql [(format "CREATE TABLE %s (id INT64, category STRING)
+                                PARTITION BY _PARTITIONDATE
+                                OPTIONS (require_partition_filter = TRUE);"
+                                (fmt-table-name partitioned-table))
+                        (format "INSERT INTO %s (id, category)
+                                VALUES (1, \"coffee\"), (2, \"tea\"), (3, \"matcha\");"
+                                (fmt-table-name partitioned-table))]]
+             (bigquery.tx/execute! sql))
+           (t2/update! :model/Field (mt/id :fv_partitioned_table :category) {:has_field_values :search})
+           ;(mt/user-http-requests :crowberto :get 200 (format "/field/%d") (mt/id :fv_partitioned_table :category))
+
+           (finally
+            (drop-table-if-exists! partitioned-table))))))))
+
+#_(t2/delete! :model/Database :engine :bigquery-cloud-sdk)
+
 (deftest query-integer-pk-or-fk-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "We should be able to query a Table that has a :type/Integer column marked as a PK or FK"
@@ -770,6 +793,3 @@
                   qp.compile/compile-and-splice-parameters
                   :query
                   pretty-sql-lines))))))
-
-(deftest search-field-values-and-chain-filter-on-partitioned-tables-test
-  (testing "Search field values or getting values for chained-filter for a table "))

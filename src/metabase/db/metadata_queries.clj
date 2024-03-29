@@ -40,6 +40,7 @@
   "If the table requires a filter, add a dummy filter clause so the query can be executed.
   Currently this only apply to partitioned tables on bigquery that requires a partition filter."
   [query {:keys [id] :as table}]
+  ;; we probably need to look in to query, then find all field-id -> get tables -> add the required filters
   (if (:database_require_filter table)
     (let [;; In bigquery, range or datetime partitioned table can have only one partioned field,
           ;; Ingestion time partitioned table can use either _PARTITIONDATE or _PARTITIONTIME as
