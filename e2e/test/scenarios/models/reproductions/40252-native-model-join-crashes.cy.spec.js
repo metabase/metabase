@@ -26,7 +26,7 @@ describe("issue 40252", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it("shouldn't drop native model query results after leaving the query editor (metabase#40252)", () => {
+  it("shouldn't crash during save of metadata (metabase#40252)", () => {
     createNativeQuestion(modelA, { wrapId: true, idAlias: "modelA" });
     createNativeQuestion(modelB, { wrapId: true, idAlias: "modelB" });
 
