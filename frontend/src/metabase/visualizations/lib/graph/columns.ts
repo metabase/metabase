@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { isNotNull } from "metabase/lib/types";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import type {
@@ -90,7 +92,7 @@ export const getCartesianChartColumns = (
   );
 
   const metrics = getColumnDescriptors(
-    (settings["graph.metrics"] ?? []).filter(isNotNull),
+    _.uniq((settings["graph.metrics"] ?? []).filter(isNotNull)),
     columns,
   );
 
