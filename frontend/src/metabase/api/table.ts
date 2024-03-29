@@ -32,9 +32,10 @@ export const tableApi = Api.injectEndpoints({
       providesTags: table => (table ? [idTag("table", table.id)] : []),
     }),
     getTableMetadata: builder.query<Table, GetTableMetadataRequest>({
-      query: ({ id }) => ({
+      query: ({ id, ...body }) => ({
         method: "GET",
         url: `/api/table/${id}/query_metadata`,
+        body,
       }),
       providesTags: table => (table ? [idTag("table", table.id)] : []),
     }),
