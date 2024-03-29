@@ -1,4 +1,3 @@
-/* eslint-disable testing-library/no-unnecessary-act */
 import userEvent from "@testing-library/user-event";
 
 import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
