@@ -16,7 +16,6 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { StrategyEditorForDatabases } from "./StrategyEditorForDatabases";
 
-// TODO: Might not need this
 const storeInitialState = createMockState({
   entities: createMockEntitiesState({}),
   settings: mockSettings(createMockSettings()),

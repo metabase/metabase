@@ -21,6 +21,7 @@ import { rootId } from "../constants";
 import { useDelayedLoadingSpinner } from "../hooks/useDelayedLoadingSpinner";
 import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
 import type {
+  CacheConfigAPIResponse,
   Config,
   SafelyUpdateTargetId,
   Strategy,
@@ -55,21 +56,22 @@ export const StrategyEditorForDatabases = withRouter(
     const shouldShowStrategyFormLaunchers = canOverrideRootStrategy;
 
     const configsResult = useAsync(async () => {
-      const lists = [CacheConfigApi.list({ model: "root" })];
-      if (canOverrideRootStrategy) {
-        lists.push(CacheConfigApi.list({ model: "database" }));
-      }
-      const [rootConfigsFromAPI, savedConfigsFromAPI] = await Promise.all(
-        lists,
-      );
-      const rootConfig = rootConfigsFromAPI?.data?.[0] ?? {
+      const rootConfigsFromAPI = (
+        (await CacheConfigApi.list({ model: "root" })) as CacheConfigAPIResponse
+      ).data;
+      const rootConfig = rootConfigsFromAPI[0] ?? {
         model: "root",
         model_id: rootId,
         strategy: { type: "nocache" },
       };
-      const configs = [rootConfig];
-      configs.push(...(savedConfigsFromAPI?.data ?? []));
-
+      const dbConfigsFromAPI = canOverrideRootStrategy
+        ? (
+            (await CacheConfigApi.list({
+              model: "database",
+            })) as CacheConfigAPIResponse
+          ).data
+        : [];
+      const configs = [rootConfig, ...dbConfigsFromAPI];
       return configs;
     }, []);
 
@@ -114,7 +116,7 @@ export const StrategyEditorForDatabases = withRouter(
         askConfirmation({
           title: t`Discard your changes?`,
           message: t`Your changes haven’t been saved, so you’ll lose them if you navigate away.`,
-          confirmButtonText: "Discard",
+          confirmButtonText: t`Discard`,
           onConfirm,
         }),
       [askConfirmation],
@@ -248,7 +250,7 @@ export const StrategyEditorForDatabases = withRouter(
     }
 
     return (
-      <TabWrapper role="region" aria-label="Data caching settings">
+      <TabWrapper role="region" aria-label={t`Data caching settings`}>
         <Stack spacing="xl" lh="1.5rem" maw="32rem" mb="1.5rem">
           <aside>{PLUGIN_CACHING.explanation}</aside>
         </Stack>

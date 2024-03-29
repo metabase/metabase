@@ -133,3 +133,7 @@ export type LeaveConfirmationData =
       isModalOpen: false;
     }
   | { isModalOpen: true; onConfirm: () => void };
+
+export type CacheConfigAPIResponse = {
+  data: Config[];
+}

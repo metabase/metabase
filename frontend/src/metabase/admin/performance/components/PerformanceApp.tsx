@@ -25,7 +25,7 @@ export const PerformanceApp = ({ route }: { route: Route }) => {
       }
       const tabsElementTop = tabs.getBoundingClientRect().top;
       const newHeight = window.innerHeight - tabsElementTop - tabs.clientTop;
-      setTabsHeight?.(newHeight);
+      setTabsHeight(newHeight);
     };
     window.addEventListener("resize", handleResize);
     handleResize();
@@ -42,8 +42,6 @@ export const PerformanceApp = ({ route }: { route: Route }) => {
       onTabChange={value => {
         if (isValidTabId(value)) {
           setTabId(value);
-          // perhaps later use: dispatch(push(`/admin/performance/${value}`));
-          // or history.pushState to avoid reloading too large a portion of the ui?
         } else {
           console.error("Invalid tab value", value);
         }

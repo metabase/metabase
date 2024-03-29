@@ -22,6 +22,8 @@ import {
   Radio,
   Stack,
   Text,
+  TextInput,
+  TextInputProps,
   Title,
 } from "metabase/ui";
 
@@ -64,6 +66,8 @@ const StrategyFormBody = ({
 }) => {
   const { dirty, values, setFieldValue } = useFormikContext<Strategy>();
 
+  console.log("values", values);
+
   const selectedStrategyType = values.type;
 
   useEffect(() => {
@@ -75,6 +79,12 @@ const StrategyFormBody = ({
       setFieldValue("unit", "hours");
     }
   }, [selectedStrategyType, values, setFieldValue]);
+
+  // for debugging
+  if (selectedStrategyType === "ttl") {
+    const seconds = toWholeSeconds(values.min_duration_ms);
+    console.log("seconds", seconds);
+  }
 
   return (
     <Form
@@ -91,28 +101,35 @@ const StrategyFormBody = ({
           <>
             <Field
               title={t`Minimum query duration`}
-              subtitle={t`Metabase will cache all saved questions with an average query execution time greater than this many milliseconds.`}
+              subtitle={t`Metabase will cache all saved questions with an average query execution time greater than this many seconds.`}
             >
               <PositiveNumberInput
+                Component={TextInput}
                 strategyType="ttl"
-                fieldName="min_duration_ms"
+                value={toWholeSeconds(values.min_duration_ms)}
+                placeholder={toWholeSeconds(
+                  getDefaultValueForField("ttl", "min_duration_ms"),
+                ).toString()}
+                onChange={e => {
+                  setFieldValue(
+                    "min_duration_ms",
+                    toWholeMilliseconds(e.target.value),
+                  );
+                }}
               />
             </Field>
             <Field
               title={t`Cache time-to-live (TTL) multiplier`}
               subtitle={t`To determine how long each cached result should stick around, we take that query's average execution time and multiply that by what you input here. The result is how many seconds the cache should remain valid for.`}
             >
-              <PositiveNumberInput strategyType="ttl" fieldName="multiplier" />
+              <PositiveNumberInput strategyType="ttl" name="multiplier" />
             </Field>
           </>
         )}
         {selectedStrategyType === "duration" && (
           <>
             <Field title={t`Cache result for this many hours`}>
-              <PositiveNumberInput
-                strategyType="duration"
-                fieldName="duration"
-              />
+              <PositiveNumberInput strategyType="duration" name="duration" />
             </Field>
             <input type="hidden" name="unit" />
           </>
@@ -188,7 +205,6 @@ const StrategySelector = ({ targetId }: { targetId: number | null }) => {
         <Stack mt="md" spacing="md">
           {_.map(availableStrategies, (option, name) => {
             const optionLabelParts = option.label.split(":");
-            // HACK: This approach assumes the translation separates the strategy's name and description with ':'
             const optionLabelFormatted =
               optionLabelParts.length === 1 ? (
                 option.label
@@ -214,19 +230,20 @@ const StrategySelector = ({ targetId }: { targetId: number | null }) => {
 };
 
 export const PositiveNumberInput = ({
-  fieldName,
   strategyType,
+  Component = FormTextInput,
   ...props
 }: {
-  fieldName: string;
+  Component?:
+    | React.ComponentType<FormTextInputProps>
+    | React.ComponentType<TextInputProps>;
   strategyType: StrategyType;
-} & Partial<FormTextInputProps>) => {
-  // NOTE: Known bug: on Firefox, if you type invalid input, the error
-  // message will be "Required field" instead of "must be a positive number".
-  // BUG: if you blank out the input and press save, there is no user feedback
+} & Partial<FormTextInputProps> &
+  Pick<TextInputProps, "name" | "value">) => {
   return (
-    <FormTextInput
+    <Component
       type="number"
+      name={props.name ?? ""}
       min={1}
       styles={{
         input: {
@@ -236,9 +253,8 @@ export const PositiveNumberInput = ({
         },
       }}
       autoComplete="off"
-      placeholder={getDefaultValueForField(strategyType, fieldName)}
+      placeholder={getDefaultValueForField(strategyType, props.name)}
       {...props}
-      name={fieldName}
     />
   );
 };
@@ -267,5 +283,23 @@ const Field = ({
 
 const getDefaultValueForField = (
   strategyType: StrategyType,
-  fieldName: string,
-) => Strategies[strategyType].validateWith.cast({})[fieldName];
+  fieldName?: string,
+) =>
+  fieldName ? Strategies[strategyType].validateWith.cast({})[fieldName] : "";
+
+const stringToNumber = (value: string) => {
+  if (value.trim() === "") return undefined;
+  const number = Number(value);
+  return isNaN(number) ? undefined : number;
+};
+
+/** Convert milliseconds to seconds, rounding down */
+const toWholeSeconds = (milliseconds: number) =>
+  Math.floor(milliseconds / 1000);
+
+/** Convert seconds to milliseconds, rounding down */
+const toWholeMilliseconds = (strSeconds: string) => {
+  const numSeconds = stringToNumber(strSeconds);
+  if (numSeconds === undefined) return undefined;
+  return Math.floor(numSeconds * 1000);
+};
