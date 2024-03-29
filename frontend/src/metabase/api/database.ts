@@ -49,12 +49,8 @@ export const databaseApi = Api.injectEndpoints({
       }),
       providesTags: database => [
         ...(database ? [idTag("database", database.id)] : []),
-        ...(database?.tables ?? []).flatMap(table => [
-          idTag("table", table.id),
-          ...(table.fields ?? []).flatMap(field =>
-            field.id ? [idTag("field", field.id)] : [],
-          ),
-        ]),
+        ...(database?.tables ?? []).map(table => idTag("table", table.id)),
+        listTag("field"),
       ],
     }),
     listDatabaseSchemas: builder.query<string[], ListDatabaseSchemasRequest>({
@@ -88,12 +84,7 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${id}/idfields`,
         body,
       }),
-      providesTags: (fields = []) => [
-        listTag("field"),
-        ...fields.flatMap(field =>
-          field.id ? [idTag("field", field.id)] : [],
-        ),
-      ],
+      providesTags: [listTag("field")],
     }),
     createDatabase: builder.mutation<Database, CreateDatabaseRequest>({
       query: body => ({

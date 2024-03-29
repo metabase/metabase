@@ -72,7 +72,7 @@ export type FieldDimensionOption = {
 };
 
 export interface Field {
-  id?: FieldId;
+  id: FieldId | FieldReference;
   table_id: TableId;
   table?: Table;
   field_ref?: FieldReference;
@@ -120,47 +120,19 @@ export interface Field {
   updated_at: string;
 }
 
-export interface FieldFormattingSettings {
-  currency?: string;
-}
-
-export interface GetFieldRequest {
-  id: FieldId;
-  include_editable_data_model?: boolean;
-}
-
-export interface UpdateFieldRequest {
-  id: FieldId;
-  caveats?: string;
-  description?: string;
-  display_name?: string;
-  fk_target_field_id?: FieldId;
-  points_of_interest?: string;
-  semantic_type?: string;
-  coercion_strategy?: string;
-  visibility_type?: FieldVisibilityType;
-  has_field_values?: FieldValuesType;
-  settings?: FieldFormattingSettings;
-  nfc_path?: string[];
-  json_unfolding?: boolean;
-}
-
-export interface GetFieldValuesResponse {
+export interface FieldValuesResult {
   field_id: FieldId;
   values: FieldValue[];
   has_more_values: boolean;
 }
 
-export interface SearchFieldValuesRequest {
+export interface FieldSearchInput {
   fieldId: FieldId;
   searchFieldId: FieldId;
   value: string;
   limit: number;
 }
 
-export interface CreateFieldDimensionRequest {
-  id: FieldId;
-  type: FieldDimensionType;
-  name: string;
-  human_readable_field_id?: FieldId;
+export interface FieldFormattingSettings {
+  currency?: string;
 }

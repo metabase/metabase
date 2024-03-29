@@ -23,9 +23,9 @@ export const fieldApi = Api.injectEndpoints({
       providesTags: (response, error, { id }) => [idTag("field", id)],
     }),
     getFieldValues: builder.query<GetFieldValuesResponse, FieldId>({
-      query: fieldId => ({
+      query: id => ({
         method: "GET",
-        url: `/api/field/${fieldId}/values`,
+        url: `/api/field/${id}/values`,
       }),
       providesTags: (response, error, fieldId) => [
         idTag("field-values", fieldId),
@@ -51,7 +51,6 @@ export const fieldApi = Api.injectEndpoints({
         listTag("field"),
         idTag("field", id),
         idTag("field-values", id),
-        ...(field ? [idTag("table", field.table_id)] : []),
       ],
     }),
     createFieldDimension: builder.mutation<void, CreateFieldDimensionRequest>({
@@ -60,7 +59,7 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${id}/dimension`,
         body,
       }),
-      invalidatesTags: (response, error, { id }) => [
+      invalidatesTags: (_, error, { id }) => [
         idTag("field", id),
         idTag("field-values", id),
       ],
@@ -70,7 +69,7 @@ export const fieldApi = Api.injectEndpoints({
         method: "DELETE",
         url: `/api/field/${id}/dimension`,
       }),
-      invalidatesTags: (response, error, id) => [
+      invalidatesTags: (_, error, id) => [
         idTag("field", id),
         idTag("field-values", id),
       ],
@@ -80,14 +79,14 @@ export const fieldApi = Api.injectEndpoints({
         method: "POST",
         url: `/api/field/${id}/rescan_values`,
       }),
-      invalidatesTags: (response, error, id) => [idTag("field-values", id)],
+      invalidatesTags: (_, error, id) => [idTag("field-values", id)],
     }),
     discardFieldValues: builder.mutation<void, FieldId>({
       query: id => ({
         method: "POST",
         url: `/api/field/${id}/discard_values`,
       }),
-      invalidatesTags: (response, error, id) => [idTag("field-values", id)],
+      invalidatesTags: (_, error, id) => [idTag("field-values", id)],
     }),
   }),
 });
