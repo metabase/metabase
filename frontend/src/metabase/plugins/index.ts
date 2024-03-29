@@ -313,12 +313,7 @@ export interface DashboardCacheSectionProps {
 }
 
 export const PLUGIN_CACHING = {
-<<<<<<< HEAD
-  cacheTTLFormField: {} as any,
-||||||| parent of 237a1d32b5 (Apply branch as patch)
-=======
   cacheTTLFormField: null as any,
->>>>>>> 237a1d32b5 (Apply branch as patch)
   dashboardCacheTTLFormField: null,
   questionCacheTTLFormField: null,
   getQuestionsImplicitCacheTTL: (_question?: any) => null as number | null,
@@ -332,7 +327,6 @@ export const PLUGIN_CACHING = {
   isEnabled: () => false,
   hasQuestionCacheSection: (_question: Question) => false,
   canOverrideRootStrategy: false,
-  showAd: true,
   explanation:
     t`Cache the results of queries to have them display instantly. Here you can choose when cached results should be invalidated.` as ReactNode,
 };
