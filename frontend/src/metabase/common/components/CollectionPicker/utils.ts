@@ -16,6 +16,7 @@ export const getCollectionIdPath = (
     "id" | "location" | "is_personal" | "effective_location"
   >,
   userPersonalCollectionId?: CollectionId,
+  isPersonal?: boolean,
 ): CollectionId[] => {
   if (isRootCollection(collection)) {
     return ["root"];
@@ -39,10 +40,10 @@ export const getCollectionIdPath = (
     (collection.id === userPersonalCollectionId ||
       pathFromRoot.includes(userPersonalCollectionId));
 
-  if (isInUserPersonalCollection) {
-    return [...pathFromRoot, collection.id];
-  } else if (collection.is_personal) {
+  if (isPersonal) {
     return ["personal", ...pathFromRoot, collection.id];
+  } else if (isInUserPersonalCollection) {
+    return [...pathFromRoot, collection.id];
   } else {
     return ["root", ...pathFromRoot, collection.id];
   }
