@@ -146,6 +146,7 @@ export const FormButtons = () => {
         type="reset"
       >{t`Discard changes`}</Button>
       <FormSubmitButton
+        miw="10rem"
         label={t`Save changes`}
         successLabel={
           <Group spacing="xs">
@@ -155,7 +156,6 @@ export const FormButtons = () => {
         activeLabel={
           <Group spacing="sm">
             <Loader size="xs" />
-            {t`Saving...`}
           </Group>
         }
         variant="filled"
