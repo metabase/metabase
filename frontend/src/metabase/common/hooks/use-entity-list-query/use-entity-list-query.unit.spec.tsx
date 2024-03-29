@@ -158,7 +158,7 @@ describe("useEntityListQuery", () => {
     setup();
 
     await waitForLoaderToBeRemoved();
-    userEvent.click(screen.getByText("Invalidate databases"));
+    await userEvent.click(screen.getByText("Invalidate databases"));
 
     await waitFor(() => {
       expect(fetchMock.calls("path:/api/database")).toHaveLength(2);
@@ -170,7 +170,7 @@ describe("useEntityListQuery", () => {
     setup();
 
     await waitForLoaderToBeRemoved();
-    userEvent.click(screen.getByText("Invalidate tables"));
+    await userEvent.click(screen.getByText("Invalidate tables"));
 
     await waitFor(() => {
       expect(fetchMock.calls("path:/api/table")).toHaveLength(2);

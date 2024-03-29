@@ -93,9 +93,9 @@ const setup = () => {
 describe("table settings", () => {
   it("should allow you to update a column name", async () => {
     setup();
-    userEvent.click(await screen.findByTestId("Source-settings-button"));
-    userEvent.type(await screen.findByDisplayValue("Source"), " Updated");
-    userEvent.click(await screen.findByText("Count"));
+    await userEvent.click(await screen.findByTestId("Source-settings-button"));
+    await userEvent.type(await screen.findByDisplayValue("Source"), " Updated");
+    await userEvent.click(await screen.findByText("Count"));
     expect(await screen.findByText("Source Updated")).toBeInTheDocument();
   });
 });

@@ -58,10 +58,10 @@ describe("ErrorActionButton", () => {
       BUTTON_ACTIONS[VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION];
 
     describe("when `isShowingTemplateTagsEditor` is falsy", () => {
-      it("should call the toggleTemplateTagsEditor action", () => {
+      it("should call the toggleTemplateTagsEditor action", async () => {
         const { toggleTemplateTagsEditor } = setup({ error: validationError });
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByRole("button", {
             name: buttonLabel,
           }),
@@ -72,13 +72,13 @@ describe("ErrorActionButton", () => {
     });
 
     describe("when `isShowingTemplateTagsEditor` is true", () => {
-      it("should not call the toggleTemplateTagsEditor action", () => {
+      it("should not call the toggleTemplateTagsEditor action", async () => {
         const { toggleTemplateTagsEditor } = setup({
           error: validationError,
           uiControls: { isShowingTemplateTagsEditor: true },
         });
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByRole("button", {
             name: buttonLabel,
           }),

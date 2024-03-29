@@ -45,8 +45,8 @@ describe("FormDateInput", () => {
     const onSubmit = jest.fn();
 
     render(<TestFormDateInput onSubmit={onSubmit} />);
-    userEvent.type(screen.getByRole("textbox"), "10/20/22");
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.type(screen.getByRole("textbox"), "10/20/22");
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       const value = expect.stringMatching(/2022-10-20T00:00:00.000/);
@@ -66,8 +66,8 @@ describe("FormDateInput", () => {
     const onSubmit = jest.fn();
 
     render(<TestFormDateInput onSubmit={onSubmit} />);
-    userEvent.clear(screen.getByRole("textbox"));
-    userEvent.tab();
+    await userEvent.clear(screen.getByRole("textbox"));
+    await userEvent.tab();
 
     expect(await screen.findByText(": error")).toBeInTheDocument();
   });

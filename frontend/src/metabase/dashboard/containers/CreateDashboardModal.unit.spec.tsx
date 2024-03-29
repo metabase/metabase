@@ -88,7 +88,9 @@ describe("CreateDashboardModal", () => {
 
   it("calls onClose when Cancel button is clicked", async () => {
     const { onClose } = setup();
-    userEvent.click(screen.getByRole("button", { name: "Cancel" }) as Element);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Cancel" }) as Element,
+    );
     await waitFor(() => {
       expect(onClose).toHaveBeenCalledTimes(1);
     });
@@ -135,39 +137,39 @@ describe("CreateDashboardModal", () => {
 
     it("should have a new collection button in the collection picker", async () => {
       setup();
-      userEvent.click(collDropdown());
+      await userEvent.click(collDropdown());
       await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
     });
     it("should open new collection modal and return to dashboard modal when clicking close", async () => {
       setup();
       const name = "my dashboard";
-      userEvent.type(nameField(), name);
-      userEvent.click(collDropdown());
+      await userEvent.type(nameField(), name);
+      await userEvent.click(collDropdown());
       await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
-      userEvent.click(newCollBtn());
+      await userEvent.click(newCollBtn());
       await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
-      userEvent.click(cancelBtn());
+      await userEvent.click(cancelBtn());
       await waitFor(() => expect(dashModalTitle()).toBeInTheDocument());
       expect(nameField()).toHaveValue(name);
     });
     it("should create collection inside nested folder", async () => {
       setup();
       const name = "my dashboard";
-      userEvent.type(nameField(), name);
-      userEvent.click(collDropdown());
+      await userEvent.type(nameField(), name);
+      await userEvent.click(collDropdown());
       await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
       openCollection(COLLECTION.PARENT.name);
-      userEvent.click(newCollBtn());
+      await userEvent.click(newCollBtn());
       await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
       expect(collDropdown()).toHaveTextContent(COLLECTION.PARENT.name);
     });
     it("should create collection inside root folder", async () => {
       setup();
       const name = "my dashboard";
-      userEvent.type(nameField(), name);
-      userEvent.click(collDropdown());
+      await userEvent.type(nameField(), name);
+      await userEvent.click(collDropdown());
       await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
-      userEvent.click(newCollBtn());
+      await userEvent.click(newCollBtn());
       await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
       expect(collDropdown()).toHaveTextContent(COLLECTION.ROOT.name);
     });
