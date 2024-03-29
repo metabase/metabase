@@ -770,3 +770,6 @@
                   qp.compile/compile-and-splice-parameters
                   :query
                   pretty-sql-lines))))))
+
+(deftest search-field-values-and-chain-filter-on-partitioned-tables-test
+  (testing "Search field values or getting values for chained-filter for a table "))
