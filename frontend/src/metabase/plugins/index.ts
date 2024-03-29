@@ -309,6 +309,7 @@ export interface DashboardCacheSectionProps {
 }
 
 export const PLUGIN_CACHING = {
+  cacheTTLFormField: {} as any,
   dashboardCacheTTLFormField: null,
   questionCacheTTLFormField: null,
   getQuestionsImplicitCacheTTL: (_question?: any) => null as number | null,
