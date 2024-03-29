@@ -622,6 +622,9 @@ function getDatasetQueryParams(datasetQuery) {
     type,
     query,
     native,
-    parameters,
+    parameters: parameters.map(parameter => ({
+      ...parameter,
+      value: parameter.value ?? null,
+    })),
   };
 }
