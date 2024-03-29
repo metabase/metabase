@@ -100,10 +100,10 @@ describe("StrategyEditorForDatabases", () => {
     expect(input).toHaveValue(value);
   };
 
-  it("lets user change the default policy from No caching to TTL to Duration", async () => {
+  it("lets user change the default policy from Duration to TTL to No caching", async () => {
     setup();
     const editButton = await screen.findByLabelText(
-      `Edit default policy (currently: No caching)`,
+      `Edit default policy (currently: Duration)`,
     );
     editButton.click();
     expect(
@@ -120,8 +120,8 @@ describe("StrategyEditorForDatabases", () => {
     expect(await getSaveButton()).toBeInTheDocument();
 
     await act(async () => {
-      await changeInput(/Minimum query duration/, 60000, 70000);
-      await changeInput(/Multiplier/, 10, 3);
+      await changeInput(/minimum query duration/i, 60000, 70000);
+      await changeInput(/multiplier/i, 10, 3);
     });
 
     (await screen.findByTestId("strategy-form-submit-button")).click();
@@ -132,7 +132,7 @@ describe("StrategyEditorForDatabases", () => {
 
     await act(async () => {
       const durationStrategyRadioButton = await screen.findByRole("radio", {
-        name: /Duration/i,
+        name: /duration/i,
       });
       durationStrategyRadioButton.click();
 
