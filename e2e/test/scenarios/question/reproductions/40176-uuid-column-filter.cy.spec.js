@@ -1,3 +1,4 @@
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   getNotebookStep,
   popover,
@@ -6,7 +7,6 @@ import {
   resyncDatabase,
   visualize,
 } from "e2e/support/helpers";
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 const DIALECT = "postgres";
 const TABLE = "uuid_pk_table";
