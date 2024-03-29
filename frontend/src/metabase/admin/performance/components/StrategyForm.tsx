@@ -4,11 +4,6 @@ import { useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-// BUG: Errors are not displayed on the submit button when the input is invalid
-// To trigger an error, enter '1e5'
-//
-// BUG: When you put invalid input in, it resets to the default
-
 import type { FormTextInputProps } from "metabase/forms";
 import {
   Form,
@@ -47,9 +42,6 @@ export const StrategyForm = ({
   saveStrategy: (values: Strategy) => Promise<void>;
   savedStrategy?: Strategy;
 }) => {
-  // FIXME: If you are saving and you Discard changes during the save, the save
-  // won't be canceled. Perhaps disable the form during a save?
-
   return (
     <FormProvider<Strategy>
       key={targetId}
@@ -83,19 +75,6 @@ const StrategyFormBody = ({
       setFieldValue("unit", "hours");
     }
   }, [selectedStrategyType, values, setFieldValue]);
-
-  // TODO: This was useful for showing the placeholder if the user has chosen
-  // the default value but it means the form is considered dirty (because this
-  // value will be different)
-  // useEffect(() => {
-  //   Object.entries(values).forEach(([fieldName, value]) => {
-  //     // eslint-disable-next-line eqeqeq
-  //     if (value == getDefaultValueForField(selectedStrategyType, fieldName)) {
-  //       setFieldValue(fieldName, "");
-  //     }
-  //   });
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, []);
 
   return (
     <Form
@@ -138,17 +117,6 @@ const StrategyFormBody = ({
             <input type="hidden" name="unit" />
           </>
         )}
-        {/*
-              {selectedStrategy === "schedule" && (
-                  <section>
-                    <Title order={3}>{t`Schedule`}</Title>
-                    <p>{t`(explanation goes here)`}</p>
-                    <CronInput
-                      initialValue={savedStrategy.schedule}
-                    />
-                  </section>
-              )}
-                */}
       </Stack>
       <FormButtons />
     </Form>
