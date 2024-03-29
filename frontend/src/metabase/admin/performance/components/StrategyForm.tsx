@@ -47,6 +47,9 @@ export const StrategyForm = ({
   saveStrategy: (values: Strategy) => Promise<void>;
   savedStrategy?: Strategy;
 }) => {
+  // FIXME: If you are saving and you Discard changes during the save, the save
+  // won't be canceled. Perhaps disable the form during a save?
+
   return (
     <FormProvider<Strategy>
       key={targetId}
@@ -194,6 +197,7 @@ export const FormButtons = () => {
           </Group>
         }
         variant="filled"
+        data-testid="strategy-form-submit-button"
       />
     </Group>
   );

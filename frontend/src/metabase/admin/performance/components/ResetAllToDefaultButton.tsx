@@ -21,8 +21,11 @@ export const ResetAllToDefaultButton = ({
 }) => {
   const rootConfig = findWhere(configs, { model_id: rootId });
 
+  // TODO:: It might be confusing to say 'resetting to duration' if the
+  // database strategies are also duration. Perhaps we should say 'resetting to
+  // duration (10 hours)' or just 'reset to the default strategy'
+
   const resetAllToDefault = useCallback(async () => {
-    // TODO: Add confirmation
     const originalConfigs = [...configs];
     setConfigs((configs: Config[]) =>
       configs.filter(({ model }) => model !== "database"),

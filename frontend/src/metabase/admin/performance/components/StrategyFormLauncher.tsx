@@ -60,11 +60,11 @@ export const StrategyFormLauncher = ({
     <Flex
       w="100%"
       p="md"
-      bg={forRoot ? color("bg-medium") : color("white")}
+      bg={color(forRoot ? "bg-medium" : "white")}
       justify="space-between"
       align="center"
       style={{
-        border: `1px solid ${color(forRoot ? "bg-medium" : "border")}`,
+        border: forRoot ? undefined : `1px solid ${color("border")}`,
         borderRadius: ".5rem",
       }}
     >
@@ -89,7 +89,7 @@ export const StrategyFormLauncher = ({
           onMouseOver={() => setHovered(true)}
           onMouseOut={() => setHovered(false)}
           variant={buttonVariant}
-          fw={inheritsRootStrategy ? "normal" : "bold"}
+          fw={forRoot || inheritsRootStrategy ? "normal" : "bold"}
           p="0.25rem .75rem"
           mah="3rem"
           styles={{

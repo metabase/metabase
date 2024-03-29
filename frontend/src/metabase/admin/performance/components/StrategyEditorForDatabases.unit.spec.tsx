@@ -1,8 +1,10 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
+import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { createMockSettings } from "metabase-types/api/mocks";
 import {
   createMockCacheConfig,
   createMockCacheConfigWithDoNotCacheStrategy,
@@ -17,6 +19,7 @@ import { StrategyEditorForDatabases } from "./StrategyEditorForDatabases";
 // TODO: Might not need this
 const storeInitialState = createMockState({
   entities: createMockEntitiesState({}),
+  settings: mockSettings(createMockSettings()),
 });
 
 function setup() {
@@ -42,7 +45,6 @@ function setup() {
   return renderWithProviders(
     <StrategyEditorForDatabases canOverrideRootStrategy={true} />,
     {
-      withRouter: true,
       storeInitialState,
     },
   );
@@ -84,11 +86,100 @@ describe("StrategyEditorForDatabases", () => {
     ).toBeInTheDocument();
   });
 
-  it("lets user change default policy from duration to TTL", async () => {
+  it.each(["default policy", "policy for database 'Database 1'"])(
+    "lets user change the $policyName from duration to TTL to Don't cache to duration",
+    async (policyName: string) => {
+      setup();
+      const editButton = await screen.findByLabelText(
+        `Edit ${policyName} (currently: Duration)`,
+      );
+      editButton.click();
+      expect(
+        screen.queryByRole("button", { name: "Save changes" }),
+      ).not.toBeInTheDocument();
+
+      const ttlStrategyRadioButton = await screen.findByRole("radio", {
+        name: /TTL/i,
+      });
+      ttlStrategyRadioButton.click();
+
+      expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
+
+      expect(await getSaveButton()).toBeInTheDocument();
+
+      await act(async () => {
+        const minDurationInput = (await screen.findByLabelText(
+          /Minimum query duration/,
+        )) as HTMLInputElement;
+        expect(minDurationInput).toHaveAttribute("placeholder", "60000");
+        fireEvent.change(minDurationInput, { target: { value: "70000" } });
+        expect(minDurationInput).toHaveValue("70000");
+
+        const multiplierInput = await screen.findByRole("spinbutton", {
+          name: /multiplier/,
+        });
+        expect(multiplierInput).toHaveAttribute("placeholder", "10");
+        fireEvent.change(multiplierInput, { target: { value: "3" } });
+        expect(multiplierInput).toHaveValue("3");
+      });
+
+      (await screen.findByTestId("strategy-form-submit-button")).click();
+
+      expect(
+        await screen.findByLabelText(`Edit ${policyName} (currently: TTL)`),
+      ).toBeInTheDocument();
+
+      await act(async () => {
+        const durationStrategyRadioButton = await screen.findByRole("radio", {
+          name: /Duration/i,
+        });
+        durationStrategyRadioButton.click();
+
+        expect((await screen.findAllByRole("spinbutton")).length).toBe(1);
+
+        const durationInput = await screen.findByRole("spinbutton", {
+          name: /Cache result for this many hours/,
+        });
+        expect(durationInput).toHaveAttribute("placeholder", "24");
+        fireEvent.change(durationInput, { target: { value: "48" } });
+        expect(durationInput).toHaveValue("48");
+      });
+
+      (await screen.findByTestId("strategy-form-submit-button")).click();
+
+      expect(
+        await screen.findByLabelText(
+          `Edit ${policyName} (currently: Duration)`,
+        ),
+      ).toBeInTheDocument();
+
+      await act(async () => {
+        const noCacheStrategygRadioButton = await screen.findByRole("radio", {
+          name: /Don.t cache/i,
+        });
+        noCacheStrategygRadioButton.click();
+
+        expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
+      });
+
+      (await screen.findByTestId("strategy-form-submit-button")).click();
+
+      expect(
+        await screen.findByLabelText(
+          `Edit ${policyName} (currently: No caching)`,
+        ),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("lets user change database policy from default to TTL", async () => {
     setup();
     const editButton = await screen.findByLabelText(
       "Edit default policy (currently: Duration)",
     );
+
+    // TODO: Change the content of this function
+
     editButton.click();
     expect(
       screen.queryByRole("button", { name: "Save changes" }),
@@ -98,17 +189,13 @@ describe("StrategyEditorForDatabases", () => {
     const minDurationInput = (await screen.findByLabelText(
       /Minimum query duration/,
     )) as HTMLInputElement;
-    // Expect save button to be disabled because the form has empty input fields
-    expect(await getSaveButton()).toBeDisabled();
     fireEvent.change(minDurationInput, { target: { value: "48" } });
     expect(minDurationInput.value).toBe("48");
-    expect(await getSaveButton()).toBeDisabled();
     const multiplierInput = (await screen.findByLabelText(
       /multiplier/,
     )) as HTMLInputElement;
     fireEvent.change(multiplierInput, { target: { value: "3" } });
     expect(multiplierInput.value).toBe("3");
-    expect(await getSaveButton()).toBeEnabled();
     (await getSaveButton()).click();
     expect(
       await screen.findByLabelText("Edit default policy (currently: TTL)"),
