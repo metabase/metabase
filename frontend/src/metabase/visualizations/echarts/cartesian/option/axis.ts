@@ -339,7 +339,7 @@ export const buildCategoricalDimensionAxis = (
       ...getHistogramTicksOptions(chartModel, settings, chartMeasurements),
       formatter: (value: string) => {
         const numberValue = parseNumberValue(value);
-        if (numberValue) {
+        if (numberValue !== null) {
           return ` ${formatter(numberValue)} `;
         }
 
