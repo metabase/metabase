@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import { useEffect, useCallback, useState } from "react";
 import { usePrevious } from "react-use";
-import { t, ngettext, msgid } from "ttag";
+import { t } from "ttag";
 
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";

@@ -314,16 +314,6 @@
     (is (not (lib/can-run (update-in (lib/native-query (metadata-provider-requiring-collection) "select * {{foo}}" nil {:collection "foobar"})
                                      [:stages 0] dissoc :collection))))))
 
-(defn- query-with-default [default]
-  (lib/with-template-tags
-   (lib/native-query meta/metadata-provider "select * {{foo}}")
-   {"foo" {:type :text
-           :id "1"
-           :name "foo"
-           :display-name "foo"
-           :required true
-           :default default}}))
-
 (deftest ^:parallel engine-test
   (is (= :h2 (lib/engine lib.tu/native-query))))
 
