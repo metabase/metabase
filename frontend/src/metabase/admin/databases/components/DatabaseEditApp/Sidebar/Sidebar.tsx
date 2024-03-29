@@ -107,7 +107,7 @@ const DatabaseEditAppSidebar = ({
             )}
             <SidebarGroup.ListItem hasMarginTop={false}>
               <ActionButton
-                actionFn={() => handleSyncDatabaseSchema()}
+                actionFn={handleSyncDatabaseSchema}
                 normalText={t`Sync database schema now`}
                 activeText={t`Starting…`}
                 failedText={t`Failed to sync`}
