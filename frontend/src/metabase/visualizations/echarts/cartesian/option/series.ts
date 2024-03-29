@@ -49,7 +49,7 @@ const getBlurLabelStyle = (
   hasMultipleSeries: boolean,
 ) => ({
   show: settings["graph.show_values"] && !hasMultipleSeries,
-  opacity: hasMultipleSeries ? CHART_STYLE.opacity.blur : 1,
+  opacity: 1,
 });
 
 export const getBarLabelLayout =
