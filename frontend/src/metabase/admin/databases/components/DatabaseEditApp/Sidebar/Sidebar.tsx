@@ -5,6 +5,7 @@ import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatab
 import {
   useDiscardDatabaseFieldValuesMutation,
   useRescanDatabaseFieldValuesMutation,
+  useSyncDatabaseSchemaMutation,
 } from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
 import ConfirmContent from "metabase/components/ConfirmContent";
@@ -30,7 +31,6 @@ interface DatabaseEditAppSidebarProps {
   updateDatabase: (
     database: { id: DatabaseId } & Partial<DatabaseData>,
   ) => Promise<void>;
-  syncDatabaseSchema: (databaseId: DatabaseId) => Promise<void>;
   dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
   deleteDatabase: (
     databaseId: DatabaseId,
@@ -42,7 +42,6 @@ const DatabaseEditAppSidebar = ({
   database,
   updateDatabase,
   deleteDatabase,
-  syncDatabaseSchema,
   dismissSyncSpinner,
   isAdmin,
   isModelPersistenceEnabled,
@@ -56,13 +55,9 @@ const DatabaseEditAppSidebar = ({
   const hasModelCachingSection =
     isModelPersistenceEnabled && database.supportsPersistence();
 
+  const [syncDatabaseSchema] = useSyncDatabaseSchemaMutation();
   const [rescanDatabaseFieldValues] = useRescanDatabaseFieldValuesMutation();
   const [discardDatabaseFieldValues] = useDiscardDatabaseFieldValuesMutation();
-
-  const handleSyncDatabaseSchema = useCallback(
-    () => syncDatabaseSchema(database.id),
-    [database.id, syncDatabaseSchema],
-  );
 
   const handleDismissSyncSpinner = useCallback(
     () => dismissSyncSpinner(database.id),
@@ -103,7 +98,7 @@ const DatabaseEditAppSidebar = ({
             )}
             <SidebarGroup.ListItem hasMarginTop={false}>
               <ActionButton
-                actionFn={handleSyncDatabaseSchema}
+                actionFn={() => syncDatabaseSchema(database.id)}
                 normalText={t`Sync database schema now`}
                 activeText={t`Starting…`}
                 failedText={t`Failed to sync`}

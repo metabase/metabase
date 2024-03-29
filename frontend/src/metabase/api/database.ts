@@ -146,6 +146,18 @@ export const databaseApi = Api.injectEndpoints({
         tag("field-values"),
       ],
     }),
+    syncDatabaseSchema: builder.mutation<void, DatabaseId>({
+      query: databaseId => ({
+        method: "POST",
+        url: `/api/database/${databaseId}/sync_schema`,
+      }),
+      invalidatesTags: [
+        tag("schema"),
+        tag("table"),
+        tag("field"),
+        tag("field-values"),
+      ],
+    }),
     rescanDatabaseFieldValues: builder.mutation<void, DatabaseId>({
       query: databaseId => ({
         method: "POST",
@@ -174,6 +186,7 @@ export const {
   useCreateDatabaseMutation,
   useUpdateDatabaseMutation,
   useDeleteDatabaseMutation,
+  useSyncDatabaseSchemaMutation,
   useRescanDatabaseFieldValuesMutation,
   useDiscardDatabaseFieldValuesMutation,
 } = databaseApi;
