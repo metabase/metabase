@@ -25,7 +25,6 @@ import { isNumericBaseType } from "metabase-lib/v1/types/utils/isa";
 
 import type { ChartMeasurements } from "../chart-measurements/types";
 import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
-import { getAutoAxisEnabledSetting } from "../utils/axis";
 
 import { getTicksOptions } from "./ticks";
 
@@ -330,12 +329,7 @@ export const buildCategoricalDimensionAxis = (
     dimensionModel: { column },
   } = chartModel;
 
-  const autoAxisEnabled = getAutoAxisEnabledSetting(
-    chartMeasurements.ticksDimensions.minXTickSpacing,
-    chartMeasurements.ticksDimensions.maxXTickWidth,
-    chartMeasurements.outerHeight,
-    originalSettings,
-  );
+  const autoAxisEnabled = chartMeasurements.axisEnabledSetting;
   const settings: ComputedVisualizationSettings = {
     ...originalSettings,
     "graph.x_axis.axis_enabled": autoAxisEnabled,

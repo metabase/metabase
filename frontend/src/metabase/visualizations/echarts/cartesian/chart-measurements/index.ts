@@ -14,7 +14,6 @@ import type {
 } from "metabase/visualizations/types";
 
 import { isTimeSeriesAxis } from "../model/guards";
-import { getAutoAxisEnabledSetting } from "../utils/axis";
 
 import type {
   ChartBoundsCoords,
@@ -148,6 +147,50 @@ const getXAxisTicksHeight = (
   return CHART_STYLE.axisTicks.size + CHART_STYLE.axisNameMargin;
 };
 
+const X_LABEL_HEIGHT_RATIO_THRESHOLD = 0.7; // x-axis labels cannot be taller than 70% of chart height
+
+const checkHeight = (
+  maxXTickWidth: number,
+  outerHeight: number,
+  rotation: "rotate-90" | "rotate-45",
+) => {
+  if (rotation === "rotate-90") {
+    return maxXTickWidth / outerHeight < X_LABEL_HEIGHT_RATIO_THRESHOLD;
+  }
+  return (
+    maxXTickWidth / Math.SQRT2 / outerHeight < X_LABEL_HEIGHT_RATIO_THRESHOLD
+  );
+};
+
+const X_LABEL_ROTATE_90_THRESHOLD = 2;
+const X_LABEL_ROTATE_45_THRESHOLD = 15;
+
+const getAutoAxisEnabledSetting = (
+  minXTickSpacing: number,
+  maxXTickWidth: number,
+  outerHeight: number,
+  settings: ComputedVisualizationSettings,
+): ComputedVisualizationSettings["graph.x_axis.axis_enabled"] => {
+  const autoSelectSetting =
+    settings["graph.x_axis.axis_enabled"] === true &&
+    settings["graph.x_axis.scale"] === "ordinal";
+  if (!autoSelectSetting) {
+    return settings["graph.x_axis.axis_enabled"];
+  }
+
+  if (minXTickSpacing < X_LABEL_ROTATE_90_THRESHOLD) {
+    return checkHeight(maxXTickWidth, outerHeight, "rotate-90")
+      ? "rotate-90"
+      : false;
+  }
+  if (minXTickSpacing < X_LABEL_ROTATE_45_THRESHOLD) {
+    return checkHeight(maxXTickWidth, outerHeight, "rotate-45")
+      ? "rotate-45"
+      : false;
+  }
+  return true;
+};
+
 export const getTicksDimensions = (
   chartModel: BaseCartesianChartModel,
   chartWidth: number,
@@ -201,7 +244,9 @@ export const getTicksDimensions = (
   );
 
   const isTimeSeries = isTimeSeriesAxis(chartModel.xAxisModel);
-  const hasBottomAxis = !!settings["graph.x_axis.axis_enabled"];
+  let axisEnabledSetting = settings["graph.x_axis.axis_enabled"];
+  const hasBottomAxis = !!axisEnabledSetting;
+
   if (hasBottomAxis) {
     const { firstXTickWidth, lastXTickWidth, maxXTickWidth } =
       getXAxisTicksWidth(
@@ -214,7 +259,7 @@ export const getTicksDimensions = (
     ticksDimensions.lastXTickWidth = lastXTickWidth;
     ticksDimensions.maxXTickWidth = maxXTickWidth;
 
-    const axisEnabledSetting = getAutoAxisEnabledSetting(
+    axisEnabledSetting = getAutoAxisEnabledSetting(
       ticksDimensions.minXTickSpacing,
       maxXTickWidth,
       outerHeight,
@@ -229,7 +274,7 @@ export const getTicksDimensions = (
         : 0);
   }
 
-  return ticksDimensions;
+  return { ticksDimensions, axisEnabledSetting };
 };
 
 const getExtraSidePadding = (
@@ -386,7 +431,7 @@ export const getChartMeasurements = (
   height: number,
   renderingContext: RenderingContext,
 ): ChartMeasurements => {
-  const ticksDimensions = getTicksDimensions(
+  const { ticksDimensions, axisEnabledSetting } = getTicksDimensions(
     chartModel,
     width,
     height,
@@ -410,5 +455,6 @@ export const getChartMeasurements = (
     bounds,
     boundaryWidth,
     outerHeight: height,
+    axisEnabledSetting,
   };
 };
