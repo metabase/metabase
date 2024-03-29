@@ -369,6 +369,11 @@
                                     ;; match up. Therefore de-dupe with `frequencies` rather than simply `set`.
                                     (assoc inner-query :fields (frequencies fields)))))))
 
+(defn- prep-field-ids-for-equals
+  "Clones field ids in a way to be able to compare them."
+  [field-ids]
+  (mapv js->clj field-ids))
+
 (defn- compare-legacy-field-refs
   [[key1 id1 opts1]
    [key2 id2 opts2]]
@@ -416,8 +421,9 @@
   For now it pulls logic that touches query internals into `metabase.lib`."
   ([query1 query2] (query= query1 query2 nil))
   ([query1 query2 field-ids]
-   (let [n1 (prep-query-for-equals query1 field-ids)
-         n2 (prep-query-for-equals query2 field-ids)]
+   (let [ids (prep-field-ids-for-equals field-ids)
+         n1 (prep-query-for-equals query1 ids)
+         n2 (prep-query-for-equals query2 ids)]
      (query=* n1 n2))))
 
 (defn ^:export group-columns
