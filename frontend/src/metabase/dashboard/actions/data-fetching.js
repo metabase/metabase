@@ -616,7 +616,7 @@ export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, card => ({
   result: true,
 }));
 
-function getDatasetQueryParams(datasetQuery) {
+function getDatasetQueryParams(datasetQuery = {}) {
   const { type, query, native, parameters = [] } = datasetQuery;
   return {
     type,
