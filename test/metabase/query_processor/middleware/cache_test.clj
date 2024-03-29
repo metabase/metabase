@@ -80,10 +80,11 @@
           (log/tracef "Save results for %s --> store: %s" hex-hash (pretty/pretty this)))
         (a/>!! save-chan results))
 
-      (purge-old-entries! [this max-age-seconds]
+      (purge-old-entries! [this criteria value]
+        (assert (= criteria :max-age-seconds))
         (swap! store (fn [store]
                        (into {} (filter (fn [[_ {:keys [created]}]]
-                                          (t/after? created (t/minus (t/instant) (t/seconds max-age-seconds))))
+                                          (t/after? created (t/minus (t/instant) (t/seconds value))))
                                         store))))
         (log/tracef "Purge old entries --> store: %s" (pretty/pretty this))
         (a/>!! purge-chan ::purge)))))

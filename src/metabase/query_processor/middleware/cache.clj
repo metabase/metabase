@@ -47,7 +47,7 @@
 (defn- purge! [backend]
   (try
     (log/tracef "Purging cache entries older than %s" (u/format-seconds (public-settings/query-caching-max-ttl)))
-    (i/purge-old-entries! backend (public-settings/query-caching-max-ttl))
+    (i/purge-old-entries! backend :max-age-seconds (public-settings/query-caching-max-ttl))
     (log/trace "Successfully purged old cache entries.")
     :done
     (catch Throwable e
