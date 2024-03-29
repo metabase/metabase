@@ -5530,6 +5530,20 @@ databaseChangeLog:
       rollback: # not needed
 
   - changeSet:
+      id: v49.2024-03-26T10:23:12
+      author: adam-james
+      comment: Add pulse_card.format_rows
+      changes:
+        - addColumn:
+            tableName: pulse_card
+            columns:
+              - column:
+                  name: format_rows
+                  type: ${boolean.type}
+                  defaultValue: true
+                  remarks: Whether or not to apply formatting to the rows of the export
+
+  - changeSet:
       id: v49.2024-03-26T20:27:58
       author: noahmoss
       comment: Added 0.46.0 - Delete the truncate audit log task (renamed to truncate audit tables)
