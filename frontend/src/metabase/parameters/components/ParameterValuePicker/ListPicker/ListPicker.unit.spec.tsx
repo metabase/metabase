@@ -21,6 +21,10 @@ const VALUES = [
   "1-799 Smith Road",
 ];
 
+const userEvent2 = userEvent.setup({
+  advanceTimers: jest.advanceTimersByTime,
+});
+
 function setup(value: string, values: string[], searchDebounceMs?: number) {
   const onChangeMock = jest.fn();
   const onClearMock = jest.fn();
@@ -51,6 +55,9 @@ function setup(value: string, values: string[], searchDebounceMs?: number) {
 }
 
 describe("ListPicker", () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
   it("onSearchChange fires only once per input char", async () => {
     const { onSearchChange } = setup("", VALUES.slice());
 
@@ -69,17 +76,20 @@ describe("ListPicker", () => {
   });
 
   it("onSearchChange debounced works", async () => {
+    jest.useFakeTimers({ advanceTimers: false });
     const { onSearchChange } = setup("", VALUES.slice(), 100);
     const select = screen.getByPlaceholderText("Pick values");
 
-    await userEvent.click(select);
-    await userEvent.type(select, "H");
-    await userEvent.type(select, "e");
-    await userEvent.type(select, "l");
-    await userEvent.type(select, "l");
-    await userEvent.type(select, "o");
+    await userEvent2.click(select);
+    await userEvent2.type(select, "H");
+    await userEvent2.type(select, "e");
+    await userEvent2.type(select, "l");
+    await userEvent2.type(select, "l");
+    await userEvent2.type(select, "o");
 
-    await waitFor(() => expect(onSearchChange).toHaveBeenCalledTimes(1));
+    expect(onSearchChange).toHaveBeenCalledTimes(0);
+    jest.advanceTimersByTime(101);
+    expect(onSearchChange).toHaveBeenCalledTimes(1);
     expect(onSearchChange).toHaveBeenCalledWith("Hello");
   });
 
