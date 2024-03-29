@@ -14,12 +14,12 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
-import type {
+import type { PermissionSectionConfig, SchemaEntityId } from "../../types";
+import {
   DataPermissionValue,
-  PermissionSectionConfig,
-  SchemaEntityId,
+  DataPermission,
+  DataPermissionType,
 } from "../../types";
-import { DataPermission, DataPermissionType } from "../../types";
 import { getGroupFocusPermissionsUrl } from "../../utils/urls";
 import {
   getControlledDatabaseWarningModal,
@@ -112,13 +112,13 @@ const buildNativePermission = (
   accessPermissionValue: string,
 ): PermissionSectionConfig => {
   const { databaseId } = entityId;
+
   const dbValue = getNativePermission(permissions, groupId, { databaseId });
-  const isControlledByDb = dbValue !== DATA_PERMISSION_OPTIONS.controlled.value;
 
   return {
     permission: DataPermission.CREATE_QUERIES,
     type: DataPermissionType.NATIVE,
-    isDisabled: isControlledByDb,
+    isDisabled: accessPermissionValue === DataPermissionValue.BLOCKED,
     disabledTooltip: getNativePermissionDisabledTooltip(
       isAdmin,
       accessPermissionValue,
@@ -126,7 +126,8 @@ const buildNativePermission = (
     isHighlighted: isAdmin,
     value: getNativePermission(permissions, groupId, entityId),
     options: _.compact([
-      isControlledByDb && DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
+      dbValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
+        DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
       DATA_PERMISSION_OPTIONS.queryBuilder,
       DATA_PERMISSION_OPTIONS.no,
     ]),

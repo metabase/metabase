@@ -129,23 +129,13 @@ const buildNativePermission = (
   accessPermissionValue: string,
 ): PermissionSectionConfig => {
   const { databaseId } = entityId;
-  const dbViewValue = getSchemasPermission(
-    permissions,
-    groupId,
-    { databaseId },
-    DataPermission.VIEW_DATA,
-  );
-  const dbCreateValue = getNativePermission(permissions, groupId, {
-    databaseId,
-  });
 
-  const isDbViewDataBlocked = dbViewValue === DataPermissionValue.BLOCKED;
-  const isControlledByDb = dbCreateValue !== DataPermissionValue.CONTROLLED;
+  const dbValue = getNativePermission(permissions, groupId, { databaseId });
 
   return {
     permission: DataPermission.CREATE_QUERIES,
     type: DataPermissionType.NATIVE,
-    isDisabled: isDbViewDataBlocked,
+    isDisabled: accessPermissionValue === DataPermissionValue.BLOCKED,
     disabledTooltip: getNativePermissionDisabledTooltip(
       isAdmin,
       accessPermissionValue,
@@ -153,11 +143,11 @@ const buildNativePermission = (
     isHighlighted: isAdmin,
     value: getNativePermission(permissions, groupId, entityId),
     options: _.compact([
-      isControlledByDb && DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
+      dbValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
+        DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
       DATA_PERMISSION_OPTIONS.queryBuilder,
       DATA_PERMISSION_OPTIONS.no,
     ]),
-    // TODO: confirmation for no / queryBuilder options will downgrade all other tables to query-builder
   };
 };
 
