@@ -74,7 +74,7 @@
 (mu/defn can-save :- :boolean
   "Returns whether the query can be saved."
   [query :- ::lib.schema/query]
-  (and (can-run query)))
+  (can-run query))
 
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."
