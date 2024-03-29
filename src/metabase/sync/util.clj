@@ -9,7 +9,6 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
-   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.task-history :refer [TaskHistory]]
    [metabase.query-processor.interface :as qp.i]
@@ -377,9 +376,9 @@
 (defn field-name-for-logging
   "Return an appropriate string for logging a field in sync logging messages."
   [& {:keys [id name]}]
-  (format "Field %s ''%s''" (or (str id) "") name))
+  (format ":Field %s ''%s''" (or (str id) "") name))
 
-(defmethod name-for-logging Field [field]
+(defmethod name-for-logging :model/Field [field]
   (field-name-for-logging field))
 
 ;;; this is used for result metadata stuff.

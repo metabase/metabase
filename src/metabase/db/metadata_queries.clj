@@ -8,7 +8,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as helpers]
-   [metabase.models.table :as table]
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
    [metabase.util :as u]
@@ -169,7 +168,7 @@
   [table
    fields
    {:keys [truncation-size limit order-by] :or {limit max-sample-rows} :as _opts}]
-  (let [database           (table/database table)
+  (let [database           (t2/select-one :model/Database (:db_id table))
         driver             (driver.u/database->driver database)
         text-fields        (filter text-field? fields)
         field->expressions (when (and truncation-size (driver/database-supports? driver :expressions database))
