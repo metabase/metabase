@@ -113,7 +113,7 @@ export const StrategyEditorForDatabases = withRouter(
       (onConfirm: () => void) =>
         askConfirmation({
           title: t`Discard your changes?`,
-          message: t`Your changes haven't been saved, so you'll lose them if you navigate away.`,
+          message: t`Your changes haven’t been saved, so you’ll lose them if you navigate away.`,
           confirmButtonText: "Discard",
           onConfirm,
         }),
