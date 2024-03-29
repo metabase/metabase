@@ -86,121 +86,150 @@ describe("StrategyEditorForDatabases", () => {
     ).toBeInTheDocument();
   });
 
-  it.each(["default policy", "policy for database 'Database 1'"])(
-    "lets user change the $policyName from duration to TTL to Duration to Don't cache",
-    async (policyName: string) => {
-      setup();
-      // TODO: Why is the initial policy TTL for the database? It should be 'Use default'
-      const initialPolicy = policyName === 'default policy' ? 'Duration' : 'TTL';
-      const editButton = await screen.findByLabelText(
-        `Edit ${policyName} (currently: ${initialPolicy})`,
-      );
-      editButton.click();
-      expect(
-        screen.queryByRole("button", { name: "Save changes" }),
-      ).not.toBeInTheDocument();
+  const changeInput = async (
+    label: RegExp,
+    expectedPlaceholder: number,
+    value: number,
+  ) => {
+    const input = (await screen.findByLabelText(label)) as HTMLInputElement;
+    expect(input).toHaveAttribute(
+      "placeholder",
+      expectedPlaceholder.toString(),
+    );
+    fireEvent.change(input, { target: { value } });
+    expect(input).toHaveValue(value);
+  };
 
-      const ttlStrategyRadioButton = await screen.findByRole("radio", {
-        name: /TTL/i,
+  it("lets user change the default policy from No caching to TTL to Duration", async () => {
+    setup();
+    const editButton = await screen.findByLabelText(
+      `Edit default policy (currently: No caching)`,
+    );
+    editButton.click();
+    expect(
+      screen.queryByRole("button", { name: "Save changes" }),
+    ).not.toBeInTheDocument();
+
+    const ttlStrategyRadioButton = await screen.findByRole("radio", {
+      name: /TTL/i,
+    });
+    ttlStrategyRadioButton.click();
+
+    expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
+
+    expect(await getSaveButton()).toBeInTheDocument();
+
+    await act(async () => {
+      await changeInput(/Minimum query duration/, 60000, 70000);
+      await changeInput(/Multiplier/, 10, 3);
+    });
+
+    (await screen.findByTestId("strategy-form-submit-button")).click();
+
+    expect(
+      await screen.findByLabelText(`Edit default policy (currently: TTL)`),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      const durationStrategyRadioButton = await screen.findByRole("radio", {
+        name: /Duration/i,
       });
-      ttlStrategyRadioButton.click();
+      durationStrategyRadioButton.click();
 
-      expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
+      expect((await screen.findAllByRole("spinbutton")).length).toBe(1);
 
-      expect(await getSaveButton()).toBeInTheDocument();
+      await changeInput(/Cache result for this many hours/, 24, 48);
+    });
 
-      await act(async () => {
-        const minDurationInput = (await screen.findByLabelText(
-          /Minimum query duration/,
-        )) as HTMLInputElement;
-        expect(minDurationInput).toHaveAttribute("placeholder", "60000");
-        fireEvent.change(minDurationInput, { target: { value: 70000 } });
-        expect(minDurationInput).toHaveValue(70000);
+    (await screen.findByTestId("strategy-form-submit-button")).click();
 
-        const multiplierInput = await screen.findByRole("spinbutton", {
-          name: /multiplier/,
-        });
-        expect(multiplierInput).toHaveAttribute("placeholder", "10");
-        fireEvent.change(multiplierInput, { target: { value: "3" } });
-        expect(multiplierInput).toHaveValue(3);
+    expect(
+      await screen.findByLabelText(`Edit default policy (currently: Duration)`),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      const noCacheStrategyRadioButton = await screen.findByRole("radio", {
+        name: /Don.t cache/i,
       });
+      noCacheStrategyRadioButton.click();
 
-      (await screen.findByTestId("strategy-form-submit-button")).click();
+      expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
+    });
 
-      expect(
-        await screen.findByLabelText(`Edit ${policyName} (currently: TTL)`),
-      ).toBeInTheDocument();
+    (await screen.findByTestId("strategy-form-submit-button")).click();
 
-      await act(async () => {
-        const durationStrategyRadioButton = await screen.findByRole("radio", {
-          name: /Duration/i,
-        });
-        durationStrategyRadioButton.click();
+    expect(
+      await screen.findByLabelText(
+        `Edit default policy (currently: No caching)`,
+      ),
+    ).toBeInTheDocument();
+  });
 
-        expect((await screen.findAllByRole("spinbutton")).length).toBe(1);
+  it("lets user change policy for Database 1 from TTL to Duration to Don't cache to Use default", async () => {
+    setup();
+    const editButton = await screen.findByLabelText(
+      `Edit policy for database 'Database 1' (currently: TTL)`,
+    );
+    editButton.click();
 
-        const durationInput = await screen.findByRole("spinbutton", {
-          name: /Cache result for this many hours/,
-        });
-        expect(durationInput).toHaveAttribute("placeholder", "24");
-        fireEvent.change(durationInput, { target: { value: "48" } });
-        expect(durationInput).toHaveValue(48);
+    expect(
+      screen.queryByRole("button", { name: "Save changes" }),
+    ).not.toBeInTheDocument();
+
+    const ttlStrategyRadioButton = await screen.findByRole("radio", {
+      name: /TTL/i,
+    });
+    expect(ttlStrategyRadioButton).toBeChecked();
+
+    expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
+
+    await act(async () => {
+      await changeInput(/minimum query duration/i, 60000, 70000);
+      await changeInput(/multiplier/i, 10, 3);
+    });
+
+    (await screen.findByTestId("strategy-form-submit-button")).click();
+
+    expect(
+      await screen.findByLabelText(
+        `Edit policy for database 'Database 1' (currently: TTL)`,
+      ),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      const durationStrategyRadioButton = await screen.findByRole("radio", {
+        name: /duration/i,
       });
+      durationStrategyRadioButton.click();
 
-      (await screen.findByTestId("strategy-form-submit-button")).click();
+      expect((await screen.findAllByRole("spinbutton")).length).toBe(1);
 
-      expect(
-        await screen.findByLabelText(
-          `Edit ${policyName} (currently: Duration)`,
-        ),
-      ).toBeInTheDocument();
+      await changeInput(/Cache result for this many hours/, 24, 48);
+    });
 
-      await act(async () => {
-        const noCacheStrategyRadioButton = await screen.findByRole("radio", {
-          name: /Don.t cache/i,
-        });
-        noCacheStrategyRadioButton.click();
+    (await screen.findByTestId("strategy-form-submit-button")).click();
 
-        expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
+    expect(
+      await screen.findByLabelText(
+        `Edit policy for database 'Database 1' (currently: Duration)`,
+      ),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      const noCacheStrategyRadioButton = await screen.findByRole("radio", {
+        name: /Don.t cache/i,
       });
+      noCacheStrategyRadioButton.click();
 
-      (await screen.findByTestId("strategy-form-submit-button")).click();
+      expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
+    });
 
-      expect(
-        await screen.findByLabelText(
-          `Edit ${policyName} (currently: No caching)`,
-        ),
-      ).toBeInTheDocument();
-    },
-  );
+    (await screen.findByTestId("strategy-form-submit-button")).click();
 
-  // it.skip("lets user change database policy from default to TTL", async () => {
-  //   setup();
-  //   const editButton = await screen.findByLabelText(
-  //     "Edit default policy (currently: Duration)",
-  //   );
-
-  //   // TODO: Change the content of this function
-
-  //   editButton.click();
-  //   expect(
-  //     screen.queryByRole("button", { name: "Save changes" }),
-  //   ).not.toBeInTheDocument();
-  //   const ttlOption = await screen.findByRole("radio", { name: /TTL/i });
-  //   ttlOption.click();
-  //   const minDurationInput = (await screen.findByLabelText(
-  //     /Minimum query duration/,
-  //   )) as HTMLInputElement;
-  //   fireEvent.change(minDurationInput, { target: { value: "48" } });
-  //   expect(minDurationInput.value).toBe("48");
-  //   const multiplierInput = (await screen.findByLabelText(
-  //     /multiplier/,
-  //   )) as HTMLInputElement;
-  //   fireEvent.change(multiplierInput, { target: { value: "3" } });
-  //   expect(multiplierInput.value).toBe("3");
-  //   (await getSaveButton()).click();
-  //   expect(
-  //     await screen.findByLabelText("Edit default policy (currently: TTL)"),
-  //   ).toBeInTheDocument();
-  // });
+    expect(
+      await screen.findByLabelText(
+        `Edit policy for database 'Database 1' (currently: No caching)`,
+      ),
+    ).toBeInTheDocument();
+  });
 });
