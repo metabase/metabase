@@ -31,22 +31,29 @@ export const getAxisNameGap = (ticksWidth: number): number => {
   return ticksWidth + CHART_STYLE.axisNameMargin;
 };
 
-const getCustomAxisRange = (
-  axisExtent: Extent,
-  min: number | undefined,
-  max: number | undefined,
-) => {
+const getCustomAxisRange = ({
+  axisExtent,
+  customMin,
+  customMax,
+}: {
+  axisExtent: Extent;
+  customMin: number | null | undefined;
+  customMax: number | null | undefined;
+}) => {
   const [extentMin, extentMax] = axisExtent;
   // if min/max are not specified or within series extents return `undefined`
   // so that ECharts compute a rounded range automatically
-  const finalMin = min != null && min < extentMin ? min : undefined;
-  const finalMax = max != null && max > extentMax ? max : undefined;
+  const finalMin =
+    customMin != null && customMin < extentMin ? customMin : undefined;
+  const finalMax =
+    customMax != null && customMax > extentMax ? customMax : undefined;
 
   return { min: finalMin, max: finalMax };
 };
 
 export const getYAxisRange = (
   axisModel: YAxisModel,
+  yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
 ) => {
   const isNormalized = settings["stackable.stack_type"] === "normalized";
@@ -56,13 +63,30 @@ export const getYAxisRange = (
     return isNormalized ? NORMALIZED_RANGE : {};
   }
 
-  const customMin = settings["graph.y_axis.min"];
-  const customMax = settings["graph.y_axis.max"];
+  const { customMin, customMax } = getScaledMinAndMax(
+    settings,
+    yAxisScaleTransforms,
+  );
 
   return axisModel.extent
-    ? getCustomAxisRange(axisModel.extent, customMin, customMax)
+    ? getCustomAxisRange({ axisExtent: axisModel.extent, customMin, customMax })
     : {};
 };
+
+function getScaledMinAndMax(
+  settings: ComputedVisualizationSettings,
+  yAxisScaleTransforms: NumericAxisScaleTransforms,
+) {
+  const min = settings["graph.y_axis.min"];
+  const max = settings["graph.y_axis.max"];
+
+  const { toEChartsAxisValue } = yAxisScaleTransforms;
+
+  const customMin = min ? (toEChartsAxisValue(min) as number) : undefined;
+  const customMax = max ? (toEChartsAxisValue(max) as number) : undefined;
+
+  return { customMin, customMax };
+}
 
 export const getAxisNameDefaultOption = (
   { getColor, fontFamily }: RenderingContext,
@@ -330,7 +354,7 @@ export const buildMetricAxis = (
   const shouldFlipAxisName = position === "right";
   const nameGap = getAxisNameGap(ticksWidth);
 
-  const range = getYAxisRange(axisModel, settings);
+  const range = getYAxisRange(axisModel, yAxisScaleTransforms, settings);
 
   return {
     type: "value",

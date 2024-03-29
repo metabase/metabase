@@ -1,6 +1,8 @@
 import lineLinearXScale from "./line-linear-x-scale.json";
 import lineLinearXScaleUnsorted from "./line-linear-x-scale-unsorted.json";
 import lineLogYScale from "./line-log-y-scale.json";
+import logYScaleCustomYAxisRange from "./log-y-scale-custom-y-axis-range.json";
+import powYScaleCustomYAxisRange from "./pow-y-scale-custom-y-axis-range.json";
 import lineLogYScaleNegative from "./line-log-y-scale-negative.json";
 import lineShowDotsAuto from "./line-show-dots-auto.json";
 import lineShowDotsOn from "./line-show-dots-on.json";
@@ -140,4 +142,6 @@ export const data = {
   barAutoFormattingFull,
   timeSeriesTicksCompactFormattingMixedTimezones,
   timezoneTicksPlacement,
+  logYScaleCustomYAxisRange,
+  powYScaleCustomYAxisRange,
 };
