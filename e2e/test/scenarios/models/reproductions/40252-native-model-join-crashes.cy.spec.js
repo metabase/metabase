@@ -22,8 +22,6 @@ describe("issue 40252", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("/api/card/*/query").as("cardQuery");
-    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("shouldn't crash during save of metadata (metabase#40252)", () => {
@@ -82,8 +80,12 @@ describe("issue 40252", () => {
       .should("be.enabled")
       .click();
 
-    cy.wait("@dataset");
     cy.url().should("not.contain", "/metadata");
+
+    cy.findByTestId("query-builder-main").within(() => {
+      cy.findByText("Doing science...").should("be.visible");
+      cy.findByText("Doing science...").should("not.exist");
+    });
 
     cy.findAllByTestId("header-cell").contains("Model B - A1 → B1Upd");
   });
