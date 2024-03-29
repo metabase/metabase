@@ -569,6 +569,7 @@
                 (assert (not= candidate original)
                         (str "unique-alias-fn must return a different string than its input. Input: "
                              (pr-str candidate)))
+                (swap! id+original->unique assoc [id name-key] candidate)
                 (recur id candidate))))))))))
 
 (mu/defn uniquify-names :- [:and

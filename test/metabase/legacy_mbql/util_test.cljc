@@ -643,29 +643,37 @@
 (t/deftest ^:parallel unique-name-generator-test
   (t/testing "Can we get a simple unique name generator"
     (t/is (= ["count" "sum" "count_2" "count_2_2"]
-             (map (mbql.u/unique-name-generator) ["count" "sum" "count" "count_2"]))))
+             (map (mbql.u/unique-name-generator) ["count" "sum" "count" "count_2"])))))
+
+(t/deftest ^:parallel unique-name-generator-test-2
   (t/testing "Can we get an idempotent unique name generator"
     (t/is (= ["count" "sum" "count" "count_2"]
-             (map (mbql.u/unique-name-generator) [:x :y :x :z] ["count" "sum" "count" "count_2"]))))
+             (map (mbql.u/unique-name-generator) [:x :y :x :z] ["count" "sum" "count" "count_2"])))))
+
+(t/deftest ^:parallel unique-name-generator-test-3
   (t/testing "Can the same object have multiple aliases"
     (t/is (= ["count" "sum" "count" "count_2"]
-             (map (mbql.u/unique-name-generator) [:x :y :x :x] ["count" "sum" "count" "count_2"]))))
+             (map (mbql.u/unique-name-generator) [:x :y :x :x] ["count" "sum" "count" "count_2"])))))
 
+(t/deftest ^:parallel unique-name-generator-idempotence-test
   (t/testing "idempotence (2-arity calls to generated function)"
     (let [unique-name (mbql.u/unique-name-generator)]
-      (t/is (= ["A" "B" "A" "A_2"]
+      (t/is (= ["A" "B" "A" "A_2" "A_2"]
                [(unique-name :x "A")
                 (unique-name :x "B")
                 (unique-name :x "A")
-                (unique-name :y "A")]))))
+                (unique-name :y "A")
+                (unique-name :y "A")])))))
 
-  #_{:clj-kondo/ignore [:discouraged-var]}
+(t/deftest ^:parallel unique-name-generator-options-test
   (t/testing "options"
     (t/testing :name-key-fn
-      (let [f (mbql.u/unique-name-generator :name-key-fn str/lower-case)]
+      (let [f (mbql.u/unique-name-generator :name-key-fn #_{:clj-kondo/ignore [:discouraged-var]} str/lower-case)]
         (t/is (= ["x" "X_2" "X_3"]
-                 (map f ["x" "X" "X"])))))
+                 (map f ["x" "X" "X"])))))))
 
+(t/deftest ^:parallel unique-name-generator-options-test-2
+  (t/testing "options"
     (t/testing :unique-alias-fn
       (let [f (mbql.u/unique-name-generator :unique-alias-fn (fn [x y] (str y "~~" x)))]
         (t/is (= ["x" "2~~x"]
