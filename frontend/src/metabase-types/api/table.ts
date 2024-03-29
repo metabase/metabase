@@ -113,3 +113,8 @@ export interface UpdateTableListRequest {
   points_of_interest?: string;
   show_in_getting_started?: boolean;
 }
+
+export interface UpdateTableFieldsOrderRequest {
+  id: TableId;
+  field_order: FieldId[];
+}

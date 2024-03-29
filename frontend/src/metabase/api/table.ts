@@ -4,6 +4,7 @@ import type {
   GetTableRequest,
   Table,
   TableId,
+  UpdateTableFieldsOrderRequest,
   UpdateTableListRequest,
   UpdateTableRequest,
 } from "metabase-types/api";
@@ -56,7 +57,7 @@ export const tableApi = Api.injectEndpoints({
     updateTableList: builder.mutation<Table[], UpdateTableListRequest>({
       query: body => ({
         method: "PUT",
-        url: `/api/table`,
+        url: "/api/table",
         body,
       }),
       invalidatesTags: (tables = []) =>
@@ -64,6 +65,18 @@ export const tableApi = Api.injectEndpoints({
           idTag("table", table.id),
           idTag("database", table.db_id),
         ]),
+    }),
+    updateTableFieldsOrder: builder.mutation<
+      Table,
+      UpdateTableFieldsOrderRequest
+    >({
+      query: ({ id, field_order }) => ({
+        method: "PUT",
+        url: `/api/table/${id}/fields/order`,
+        body: field_order,
+      }),
+      invalidatesTags: table =>
+        table ? [idTag("table", table.id), listTag("field")] : [],
     }),
     rescanTableFieldValues: builder.mutation<void, TableId>({
       query: id => ({
@@ -89,6 +102,7 @@ export const {
   useLazyListTableForeignKeysQuery,
   useUpdateTableMutation,
   useUpdateTableListMutation,
+  useUpdateTableFieldsOrderMutation,
   useRescanTableFieldValuesMutation,
   useDiscardTableFieldValuesMutation,
 } = tableApi;
