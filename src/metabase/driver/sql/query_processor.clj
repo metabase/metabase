@@ -692,7 +692,7 @@
     (:postgres :athena :mysql :presto-jdbc :redshift :sqlserver)
     ::over-order-by-strategy.copy-expressions
 
-    (:h2 :sqlite :bigquery :oracle)
+    (:h2 :sqlite :bigquery-cloud-sdk :oracle)
     ::over-order-by-strategy.use-output-column-numbers
 
     ;; NOT SURE ABOUT THESE!
