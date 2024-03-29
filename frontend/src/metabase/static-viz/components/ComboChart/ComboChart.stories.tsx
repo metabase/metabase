@@ -42,6 +42,20 @@ LineLinearXScaleUnsorted.args = {
   renderingContext,
 };
 
+export const LogYScaleCustomYAxisRange = Template.bind({});
+LogYScaleCustomYAxisRange.args = {
+  rawSeries: data.logYScaleCustomYAxisRange as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const PowYScaleCustomYAxisRange = Template.bind({});
+PowYScaleCustomYAxisRange.args = {
+  rawSeries: data.powYScaleCustomYAxisRange as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const LineLogYScale = Template.bind({});
 LineLogYScale.args = {
   rawSeries: data.lineLogYScale as any,
