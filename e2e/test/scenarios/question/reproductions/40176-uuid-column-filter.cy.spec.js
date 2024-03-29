@@ -1,10 +1,12 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
-  getNotebookStep,
+  getTable,
+  openNotebook,
   popover,
   resetTestTable,
   restore,
   resyncDatabase,
+  visitQuestionAdhoc,
   visualize,
 } from "e2e/support/helpers";
 
@@ -26,18 +28,20 @@ describe("issue 40176", () => {
     "should allow filtering on UUID PK columns (metabase#40176)",
     { tags: "@external" },
     () => {
-      cy.visit("/");
-      cy.findByTestId("app-bar").findByText("New").click();
-      popover().findByText("Question").click();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
-        cy.findByText(/Writable/).click();
-        cy.findByText("UUID Pk Table").click();
+      getTable({ name: TABLE }).then(({ id: tableId }) => {
+        visitQuestionAdhoc({
+          display: "table",
+          dataset_query: {
+            database: WRITABLE_DB_ID,
+            query: {
+              "source-table": tableId,
+            },
+            type: "query",
+          },
+        });
       });
-      getNotebookStep("filter")
-        .findByText(/Add filter/)
-        .click();
-      popover();
+      openNotebook();
+      cy.findByTestId("action-buttons").findByText("Filter").click();
       popover().within(() => {
         cy.findByText("ID").click();
         cy.findByLabelText("Filter value").type(
