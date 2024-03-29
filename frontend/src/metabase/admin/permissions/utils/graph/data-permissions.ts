@@ -51,7 +51,7 @@ interface GetPermissionParams {
   permissions: GroupsPermissions;
   groupId: number;
   databaseId: number;
-  permission: DataPermission; // TODO: add better typing
+  permission: DataPermission;
   path?: Array<number | string>;
   isControlledType?: boolean;
 }
@@ -76,7 +76,7 @@ export function updatePermission(
   permissions: GroupsPermissions,
   groupId: number,
   databaseId: number,
-  permission: DataPermission, // TODO: add better typing
+  permission: DataPermission,
   path: Array<number | string>,
   value: string | undefined,
   entityIds?: any[],
@@ -129,7 +129,7 @@ export const getSchemasPermission = (
 export const getNativePermission = (
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: any, // TODO: fix
+  entityId: any, // TODO: fix typing, getFieldsPermission should probably be replaced with getPermission
 ): DataPermissionValue => {
   return getFieldsPermission(
     permissions,
@@ -159,7 +159,7 @@ export const getTablesPermission = (
       databaseId,
       groupId,
       permission,
-      path: _.compact([schemaName]),
+      path: [schemaName ?? ""],
       isControlledType: true,
     });
   } else {
@@ -188,7 +188,7 @@ export const getFieldsPermission = (
       groupId,
       databaseId,
       permission,
-      path: _.compact([schemaName, tableId]),
+      path: [schemaName || "", tableId],
       isControlledType: true,
     });
   } else {
@@ -200,38 +200,16 @@ export function downgradeNativePermissionsIfNeeded(
   permissions: GroupsPermissions,
   groupId: number,
   { databaseId }: DatabaseEntityId,
-  value: any,
-  permission: DataPermission,
+  value: DataPermissionValue, // TODO: type to view data permission values
 ) {
-  const currentSchemas = getSchemasPermission(
-    permissions,
-    groupId,
-    { databaseId },
-    permission,
-  );
-  const currentNative = getNativePermission(permissions, groupId, {
-    databaseId,
-  });
-
+  // if changing schemas to none, downgrade native to none
   if (isRestrictivePermission(value)) {
-    // if changing schemas to none, downgrade native to none
-    return updateNativePermission(
+    return updatePermission(
       permissions,
       groupId,
-      { databaseId },
-      DataPermissionValue.NO,
-    );
-  } else if (
-    value === DataPermissionValue.CONTROLLED &&
-    // TODO: fix
-    currentSchemas === "all" &&
-    currentNative !== DataPermissionValue.NO
-  ) {
-    // if changing schemas to controlled, downgrade native to none
-    return updateNativePermission(
-      permissions,
-      groupId,
-      { databaseId },
+      databaseId,
+      DataPermission.CREATE_QUERIES,
+      [],
       DataPermissionValue.NO,
     );
   } else {
@@ -276,7 +254,6 @@ function inferEntityPermissionValueFromChildTables(
   const allTablesHaveSamePermissions = keys.length === 1;
 
   if (allTablesHaveSamePermissions) {
-    // either "all" or "none"
     return keys[0];
   } else {
     return DataPermissionValue.CONTROLLED;
@@ -341,7 +318,6 @@ export function inferAndUpdateEntityPermissions(
         groupId,
         { databaseId },
         schemasPermissionValue,
-        permission,
       );
     }
   }
@@ -431,7 +407,7 @@ export function updateSchemasPermission(
     schemaNames.length > 0 &&
     !(schemaNames.length === 1 && schemaNames[0] === null)
       ? schemaNames
-      : [];
+      : [""];
 
   if (downgradeNative) {
     permissions = downgradeNativePermissionsIfNeeded(
@@ -439,7 +415,6 @@ export function updateSchemasPermission(
       groupId,
       { databaseId },
       value,
-      permission,
     );
   }
 
@@ -451,21 +426,5 @@ export function updateSchemasPermission(
     [],
     value,
     schemaNamesOrNoSchema,
-  );
-}
-
-export function updateNativePermission(
-  permissions: GroupsPermissions,
-  groupId: number,
-  entityId: DatabaseEntityId & TableEntityId,
-  value: DataPermissionValue,
-) {
-  return updatePermission(
-    permissions,
-    groupId,
-    entityId.databaseId,
-    DataPermission.CREATE_QUERIES,
-    _.compact([entityId.schemaName, entityId.tableId]),
-    value,
   );
 }
