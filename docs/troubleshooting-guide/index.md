@@ -88,7 +88,7 @@ To see if someone else has run into a similar issue, check out [our forum on Dis
 
 ## Upgrading Metabase
 
-Metabase adds new features and squashes bugs with each release. [Upgrading to the latest and greatest][upgrade] may resolve your issue. If you're using [Metabase Cloud][cloud], we'll handle the upgrades for you. You can check out the [release notes][releases] to see what's new.
+Metabase adds new features and squashes bugs with each release. [Upgrading to the latest and greatest][upgrade] may resolve your issue. If you're using [Metabase Cloud][cloud], we'll handle the upgrades for you. To see what's new, check out the [release notes][releases].
 
 [appdb]: ./loading-from-h2.md
 [bugs]: ./bugs.md
