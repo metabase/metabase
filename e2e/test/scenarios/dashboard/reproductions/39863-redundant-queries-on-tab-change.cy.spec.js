@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
@@ -7,7 +9,7 @@ import {
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
-import { createMockDashboardCard } from "metabase-types/api/mocks";
+import { createMockDashboardCard as _createMockDashboardCard } from "metabase-types/api/mocks";
 
 const { ORDERS } = SAMPLE_DATABASE;
 
@@ -27,18 +29,22 @@ const CREATED_AT_FIELD_REF = [
   { "base-type": "type/DateTime" },
 ];
 
-const COMMON_DASHCARD_INFO = {
-  card_id: ORDERS_QUESTION_ID,
-  parameter_mappings: [
-    {
-      parameter_id: DATE_FILER.id,
-      card_id: ORDERS_QUESTION_ID,
-      target: ["dimension", CREATED_AT_FIELD_REF],
-    },
-  ],
-  size_x: 10,
-  size_y: 4,
-};
+function createMockDashboardCard(opts) {
+  const dashcard = _createMockDashboardCard({
+    card_id: ORDERS_QUESTION_ID,
+    parameter_mappings: [
+      {
+        parameter_id: DATE_FILER.id,
+        card_id: ORDERS_QUESTION_ID,
+        target: ["dimension", CREATED_AT_FIELD_REF],
+      },
+    ],
+    size_x: 10,
+    size_y: 4,
+    ...opts,
+  });
+  return _.omit(dashcard, "justAdded");
+}
 
 describe("issue 39863", () => {
   beforeEach(() => {
@@ -55,12 +61,10 @@ describe("issue 39863", () => {
       parameters: [DATE_FILER],
       dashcards: [
         createMockDashboardCard({
-          ...COMMON_DASHCARD_INFO,
           id: -1,
           dashboard_tab_id: TAB_1.id,
         }),
         createMockDashboardCard({
-          ...COMMON_DASHCARD_INFO,
           id: -2,
           dashboard_tab_id: TAB_2.id,
         }),
