@@ -22,9 +22,7 @@ import type {
   DashboardCard,
   Database,
   Dataset,
-  NativeDatasetQuery,
   Parameter,
-  StructuredDatasetQuery,
   ActionDashboardCard,
   EmbedDataset,
 } from "metabase-types/api";
@@ -166,14 +164,6 @@ export async function fetchDataOrError<T>(dataPromise: Promise<T>) {
   } catch (error) {
     return { error };
   }
-}
-
-export function getDatasetQueryParams(
-  datasetQuery: Partial<StructuredDatasetQuery> &
-    Partial<NativeDatasetQuery> = {},
-) {
-  const { type, query, native, parameters = [] } = datasetQuery;
-  return { type, query, native, parameters };
 }
 
 export function isDashcardLoading(
