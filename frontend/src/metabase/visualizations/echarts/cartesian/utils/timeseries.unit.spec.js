@@ -1,11 +1,10 @@
+import { StringColumn, NumberColumn } from "__support__/visualizations";
+import { getVisualizationTransformed } from "metabase/visualizations";
 import {
   computeTimeseriesDataInverval,
   getTimezone,
   computeTimeseriesTicksInterval,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
-import { getVisualizationTransformed } from "metabase/visualizations";
-
-import { StringColumn, NumberColumn } from "__support__/visualizations";
 import registerVisualizations from "metabase/visualizations/register";
 
 registerVisualizations();

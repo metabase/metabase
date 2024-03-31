@@ -1,10 +1,12 @@
 import type { RegisteredSeriesOption } from "echarts";
+
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { CartesianChartModel, ChartDataset } from "../model/types";
+
 import { X_AXIS_DATA_KEY } from "../constants/dataset";
+import type { CartesianChartModel, ChartDataset } from "../model/types";
 
 function getFirstNonNullXValue(dataset: ChartDataset) {
   for (let i = 0; i < dataset.length; i++) {

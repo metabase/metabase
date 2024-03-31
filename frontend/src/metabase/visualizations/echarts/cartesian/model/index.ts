@@ -1,15 +1,7 @@
-import type { RawSeries } from "metabase-types/api";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/visualizations/types";
-import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
-  getCardSeriesModels,
-  getDimensionModel,
-} from "metabase/visualizations/echarts/cartesian/model/series";
-import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
-import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
+  getXAxisModel,
+  getYAxesModels,
+} from "metabase/visualizations/echarts/cartesian/model/axis";
 import {
   getBubbleSizeDomain,
   getCardsColumnByDataKeyMap,
@@ -19,12 +11,21 @@ import {
   sortDataset,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
-  getXAxisModel,
-  getYAxesModels,
-} from "metabase/visualizations/echarts/cartesian/model/axis";
+  getCardSeriesModels,
+  getDimensionModel,
+} from "metabase/visualizations/echarts/cartesian/model/series";
+import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getScatterPlotDataset } from "metabase/visualizations/echarts/cartesian/scatter/model";
-import { getTrendLineModelAndDatasets } from "./trend-line";
+import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
+import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "metabase/visualizations/types";
+import type { RawSeries } from "metabase-types/api";
+
 import { getAxisTransforms } from "./transforms";
+import { getTrendLineModelAndDatasets } from "./trend-line";
 
 const SUPPORTED_AUTO_SPLIT_TYPES = ["line", "area", "bar", "combo"];
 

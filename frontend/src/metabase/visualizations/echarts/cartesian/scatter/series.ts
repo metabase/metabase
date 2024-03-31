@@ -1,11 +1,11 @@
 import d3 from "d3";
 import type { RegisteredSeriesOption } from "echarts/types/dist/shared";
 
+import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { RenderingContext } from "metabase/visualizations/types";
 
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import type { DataKey, Datum, Extent, SeriesModel } from "../model/types";
 import { CHART_STYLE } from "../constants/style";
+import type { DataKey, Datum, Extent, SeriesModel } from "../model/types";
 
 const MIN_BUBBLE_DIAMETER = 15;
 const MAX_BUBBLE_DIAMETER = 75;

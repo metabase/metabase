@@ -1,14 +1,15 @@
-import _ from "underscore";
 import { t } from "ttag";
-import type { Visualization } from "metabase/visualizations/types";
+import _ from "underscore";
+
+import LineAreaBarChart from "metabase/visualizations/components/LineAreaBarChart";
 import {
   validateChartDataSettings,
   validateDatasetRows,
   validateStacking,
 } from "metabase/visualizations/lib/settings/validation";
+import type { Visualization } from "metabase/visualizations/types";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { RawSeries } from "metabase-types/api";
-import LineAreaBarChart from "metabase/visualizations/components/LineAreaBarChart";
-import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 
 export const getCartesianChartDefinition = (
   props: Partial<Visualization>,

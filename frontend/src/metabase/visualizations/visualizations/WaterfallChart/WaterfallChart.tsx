@@ -1,21 +1,21 @@
 import { t } from "ttag";
 
+import { color } from "metabase/lib/colors";
+import {
+  GRAPH_AXIS_SETTINGS,
+  GRAPH_DISPLAY_VALUES_SETTINGS,
+  GRAPH_DATA_SETTINGS,
+} from "metabase/visualizations/lib/settings/graph";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import type {
   ComputedVisualizationSettings,
   VisualizationProps,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 
-import {
-  getDefaultSize,
-  getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import {
-  GRAPH_AXIS_SETTINGS,
-  GRAPH_DISPLAY_VALUES_SETTINGS,
-  GRAPH_DATA_SETTINGS,
-} from "metabase/visualizations/lib/settings/graph";
-import { color } from "metabase/lib/colors";
 import { CartesianChart } from "../CartesianChart";
 import { getCartesianChartDefinition } from "../CartesianChart/chart-definition";
 

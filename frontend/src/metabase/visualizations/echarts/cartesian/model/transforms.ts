@@ -1,5 +1,6 @@
-import type { NumericScale, StackType } from "metabase-types/api";
 import { isNumber } from "metabase/lib/types";
+import type { NumericScale, StackType } from "metabase-types/api";
+
 import type { NumericAxisScaleTransforms } from "./types";
 
 function getSign(value: number) {

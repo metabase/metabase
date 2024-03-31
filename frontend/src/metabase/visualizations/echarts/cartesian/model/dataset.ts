@@ -1,12 +1,17 @@
 import dayjs from "dayjs";
 import { t } from "ttag";
-import type {
-  DatasetColumn,
-  RawSeries,
-  RowValue,
-  SingleSeries,
-  XAxisScale,
-} from "metabase-types/api";
+
+import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
+import { checkNumber, isNotNull } from "metabase/lib/types";
+import { isEmpty } from "metabase/lib/validate";
+import {
+  ECHARTS_CATEGORY_AXIS_NULL_VALUE,
+  NEGATIVE_STACK_TOTAL_DATA_KEY,
+  ORIGINAL_INDEX_DATA_KEY,
+  POSITIVE_STACK_TOTAL_DATA_KEY,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { getBreakoutDistinctValues } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
   DataKey,
   Extent,
@@ -18,23 +23,19 @@ import type {
   NumericAxisScaleTransforms,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { isEmpty } from "metabase/lib/validate";
-
-import { getBreakoutDistinctValues } from "metabase/visualizations/echarts/cartesian/model/series";
-import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
-import { checkNumber, isNotNull } from "metabase/lib/types";
-import {
-  ECHARTS_CATEGORY_AXIS_NULL_VALUE,
-  NEGATIVE_STACK_TOTAL_DATA_KEY,
-  ORIGINAL_INDEX_DATA_KEY,
-  POSITIVE_STACK_TOTAL_DATA_KEY,
-  X_AXIS_DATA_KEY,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
-import { isMetric } from "metabase-lib/types/utils/isa";
-import { signedLog, signedSquareRoot } from "./transforms";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { isMetric } from "metabase-lib/v1/types/utils/isa";
+import type {
+  DatasetColumn,
+  RawSeries,
+  RowValue,
+  SingleSeries,
+  XAxisScale,
+} from "metabase-types/api";
+
 import { isCategoryAxis, isNumericAxis, isTimeSeriesAxis } from "./guards";
+import { signedLog, signedSquareRoot } from "./transforms";
 
 /**
  * Sums two metric column values.

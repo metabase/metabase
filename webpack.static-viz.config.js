@@ -1,7 +1,6 @@
 const YAML = require("json-to-pretty-yaml");
 const TerserPlugin = require("terser-webpack-plugin");
 const { StatsWriterPlugin } = require("webpack-stats-plugin");
-const { IgnorePlugin } = require("webpack");
 
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
@@ -86,7 +85,7 @@ module.exports = env => {
       },
     },
     optimization: {
-      minimize: !shouldDisableMinimization,
+      minimize: false,
       minimizer: [
         new TerserPlugin({
           minify: TerserPlugin.swcMinify,
@@ -94,10 +93,6 @@ module.exports = env => {
       ],
     },
     plugins: [
-      new IgnorePlugin({
-        resourceRegExp: /\.css$/, // regular expression to ignore all CSS files
-        contextRegExp: /./,
-      }),
       new StatsWriterPlugin({
         stats: {
           modules: true,

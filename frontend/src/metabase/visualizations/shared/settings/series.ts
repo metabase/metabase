@@ -1,8 +1,9 @@
-import _ from "underscore";
 import { getIn } from "icepick";
-import type { VisualizationSettings } from "metabase-types/api";
+import _ from "underscore";
+
 import { getColorsForValues } from "metabase/lib/colors/charts";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { VisualizationSettings } from "metabase-types/api";
 
 export const SERIES_SETTING_KEY = "series_settings";
 export const SERIES_COLORS_SETTING_KEY = "series_settings.colors";

@@ -1,11 +1,11 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { isNotNull } from "metabase/lib/types";
 import {
   MinRowsError,
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
-import { isNotNull } from "metabase/lib/types";
 
 export const validateDatasetRows = series => {
   const singleSeriesHasNoRows = ({ data: { rows } }) => rows.length === 0;

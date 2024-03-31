@@ -1,14 +1,14 @@
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import _ from "underscore";
 import type { RegisteredSeriesOption } from "echarts";
+import _ from "underscore";
 
 import {
   TREND_LINE_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
-import type { CartesianChartModel } from "../model/types";
 import { CHART_STYLE } from "../constants/style";
+import type { CartesianChartModel } from "../model/types";
+
 import { getSeriesYAxisIndex } from "./utils";
 
 export function getTrendLinesOption(
