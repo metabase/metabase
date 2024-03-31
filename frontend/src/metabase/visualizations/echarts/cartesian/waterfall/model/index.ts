@@ -1,27 +1,29 @@
-import type { RawSeries } from "metabase-types/api";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/visualizations/types";
-import type { BaseCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
-import {
-  getCardSeriesModels,
-  getDimensionModel,
-} from "metabase/visualizations/echarts/cartesian/model/series";
-import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
+import { getYAxisModel } from "metabase/visualizations/echarts/cartesian/model/axis";
 import {
   getCardsColumnByDataKeyMap,
   getJoinedCardsDataset,
   sortDataset,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import { getYAxisModel } from "metabase/visualizations/echarts/cartesian/model/axis";
-import { WATERFALL_END_KEY, WATERFALL_TOTAL_KEY } from "../constants";
+import {
+  getCardSeriesModels,
+  getDimensionModel,
+} from "metabase/visualizations/echarts/cartesian/model/series";
+import type { BaseCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "metabase/visualizations/types";
+import type { RawSeries } from "metabase-types/api";
+
 import { getAxisTransforms } from "../../model/transforms";
+import { WATERFALL_END_KEY, WATERFALL_TOTAL_KEY } from "../constants";
+
+import { getWaterfallXAxisModel } from "./axis";
 import {
   extendOriginalDatasetWithTotalDatum,
   getWaterfallDataset,
 } from "./dataset";
-import { getWaterfallXAxisModel } from "./axis";
 
 export const getWaterfallChartModel = (
   rawSeries: RawSeries,

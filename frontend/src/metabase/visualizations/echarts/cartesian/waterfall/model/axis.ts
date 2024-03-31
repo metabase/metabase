@@ -1,10 +1,6 @@
-import { t } from "ttag";
 import dayjs from "dayjs";
-import type { RawSeries, RowValue } from "metabase-types/api";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/visualizations/types";
+import { t } from "ttag";
+
 import type {
   ChartDataset,
   DateRange,
@@ -13,6 +9,11 @@ import type {
   TimeSeriesXAxisModel,
   WaterfallXAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "metabase/visualizations/types";
+import type { RawSeries, RowValue } from "metabase-types/api";
 
 import { getXAxisModel } from "../../model/axis";
 import { isNumericAxis, isTimeSeriesAxis } from "../../model/guards";

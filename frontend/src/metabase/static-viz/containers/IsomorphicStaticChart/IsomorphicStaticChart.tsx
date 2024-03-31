@@ -1,9 +1,9 @@
-import type { IsomorphicStaticChartProps } from "metabase/static-viz/containers/IsomorphicStaticChart/types";
 import { ComboChart } from "metabase/static-viz/components/ComboChart";
-import { ScatterPlot } from "metabase/static-viz/components/ScatterPlot/ScatterPlot";
-import { ScalarChart } from "metabase/static-viz/components/ScalarChart";
 import { FunnelBarChart } from "metabase/static-viz/components/FunnelBarChart";
+import { ScalarChart } from "metabase/static-viz/components/ScalarChart";
+import { ScatterPlot } from "metabase/static-viz/components/ScatterPlot/ScatterPlot";
 import { WaterfallChart } from "metabase/static-viz/components/WaterfallChart/WaterfallChart";
+import type { IsomorphicStaticChartProps } from "metabase/static-viz/containers/IsomorphicStaticChart/types";
 
 const Placeholder = ({ text }: { text: string }) => {
   return (

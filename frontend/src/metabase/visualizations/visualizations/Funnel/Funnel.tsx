@@ -1,35 +1,35 @@
+import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
+
+import CS from "metabase/css/core/index.css";
+import ChartCaption from "metabase/visualizations/components/ChartCaption";
+import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
+import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
+import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import {
   MinRowsError,
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
-import CS from "metabase/css/core/index.css";
-
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
   metricSetting,
   dimensionSetting,
 } from "metabase/visualizations/lib/settings/utils";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-
-import ChartCaption from "metabase/visualizations/components/ChartCaption";
-import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
-import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import { funnelToBarTransform } from "metabase/visualizations/visualizations/Funnel/funnel-bar-transform";
 import type {
   ComputedVisualizationSettings,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
+import { funnelToBarTransform } from "metabase/visualizations/visualizations/Funnel/funnel-bar-transform";
 import type { DatasetData, RawSeries, RowValue } from "metabase-types/api";
-import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
-import LegendHeader from "../../components/LegendHeader";
+
 import FunnelNormal from "../../components/FunnelNormal";
+import LegendHeader from "../../components/LegendHeader";
 
 Object.assign(Funnel, {
   uiName: t`Funnel`,

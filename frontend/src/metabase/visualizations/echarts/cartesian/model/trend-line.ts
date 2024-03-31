@@ -1,9 +1,13 @@
+import Color from "color";
 import d3 from "d3";
 // eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import _ from "underscore";
-import Color from "color";
 
+import {
+  TREND_LINE_DATA_KEY,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getTrendDataPointsFromInsight } from "metabase/visualizations/lib/trends";
 import type {
   ComputedVisualizationSettings,
@@ -11,10 +15,6 @@ import type {
 } from "metabase/visualizations/types";
 import type { SeriesSettings } from "metabase-types/api";
 import type { Insight } from "metabase-types/api/insight";
-import {
-  TREND_LINE_DATA_KEY,
-  X_AXIS_DATA_KEY,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
 import { replaceValues } from "./dataset";
 import type {

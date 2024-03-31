@@ -1,12 +1,21 @@
-import _ from "underscore";
 import type { RegisteredSeriesOption } from "echarts";
-import type { SeriesLabelOption } from "echarts/types/src/util/types";
-
-import type { CallbackDataParams } from "echarts/types/dist/shared";
 import type {
   LabelLayoutOptionCallbackParams,
   SeriesOption,
 } from "echarts/types/dist/echarts";
+import type { CallbackDataParams } from "echarts/types/dist/shared";
+import type { SeriesLabelOption } from "echarts/types/src/util/types";
+import _ from "underscore";
+
+import type { OptionsType } from "metabase/lib/formatting/types";
+import { getObjectValues } from "metabase/lib/objects";
+import { isNotNull } from "metabase/lib/types";
+import {
+  NEGATIVE_STACK_TOTAL_DATA_KEY,
+  POSITIVE_STACK_TOTAL_DATA_KEY,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   SeriesModel,
   CartesianChartModel,
@@ -19,29 +28,21 @@ import type {
   NumericXAxisModel,
   NumericAxisScaleTransforms,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
 import type { RowValue, SeriesSettings } from "metabase-types/api";
-import { isNotNull } from "metabase/lib/types";
-import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 
-import { getObjectValues } from "metabase/lib/objects";
-import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
-import {
-  NEGATIVE_STACK_TOTAL_DATA_KEY,
-  POSITIVE_STACK_TOTAL_DATA_KEY,
-  X_AXIS_DATA_KEY,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import type { OptionsType } from "metabase/lib/formatting/types";
-import { buildEChartsScatterSeries } from "../scatter/series";
+import type { ChartMeasurements } from "../chart-measurements/types";
 import {
   isCategoryAxis,
   isNumericAxis,
   isTimeSeriesAxis,
 } from "../model/guards";
-import type { ChartMeasurements } from "../chart-measurements/types";
+import { buildEChartsScatterSeries } from "../scatter/series";
+
 import { getSeriesYAxisIndex } from "./utils";
 
 const getBlurLabelStyle = (

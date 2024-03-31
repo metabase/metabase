@@ -1,9 +1,9 @@
-import type { DatasetColumn } from "metabase-types/api";
 import { formatValue } from "metabase/lib/formatting";
 import type {
   ComputedVisualizationSettings,
   RemappingHydratedDatasetColumn,
 } from "metabase/visualizations/types";
+import type { DatasetColumn } from "metabase-types/api";
 
 export const formatValueForTooltip = ({
   value,

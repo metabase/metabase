@@ -1,8 +1,9 @@
 /* eslint-disable no-console */
 import type { EChartsOption } from "echarts";
 import { useEffect } from "react";
-import type { RawSeries } from "metabase-types/api";
+
 import { isProduction } from "metabase/env";
+import type { RawSeries } from "metabase-types/api";
 
 export function useChartDebug({
   isQueryBuilder,

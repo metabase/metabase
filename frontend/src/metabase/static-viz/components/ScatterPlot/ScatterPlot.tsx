@@ -1,16 +1,16 @@
-import { init } from "echarts";
 import { Group } from "@visx/group";
+import { init } from "echarts";
 
-import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
-import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
-import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import type { IsomorphicStaticChartProps } from "metabase/static-viz/containers/IsomorphicStaticChart/types";
-import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
-
+import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
-import { calculateLegendRows } from "../Legend/utils";
-import { Legend } from "../Legend";
+import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
+import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
+import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
+
 import { computeStaticComboChartSettings } from "../ComboChart/settings";
+import { Legend } from "../Legend";
+import { calculateLegendRows } from "../Legend/utils";
 
 const WIDTH = 540;
 const HEIGHT = 360;

@@ -1,4 +1,3 @@
-// eslint-disable-next-line import/no-unresolved -- vscode is confused since only @types/hast is installed
 import type { Element, ElementContent } from "hast";
 import { fromHtml } from "hast-util-from-html";
 import { toHtml } from "hast-util-to-html";

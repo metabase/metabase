@@ -1,5 +1,6 @@
 import { setPlatformAPI } from "echarts";
 import ReactDOMServer from "react-dom/server";
+import "metabase/lib/dayjs";
 
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { createColorGetter } from "metabase/static-viz/lib/colors";
@@ -32,7 +33,8 @@ export function RenderChart(rawSeries, dashcardSettings, colors) {
   const renderingContext = {
     getColor,
     formatValue: formatStaticValue,
-    measureText: measureTextWidth,
+    measureText: (text, style) =>
+      measureTextWidth(text, style.size, style.weight),
     fontFamily: "Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif",
   };
 

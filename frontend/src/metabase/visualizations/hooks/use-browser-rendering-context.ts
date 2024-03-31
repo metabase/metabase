@@ -1,8 +1,9 @@
 import { useMemo } from "react";
-import type { RenderingContext } from "metabase/visualizations/types";
+
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
+import type { RenderingContext } from "metabase/visualizations/types";
 
 export const useBrowserRenderingContext = (
   fontFamily: string,

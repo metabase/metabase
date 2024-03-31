@@ -1,4 +1,5 @@
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+
 import type { BaseCartesianChartModel } from "./types";
 
 export const getLegendItems = (

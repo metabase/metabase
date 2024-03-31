@@ -1,18 +1,19 @@
-import { useCallback, useMemo, useRef, useState } from "react";
 import type { EChartsType } from "echarts";
+import { useCallback, useMemo, useRef, useState } from "react";
+
+import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
+import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
+import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
   CartesianChartRenderer,
   CartesianChartRoot,
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
-import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
-import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
-
 import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
-import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
-import { useModelsAndOption } from "./use-models-and-option";
+
 import { useChartDebug } from "./use-chart-debug";
+import { useModelsAndOption } from "./use-models-and-option";
 
 function _CartesianChart(props: VisualizationProps) {
   // The width and height from props reflect the dimensions of the entire container which includes legend,

@@ -1,13 +1,7 @@
-import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
 import type { Dayjs } from "dayjs";
-import type { Insight } from "metabase-types/api/insight";
+import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
 
-import type {
-  CardId,
-  DatasetColumn,
-  DateTimeAbsoluteUnit,
-  RowValue,
-} from "metabase-types/api";
+import type { OptionsType } from "metabase/lib/formatting/types";
 import type {
   X_AXIS_DATA_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
@@ -15,7 +9,13 @@ import type {
   ORIGINAL_INDEX_DATA_KEY,
   TREND_LINE_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import type { OptionsType } from "metabase/lib/formatting/types";
+import type {
+  CardId,
+  DatasetColumn,
+  DateTimeAbsoluteUnit,
+  RowValue,
+} from "metabase-types/api";
+import type { Insight } from "metabase-types/api/insight";
 
 export type BreakoutValue = RowValue;
 export type ColumnName = string;

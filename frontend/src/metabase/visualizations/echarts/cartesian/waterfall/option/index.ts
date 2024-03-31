@@ -1,22 +1,19 @@
 import type { EChartsOption, SeriesOption } from "echarts";
 import type { DatasetOption } from "echarts/types/dist/shared";
 import type { LabelLayoutOptionCallback } from "echarts/types/src/util/types";
+
+import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   BaseCartesianChartModel,
   ChartDataset,
   DataKey,
 } from "metabase/visualizations/echarts/cartesian/model/types";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/visualizations/types";
-import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import {
   buildEChartsLabelOptions,
   computeContinuousScaleBarWidth,
   getDataLabelFormatter,
 } from "metabase/visualizations/echarts/cartesian/option/series";
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   WATERFALL_END_KEY,
   WATERFALL_LABELS_SERIES_ID,
@@ -24,14 +21,19 @@ import {
   WATERFALL_TOTAL_KEY,
   WATERFALL_VALUE_KEY,
 } from "metabase/visualizations/echarts/cartesian/waterfall/constants";
-import type { TimelineEventId } from "metabase-types/api";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "metabase/visualizations/types";
+import type { TimelineEventId } from "metabase-types/api";
+
 import type { ChartMeasurements } from "../../chart-measurements/types";
-import type { TimelineEventsModel } from "../../timeline-events/types";
-import { getTimelineEventsSeries } from "../../timeline-events/option";
-import { buildAxes } from "../../option/axis";
-import { getSharedEChartsOptions } from "../../option";
 import { isCategoryAxis } from "../../model/guards";
+import { getSharedEChartsOptions } from "../../option";
+import { buildAxes } from "../../option/axis";
+import { getTimelineEventsSeries } from "../../timeline-events/option";
+import type { TimelineEventsModel } from "../../timeline-events/types";
 
 const getLabelLayoutFn = (
   dataset: ChartDataset,
