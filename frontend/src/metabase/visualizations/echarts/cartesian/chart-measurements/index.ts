@@ -1,3 +1,6 @@
+import { isNotNull } from "metabase/lib/types";
+import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   AxisFormatter,
   BaseCartesianChartModel,
@@ -9,11 +12,9 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { isNotNull } from "metabase/lib/types";
 
 import { isTimeSeriesAxis } from "../model/guards";
+
 import type {
   ChartBoundsCoords,
   ChartMeasurements,

@@ -1,6 +1,7 @@
 const { readdir, writeFile } = require("fs");
-const { promisify } = require("util");
+
 const { join: joinPath, relative } = require("path");
+const { promisify } = require("util");
 
 const asyncReaddir = promisify(readdir);
 const writeFileAsync = promisify(writeFile);

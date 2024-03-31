@@ -1,16 +1,16 @@
-import _ from "underscore";
-
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
+import _ from "underscore";
+
+import { parseTimestamp } from "metabase/lib/time";
+import type { TimeSeriesInterval } from "metabase/visualizations/echarts/cartesian/model/types";
+import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
+import type { Formatter } from "metabase/visualizations/types";
 import type {
   DateTimeAbsoluteUnit,
   RawSeries,
   RowValue,
 } from "metabase-types/api";
-import type { TimeSeriesInterval } from "metabase/visualizations/echarts/cartesian/model/types";
-import { parseTimestamp } from "metabase/lib/time";
-import type { Formatter } from "metabase/visualizations/types";
-import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
 
 export const tryGetDate = (rowValue: RowValue): Dayjs | null => {
   if (typeof rowValue === "boolean") {

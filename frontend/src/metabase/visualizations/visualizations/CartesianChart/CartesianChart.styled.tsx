@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import LegendLayout from "metabase/visualizations/components/legend/LegendLayout";
+
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
+import LegendLayout from "metabase/visualizations/components/legend/LegendLayout";
 
 export const CartesianChartRoot = styled.div<{ isQueryBuilder: boolean }>`
   padding: ${({ isQueryBuilder }) =>

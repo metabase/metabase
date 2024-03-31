@@ -1,8 +1,6 @@
 import type { DurationInputArg2 } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
 
 import MetabaseSettings from "metabase/lib/settings";
 import type { RowValue } from "metabase-types/api";

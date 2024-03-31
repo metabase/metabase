@@ -1,14 +1,16 @@
 import type { OpUnitType } from "dayjs";
 import dayjs from "dayjs";
 import _ from "underscore";
-import type { TimelineEvent } from "metabase-types/api";
+
+import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   BaseCartesianChartModel,
   DateRange,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { TimelineEventGroup } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type { RenderingContext } from "metabase/visualizations/types";
-import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
+import type { TimelineEvent } from "metabase-types/api";
+
 import type { ChartMeasurements } from "../chart-measurements/types";
 import { isTimeSeriesAxis } from "../model/guards";
 

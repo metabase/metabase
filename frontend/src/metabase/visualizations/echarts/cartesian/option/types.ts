@@ -1,7 +1,7 @@
 import type { RegisteredSeriesOption } from "echarts";
 
-import type { Datum } from "../model/types";
 import type { TREND_LINE_DATA_KEY } from "../constants/dataset";
+import type { Datum } from "../model/types";
 
 export type EChartsSeriesOption =
   | RegisteredSeriesOption["line"]

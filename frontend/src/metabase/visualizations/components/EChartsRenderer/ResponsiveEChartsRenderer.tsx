@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+
 import ExplicitSize from "metabase/components/ExplicitSize";
 import type { EChartsRendererProps } from "metabase/visualizations/components/EChartsRenderer/EChartsRenderer";
 import { EChartsRenderer } from "metabase/visualizations/components/EChartsRenderer/EChartsRenderer";

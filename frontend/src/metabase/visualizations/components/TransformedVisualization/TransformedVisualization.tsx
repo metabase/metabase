@@ -1,12 +1,13 @@
 import type React from "react";
 import { useMemo } from "react";
+
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type {
   ComputedVisualizationSettings,
   VisualizationProps,
   RenderingContext,
 } from "metabase/visualizations/types";
 import type { RawSeries } from "metabase-types/api";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 export type TransformSeries = (
   rawSeries: RawSeries,

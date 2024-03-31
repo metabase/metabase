@@ -1,3 +1,20 @@
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
+import type {
+  DimensionModel,
+  LegacySeriesSettingsObjectKey,
+  SeriesModel,
+  VizSettingsKey,
+} from "metabase/visualizations/echarts/cartesian/model/types";
+import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
+import {
+  SERIES_COLORS_SETTING_KEY,
+  SERIES_SETTING_KEY,
+} from "metabase/visualizations/shared/settings/series";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "metabase/visualizations/types";
 import type {
   SingleSeries,
   DatasetData,
@@ -6,23 +23,6 @@ import type {
   RawSeries,
   CardId,
 } from "metabase-types/api";
-import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
-import type {
-  DimensionModel,
-  LegacySeriesSettingsObjectKey,
-  SeriesModel,
-  VizSettingsKey,
-} from "metabase/visualizations/echarts/cartesian/model/types";
-import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/visualizations/types";
-import {
-  SERIES_COLORS_SETTING_KEY,
-  SERIES_SETTING_KEY,
-} from "metabase/visualizations/shared/settings/series";
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 
 export const getSeriesVizSettingsKey = (
   column: DatasetColumn,

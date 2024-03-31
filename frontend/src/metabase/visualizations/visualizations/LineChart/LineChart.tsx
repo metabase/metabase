@@ -1,11 +1,13 @@
 import { t } from "ttag";
-import { CartesianChart } from "metabase/visualizations/visualizations/CartesianChart";
+
+import LineAreaBarChart from "metabase/visualizations/components/LineAreaBarChart";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import LineAreaBarChart from "metabase/visualizations/components/LineAreaBarChart";
+import { CartesianChart } from "metabase/visualizations/visualizations/CartesianChart";
 import { getCartesianChartDefinition } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
+
 import { GRAPH_GOAL_SETTINGS } from "../../lib/settings/goal";
 import {
   GRAPH_DATA_SETTINGS,

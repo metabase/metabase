@@ -1,4 +1,12 @@
 import _ from "underscore";
+
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { getObjectKeys } from "metabase/lib/objects";
+import { isNotNull } from "metabase/lib/types";
+import {
+  ORIGINAL_INDEX_DATA_KEY,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
   BaseCartesianChartModel,
   ChartDataset,
@@ -7,44 +15,33 @@ import type {
   DimensionModel,
   SeriesModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type {
-  CardId,
-  RawSeries,
-  TimelineEvent,
-  TimelineEventId,
-} from "metabase-types/api";
-import { isNotNull } from "metabase/lib/types";
-import { getObjectKeys } from "metabase/lib/objects";
-import type { ClickObject, ClickObjectDimension } from "metabase-lib";
+  EChartsSeriesMouseEvent,
+  EChartsSeriesBrushEndEvent,
+} from "metabase/visualizations/echarts/types";
+import {
+  hasClickBehavior,
+  isRemappedToString,
+} from "metabase/visualizations/lib/renderer_utils";
+import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
+import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
 import type {
   ComputedVisualizationSettings,
   DataPoint,
   OnChangeCardAndRun,
   TooltipRowModel,
 } from "metabase/visualizations/types";
-import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
-import {
-  hasClickBehavior,
-  isRemappedToString,
-} from "metabase/visualizations/lib/renderer_utils";
+import type { ClickObject, ClickObjectDimension } from "metabase-lib";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import { isNative } from "metabase-lib/v1/queries/utils/card";
 import type {
-  EChartsSeriesMouseEvent,
-  EChartsSeriesBrushEndEvent,
-} from "metabase/visualizations/echarts/types";
-import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
-import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
-
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import {
-  ORIGINAL_INDEX_DATA_KEY,
-  X_AXIS_DATA_KEY,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { isStructured } from "metabase-lib/queries/utils/card";
-import Question from "metabase-lib/Question";
-import {
-  updateDateTimeFilter,
-  updateNumericFilter,
-} from "metabase-lib/queries/utils/actions";
+  CardId,
+  RawSeries,
+  TimelineEvent,
+  TimelineEventId,
+} from "metabase-types/api";
 
 export const parseDataKey = (dataKey: DataKey) => {
   let cardId: Nullable<CardId> = null;
@@ -230,7 +227,7 @@ export const canBrush = (
     !!onChangeCardAndRun &&
     hasBrushableDimension &&
     !hasCombinedCards &&
-    isStructured(series[0].card) &&
+    !isNative(series[0].card) &&
     !isRemappedToString(series) &&
     !hasClickBehavior(series)
   );
@@ -404,24 +401,42 @@ export const getBrushData = (
   );
 
   if (range) {
-    const column = chartModel.dimensionModel.column;
+    const column = rawSeries[0].data.cols[0];
     const card = rawSeries[0].card;
-    const query = new Question(card).legacyQuery({
-      useStructuredQuery: true,
-    });
+    const question = new Question(card, {}); // FIXME: pass metadata
+    const query = question.query();
+    const stageIndex = -1;
+
     const [start, end] = range;
+
     if (isTimeSeries) {
+      const nextQuery = Lib.updateTemporalFilter(
+        query,
+        stageIndex,
+        column,
+        new Date(start).toISOString(),
+        new Date(end).toISOString(),
+      );
+      const updatedQuestion = question.setQuery(nextQuery);
+      const nextCard = updatedQuestion.card();
+
       return {
-        nextCard: updateDateTimeFilter(query, column, start, end)
-          .question()
-          .card(),
+        nextCard,
         previousCard: card,
       };
     } else {
+      const nextQuery = Lib.updateNumericFilter(
+        query,
+        stageIndex,
+        column,
+        start,
+        end,
+      );
+      const updatedQuestion = question.setQuery(nextQuery);
+      const nextCard = updatedQuestion.card();
+
       return {
-        nextCard: updateNumericFilter(query, column, start, end)
-          .question()
-          .card(),
+        nextCard,
         previousCard: card,
       };
     }
