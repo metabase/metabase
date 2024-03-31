@@ -1,15 +1,15 @@
-import type { RawSeries, VisualizationSettings } from "metabase-types/api";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/visualizations/types";
-
 import {
   getDefaultDecreaseColor,
   getDefaultIncreaseColor,
   getDefaultShowTotal,
   getDefaultTotalColor,
 } from "metabase/visualizations/shared/settings/waterfall";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "metabase/visualizations/types";
+import type { RawSeries, VisualizationSettings } from "metabase-types/api";
+
 import {
   computeStaticComboChartSettings,
   fillWithDefaultValue,

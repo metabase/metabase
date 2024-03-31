@@ -1,10 +1,11 @@
 import type { LineSeriesOption } from "echarts";
 import type { MarkLine1DDataItemOption } from "echarts/types/src/component/marker/MarkLineModel";
-import type { RenderingContext } from "metabase/visualizations/types";
+
 import type { IconName } from "metabase/ui/components/icons/Icon/icons";
 import { Icons } from "metabase/ui/components/icons/Icon/icons";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+import type { RenderingContext } from "metabase/visualizations/types";
 import type { TimelineEventId } from "metabase-types/api";
 
 // TODO: change to GraalVM supported implementation

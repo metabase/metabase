@@ -1,21 +1,23 @@
 import type { EChartsOption } from "echarts";
-import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
-import { buildEChartsSeries } from "metabase/visualizations/echarts/cartesian/option/series";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/visualizations/types";
-import { buildAxes } from "metabase/visualizations/echarts/cartesian/option/axis";
 
-import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
-import { getTimelineEventsSeries } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
-import type { TimelineEventId } from "metabase-types/api";
 import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import { buildAxes } from "metabase/visualizations/echarts/cartesian/option/axis";
+import { buildEChartsSeries } from "metabase/visualizations/echarts/cartesian/option/series";
+import { getTimelineEventsSeries } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
+import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "metabase/visualizations/types";
+import type { TimelineEventId } from "metabase-types/api";
+
 import type { ChartMeasurements } from "../chart-measurements/types";
+
 import { getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLinesOption } from "./trend-line";
 

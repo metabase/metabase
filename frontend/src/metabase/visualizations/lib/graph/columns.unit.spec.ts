@@ -1,4 +1,5 @@
 import { createMockColumn } from "metabase-types/api/mocks";
+
 import { getCartesianChartColumns } from "./columns";
 
 describe("getCartesianChartColumns", () => {

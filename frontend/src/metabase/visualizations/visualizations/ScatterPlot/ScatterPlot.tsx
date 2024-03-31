@@ -1,10 +1,12 @@
 import { t } from "ttag";
-import { CartesianChart } from "metabase/visualizations/visualizations/CartesianChart";
+
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import { CartesianChart } from "metabase/visualizations/visualizations/CartesianChart";
 import { getCartesianChartDefinition } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
+
 import { GRAPH_GOAL_SETTINGS } from "../../lib/settings/goal";
 import {
   GRAPH_DATA_SETTINGS,

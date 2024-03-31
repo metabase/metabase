@@ -4,7 +4,9 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models
     :refer [Card Dashboard DashboardCard DashboardCardSeries]]
+   [metabase.pulse :as pulse]
    [metabase.pulse.render :as render]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -94,7 +96,7 @@
                                             :rows [[6]]}))))
   (testing "The isomorphic display-types return correct chart-type."
     (doseq [chart-type [:line :area :bar :combo]]
-      (is (= :isomorphic
+      (is (= :javascript_visualization
              (render/detect-pulse-chart-type {:display chart-type}
                                              {}
                                              {:cols [{:base_type :type/Text}
@@ -119,7 +121,7 @@
                                             :rows [["apple" 3]
                                                    ["banana" 4]]}))))
   (testing "Dashboard Cards can return `:multiple`."
-    (is (= :isomorphic
+    (is (= :javascript_visualization
            (mt/with-temp [Card                card1 {:display :pie}
                           Card                card2 {:display :funnel}
                           Dashboard           dashboard {}
@@ -131,7 +133,7 @@
                                                      {:base_type :type/Number}]
                                               :rows [[#t "2020" 2]
                                                      [#t "2021" 3]]}))))
-    (is (= :isomorphic
+    (is (= :javascript_visualization
            (mt/with-temp [Card                card1 {:display :line}
                           Card                card2 {:display :funnel}
                           Dashboard           dashboard {}

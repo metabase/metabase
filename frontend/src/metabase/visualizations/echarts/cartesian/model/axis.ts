@@ -1,6 +1,22 @@
 import d3 from "d3";
-import _ from "underscore";
 import dayjs from "dayjs";
+import _ from "underscore";
+
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import {
+  getObjectEntries,
+  getObjectKeys,
+  getObjectValues,
+} from "metabase/lib/objects";
+import { isNotNull, isNumber } from "metabase/lib/types";
+import {
+  ECHARTS_CATEGORY_AXIS_NULL_VALUE,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import {
+  getDatasetExtents,
+  getSeriesExtent,
+} from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
   AxisFormatter,
   DataKey,
@@ -16,11 +32,17 @@ import type {
   TimeSeriesXAxisModel,
   NumericXAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import {
+  computeTimeseriesDataInverval,
+  getTimezone,
+  minTimeseriesUnit,
+  tryGetDate,
+} from "metabase/visualizations/echarts/cartesian/utils/timeseries";
+import { computeNumericDataInverval } from "metabase/visualizations/lib/numeric";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import { numericScale } from "metabase-types/api";
 import type {
   DateTimeAbsoluteUnit,
   SeriesSettings,
@@ -30,29 +52,8 @@ import type {
   RawSeries,
   NumericScale,
 } from "metabase-types/api";
-import { isNotNull, isNumber } from "metabase/lib/types";
-import {
-  getDatasetExtents,
-  getSeriesExtent,
-} from "metabase/visualizations/echarts/cartesian/model/dataset";
-import {
-  getObjectEntries,
-  getObjectKeys,
-  getObjectValues,
-} from "metabase/lib/objects";
-import {
-  computeTimeseriesDataInverval,
-  getTimezone,
-  minTimeseriesUnit,
-  tryGetDate,
-} from "metabase/visualizations/echarts/cartesian/utils/timeseries";
-import {
-  ECHARTS_CATEGORY_AXIS_NULL_VALUE,
-  X_AXIS_DATA_KEY,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { numericScale } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
-import { computeNumericDataInverval } from "metabase/visualizations/lib/numeric";
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 
 import { getAxisTransforms } from "./transforms";
 

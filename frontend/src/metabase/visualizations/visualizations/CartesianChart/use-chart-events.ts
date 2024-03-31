@@ -1,12 +1,23 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import type { LineSeriesOption } from "echarts/types/dist/echarts";
 import type { EChartsOption, EChartsType } from "echarts";
+import type { LineSeriesOption } from "echarts/types/dist/echarts";
 import type * as React from "react";
-import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+
+import { ORIGINAL_INDEX_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import type {
+  BaseCartesianChartModel,
+  ChartDataset,
+} from "metabase/visualizations/echarts/cartesian/model/types";
+import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type {
   EChartsSeriesBrushEndEvent,
   EChartsSeriesMouseEvent,
 } from "metabase/visualizations/echarts/types";
+import type {
+  ClickObject,
+  VisualizationProps,
+} from "metabase/visualizations/types";
+import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
 import {
   canBrush,
   getBrushData,
@@ -17,17 +28,7 @@ import {
   getTimelineEventsHoverData,
   hasSelectedTimelineEvents,
 } from "metabase/visualizations/visualizations/CartesianChart/events";
-import type {
-  BaseCartesianChartModel,
-  ChartDataset,
-} from "metabase/visualizations/echarts/cartesian/model/types";
-import type {
-  ClickObject,
-  VisualizationProps,
-} from "metabase/visualizations/types";
-import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type { CardId } from "metabase-types/api";
-import { ORIGINAL_INDEX_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,

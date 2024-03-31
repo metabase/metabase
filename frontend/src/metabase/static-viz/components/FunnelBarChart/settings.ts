@@ -1,7 +1,7 @@
+import { getCommonStaticVizSettings } from "metabase/static-viz/lib/settings";
+import { getDefaultDimensionAndMetric } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { RawSeries, VisualizationSettings } from "metabase-types/api";
-import { getDefaultDimensionAndMetric } from "metabase/visualizations/lib/utils";
-import { getCommonStaticVizSettings } from "metabase/static-viz/lib/settings";
 
 export const computeFunnelBarChartSettings = (
   rawSeries: RawSeries,

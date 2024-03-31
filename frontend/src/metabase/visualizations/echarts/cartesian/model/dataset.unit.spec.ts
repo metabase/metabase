@@ -1,24 +1,25 @@
 import {
-  createMockCard,
-  createMockColumn,
-  createMockDatasetData,
-  createMockVisualizationSettings,
-} from "metabase-types/api/mocks";
+  NEGATIVE_STACK_TOTAL_DATA_KEY,
+  POSITIVE_STACK_TOTAL_DATA_KEY,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
   BreakoutChartColumns,
   CartesianChartColumns,
 } from "metabase/visualizations/lib/graph/columns";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import {
   numericScale,
   type RowValue,
   type SingleSeries,
 } from "metabase-types/api";
 import {
-  NEGATIVE_STACK_TOTAL_DATA_KEY,
-  POSITIVE_STACK_TOTAL_DATA_KEY,
-  X_AXIS_DATA_KEY,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+  createMockCard,
+  createMockColumn,
+  createMockDatasetData,
+  createMockVisualizationSettings,
+} from "metabase-types/api/mocks";
+
 import {
   sumMetric,
   getDatasetKey,

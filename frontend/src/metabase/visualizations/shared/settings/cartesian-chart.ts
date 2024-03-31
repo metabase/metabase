@@ -1,6 +1,11 @@
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
+
+import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
+import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
+import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   CardDisplayType,
@@ -9,10 +14,6 @@ import type {
   RawSeries,
   SeriesOrderSetting,
 } from "metabase-types/api";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
-import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
-import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
-import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 
 export const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar"]);
 

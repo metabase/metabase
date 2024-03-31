@@ -1,4 +1,5 @@
 import type { ComponentStory } from "@storybook/react";
+
 import { color } from "metabase/lib/colors";
 import { formatStaticValue } from "metabase/static-viz/lib/format";
 import { measureTextWidth } from "metabase/static-viz/lib/text";

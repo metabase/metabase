@@ -1,6 +1,8 @@
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
+
 import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
+
 import type {
   TimeSeriesAxisFormatter,
   TimeSeriesXAxisModel,
