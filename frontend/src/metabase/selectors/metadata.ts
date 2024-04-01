@@ -59,7 +59,7 @@ const getApiTables = createSelector(getApiState, state => {
 
   return entries
     .map(entry => {
-      const selector = fieldApi.endpoints.getTableMetadata.select(
+      const selector = tableApi.endpoints.getTableMetadata.select(
         entry.originalArgs,
       );
       const { data } = selector(state);
