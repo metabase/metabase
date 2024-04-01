@@ -21,6 +21,10 @@ const VALUES = [
   "1-799 Smith Road",
 ];
 
+const userEvent2 = userEvent.setup({
+  advanceTimers: jest.advanceTimersByTime,
+});
+
 function setup(value: string, values: string[], searchDebounceMs?: number) {
   const onChangeMock = jest.fn();
   const onClearMock = jest.fn();
@@ -51,35 +55,41 @@ function setup(value: string, values: string[], searchDebounceMs?: number) {
 }
 
 describe("ListPicker", () => {
-  it("onSearchChange fires only once per input char", () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+  it("onSearchChange fires only once per input char", async () => {
     const { onSearchChange } = setup("", VALUES.slice());
 
     const select = screen.getByPlaceholderText("Pick values");
     expect(onSearchChange).toHaveBeenCalledTimes(1);
     expect(onSearchChange).toHaveBeenCalledWith("");
 
-    userEvent.click(select);
-    userEvent.type(select, "A");
+    await userEvent.click(select);
+    await userEvent.type(select, "A");
     expect(onSearchChange).toHaveBeenCalledTimes(2);
     expect(onSearchChange).toHaveBeenCalledWith("A");
 
-    userEvent.type(select, "B");
+    await userEvent.type(select, "B");
     expect(onSearchChange).toHaveBeenCalledTimes(3);
     expect(onSearchChange).toHaveBeenCalledWith("AB");
   });
 
   it("onSearchChange debounced works", async () => {
+    jest.useFakeTimers({ advanceTimers: false });
     const { onSearchChange } = setup("", VALUES.slice(), 100);
     const select = screen.getByPlaceholderText("Pick values");
 
-    userEvent.click(select);
-    userEvent.type(select, "H");
-    userEvent.type(select, "e");
-    userEvent.type(select, "l");
-    userEvent.type(select, "l");
-    userEvent.type(select, "o");
+    await userEvent2.click(select);
+    await userEvent2.type(select, "H");
+    await userEvent2.type(select, "e");
+    await userEvent2.type(select, "l");
+    await userEvent2.type(select, "l");
+    await userEvent2.type(select, "o");
 
-    await waitFor(() => expect(onSearchChange).toHaveBeenCalledTimes(1));
+    expect(onSearchChange).toHaveBeenCalledTimes(0);
+    jest.advanceTimersByTime(101);
+    expect(onSearchChange).toHaveBeenCalledTimes(1);
     expect(onSearchChange).toHaveBeenCalledWith("Hello");
   });
 
@@ -87,10 +97,10 @@ describe("ListPicker", () => {
     const { onSearchChange, unmount } = setup("", VALUES.slice(), 100);
     const select = screen.getByPlaceholderText("Pick values");
 
-    userEvent.click(select);
-    userEvent.type(select, "B");
-    userEvent.type(select, "y");
-    userEvent.type(select, "e");
+    await userEvent.click(select);
+    await userEvent.type(select, "B");
+    await userEvent.type(select, "y");
+    await userEvent.type(select, "e");
     unmount();
 
     // Careful, this won't catch calling it after the component was unmounted

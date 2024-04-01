@@ -43,7 +43,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       expect(await screen.findByText("Instance Analytics")).toBeInTheDocument();
       expect(await screen.findAllByText("View")).toHaveLength(3);
 
-      userEvent.click(
+      await userEvent.click(
         await screen.findAllByText("View").then(dropdowns => dropdowns[2]),
       );
 
@@ -62,7 +62,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       expect(await screen.findByText("Instance Analytics")).toBeInTheDocument();
       expect(await screen.findAllByText("View")).toHaveLength(3);
 
-      userEvent.hover(
+      await userEvent.hover(
         await screen.findAllByText("View").then(dropdowns => dropdowns[1]),
       );
 
@@ -80,22 +80,22 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       });
 
       // change all users users view to no access
-      userEvent.click(
+      await userEvent.click(
         await screen.findAllByText("View").then(dropdowns => dropdowns[0]),
       );
-      userEvent.click(await screen.findByText("No access"));
+      await userEvent.click(await screen.findByText("No access"));
 
       expect(
         await screen.findByText("You've made changes to permissions."),
       ).toBeInTheDocument();
 
-      userEvent.click(await screen.findByText("Save changes"));
+      await userEvent.click(await screen.findByText("Save changes"));
 
       // are you sure you want to save?
-      userEvent.click(await screen.findByText("Yes"));
+      await userEvent.click(await screen.findByText("Yes"));
 
       expect(
-        await screen.findByText("You've made changes to permissions."),
+        screen.queryByText("You've made changes to permissions."),
       ).not.toBeInTheDocument();
 
       expect(await screen.findAllByText("View")).toHaveLength(2);

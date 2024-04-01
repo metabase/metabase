@@ -57,7 +57,7 @@ export default class QuestionAlertWidget extends Component {
           <Popover
             target={this.rootRef.current}
             isOpen={isOpen}
-            className={isFrozen ? "hide" : null}
+            className={isFrozen ? CS.hide : null}
             onClose={this.close}
           >
             <AlertListPopoverContent

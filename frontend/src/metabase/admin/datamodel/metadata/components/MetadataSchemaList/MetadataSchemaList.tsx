@@ -80,7 +80,7 @@ const MetadataSchemaList = ({
   return (
     <aside className={cx(AdminS.AdminList, CS.flexNoShrink)}>
       <div className={AdminS.AdminListSearch}>
-        <Icon name="search" size={16} />
+        <Icon className={AdminS.Icon} name="search" size={16} />
         <input
           className={cx(AdminS.AdminInput, CS.pl4, CS.borderBottom)}
           type="text"

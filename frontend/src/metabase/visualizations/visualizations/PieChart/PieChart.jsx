@@ -50,7 +50,7 @@ export default class PieChart extends Component {
   constructor(props) {
     super(props);
 
-    this.state = { width: 0, height: 0 };
+    this.state = { width: 0, height: 0, showChartDetail: true };
 
     this.chartContainer = createRef();
     this.chartDetail = createRef();
@@ -279,14 +279,11 @@ export default class PieChart extends Component {
         return;
       }
 
-      if (
-        groupElement.getBoundingClientRect().width < 120 ||
-        !settings["pie.show_total"]
-      ) {
-        detailElement.classList.add("hide");
-      } else {
-        detailElement.classList.remove("hide");
-      }
+      const showChartDetail =
+        groupElement.getBoundingClientRect().width >= 120 &&
+        settings["pie.show_total"];
+
+      this.setState({ showChartDetail });
     });
 
     if (
@@ -540,18 +537,22 @@ export default class PieChart extends Component {
       >
         <div>
           <div ref={this.chartDetail} className={styles.Detail}>
-            <div
-              data-testid="detail-value"
-              className={cx(
-                styles.Value,
-                DashboardS.fullscreenNormalText,
-                DashboardS.fullscreenNightText,
-                EmbedFrameS.fullscreenNightText,
-              )}
-            >
-              {value}
-            </div>
-            <div className={styles.Title}>{title}</div>
+            {this.state.showChartDetail && (
+              <>
+                <div
+                  data-testid="detail-value"
+                  className={cx(
+                    styles.Value,
+                    DashboardS.fullscreenNormalText,
+                    DashboardS.fullscreenNightText,
+                    EmbedFrameS.fullscreenNightText,
+                  )}
+                >
+                  {value}
+                </div>
+                <div className={styles.Title}>{title}</div>
+              </>
+            )}
           </div>
           <div
             ref={this.chartContainer}
