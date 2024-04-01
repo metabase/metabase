@@ -169,7 +169,7 @@
                        [:and [:= :model (name k)] [:= :model_id v]])
           cnt        (when (seq conditions)
                        ;; using JVM date rather than DB time since it's what are used in cache tasks
-                       (t2/update! CacheConfig {:id [:in {:from   (t2/table-name CacheConfig)
+                       (t2/update! CacheConfig {:id [:in {:from   [(t2/table-name CacheConfig) :cc]
                                                           :select [:id]
                                                           :where  (into [:or] conditions)}]}
                                    {:invalidated_at (t/offset-date-time)}))]
