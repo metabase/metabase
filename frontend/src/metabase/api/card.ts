@@ -48,6 +48,7 @@ export const cardApi = Api.injectEndpoints({
       invalidatesTags: (card, error, { id }) => [
         listTag("card"),
         idTag("card", id),
+        idTag("table", `card__${id}`),
       ],
     }),
     deleteCard: builder.mutation<void, CardId>({
@@ -58,6 +59,7 @@ export const cardApi = Api.injectEndpoints({
       invalidatesTags: (response, error, id) => [
         listTag("card"),
         idTag("card", id),
+        idTag("table", `card__${id}`),
       ],
     }),
     copyCard: builder.mutation<Card, CardId>({
