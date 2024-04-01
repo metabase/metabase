@@ -20,11 +20,12 @@
 (methodical/defmethod t2/table-name :model/FieldUsage [_model] :field_usage)
 
 (t2/deftransforms :model/FieldUsage
-  {:used_in              mi/transform-keyword
-   :aggregation_function mi/transform-keyword
-   :filter_op            mi/transform-keyword
-   :filter_args          mi/transform-json
-   :breakout_param       mi/transform-json})
+  {:used_in                mi/transform-keyword
+   :aggregation_function   mi/transform-keyword
+   :breakout_temporal_unit mi/transform-keyword
+   :breakout_binning       mi/transform-json
+   :filter_op              mi/transform-keyword
+   :filter_args            mi/transform-json})
 
 (t2/define-before-insert :model/FieldUsage
   [instance]

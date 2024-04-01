@@ -6078,6 +6078,19 @@ databaseChangeLog:
             columnNames: model, model_id
 
   - changeSet:
+      id: v50.2024-03-21T17:41:00
+      author: qnkhuat
+      comment: Add metabase_table.estimated_row_count
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: estimated_row_count
+                  type: bigint
+                  remarks: The estimated row count
+
+  - changeSet:
       id: v50.2024-03-22T00:38:28
       author: qnkhuat
       comment: Add field_usage table
@@ -6130,8 +6143,13 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  name: breakout_param
-                  type: text
+                  name: breakout_temporal_unit
+                  type: varchar(25)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: breakout_binning
+                  type: varchar(256)
                   constraints:
                     nullable: true
               - column:
@@ -6143,22 +6161,9 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v50.2024-03-21T17:41:00
-      author: qnkhuat
-      comment: Add metabase_table.estimated_row_count
-      changes:
-        - addColumn:
-            tableName: metabase_table
-            columns:
-              - column:
-                  name: estimated_row_count
-                  type: bigint
-                  remarks: The estimated row count
-
-  - changeSet:
       id: v50.2024-03-22T00:39:28
       author: qnkhuat
-      comment: Add field_usage table
+      comment: Index field_usage.field_id
       rollback: # not necessary, will be removed with the table
       changes:
         - createIndex:

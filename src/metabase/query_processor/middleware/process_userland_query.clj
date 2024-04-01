@@ -26,6 +26,11 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:dynamic *save-execution-meatdata-async*
+  "Whether to save execution metadata like QueryExecution or FieldUsage asynchronously.
+  It's true by default and should only be changed for testing purposes"
+  false)
+
 (defn- add-running-time [{start-time-ms :start_time_millis, :as query-execution}]
   (-> query-execution
       (assoc :running_time (when start-time-ms
@@ -55,20 +60,23 @@
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
   [execution-info field-usages]
-  (let [execution-info (add-running-time execution-info)]
-    ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
-    ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
-    ;;    background query execution saving (as `future` would do, which uses an unbounded thread pool by default)
-    ;;
-    ;; 2. This is on purpose! By *not* using `bound-fn` or `future`, any dynamic variables in play when the task is
-    ;;    submitted, such as `db/*connection*`, won't be in play when the task is actually executed. That way we won't
-    ;;    attempt to use closed DB connections
-    (.submit clojure.lang.Agent/pooledExecutor ^Runnable (fn []
-                                                           (log/trace "Saving QueryExecution info")
-                                                           (try
-                                                             (save-execution-metadata!* execution-info field-usages)
-                                                             (catch Throwable e
-                                                               (log/error e (trs "Error saving query execution info"))))))))
+  (let [execution-info (add-running-time execution-info)
+        ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
+        ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
+        ;;    background query execution saving (as `future` would do, which uses an unbounded thread pool by default)
+        ;;
+        ;; 2. This is on purpose! By *not* using `bound-fn` or `future`, any dynamic variables in play when the task is
+        ;;    submitted, such as `db/*connection*`, won't be in play when the task is actually executed. That way we won't
+        ;;    attempt to use closed DB connections
+        f              (fn []
+                         (log/trace "Saving QueryExecution info")
+                         (try
+                          (save-execution-metadata!* execution-info field-usages)
+                          (catch Throwable e
+                            (log/error e (trs "Error saving query execution info")))))]
+    (if *save-execution-meatdata-async*
+      (.submit clojure.lang.Agent/pooledExecutor ^Runnable f)
+      (f))))
 
 (defn- save-successful-execution-metadata! [cache-details is-sandboxed? query-execution result-rows field-usages]
   (let [qe-map (assoc query-execution
