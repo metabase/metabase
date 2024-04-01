@@ -47,6 +47,7 @@ export const LabelContainer = styled.div`
   align-items: center;
   column-gap: 0.3em;
   font-size: 1em;
+  font-weight: normal;
   color: ${({ color: _color = "brand" }) => color(_color)};
 `;
 
