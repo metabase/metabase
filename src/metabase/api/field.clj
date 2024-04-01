@@ -403,7 +403,7 @@
       (get-in results [:data :rows]))
     (catch Throwable e
       (log/error e (trs "Error searching field values"))
-      nil))))
+      []))))
 
 (api/defendpoint GET "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
