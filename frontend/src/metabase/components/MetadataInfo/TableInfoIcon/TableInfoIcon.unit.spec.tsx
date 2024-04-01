@@ -28,6 +28,8 @@ function setup({ table, showIfEmpty }: SetupOpts) {
 
 describe("TableInfoIcon", () => {
   it("should show the hovercard only on hover", async () => {
+    jest.useFakeTimers();
+
     const description = "This a table description";
     const table = createMockTable({ description });
     setup({ table });
@@ -38,6 +40,7 @@ describe("TableInfoIcon", () => {
     expect(screen.queryByText(description)).not.toBeInTheDocument();
 
     fireEvent.mouseEnter(icon);
+    jest.advanceTimersByTime(1000);
 
     expect(screen.getByText(description, { exact: false })).toBeInTheDocument();
   });

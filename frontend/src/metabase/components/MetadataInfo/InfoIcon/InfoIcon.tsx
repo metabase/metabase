@@ -1,1 +1,1 @@
-export const defaultDelay: [number, number] = [0, 150];
+export const defaultDelay: [number, number] = [250, 150];
