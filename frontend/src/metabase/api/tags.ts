@@ -1,11 +1,12 @@
 export const TAG_TYPES = [
   "api-key",
+  "card",
   "database",
-  "schema",
-  "table",
   "field",
   "field-values",
-  "card",
+  "schema",
+  "segment",
+  "table",
 ] as const;
 
 export type TagType = typeof TAG_TYPES[number];
