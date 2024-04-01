@@ -17,10 +17,3 @@ declare module "*.css" {
   // eslint-disable-next-line import/no-default-export -- deprecated usage
   export default content;
 }
-
-declare module "*.css" {
-  const classes: { [key: string]: string };
-
-  // eslint-disable-next-line import/no-default-export -- deprecated usage
-  export default content;
-}
