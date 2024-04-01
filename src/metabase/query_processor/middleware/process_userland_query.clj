@@ -29,7 +29,7 @@
 (def ^:dynamic *save-execution-meatdata-async*
   "Whether to save execution metadata like QueryExecution or FieldUsage asynchronously.
   It's true by default and should only be changed for testing purposes"
-  false)
+  true)
 
 (defn- add-running-time [{start-time-ms :start_time_millis, :as query-execution}]
   (-> query-execution
@@ -157,7 +157,9 @@
 
 (defn- query->field-usages
   [query]
-  (field-usage/pquery->field-usages (->> query (lib/query (qp.store/metadata-provider)) fetch-source-query/resolve-source-cards)))
+  (field-usage/pquery->field-usages (->> query
+                                         (lib/query (qp.store/metadata-provider))
+                                         fetch-source-query/resolve-source-cards)))
 
 (mu/defn process-userland-query-middleware :- ::qp.schema/qp
   "Around middleware.
