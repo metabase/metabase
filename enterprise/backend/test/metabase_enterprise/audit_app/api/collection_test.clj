@@ -83,7 +83,6 @@
                                      Collection _                   {:name     "Crowberto's Child Collection"
                                                                      :location (collection/location-path crowberto-root)}]
               (let [public-collection-names  #{"Our analytics"
-                                               "Examples"
                                                (:name collection)
                                                "Collection with Items"
                                                "subcollection"}
@@ -95,7 +94,7 @@
                                      public-collection-names
                                      (t2/select-fn-set :name Collection {:where [:and [:= :type nil] [:= :archived false]]})))
                        crowbertos))
-                (is (= (into #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"}
+                (is (= (into #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection" "Examples"}
                              (concat (instance-analytics-collection-names) public-collection-names))
                        crowbertos-with-excludes))
                 (is (true? (contains? crowbertos "Lucky Pigeon's Personal Collection")))
