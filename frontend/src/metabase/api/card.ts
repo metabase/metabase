@@ -39,13 +39,6 @@ export const cardApi = Api.injectEndpoints({
       }),
       invalidatesTags: [listTag("card")],
     }),
-    copyCard: builder.mutation<Card, CardId>({
-      query: id => ({
-        method: "POST",
-        url: `/api/card/${id}/copy`,
-      }),
-      invalidatesTags: [listTag("card")],
-    }),
     updateCard: builder.mutation<Card, UpdateCardRequest>({
       query: ({ id, ...body }) => ({
         method: "PUT",
@@ -57,7 +50,31 @@ export const cardApi = Api.injectEndpoints({
         idTag("card", id),
       ],
     }),
+    deleteCard: builder.mutation<void, CardId>({
+      query: id => ({
+        method: "DELETE",
+        url: `/api/card/${id}`,
+      }),
+      invalidatesTags: (response, error, id) => [
+        listTag("card"),
+        idTag("card", id),
+      ],
+    }),
+    copyCard: builder.mutation<Card, CardId>({
+      query: id => ({
+        method: "POST",
+        url: `/api/card/${id}/copy`,
+      }),
+      invalidatesTags: [listTag("card")],
+    }),
   }),
 });
 
-export const { useListCardsQuery } = cardApi;
+export const {
+  useListCardsQuery,
+  useGetCardQuery,
+  useCreateCardMutation,
+  useUpdateCardMutation,
+  useDeleteCardMutation,
+  useCopyCardMutation,
+} = cardApi;
