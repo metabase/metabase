@@ -6111,7 +6111,6 @@ databaseChangeLog:
                   name: field_id
                   remarks: ID of the field
                   type: int
-                  autoIncrement: true
                   constraints:
                     nullable: false
                     referencedTableName: metabase_field
@@ -6122,7 +6121,6 @@ databaseChangeLog:
                   name: query_execution_id
                   remarks: referenced query execution
                   type: int
-                  autoIncrement: true
                   constraints:
                     nullable: false
                     referencedTableName: query_execution
