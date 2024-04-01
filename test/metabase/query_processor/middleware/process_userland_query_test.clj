@@ -68,7 +68,7 @@
         (qp query qp.reducible/default-rff)))))
 
 (deftest success-test
-  (let [query (mt/mbql-query venues)]
+  (let [query {:database 2, :type :query, :query {:source-table 26}}]
     (with-query-execution [qe query]
       (is (= #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
              (t/zoned-date-time))
@@ -105,7 +105,7 @@
           "QueryExecution should be saved"))))
 
 (deftest failure-test
-  (let [query (mt/mbql-query venues)]
+  (let [query {:database 2, :type :query, :query {:source-table 26}}]
     (with-query-execution [qe query]
       (binding [qp.pipeline/*run* (fn [_query _rff]
                                     (throw (ex-info "Oops!" {:type qp.error-type/qp})))]
