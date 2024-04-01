@@ -59,6 +59,9 @@ describe("scenarios > models", () => {
         idAlias: "productsQuestionId",
       },
     );
+    cy.intercept("GET", "/api/database/**/autocomplete_suggestions?**").as(
+      "suggestions",
+    );
   });
 
   it("allows to turn a GUI question into a model", () => {
@@ -476,8 +479,9 @@ describe("scenarios > models", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open editor/i).click();
     cy.get(".ace_content").type(
-      "{leftarrow}{leftarrow}{backspace}{backspace}#1",
+      "{leftarrow}{leftarrow}{backspace}{backspace}#1-orders",
     );
+    cy.wait("@suggestions");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 

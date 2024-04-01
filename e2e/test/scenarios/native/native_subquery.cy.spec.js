@@ -15,6 +15,9 @@ describe("scenarios > question > native subquery", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("GET", "/api/database/**/card_autocomplete_suggestions?**").as(
+      "suggestions",
+    );
   });
 
   it("typing a card tag should open the data reference", () => {
@@ -298,6 +301,7 @@ describe("scenarios > question > native subquery", () => {
         });
         cy.wait("@loadQuestion");
 
+        cy.wait("@suggestions");
         cy.findByTestId("sidebar-header-title").should(
           "have.text",
           questionDetails.name,
