@@ -21,3 +21,7 @@ export function listTag(type: TagType) {
 export function idTag(type: TagType, id: string | number) {
   return { type, id };
 }
+
+export function invalidateTags<T>(error: unknown, tags: T[]) {
+  return !error ? tags : [];
+}

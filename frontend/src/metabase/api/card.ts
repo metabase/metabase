@@ -8,7 +8,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag, listTag } from "./tags";
+import { idTag, invalidateTags, listTag } from "./tags";
 
 export const cardApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -29,7 +29,7 @@ export const cardApi = Api.injectEndpoints({
         url: `/api/card/${id}`,
         body,
       }),
-      providesTags: (card, error, { id }) => [idTag("card", id)],
+      providesTags: card => (card ? [idTag("card", card.id)] : []),
     }),
     createCard: builder.mutation<Card, CreateCardRequest>({
       query: body => ({
@@ -37,7 +37,7 @@ export const cardApi = Api.injectEndpoints({
         url: "/api/card",
         body,
       }),
-      invalidatesTags: [listTag("card")],
+      invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
     }),
     updateCard: builder.mutation<Card, UpdateCardRequest>({
       query: ({ id, ...body }) => ({
@@ -45,29 +45,31 @@ export const cardApi = Api.injectEndpoints({
         url: `/api/card/${id}`,
         body,
       }),
-      invalidatesTags: (card, error, { id }) => [
-        listTag("card"),
-        idTag("card", id),
-        idTag("table", `card__${id}`),
-      ],
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [
+          listTag("card"),
+          idTag("card", id),
+          idTag("table", `card__${id}`),
+        ]),
     }),
     deleteCard: builder.mutation<void, CardId>({
       query: id => ({
         method: "DELETE",
         url: `/api/card/${id}`,
       }),
-      invalidatesTags: (response, error, id) => [
-        listTag("card"),
-        idTag("card", id),
-        idTag("table", `card__${id}`),
-      ],
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [
+          listTag("card"),
+          idTag("card", id),
+          idTag("table", `card__${id}`),
+        ]),
     }),
     copyCard: builder.mutation<Card, CardId>({
       query: id => ({
         method: "POST",
         url: `/api/card/${id}/copy`,
       }),
-      invalidatesTags: [listTag("card")],
+      invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
     }),
   }),
 });
