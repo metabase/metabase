@@ -15,6 +15,7 @@
     "copy-required-checks": "tsx ./src/required-checks.ts",
     "test:unit": "jest --testPathPattern unit",
     "test:integration": "jest --testPathPattern integration",
+    "auto-translate": "tsx src/auto-translate.ts",
     "type-check": "tsc --noEmit"
   },
   "author": "Metabase",
