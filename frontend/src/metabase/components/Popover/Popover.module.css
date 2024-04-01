@@ -99,7 +99,7 @@
   margin-bottom: 0.75rem;
 }
 
-:global(.PopoverFooter) {
+.PopoverFooter {
   background: white;
   position: absolute;
   bottom: 0;
