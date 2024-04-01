@@ -9,7 +9,7 @@ import {
   updateSchemasPermission,
   updateTablesPermission,
   updatePermission,
-  getNativePermission,
+  getSchemasPermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import Group from "metabase/entities/groups";
@@ -306,7 +306,6 @@ const dataPermissions = handleActions(
           permissionInfo.type === DataPermissionType.NATIVE &&
           PLUGIN_DATA_PERMISSIONS.updateNativePermission
         ) {
-          // TODO: rename plugin...
           PLUGIN_DATA_PERMISSIONS.updateNativePermission(
             state,
             groupId,
@@ -318,9 +317,12 @@ const dataPermissions = handleActions(
         }
 
         // TODO: consolidate this block somehow...
-        const currDbNativePermission = getNativePermission(state, groupId, {
-          databaseId: entityId.databaseId,
-        });
+        const currDbNativePermission = getSchemasPermission(
+          state,
+          groupId,
+          { databaseId: entityId.databaseId },
+          DataPermission.CREATE_QUERIES,
+        );
         const shouldGranulateNative =
           permissionInfo.permission === DataPermission.CREATE_QUERIES &&
           (entityId.tableId != null || entityId.schemaName != null) &&

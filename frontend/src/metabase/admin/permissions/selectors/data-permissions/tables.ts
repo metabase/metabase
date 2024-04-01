@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
 import {
-  getNativePermission,
+  getSchemasPermission,
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import {
@@ -113,7 +113,19 @@ const buildNativePermission = (
 ): PermissionSectionConfig => {
   const { databaseId } = entityId;
 
-  const dbValue = getNativePermission(permissions, groupId, { databaseId });
+  const dbValue = getSchemasPermission(
+    permissions,
+    groupId,
+    { databaseId },
+    DataPermission.CREATE_QUERIES,
+  );
+
+  const value = getTablesPermission(
+    permissions,
+    groupId,
+    entityId,
+    DataPermission.CREATE_QUERIES,
+  );
 
   return {
     permission: DataPermission.CREATE_QUERIES,
@@ -124,7 +136,7 @@ const buildNativePermission = (
       accessPermissionValue,
     ),
     isHighlighted: isAdmin,
-    value: getNativePermission(permissions, groupId, entityId),
+    value,
     options: _.compact([
       dbValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
         DATA_PERMISSION_OPTIONS.queryBuilderAndNative,

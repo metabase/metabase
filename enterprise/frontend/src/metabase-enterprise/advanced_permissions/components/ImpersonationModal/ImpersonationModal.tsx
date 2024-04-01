@@ -105,17 +105,19 @@ const _ImpersonationModal = ({ route, params }: ImpersonationModalProps) => {
         }),
       );
 
-      dispatch(
-        updateImpersonation({
-          attribute,
-          db_id: databaseId,
-          group_id: groupId,
-        }),
-      );
+      if (attribute !== selectedAttribute) {
+        dispatch(
+          updateImpersonation({
+            attribute,
+            db_id: databaseId,
+            group_id: groupId,
+          }),
+        );
+      }
 
       close();
     },
-    [close, databaseId, dispatch, groupId],
+    [close, databaseId, dispatch, groupId, selectedAttribute],
   );
 
   const handleCancel = useCallback(() => {

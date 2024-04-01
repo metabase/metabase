@@ -130,19 +130,6 @@ export const getSchemasPermission = (
   });
 };
 
-export const getNativePermission = (
-  permissions: GroupsPermissions,
-  groupId: number,
-  entityId: any, // TODO: fix typing, getFieldsPermission should probably be replaced with getPermission
-): DataPermissionValue => {
-  return getFieldsPermission(
-    permissions,
-    groupId,
-    entityId,
-    DataPermission.CREATE_QUERIES,
-  );
-};
-
 export const getTablesPermission = (
   permissions: GroupsPermissions,
   groupId: number,

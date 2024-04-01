@@ -1,10 +1,7 @@
 import _ from "underscore";
 
 import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
-import {
-  getNativePermission,
-  getSchemasPermission,
-} from "metabase/admin/permissions/utils/graph";
+import { getSchemasPermission } from "metabase/admin/permissions/utils/graph";
 import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
@@ -121,19 +118,21 @@ const buildNativePermission = (
   defaultGroup: Group,
   accessPermissionValue: DataPermissionValue,
 ): PermissionSectionConfig => {
-  const nativePermissionValue = getNativePermission(
+  const value = getSchemasPermission(
     permissions,
     groupId,
     entityId,
+    DataPermission.CREATE_QUERIES,
   );
 
-  const defaultGroupNativePermissionValue = getNativePermission(
+  const defaultGroupNativePermissionValue = getSchemasPermission(
     permissions,
     defaultGroup.id,
     entityId,
+    DataPermission.CREATE_QUERIES,
   );
   const nativePermissionWarning = getPermissionWarning(
-    nativePermissionValue,
+    value,
     defaultGroupNativePermissionValue,
     null,
     defaultGroup,
@@ -162,7 +161,7 @@ const buildNativePermission = (
     isDisabled: disabledTooltip != null,
     disabledTooltip,
     isHighlighted: isAdmin,
-    value: nativePermissionValue,
+    value,
     warning: nativePermissionWarning,
     confirmations: nativePermissionConfirmations,
     options: [
@@ -181,9 +180,9 @@ const buildNativePermission = (
             permission: DataPermission.CREATE_QUERIES,
           },
           newValue,
-          nativePermissionValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
+          value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
             ? DataPermissionValue.QUERY_BUILDER
-            : nativePermissionValue,
+            : value,
         ),
     },
   };

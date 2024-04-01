@@ -5,6 +5,7 @@ import {
 } from "metabase/admin/permissions/permissions";
 import {
   DataPermission,
+  DataPermissionValue,
   DataPermissionType,
 } from "metabase/admin/permissions/types";
 import {
@@ -47,7 +48,7 @@ export const updateTableSandboxingPermission = createThunkAction(
           type: DataPermissionType.ACCESS,
           permission: DataPermission.VIEW_DATA,
         },
-        value: DataPermissionType.SANDBOXED,
+        value: DataPermissionValue.SANDBOXED,
         entityId,
       }),
     );

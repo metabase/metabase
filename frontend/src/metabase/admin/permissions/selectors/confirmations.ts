@@ -7,7 +7,6 @@ import {
 } from "metabase/admin/permissions/utils/data-entity-id";
 import {
   getFieldsPermission,
-  getNativePermission,
   getSchemasPermission,
 } from "metabase/admin/permissions/utils/graph";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -130,7 +129,13 @@ export function getRawQueryWarningModal(
   entityId: EntityId,
   value: DataPermissionValue,
 ) {
-  const nativePermission = getNativePermission(permissions, groupId, entityId);
+  const nativePermission = getSchemasPermission(
+    permissions,
+    groupId,
+    entityId,
+    DataPermission.CREATE_QUERIES,
+  );
+
   const viewPermission = getSchemasPermission(
     permissions,
     groupId,
@@ -173,8 +178,12 @@ export function getRevokingAccessToAllTablesWarningModal(
       entityId,
       DataPermission.VIEW_DATA,
     ) === DataPermissionValue.CONTROLLED &&
-    getNativePermission(permissions, groupId, entityId) !==
-      DataPermissionValue.NO
+    getSchemasPermission(
+      permissions,
+      groupId,
+      entityId,
+      DataPermission.CREATE_QUERIES,
+    ) !== DataPermissionValue.NO
   ) {
     // allTableEntityIds contains tables from all schemas
     const allTableEntityIds = database.getTables().map(table => ({
