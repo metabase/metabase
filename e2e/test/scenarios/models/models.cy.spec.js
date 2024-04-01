@@ -28,6 +28,7 @@ import {
   saveDashboard,
   getNotebookStep,
   selectFilterOperator,
+  focusNativeEditor,
 } from "e2e/support/helpers";
 import { questionInfoButton } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
@@ -58,9 +59,6 @@ describe("scenarios > models", () => {
         wrapId: true,
         idAlias: "productsQuestionId",
       },
-    );
-    cy.intercept("GET", "/api/database/**/autocomplete_suggestions?**").as(
-      "suggestions",
     );
   });
 
@@ -478,10 +476,9 @@ describe("scenarios > models", () => {
     // Check card tags are supported by models
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open editor/i).click();
-    cy.get(".ace_content").type(
+    focusNativeEditor().type(
       "{leftarrow}{leftarrow}{backspace}{backspace}#1-orders",
     );
-    cy.wait("@suggestions");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
