@@ -16,7 +16,8 @@
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.io OutputStream)
-   (metabase.async.streaming_response StreamingResponse)))
+   (metabase.async.streaming_response StreamingResponse)
+   (org.eclipse.jetty.io EofException)))
 
 (set! *warn-on-reflection* true)
 
@@ -139,7 +140,10 @@
     (fn result [result]
       (when (= (:status result) :completed)
         (log/debug "Finished writing results; closing results writer.")
-        (qp.si/finish! results-writer result)
+        (try
+          (qp.si/finish! results-writer result)
+          (catch EofException _
+            (log/error "Client closed connection prematurely")))
         (u/ignore-exceptions
           (.flush os)
           (.close os)))
