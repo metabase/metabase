@@ -13,8 +13,11 @@ import {
 // TODO: merge with Breadcrumbs
 
 const Crumb = ({ children }) => (
-  <h5 className={cx(CS.textUppercase, CS.textMedium, CS.textHeavy)}>
-    style={{ fontWeight: 900 }}>{children}
+  <h5
+    className={cx(CS.textUppercase, CS.textMedium, CS.textHeavy)}
+    style={{ fontWeight: 900 }}
+  >
+    {children}
   </h5>
 );
 
