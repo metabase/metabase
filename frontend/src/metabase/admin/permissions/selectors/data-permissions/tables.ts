@@ -109,7 +109,7 @@ const buildNativePermission = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
-  accessPermissionValue: string,
+  accessPermissionValue: DataPermissionValue,
 ): PermissionSectionConfig => {
   const { databaseId } = entityId;
 

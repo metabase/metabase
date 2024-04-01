@@ -119,7 +119,7 @@ const buildNativePermission = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   defaultGroup: Group,
-  accessPermissionValue: string,
+  accessPermissionValue: DataPermissionValue,
 ): PermissionSectionConfig => {
   const nativePermissionValue = getNativePermission(
     permissions,

@@ -63,14 +63,13 @@ export enum DataPermissionValue {
   QUERY_BUILDER_AND_NATIVE = "query-builder-and-native",
   SANDBOXED = "sandboxed",
   UNRESTRICTED = "unrestricted",
-  // TODO: turn off none all below and see what errors appear
-  // download values
+  // download specific values
   NONE = "none",
   LIMITED = "limited",
   FULL = "full",
-  // details values
+  // details specific values
   YES = "yes",
-  // data model
+  // data model specific values
   ALL = "all",
 }
 

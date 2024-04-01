@@ -165,7 +165,7 @@ export const updateDataPermission = createThunkAction(
       trackPermissionChange(
         entityId,
         permissionInfo.permission,
-        permissionInfo.type === "native",
+        permissionInfo.type === DataPermissionType.NATIVE,
         value,
       );
 

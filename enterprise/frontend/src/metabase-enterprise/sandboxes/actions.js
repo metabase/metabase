@@ -4,6 +4,10 @@ import {
   LOAD_DATA_PERMISSIONS,
 } from "metabase/admin/permissions/permissions";
 import {
+  DataPermission,
+  DataPermissionType,
+} from "metabase/admin/permissions/types";
+import {
   createThunkAction,
   createAction,
   handleActions,
@@ -39,8 +43,11 @@ export const updateTableSandboxingPermission = createThunkAction(
     return dispatch(
       updateDataPermission({
         groupId,
-        permission: { type: "access", permission: "view-data" },
-        value: "sandboxed",
+        permission: {
+          type: DataPermissionType.ACCESS,
+          permission: DataPermission.VIEW_DATA,
+        },
+        value: DataPermissionType.SANDBOXED,
         entityId,
       }),
     );

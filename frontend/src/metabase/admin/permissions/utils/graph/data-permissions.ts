@@ -13,11 +13,15 @@ import type {
 } from "../../types";
 import { DataPermission, DataPermissionValue } from "../../types";
 
-export const isRestrictivePermission = (value: string) =>
-  value === "blocked" || value === "no";
+export const isRestrictivePermission = (value: DataPermissionValue) =>
+  value === DataPermissionValue.BLOCKED || value === DataPermissionValue.NO;
 
 // permission that do not have a nested shemas/native key
-const flatPermissions = new Set(["details", "view-data", "create-queries"]);
+const flatPermissions = new Set([
+  DataPermission.DETAILS,
+  DataPermission.VIEW_DATA,
+  DataPermission.CREATE_QUERIES,
+]);
 
 // util to ease migration of perms attributes into a flatter structure
 function getPermissionPath(
