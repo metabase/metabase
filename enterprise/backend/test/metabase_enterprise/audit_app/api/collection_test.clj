@@ -83,6 +83,7 @@
                                      Collection _                   {:name     "Crowberto's Child Collection"
                                                                      :location (collection/location-path crowberto-root)}]
               (let [public-collection-names  #{"Our analytics"
+                                               "Examples"
                                                (:name collection)
                                                "Collection with Items"
                                                "subcollection"}
