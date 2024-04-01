@@ -1,6 +1,6 @@
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 
-import type { Collection } from "./collection";
+import type { Collection, CollectionId } from "./collection";
 import type { DashboardId, DashCardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { Field } from "./field";
@@ -190,4 +190,38 @@ export interface ListCardsRequest {
 export interface GetCardRequest {
   id: CardId;
   ignore_view?: boolean;
+}
+
+export interface CreateCardRequest {
+  name: string;
+  dataset_query: DatasetQuery;
+  display: string;
+  visualization_settings: VisualizationSettings;
+  type?: CardType;
+  parameters?: Parameter[];
+  parameter_mappings?: unknown;
+  description?: string;
+  collection_id?: CollectionId;
+  collection_position?: number;
+  result_metadata?: Field[];
+  cache_ttl?: number;
+}
+
+export interface UpdateCardRequest {
+  id: CardId;
+  name?: string;
+  parameters?: Parameter[];
+  dataset_query?: DatasetQuery;
+  type?: CardType;
+  display?: string;
+  description?: string;
+  visualization_settings?: VisualizationSettings;
+  archived?: boolean;
+  enable_embedding?: boolean;
+  embedding_params?: EmbeddingParameters;
+  collection_id?: CollectionId;
+  collection_position?: number;
+  result_metadata?: Field[];
+  cache_ttl?: number;
+  collection_preview?: boolean;
 }
