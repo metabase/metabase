@@ -50,7 +50,11 @@ export const ResetAllToDefaultButton = ({
   }, [configs, setConfigs]);
 
   return (
-    <Box py=".75rem" mt="auto" style={{ marginInlineStart: "auto" }}>
+    <Box
+      pb=".75rem"
+      mt="auto"
+      style={{ marginInlineStart: "auto", marginInlineEnd: ".75rem" }}
+    >
       <FormProvider initialValues={{}} onSubmit={resetAllToDefault}>
         <ResetAllToDefaultButtonFormBody
           rootConfig={rootConfig}
@@ -105,6 +109,7 @@ const ResetAllToDefaultButtonFormBody = ({
               </Text>
             }
             variant="subtle"
+            color="error"
           />
         </Flex>
       </Form>
