@@ -23,7 +23,7 @@ const Segments = createEntity({
       ),
     get: (entityQuery, options, dispatch) =>
       entityCompatibleQuery(
-        entityQuery,
+        entityQuery.id,
         dispatch,
         segmentApi.endpoints.getSegment,
       ),
