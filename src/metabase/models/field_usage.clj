@@ -59,7 +59,9 @@
       {:field_id               field-id
        :used_in                :breakout
        :breakout_temporal_unit (lib/raw-temporal-bucket breakout-clause)
-       :breakout_binning       (lib/binning breakout-clause)})))
+       :breakout_binning       (-> (lib/binning breakout-clause)
+                                   (select-keys [:strategy :bin-width :num-bins])
+                                   not-empty)})))
 
 (defn- expression->field-usage
   [expresison-clause]
@@ -96,6 +98,7 @@
 
 (mu/defn pquery->field-usages
   "Given a pmbql query, returns field usages from filter, breakout, aggregation, expression of a query.
-  Walk all stages and joins."
+  Walk all stages and joins.
+  Expects all the source cards were resolved"
   [pquery :- ::lib.schema/query]
   (pquery->field-usages-method pquery nil pquery))

@@ -26,7 +26,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *save-execution-meatdata-async*
+(def ^:dynamic *save-execution-metadata-async*
   "Whether to save execution metadata like QueryExecution or FieldUsage asynchronously.
   It's true by default and should only be changed for testing purposes"
   true)
@@ -74,7 +74,7 @@
                           (save-execution-metadata!* execution-info field-usages)
                           (catch Throwable e
                             (log/error e (trs "Error saving query execution info")))))]
-    (if *save-execution-meatdata-async*
+    (if *save-execution-metadata-async*
       (.submit clojure.lang.Agent/pooledExecutor ^Runnable f)
       (f))))
 
@@ -177,18 +177,19 @@
     (if-not (get-in query [:middleware :userland-query?])
       (qp query rff)
       (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
-            execution-info (query-execution-info query)]
+            execution-info (query-execution-info query)
+            field-usages   (query->field-usages query)]
         (letfn [(rff* [metadata]
                   (let [result (rff metadata)]
-                    (add-and-save-execution-metadata-xform! execution-info (query->field-usages query) result)))]
+                    (add-and-save-execution-metadata-xform! execution-info field-usages result)))]
           (try
-            (qp query rff*)
-            (catch Throwable e
-              (save-failed-query-execution!
-               execution-info
-               (or
-                (some-> e ex-cause ex-message)
-                (ex-message e)))
-              (throw (ex-info (ex-message e)
-                              {:query-execution execution-info}
-                              e)))))))))
+           (qp query rff*)
+           (catch Throwable e
+             (save-failed-query-execution!
+              execution-info
+              (or
+               (some-> e ex-cause ex-message)
+               (ex-message e)))
+             (throw (ex-info (ex-message e)
+                             {:query-execution execution-info}
+                             e)))))))))

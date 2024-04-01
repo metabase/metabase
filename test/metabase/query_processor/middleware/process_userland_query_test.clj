@@ -15,7 +15,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
-   [methodical.core :as methodical]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -173,49 +174,19 @@
           (is (not @saved-query-execution?)))))))
 
 (deftest save-field-usage-test
-  (mt/with-temp [:model/Card join-card {:dataset_query (mt/mbql-query products
-                                                                      {:filter [:= $products.category "Gizmo"]})}
-                 :model/Card base-card {:dataset_query (mt/mbql-query orders
-                                                                      {:filter      [:> $orders.product_id 1]
-                                                                       :breakout    [!month.orders.created_at]
-                                                                       :aggregation [:sum $orders.tax]
-                                                                       :expressions {"exp" [:+ $orders.total 1]}
-                                                                       :joins       [{:fields       "all",
-                                                                                      :source-table (format "card__%d" (:id join-card))
-                                                                                      :condition    [:= $orders.product_id &product.products.id]
-                                                                                      :alias        "product"}]})}
-                 :model/Card card      {:dataset_query (mt/mbql-query
-                                                        nil
-                                                        {:source-table (format "card__%d" (:id base-card))
-                                                         :filter       [:between $orders.created_at "2019-01-01" "2019-12-31"]})}]
-    (let [field-usages (atom nil)]
-      (with-redefs [process-userland-query/save-execution-metadata! (fn [_info field-usages']
-                                                                      (reset! field-usages field-usages'))]
-        (process-userland-query (mt/mbql-query
-                                 nil
-                                 {:source-table (format "card__%d" (:id card))}))
-        (is (= #{;; from join-card
-                 {:used_in                :filter
-                  :field_id               (mt/id :products :category)
+  (let [random-category (mt/random-name)]
+    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query products {:filter [:= $products.category random-category]})}]
+      (binding [process-userland-query/*save-execution-metadata-async* false]
+        (mt/process-query (mt/userland-query (mt/mbql-query
+                                              nil
+                                              {:source-table (format "card__%d" (:id card))})
+                                             {:context :question}))
+        (is (=? [{:breakout_binning       nil
                   :filter_op              :=
-                  :filter_args            ["Gizmo"]}
-                 ;; from base-card
-                 {:used_in                :filter
-                  :field_id               (mt/id :orders :product_id)
-                  :filter_op              :>
-                  :filter_args            [1]}
-                 {:used_in                :breakout
-                  :field_id               (mt/id :orders :created_at)
-                  :breakout_temporal_unit :month,
-                  :breakout_binning       nil}
-                 {:used_in                :aggregation
-                  :field_id               (mt/id :orders :tax)
-                  :aggregation_function   :sum}
-                 {:used_in                :expression
-                  :field_id               (mt/id :orders :total)}
-                 ;; from top level card
-                 {:used_in                :filter
-                  :field_id               (mt/id :orders :created_at)
-                  :filter_op              :between
-                  :filter_args            ["2019-01-01" "2019-12-31"]}}
-               (set @field-usages)))))))
+                  :breakout_temporal_unit nil
+                  :used_in :filter
+                  :filter_args            [random-category]
+                  :aggregation_function   nil
+                  :field_id               (mt/id :products :category)
+                  :query_execution_id     (mt/malli=? pos-int?)}]
+                (t2/select :model/FieldUsage :filter_args [:like (format "%%%s%%" random-category)])))))))
