@@ -14,6 +14,7 @@ import {
   ListCellItem,
   FilterContainer,
   Content,
+  IconWrapper,
 } from "./AccordionListCell.styled";
 
 export const AccordionListCell = ({
@@ -125,6 +126,49 @@ export const AccordionListCell = ({
         </div>
       );
     }
+  } else if (type === "action") {
+    const icon = renderSectionIcon(section);
+    const name = section.name;
+    content = (
+      <div
+        className={cx(
+          "List-section-header",
+          CS.px2,
+          CS.py2,
+          CS.flex,
+          CS.alignCenter,
+          CS.hoverParent,
+          {
+            "List-section-header--cursor": hasCursor,
+            [CS.cursorPointer]: canToggleSections,
+            [CS.textBrand]: sectionIsExpanded(sectionIndex),
+          },
+        )}
+        role="button"
+        onClick={
+          canToggleSections ? () => toggleSection(sectionIndex) : undefined
+        }
+      >
+        {icon && (
+          <span
+            className={cx(CS.mr1, CS.flex, CS.alignCenter, "List-section-icon")}
+          >
+            {icon}
+          </span>
+        )}
+        {name && (
+          <h3 className={cx("List-section-title", CS.textWrap)}>{name}</h3>
+        )}
+        {showSpinner(section) && (
+          <Box ml="0.5rem">
+            <LoadingSpinner size={16} borderWidth={2} />
+          </Box>
+        )}
+        <IconWrapper>
+          <Icon name="chevronright" size={12} />
+        </IconWrapper>
+      </div>
+    );
   } else if (type === "header-hidden") {
     content = <div className={CS.my1} />;
   } else if (type === "loading") {

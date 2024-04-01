@@ -409,15 +409,25 @@ export default class AccordionList extends Component {
       ) {
         if (
           !searchable ||
-          !hideEmptySectionsInSearch ||
-          this.checkSectionHasItemsMatchingSearch(section, searchFilter)
+          !(hideEmptySectionsInSearch || globalSearch) ||
+          this.checkSectionHasItemsMatchingSearch(section, searchFilter) ||
+          section.alwaysVisible
         ) {
-          rows.push({
-            type: "header",
-            section,
-            sectionIndex,
-            isLastSection,
-          });
+          if (section.type === "action") {
+            rows.push({
+              type: "action",
+              section,
+              sectionIndex,
+              isLastSection,
+            });
+          } else {
+            rows.push({
+              type: "header",
+              section,
+              sectionIndex,
+              isLastSection,
+            });
+          }
         }
       } else {
         rows.push({
