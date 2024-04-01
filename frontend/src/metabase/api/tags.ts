@@ -5,6 +5,7 @@ export const TAG_TYPES = [
   "table",
   "field",
   "field-values",
+  "card",
 ] as const;
 
 export type TagType = typeof TAG_TYPES[number];

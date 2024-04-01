@@ -5,13 +5,13 @@ import type {
 import { useEntityQuery } from "metabase/common/hooks/entity-framework/use-entity-query";
 import Questions from "metabase/entities/questions";
 import type Question from "metabase-lib/v1/Question";
-import type { CardId, CardQuery } from "metabase-types/api";
+import type { CardId, GetCardRequest } from "metabase-types/api";
 
 /**
  * @deprecated use "metabase/api" instead
  */
 export const useQuestionQuery = (
-  props: UseEntityQueryProps<CardId, CardQuery>,
+  props: UseEntityQueryProps<CardId, Omit<GetCardRequest, "id">>,
 ): UseEntityQueryResult<Question> => {
   return useEntityQuery(props, {
     fetch: Questions.actions.fetch,

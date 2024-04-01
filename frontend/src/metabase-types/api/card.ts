@@ -182,11 +182,12 @@ export type CardFilterOption =
   | "using_model"
   | "archived";
 
-export interface CardQuery {
-  ignore_view?: boolean;
-}
-
-export interface CardListQuery {
+export interface ListCardsRequest {
   f?: CardFilterOption;
   model_id?: CardId;
+}
+
+export interface GetCardRequest {
+  id: CardId;
+  ignore_view?: boolean;
 }
