@@ -169,10 +169,9 @@
                        [:and [:= :model (name k)] [:= :model_id v]])
           cnt        (when (seq conditions)
                        ;; using JVM date rather than DB time since it's what are used in cache tasks
-                       (t2/update! CacheConfig {:id [:in {:from   [(t2/table-name CacheConfig) :cc]
-                                                          :select [:id]
-                                                          :where  (into [:or] conditions)}]}
-                                   {:invalidated_at (t/offset-date-time)}))]
+                       (t2/query-one {:update (t2/table-name CacheConfig)
+                                      :set    {:invalidated_at (t/offset-date-time)}
+                                      :where  (into [:or] conditions)}))]
       (if-not (and cnt (pos? cnt))
         {:status 400
          :body   {:message (tru "Could not find a cache configuration to invalidate.")}}
