@@ -49,6 +49,7 @@ export const LabelContainer = styled.div`
   font-size: 1em;
   font-weight: normal;
   color: ${({ color: _color = "brand" }) => color(_color)};
+  margin-bottom: 0.5rem;
 `;
 
 export const Label = styled.span`
