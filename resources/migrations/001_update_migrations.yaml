@@ -6136,7 +6136,7 @@ databaseChangeLog:
                     nullable: true
               - column:
                   name: filter_args
-                  type: text
+                  type: ${text.type}
                   constraints:
                     nullable: true
               - column:
