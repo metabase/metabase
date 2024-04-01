@@ -166,19 +166,6 @@
   z-index: 1;
 }
 
-.PopoverBodyWithBackground :global(.PopoverFooterWhenIsNotEqualOps),
-:global(.popover .PopoverFooterWhenIsNotEqualOps) {
-  bottom: 0;
-  padding-bottom: 12px;
-  padding-top: 10px;
-  width: calc(100% - 26px);
-}
-
-:global(.PopoverParameterFieldWidgetFooter) {
-  position: fixed;
-  bottom: -7px;
-}
-
 /* create a slightly larger arrow on the top for border purposes */
 :global(.tether-element-attached-top) .PopoverBodyWithArrow::before {
   top: -20px;
