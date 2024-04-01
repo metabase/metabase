@@ -1,3 +1,28 @@
+/* afaik popover needs a positioning context to be able to calculate the transform */
+.PopoverContainer {
+  position: absolute;
+  z-index: 4;
+}
+
+.PopoverBody {
+  pointer-events: auto;
+  min-width: 1em; /* ewwwwwwww */
+  display: flex;
+  flex-direction: column;
+
+  /* add a max-width so that long strings don't cause the popover to expand
+   * see metabase#4930 */
+  max-width: 500px;
+}
+
+.PopoverBody.PopoverBodyWithBackground {
+  border: 1px solid #edf2f5;
+  box-shadow: 0 4px 10px var(--color-shadow);
+  background-color: var(--color-bg-white);
+  border-radius: 6px;
+  overflow: auto;
+}
+
 /* Global classes from tippy.js */
 :global(.tippy-box),
 :global(.tippy-content) {
@@ -38,32 +63,6 @@
 
 :global(.tippy-box[data-theme~="popover"] .tippy-content) {
   padding: 0;
-}
-
-/* Local classes */
-/* afaik popover needs a positioning context to be able to calculate the transform */
-.PopoverContainer {
-  position: absolute;
-  z-index: 4;
-}
-
-.PopoverBody {
-  pointer-events: auto;
-  min-width: 1em; /* ewwwwwwww */
-  display: flex;
-  flex-direction: column;
-
-  /* add a max-width so that long strings don't cause the popover to expand
-   * see metabase#4930 */
-  max-width: 500px;
-}
-
-.PopoverBody.PopoverBodyWithBackground {
-  border: 1px solid #edf2f5;
-  box-shadow: 0 4px 10px var(--color-shadow);
-  background-color: var(--color-bg-white);
-  border-radius: 6px;
-  overflow: auto;
 }
 
 /* remove the max-width in cases where the popover content needs to expand
@@ -113,6 +112,7 @@
   z-index: 1;
 }
 
+/* Global tether (tippy.js dependency) classes */
 /* create a slightly larger arrow on the top for border purposes */
 :global(.tether-element-attached-top) .PopoverBodyWithArrow::before {
   top: -20px;
