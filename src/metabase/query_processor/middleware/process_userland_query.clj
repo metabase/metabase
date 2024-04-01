@@ -8,15 +8,14 @@
   (:require
    [java-time.api :as t]
    [metabase.events :as events]
-   [metabase.lib.core :as lib]
    [metabase.models.field-usage :as field-usage]
    [metabase.models.query :as query]
    [metabase.models.query-execution
     :as query-execution
     :refer [QueryExecution]]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
+   [metabase.query-processor.middleware.normalize-query :as normalize]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -157,9 +156,9 @@
 
 (defn- query->field-usages
   [query]
-  (field-usage/pquery->field-usages (->> query
-                                         (lib/query (qp.store/metadata-provider))
-                                         fetch-source-query/resolve-source-cards)))
+  (->> (normalize/normalize-preprocessing-middleware query)
+       fetch-source-query/resolve-source-cards
+       field-usage/pquery->field-usages))
 
 (mu/defn process-userland-query-middleware :- ::qp.schema/qp
   "Around middleware.

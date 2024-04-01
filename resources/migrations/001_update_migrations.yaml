@@ -6115,6 +6115,7 @@ databaseChangeLog:
                     referencedTableName: metabase_field
                     referencedColumnNames: id
                     foreignKeyName: fk_field_usage_field_id_metabase_field_id
+                    deleteCascade: true
               - column:
                   name: query_execution_id
                   type: int
@@ -6124,6 +6125,7 @@ databaseChangeLog:
                     referencedTableName: query_execution
                     referencedColumnNames: id
                     foreignKeyName: fk_field_usage_query_execution_id
+                    deleteCascade: true
               - column:
                   name: used_in
                   type: varchar(25)

@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.events :as events]
+   [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.process-userland-query
@@ -174,19 +175,24 @@
           (is (not @saved-query-execution?)))))))
 
 (deftest save-field-usage-test
-  (let [random-category (mt/random-name)]
-    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query products {:filter [:= $products.category random-category]})}]
-      (binding [process-userland-query/*save-execution-metadata-async* false]
-        (mt/process-query (mt/userland-query (mt/mbql-query
-                                              nil
-                                              {:source-table (format "card__%d" (:id card))})
-                                             {:context :question}))
-        (is (=? [{:breakout_binning       nil
-                  :filter_op              :=
-                  :breakout_temporal_unit nil
-                  :used_in :filter
-                  :filter_args            [random-category]
-                  :aggregation_function   nil
-                  :field_id               (mt/id :products :category)
-                  :query_execution_id     (mt/malli=? pos-int?)}]
-                (t2/select :model/FieldUsage :filter_args [:like (format "%%%s%%" random-category)])))))))
+  (testing "execute a query will save field usages"
+    (let [random-category (mt/random-name)]
+      (qp.store/with-metadata-provider (mt/id)
+        (doseq [query-type [:mbql :mlv2]]
+          (testing (format "with source card is a %s query" query-type)
+            (mt/with-model-cleanup [:model/FieldUsage]
+              (mt/with-temp [:model/Card card {:dataset_query (cond->> (mt/mbql-query products {:filter [:= $products.category random-category]})
+                                                                (= :mlv2 query-type)
+                                                                (lib/query
+                                                                 (qp.store/metadata-provider)))}]
+                (binding [process-userland-query/*save-execution-metadata-async* false]
+                  (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card)))
+                  (is (=? [{:breakout_binning       nil
+                            :filter_op              :=
+                            :breakout_temporal_unit nil
+                            :used_in :filter
+                            :filter_args            [random-category]
+                            :aggregation_function   nil
+                            :field_id               (mt/id :products :category)
+                            :query_execution_id     (mt/malli=? pos-int?)}]
+                          (t2/select :model/FieldUsage :filter_args [:like (format "%%%s%%" random-category)]))))))))))))
