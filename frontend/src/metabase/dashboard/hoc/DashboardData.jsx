@@ -92,7 +92,10 @@ export const DashboardData = ComposedComponent =>
         if (nextProps.dashboardId !== this.props.dashboardId) {
           this.load(nextProps);
         } else if (
-          !_.isEqual(this.props.parameterValues, nextProps.parameterValues)
+          !compareParameterValues(
+            this.props.parameterValues,
+            nextProps.parameterValues,
+          )
         ) {
           this.props.fetchDashboardCardData({
             reload: false,
@@ -121,3 +124,19 @@ export const DashboardData = ComposedComponent =>
       }
     },
   );
+
+function cleanObjectNullValues(obj) {
+  return Object.keys(obj).reduce((acc, key) => {
+    if (obj[key] !== null) {
+      acc[key] = obj[key];
+    }
+    return acc;
+  }, {});
+}
+
+export function compareParameterValues(values1, values2) {
+  return _.isEqual(
+    cleanObjectNullValues(values1),
+    cleanObjectNullValues(values2),
+  );
+}
