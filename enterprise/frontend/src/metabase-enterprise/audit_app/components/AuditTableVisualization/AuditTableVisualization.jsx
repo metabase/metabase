@@ -211,7 +211,7 @@ export class AuditTableVisualization extends Component {
                           CS.p1,
                           CS.textDark,
                           CS.textMonospace,
-                          "text-small",
+                          CS.textSmall,
                           "bg-light",
                         )]: column["code"],
                       })}

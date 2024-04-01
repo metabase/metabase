@@ -51,7 +51,7 @@ const PeopleListRow = ({
   return (
     <tr key={user.id}>
       <td className={cx(CS.flex, CS.alignCenter)}>
-        <span className="text-white inline-block">
+        <span className={cx(CS.textWhite, CS.inlineBlock)}>
           <UserAvatar
             bg={user.is_superuser ? color("accent2") : color("brand")}
             user={user}
@@ -103,7 +103,7 @@ const PeopleListRow = ({
           <td>
             {user.last_login ? moment(user.last_login).fromNow() : t`Never`}
           </td>
-          <td className="text-right">
+          <td className={CS.textRight}>
             {isAdmin && (
               <EntityMenu
                 triggerIcon="ellipsis"

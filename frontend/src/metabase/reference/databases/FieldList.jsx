@@ -114,7 +114,7 @@ const FieldList = props => {
   return (
     <form
       style={style}
-      className="full"
+      className={CS.full}
       onSubmit={handleSubmit}
       testID={props["data-testid"]}
     >

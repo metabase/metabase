@@ -4,6 +4,9 @@ import * as Urls from "metabase/lib/urls";
 import { MetricSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Metrics = createEntity({
   name: "metrics",
   nameOne: "metric",

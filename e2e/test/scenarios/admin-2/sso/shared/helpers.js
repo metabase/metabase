@@ -1,7 +1,12 @@
 export function getUserProvisioningInput() {
-  return cy
-    .findByTestId("admin-layout-content")
-    .findByText("User Provisioning");
+  return {
+    label: cy
+      .findByTestId("admin-layout-content")
+      .findByText("User Provisioning"),
+    input: cy
+      .findByTestId("admin-layout-content")
+      .findByLabelText("User Provisioning"),
+  };
 }
 
 export function getSuccessUi() {

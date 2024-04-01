@@ -86,7 +86,7 @@ function NewVersionAvailable({ currentVersion }) {
           CS.justifyBetween,
         )}
       >
-        <span className="text-white text-bold">
+        <span className={cx("text-white", CS.textBold)}>
           {t`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
           {t`You're running ${currentVersion}`}
         </span>
@@ -166,7 +166,9 @@ function HostingCTA() {
           <Text
             className={cx(CS.textBrand, CS.mb0)}
           >{t`Want to have upgrades taken care of for you?`}</Text>
-          <Text className="text-brand text-bold">{t`Migrate to Metabase Cloud.`}</Text>
+          <Text
+            className={cx(CS.textBrand, CS.textBold)}
+          >{t`Migrate to Metabase Cloud.`}</Text>
         </div>
       </HostingCTAContent>
       <div className={CS.pr1}>

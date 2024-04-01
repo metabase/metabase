@@ -100,7 +100,7 @@ export const ParameterOptionsSectionsPane = ({ sections, onSelectSection }) => (
 
 export const ParameterOptionItem = ({ option, onClick }) => (
   <OptionItemRoot onClick={onClick}>
-    <OptionItemTitle className="text-bold" style={{ marginBottom: 4 }}>
+    <OptionItemTitle className={CS.textBold} style={{ marginBottom: 4 }}>
       {option.menuName || option.name}
     </OptionItemTitle>
     <OptionItemDescription>{option.description}</OptionItemDescription>

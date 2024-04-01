@@ -32,7 +32,7 @@ export const CustomLinkText = ({ clickBehavior, updateSettings }: Props) => {
       <Label htmlFor="link-text-template">{t`Customize link text (optional)`}</Label>
       <InputBlurChange
         id="link-text-template"
-        className="block full"
+        className={cx(CS.block, CS.full)}
         placeholder={t`E.x. Details for {{Column Name}}`}
         value={clickBehavior.linkTextTemplate}
         onBlurChange={handleChange}

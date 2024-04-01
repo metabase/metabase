@@ -10,6 +10,8 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel apply-page-test
   (testing "Make sure our custom implementation of `apply-page` works the way we'd expect"
     (let [hsql {:select [:name :id]
@@ -83,3 +85,24 @@
                     "WHERE"
                     "  `t1`.`name` = decode(unhex('776f77'), 'utf-8')"]
                    (str/split-lines (driver/prettify-native-form :sparksql @the-sql))))))))))
+
+(deftest ^:parallel read-dates-test
+  (testing "DATE columns should come back as LocalDate"
+    (mt/test-driver :sparksql
+      (sql-jdbc.execute/do-with-connection-with-options
+       :sparksql
+       (mt/id)
+       nil
+       (fn [^java.sql.Connection conn]
+         (with-open [rset (.executeQuery (.createStatement conn) "SELECT date '2024-03-22T13:52:00' AS d;")]
+           (let [rsmeta (.getMetaData rset)]
+             (testing "Should be returned as correct database types"
+               (testing "database type"
+                 (is (= "date"
+                        (.getColumnTypeName rsmeta 1))))
+               (testing "JDBC type"
+                 (is (= "DATE"
+                        (.getName (java.sql.JDBCType/valueOf (.getColumnType rsmeta 1)))))))
+             (testing "Rows should come back as expected Java types"
+               (is (= [[#t "2024-03-22"]]
+                      (into [] (sql-jdbc.execute/reducible-rows :sparksql rset rsmeta))))))))))))

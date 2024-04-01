@@ -5,6 +5,7 @@ import ReactDOM from "react-dom";
 import Tether from "tether";
 
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
+import CS from "metabase/css/core/index.css";
 import { isCypressActive } from "metabase/env";
 
 import "./Popover.module.css";
@@ -393,8 +394,8 @@ export default class Popover extends Component {
     const maxHeight = space - PAGE_PADDING;
     if (bodyHeight > maxHeight) {
       body.style.maxHeight = maxHeight + "px";
-      body.classList.add("scroll-y");
-      body.classList.add("scroll-show");
+      body.classList.add(CS.scrollY);
+      body.classList.add(CS.scrollShow);
     }
   }
 
@@ -421,6 +422,6 @@ export default class Popover extends Component {
       );
     }
 
-    return <span className="hide" />;
+    return <span className={CS.hide} />;
   }
 }

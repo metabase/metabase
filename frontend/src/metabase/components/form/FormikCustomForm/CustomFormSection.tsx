@@ -28,7 +28,7 @@ function CollapsibleSection({ title, children, ...props }: SectionProps) {
         <DisclosureTriangle className={CS.mr1} open={isExpanded} />
         <h3>{title}</h3>
       </CollapsibleSectionContent>
-      <div className={isExpanded ? undefined : "hide"}>{children}</div>
+      <div className={isExpanded ? undefined : CS.hide}>{children}</div>
     </section>
   );
 }

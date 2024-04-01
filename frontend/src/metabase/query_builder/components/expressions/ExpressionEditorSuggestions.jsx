@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component, Fragment } from "react";
 import _ from "underscore";
@@ -140,7 +141,7 @@ function ExpressionEditorSuggestionsListItem({
       <ExpressionListItem
         onMouseDownCapture={onMouseDownCapture}
         isHighlighted={isHighlighted}
-        className="hover-parent hover--inherit"
+        className={cx(CS.hoverParent, CS.hoverInherit)}
         data-ignore-outside-clicks
         data-testid="expression-suggestions-list-item"
       >

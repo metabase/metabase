@@ -40,8 +40,8 @@ export function ObjectDetailHeader({
   closeObjectDetail,
 }: ObjectDetailHeaderProps): JSX.Element {
   return (
-    <ObjectDetailHeaderWrapper className="Grid">
-      <div className="Grid-cell">
+    <ObjectDetailHeaderWrapper className={CS.Grid}>
+      <div className={CS.GridCell}>
         <h2 className={CS.p3}>
           {objectName}
           {objectId !== null && <ObjectIdLabel> {objectId}</ObjectIdLabel>}

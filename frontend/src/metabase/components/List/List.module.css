@@ -60,7 +60,7 @@
 }
 
 .itemTitle {
-  composes: text-bold from "style";
+  composes: textBold from "style";
   max-width: 100%;
   overflow: hidden;
 }

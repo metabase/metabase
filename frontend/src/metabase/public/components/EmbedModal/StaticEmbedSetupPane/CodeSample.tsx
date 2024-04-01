@@ -68,6 +68,7 @@ export const CodeSample = ({
           CS.shadowed,
           CS.relative,
           CS.mt2,
+          CS.overflowHidden,
         )}
       >
         <AceEditor

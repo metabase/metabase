@@ -12,7 +12,6 @@
 }
 
 .item {
-  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: py1 mb1 rounded pl2 from "style";
   align-items: center;
   display: flex;
@@ -39,7 +38,7 @@
 }
 
 .name {
-  composes: ml2 text-bold from "style";
+  composes: ml2 textBold from "style";
   color: var(--color-text-medium);
   text-overflow: ellipsis;
   white-space: nowrap;

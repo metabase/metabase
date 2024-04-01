@@ -1,44 +1,61 @@
+import { useCallback } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
+import { useDispatch } from "metabase/lib/redux";
+import { fetchParameterValues } from "metabase/parameters/actions";
 import { DefaultParameterValueWidget } from "metabase/query_builder/components/template_tags/TagEditorParamParts";
 import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type { Parameter, TemplateTag } from "metabase-types/api";
 
+import { ListPickerConnected } from "./ListPickerConnected";
 import { OwnDatePicker } from "./OwnDatePicker";
+import { ListPickerWrapper } from "./ParameterValuePicker.styled";
 import { PlainValueInput } from "./PlainValueInput";
-import { shouldShowPlainInput } from "./core";
+import {
+  shouldUsePlainInput,
+  shouldUseListPicker,
+  getSingleStringOrNull,
+} from "./core";
 
 interface ParameterValuePickerProps {
   tag: TemplateTag;
   parameter: Parameter;
   value: any;
   onValueChange: (value: any) => void;
-  placeholder?: string;
 }
 
-// TODO multiple value pickers
-// TODO setting default value on blur/closing picker
-// TODO error states
-// TODO placeholders unification
-// TODO filter input for numbers
+// TODO Add additional behaviors (metabase#40226)
 
 /**
  * This component is designed to be controlled outside,
  * without keeping its own state.
+ *
+ * However, its decendats such as ListPickerValue, may have
+ * their own state but will reset it based on props.
+ *
+ * NB! If something breaks here, you probably shouldn't revert anything,
+ * and instead just make it render DefaultParameterValueWidget.
  */
 export function ParameterValuePicker(props: ParameterValuePickerProps) {
-  const { tag, parameter, value, onValueChange, placeholder } = props;
+  const { tag, parameter, value, onValueChange } = props;
+  const dispatch = useDispatch();
+
+  const fetchParamValues = useCallback(
+    (query: string) => dispatch(fetchParameterValues({ parameter, query })),
+    [parameter, dispatch],
+  );
 
   if (!parameter) {
     return null;
   }
 
-  if (shouldShowPlainInput(parameter)) {
+  if (shouldUsePlainInput(parameter)) {
     return (
       <PlainValueInput
         value={value}
         onChange={onValueChange}
-        placeholder={placeholder}
+        placeholder={t`Enter a default value…`}
       />
     );
   }
@@ -48,8 +65,24 @@ export function ParameterValuePicker(props: ParameterValuePickerProps) {
       <OwnDatePicker
         value={value}
         parameter={parameter}
-        onValueChange={onValueChange}
+        onChange={onValueChange}
+        placeholder={t`Select a default value…`}
       />
+    );
+  }
+
+  if (shouldUseListPicker(parameter)) {
+    return (
+      // Wrapper is a hack to prevent 0.25rem added by mantine to its Select
+      <ListPickerWrapper>
+        <ListPickerConnected
+          value={getSingleStringOrNull(value)}
+          parameter={parameter}
+          onChange={onValueChange}
+          forceSearchItemCount={50}
+          fetchValues={fetchParamValues}
+        />
+      </ListPickerWrapper>
     );
   }
 

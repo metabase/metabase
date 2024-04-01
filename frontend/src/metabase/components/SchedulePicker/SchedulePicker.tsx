@@ -194,7 +194,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
             this.handleChangeProperty("schedule_minute", e.target.value)
           }
         />
-        <span className="text-bold">{t`minutes past the hour`}</span>
+        <span className={CS.textBold}>{t`minutes past the hour`}</span>
       </PickerSpacedRow>
     );
   }

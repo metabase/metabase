@@ -121,13 +121,13 @@ function ProfileLink({ adminItems, onLogout }) {
               <h3 className={cx(CS.textDark, CS.mb1)}>
                 {t`You're on version`} {tag}
               </h3>
-              <p className="text-medium text-bold">
+              <p className={cx("text-medium", CS.textBold)}>
                 {t`Built on`} {date}
               </p>
               {!/^v\d+\.\d+\.\d+$/.test(tag) && (
                 <div>
                   {_.map(versionExtra, (value, key) => (
-                    <p key={key} className="text-medium text-bold">
+                    <p key={key} className={cx("text-medium", CS.textBold)}>
                       {capitalize(key)}: {value}
                     </p>
                   ))}
@@ -146,9 +146,9 @@ function ProfileLink({ adminItems, onLogout }) {
                 CS.borderTop,
               )}
             >
-              <span className="block">
+              <span className={CS.block}>
                 {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows on OSS instance */}
-                <span className="text-bold">Metabase</span>{" "}
+                <span className={CS.textBold}>Metabase</span>{" "}
                 {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows on OSS instance */}
                 {t`is a Trademark of`} Metabase, Inc
               </span>

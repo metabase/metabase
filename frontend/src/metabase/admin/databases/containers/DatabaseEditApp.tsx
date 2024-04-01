@@ -36,8 +36,6 @@ import {
   updateDatabase,
   syncDatabaseSchema,
   dismissSyncSpinner,
-  rescanDatabaseFields,
-  discardSavedFieldValues,
   deleteDatabase,
   selectEngine,
 } from "../database";
@@ -58,8 +56,6 @@ interface DatabaseEditAppProps {
   initializeDatabase: (databaseId: DatabaseId) => void;
   syncDatabaseSchema: (databaseId: DatabaseId) => Promise<void>;
   dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
-  rescanDatabaseFields: (databaseId: DatabaseId) => Promise<void>;
-  discardSavedFieldValues: (databaseId: DatabaseId) => Promise<void>;
   deleteDatabase: (
     databaseId: DatabaseId,
     isDetailView: boolean,
@@ -95,8 +91,6 @@ const mapDispatchToProps = {
   updateDatabase,
   syncDatabaseSchema,
   dismissSyncSpinner,
-  rescanDatabaseFields,
-  discardSavedFieldValues,
   deleteDatabase,
   selectEngine,
   onChangeLocation: push,
@@ -116,9 +110,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
     database,
     deleteDatabase,
     updateDatabase,
-    discardSavedFieldValues,
     initializeError,
-    rescanDatabaseFields,
     syncDatabaseSchema,
     dismissSyncSpinner,
     isAdmin,
@@ -203,8 +195,6 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
             isModelPersistenceEnabled={isModelPersistenceEnabled}
             updateDatabase={updateDatabase}
             deleteDatabase={deleteDatabase}
-            discardSavedFieldValues={discardSavedFieldValues}
-            rescanDatabaseFields={rescanDatabaseFields}
             syncDatabaseSchema={syncDatabaseSchema}
             dismissSyncSpinner={dismissSyncSpinner}
           />

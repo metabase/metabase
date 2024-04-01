@@ -129,7 +129,7 @@ export class DimensionList extends Component {
           >
             {({ onClose }) => (
               <DimensionPicker
-                className="scroll-y"
+                className={CS.scrollY}
                 dimension={sectionDimension}
                 dimensions={subDimensions}
                 onChangeDimension={dimension => {
@@ -149,7 +149,7 @@ export class DimensionList extends Component {
               className={cx(
                 CS.mx1,
                 CS.cursorPointer,
-                "hover-child",
+                CS.hoverChild,
                 CS.faded,
                 "fade-in-hover",
               )}
@@ -266,7 +266,7 @@ export class DimensionList extends Component {
         onChange={this.handleChange}
         itemIsSelected={this.itemIsSelected}
         renderItemExtra={this.renderItemExtra}
-        getItemClassName={() => "hover-parent hover--display"}
+        getItemClassName={() => cx(CS.hoverParent, CS.hoverDisplay)}
       />
     );
   }

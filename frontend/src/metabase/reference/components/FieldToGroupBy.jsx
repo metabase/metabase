@@ -22,7 +22,9 @@ const FieldToGroupBy = ({
   <div className={className}>
     <a className={Q.queryButton} onClick={onClick}>
       <div className={S.fieldToGroupByText}>
-        <div className="text-brand text-bold">{field.display_name}</div>
+        <div className={cx("text-brand", CS.textBold)}>
+          {field.display_name}
+        </div>
       </div>
       <Icon
         className={cx(iconClass, CS.pr1)}

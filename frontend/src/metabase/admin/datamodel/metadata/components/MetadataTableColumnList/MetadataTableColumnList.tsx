@@ -145,7 +145,7 @@ const TableFieldOrderDropdown = ({
     <TippyPopoverWithTrigger
       triggerContent={
         <span
-          className="text-brand text-bold"
+          className={cx("text-brand", CS.textBold)}
           style={{ textTransform: "none", letterSpacing: 0 }}
           aria-label={t`Sort`}
         >

@@ -15,7 +15,7 @@ type Props = {
 
 function NewQuestionView({ question, updateQuestion }: Props) {
   return (
-    <div className="full-height">
+    <div className={CS.fullHeight}>
       <div className={cx(CS.p4, CS.mx2)}>
         <QuestionDataSelector
           question={question}

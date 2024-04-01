@@ -3,7 +3,7 @@
 }
 
 .headerBody {
-  composes: text-dark text-bold from "style";
+  composes: text-dark textBold from "style";
   flex: 1 0 auto;
   display: flex;
   overflow: hidden;

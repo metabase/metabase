@@ -31,7 +31,7 @@ function EmailAdmin(): JSX.Element | null {
   const hasAdminEmail = isNotNull(MetabaseSettings.adminEmail());
   return hasAdminEmail ? (
     <span className={QueryBuilderS.QueryErrorAdminEmail}>
-      <a className="no-decoration" href={`mailto:${hasAdminEmail}`}>
+      <a className={CS.noDecoration} href={`mailto:${hasAdminEmail}`}>
         {hasAdminEmail}
       </a>
     </span>
@@ -97,7 +97,9 @@ export function VisualizationError({
           )}
         />
         <div className={QueryBuilderS.QueryError2Details}>
-          <h1 className="text-bold">{t`There was a problem with this visualization`}</h1>
+          <h1
+            className={CS.textBold}
+          >{t`There was a problem with this visualization`}</h1>
           <ErrorDetails className={CS.pt2} details={error} />
         </div>
       </div>

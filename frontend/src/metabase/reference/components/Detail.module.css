@@ -15,13 +15,13 @@
 }
 
 .detailTitle {
-  composes: text-bold from "style";
+  composes: textBold from "style";
   display: inline-block;
   color: var(--title-color);
 }
 
 .detailSubtitle {
-  composes: text-dark text-paragraph from "style";
+  composes: text-dark textParagraph from "style";
   white-space: pre-wrap;
   font-size: 16px;
   line-height: 24px;

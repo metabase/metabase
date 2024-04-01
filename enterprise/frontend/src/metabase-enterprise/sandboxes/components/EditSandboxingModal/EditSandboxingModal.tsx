@@ -242,7 +242,7 @@ const PolicySummary = ({ policy }: PolicySummaryProps) => {
           CS.px1,
           CS.pb2,
           CS.textUppercase,
-          "text-small",
+          CS.textSmall,
           "text-grey-4",
         )}
       >
@@ -289,14 +289,14 @@ const PolicySummary = ({ policy }: PolicySummaryProps) => {
                 ? jt`where ${(
                     <TargetName key="target" policy={policy} target={target} />
                   )} equals ${(
-                    <span key="attr" className="text-code">
+                    <span key="attr" className={CS.textCode}>
                       {attribute}
                     </span>
                   )}`
                 : jt`and ${(
                     <TargetName key="target" policy={policy} target={target} />
                   )} equals ${(
-                    <span key="attr" className="text-code">
+                    <span key="attr" className={CS.textCode}>
                       {attribute}
                     </span>
                   )}`

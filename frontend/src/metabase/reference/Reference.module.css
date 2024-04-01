@@ -17,7 +17,7 @@
 }
 
 .guideEmptyMessage {
-  composes: text-dark text-paragraph mt3 from "style";
+  composes: text-dark textParagraph mt3 from "style";
   text-align: center;
 }
 
@@ -85,7 +85,7 @@
 }
 
 .guideTitleBody {
-  composes: text-dark text-bold from "style";
+  composes: text-dark textBold from "style";
   width: 100%;
   composes: guideLeftPaddedBody;
 }
@@ -96,7 +96,7 @@
 }
 
 .guideSeeAllBody {
-  composes: text-dark text-bold mt4 from "style";
+  composes: text-dark textBold mt4 from "style";
   width: 100%;
   display: flex;
   composes: guideLeftPaddedBody;
@@ -123,31 +123,27 @@
 }
 
 .guideEditHeader {
-  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
-  composes: text-body my4 from "style";
+  composes: textBody my4 from "style";
   width: 100%;
   max-width: 550px;
   color: var(--color-text-dark);
 }
 
 .guideEditHeaderTitle {
-  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
-  composes: text-bold mb2 from "style";
+  composes: textBold mb2 from "style";
   font-size: 24px;
 }
 
 .guideEditCards {
-  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: mt2 mb4 from "style";
 }
 
 .guideEditCard {
-  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: input p4 from "style";
 }
 
 .guideEditLabel {
-  composes: text-bold mb2 from "style";
+  composes: textBold mb2 from "style";
   display: block;
   font-size: 16px;
   color: var(--title-color);
@@ -158,7 +154,7 @@
 }
 
 .guideEditTitle {
-  composes: text-body text-bold from "style";
+  composes: textBody textBold from "style";
   display: block;
   color: var(--title-color);
   font-size: 16px;
@@ -166,14 +162,13 @@
 }
 
 .guideEditSubtitle {
-  composes: text-body from "style";
+  composes: textBody from "style";
   color: var(--color-text-light);
   font-size: 16px;
   max-width: 700px;
 }
 
 .guideEditAddButton {
-  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: my2 pl4 from "style";
   width: 100%;
   display: flex;
@@ -194,7 +189,6 @@
 }
 
 .guideEditTextarea {
-  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: text-dark input p2 from "style";
   resize: none;
   font-size: 16px;
@@ -219,7 +213,6 @@
 }
 
 .guideEditInput {
-  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: text-dark input p2 from "style";
   width: 100%;
   font-size: 16px;

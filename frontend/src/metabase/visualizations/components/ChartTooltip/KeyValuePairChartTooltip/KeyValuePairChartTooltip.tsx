@@ -59,7 +59,7 @@ const TooltipRow = ({ name, value, column, settings }: TooltipRowProps) => (
     ) : (
       <TooltipTableCell />
     )}
-    <TooltipTableCell className="text-bold text-left">
+    <TooltipTableCell className={cx(CS.textBold, CS.textLeft)}>
       {isValidElement(value)
         ? value
         : formatValueForTooltip({ value, column, settings })}

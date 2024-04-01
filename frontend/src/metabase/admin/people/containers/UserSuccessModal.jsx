@@ -23,6 +23,7 @@ class UserSuccessModal extends Component {
   componentWillUnmount() {
     this.props.clearTemporaryPassword(this.props.params.userId);
   }
+
   render() {
     const { onClose, user, temporaryPassword } = this.props;
     const isSsoEnabled =
@@ -52,7 +53,7 @@ const EmailSuccess = ({ user, isSsoEnabled }) => {
       )} with instructions to log in. If this user is unable to authenticate then you can ${(
         <Link
           to={`/admin/people/${user.id}/reset`}
-          className="link"
+          className={CS.link}
         >{t`reset their password.`}</Link>
       )}`}</div>
     );
@@ -78,7 +79,7 @@ const PasswordSuccess = ({ user, temporaryPassword }) => (
       className={cx(CS.pt4, CS.textCentered)}
     >
       {jt`If you want to be able to send email invites, just go to the ${(
-        <Link to="/admin/settings/email" className="link text-bold">
+        <Link to="/admin/settings/email" className={cx(CS.link, CS.textBold)}>
           Email Settings
         </Link>
       )} page.`}

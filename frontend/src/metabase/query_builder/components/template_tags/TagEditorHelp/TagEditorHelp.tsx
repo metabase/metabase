@@ -314,7 +314,7 @@ export const TagEditorHelp = ({
       />
 
       {showMetabaseLinks && (
-        <p className={cx(CS.pt2, "link")}>
+        <p className={cx(CS.pt2, CS.link)}>
           <ExternalLink
             href={MetabaseSettings.docsUrl(
               "questions/native-editor/sql-parameters",

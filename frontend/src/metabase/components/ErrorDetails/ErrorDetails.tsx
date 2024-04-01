@@ -26,7 +26,7 @@ export default function ErrorDetails({
   return (
     <div className={className}>
       <div className={centered ? CS.textCentered : CS.textLeft}>
-        <a onClick={toggleShowError} className={cx("link", CS.cursorPointer)}>
+        <a onClick={toggleShowError} className={cx(CS.link)}>
           {showError ? t`Hide error details` : t`Show error details`}
         </a>
       </div>

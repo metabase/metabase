@@ -149,7 +149,7 @@ const FieldDetail = props => {
   });
 
   return (
-    <form style={style} className="full" onSubmit={handleSubmit}>
+    <form style={style} className={CS.full} onSubmit={handleSubmit}>
       {isEditing && (
         <EditHeader
           hasRevisionHistory={false}
@@ -193,7 +193,7 @@ const FieldDetail = props => {
               )}
             >
               <List>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="description"
                     name={t`Description`}
@@ -204,7 +204,7 @@ const FieldDetail = props => {
                   />
                 </li>
                 {!isEditing && (
-                  <li className="relative">
+                  <li className={CS.relative}>
                     <Detail
                       id="name"
                       name={t`Actual name in database`}
@@ -213,7 +213,7 @@ const FieldDetail = props => {
                     />
                   </li>
                 )}
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="points_of_interest"
                     name={t`Why this field is interesting`}
@@ -223,7 +223,7 @@ const FieldDetail = props => {
                     field={getFormField("points_of_interest")}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="caveats"
                     name={t`Things to be aware of about this field`}
@@ -235,7 +235,7 @@ const FieldDetail = props => {
                 </li>
 
                 {!isEditing && (
-                  <li className="relative">
+                  <li className={CS.relative}>
                     <Detail
                       id="base_type"
                       name={t`Data type`}
@@ -243,7 +243,7 @@ const FieldDetail = props => {
                     />
                   </li>
                 )}
-                <li className="relative">
+                <li className={CS.relative}>
                   <FieldTypeDetail
                     field={entity}
                     foreignKeys={foreignKeys}
@@ -253,7 +253,7 @@ const FieldDetail = props => {
                   />
                 </li>
                 {!isEditing && (
-                  <li className="relative">
+                  <li className={CS.relative}>
                     <UsefulQuestions
                       questions={interestingQuestions(
                         props.database,

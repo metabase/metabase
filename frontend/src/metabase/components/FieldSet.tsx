@@ -35,7 +35,7 @@ export function FieldSet({
             CS.textBold,
             CS.textUppercase,
             CS.px1,
-            "text-nowrap",
+            CS.textNoWrap,
             CS.textMedium,
           )}
         >

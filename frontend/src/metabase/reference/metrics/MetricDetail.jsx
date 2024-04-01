@@ -128,7 +128,7 @@ const MetricDetail = props => {
   });
 
   return (
-    <form style={style} className="full" onSubmit={handleSubmit}>
+    <form style={style} className={CS.full} onSubmit={handleSubmit}>
       {isEditing && (
         <EditHeader
           hasRevisionHistory={true}
@@ -178,7 +178,7 @@ const MetricDetail = props => {
               )}
             >
               <List>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     field={getFormField("description")}
                     name={t`Description`}
@@ -187,7 +187,7 @@ const MetricDetail = props => {
                     isEditing={isEditing}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     field={getFormField("points_of_interest")}
                     name={t`Why this metric is interesting`}
@@ -196,7 +196,7 @@ const MetricDetail = props => {
                     isEditing={isEditing}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     field={getFormField("caveats")}
                     name={t`Things to be aware of about this metric`}
@@ -205,7 +205,7 @@ const MetricDetail = props => {
                     isEditing={isEditing}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     field={getFormField("how_is_this_calculated")}
                     name={t`How this metric is calculated`}
@@ -215,7 +215,7 @@ const MetricDetail = props => {
                   />
                 </li>
                 {table && !isEditing && (
-                  <li className="relative">
+                  <li className={CS.relative}>
                     <Formula
                       type="metric"
                       entity={entity}

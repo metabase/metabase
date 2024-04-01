@@ -115,7 +115,7 @@ function NotebookStep({
   return (
     <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
       <StepRoot
-        className="hover-parent hover--visibility"
+        className={cx(CS.hoverParent, CS.hoverVisibility)}
         data-testid={step.testID}
       >
         <StepHeader color={color}>
@@ -125,7 +125,8 @@ function NotebookStep({
               className={cx(
                 CS.mlAuto,
                 CS.textLight,
-                "text-medium-hover hover-child",
+                "text-medium-hover",
+                CS.hoverChild,
               )}
               onClick={handleClickRevert}
             >

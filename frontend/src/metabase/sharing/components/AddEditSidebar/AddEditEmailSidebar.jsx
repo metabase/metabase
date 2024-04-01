@@ -161,7 +161,7 @@ function _AddEditEmailSidebar({
             handleArchive={handleArchive}
           />
         )}
-        <div className={cx(CS.p2, CS.mtAuto, "text-small", CS.textMedium)}>
+        <div className={cx(CS.p2, CS.mtAuto, CS.textSmall, CS.textMedium)}>
           {t`Charts in subscriptions may look slightly different from charts in dashboards.`}
         </div>
       </div>

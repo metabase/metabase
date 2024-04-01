@@ -82,7 +82,7 @@ export const NativeQueryPreview = ({
       <Header>
         {error && <ModalWarningIcon />}
         <Title>{error ? t`An error occurred in your query` : title}</Title>
-        <CloseButton onClose={onClose} />
+        {onClose && <CloseButton onClose={onClose} />}
       </Header>
       {error && <Divider />}
       <Flex

@@ -1,4 +1,4 @@
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 
@@ -13,6 +13,10 @@ const END_DATE_TIME = new Date(2020, 1, 9, 20, 30);
 interface SetupOpts {
   value?: [Date, Date];
 }
+
+const userEvent = _userEvent.setup({
+  advanceTimers: jest.advanceTimersByTime,
+});
 
 function setup({ value = [START_DATE, END_DATE] }: SetupOpts = {}) {
   const onChange = jest.fn();
@@ -30,12 +34,12 @@ describe("SimpleDateRangePicker", () => {
     jest.setSystemTime(new Date(2020, 0, 15));
   });
 
-  it("should be able to set the date range via the calendar", () => {
+  it("should be able to set the date range via the calendar", async () => {
     const { onChange } = setup();
 
     const calendars = screen.getAllByRole("table");
-    userEvent.click(within(calendars[0]).getByText("12"));
-    userEvent.click(within(calendars[1]).getByText("5"));
+    await userEvent.click(within(calendars[0]).getByText("12"));
+    await userEvent.click(within(calendars[1]).getByText("5"));
 
     expect(onChange).toHaveBeenCalledWith([
       new Date(2020, 0, 12),
@@ -43,14 +47,14 @@ describe("SimpleDateRangePicker", () => {
     ]);
   });
 
-  it("should be able to set the date range via the calendar when there is time", () => {
+  it("should be able to set the date range via the calendar when there is time", async () => {
     const { onChange } = setup({
       value: [START_DATE_TIME, END_DATE_TIME],
     });
 
     const calendars = screen.getAllByRole("table");
-    userEvent.click(within(calendars[0]).getByText("12"));
-    userEvent.click(within(calendars[1]).getByText("5"));
+    await userEvent.click(within(calendars[0]).getByText("12"));
+    await userEvent.click(within(calendars[1]).getByText("5"));
 
     expect(onChange).toHaveBeenLastCalledWith([
       new Date(2020, 0, 12, 5, 20),
@@ -58,12 +62,12 @@ describe("SimpleDateRangePicker", () => {
     ]);
   });
 
-  it("should be able to set the date range start via the input", () => {
+  it("should be able to set the date range start via the input", async () => {
     const { onChange } = setup();
 
     const input = screen.getByLabelText("Start date");
-    userEvent.clear(input);
-    userEvent.type(input, "Feb 15, 2020");
+    await userEvent.clear(input);
+    await userEvent.type(input, "Feb 15, 2020");
 
     expect(onChange).toHaveBeenLastCalledWith([
       new Date(2020, 1, 15),
@@ -71,14 +75,14 @@ describe("SimpleDateRangePicker", () => {
     ]);
   });
 
-  it("should be able to set the date range start via the input when there is time", () => {
+  it("should be able to set the date range start via the input when there is time", async () => {
     const { onChange } = setup({
       value: [START_DATE_TIME, END_DATE],
     });
 
     const input = screen.getByLabelText("Start date");
-    userEvent.clear(input);
-    userEvent.type(input, "Feb 15, 2020");
+    await userEvent.clear(input);
+    await userEvent.type(input, "Feb 15, 2020");
 
     expect(onChange).toHaveBeenLastCalledWith([
       new Date(2020, 1, 15, 5, 20),
@@ -86,12 +90,12 @@ describe("SimpleDateRangePicker", () => {
     ]);
   });
 
-  it("should be able to set the date range end via the input", () => {
+  it("should be able to set the date range end via the input", async () => {
     const { onChange } = setup();
 
     const input = screen.getByLabelText("End date");
-    userEvent.clear(input);
-    userEvent.type(input, "Jul 15, 2020");
+    await userEvent.clear(input);
+    await userEvent.type(input, "Jul 15, 2020");
 
     expect(onChange).toHaveBeenLastCalledWith([
       START_DATE,
@@ -99,14 +103,14 @@ describe("SimpleDateRangePicker", () => {
     ]);
   });
 
-  it("should be able to set the date range end via the input when there is time", () => {
+  it("should be able to set the date range end via the input when there is time", async () => {
     const { onChange } = setup({
       value: [START_DATE, END_DATE_TIME],
     });
 
     const input = screen.getByLabelText("End date");
-    userEvent.clear(input);
-    userEvent.type(input, "Jul 15, 2020");
+    await userEvent.clear(input);
+    await userEvent.type(input, "Jul 15, 2020");
 
     expect(onChange).toHaveBeenLastCalledWith([
       START_DATE,
@@ -114,13 +118,13 @@ describe("SimpleDateRangePicker", () => {
     ]);
   });
 
-  it("should be able to add time", () => {
+  it("should be able to add time", async () => {
     const { onChange } = setup();
 
-    userEvent.click(screen.getByText("Add time"));
+    await userEvent.click(screen.getByText("Add time"));
     const input = screen.getByLabelText("Start time");
-    userEvent.clear(input);
-    userEvent.type(input, "11:20");
+    await userEvent.clear(input);
+    await userEvent.type(input, "11:20");
 
     expect(onChange).toHaveBeenLastCalledWith([
       new Date(2020, 0, 10, 11, 20),
@@ -128,14 +132,14 @@ describe("SimpleDateRangePicker", () => {
     ]);
   });
 
-  it("should be able to update the start time", () => {
+  it("should be able to update the start time", async () => {
     const { onChange } = setup({
       value: [START_DATE_TIME, END_DATE_TIME],
     });
 
     const input = screen.getByLabelText("Start time");
-    userEvent.clear(input);
-    userEvent.type(input, "11:20");
+    await userEvent.clear(input);
+    await userEvent.type(input, "11:20");
 
     expect(onChange).toHaveBeenLastCalledWith([
       new Date(2020, 0, 10, 11, 20),
@@ -143,14 +147,14 @@ describe("SimpleDateRangePicker", () => {
     ]);
   });
 
-  it("should be able to update the end time", () => {
+  it("should be able to update the end time", async () => {
     const { onChange } = setup({
       value: [START_DATE_TIME, END_DATE_TIME],
     });
 
     const input = screen.getByLabelText("End time");
-    userEvent.clear(input);
-    userEvent.type(input, "11:20");
+    await userEvent.clear(input);
+    await userEvent.type(input, "11:20");
 
     expect(onChange).toHaveBeenLastCalledWith([
       START_DATE_TIME,
@@ -158,12 +162,12 @@ describe("SimpleDateRangePicker", () => {
     ]);
   });
 
-  it("should be able to remove time", () => {
+  it("should be able to remove time", async () => {
     const { onChange } = setup({
       value: [START_DATE_TIME, END_DATE_TIME],
     });
 
-    userEvent.click(screen.getByText("Remove time"));
+    await userEvent.click(screen.getByText("Remove time"));
 
     expect(screen.queryByLabelText("Start time")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("End time")).not.toBeInTheDocument();
