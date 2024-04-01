@@ -29,16 +29,20 @@ export interface FilterColumnPickerProps {
 
 type Section = {
   key?: string;
+  type: string;
   name: string;
   items: (Lib.ColumnMetadata | Lib.SegmentMetadata)[];
   icon?: IconName;
+  alwaysVisible?: boolean;
 };
 
 const CUSTOM_EXPRESSION_SECTION: Section = {
   key: "custom-expression",
+  type: "action",
   name: t`Custom Expression`,
   items: [],
   icon: "filter",
+  alwaysVisible: true,
 };
 
 export const isSegmentListItem = (
@@ -125,6 +129,7 @@ export function FilterColumnPicker({
         // Prefer using a11y role selectors
         itemTestId="dimension-list-item"
         searchProp={["name", "displayName"]}
+        globalSearch
       />
     </DelayGroup>
   );
