@@ -91,7 +91,7 @@
  * to stick to bottom, options lists and other
  * middle content need extra margin-bottom
  */
-:global(.PopoverBody--marginBottom) {
+.PopoverBodyMarginBottom {
   margin-bottom: 60px;
 }
 
