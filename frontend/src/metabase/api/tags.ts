@@ -5,6 +5,7 @@ export const TAG_TYPES = [
   "table",
   "field",
   "field-values",
+  "card",
 ] as const;
 
 export type TagType = typeof TAG_TYPES[number];
@@ -19,4 +20,8 @@ export function listTag(type: TagType) {
 
 export function idTag(type: TagType, id: string | number) {
   return { type, id };
+}
+
+export function invalidateTags<T>(error: unknown, tags: T[]) {
+  return !error ? tags : [];
 }

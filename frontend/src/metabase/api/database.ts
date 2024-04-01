@@ -16,7 +16,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { tag, idTag, listTag } from "./tags";
+import { tag, idTag, listTag, invalidateTags } from "./tags";
 
 export const databaseApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -40,7 +40,7 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${id}`,
         body,
       }),
-      providesTags: (database, error, { id }) => [idTag("database", id)],
+      providesTags: (_, error, { id }) => [idTag("database", id)],
     }),
     getDatabaseMetadata: builder.query<Database, GetDatabaseMetadataRequest>({
       query: ({ id, ...body }) => ({
@@ -117,7 +117,8 @@ export const databaseApi = Api.injectEndpoints({
         url: "/api/database",
         body,
       }),
-      invalidatesTags: [listTag("database")],
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("database")]),
     }),
     updateDatabase: builder.mutation<Database, UpdateDatabaseRequest>({
       query: ({ id, ...body }) => ({
@@ -125,52 +126,60 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${id}`,
         body,
       }),
-      invalidatesTags: (response, error, { id }) => [
-        listTag("database"),
-        idTag("database", id),
-        tag("table"),
-        tag("field"),
-        tag("field-values"),
-      ],
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [
+          listTag("database"),
+          idTag("database", id),
+          tag("table"),
+          tag("field"),
+          tag("field-values"),
+          tag("card"),
+        ]),
     }),
     deleteDatabase: builder.mutation<void, DatabaseId>({
       query: id => ({
         method: "DELETE",
         url: `/api/database/${id}`,
       }),
-      invalidatesTags: (response, error, id) => [
-        listTag("database"),
-        idTag("database", id),
-        tag("table"),
-        tag("field"),
-        tag("field-values"),
-      ],
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [
+          listTag("database"),
+          idTag("database", id),
+          tag("table"),
+          tag("field"),
+          tag("field-values"),
+          tag("card"),
+        ]),
     }),
     syncDatabaseSchema: builder.mutation<void, DatabaseId>({
       query: databaseId => ({
         method: "POST",
         url: `/api/database/${databaseId}/sync_schema`,
       }),
-      invalidatesTags: [
-        tag("schema"),
-        tag("table"),
-        tag("field"),
-        tag("field-values"),
-      ],
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [
+          tag("schema"),
+          tag("table"),
+          tag("field"),
+          tag("field-values"),
+          tag("card"),
+        ]),
     }),
     rescanDatabaseFieldValues: builder.mutation<void, DatabaseId>({
       query: databaseId => ({
         method: "POST",
         url: `/api/database/${databaseId}/rescan_values`,
       }),
-      invalidatesTags: [tag("field-values")],
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("field-values")]),
     }),
     discardDatabaseFieldValues: builder.mutation<void, DatabaseId>({
       query: databaseId => ({
         method: "POST",
         url: `/api/database/${databaseId}/discard_values`,
       }),
-      invalidatesTags: [tag("field-values")],
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("field-values")]),
     }),
   }),
 });
