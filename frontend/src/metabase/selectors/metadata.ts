@@ -1,8 +1,13 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 
-import { Api, databaseApi, fieldApi, tableApi } from "metabase/api";
-import { DatabaseSchema, FieldSchema, TableSchema } from "metabase/schema";
+import { Api, cardApi, databaseApi, fieldApi, tableApi } from "metabase/api";
+import {
+  DatabaseSchema,
+  FieldSchema,
+  QuestionSchema,
+  TableSchema,
+} from "metabase/schema";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
 import Field from "metabase-lib/v1/metadata/Field";
@@ -82,44 +87,73 @@ const getApiFields = createSelector(getApiState, state => {
     .filter(isNotNull);
 });
 
+const getApiCards = createSelector(getApiState, state => {
+  const entries = cardApi.util
+    .selectInvalidatedBy(state, ["card"])
+    .filter(entry => entry.endpointName === "getCard");
+
+  return entries
+    .map(entry => {
+      const selector = cardApi.endpoints.getCard.select(entry.originalArgs);
+      const { data } = selector(state);
+      return data;
+    })
+    .filter(isNotNull);
+});
+
 const getApiEntities = createSelector(
-  [getApiDatabases, getApiTables, getApiFields],
-  (databases, tables, fields) => {
+  [getApiDatabases, getApiTables, getApiFields, getApiCards],
+  (databases, tables, fields, cards) => {
     const data = {
       databases,
       tables,
       fields,
+      questions: cards,
     };
     const schema = {
       databases: [DatabaseSchema],
       tables: [TableSchema],
       fields: [FieldSchema],
+      questions: [QuestionSchema],
     };
     const { entities } = normalize(data, schema);
     return entities;
   },
 );
 
-const getNormalizedDatabases = createSelector([getApiEntities], entities => {
-  return entities.databases ?? {};
-});
+const getNormalizedDatabases = createSelector(
+  [getApiEntities],
+  entities => entities.databases ?? {},
+);
 
-const getNormalizedSchemas = createSelector([getApiEntities], entities => {
-  return entities.schemas ?? {};
-});
+const getNormalizedSchemas = createSelector(
+  [getApiEntities],
+  entities => entities.schemas ?? {},
+);
 
 const getNormalizedTablesUnfiltered = createSelector(
   [getApiEntities],
-  entities => {
-    return entities.tables ?? {};
-  },
+  entities => entities.tables ?? {},
 );
 
 const getNormalizedFieldsUnfiltered = createSelector(
   [getApiEntities],
-  entities => {
-    return entities.fields ?? {};
-  },
+  entities => entities.fields ?? {},
+);
+
+const getNormalizedMetrics = createSelector(
+  [getApiEntities],
+  entities => entities.metrics ?? {},
+);
+
+const getNormalizedSegments = createSelector(
+  [getApiEntities],
+  entities => entities.segments ?? {},
+);
+
+const getNormalizedQuestions = createSelector(
+  [getApiEntities],
+  entities => entities.questions ?? {},
 );
 
 const getIncludeHiddenTables = (_state: State, props?: TableSelectorOpts) =>
@@ -162,10 +196,6 @@ const getNormalizedFields = createSelector(
       }),
     ),
 );
-
-const getNormalizedMetrics = (state: State) => state.entities.metrics;
-const getNormalizedSegments = (state: State) => state.entities.segments;
-const getNormalizedQuestions = (state: State) => state.entities.questions;
 
 export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
