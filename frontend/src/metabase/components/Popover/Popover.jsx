@@ -237,7 +237,7 @@ export default class Popover extends Component {
           PopoverS.PopoverBody,
           {
             [PopoverS.PopoverBodyWithBackground]: this.props.hasBackground,
-            "PopoverBody--withArrow":
+            [PopoverS.PopoverBodyWithArrow]:
               this.props.hasArrow && this.props.hasBackground,
             [PopoverS.PopoverBodyAutoWidth]: this.props.autoWidth,
           },

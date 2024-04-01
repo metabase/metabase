@@ -75,8 +75,8 @@
 }
 
 /* shared arrow styles */
-:global(.PopoverBody--withArrow::before),
-:global(.PopoverBody--withArrow::after) {
+.PopoverBodyWithArrow::before,
+.PopoverBodyWithArrow::after {
   position: absolute;
   content: "";
   display: block;
@@ -180,49 +180,49 @@
 }
 
 /* create a slightly larger arrow on the top for border purposes */
-:global(.tether-element-attached-top .PopoverBody--withArrow::before) {
+:global(.tether-element-attached-top) .PopoverBodyWithArrow::before {
   top: -20px;
   border-bottom-color: var(--color-border);
 }
 
 /* create a smaller inset arrow on the top */
-:global(.tether-element-attached-top .PopoverBody--withArrow::after) {
+:global(.tether-element-attached-top) .PopoverBodyWithArrow::after {
   top: -18px;
   border-bottom-color: var(--color-bg-white);
 }
 
 /* create a slightly larger arrow on the bottom for border purposes */
-:global(.tether-element-attached-bottom .PopoverBody--withArrow::before) {
+:global(.tether-element-attached-bottom) .PopoverBodyWithArrow::before {
   bottom: -20px;
   border-top-color: var(--color-border);
 }
 
 /* create a smaller inset arrow on the bottom */
-:global(.tether-element-attached-bottom .PopoverBody--withArrow::after) {
+:global(.tether-element-attached-bottom) .PopoverBodyWithArrow::after {
   bottom: -18px;
   border-top-color: var(--color-bg-white);
 }
 
 /* if the tether element is attached right, move our arrows right */
-:global(.tether-target-attached-right .PopoverBody--withArrow::before),
-:global(.tether-target-attached-right .PopoverBody--withArrow::after) {
+:global(.tether-target-attached-right) .PopoverBodyWithArrow::before,
+:global(.tether-target-attached-right) .PopoverBodyWithArrow::after {
   right: 12px;
 }
 
 /* if the tether element is attached center, move our arrows to the center */
-:global(.tether-element-attached-center .PopoverBody--withArrow::before),
-:global(.tether-element-attached-center .PopoverBody--withArrow::after) {
+:global(.tether-element-attached-center) .PopoverBodyWithArrow::before,
+:global(.tether-element-attached-center) .PopoverBodyWithArrow::after {
   margin-left: 50%;
   left: -10px;
 }
 
-:global(.tether-element-attached-right .PopoverBody--withArrow::before),
-:global(.tether-element-attached-right .PopoverBody--withArrow::after) {
+:global(.tether-element-attached-right) .PopoverBodyWithArrow::before,
+:global(.tether-element-attached-right) .PopoverBodyWithArrow::after {
   right: 12px;
 }
 
-:global(.tether-element-attached-left .PopoverBody--withArrow::before),
-:global(.tether-element-attached-left .PopoverBody--withArrow::after) {
+:global(.tether-element-attached-left) .PopoverBodyWithArrow::before,
+:global(.tether-element-attached-left) .PopoverBodyWithArrow::after {
   left: 12px;
 }
 
