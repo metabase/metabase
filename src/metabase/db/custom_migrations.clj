@@ -1207,7 +1207,7 @@
                                 v))]
       (doseq [table-name [:core_user
                           :collection
-                          :metabase_database ; details and dbms_version get updated later during setup
+                          :metabase_database
                           :metabase_table
                           :metabase_field
                           :report_card
@@ -1216,9 +1216,8 @@
                           :dashboard_tab
                           :report_dashboardcard
                           :dashboardcard_series]]
-        (when-let [;; We sort the rows by id so that the ids are generated correctly. We can't
-                   ;; the fact that for H2, we can't insert the ids directly without creating sequences for all the
-                   ;; generated id columns.
+        (when-let [;; We sort the rows by id so that auto-incrementing ids are generated in the same order. We can't
+                   ;; insert the ids directly in H2 without creating sequences for all the generated id columns.
                    values (seq (->> (sort-by :id (table-name table-name->rows))
                                     (map (fn [row]
                                            (let [row (update-vals row replace-temporal)]
