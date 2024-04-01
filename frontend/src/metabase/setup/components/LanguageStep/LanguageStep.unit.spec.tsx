@@ -43,13 +43,13 @@ describe("LanguageStep", () => {
     expect(screen.getByText(/set to English/)).toBeInTheDocument();
   });
 
-  it("should allow language selection", () => {
+  it("should allow language selection", async () => {
     setup({
       step: "language",
     });
 
     const option = screen.getByRole("radio", { name: "English" });
-    userEvent.click(option);
+    await userEvent.click(option);
 
     expect(option).toBeChecked();
   });

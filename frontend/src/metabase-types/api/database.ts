@@ -84,14 +84,14 @@ export interface DatabaseUsageInfo {
   segment: number;
 }
 
-export interface DatabaseRequest {
+export interface GetDatabaseRequest {
   id: DatabaseId;
   include?: "tables" | "tables.fields";
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;
 }
 
-export interface DatabaseListRequest {
+export interface ListDatabasesRequest {
   include?: "table";
   saved?: boolean;
   include_editable_data_model?: boolean;
@@ -100,12 +100,37 @@ export interface DatabaseListRequest {
   include_analytics?: boolean;
 }
 
-export interface DatabaseListResponse {
+export interface ListDatabasesResponse {
   data: Database[];
   total: number;
 }
 
-export interface DatabaseCreateRequest {
+export interface ListDatabaseIdFieldsRequest {
+  id: DatabaseId;
+  include_editable_data_model?: boolean;
+}
+
+export interface ListDatabaseSchemasRequest {
+  id: DatabaseId;
+  include_hidden?: boolean;
+  include_editable_data_model?: boolean;
+}
+
+export interface ListDatabaseSchemaTablesRequest {
+  id: DatabaseId;
+  schema: string;
+  include_hidden?: boolean;
+  include_editable_data_model?: boolean;
+}
+
+export interface GetDatabaseMetadataRequest {
+  id: DatabaseId;
+  include_hidden?: boolean;
+  include_editable_data_model?: boolean;
+  remove_inactive?: boolean;
+}
+
+export interface CreateDatabaseRequest {
   name: string;
   engine: string;
   details: Record<string, unknown>;
@@ -117,7 +142,7 @@ export interface DatabaseCreateRequest {
   connection_source?: "admin" | "setup";
 }
 
-export interface DatabaseUpdateRequest {
+export interface UpdateDatabaseRequest {
   id: DatabaseId;
   name?: string;
   engine?: string;
