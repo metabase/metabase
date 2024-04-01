@@ -533,6 +533,7 @@ function DashboardInner(props: DashboardProps) {
       {() => (
         <DashboardStyled>
           <DashboardHeaderContainer
+            id="Dashboard-Header-Container"
             isFullscreen={isFullscreen}
             isNightMode={shouldRenderAsNightMode}
           >

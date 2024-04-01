@@ -131,14 +131,15 @@ export const createMockVirtualDashCard = (
   };
 };
 
-export const createMockTextDashboardCard = (
-  opts?: VirtualDashboardCardOpts & { text?: string },
-): VirtualDashboardCard =>
+export const createMockTextDashboardCard = ({
+  text,
+  ...opts
+}: VirtualDashboardCardOpts & { text?: string } = {}): VirtualDashboardCard =>
   createMockVirtualDashCard({
     ...opts,
     card: createMockVirtualCard({ display: "text" }),
     visualization_settings: {
-      text: opts?.text ?? "Body Text",
+      text: text ?? "Body Text",
     },
   });
 

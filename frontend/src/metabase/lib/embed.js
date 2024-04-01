@@ -59,8 +59,28 @@ function sendMessage(message) {
 
 function getFrameSpec() {
   if (isFitViewportMode()) {
-    return { mode: "fit", height: document.body.scrollHeight };
+    return { mode: "fit", height: getScrollHeight() };
   } else {
     return { mode: "normal", height: document.body.scrollHeight };
   }
+}
+
+function defaultGetScrollHeight() {
+  return document.body.scrollHeight;
+}
+
+function getScrollHeight() {
+  const appBarHeight = document.getElementById("App-Bar")?.offsetHeight ?? 0;
+  const dashboardHeaderHeight =
+    document.getElementById("Dashboard-Header-Container")?.offsetHeight ?? 0;
+  const dashboardContentHeight =
+    document.getElementById("Dashboard-Parameters-And-Cards-Container")
+      ?.scrollHeight ?? 0;
+  const dashboardHeight = dashboardHeaderHeight + dashboardContentHeight;
+
+  if (dashboardHeight > 0) {
+    return appBarHeight + dashboardHeight;
+  }
+
+  return defaultGetScrollHeight();
 }
