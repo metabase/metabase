@@ -1,7 +1,7 @@
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import { Form, FormSubmitButton } from "metabase/forms";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { Box, Flex, Group, Icon, Text } from "metabase/ui";
 
@@ -53,6 +53,12 @@ const ResetAllToDefaultButtonFormBody = ({
               confirmResetAllToDefault();
               e.preventDefault();
               return false;
+            }}
+            styles={{
+              root: {
+                // TODO: Fix this background color
+                "&:hover": "background-color: rgba(237, 110, 110, .15)",
+              },
             }}
             label={
               <Text
