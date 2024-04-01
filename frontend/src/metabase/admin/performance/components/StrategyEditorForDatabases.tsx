@@ -91,6 +91,13 @@ export const StrategyEditorForDatabases = withRouter(
     const shouldShowResetButton =
       rootStrategyOverriddenOnce || rootStrategyRecentlyOverridden;
 
+    // When reset button is hidden, create a new version of the form to avoid carrying old context over
+    useEffect(() => {
+      if (!rootStrategyRecentlyOverridden) {
+        setResetFormVersionNumber(n => n + 1);
+      }
+    }, [rootStrategyRecentlyOverridden]);
+
     useEffect(() => {
       if (configsFromAPI) {
         setConfigs(configsFromAPI);
@@ -226,6 +233,9 @@ export const StrategyEditorForDatabases = withRouter(
       [configs],
     );
 
+    const [resetFormVersionNumber, setResetFormVersionNumber] = useState(0);
+    console.log('resetFormVersionNumber', resetFormVersionNumber);
+
     const resetAllToDefault = useCallback(async () => {
       const originalConfigs = [...configs];
       if (databaseIds.length === 0) {
@@ -322,19 +332,21 @@ export const StrategyEditorForDatabases = withRouter(
                   />
                 ))}
               </Stack>
-              <FormProvider initialValues={{}} onSubmit={resetAllToDefault}>
+              <FormProvider
+                initialValues={{}}
+                onSubmit={resetAllToDefault}
+                key={resetFormVersionNumber}
+              >
                 {shouldShowResetButton && (
                   <ResetAllToDefaultButton
                     rootConfigLabel={
                       // TODO:: It might be confusing to say 'resetting to duration' if the
                       // database strategies are also duration. Perhaps we should say 'resetting to
                       // duration (10 hours)' or just 'reset to the default strategy'
-                      "default"
-                      // TODO: restore
-                      // rootConfig?.strategy.type
-                      //   ? Strategies[rootConfig?.strategy.type].shortLabel ??
-                      //     "default"
-                      //   : "default"
+                      rootConfig?.strategy.type
+                        ? Strategies[rootConfig?.strategy.type].shortLabel ??
+                          "default"
+                        : "default"
                     }
                   />
                 )}
