@@ -24,6 +24,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -1128,56 +1129,47 @@
       (m/update-existing :last_analyzed (constantly v)))) ; field
 
 (comment
-  (defn- pretty-spit [file-name data]
-    (with-open [writer (io/writer file-name)]
-      (binding [*out* writer]
-        #_{:clj-kondo/ignore [:discouraged-var]}
-        (pprint/pprint data))))
+  (type (first (map :date_joined (t2/query {:select [:*] :from :core_user}))))
+  (isa? java.time.OffsetDateTime java.time.temporal.Temporal)
+
   ;; STEPS to prepareresources/sample-data.edn
   ;; write data
   ;; start a fresh metabase instance without the :ee alias
   ;; create a dashboard called 'dash', with some dashcards
+  ;; or import one with (metabase.cmd/import "<path>")
   ;; evaluate (install-internal-user!) to create the internal user
-  (let [data (-> (into {}
-                       (for [table-name [:metabase_database
-                                         :metabase_table
-                                         :metabase_field
-                                         :report_dashboard
-                                         :report_dashboardcard
-                                         :report_card
-                                         :parameter_card
-                                         :dashboard_tab
-                                         :dashboardcard_series]]
-                         [table-name (t2/query {:select [:*] :from table-name})]))
-                 ;; TODO: handle password, password salt, settings
-                 (assoc :core_user (t2/query {:select [:*]
-                                              :from   :core_user
-                                              :where  [:= :id config/internal-mb-user-id]}))
-                 (update-vals (fn [v] (mapv #(replace-generated-values (into {} %) nil) v))))]
+  (let [pretty-spit (fn [file-name data]
+                      (with-open [writer (io/writer file-name)]
+                        (binding [*out* writer]
+                          #_{:clj-kondo/ignore [:discouraged-var]}
+                          (pprint/pprint data))))
+        data (into {}
+                   (for [table-name [:core_user
+                                     :collection
+                                     :metabase_database
+                                     :metabase_table
+                                     :metabase_field
+                                     :report_dashboard
+                                     :report_dashboardcard
+                                     :report_card
+                                     :parameter_card
+                                     :dashboard_tab
+                                     :dashboardcard_series]
+                         :let [query (cond-> {:select [:*] :from table-name}
+                                       (= table-name :core_user) (assoc :where [:= :id config/internal-mb-user-id]))]]
+                     [table-name (map #(into {} %) (t2/query query))]))]
     (pretty-spit "resources/sample-data.edn" data))
-  ;; replace :creator_id 1 with :creator_id 13371338
-  (let [sample-data (load-edn "resources/sample-data.edn")]
-    (doall (for [table-name [:core_user ; TODO: update password, password_salt, setting
-                             :metabase_database ;; details will get cleaned up on sync
-                             :metabase_table
-                             :metabase_field
-                             :report_card ; TODO: update metabase_version
-                             :parameter_card
-                             :report_dashboard
-                             :dashboard_tab
-                             :report_dashboardcard
-                             :dashboardcard_series]]
-             (do (if (= table-name :core_user)
-                   (t2/delete! :core_user :id config/internal-mb-user-id)
-                   (t2/delete! table-name))
-                 (when-let [values (seq (map (fn [v] (replace-generated-values v :%now))
-                                             (table-name sample-data)))]
-                   (t2/query {:insert-into table-name :values values}))))))
-  )
-
-(define-reversible-migration CreateSampleDashboard
-  (let [dashdata (load-edn "resources/sample-data.edn")]
+  ;; in the .edn file:
+  ;; - find-replace :creator_id 1, 2, etc with :creator_id 13371338 (the internal user ID)
+  ;; - delete the personal collection, and make the example dashboard prototype have id 1
+  ;; - find-replace collection_id 2 with collection_id 1
+  (let [table-name->rows  (load-edn "resources/sample-data.edn")
+        replace-temporal  (fn [v]
+                            (if (isa? (type v) java.time.temporal.Temporal)
+                              :%now
+                              v))]
     (doall (for [table-name [:core_user ; password, password_salt, setting need updating
+                             :collection
                              :metabase_database ; details and dbms_version need updating
                              :metabase_table
                              :metabase_field
@@ -1187,10 +1179,58 @@
                              :dashboard_tab
                              :report_dashboardcard
                              :dashboardcard_series]]
-             (when-let [values (seq (map (fn [v] (replace-generated-values v :%now))
-                                         (table-name dashdata)))]
-               (t2/query {:insert-into table-name :values values})))))
-  :no-op)
+             (do (if (= table-name :core_user)
+                     (t2/delete! :core_user :id config/internal-mb-user-id)
+                     (t2/delete! table-name))
+              (when-let [values (seq (map #(update-vals % replace-temporal) (table-name table-name->rows)))]
+                (t2/query {:insert-into table-name :values values}))))))
+  ;; drop + create the database again, with the migration turned on
+
+  (for [table-name [:core_user ; password, password_salt, setting need updating
+                    :collection
+                    :metabase_database ; details and dbms_version need updating
+                    :metabase_table
+                    :metabase_field
+                    :report_card ; metabase_version needs updating
+                    :parameter_card
+                    :report_dashboard
+                    :dashboard_tab
+                    :report_dashboardcard
+                    :dashboardcard_series]]
+    (t2/query (str "select setval('" (name table-name) "_id_seq', max(id)) from " (name table-name))))
+  )
+
+(defn- load-edn
+  "Load edn from an io/reader source (filename or io/resource)."
+  [source]
+  (with-open [r (io/reader source)]
+    (edn/read {:readers {'t u.date/parse}} (java.io.PushbackReader. r))))
+
+(define-migration CreateSampleDashboard
+  ;; if there is a user that is not the internal user, don't create the sample dashboard
+  (if (not-empty (t2/query {:select [:id] :from :core_user :where [:not= :id config/internal-mb-user-id]}))
+    :no-op
+    (let [table-name->rows  (load-edn "resources/sample-data.edn")
+          replace-temporal  (fn [v]
+                              (if (isa? (type v) java.time.temporal.Temporal)
+                                :%now
+                                v))]
+      (doseq [table-name [:core_user ; password, password_salt, settings need updating
+                          :collection
+                          :metabase_database ; details and dbms_version get updated later in setup
+                          :metabase_table
+                          :metabase_field
+                          :report_card ; metabase_version needs updating?
+                          :parameter_card
+                          :report_dashboard
+                          :dashboard_tab
+                          :report_dashboardcard
+                          :dashboardcard_series]]
+        (when-let [values (seq (map #(update-vals % replace-temporal) (table-name table-name->rows)))]
+          (t2/query {:insert-into table-name :values values})
+          ;; Unlike H2 and MySQL, Postgres doesn't automatically update the sequence value for an auto-increment series
+          (when (= (mdb.connection/db-type) :postgres)
+            (t2/query (str "select setval('" (name table-name) "_id_seq', max(id)) from " (name table-name)))))))))
 
 ;; This was renamed to TruncateAuditTables, so we need to delete the old job & trigger
 (define-migration DeleteTruncateAuditLogTask
