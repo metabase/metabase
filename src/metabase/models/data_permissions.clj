@@ -617,6 +617,60 @@
         (set-database-permission! group-or-id db-or-id :perms/create-queries :no)
         (set-database-permission! group-or-id db-or-id :perms/download-results :no)))))
 
+(defn set-new-database-permissions!
+  "Sets permissions for a newly-added database to their appropriate values for a single group. For certain permission
+  types, the value computed based on the existing permissions the group has for other databases."
+  [group-or-id db-or-id]
+  (let [group-id            (u/the-id group-or-id)
+        view-data-level     (if (or (t2/exists? :model/DataPermissions
+                                                :perm_type :perms/view-data
+                                                :perm_value :blocked
+                                                :group_id group-id)
+                                    (t2/exists? :model/GroupTableAccessPolicy
+                                                :group_id group-id)
+                                    (t2/exists? :model/ConnectionImpersonation
+                                                :group_id group-id))
+                              :blocked
+                              :unrestricted)
+        create-queries-level (cond
+                              (t2/exists? :model/DataPermissions
+                                          :perm_type :perms/create-queries
+                                          :perm_value :no
+                                          :group_id group-id)
+                              :no
+
+                              (t2/exists? :model/DataPermissions
+                                          :perm_type :perms/create-queries
+                                          :perm_value :query-builder
+                                          :group_id group-id)
+                              :query-builder
+
+                              :else
+                              :query-builder-and-native)
+        download-level        (cond
+                               (= view-data-level :blocked)
+                               :no
+
+                               (t2/exists? :model/DataPermissions
+                                           :perm_type :perms/download-results
+                                           :perm_value :no
+                                           :group_id group-id)
+                               :no
+
+                               (t2/exists? :model/DataPermissions
+                                           :perm_type :perms/download-results
+                                           :perm_value :ten-thousand-rows
+                                           :group_id group-id)
+                               :ten-thousand-rows
+
+                               :else
+                               :one-million-rows)]
+    (set-database-permission! group-or-id db-or-id :perms/view-data view-data-level)
+    (set-database-permission! group-or-id db-or-id :perms/create-queries create-queries-level)
+    (set-database-permission! group-or-id db-or-id :perms/download-results download-level)
+    (set-database-permission! group-or-id db-or-id :perms/manage-table-metadata :no)
+    (set-database-permission! group-or-id db-or-id :perms/manage-database :no)))
+
 (mu/defn set-table-permissions!
   "Sets table permissions to specified values for a given group. If a permission value already exists for a specified
   group and table, it will be updated to the new value.
