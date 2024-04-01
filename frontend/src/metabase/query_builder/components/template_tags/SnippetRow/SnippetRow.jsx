@@ -55,7 +55,7 @@ class SnippetRowInner extends Component {
           >
             <Icon
               name="snippet"
-              className={cx(CS.hoverChildHidden,  CS.textLight)}
+              className={cx(CS.hoverChildHidden, CS.textLight)}
             />
             <Icon
               name={insertSnippet ? "arrow_left_to_line" : "snippet"}

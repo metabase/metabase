@@ -232,7 +232,9 @@ function PulseDetails({ pulse, parameters }) {
               className={cx(
                 CS.ml1,
                 CS.textMedium,
-                CS.hoverChild, CS.hoverInherit)}
+                CS.hoverChild,
+                CS.hoverInherit,
+              )}
               style={{ fontSize: "12px" }}
             >
               {recipientText}
@@ -261,7 +263,8 @@ function PulseDetails({ pulse, parameters }) {
               className={cx(
                 CS.ml1,
                 CS.textMedium,
-                  CS.hoverChild, CS.hoverInherit
+                CS.hoverChild,
+                CS.hoverInherit,
               )}
               style={{ fontSize: "12px" }}
             >

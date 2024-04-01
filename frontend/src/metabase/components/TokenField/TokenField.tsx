@@ -661,7 +661,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
                   CS.full,
                   CS.cursorPointer,
                   `text-${color}-hover`,
-                    CS.bgLightHover,
+                  CS.bgLightHover,
                   {
                     [`text-${color} bg-light`]:
                       !this.state.listIsHovered &&
