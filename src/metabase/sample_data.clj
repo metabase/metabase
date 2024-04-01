@@ -70,8 +70,8 @@
   (try
     (log/info (trs "Loading sample database"))
     (let [details (try-to-extract-sample-database!)
-            ;; the sample database is inserted during db setup as a migration, but we need to update its details
-          db      (t2/select-one Database (first (t2/update-returning-pks! Database :is_sample true {:details details})))]
+          ;; the sample database is inserted during DB setup, but we need to update its details
+          db (t2/select-one Database (first (t2/update-returning-pks! Database :is_sample true {:details details})))]
       (log/debug "Syncing Sample Database...")
       (sync/sync-database! db))
     (log/debug "Finished adding Sample Database.")
