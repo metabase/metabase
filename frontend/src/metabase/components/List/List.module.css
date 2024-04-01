@@ -14,7 +14,6 @@
 }
 
 .header {
-  /* TODO FIGURE OUT WHAT TO DO WITH THIS */
   composes: mt4 mb2 from "style";
   flex-direction: row;
   display: flex;
@@ -24,8 +23,7 @@
 }
 
 .headerBody {
-  /* TODO FIGURE OUT WHAT TO DO WITH THIS */
-  composes: border-bottom from "style";
+  composes: borderBottom from "style";
   flex: 1 0 auto;
   display: flex;
   align-items: center;
@@ -34,7 +32,6 @@
 }
 
 .headerButton {
-  /* TODO FIGURE OUT WHAT TO DO WITH THIS */
   composes: ml1 from "style";
   align-items: center;
   display: flex;

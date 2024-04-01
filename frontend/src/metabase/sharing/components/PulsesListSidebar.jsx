@@ -98,10 +98,7 @@ function _PulsesListSidebar({
               }
             >
               <div
-                className={cx(
-                  CS.px3,
-                  CS.py2,
-                  CS.hoverParent, CS.hoverInherit, {
+                className={cx(CS.px3, CS.py2, CS.hoverParent, CS.hoverInherit, {
                   "text-white-hover": canEdit,
                 })}
               >
@@ -236,7 +233,9 @@ function PulseDetails({ pulse, parameters }) {
               className={cx(
                 CS.ml1,
                 CS.textMedium,
-                CS.hoverChild, CS.hoverInherit)}
+                CS.hoverChild,
+                CS.hoverInherit,
+              )}
               style={{ fontSize: "12px" }}
             >
               {recipientText}
@@ -262,7 +261,12 @@ function PulseDetails({ pulse, parameters }) {
               size={12}
             />
             <span
-              className={cx(CS.ml1, "text-medium", CS.hoverChild, CS.hoverInherit)}
+              className={cx(
+                CS.ml1,
+                "text-medium",
+                CS.hoverChild,
+                CS.hoverInherit,
+              )}
               style={{ fontSize: "12px" }}
             >
               {filterText}
