@@ -76,7 +76,7 @@
       (is (=? {:status                 :completed
                :data                   {}
                :row_count              0
-               :database_id            (mt/id)
+               :database_id            2
                :started_at             #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
                :json_query             (dissoc (mt/userland-query query) :info)
                :average_execution_time nil
@@ -86,7 +86,7 @@
               (process-userland-query query))
           "Result should have query execution info")
       (is (=? {:hash         "58af781ea2ba252ce3131462bdc7c54bc57538ed965d55beec62928ce8b32635"
-               :database_id  (mt/id)
+               :database_id  2
                :result_rows  0
                :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
                :executor_id  nil
