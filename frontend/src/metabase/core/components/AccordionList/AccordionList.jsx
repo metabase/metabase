@@ -308,7 +308,7 @@ export default class AccordionList extends Component {
         this.getInitialCursor(),
         this.props.sections,
         this.isSectionExpanded,
-        !this.props.alwaysExpanded,
+        this.canSelectSection,
         this.searchFilter,
       );
 
@@ -325,7 +325,7 @@ export default class AccordionList extends Component {
         this.getInitialCursor(),
         this.props.sections,
         this.isSectionExpanded,
-        !this.props.alwaysExpanded,
+        this.canSelectSection,
         this.searchFilter,
       );
 
@@ -541,6 +541,10 @@ export default class AccordionList extends Component {
     const openSection = this.getOpenSection();
 
     return this.props.alwaysExpanded || openSection === sectionIndex;
+  };
+
+  canSelectSection = sectionIndex => {
+    return !this.props.alwaysExpanded;
   };
 
   // Because of virtualization, focused search input can be removed which does not trigger blur event.
