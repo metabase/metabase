@@ -15,9 +15,6 @@ describe("scenarios > question > native subquery", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/database/**/card_autocomplete_suggestions?**").as(
-      "suggestions",
-    );
   });
 
   it("typing a card tag should open the data reference", () => {
@@ -296,12 +293,8 @@ describe("scenarios > question > native subquery", () => {
         cy.intercept("GET", `/api/card/${nestedQuestionId}`).as("loadQuestion");
 
         startNewNativeQuestion();
-        SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`, {
-          delay: 100,
-        });
+        SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`);
         cy.wait("@loadQuestion");
-
-        cy.wait("@suggestions");
         cy.findByTestId("sidebar-header-title").should(
           "have.text",
           questionDetails.name,
