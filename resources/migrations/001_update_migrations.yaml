@@ -6101,6 +6101,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
+                  remarks: Unique ID
                   type: int
                   autoIncrement: true
                   constraints:
@@ -6108,6 +6109,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: field_id
+                  remarks: ID of the field
                   type: int
                   autoIncrement: true
                   constraints:
@@ -6118,6 +6120,7 @@ databaseChangeLog:
                     deleteCascade: true
               - column:
                   name: query_execution_id
+                  remarks: referenced query execution
                   type: int
                   autoIncrement: true
                   constraints:
@@ -6128,36 +6131,44 @@ databaseChangeLog:
                     deleteCascade: true
               - column:
                   name: used_in
+                  remarks: which part of the query the field was used in
                   type: varchar(25)
+                  constraints:
+                    nullable: false
               - column:
                   name: filter_op
+                  remarks: fitler's operator that applied to the field
                   type: varchar(25)
                   constraints:
                     nullable: true
               - column:
                   name: filter_args
+                  remarks: fitler's argument that applied to the field
                   type: ${text.type}
                   constraints:
                     nullable: true
               - column:
                   name: aggregation_function
+                  remarks: the aggregation function that field applied to
                   type: varchar(25)
                   constraints:
                     nullable: true
               - column:
                   name: breakout_temporal_unit
+                  remarks: temporal unit options of the breakout
                   type: varchar(25)
                   constraints:
                     nullable: true
               - column:
                   name: breakout_binning
+                  remarks: binning options of the breakout
                   type: varchar(256)
                   constraints:
                     nullable: true
               - column:
-                  name: timestamp
+                  name: created_at
                   type: ${timestamp_type}
-                  remarks: The time an event was recorded
+                  remarks: The time an field usage was recorded
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false

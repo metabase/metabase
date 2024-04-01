@@ -15,7 +15,8 @@
 
 (doto :model/FieldUsage
   (derive :metabase/model)
-  (derive ::t2.disallow/update))
+  (derive ::t2.disallow/update)
+  (derive :hook/created-at-timestamped?))
 
 (methodical/defmethod t2/table-name :model/FieldUsage [_model] :field_usage)
 
@@ -26,11 +27,6 @@
    :breakout_binning       mi/transform-json
    :filter_op              mi/transform-keyword
    :filter_args            mi/transform-json})
-
-(t2/define-before-insert :model/FieldUsage
-  [instance]
-  (merge {:timestamp :%now}
-         instance))
 
 (defn- filter->field-usage
   [query stage filter-clause]
