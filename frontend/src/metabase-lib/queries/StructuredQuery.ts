@@ -264,7 +264,11 @@ class StructuredQuery extends AtomicQuery {
    * @deprecated use metabase-lib v2 to manage joins
    */
   joins = _.once((): JoinWrapper[] => {
-    return Q.getJoins(this.legacyQuery({ useStructuredQuery: true })).map(
+    const legacyQuery = this.legacyQuery({ useStructuredQuery: true });
+    if (!legacyQuery) {
+      return [];
+    }
+    return Q.getJoins(legacyQuery).map(
       (join, index) => new JoinWrapper(join, index, this),
     );
   });
