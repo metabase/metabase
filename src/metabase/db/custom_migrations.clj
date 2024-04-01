@@ -1231,6 +1231,55 @@
           (when (= (mdb.connection/db-type) :postgres)
             (t2/query (str "select setval('" (name table-name) "_id_seq', max(id)) from " (name table-name)))))))))
 
+(comment
+  ;; How to create `resources/sample-content.edn` used in `CreateSampleContent`
+  ;; -----------------------------------------------------------------------------
+  ;; Start a fresh metabase instance without the :ee alias
+  ;; 1. create a collection with dashboards, or import one with (metabase.cmd/import "<path>")
+  ;; 2. ensure the internal user is created, currently defined by `metabase-enterprise.internal-user`:
+  ;; (defn- install-internal-user! []
+  ;;   (t2/insert-returning-instances!
+  ;;    User
+  ;;    {:id config/internal-mb-user-id
+  ;;     :first_name "Metabase"
+  ;;     :last_name "Internal"
+  ;;     :email "internal@metabase.com"
+  ;;     :password (str (random-uuid))
+  ;;     :is_active false
+  ;;     :is_superuser false
+  ;;     :login_attributes nil
+  ;;     :sso_source nil
+  ;;     :type :internal}))
+  ;; 3. now execute the following to spit out the collection to an EDN file:
+  (let [pretty-spit (fn [file-name data]
+                      (with-open [writer (io/writer file-name)]
+                        (binding [*out* writer]
+                          #_{:clj-kondo/ignore [:discouraged-var]}
+                          (pprint/pprint data))))
+        data (into {}
+                   (for [table-name [:core_user
+                                     :collection
+                                     :metabase_database
+                                     :metabase_table
+                                     :metabase_field
+                                     :report_dashboard
+                                     :report_dashboardcard
+                                     :report_card
+                                     :parameter_card
+                                     :dashboard_tab
+                                     :dashboardcard_series]
+                         :let [query (cond-> {:select [:*] :from table-name}
+                                       (= table-name :core_user) (assoc :where [:= :id config/internal-mb-user-id]))]]
+                     [table-name (map #(into {} %) (t2/query query))]))]
+    (pretty-spit "resources/sample-data.edn" data))
+  ;; 4. update the EDN file:
+  ;; - find-replace :creator_id 1, 2, etc with :creator_id 13371338 (the internal user ID)
+  ;; - delete the personal collection, and make the example dashboard prototype have id 1
+  ;; - find-replace collection_id 2 with collection_id 1
+  ;; - manually set user's password, password_salt, and settings to nil.
+  ;; - replace metabase_version <version> with metabase_version nil,
+  )
+
 ;; This was renamed to TruncateAuditTables, so we need to delete the old job & trigger
 (define-migration DeleteTruncateAuditLogTask
   (classloader/the-classloader)
