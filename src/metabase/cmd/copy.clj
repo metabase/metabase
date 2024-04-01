@@ -196,7 +196,7 @@
        results))))
 
 (defn- assert-db-empty
-  "Make sure [target] application DB is empty before we start copying data."
+  "Make sure [target] application DB has no users before we start copying data."
   [data-source]
   ;; check that there are no Users yet
   (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} ["SELECT count(*) AS cnt FROM core_user where not id = ?;"

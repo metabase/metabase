@@ -1196,7 +1196,7 @@
 (defn- fresh-install?
   "If there is a user that is not the internal user, we know it's not a fresh install."
   []
-  (empty? (t2/query {:select [:id] :from :core_user :where [:not= :id config/internal-mb-user-id]})))
+  (zero? (first (vals (t2/query-one {:select [:%count.*] :from :core_user :where [:not= :id config/internal-mb-user-id]})))))
 
 (define-migration CreateSampleContent
   (when (and (config/load-sample-content?) (fresh-install?))
