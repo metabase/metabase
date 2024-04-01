@@ -166,25 +166,3 @@
   height: 6px;
   pointer-events: none;
 }
-
-/* transition classes */
-
-:global(.Popover-appear),
-:global(.Popover-enter) {
-  opacity: 0.01;
-}
-
-:global(.Popover-appear.Popover-appear-active),
-:global(.Popover-enter.Popover-enter-active) {
-  opacity: 1;
-  transition: opacity 100ms ease-in;
-}
-
-:global(.Popover-leave) {
-  opacity: 1;
-}
-
-:global(.Popover-leave.Popover-leave-active) {
-  opacity: 0.01;
-  transition: opacity 100ms ease-in;
-}
