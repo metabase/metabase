@@ -53,7 +53,6 @@ export const LabelContainer = styled.div`
 `;
 
 export const Label = styled.span`
-  font-weight: bold;
   font-size: 1em;
   line-height: 1em;
 `;
