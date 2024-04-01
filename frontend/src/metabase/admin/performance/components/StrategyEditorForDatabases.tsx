@@ -10,6 +10,7 @@ import type { SchemaObjectDescription } from "yup/lib/schema";
 
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { FormProvider } from "metabase/forms";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
@@ -33,7 +34,6 @@ import { ResetAllToDefaultButton } from "./ResetAllToDefaultButton";
 import { Panel, TabWrapper } from "./StrategyEditorForDatabases.styled";
 import { StrategyForm } from "./StrategyForm";
 import { StrategyFormLauncher } from "./StrategyFormLauncher";
-import { FormProvider } from "metabase/forms";
 
 export const StrategyEditorForDatabases = withRouter(
   ({
@@ -234,7 +234,6 @@ export const StrategyEditorForDatabases = withRouter(
     );
 
     const [resetFormVersionNumber, setResetFormVersionNumber] = useState(0);
-    console.log('resetFormVersionNumber', resetFormVersionNumber);
 
     const resetAllToDefault = useCallback(async () => {
       const originalConfigs = [...configs];
@@ -253,7 +252,7 @@ export const StrategyEditorForDatabases = withRouter(
         setConfigs(originalConfigs);
         throw e;
       }
-    }, [configs, setConfigs]);
+    }, [configs, setConfigs, databaseIds]);
 
     const formPanelRef = useRef<HTMLDivElement>(null);
     const [formPanelHasVerticalScrollbar, setFormPanelHasVerticalScrollbar] =
@@ -274,12 +273,12 @@ export const StrategyEditorForDatabases = withRouter(
       setFormPanelHasVerticalScrollbar,
     ]);
 
-    const showLoadingSpinner = useDelayedLoadingSpinner();
+    const showSpinner = useDelayedLoadingSpinner();
     const error = databasesResult.error || configsResult.error;
     const loading = databasesResult.isLoading || configsResult.loading;
 
     if (error || loading) {
-      return showLoadingSpinner ? (
+      return showSpinner ? (
         <LoadingAndErrorWrapper error={error} loading={loading} />
       ) : (
         <></>
@@ -287,6 +286,11 @@ export const StrategyEditorForDatabases = withRouter(
     }
 
     const rootConfig = findWhere(configs, { model_id: rootId });
+
+    const rootConfigLabel =
+      (rootConfig?.strategy.type
+        ? Strategies[rootConfig?.strategy.type].shortLabel
+        : null) ?? "default";
 
     return (
       <TabWrapper role="region" aria-label={t`Data caching settings`}>
@@ -335,20 +339,10 @@ export const StrategyEditorForDatabases = withRouter(
               <FormProvider
                 initialValues={{}}
                 onSubmit={resetAllToDefault}
-                key={resetFormVersionNumber}
+                key={resetFormVersionNumber} // To avoid using stale context
               >
                 {shouldShowResetButton && (
-                  <ResetAllToDefaultButton
-                    rootConfigLabel={
-                      // TODO:: It might be confusing to say 'resetting to duration' if the
-                      // database strategies are also duration. Perhaps we should say 'resetting to
-                      // duration (10 hours)' or just 'reset to the default strategy'
-                      rootConfig?.strategy.type
-                        ? Strategies[rootConfig?.strategy.type].shortLabel ??
-                          "default"
-                        : "default"
-                    }
-                  />
+                  <ResetAllToDefaultButton rootConfigLabel={rootConfigLabel} />
                 )}
               </FormProvider>
             </Panel>

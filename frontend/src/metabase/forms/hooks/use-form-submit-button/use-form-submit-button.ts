@@ -44,7 +44,6 @@ const useIsRecent = (value: unknown, timeout: number) => {
 };
 
 const getFormStatus = (status: FormStatus, isRecent: boolean): FormStatus => {
-  console.log("getFormStatus status", status);
   switch (status) {
     case "fulfilled":
     case "rejected":

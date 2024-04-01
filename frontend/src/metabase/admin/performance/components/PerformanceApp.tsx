@@ -35,7 +35,6 @@ export const PerformanceApp = ({ route }: { route: Route }) => {
     };
   }, [tabsRef, setTabsHeight]);
 
-  // TODO: The horizontal row of tabs does not look so good in narrow viewports
   return (
     <Tabs
       value={tabId}

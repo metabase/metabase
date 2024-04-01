@@ -79,10 +79,17 @@ export interface DoNotCacheStrategy extends StrategyBase {
   type: "nocache";
 }
 
+export enum DurationUnit {
+  Hours = "hours",
+  Minutes = "minutes",
+  Seconds = "seconds",
+  Days = "days",
+}
+
 export interface DurationStrategy extends StrategyBase {
   type: "duration";
   duration: number;
-  unit: "hours" | "minutes" | "seconds" | "days";
+  unit: DurationUnit;
 }
 
 export interface InheritStrategy extends StrategyBase {
@@ -136,4 +143,4 @@ export type LeaveConfirmationData =
 
 export type CacheConfigAPIResponse = {
   data: Config[];
-}
+};

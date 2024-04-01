@@ -28,7 +28,7 @@ import {
 import { rootId } from "../constants";
 import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
 import type { Strategy, StrategyType } from "../types";
-import { Strategies } from "../types";
+import { DurationUnit, Strategies } from "../types";
 import { strategyValidationSchema } from "../validation";
 
 export const StrategyForm = ({
@@ -72,7 +72,7 @@ const StrategyFormBody = ({
 
   useEffect(() => {
     if (selectedStrategyType === "duration") {
-      setFieldValue("unit", "hours");
+      setFieldValue("unit", DurationUnit.Hours);
     }
   }, [selectedStrategyType, values, setFieldValue]);
 
