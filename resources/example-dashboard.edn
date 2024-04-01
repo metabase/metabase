@@ -699,27 +699,27 @@
    :dashboard_id 1,
    :created_at #t "2024-02-16T22:21:38.013278Z",
    :row 20}),
- :core_user ({:email "internal@metabase.com",
-              :first_name "Metabase",
-              :password_salt "c4f606a6-5859-4d6a-b7bd-3309c2e461b7",
-              :locale nil,
-              :password "$2a$10$iWjpLQhg.MevKBbVK6jaj.oJdKT8yzPrP3YL77Se8InPimynHE8WO",
-              :last_login nil,
-              :is_active false,
-              :settings
-              "t2p49XisLIydQYSWstLh8UyOvUZRlGzNEClWHBB4X3iTplnnYhv0NtcOgw5eKGl/YXoX2LKOsoCMEZe4zBWz7v4HlKMch9ceJXHzCwVj+lSrG9xrfI7vYvaZPzqylDqJELE0xA20B6dS3/dKw+/zGA==",
-              :type "internal",
-              :is_qbnewb true,
-              :updated_at nil,
-              :reset_triggered nil,
-              :is_superuser false,
-              :login_attributes nil,
-              :id 13371338,
-              :reset_token nil,
-              :last_name "Internal",
-              :date_joined #t "2024-02-16T22:21:38.013278Z",
-              :sso_source nil,
-              :is_datasetnewb true}),
+ :core_user
+ ({:email "internal@metabase.com",
+   :first_name "Metabase",
+   :password_salt nil,
+   :locale nil,
+   :password nil,
+   :last_login nil,
+   :is_active false,
+   :settings nil,
+   :type "internal",
+   :is_qbnewb true,
+   :updated_at nil,
+   :reset_triggered nil,
+   :is_superuser false,
+   :login_attributes nil,
+   :id 13371338,
+   :reset_token nil,
+   :last_name "Internal",
+   :date_joined #t "2024-02-16T22:21:38.013278Z",
+   :sso_source nil,
+   :is_datasetnewb true}),
  :dashboard_tab
  ({:id 1,
    :dashboard_id 1,
@@ -3175,7 +3175,7 @@
    :entity_id "oShRjudlgUvJRezvGTQTD",
    :collection_preview true,
    :visualization_settings "{\"column_settings\":null}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-23T22:16:47.090505Z",
    :public_uuid nil}
@@ -3206,7 +3206,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"Age\"],\"graph.metrics\":[],\"graph.series_order\":null,\"graph.series_order_dimension\":null,\"graph.show_values\":true,\"stackable.stack_type\":\"stacked\",\"table.cell_column\":\"SUBTOTAL\"}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-02-15T19:42:19.604756Z",
    :public_uuid nil}
@@ -3236,7 +3236,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"Age\"],\"graph.metrics\":[\"sum\"],\"graph.series_order\":null,\"graph.series_order_dimension\":null,\"graph.show_values\":true,\"stackable.stack_type\":\"stacked\",\"table.cell_column\":\"SUBTOTAL\"}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-02-16T19:51:05.147729Z",
    :public_uuid nil}
@@ -3266,7 +3266,7 @@
    :entity_id "4Vg7KooQhZ4rnkgRu_yXh",
    :collection_preview true,
    :visualization_settings "{\"column_settings\":null,\"graph.dimensions\":[\"age\"],\"graph.metrics\":[\"count\"]}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-23T19:07:47.283225Z",
    :public_uuid nil}
@@ -3296,7 +3296,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"count\"],\"graph.metrics\":[\"count_2\"]}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-23T22:58:32.073278Z",
    :public_uuid nil}
@@ -3326,7 +3326,7 @@
    :entity_id "nhFZBIIZA_KnK6RuLp36z",
    :collection_preview true,
    :visualization_settings "{\"column_settings\":null}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-23T22:30:47.384379Z",
    :public_uuid nil}
@@ -3357,7 +3357,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"pie.colors\":{\"Doohickey\":\"#7172AD\",\"Gadget\":\"#A989C5\",\"Gizmo\":\"#C7EAEA\",\"Widget\":\"#227FD2\"}}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-23T19:46:32.867470Z",
    :public_uuid nil}
@@ -3388,7 +3388,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"CREATED_AT\",\"CATEGORY\"],\"graph.metrics\":[\"sum\"],\"graph.series_order\":null,\"graph.series_order_dimension\":null,\"stackable.stack_type\":\"stacked\"}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2023-12-28T16:28:10.454924Z",
    :public_uuid nil}
@@ -3418,7 +3418,7 @@
    :entity_id "BP4o72CSvPOTLe5Nk6twf",
    :collection_preview true,
    :visualization_settings "{\"column_settings\":null}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-23T22:32:06.974080Z",
    :public_uuid nil}
@@ -3449,7 +3449,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"map.colors\":[\"#e5e5f1\",\"#c0c0da\",\"#9b9cc3\",\"#7677ab\",\"hsl(239, 29.5%, 39.3%)\"]}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-23T23:31:25.302188Z",
    :public_uuid nil}
@@ -3479,7 +3479,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"Age\",\"SOURCE\"],\"graph.metrics\":[\"count\"],\"graph.series_order\":null,\"graph.series_order_dimension\":null,\"graph.show_values\":true,\"graph.x_axis.axis_enabled\":true,\"graph.x_axis.labels_enabled\":true,\"graph.x_axis.scale\":\"ordinal\",\"graph.y_axis.auto_range\":true,\"stackable.stack_type\":\"stacked\",\"table.cell_column\":\"SUBTOTAL\"}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-02-16T22:17:30.198713Z",
    :public_uuid nil}
@@ -3509,7 +3509,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"Age\",\"CATEGORY\"],\"graph.metrics\":[\"count\"],\"graph.series_order\":null,\"graph.series_order_dimension\":null,\"graph.show_values\":true,\"graph.x_axis.axis_enabled\":true,\"graph.x_axis.labels_enabled\":true,\"graph.x_axis.scale\":\"ordinal\",\"graph.y_axis.auto_range\":true,\"stackable.stack_type\":\"stacked\",\"table.cell_column\":\"SUBTOTAL\"}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-02-16T21:38:00.542825Z",
    :public_uuid nil}
@@ -3540,7 +3540,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"CREATED_AT\"],\"graph.metrics\":[\"sum\",\"sum_2\"],\"graph.show_trendline\":false,\"graph.x_axis.title_text\":\"Orders date\",\"graph.y_axis.title_text\":\"Revenue\",\"series_settings\":{\"sum\":{\"display\":\"line\",\"line.interpolate\":\"linear\",\"line.marker_enabled\":false,\"show_series_values\":true,\"title\":\"Revenue\"},\"sum_2\":{\"color\":\"#51528D\",\"title\":\"Number of orders\"}}}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-25T02:02:17.446666Z",
    :public_uuid nil}
@@ -3570,7 +3570,7 @@
    :entity_id "Bkb4GEr5dH2_LbDOKhObR",
    :collection_preview true,
    :visualization_settings "{\"column_settings\":null,\"progress.goal\":120000}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-26T21:37:49.306823Z",
    :public_uuid nil}
@@ -3601,7 +3601,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"CREATED_AT\",\"CATEGORY\"],\"graph.metrics\":[\"count\"]}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-23T21:48:45.108322Z",
    :public_uuid nil}
@@ -3631,7 +3631,7 @@
    :entity_id "d3KPtMfbe0IIK0MDrHTNn",
    :collection_preview true,
    :visualization_settings "{\"column_settings\":null}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-26T21:15:16.059211Z",
    :public_uuid nil}
@@ -3662,7 +3662,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"CREATED_AT\",\"SOURCE\"],\"graph.metrics\":[\"sum\"],\"graph.series_labels\":[null],\"pivot_table.column_split\":{\"columns\":[[\"field\",45,{\"base-type\":\"type/Text\",\"source-field\":43}]],\"rows\":[[\"field\",41,{\"base-type\":\"type/DateTime\",\"temporal-unit\":\"quarter\"}]],\"values\":[[\"aggregation\",0]]},\"pivot_table.column_widths\":{\"leftHeaderWidths\":[141],\"totalLeftHeaderWidths\":141,\"valueHeaderWidths\":{}},\"stackable.stack_type\":\"stacked\",\"table.column_formatting\":[{\"color\":\"#A7D07C\",\"columns\":[\"sum\"],\"highlight_row\":false,\"operator\":\">\",\"type\":\"single\",\"value\":25000}]}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-24T00:58:09.259690Z",
    :public_uuid nil}
@@ -3693,7 +3693,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"Age\",\"CATEGORY\"],\"graph.metrics\":[\"count\"],\"graph.series_order\":null,\"graph.series_order_dimension\":null,\"stackable.stack_type\":\"stacked\"}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-24T00:08:25.132200Z",
    :public_uuid nil}
@@ -3723,7 +3723,7 @@
    :entity_id "wd1PEi_Z217Gr-ceeZSNj",
    :collection_preview true,
    :visualization_settings "{\"column_settings\":null}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-26T21:08:19.607650Z",
    :public_uuid nil}
@@ -3754,7 +3754,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"RATING\",\"CATEGORY\"],\"graph.metrics\":[\"count\"],\"graph.series_order\":null,\"graph.series_order_dimension\":null,\"graph.x_axis.title_text\":\"Products\",\"graph.y_axis.auto_range\":true,\"graph.y_axis.title_text\":\"total orders\",\"series_settings\":{\"count\":{\"color\":\"#999AC4\"}},\"stackable.stack_type\":\"stacked\",\"table.pivot\":false}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-25T00:56:17.021741Z",
    :public_uuid nil}
@@ -3784,7 +3784,7 @@
    :entity_id "OouzOUPGIjf6zXJsSDe0f",
    :collection_preview true,
    :visualization_settings "{\"column_settings\":null}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-26T21:06:07.358297Z",
    :public_uuid nil}
@@ -3814,7 +3814,7 @@
    :entity_id "lieaiNZOfIPqtW6ylkkfE",
    :collection_preview true,
    :visualization_settings "{\"column_settings\":null}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-24T00:28:50.477612Z",
    :public_uuid nil}
@@ -3845,7 +3845,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"Age\",\"SOURCE\"],\"graph.metrics\":[\"count\"],\"graph.series_order\":null,\"graph.series_order_dimension\":null,\"stackable.stack_type\":\"stacked\"}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-25T01:33:03.858661Z",
    :public_uuid nil}
@@ -3876,7 +3876,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"gauge.segments\":[{\"color\":\"#EF8C8C\",\"label\":\"awful\",\"max\":1,\"min\":0},{\"color\":\"#F2A86F\",\"label\":\"bad\",\"max\":2,\"min\":1},{\"color\":\"#F9D45C\",\"label\":\"alright\",\"max\":3,\"min\":2},{\"color\":\"#A7D07C\",\"label\":\"good\",\"max\":4,\"min\":3},{\"color\":\"#689636\",\"label\":\"great\",\"max\":5,\"min\":4}],\"table.cell_column\":\"avg\"}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-26T19:57:00.523254Z",
    :public_uuid nil}
@@ -3907,7 +3907,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"TITLE\"],\"graph.metrics\":[\"count\"],\"graph.x_axis.title_text\":\"Products\",\"graph.y_axis.title_text\":\"total orders\",\"series_settings\":{\"count\":{\"color\":\"#999AC4\"}},\"table.pivot\":false}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-24T00:27:34.296078Z",
    :public_uuid nil}
@@ -3937,7 +3937,7 @@
    :entity_id "fPYpb3KcV2TJZLRw-L841",
    :collection_preview true,
    :visualization_settings "{\"column_settings\":null}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-26T21:21:13.175495Z",
    :public_uuid nil}
@@ -3969,7 +3969,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"Age\"],\"graph.metrics\":[\"sum\"],\"graph.series_order\":null,\"graph.series_order_dimension\":null,\"graph.show_values\":true,\"stackable.stack_type\":\"stacked\"}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-24T00:46:42.942172Z",
    :public_uuid nil}
@@ -4000,7 +4000,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"ID\"],\"graph.metrics\":[\"count\"],\"series_settings\":{\"count\":{\"color\":\"#999AC4\"}},\"table.pivot\":false}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-23T19:35:53.121141Z",
    :public_uuid nil}
@@ -4030,7 +4030,7 @@
    :entity_id "c9Ynwk3czzLW__0lsiHgy",
    :collection_preview true,
    :visualization_settings "{\"column_settings\":null,\"graph.dimensions\":[\"Age\"],\"graph.metrics\":[\"sum\"]}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-24T00:03:05.348301Z",
    :public_uuid nil}
@@ -4061,7 +4061,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"CREATED_AT\",\"SOURCE\"],\"graph.metrics\":[\"sum\"],\"graph.series_labels\":[null],\"stackable.stack_type\":\"stacked\"}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-23T18:24:02.049698Z",
    :public_uuid nil}
@@ -4092,7 +4092,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"TITLE\"],\"graph.metrics\":[\"count\"],\"graph.x_axis.title_text\":\"Products\",\"graph.y_axis.title_text\":\"total orders\",\"series_settings\":{\"count\":{\"color\":\"#999AC4\"}},\"table.pivot\":false}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-23T22:50:45.276135Z",
    :public_uuid nil}
@@ -4122,7 +4122,7 @@
    :entity_id "nwp-zh__GNPl9tx5NbSfY",
    :collection_preview true,
    :visualization_settings "{\"column_settings\":null,\"table.cell_column\":\"avg\"}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-25T01:09:59.224163Z",
    :public_uuid nil}
@@ -4153,7 +4153,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"CREATED_AT\"],\"graph.metrics\":[\"count\"],\"graph.series_order\":null,\"graph.series_order_dimension\":null,\"stackable.stack_display\":\"area\",\"stackable.stack_type\":\"stacked\"}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2023-12-28T16:24:29.789686Z",
    :public_uuid nil}
@@ -4184,7 +4184,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"TITLE\"],\"graph.metrics\":[\"count\"],\"graph.x_axis.title_text\":\"Products\",\"graph.y_axis.title_text\":\"total orders\",\"series_settings\":{\"count\":{\"color\":\"#999AC4\"}},\"table.pivot\":false}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-23T22:36:32.336377Z",
    :public_uuid nil}
@@ -4215,7 +4215,7 @@
    :collection_preview true,
    :visualization_settings
    "{\"column_settings\":null,\"graph.dimensions\":[\"CREATED_AT\",\"SOURCE\"],\"graph.metrics\":[\"count\"],\"graph.series_labels\":[null],\"stackable.stack_type\":\"stacked\"}",
-   :metabase_version "v0.48.1-SNAPSHOT (11b82e4)",
+   :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-01-23T18:23:18.208979Z",
    :public_uuid nil}),
@@ -4224,8 +4224,8 @@
  ({:authority_level nil,
    :description nil,
    :archived false,
-   :slug "example_dashboard_prototype",
-   :name "Example Dashboard Prototype",
+   :slug "example_dashboard",
+   :name "Example Dashboard",
    :personal_owner_id nil,
    :type nil,
    :id 1,

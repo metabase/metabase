@@ -1132,12 +1132,24 @@
   (type (first (map :date_joined (t2/query {:select [:*] :from :core_user}))))
   (isa? java.time.OffsetDateTime java.time.temporal.Temporal)
 
-  ;; STEPS to prepareresources/sample-data.edn
-  ;; write data
+  ;; STEPS to create resources/example-dashboard.edn
   ;; start a fresh metabase instance without the :ee alias
   ;; create a dashboard called 'dash', with some dashcards
   ;; or import one with (metabase.cmd/import "<path>")
   ;; evaluate (install-internal-user!) to create the internal user
+  ;; (defn- install-internal-user! []
+  ;;   (t2/insert-returning-instances!
+  ;;    User
+  ;;    {:id config/internal-mb-user-id
+  ;;     :first_name "Metabase"
+  ;;     :last_name "Internal"
+  ;;     :email "internal@metabase.com"
+  ;;     :password (str (random-uuid))
+  ;;     :is_active false
+  ;;     :is_superuser false
+  ;;     :login_attributes nil
+  ;;     :sso_source nil
+  ;;     :type :internal}))
   (let [pretty-spit (fn [file-name data]
                       (with-open [writer (io/writer file-name)]
                         (binding [*out* writer]
@@ -1163,72 +1175,56 @@
   ;; - find-replace :creator_id 1, 2, etc with :creator_id 13371338 (the internal user ID)
   ;; - delete the personal collection, and make the example dashboard prototype have id 1
   ;; - find-replace collection_id 2 with collection_id 1
-  (let [table-name->rows  (load-edn "resources/sample-data.edn")
-        replace-temporal  (fn [v]
-                            (if (isa? (type v) java.time.temporal.Temporal)
-                              :%now
-                              v))]
-    (doall (for [table-name [:core_user ; password, password_salt, setting need updating
-                             :collection
-                             :metabase_database ; details and dbms_version need updating
-                             :metabase_table
-                             :metabase_field
-                             :report_card ; metabase_version needs updating
-                             :parameter_card
-                             :report_dashboard
-                             :dashboard_tab
-                             :report_dashboardcard
-                             :dashboardcard_series]]
-             (do (if (= table-name :core_user)
-                     (t2/delete! :core_user :id config/internal-mb-user-id)
-                     (t2/delete! table-name))
-              (when-let [values (seq (map #(update-vals % replace-temporal) (table-name table-name->rows)))]
-                (t2/query {:insert-into table-name :values values}))))))
+  ;; - manually set user's password, password_salt, and settings to nil.
+  ;; - replace metabase_version <version> with metabase_version nil,
   ;; drop + create the database again, with the migration turned on
-
-  (for [table-name [:core_user ; password, password_salt, setting need updating
-                    :collection
-                    :metabase_database ; details and dbms_version need updating
-                    :metabase_table
-                    :metabase_field
-                    :report_card ; metabase_version needs updating
-                    :parameter_card
-                    :report_dashboard
-                    :dashboard_tab
-                    :report_dashboardcard
-                    :dashboardcard_series]]
-    (t2/query (str "select setval('" (name table-name) "_id_seq', max(id)) from " (name table-name))))
   )
 
 (defn- load-edn
-  "Load edn from an io/reader source (filename or io/resource)."
-  [source]
-  (with-open [r (io/reader source)]
+  "Loads edn from an EDN file. Parses values tagged with #t as dates."
+  [file-name]
+  (with-open [r (io/reader file-name)]
     (edn/read {:readers {'t u.date/parse}} (java.io.PushbackReader. r))))
 
-(define-migration CreateSampleDashboard
+(defn hash-bcrypt
+  "Hashes a given plaintext password using bcrypt.  Should be used to hash
+   passwords included in stored user credentials that are to be later verified
+   using `bcrypt-credential-fn`."
+  [password]
+  (BCrypt/hashpw password (BCrypt/gensalt)))
+
+(define-migration CreateExampleDashboard
   ;; if there is a user that is not the internal user, don't create the sample dashboard
   (if (not-empty (t2/query {:select [:id] :from :core_user :where [:not= :id config/internal-mb-user-id]}))
     :no-op
-    (let [table-name->rows  (load-edn "resources/sample-data.edn")
+    (let [table-name->rows  (load-edn "resources/example-dashboard.edn")
           replace-temporal  (fn [v]
                               (if (isa? (type v) java.time.temporal.Temporal)
                                 :%now
                                 v))]
-      (doseq [table-name [:core_user ; password, password_salt, settings need updating
+      (doseq [table-name [:core_user
                           :collection
-                          :metabase_database ; details and dbms_version get updated later in setup
+                          :metabase_database ; details and dbms_version get updated later during setup
                           :metabase_table
                           :metabase_field
-                          :report_card ; metabase_version needs updating?
+                          :report_card
                           :parameter_card
                           :report_dashboard
                           :dashboard_tab
                           :report_dashboardcard
                           :dashboardcard_series]]
-        (when-let [values (seq (map #(update-vals % replace-temporal) (table-name table-name->rows)))]
+        (when-let [values (seq (map (fn [row]
+                                      (let [row (update-vals row replace-temporal)]
+                                        (if-not (= table-name :core_user)
+                                          row
+                                          (let [salt (str (random-uuid))]
+                                            (assoc row
+                                                   :password_salt salt
+                                                   :password (hash-bcrypt (str salt (random-uuid))))))))
+                                    (table-name table-name->rows)))]
           (t2/query {:insert-into table-name :values values})
-          ;; Unlike H2 and MySQL, Postgres doesn't automatically update the sequence value for an auto-increment series
+          ;; Unlike H2 and MySQL, Postgres doesn't automatically update the value for an auto-increment series
+          ;; after inserting values into an auto-incrementing column. So we need to set it manually
           (when (= (mdb.connection/db-type) :postgres)
             (t2/query (str "select setval('" (name table-name) "_id_seq', max(id)) from " (name table-name)))))))))
 

@@ -6117,10 +6117,10 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-03-28T16:30:36
       author: calherries
-      comment: Create sample dashboard
+      comment: Create example dashboard
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.CreateSampleDashboard"
+            class: "metabase.db.custom_migrations.CreateExampleDashboard"
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
