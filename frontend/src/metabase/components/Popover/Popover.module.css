@@ -99,59 +99,6 @@
   margin-bottom: 0.75rem;
 }
 
-:global(.PopoverHeader) {
-  display: flex;
-  border-bottom: 1px solid var(--color-border);
-  min-width: 400px;
-}
-
-:global(.PopoverHeader-item) {
-  flex: 1;
-  position: relative;
-  top: 1px; /* to overlap bottom border */
-  text-align: center;
-  padding: 1em;
-  text-transform: uppercase;
-  font-size: 0.8em;
-  font-weight: 700;
-  color: var(--color-text-medium);
-  border-bottom: 2px solid transparent;
-}
-
-:global(.PopoverHeader-item.selected) {
-  color: currentcolor;
-  border-color: currentcolor;
-}
-
-:global(.PopoverHeader-item--withArrow) {
-  margin-right: 8px;
-}
-
-:global(.PopoverHeader-item--withArrow::before),
-:global(.PopoverHeader-item--withArrow::after) {
-  position: absolute;
-  content: "";
-  display: block;
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-top: 8px solid transparent;
-  border-bottom: 8px solid transparent;
-  top: 50%;
-  margin-top: -8px;
-}
-
-/* create a slightly larger arrow on the right for border purposes */
-:global(.PopoverHeader-item--withArrow::before) {
-  right: -16px;
-  border-left-color: var(--color-border);
-}
-
-/* create a smaller inset arrow on the right */
-:global(.PopoverHeader-item--withArrow::after) {
-  right: -15px;
-  border-left-color: var(--color-bg-white);
-}
-
 :global(.PopoverFooter) {
   background: white;
   position: absolute;
