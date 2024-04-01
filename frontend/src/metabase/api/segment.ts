@@ -7,7 +7,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag, invalidateTags, listTag } from "./tags";
+import { idTag, invalidateTags, listTag, tag } from "./tags";
 
 export const segmentApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -35,7 +35,7 @@ export const segmentApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("segment")]),
+        invalidateTags(error, [listTag("segment"), tag("table")]),
     }),
     updateSegment: builder.mutation<Segment, UpdateSegmentRequest>({
       query: ({ id, ...body }) => ({
@@ -44,7 +44,11 @@ export const segmentApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [listTag("segment"), idTag("segment", id)]),
+        invalidateTags(error, [
+          listTag("segment"),
+          idTag("segment", id),
+          tag("table"),
+        ]),
     }),
     deleteSegment: builder.mutation<Segment, DeleteSegmentRequest>({
       query: ({ id, ...body }) => ({
@@ -53,7 +57,11 @@ export const segmentApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [listTag("segment"), idTag("segment", id)]),
+        invalidateTags(error, [
+          listTag("segment"),
+          idTag("segment", id),
+          tag("table"),
+        ]),
     }),
   }),
 });
