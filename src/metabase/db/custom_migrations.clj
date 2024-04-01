@@ -1181,7 +1181,7 @@
   )
 
 (defn- load-edn
-  "Loads edn from an EDN file. Parses values tagged with #t as dates."
+  "Loads edn from an EDN file. Parses values tagged with #t into the appropriate `java.time` class"
   [file-name]
   (with-open [r (io/reader file-name)]
     (edn/read {:readers {'t u.date/parse}} (java.io.PushbackReader. r))))
@@ -1216,20 +1216,22 @@
                           :dashboard_tab
                           :report_dashboardcard
                           :dashboardcard_series]]
-        (when-let [values (seq (map (fn [row]
-                                      (let [row (update-vals row replace-temporal)]
-                                        (if-not (= table-name :core_user)
-                                          row
-                                          (let [salt (str (random-uuid))]
-                                            (assoc row
-                                                   :password_salt salt
-                                                   :password (hash-bcrypt (str salt (random-uuid))))))))
-                                    (table-name table-name->rows)))]
-          (t2/query {:insert-into table-name :values values})
-          ;; Unlike H2 and MySQL, Postgres doesn't automatically update the value for an auto-increment series
-          ;; after inserting values into an auto-incrementing column. So we need to set it manually
-          (when (= (mdb.connection/db-type) :postgres)
-            (t2/query (str "select setval('" (name table-name) "_id_seq', max(id)) from " (name table-name)))))))))
+        (when-let [;; We sort the rows by id so that the ids are generated correctly. We can't
+                   ;; the fact that for H2, we can't insert the ids directly without creating sequences for all the
+                   ;; generated id columns.
+                   values (seq (->> (sort-by :id (table-name table-name->rows))
+                                    (map (fn [row]
+                                           (let [row (update-vals row replace-temporal)]
+                                             (if-not (= table-name :core_user)
+                                               (dissoc row :id)
+                                               (let [salt (str (random-uuid))]
+                                                 (assoc row
+                                                        ;; we can insert the internal user ID directly because it's
+                                                        ;; deliberately high
+                                                        :id config/internal-mb-user-id
+                                                        :password_salt salt
+                                                        :password (hash-bcrypt (str salt (random-uuid)))))))))))]
+          (t2/query {:insert-into table-name :values values}))))))
 
 (comment
   ;; How to create `resources/sample-content.edn` used in `CreateSampleContent`
@@ -1271,7 +1273,7 @@
                          :let [query (cond-> {:select [:*] :from table-name}
                                        (= table-name :core_user) (assoc :where [:= :id config/internal-mb-user-id]))]]
                      [table-name (map #(into {} %) (t2/query query))]))]
-    (pretty-spit "resources/sample-data.edn" data))
+    (pretty-spit "resources/sample-content.edn" data))
   ;; 4. update the EDN file:
   ;; - find-replace :creator_id 1, 2, etc with :creator_id 13371338 (the internal user ID)
   ;; - delete the personal collection, and make the example dashboard prototype have id 1
