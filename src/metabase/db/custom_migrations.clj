@@ -1132,7 +1132,7 @@
   (type (first (map :date_joined (t2/query {:select [:*] :from :core_user}))))
   (isa? java.time.OffsetDateTime java.time.temporal.Temporal)
 
-  ;; STEPS to create resources/example-dashboard.edn
+  ;; STEPS to create resources/examples-collection.edn
   ;; start a fresh metabase instance without the :ee alias
   ;; create a dashboard called 'dash', with some dashcards
   ;; or import one with (metabase.cmd/import "<path>")
@@ -1186,18 +1186,21 @@
   (with-open [r (io/reader file-name)]
     (edn/read {:readers {'t u.date/parse}} (java.io.PushbackReader. r))))
 
-(defn hash-bcrypt
+(defn- hash-bcrypt
   "Hashes a given plaintext password using bcrypt.  Should be used to hash
    passwords included in stored user credentials that are to be later verified
    using `bcrypt-credential-fn`."
   [password]
   (BCrypt/hashpw password (BCrypt/gensalt)))
 
-(define-migration CreateExampleDashboard
-  ;; if there is a user that is not the internal user, don't create the sample dashboard
-  (if (not-empty (t2/query {:select [:id] :from :core_user :where [:not= :id config/internal-mb-user-id]}))
-    :no-op
-    (let [table-name->rows  (load-edn "resources/example-dashboard.edn")
+(defn- fresh-install?
+  "If there is a user that is not the internal user, we know it's not a fresh install."
+  []
+  (empty? (t2/query {:select [:id] :from :core_user :where [:not= :id config/internal-mb-user-id]})))
+
+(define-migration CreateSampleContent
+  (when (and (config/load-sample-content?) (fresh-install?))
+    (let [table-name->rows  (load-edn "resources/sample-content.edn")
           replace-temporal  (fn [v]
                               (if (isa? (type v) java.time.temporal.Temporal)
                                 :%now
