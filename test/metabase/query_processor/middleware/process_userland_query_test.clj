@@ -68,7 +68,7 @@
         (qp query qp.reducible/default-rff)))))
 
 (deftest success-test
-  (let [query {:type ::success-test}]
+  (let [query (mt/mbql-query venues)]
     (with-query-execution [qe query]
       (is (= #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
              (t/zoned-date-time))
@@ -76,21 +76,21 @@
       (is (=? {:status                 :completed
                :data                   {}
                :row_count              0
-               :database_id            nil
+               :database_id            (mt/id)
                :started_at             #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
-               :json_query             query
+               :json_query             (dissoc (mt/userland-query query) :info)
                :average_execution_time nil
                :context                nil
                :running_time           int?
                :cached                 false}
               (process-userland-query query))
           "Result should have query execution info")
-      (is (=? {:hash         "840eb7aa2a9935de63366bacbe9d97e978a859e93dc792a0334de60ed52f8e99"
-               :database_id  nil
+      (is (=? {:hash         "58af781ea2ba252ce3131462bdc7c54bc57538ed965d55beec62928ce8b32635"
+               :database_id  (mt/id)
                :result_rows  0
                :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
                :executor_id  nil
-               :json_query   query
+               :json_query   (dissoc (mt/userland-query query) :info)
                :native       false
                :pulse_id     nil
                :card_id      nil
@@ -105,7 +105,7 @@
           "QueryExecution should be saved"))))
 
 (deftest failure-test
-  (let [query {:type ::failure-test}]
+  (let [query (mt/mbql-query venues)]
     (with-query-execution [qe query]
       (binding [qp.pipeline/*run* (fn [_query _rff]
                                     (throw (ex-info "Oops!" {:type qp.error-type/qp})))]
@@ -113,13 +113,13 @@
              clojure.lang.ExceptionInfo
              #"Oops!"
              (process-userland-query query))))
-      (is (=? {:hash         "840eb7aa2a9935de63366bacbe9d97e978a859e93dc792a0334de60ed52f8e99"
-               :database_id  nil
+      (is (=? {:hash         "58af781ea2ba252ce3131462bdc7c54bc57538ed965d55beec62928ce8b32635"
+               :database_id  (mt/id)
                :error        "Oops!"
                :result_rows  0
                :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
                :executor_id  nil
-               :json_query   query
+               :json_query   (dissoc (mt/userland-query query) :info)
                :native       false
                :pulse_id     nil
                :action_id    nil
