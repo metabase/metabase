@@ -1,83 +1,36 @@
 import { useFormikContext } from "formik";
-import type { Dispatch, SetStateAction } from "react";
-import { useCallback } from "react";
 import { t } from "ttag";
-import { findWhere } from "underscore";
 
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
-import { CacheConfigApi } from "metabase/services";
 import { Box, Flex, Group, Icon, Text } from "metabase/ui";
 
-import { rootId } from "../constants";
-import { Strategies, type Config } from "../types";
-
+// TODO:
+// Rename to ResetAllToDefaultButtonContainer
 export const ResetAllToDefaultButton = ({
-  configs,
-  setConfigs,
+  rootConfigLabel,
 }: {
-  configs: Config[];
-  setConfigs: Dispatch<SetStateAction<Config[]>>;
+  rootConfigLabel: string;
 }) => {
-  const rootConfig = findWhere(configs, { model_id: rootId });
-
-  // TODO:: It might be confusing to say 'resetting to duration' if the
-  // database strategies are also duration. Perhaps we should say 'resetting to
-  // duration (10 hours)' or just 'reset to the default strategy'
-
-  const resetAllToDefault = useCallback(async () => {
-    const originalConfigs = [...configs];
-    setConfigs((configs: Config[]) =>
-      configs.filter(({ model }) => model !== "database"),
-    );
-
-    const ids = configs.reduce<number[]>(
-      (acc, config) =>
-        config.model === "database" ? [...acc, config.model_id] : acc,
-      [],
-    );
-
-    if (ids.length === 0) {
-      return;
-    }
-
-    await CacheConfigApi.delete(
-      { model_id: ids, model: "database" },
-      { hasBody: true },
-    ).catch(async () => {
-      setConfigs(originalConfigs);
-    });
-  }, [configs, setConfigs]);
-
   return (
     <Box
-      pb=".75rem"
+      pb="1rem"
       mt="auto"
       style={{ marginInlineStart: "auto", marginInlineEnd: ".75rem" }}
     >
-      <FormProvider initialValues={{}} onSubmit={resetAllToDefault}>
-        <ResetAllToDefaultButtonFormBody
-          rootConfig={rootConfig}
-          setConfigs={setConfigs}
-        />
-      </FormProvider>
+      <ResetAllToDefaultButtonFormBody rootConfigLabel={rootConfigLabel} />
     </Box>
   );
 };
 
 const ResetAllToDefaultButtonFormBody = ({
-  rootConfig,
+  rootConfigLabel,
 }: {
-  rootConfig: Config | undefined;
-  setConfigs: Dispatch<SetStateAction<Config[]>>;
+  rootConfigLabel: string;
 }) => {
   const { submitForm } = useFormikContext();
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
-
-  const rootConfigLabel = rootConfig?.strategy.type
-    ? Strategies[rootConfig?.strategy.type].shortLabel
-    : "default";
 
   const confirmResetAllToDefault = () => {
     askConfirmation({
@@ -93,16 +46,24 @@ const ResetAllToDefaultButtonFormBody = ({
       <Form>
         <Flex justify="flex-end">
           <FormSubmitButton
+            px="1rem"
+            py=".75rem"
+            lh="1"
             onClick={e => {
               confirmResetAllToDefault();
               e.preventDefault();
               return false;
             }}
             label={
-              <Text fw="normal" color="error">{t`Reset all to default`}</Text>
+              <Text
+                lh="1"
+                fw="normal"
+                color="error"
+              >{t`Reset all to default`}</Text>
             }
+            activeLabel={t`Resetting...`}
             successLabel={
-              <Text fw="bold" color="success">
+              <Text fw="bold" lh="1" color="success">
                 <Group spacing="xs">
                   <Icon name="check" /> {t`Success`}
                 </Group>

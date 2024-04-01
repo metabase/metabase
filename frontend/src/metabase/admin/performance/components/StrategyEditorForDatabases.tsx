@@ -1,5 +1,5 @@
 import type { Location } from "history";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { InjectedRouter, Route } from "react-router";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
@@ -33,6 +33,7 @@ import { ResetAllToDefaultButton } from "./ResetAllToDefaultButton";
 import { Panel, TabWrapper } from "./StrategyEditorForDatabases.styled";
 import { StrategyForm } from "./StrategyForm";
 import { StrategyFormLauncher } from "./StrategyFormLauncher";
+import { FormProvider } from "metabase/forms";
 
 export const StrategyEditorForDatabases = withRouter(
   ({
@@ -194,11 +195,8 @@ export const StrategyEditorForDatabases = withRouter(
           config => config.model_id !== targetId,
         );
         if (values.type === "inherit") {
-          await CacheConfigApi.delete(baseConfig, { hasBody: true }).then(
-            () => {
-              setConfigs(otherConfigs);
-            },
-          );
+          await CacheConfigApi.delete(baseConfig, { hasBody: true });
+          setConfigs(otherConfigs);
         } else {
           const validFields = getFieldsForStrategyType(values.type);
           const newStrategy = pick(values, validFields) as Strategy;
@@ -211,13 +209,42 @@ export const StrategyEditorForDatabases = withRouter(
             strategy: validatedStrategy,
           };
 
-          await CacheConfigApi.update(newConfig).then(() => {
-            setConfigs([...otherConfigs, newConfig]);
-          });
+          await CacheConfigApi.update(newConfig);
+          setConfigs([...otherConfigs, newConfig]);
         }
       },
-      [configs, targetId],
+      [configs, setConfigs, targetId],
     );
+
+    const databaseIds = useMemo(
+      () =>
+        configs.reduce<number[]>(
+          (acc, config) =>
+            config.model === "database" ? [...acc, config.model_id] : acc,
+          [],
+        ),
+      [configs],
+    );
+
+    const resetAllToDefault = useCallback(async () => {
+      const originalConfigs = [...configs];
+      if (databaseIds.length === 0) {
+        return;
+      }
+      try {
+        await CacheConfigApi.delete(
+          { model_id: databaseIds, model: "database" },
+          { hasBody: true },
+        );
+        setConfigs((configs: Config[]) =>
+          configs.filter(({ model }) => model !== "database"),
+        );
+      } catch (e) {
+        setConfigs(originalConfigs);
+        throw e;
+      }
+    }, [configs, setConfigs]);
+
     const formPanelRef = useRef<HTMLDivElement>(null);
     const [formPanelHasVerticalScrollbar, setFormPanelHasVerticalScrollbar] =
       useState(false);
@@ -248,6 +275,8 @@ export const StrategyEditorForDatabases = withRouter(
         <></>
       );
     }
+
+    const rootConfig = findWhere(configs, { model_id: rootId });
 
     return (
       <TabWrapper role="region" aria-label={t`Data caching settings`}>
@@ -293,12 +322,23 @@ export const StrategyEditorForDatabases = withRouter(
                   />
                 ))}
               </Stack>
-              {shouldShowResetButton && (
-                <ResetAllToDefaultButton
-                  configs={configs}
-                  setConfigs={setConfigs}
-                />
-              )}
+              <FormProvider initialValues={{}} onSubmit={resetAllToDefault}>
+                {shouldShowResetButton && (
+                  <ResetAllToDefaultButton
+                    rootConfigLabel={
+                      // TODO:: It might be confusing to say 'resetting to duration' if the
+                      // database strategies are also duration. Perhaps we should say 'resetting to
+                      // duration (10 hours)' or just 'reset to the default strategy'
+                      "default"
+                      // TODO: restore
+                      // rootConfig?.strategy.type
+                      //   ? Strategies[rootConfig?.strategy.type].shortLabel ??
+                      //     "default"
+                      //   : "default"
+                    }
+                  />
+                )}
+              </FormProvider>
             </Panel>
           )}
           <Panel
