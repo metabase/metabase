@@ -98,6 +98,8 @@ module.exports = {
       },
     ],
     complexity: ["error", { max: 54 }],
+    "postcss-modules/no-unused-class": "off",
+    "postcss-modules/no-undef-class": "error",
   },
   globals: {
     before: true,
@@ -121,6 +123,7 @@ module.exports = {
     "plugin:import/errors",
     "plugin:import/warnings",
     "plugin:import/typescript",
+    "plugin:postcss-modules/recommended",
   ],
   settings: {
     "import/internal-regex": "^metabase/|^metabase-lib/",
@@ -132,6 +135,9 @@ module.exports = {
     "import/ignore": ["\\.css$"],
     react: {
       version: "detect",
+    },
+    "postcss-modules": {
+      baseDir: "./frontend/src",
     },
   },
   parserOptions: {
