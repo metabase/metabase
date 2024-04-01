@@ -422,6 +422,6 @@ export default class Popover extends Component {
       );
     }
 
-    return <span className="hide" />;
+    return <span className={CS.hide} />;
   }
 }

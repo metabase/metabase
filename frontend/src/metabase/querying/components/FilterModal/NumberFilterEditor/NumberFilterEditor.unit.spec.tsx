@@ -4,7 +4,7 @@ import { setupFieldValuesEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
-import type { FieldValuesResult } from "metabase-types/api";
+import type { GetFieldValuesResponse } from "metabase-types/api";
 import { createMockFieldValues } from "metabase-types/api/mocks";
 import { ORDERS } from "metabase-types/api/mocks/presets";
 
@@ -15,7 +15,7 @@ interface SetupOpts {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
-  fieldValues?: FieldValuesResult;
+  fieldValues?: GetFieldValuesResponse;
 }
 
 function setup({ query, stageIndex, column, filter, fieldValues }: SetupOpts) {

@@ -5,13 +5,13 @@ import type {
 import { useEntityListQuery } from "metabase/common/hooks/entity-framework/use-entity-list-query";
 import Databases from "metabase/entities/databases";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseListRequest } from "metabase-types/api";
+import type { ListDatabasesRequest } from "metabase-types/api";
 
 /**
  * @deprecated use "metabase/api" instead
  */
 export const useDatabaseListQuery = (
-  props: UseEntityListQueryProps<DatabaseListRequest> = {},
+  props: UseEntityListQueryProps<ListDatabasesRequest> = {},
 ): UseEntityListQueryResult<Database> => {
   return useEntityListQuery(props, {
     fetchList: Databases.actions.fetchList,
