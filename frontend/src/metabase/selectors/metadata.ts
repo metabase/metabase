@@ -1,8 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 
-import { Api, databaseApi, fieldApi } from "metabase/api";
-import { DatabaseSchema, FieldSchema } from "metabase/schema";
+import { Api, databaseApi, fieldApi, tableApi } from "metabase/api";
+import { DatabaseSchema, FieldSchema, TableSchema } from "metabase/schema";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
 import Field from "metabase-lib/v1/metadata/Field";
@@ -52,6 +52,22 @@ const getApiDatabases = createSelector(getApiState, state => {
   return data?.data;
 });
 
+const getApiTables = createSelector(getApiState, state => {
+  const entries = tableApi.util
+    .selectInvalidatedBy(state, ["table"])
+    .filter(entry => entry.endpointName === "getTableMetadata");
+
+  return entries
+    .map(entry => {
+      const selector = fieldApi.endpoints.getTableMetadata.select(
+        entry.originalArgs,
+      );
+      const { data } = selector(state);
+      return data;
+    })
+    .filter(isNotNull);
+});
+
 const getApiFields = createSelector(getApiState, state => {
   const entries = fieldApi.util
     .selectInvalidatedBy(state, ["field"])
@@ -67,10 +83,18 @@ const getApiFields = createSelector(getApiState, state => {
 });
 
 const getApiEntities = createSelector(
-  [getApiDatabases, getApiFields],
-  (databases, fields) => {
-    const data = { databases, fields };
-    const schema = { databases: [DatabaseSchema], fields: [FieldSchema] };
+  [getApiDatabases, getApiTables, getApiFields],
+  (databases, tables, fields) => {
+    const data = {
+      databases,
+      tables,
+      fields,
+    };
+    const schema = {
+      databases: [DatabaseSchema],
+      tables: [TableSchema],
+      fields: [FieldSchema],
+    };
     const { entities } = normalize(data, schema);
     return entities;
   },
