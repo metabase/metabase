@@ -11,7 +11,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag, listTag } from "./tags";
+import { idTag, listTag, tag } from "./tags";
 
 export const fieldApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -52,6 +52,7 @@ export const fieldApi = Api.injectEndpoints({
         listTag("field"),
         idTag("field", id),
         idTag("field-values", id),
+        tag("card"),
       ],
     }),
     updateFieldValues: builder.mutation<void, UpdateFieldValuesRequest>({
@@ -60,7 +61,7 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${id}/values`,
         body,
       }),
-      invalidatesTags: (field, error, { id }) => [idTag("field-values", id)],
+      invalidatesTags: (response, error, { id }) => [idTag("field-values", id)],
     }),
     createFieldDimension: builder.mutation<void, CreateFieldDimensionRequest>({
       query: ({ id, ...body }) => ({
@@ -68,7 +69,7 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${id}/dimension`,
         body,
       }),
-      invalidatesTags: (_, error, { id }) => [
+      invalidatesTags: (response, error, { id }) => [
         idTag("field", id),
         idTag("field-values", id),
       ],
@@ -78,7 +79,7 @@ export const fieldApi = Api.injectEndpoints({
         method: "DELETE",
         url: `/api/field/${id}/dimension`,
       }),
-      invalidatesTags: (_, error, id) => [
+      invalidatesTags: (response, error, id) => [
         idTag("field", id),
         idTag("field-values", id),
       ],
@@ -88,14 +89,14 @@ export const fieldApi = Api.injectEndpoints({
         method: "POST",
         url: `/api/field/${id}/rescan_values`,
       }),
-      invalidatesTags: (_, error, id) => [idTag("field-values", id)],
+      invalidatesTags: (response, error, id) => [idTag("field-values", id)],
     }),
     discardFieldValues: builder.mutation<void, FieldId>({
       query: id => ({
         method: "POST",
         url: `/api/field/${id}/discard_values`,
       }),
-      invalidatesTags: (_, error, id) => [idTag("field-values", id)],
+      invalidatesTags: (response, error, id) => [idTag("field-values", id)],
     }),
   }),
 });

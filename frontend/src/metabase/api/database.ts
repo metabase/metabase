@@ -106,6 +106,7 @@ export const databaseApi = Api.injectEndpoints({
         tag("table"),
         tag("field"),
         tag("field-values"),
+        tag("card"),
       ],
     }),
     deleteDatabase: builder.mutation<void, DatabaseId>({
@@ -119,6 +120,7 @@ export const databaseApi = Api.injectEndpoints({
         tag("table"),
         tag("field"),
         tag("field-values"),
+        tag("card"),
       ],
     }),
     rescanDatabaseFieldValues: builder.mutation<void, DatabaseId>({

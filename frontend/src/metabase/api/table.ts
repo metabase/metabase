@@ -53,7 +53,13 @@ export const tableApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: table =>
-        table ? [idTag("table", table.id), idTag("database", table.db_id)] : [],
+        table
+          ? [
+              idTag("table", table.id),
+              idTag("database", table.db_id),
+              tag("card"),
+            ]
+          : [],
     }),
     updateTableList: builder.mutation<Table[], UpdateTableListRequest>({
       query: body => ({
@@ -65,6 +71,7 @@ export const tableApi = Api.injectEndpoints({
         tables.flatMap(table => [
           idTag("table", table.id),
           idTag("database", table.db_id),
+          tag("card"),
         ]),
     }),
     updateTableFieldsOrder: builder.mutation<
@@ -80,7 +87,7 @@ export const tableApi = Api.injectEndpoints({
         requestOptions: { bodyParamName: "field_order" },
       },
       invalidatesTags: table =>
-        table ? [idTag("table", table.id), listTag("field")] : [],
+        table ? [idTag("table", table.id), listTag("field"), tag("card")] : [],
     }),
     rescanTableFieldValues: builder.mutation<void, TableId>({
       query: id => ({
