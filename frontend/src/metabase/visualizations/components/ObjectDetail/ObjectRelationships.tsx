@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { inflect } from "inflection";
 import { jt, t } from "ttag";
 
@@ -41,7 +42,7 @@ export function Relationships({
 
   return (
     <ObjectRelationships>
-      <div className="text-bold text-medium">
+      <div className={cx(CS.textBold, "text-medium")}>
         {jt`${(
           <span className="text-dark" key={objectName}>
             {objectName}
@@ -94,7 +95,7 @@ function Relationship({
 
   const via =
     fkCount > 1 ? (
-      <span className="text-medium text-normal">
+      <span className={cx("text-medium", CS.textNormal)}>
         {" "}
         {t`via ${fk.origin?.displayName()}`}
       </span>
@@ -108,7 +109,7 @@ function Relationship({
       >
         <div>
           <h2>{isLoaded ? fkCountValue : <LoadingSpinner size={25} />}</h2>
-          <h5 className="block">
+          <h5 className={CS.block}>
             {relationName}
             {via}
           </h5>

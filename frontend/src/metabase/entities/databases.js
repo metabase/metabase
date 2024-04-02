@@ -3,7 +3,6 @@ import { normalize } from "normalizr";
 import _ from "underscore";
 
 import { databaseApi } from "metabase/api";
-import Schemas from "metabase/entities/schemas";
 import { color } from "metabase/lib/colors";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import {
@@ -20,7 +19,6 @@ import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
-import { MetabaseApi } from "metabase/services";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 // OBJECT ACTIONS
@@ -84,10 +82,11 @@ const Databases = createEntity({
             requestStatePath: ["metadata", "databases", id],
             existingStatePath: ["metadata", "databases", id],
             getData: async () => {
-              const databaseMetadata = await MetabaseApi.db_metadata({
-                dbId: id,
-                ...params,
-              });
+              const databaseMetadata = await entityCompatibleQuery(
+                { id, ...params },
+                dispatch,
+                databaseApi.endpoints.getDatabaseMetadata,
+              );
               return normalize(databaseMetadata, DatabaseSchema);
             },
             reload,
@@ -102,11 +101,13 @@ const Databases = createEntity({
       ),
       withNormalize(DatabaseSchema),
     )(({ id, ...params }) => async dispatch => {
-      const idFields = await MetabaseApi.db_idfields({ dbId: id, ...params });
+      const idFields = await entityCompatibleQuery(
+        { id, ...params },
+        dispatch,
+        databaseApi.endpoints.listDatabaseIdFields,
+      );
       return { id, idFields };
     }),
-
-    fetchSchemas: ({ id }) => Schemas.actions.fetchList({ dbId: id }),
   },
 
   objectSelectors: {

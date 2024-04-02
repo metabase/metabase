@@ -70,10 +70,6 @@ export interface SchemaListQuery {
   include_editable_data_model?: boolean;
 }
 
-export interface TableQuery {
-  include_editable_data_model?: boolean;
-}
-
 export interface TableMetadataQuery {
   include_sensitive_fields?: boolean;
   include_hidden_fields?: boolean;
@@ -94,4 +90,42 @@ export interface ForeignKey {
   destination?: Field;
   destination_id: FieldId;
   relationship: "Mt1";
+}
+
+export interface GetTableRequest {
+  id: TableId;
+  include_editable_data_model?: boolean;
+}
+
+export interface GetTableMetadataRequest {
+  id: TableId;
+  include_sensitive_fields?: boolean;
+  include_hidden_fields?: boolean;
+  include_editable_data_model?: boolean;
+}
+
+export interface UpdateTableRequest {
+  id: TableId;
+  display_name?: string;
+  visibility_type?: TableVisibilityType;
+  description?: string;
+  caveats?: string;
+  points_of_interest?: string;
+  show_in_getting_started?: boolean;
+  field_order?: TableFieldOrder;
+}
+
+export interface UpdateTableListRequest {
+  ids: TableId[];
+  display_name?: string;
+  visibility_type?: TableVisibilityType;
+  description?: string;
+  caveats?: string;
+  points_of_interest?: string;
+  show_in_getting_started?: boolean;
+}
+
+export interface UpdateTableFieldsOrderRequest {
+  id: TableId;
+  field_order: FieldId[];
 }

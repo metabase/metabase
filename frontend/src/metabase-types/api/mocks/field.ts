@@ -4,7 +4,7 @@ import type {
   FieldDimension,
   FieldFingerprint,
   FieldGlobalFingerprint,
-  FieldValuesResult,
+  GetFieldValuesResponse,
   NumberFieldFingerprint,
   TextFieldFingerprint,
 } from "metabase-types/api";
@@ -41,8 +41,8 @@ export const createMockField = (opts?: Partial<Field>): Field => ({
 });
 
 export const createMockFieldValues = (
-  opts?: Partial<FieldValuesResult>,
-): FieldValuesResult => ({
+  opts?: Partial<GetFieldValuesResponse>,
+): GetFieldValuesResponse => ({
   field_id: 1,
   values: [],
   has_more_values: false,

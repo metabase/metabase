@@ -491,7 +491,9 @@ class TableInteractive extends Component {
   onKeyDown = event => {
     const detailEl = this.detailShortcutRef.current;
     const visibleDetailButton =
-      !!detailEl && Array.from(detailEl.classList).includes("show") && detailEl;
+      !!detailEl &&
+      Array.from(detailEl.classList).includes(CS.show) &&
+      detailEl;
     const canViewRowDetail = !this.props.isPivoted && !!visibleDetailButton;
 
     if (event.key === "Enter" && canViewRowDetail) {
@@ -710,9 +712,9 @@ class TableInteractive extends Component {
 
     return (
       <TableDraggable
-        /* needs to be index+name+counter so Draggable resets after each drag */
         enableUserSelectHack={false}
         enableCustomUserSelectHack={!isVirtual}
+        /* needs to be index+name+counter so Draggable resets after each drag */
         key={columnIndex + column.name + DRAG_COUNTER}
         axis="x"
         disabled={!isDraggable}
@@ -934,7 +936,7 @@ class TableInteractive extends Component {
       if (newIndex >= this.props.data.rows.length) {
         return;
       }
-      hoverDetailEl.classList.add("show");
+      hoverDetailEl.classList.add(CS.show);
       hoverDetailEl.style.top = `${newIndex * ROW_HEIGHT - scrollOffset}px`;
       hoverDetailEl.dataset.showDetailRowindex = newIndex;
       hoverDetailEl.onclick = this.pkClick(newIndex);
@@ -942,14 +944,14 @@ class TableInteractive extends Component {
     }
 
     const targetOffset = event?.currentTarget?.offsetTop;
-    hoverDetailEl.classList.add("show");
+    hoverDetailEl.classList.add(CS.show);
     hoverDetailEl.style.top = `${targetOffset - scrollOffset}px`;
     hoverDetailEl.dataset.showDetailRowindex = rowIndex;
     hoverDetailEl.onclick = this.pkClick(rowIndex);
   };
 
   handleLeaveRow = () => {
-    this.detailShortcutRef.current.classList.remove("show");
+    this.detailShortcutRef.current.classList.remove(CS.show);
   };
 
   handleOnMouseEnter = () => {
@@ -993,7 +995,7 @@ class TableInteractive extends Component {
             }
             return (
               <TableInteractiveRoot
-                className={cx(className, "TableInteractive relative", {
+                className={cx(className, "TableInteractive", CS.relative, {
                   "TableInteractive--pivot": this.props.isPivoted,
                   "TableInteractive--ready": this.state.contentWidths,
                   // no hover if we're dragging a column
@@ -1051,7 +1053,7 @@ class TableInteractive extends Component {
                     overflow: "hidden",
                     paddingRight: getScrollBarSize(),
                   }}
-                  className="TableInteractive-header scroll-hide-all"
+                  className={cx("TableInteractive-header", CS.scrollHideAll)}
                   width={width || 0}
                   height={headerHeight}
                   rowCount={1}
@@ -1060,7 +1062,7 @@ class TableInteractive extends Component {
                   columnWidth={this.getDisplayColumnWidth}
                   cellRenderer={props =>
                     gutterColumn && props.columnIndex === 0
-                      ? () => null // we need a phantom cell to properly offset columns
+                      ? null // we need a phantom cell to properly offset columns
                       : this.tableHeaderRenderer({
                           ...props,
                           columnIndex: props.columnIndex - gutterColumn,
@@ -1089,7 +1091,7 @@ class TableInteractive extends Component {
                   rowHeight={ROW_HEIGHT}
                   cellRenderer={props =>
                     gutterColumn && props.columnIndex === 0
-                      ? () => null // we need a phantom cell to properly offset columns
+                      ? null // we need a phantom cell to properly offset columns
                       : this.cellRenderer({
                           ...props,
                           columnIndex: props.columnIndex - gutterColumn,
@@ -1174,7 +1176,7 @@ const DetailShortcut = forwardRef((_props, ref) => (
         iconOnly
         iconSize={10}
         icon="expand"
-        className="TableInteractive-detailButton"
+        className={CS.TableInteractiveDetailButton}
       />
     </Tooltip>
   </div>

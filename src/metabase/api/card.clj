@@ -135,7 +135,9 @@
                                                     :from   [[(t2/table-name :model/QueryField) :qf]]
                                                     :join   [[(t2/table-name :model/Field) :f] [:= :f.id :qf.field_id]
                                                              [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
-                                                    :where  [:= :f.active false]}))
+                                                    :where  [:and
+                                                             [:= :f.active false]
+                                                             [:= :qf.direct_reference true]]}))
         card-ids              (keys card-id->query-fields)
         add-query-fields      (fn [{:keys [id] :as card}]
                                 (assoc card :query_fields (card-id->query-fields id)))]
@@ -670,9 +672,10 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  [card-id export-format :as {{:keys [parameters]} :params}]
+  [card-id export-format :as {{:keys [parameters format_rows]} :params}]
   {card-id       ms/PositiveInt
    parameters    [:maybe ms/JSONString]
+   format_rows   [:maybe :boolean]
    export-format (into [:enum] api.dataset/export-formats)}
   (qp.card/process-query-for-card
    card-id export-format
@@ -682,7 +685,7 @@
    :middleware  {:process-viz-settings?  true
                  :skip-results-metadata? true
                  :ignore-cached-results? true
-                 :format-rows?           false
+                 :format-rows?           format_rows
                  :js-int-to-string?      false}))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------

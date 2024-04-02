@@ -1,10 +1,10 @@
 import { assocIn, updateIn } from "icepick";
 
+import { databaseApi } from "metabase/api";
 import Questions from "metabase/entities/questions";
-import { createEntity } from "metabase/lib/entities";
+import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { SchemaSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
-import { MetabaseApi } from "metabase/services";
 import {
   getCollectionVirtualSchemaId,
   getCollectionVirtualSchemaName,
@@ -25,13 +25,21 @@ export default createEntity({
   name: "schemas",
   schema: SchemaSchema,
   api: {
-    list: async ({ dbId, getAll = false, ...args }) => {
+    list: async ({ dbId, getAll = false, ...args }, dispatch) => {
       if (!dbId) {
         throw new Error("Schemas can only be listed for a particular dbId");
       }
-      const schemaNames = await (getAll
-        ? MetabaseApi.db_syncable_schemas({ dbId, ...args }) // includes empty schema
-        : MetabaseApi.db_schemas({ dbId, ...args }));
+      const schemaNames = getAll
+        ? await entityCompatibleQuery(
+            dbId,
+            dispatch,
+            databaseApi.endpoints.listSyncableDatabaseSchemas, // includes empty schema
+          )
+        : await entityCompatibleQuery(
+            { id: dbId, ...args },
+            dispatch,
+            databaseApi.endpoints.listDatabaseSchemas,
+          );
 
       return schemaNames.map(schemaName => ({
         // NOTE: needs unique IDs for entities to work correctly
@@ -40,18 +48,26 @@ export default createEntity({
         database: { id: dbId },
       }));
     },
-    get: async ({ id, ...args }) => {
+    get: async ({ id, ...args }, options, dispatch) => {
       const [dbId, schemaName, opts] = parseSchemaId(id);
       if (!dbId || schemaName === undefined) {
         throw new Error("Schemas ID is of the form dbId:schemaName");
       }
       const tables = opts?.isDatasets
-        ? await MetabaseApi.db_virtual_dataset_tables({
-            dbId,
-            schemaName,
-            ...args,
-          })
-        : await MetabaseApi.db_schema_tables({ dbId, schemaName, ...args });
+        ? await entityCompatibleQuery(
+            {
+              id: dbId,
+              schema: schemaName,
+              ...args,
+            },
+            dispatch,
+            databaseApi.endpoints.listVirtualDatabaseTables,
+          )
+        : await entityCompatibleQuery(
+            { id: dbId, schema: schemaName, ...args },
+            dispatch,
+            databaseApi.endpoints.listDatabaseSchemaTables,
+          );
       return {
         id,
         name: schemaName,

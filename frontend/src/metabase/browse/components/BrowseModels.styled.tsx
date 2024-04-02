@@ -43,6 +43,7 @@ export const MultilineEllipsified = styled(Ellipsified)`
   white-space: pre-line;
   overflow: hidden;
   text-overflow: ellipsis;
+  width: 100%;
 
   display: -webkit-box;
   -webkit-line-clamp: 2;

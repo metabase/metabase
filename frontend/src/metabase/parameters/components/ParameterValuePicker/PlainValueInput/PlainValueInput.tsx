@@ -1,13 +1,14 @@
-import type { ChangeEvent, KeyboardEvent } from "react";
+import type { ChangeEvent } from "react";
 
 import { TextInput } from "metabase/ui";
 
-import { TextInputIcon } from "./ParameterValuePicker.styled";
+import { PickerIcon } from "../ParameterValuePicker.styled";
+import { blurOnCommitKey } from "../utils";
 
 interface PlainValueInputProps {
   value: string | null;
   onChange: (value: string | null) => void;
-  placeholder?: string;
+  placeholder: string;
 }
 
 /**
@@ -21,25 +22,16 @@ export function PlainValueInput(props: PlainValueInputProps) {
     onChange(event.currentTarget.value);
   };
 
-  const handleKeyup = (event: KeyboardEvent<HTMLInputElement>) => {
-    const target = event.target as HTMLInputElement;
-    switch (event.key) {
-      // Values are "committed" immediately because it's controlled from the outside
-      case "Enter":
-      case "Escape":
-        target.blur();
-    }
-  };
-
   const icon = value ? (
-    <TextInputIcon name="close" onClick={() => onChange(null)} />
+    <PickerIcon name="close" onClick={() => onChange(null)} />
   ) : null;
 
   return (
     <TextInput
       value={value ?? ""} // required by Mantine
       onChange={handleChange}
-      onKeyUp={handleKeyup}
+      // Values are "committed" immediately because it's controlled from the outside
+      onKeyUp={blurOnCommitKey}
       placeholder={placeholder}
       rightSection={icon}
     />

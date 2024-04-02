@@ -1,4 +1,8 @@
-/* eslint-disable react/prop-types */
+import cx from "classnames";
+import type { ReactNode } from "react";
+
+import CS from "metabase/css/core/index.css";
+
 import {
   BrowserCrumbsIcon,
   BrowserCrumbsItem,
@@ -8,13 +12,23 @@ import {
 
 // TODO: merge with Breadcrumbs
 
-const Crumb = ({ children }) => (
-  <h5 className="text-uppercase text-medium" style={{ fontWeight: 900 }}>
+const Crumb = ({ children }: { children: ReactNode }) => (
+  <h5
+    className={cx(CS.textUppercase, CS.textMedium)}
+    style={{ fontWeight: 900 }}
+  >
     {children}
   </h5>
 );
 
-const BrowserCrumbs = ({ crumbs }) => (
+type BrowserCrumbsType = {
+  crumbs: {
+    title: string | ReactNode;
+    to?: string;
+  }[];
+};
+
+export const BrowserCrumbs = ({ crumbs }: BrowserCrumbsType) => (
   <BrowserCrumbsRoot data-testid="browsercrumbs">
     {crumbs
       .filter(c => c)
@@ -34,5 +48,3 @@ const BrowserCrumbs = ({ crumbs }) => (
       ))}
   </BrowserCrumbsRoot>
 );
-
-export default BrowserCrumbs;

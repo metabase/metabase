@@ -123,6 +123,7 @@
     "tippy.js": "^6.3.5",
     "ttag": "1.7.21",
     "underscore": "~1.13.3",
+    "use-debounce": "^10.0.0",
     "yup": "^0.32.11"
   },
   "devDependencies": {
@@ -157,7 +158,7 @@
     "@testing-library/jest-dom": "^6.1.5",
     "@testing-library/react": "^11.0.2",
     "@testing-library/react-hooks": "^8.0.0",
-    "@testing-library/user-event": "^13.1.3",
+    "@testing-library/user-event": "^14.5.2",
     "@types/babel__core": "^7.20.4",
     "@types/babel__preset-env": "^7.9.5",
     "@types/color": "^3.0.2",
@@ -268,6 +269,7 @@
     "mutationobserver-shim": "^0.3.7",
     "mysql2": "^3.6.3",
     "node-polyfill-webpack-plugin": "2.0.1",
+    "null-loader": "^4.0.1",
     "pg": "^8.8.0",
     "postcss": "8.4.19",
     "postcss-color-mod-function": "^3.0.3",
