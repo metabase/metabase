@@ -50,7 +50,7 @@ export function CategoryFingerprint({
   });
 
   const fieldValues = fieldData ? fieldData.values : [];
-  const distinctCount = field.fingerprint?.global?.["distinct-count"];
+  const distinctCount = field?.fingerprint?.global?.["distinct-count"];
   const formattedDistinctCount = formatNumber(distinctCount);
 
   const showDistinctCount = isLoading || distinctCount != null;
