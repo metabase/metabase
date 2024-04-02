@@ -3,11 +3,11 @@ import type { AnySchema } from "yup";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
 import {
-  strategyValidationSchema,
   doNotCacheStrategyValidationSchema,
-  ttlStrategyValidationSchema,
   durationStrategyValidationSchema,
   inheritStrategyValidationSchema,
+  strategyValidationSchema,
+  ttlStrategyValidationSchema,
 } from "./validation";
 
 type StrategyData = {
