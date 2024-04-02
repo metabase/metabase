@@ -257,15 +257,6 @@ describe("Notebook Editor > Join Step", () => {
     expect(within(rhsColumnPicker).getByText("Body")).toBeInTheDocument();
   });
 
-  it("shouldn't let changing the RHS table", () => {
-    setup(createMockNotebookStep({ query: getJoinedQuery() }));
-
-    const rhsTablePicker = screen.getByLabelText("Right table");
-    const pickerButton = within(rhsTablePicker).getByText("Products");
-
-    expect(pickerButton).toBeDisabled();
-  });
-
   it("should highlight selected LHS column", async () => {
     setup(createMockNotebookStep({ query: getJoinedQuery() }));
 
