@@ -162,13 +162,14 @@
   opacity: 0.01;
 }
 
+/* .react-grid-placeholder is a global class from `react-grid-layout` */
 .DashEditing :global(.react-grid-placeholder) {
   z-index: 0;
   background-color: var(--color-bg-light) !important;
   transition: all 0.15s linear;
 }
 
-:global(.Modal.AddSeriesModal) {
+:global(.Modal).AddSeriesModal {
   height: 80%;
   max-height: 600px;
   width: 80%;
