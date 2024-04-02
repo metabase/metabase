@@ -51,7 +51,7 @@ export const PerformanceApp = ({ route }: { route: Route }) => {
       h={tabsHeight}
     >
       <TabsList>
-        <Tab key={"DataCachingSettings"} value={TabId.DataCachingSettings}>
+        <Tab key="DataCachingSettings" value={TabId.DataCachingSettings}>
           {t`Data caching settings`}
         </Tab>
       </TabsList>
