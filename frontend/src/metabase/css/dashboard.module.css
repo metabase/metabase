@@ -67,11 +67,11 @@
   transition: border 0.3s, background-color 0.3s;
 }
 
-.DashEditing :global(.Card-title:first-of-type) {
+.DashEditing .CardTitle:first-of-type {
   margin-top: 0.5rem;
 }
 
-.DashEditing :global(.Card-title) {
+.DashEditing .CardTitle {
   pointer-events: none;
 }
 
