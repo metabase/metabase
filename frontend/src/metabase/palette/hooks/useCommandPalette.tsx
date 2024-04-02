@@ -1,4 +1,4 @@
-import { useRegisterActions, type Action as KBarAction } from "kbar";
+import { useRegisterActions } from "kbar";
 import { useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -21,6 +21,8 @@ import {
 } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import type { SearchResult } from "metabase-types/api";
+
+import type { PaletteAction } from "../types";
 
 export type PalettePageId = "root" | "admin_settings";
 
@@ -59,8 +61,8 @@ export const useCommandPalette = ({
     [],
   );
 
-  const docsAction = useMemo<KBarAction[]>(() => {
-    const ret: KBarAction[] = [
+  const docsAction = useMemo<PaletteAction[]>(() => {
+    const ret: PaletteAction[] = [
       {
         id: "search_docs",
         name: query
@@ -88,8 +90,8 @@ export const useCommandPalette = ({
     showDocsAction,
   ]);
 
-  const searchResultActions = useMemo<KBarAction[]>(() => {
-    const ret: KBarAction[] = [];
+  const searchResultActions = useMemo<PaletteAction[]>(() => {
+    const ret: PaletteAction[] = [];
     if (isSearchLoading) {
       ret.push({
         id: "search-is-loading",
@@ -97,39 +99,41 @@ export const useCommandPalette = ({
         keywords: query,
         section: "search",
       });
-    } else {
-      if (searchError) {
+    } else if (searchError) {
+      ret.push({
+        id: "search-error",
+        name: t`Could not load search results`,
+        section: "search",
+      });
+    } else if (debouncedSearchText) {
+      if (searchResults?.length) {
+        ret.push(
+          ...searchResults.map(result => {
+            const wrappedResult = Search.wrapEntity(result, dispatch);
+            return {
+              id: `search-result-${result.id}`,
+              name: result.name,
+              icon: wrappedResult.getIcon().name,
+              section: "search",
+              perform: () => {
+                dispatch(closeModal());
+                dispatch(push(wrappedResult.getUrl()));
+              },
+              extra: {
+                parentCollection: result.collection.id,
+                isVerified: result.moderated_status === "verified",
+                databaseId: result.database_id,
+              },
+            };
+          }),
+        );
+      } else {
         ret.push({
-          id: "search-error",
-          name: t`Could not load search results`,
+          id: "no-search-results",
+          name: t`No results for “${debouncedSearchText}”`,
+          keywords: debouncedSearchText,
           section: "search",
         });
-      } else if (debouncedSearchText) {
-        if (searchResults?.length) {
-          ret.push(
-            ...searchResults.map(result => {
-              const wrappedResult = Search.wrapEntity(result, dispatch);
-              return {
-                id: `search-result-${result.id}`,
-                name: result.name,
-                icon: wrappedResult.getIcon().name,
-                section: "search",
-                perform: () => {
-                  dispatch(closeModal());
-                  dispatch(push(wrappedResult.getUrl()));
-                },
-              };
-            }),
-          );
-        } else {
-          ret.push({
-            id: "no-search-results",
-            name: t`No results for “${debouncedSearchText}”`,
-            keywords: debouncedSearchText,
-            section: "search",
-            perform: () => {}, // will simply close the command palette. It's possible we can remove this item
-          });
-        }
       }
     }
     return ret;
@@ -144,8 +148,8 @@ export const useCommandPalette = ({
 
   useRegisterActions(searchResultActions, [searchResultActions]);
 
-  const recentItemsActions = useMemo<KBarAction[]>(() => {
-    const ret: KBarAction[] = [];
+  const recentItemsActions = useMemo<PaletteAction[]>(() => {
+    const ret: PaletteAction[] = [];
     recentItems?.forEach(item => {
       ret.push({
         id: `recent-item-${getName(item)}`,
@@ -154,6 +158,11 @@ export const useCommandPalette = ({
         section: "recent",
         perform: () => {
           dispatch(push(Urls.modelToUrl(item) ?? ""));
+        },
+        extra: {
+          parentCollection: item.model_object.collection_id,
+          isVerified: item.model_object.moderated_status === "verified",
+          databaseId: item.model_object.db_id,
         },
       });
     });
@@ -166,7 +175,7 @@ export const useCommandPalette = ({
     hasQuery,
   ]);
 
-  const adminActions = useMemo<KBarAction[]>(() => {
+  const adminActions = useMemo<PaletteAction[]>(() => {
     return adminPaths.map(adminPath => ({
       id: `admin-page-${adminPath.key}`,
       name: `${adminPath.name}`,
@@ -176,7 +185,7 @@ export const useCommandPalette = ({
     }));
   }, [adminPaths, dispatch]);
 
-  const adminSettingsActions = useMemo<KBarAction[]>(() => {
+  const adminSettingsActions = useMemo<PaletteAction[]>(() => {
     return Object.entries(settingsSections)
       .filter(([slug, section]) => {
         if (section.getHidden?.(settingValues)) {

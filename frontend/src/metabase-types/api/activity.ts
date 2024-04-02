@@ -1,4 +1,6 @@
 import type { UserId } from "./user";
+import type { CollectionId } from "./collection";
+import type { DatabaseId } from "./database";
 
 export const ACTIVITY_MODELS = [
   "table",
@@ -13,6 +15,9 @@ export interface ActivityModelObject {
   name: string;
   display_name?: string;
   moderated_status?: string;
+  name: string;
+  collection_id?: CollectionId;
+  db_id?: DatabaseId;
 }
 
 export interface RecentItem {
