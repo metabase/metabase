@@ -1,15 +1,13 @@
-// TODO: retype this file...
-
+import type {
+  DataPermission,
+  DataPermissionValue,
+} from "metabase/admin/permissions/types";
 import type {
   DatabaseId,
   TableId,
   SchemaName,
   CollectionId,
 } from "metabase-types/api";
-import type {
-  DataPermission,
-  DataPermissionValue,
-} from "metabase/admin/permissions/types";
 
 import type { GroupId } from "./group";
 import type { UserAttribute } from "./user";

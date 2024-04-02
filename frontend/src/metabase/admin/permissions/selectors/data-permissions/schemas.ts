@@ -82,6 +82,11 @@ const buildAccessPermission = (
     database,
   );
 
+  // HACK: if the only two options are unrestricted and controlled, then let's remove the controlled option
+  if (options.length === 2) {
+    options.pop();
+  }
+
   return {
     permission: DataPermission.VIEW_DATA,
     type: DataPermissionType.ACCESS,
@@ -117,6 +122,7 @@ const buildNativePermission = (
   permissions: GroupsPermissions,
   defaultGroup: Group,
   accessPermissionValue: DataPermissionValue,
+  database: Database,
 ): PermissionSectionConfig => {
   const value = getSchemasPermission(
     permissions,
@@ -171,8 +177,16 @@ const buildNativePermission = (
       DATA_PERMISSION_OPTIONS.no,
     ],
     postActions: {
-      controlled: (_, __, ___, newValue) =>
-        granulateDatabasePermissions(
+      controlled: (_, __, ___, newValue) => {
+        const isMultiSchemaDb = database.schemaNames().length > 1;
+
+        const defaultValue =
+          !isMultiSchemaDb &&
+          value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
+            ? DataPermissionValue.QUERY_BUILDER
+            : value;
+
+        return granulateDatabasePermissions(
           groupId,
           entityId,
           {
@@ -180,10 +194,9 @@ const buildNativePermission = (
             permission: DataPermission.CREATE_QUERIES,
           },
           newValue,
-          value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
-            ? DataPermissionValue.QUERY_BUILDER
-            : value,
-        ),
+          defaultValue,
+        );
+      },
     },
   };
 };
@@ -214,6 +227,7 @@ export const buildSchemasPermissions = (
     permissions,
     defaultGroup,
     accessPermission.value,
+    database,
   );
 
   return [

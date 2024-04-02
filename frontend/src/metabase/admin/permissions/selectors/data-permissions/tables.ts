@@ -14,6 +14,7 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
+import { granulateDatabasePermissions } from "../../permissions";
 import type { PermissionSectionConfig, SchemaEntityId } from "../../types";
 import {
   DataPermissionValue,
@@ -111,12 +112,10 @@ const buildNativePermission = (
   permissions: GroupsPermissions,
   accessPermissionValue: DataPermissionValue,
 ): PermissionSectionConfig => {
-  const { databaseId } = entityId;
-
   const dbValue = getSchemasPermission(
     permissions,
     groupId,
-    { databaseId },
+    entityId,
     DataPermission.CREATE_QUERIES,
   );
 
@@ -140,9 +139,25 @@ const buildNativePermission = (
     options: _.compact([
       dbValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
         DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
+      DATA_PERMISSION_OPTIONS.controlled,
       DATA_PERMISSION_OPTIONS.queryBuilder,
       DATA_PERMISSION_OPTIONS.no,
     ]),
+    postActions: {
+      controlled: (_, __, ___, newValue) =>
+        granulateDatabasePermissions(
+          groupId,
+          entityId,
+          {
+            type: DataPermissionType.NATIVE,
+            permission: DataPermission.CREATE_QUERIES,
+          },
+          newValue,
+          value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
+            ? DataPermissionValue.QUERY_BUILDER
+            : value,
+        ),
+    },
   };
 };
 

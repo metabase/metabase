@@ -4,6 +4,7 @@ import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/s
 import {
   getSchemasPermission,
   getFieldsPermission,
+  getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
@@ -127,12 +128,10 @@ const buildNativePermission = (
   permissions: GroupsPermissions,
   accessPermissionValue: DataPermissionValue,
 ): PermissionSectionConfig => {
-  const { databaseId } = entityId;
-
-  const dbValue = getSchemasPermission(
+  const schemaValue = getTablesPermission(
     permissions,
     groupId,
-    { databaseId },
+    entityId,
     DataPermission.CREATE_QUERIES,
   );
 
@@ -154,7 +153,7 @@ const buildNativePermission = (
     isHighlighted: isAdmin,
     value,
     options: _.compact([
-      dbValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
+      schemaValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
         DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
       DATA_PERMISSION_OPTIONS.queryBuilder,
       DATA_PERMISSION_OPTIONS.no,
