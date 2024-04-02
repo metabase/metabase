@@ -15,4 +15,10 @@ export function setupPerformanceEndpoints(cacheConfigs: CacheConfig[]) {
     },
     {},
   );
+  fetchMock.delete(
+    {
+      url: "path:/api/cache",
+    },
+    {},
+  );
 }
