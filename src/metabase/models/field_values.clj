@@ -31,7 +31,6 @@
    [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -344,7 +343,6 @@
   FieldValues. You most likely should not be using this directly in code outside of this namespace, unless it's for a
   very specific reason, such as certain cases where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
   [field]
-  (classloader/require 'metabase.db.metadata-queries)
   (try
     (let [distinct-values         (metadata-queries/field-distinct-values field)
           limited-distinct-values (take-by-length *total-max-length* distinct-values)]
