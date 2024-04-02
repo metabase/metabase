@@ -12,6 +12,7 @@ import {
   getTableId,
   visitPublicQuestion,
   visitPublicDashboard,
+  createQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -45,7 +46,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.signInAsAdmin();
   });
 
-  it("shows correct object detail card for questions with joins (metabase #27094)", () => {
+  it("shows correct object detail card for questions with joins (metabase#27094)", () => {
     const questionDetails = {
       name: "14775",
       query: {
@@ -71,6 +72,49 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     cy.findByTestId("object-detail").within(() => {
       cy.get("h2").should("contain", "Order").should("contain", 1);
+    });
+  });
+
+  it("shows correct object detail card for questions with joins after clicking on view details (metabase#39477)", () => {
+    const questionDetails = {
+      name: "39477",
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field-id", ORDERS.PRODUCT_ID],
+              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+            ],
+            alias: "Products",
+          },
+        ],
+      },
+    };
+
+    createQuestion(questionDetails, { visitQuestion: true });
+
+    cy.log("check click on 1st row");
+
+    cy.get(".cellData").contains("37.65").realHover();
+    cy.findByTestId("detail-shortcut").findByRole("button").click();
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.get("h2").should("contain", "Order").should("contain", 1);
+      cy.findByTestId("object-detail-close-button").click();
+    });
+
+    cy.log("check click on 3rd row");
+
+    cy.get(".cellData").contains("52.72").realHover();
+    cy.findByTestId("detail-shortcut").findByRole("button").click();
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.get("h2").should("contain", "Order").should("contain", 3);
+      cy.findByText("52.72");
     });
   });
 
@@ -212,7 +256,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByTestId("object-detail").findByText("Searsboro").click();
   });
 
-  it("should work with non-numeric IDs (metabse#22768)", () => {
+  it("should work with non-numeric IDs (metabase#22768)", () => {
     cy.request("PUT", `/api/field/${PRODUCTS.ID}`, {
       semantic_type: null,
     });
