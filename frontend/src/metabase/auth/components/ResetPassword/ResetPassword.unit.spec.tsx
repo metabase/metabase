@@ -55,13 +55,16 @@ describe("ResetPassword", () => {
     setup({ isTokenValid: true });
     expect(await screen.findByText("New password")).toBeInTheDocument();
 
-    userEvent.type(screen.getByLabelText("Create a password"), "test");
-    userEvent.type(screen.getByLabelText("Confirm your password"), "test");
+    await userEvent.type(screen.getByLabelText("Create a password"), "test");
+    await userEvent.type(
+      screen.getByLabelText("Confirm your password"),
+      "test",
+    );
     await waitFor(() => {
       expect(screen.getByText("Save new password")).toBeEnabled();
     });
 
-    userEvent.click(screen.getByText("Save new password"));
+    await userEvent.click(screen.getByText("Save new password"));
     expect(await screen.findByText("Home")).toBeInTheDocument();
   });
 });

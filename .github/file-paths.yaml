@@ -27,6 +27,7 @@ frontend_sources: &frontend_sources
   - "postcss.config.js"
   - "webpack.config.js"
   - "webpack.static-viz.config.js"
+  - ".nvmrc"
 
 frontend_specs: &frontend_specs
   - *shared_specs

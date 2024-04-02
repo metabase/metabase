@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import Confirm from "metabase/components/Confirm";
+import CS from "metabase/css/core/index.css";
 import { UtilApi } from "metabase/services";
 
 import { SettingInput } from "../SettingInput";
@@ -32,7 +33,7 @@ const SecretKeyWidget = ({
       <SettingInput setting={setting} onChange={onChange} {...(rest as any)} />
       {setting.value ? (
         <Confirm
-          triggerClasses="full-height"
+          triggerClasses={CS.fullHeight}
           title={confirmation.header}
           content={confirmation.dialog}
           action={generateToken}

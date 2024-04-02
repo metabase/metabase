@@ -90,7 +90,6 @@ function App({
   isNavBarEnabled,
   children,
   onError,
-  location,
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
 
@@ -104,7 +103,7 @@ function App({
         <KBarProvider>
           <KeyboardTriggeredErrorModal />
           <AppContainer className={CS.spread}>
-            <AppBanner location={location} />
+            <AppBanner />
             {isAppBarVisible && <AppBar />}
             <AppContentContainer isAdminApp={isAdminApp}>
               {isNavBarEnabled && <Navbar />}

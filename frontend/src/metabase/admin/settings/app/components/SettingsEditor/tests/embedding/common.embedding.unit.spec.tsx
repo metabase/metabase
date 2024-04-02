@@ -4,7 +4,6 @@ import {
   goToStaticEmbeddingSettings,
   setupEmbedding,
   getQuickStartLink,
-  goToInteractiveEmbeddingSettings,
   staticEmbeddingSettingsUrl,
   embeddingSettingsUrl,
   interactiveEmbeddingSettingsUrl,
@@ -18,9 +17,7 @@ describe("[OSS] embedding settings", () => {
           settingValues: { "enable-embedding": false },
         });
 
-        expect(() => {
-          goToStaticEmbeddingSettings();
-        }).toThrow();
+        expect(screen.getByRole("button", { name: "Manage" })).toBeDisabled();
 
         history.push(staticEmbeddingSettingsUrl);
 
@@ -105,7 +102,7 @@ describe("[OSS] embedding settings", () => {
         settingValues: { "enable-embedding": true },
       });
 
-      goToStaticEmbeddingSettings();
+      await goToStaticEmbeddingSettings();
 
       const location = history.getCurrentLocation();
       expect(location.pathname).toEqual(staticEmbeddingSettingsUrl);
@@ -116,7 +113,12 @@ describe("[OSS] embedding settings", () => {
         settingValues: { "enable-embedding": true },
       });
 
-      expect(() => goToInteractiveEmbeddingSettings()).toThrow();
+      expect(
+        screen.queryByRole("button", { name: "Configure" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Learn More" }),
+      ).toBeInTheDocument();
 
       history.push(interactiveEmbeddingSettingsUrl);
 

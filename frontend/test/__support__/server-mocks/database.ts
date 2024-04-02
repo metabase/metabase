@@ -10,6 +10,7 @@ import { setupTableEndpoints } from "./table";
 
 export function setupDatabaseEndpoints(db: Database) {
   fetchMock.get(`path:/api/database/${db.id}`, db);
+  fetchMock.post(`path:/api/database/${db.id}/sync_schema`, {});
   fetchMock.post(`path:/api/database/${db.id}/rescan_values`, {});
   fetchMock.post(`path:/api/database/${db.id}/discard_values`, {});
   setupSchemaEndpoints(db);

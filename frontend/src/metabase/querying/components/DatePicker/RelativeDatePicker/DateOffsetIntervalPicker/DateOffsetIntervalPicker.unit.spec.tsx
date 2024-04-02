@@ -1,4 +1,4 @@
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
@@ -18,6 +18,10 @@ function getDefaultValue(
     offsetUnit: "day",
   };
 }
+
+const userEvent = _userEvent.setup({
+  advanceTimers: jest.advanceTimersByTime,
+});
 
 interface SetupOpts {
   value: DateOffsetIntervalValue;
@@ -51,14 +55,14 @@ describe("DateOffsetIntervalPicker", () => {
     direction => {
       const defaultValue = getDefaultValue(direction);
 
-      it("should change the interval", () => {
+      it("should change the interval", async () => {
         const { onChange, onSubmit } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Interval");
-        userEvent.clear(input);
-        userEvent.type(input, "20");
+        await userEvent.clear(input);
+        await userEvent.type(input, "20");
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
@@ -66,18 +70,18 @@ describe("DateOffsetIntervalPicker", () => {
         });
         expect(onSubmit).not.toHaveBeenCalled();
 
-        userEvent.type(input, "{enter}");
+        await userEvent.type(input, "{enter}");
         expect(onSubmit).toHaveBeenCalled();
       });
 
-      it("should change the interval with a negative value", () => {
+      it("should change the interval with a negative value", async () => {
         const { onChange, onSubmit } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Interval");
-        userEvent.clear(input);
-        userEvent.type(input, "-10");
+        await userEvent.clear(input);
+        await userEvent.type(input, "-10");
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
@@ -86,15 +90,15 @@ describe("DateOffsetIntervalPicker", () => {
         expect(onSubmit).not.toHaveBeenCalled();
       });
 
-      it("should coerce zero", () => {
+      it("should coerce zero", async () => {
         const { onChange, onSubmit } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Interval");
-        userEvent.clear(input);
-        userEvent.type(input, "0");
-        userEvent.tab();
+        await userEvent.clear(input);
+        await userEvent.type(input, "0");
+        await userEvent.tab();
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
@@ -103,42 +107,42 @@ describe("DateOffsetIntervalPicker", () => {
         expect(onSubmit).not.toHaveBeenCalled();
       });
 
-      it("should ignore empty values", () => {
+      it("should ignore empty values", async () => {
         const { onChange, onSubmit } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Interval");
-        userEvent.clear(input);
-        userEvent.tab();
+        await userEvent.clear(input);
+        await userEvent.tab();
 
         expect(input).toHaveValue("30");
         expect(onChange).not.toHaveBeenCalled();
         expect(onSubmit).not.toHaveBeenCalled();
       });
 
-      it("should ignore invalid values", () => {
+      it("should ignore invalid values", async () => {
         const { onChange, onSubmit } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Interval");
-        userEvent.clear(input);
-        userEvent.type(input, "abc");
-        userEvent.tab();
+        await userEvent.clear(input);
+        await userEvent.type(input, "abc");
+        await userEvent.tab();
 
         expect(input).toHaveValue("30");
         expect(onChange).not.toHaveBeenCalled();
         expect(onSubmit).not.toHaveBeenCalled();
       });
 
-      it("should allow to change the unit", () => {
+      it("should allow to change the unit", async () => {
         const { onChange, onSubmit } = setup({
           value: defaultValue,
         });
 
-        userEvent.click(screen.getByLabelText("Unit"));
-        userEvent.click(screen.getByText("years"));
+        await userEvent.click(screen.getByLabelText("Unit"));
+        await userEvent.click(screen.getByText("years"));
 
         expect(onChange).toHaveBeenCalledWith({
           ...defaultValue,
@@ -148,14 +152,14 @@ describe("DateOffsetIntervalPicker", () => {
         expect(onSubmit).not.toHaveBeenCalled();
       });
 
-      it("should change the offset interval", () => {
+      it("should change the offset interval", async () => {
         const { onChange, onSubmit } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Starting from interval");
-        userEvent.clear(input);
-        userEvent.type(input, "20");
+        await userEvent.clear(input);
+        await userEvent.type(input, "20");
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
@@ -164,14 +168,14 @@ describe("DateOffsetIntervalPicker", () => {
         expect(onSubmit).not.toHaveBeenCalled();
       });
 
-      it("should change the offset interval with a negative value", () => {
+      it("should change the offset interval with a negative value", async () => {
         const { onChange, onSubmit } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Starting from interval");
-        userEvent.clear(input);
-        userEvent.type(input, "-10");
+        await userEvent.clear(input);
+        await userEvent.type(input, "-10");
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
@@ -180,15 +184,15 @@ describe("DateOffsetIntervalPicker", () => {
         expect(onSubmit).not.toHaveBeenCalled();
       });
 
-      it("should accept zero offset interval", () => {
+      it("should accept zero offset interval", async () => {
         const { onChange, onSubmit } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Starting from interval");
-        userEvent.clear(input);
-        userEvent.type(input, "0");
-        userEvent.tab();
+        await userEvent.clear(input);
+        await userEvent.type(input, "0");
+        await userEvent.tab();
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
@@ -197,43 +201,43 @@ describe("DateOffsetIntervalPicker", () => {
         expect(onSubmit).not.toHaveBeenCalled();
       });
 
-      it("should ignore an empty offset interval", () => {
+      it("should ignore an empty offset interval", async () => {
         const { onChange, onSubmit } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Starting from interval");
-        userEvent.clear(input);
-        userEvent.tab();
+        await userEvent.clear(input);
+        await userEvent.tab();
 
         expect(input).toHaveValue("14");
         expect(onChange).not.toHaveBeenCalled();
         expect(onSubmit).not.toHaveBeenCalled();
       });
 
-      it("should ignore invalid offset values", () => {
+      it("should ignore invalid offset values", async () => {
         const { onChange, onSubmit } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Interval");
-        userEvent.clear(input);
-        userEvent.type(input, "abc");
-        userEvent.tab();
+        await userEvent.clear(input);
+        await userEvent.type(input, "abc");
+        await userEvent.tab();
 
         expect(input).toHaveValue("30");
         expect(onChange).not.toHaveBeenCalled();
         expect(onSubmit).not.toHaveBeenCalled();
       });
 
-      it("should allow to change the offset unit", () => {
+      it("should allow to change the offset unit", async () => {
         const { onChange, onSubmit } = setup({
           value: defaultValue,
         });
 
         const unitText = direction === "last" ? "years ago" : "years from now";
-        userEvent.click(screen.getByLabelText("Starting from unit"));
-        userEvent.click(screen.getByText(unitText));
+        await userEvent.click(screen.getByLabelText("Starting from unit"));
+        await userEvent.click(screen.getByText(unitText));
 
         expect(onChange).toHaveBeenCalledWith({
           ...defaultValue,
@@ -242,7 +246,7 @@ describe("DateOffsetIntervalPicker", () => {
         expect(onSubmit).not.toHaveBeenCalled();
       });
 
-      it("should only show offset units larger or equal to the current one", () => {
+      it("should only show offset units larger or equal to the current one", async () => {
         setup({
           value: {
             ...defaultValue,
@@ -250,7 +254,7 @@ describe("DateOffsetIntervalPicker", () => {
           },
         });
 
-        userEvent.click(screen.getByLabelText("Starting from unit"));
+        await userEvent.click(screen.getByLabelText("Starting from unit"));
 
         expect(screen.getByText(/months/)).toBeInTheDocument();
         expect(screen.getByText(/quarters/)).toBeInTheDocument();
@@ -270,12 +274,12 @@ describe("DateOffsetIntervalPicker", () => {
         expect(screen.getByText(rangeText)).toBeInTheDocument();
       });
 
-      it("should be able to remove the offset", () => {
+      it("should be able to remove the offset", async () => {
         const { onChange, onSubmit } = setup({
           value: defaultValue,
         });
 
-        userEvent.click(screen.getByLabelText("Remove offset"));
+        await userEvent.click(screen.getByLabelText("Remove offset"));
 
         expect(onChange).toHaveBeenCalledWith({
           ...defaultValue,

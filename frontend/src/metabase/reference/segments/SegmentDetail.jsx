@@ -1,4 +1,5 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
@@ -143,7 +144,7 @@ const SegmentDetail = props => {
   });
 
   return (
-    <form style={style} className="full" onSubmit={handleSubmit}>
+    <form style={style} className={CS.full} onSubmit={handleSubmit}>
       {isEditing && (
         <EditHeader
           hasRevisionHistory={true}
@@ -192,7 +193,11 @@ const SegmentDetail = props => {
                         {table && (
                           <div>
                             <Link
-                              className="text-brand text-bold text-paragraph"
+                              className={cx(
+                                "text-brand",
+                                CS.textBold,
+                                CS.textParagraph,
+                              )}
                               to={`/reference/databases/${table.db_id}/tables/${table.id}`}
                             >
                               <span className="pt1">{table.display_name}</span>
@@ -203,7 +208,7 @@ const SegmentDetail = props => {
                     </div>
                   </div>
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="description"
                     name={t`Description`}
@@ -213,7 +218,7 @@ const SegmentDetail = props => {
                     field={getFormField("description")}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="points_of_interest"
                     name={t`Why this Segment is interesting`}
@@ -223,7 +228,7 @@ const SegmentDetail = props => {
                     field={getFormField("points_of_interest")}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="caveats"
                     name={t`Things to be aware of about this Segment`}
@@ -234,14 +239,14 @@ const SegmentDetail = props => {
                   />
                 </li>
                 {!isEditing && (
-                  <li className="relative">
+                  <li className={CS.relative}>
                     <UsefulQuestions
                       questions={interestingQuestions(table, entity, metadata)}
                     />
                   </li>
                 )}
                 {table && !isEditing && (
-                  <li className="relative mb4">
+                  <li className={cx(CS.relative, CS.mb4)}>
                     <Formula
                       type="segment"
                       entity={entity}

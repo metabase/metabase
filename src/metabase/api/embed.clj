@@ -406,8 +406,9 @@
 
 (api/defendpoint GET ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
-  [token export-format :as {:keys [query-params]}]
-  {export-format (into [:enum] api.dataset/export-formats)}
+  [token export-format :as {:keys [query-params format_rows]}]
+  {export-format (into [:enum] api.dataset/export-formats)
+   format_rows   [:maybe :boolean]}
   (run-query-for-unsigned-token-async
    (embed/unsign token)
    export-format
@@ -415,7 +416,7 @@
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
-                :format-rows?          false}))
+                :format-rows?          format_rows}))
 
 
 ;;; ----------------------------------------- /api/embed/dashboard endpoints -----------------------------------------
@@ -459,7 +460,7 @@
       :card-id          card-id
       :embedding-params (t2/select-one-fn :embedding_params Dashboard :id dashboard-id)
       :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-      :query-params     query-params
+      :query-params     (dissoc query-params :format_rows)
       :constraints      constraints
       :qp               qp
       :middleware       middleware)))
@@ -556,9 +557,10 @@
                                          :export-format api.dataset/export-format-regex]
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
-  [token export-format dashcard-id card-id, :as {:keys [query-params]}]
+  [token export-format dashcard-id card-id format_rows, :as {:keys [query-params]}]
   {dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
+   format_rows   [:maybe :boolean]
    export-format (into [:enum] api.dataset/export-formats)}
   (process-query-for-dashcard-with-signed-token token
     dashcard-id
@@ -568,7 +570,7 @@
     :constraints nil
     :middleware {:process-viz-settings? true
                  :js-int-to-string?     false
-                 :format-rows?          false}))
+                 :format-rows?          format_rows}))
 
 
 ;;; ----------------------------------------------- Param values -------------------------------------------------

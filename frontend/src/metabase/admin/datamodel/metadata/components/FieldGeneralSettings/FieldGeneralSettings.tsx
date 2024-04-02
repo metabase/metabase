@@ -203,7 +203,7 @@ const FieldJsonUnfoldingSection = ({
         description={t`Unfold JSON into component fields, where each JSON key becomes a column. You can turn this off if performance is slow.`}
       />
       <Select
-        className="inline-block"
+        className={CS.inlineBlock}
         value={field.isJsonUnfolded()}
         onChange={handleChange}
         options={JSON_OPTIONS}
@@ -240,7 +240,7 @@ const FieldCoercionStrategySection = ({
     <MetadataSection>
       <MetadataSectionHeader title={t`Cast to a specific data type`} />
       <Select
-        className="inline-block"
+        className={CS.inlineBlock}
         placeholder={t`Select a conversion`}
         searchProp="name"
         value={field.coercion_strategy}
@@ -274,7 +274,7 @@ const FieldValuesTypeSection = ({
         description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
       />
       <Select
-        className="inline-block"
+        className={CS.inlineBlock}
         value={field.has_field_values}
         options={MetabaseCore.has_field_values_options}
         onChange={handleChangeFieldValuesType}

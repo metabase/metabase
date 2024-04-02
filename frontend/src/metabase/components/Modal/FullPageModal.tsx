@@ -1,9 +1,11 @@
+import cx from "classnames";
 import { Component } from "react";
 
 import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnClickOutsideWrapper";
 import type { BaseModalProps } from "metabase/components/Modal/utils";
 import { getModalContent } from "metabase/components/Modal/utils";
 import SandboxedPortal from "metabase/components/SandboxedPortal";
+import CS from "metabase/css/core/index.css";
 import { getScrollX, getScrollY } from "metabase/lib/dom";
 import { Transition } from "metabase/ui";
 
@@ -99,7 +101,10 @@ export class FullPageModal extends Component<
                 handleDismissal={this.handleDismissal}
                 closeOnClickOutside={this.props.closeOnClickOutside}
               >
-                <div className="full-height relative scroll-y" style={styles}>
+                <div
+                  className={cx(CS.fullHeight, CS.relative, CS.scrollY)}
+                  style={styles}
+                >
                   {getModalContent({
                     ...this.props,
                     fullPageModal: true,

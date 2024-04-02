@@ -1,5 +1,6 @@
 import type { ComponentType, HTMLAttributes, ReactNode } from "react";
 import { t } from "ttag";
+import type { AnySchema } from "yup";
 
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import type {
@@ -125,6 +126,28 @@ export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 
 // authentication providers
 export const PLUGIN_AUTH_PROVIDERS: GetAuthProviders[] = [];
+
+export const PLUGIN_LDAP_FORM_FIELDS = {
+  formFieldAttributes: [] as string[],
+  defaultableFormFieldAttributes: [] as string[],
+  formFieldsSchemas: {} as Record<string, AnySchema>,
+  UserProvisioning: (() => null) as ComponentType<{
+    settings: {
+      [setting: string]: {
+        display_name?: string | undefined;
+        warningMessage?: string | undefined;
+        description?: string | undefined;
+        note?: string | undefined;
+      };
+    };
+    fields: {
+      [field: string]: {
+        name: string;
+        default: boolean;
+      };
+    };
+  }>,
+};
 
 // Only show the password tab in account settings if these functions all return true.
 // Otherwise, the user is logged in via SSO and should hide first name, last name, and email field in profile settings metabase#23298.
