@@ -5,6 +5,8 @@ import type {
 } from "@mantine/core";
 import { getStylesRef, rem } from "@mantine/core";
 
+import { getPrimaryColor } from "../../../utils/colors";
+
 export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
   Button: {
     defaultProps: {
@@ -145,10 +147,6 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
     },
   },
 });
-
-const getPrimaryColor = (theme: MantineTheme, colorName: string) => {
-  return theme.fn.themeColor(colorName, theme.fn.primaryShade());
-};
 
 const getHoverColor = (theme: MantineTheme, primaryColor: string) => {
   return theme.fn.rgba(primaryColor, 0.88);
