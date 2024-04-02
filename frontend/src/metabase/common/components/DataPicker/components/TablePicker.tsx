@@ -46,7 +46,7 @@ export const TablePicker = ({ onItemSelect, value }: Props) => {
     data: schemas,
     error: errorSchemas,
     isFetching: isLoadingSchemas,
-  } = useListDatabaseSchemasQuery(isNotNull(dbId) ? { id: dbId } : skipToken); // TODO conditional type
+  } = useListDatabaseSchemasQuery(isNotNull(dbId) ? { id: dbId } : skipToken);
 
   const {
     data: tables,
