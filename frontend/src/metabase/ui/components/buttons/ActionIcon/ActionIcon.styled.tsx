@@ -8,6 +8,11 @@ import { getPrimaryColor } from "../../../utils/colors";
 export const getActionIconOverrides =
   (): MantineThemeOverride["components"] => ({
     ActionIcon: {
+      defaultProps: {
+        color: "brand",
+        variant: "transparent",
+        size: "2rem",
+      },
       variants: {
         subtle: theme => ({
           root: {
