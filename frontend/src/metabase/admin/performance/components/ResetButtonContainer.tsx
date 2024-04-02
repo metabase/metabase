@@ -63,7 +63,6 @@ const ResetAllToDefaultButtonFormBody = () => {
               </Text>
             }
             variant="subtle"
-            color="error"
             highlightOnHover={status === "idle"}
           />
         </Flex>
