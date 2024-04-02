@@ -22,7 +22,7 @@ describe.skip("issue 39150", () => {
     cy.signInAsAdmin();
   });
 
-  it("should render results if a model depends on a model and both have the same custom column name", () => {
+  it("should render results if a model depends on a model and both have the same custom column name (metabase#39150)", () => {
     createQuestion(modelDetails).then(({ body: { id: modelId } }) => {
       createQuestion(
         {
