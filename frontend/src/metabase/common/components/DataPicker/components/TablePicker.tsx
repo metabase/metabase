@@ -132,7 +132,7 @@ export const TablePicker = ({ onItemSelect, value }: Props) => {
         <DatabaseList
           databases={isLoadingDatabases ? undefined : databases?.data}
           error={errorDatabases}
-          isCurrentLevel={!schemaId}
+          isCurrentLevel={!schemaId || (schemas?.length === 1 && !tableId)}
           isLoading={isLoadingDatabases}
           selectedItem={selectedDbItem}
           onClick={folder => handleFolderSelect({ folder })}
