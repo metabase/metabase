@@ -595,7 +595,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     return (
       <GridLayout
         className={cx("DashboardGrid", {
-          "Dash--editing": this.isEditingLayout,
+          [DashboardS.DashEditing]: this.isEditingLayout,
           "Dash--dragging": this.state.isDragging,
         })}
         layouts={layouts}

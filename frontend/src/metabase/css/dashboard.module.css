@@ -59,23 +59,23 @@
   transition: background-color 1s linear, border 1s linear;
 }
 
-:global(.Dash--editing) {
+.DashEditing {
   margin-top: 1.5em;
 }
 
-:global(.Dash--editing) .DashCard .Card {
+.DashEditing .DashCard .Card {
   transition: border 0.3s, background-color 0.3s;
 }
 
-:global(.Dash--editing .Card-title:first-of-type) {
+.DashEditing :global(.Card-title:first-of-type) {
   margin-top: 0.5rem;
 }
 
-:global(.Dash--editing .Card-title) {
+.DashEditing :global(.Card-title) {
   pointer-events: none;
 }
 
-:global(.Dash--editing .PinMap) {
+.DashEditing :global(.PinMap) {
   /* allow map to pan. need to stopPropagation in PinMap to prevent weird dragging interaction */
   pointer-events: all;
 }
@@ -85,7 +85,7 @@
   color: var(--color-text-light);
 }
 
-:global(.Dash--editing) .DashCard:global(.react-draggable-dragging) .Card {
+.DashEditing .DashCard:global(.react-draggable-dragging) .Card {
   box-shadow: 3px 3px 8px var(--color-shadow);
 }
 
@@ -93,33 +93,33 @@
   border-color: var(--color-brand) !important;
 }
 
-:global(.Dash--editing) .DashCard:global(.react-draggable-dragging),
-:global(.Dash--editing) .DashCard:global(.react-resizable-resizing) {
+.DashEditing .DashCard:global(.react-draggable-dragging),
+.DashEditing .DashCard:global(.react-resizable-resizing) {
   z-index: 3;
 }
 
-:global(.Dash--editing) .DashCard:global(.react-draggable-dragging) .Card,
-:global(.Dash--editing) .DashCard:global(.react-resizable-resizing) .Card {
+.DashEditing .DashCard:global(.react-draggable-dragging) .Card,
+.DashEditing .DashCard:global(.react-resizable-resizing) .Card {
   background-color: var(--color-bg-medium) !important;
   border: 1px solid var(--color-brand);
 }
 
-:global(.Dash--editing) .DashCard :global(.Visualization-slow-spinner) {
+.DashEditing .DashCard :global(.Visualization-slow-spinner) {
   position: absolute;
   right: -2px;
   top: -2px;
 }
 
-:global(.Dash--editing) .DashCard:hover :global(.Visualization-slow-spinner) {
+.DashEditing .DashCard:hover :global(.Visualization-slow-spinner) {
   opacity: 0;
   transition: opacity 0.15s linear;
 }
 
-:global(.Dash--editing) .DashCard {
+.DashEditing .DashCard {
   cursor: move;
 }
 
-:global(.Dash--editing) .DashCard :global(.react-resizable-handle) {
+.DashEditing .DashCard :global(.react-resizable-handle) {
   position: absolute;
   width: 40px;
   height: 40px;
@@ -132,7 +132,7 @@
   background: none; /* hide default RGL's resize handle */
 }
 
-:global(.Dash--editing) .DashCard :global(.react-resizable-handle::after) {
+.DashEditing .DashCard :global(.react-resizable-handle::after) {
   content: "";
   position: absolute;
   width: 8px;
@@ -146,26 +146,22 @@
   opacity: 0.01;
 }
 
-:global(.Dash--editing)
-  .DashCard
-  :global(.react-resizable-handle:hover::after) {
+.DashEditing .DashCard :global(.react-resizable-handle:hover::after) {
   border-color: var(--color-border);
 }
 
-:global(.Dash--editing)
-  .DashCard:hover
-  :global(.react-resizable-handle::after) {
+.DashEditing .DashCard:hover :global(.react-resizable-handle::after) {
   opacity: 1;
 }
 
-:global(.Dash--editing)
+.DashEditing
   .DashCard:global(.react-draggable-dragging .react-resizable-handle::after),
-:global(.Dash--editing)
+.DashEditing
   .DashCard:global(.react-resizable-resizing .react-resizable-handle::after) {
   opacity: 0.01;
 }
 
-:global(.Dash--editing .react-grid-placeholder) {
+.DashEditing :global(.react-grid-placeholder) {
   z-index: 0;
   background-color: var(--color-bg-light) !important;
   transition: all 0.15s linear;
