@@ -1,22 +1,20 @@
 import { useEffect, useState } from "react";
 
-export const useRecentlyTrue = (bool: boolean, delay = 500) => {
+export const useRecentlyTrue = (booleanVariable: boolean, delay = 500) => {
   const [wasEverTrue, setWasEverTrue] = useState(false);
   const [wasRecentlyTrue, setWasRecentlyTrue] = useState(false);
 
   useEffect(() => {
-    if (bool) {
+    if (booleanVariable) {
       setWasEverTrue(true);
-    } else {
-      if (wasEverTrue) {
-        setWasRecentlyTrue(true);
-        const timeout = setTimeout(() => {
-          setWasRecentlyTrue(false);
-        }, delay);
-        return () => clearTimeout(timeout);
-      }
+    } else if (wasEverTrue) {
+      setWasRecentlyTrue(true);
+      const timeout = setTimeout(() => {
+        setWasRecentlyTrue(false);
+      }, delay);
+      return () => clearTimeout(timeout);
     }
-  }, [bool, wasEverTrue, delay]);
+  }, [booleanVariable, wasEverTrue, delay]);
 
   return [wasRecentlyTrue, wasEverTrue];
 };
