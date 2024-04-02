@@ -1,5 +1,6 @@
 import { c, t } from "ttag";
 import type { AnySchema } from "yup";
+import type { SchemaObjectDescription } from "yup/lib/schema";
 
 import {
   strategyValidationSchema,
@@ -140,4 +141,13 @@ export type LeaveConfirmationData =
 
 export type CacheConfigAPIResponse = {
   data: Config[];
+};
+
+export const getFieldsForStrategyType = (strategyType: StrategyType) => {
+  const strategy = Strategies[strategyType];
+  const validationSchemaDescription =
+    strategy.validateWith.describe() as SchemaObjectDescription;
+  const fieldRecord = validationSchemaDescription.fields;
+  const fields = Object.keys(fieldRecord);
+  return fields;
 };

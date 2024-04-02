@@ -1,38 +1,25 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { InjectedRouter, Route } from "react-router";
 import { withRouter } from "react-router";
-import { useAsync } from "react-use";
 import { t } from "ttag";
 import { findWhere, pick } from "underscore";
-import type { SchemaObjectDescription } from "yup/lib/schema";
 
-import { useDatabaseListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { FormProvider } from "metabase/forms";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
-import { color } from "metabase/lib/colors";
 import { CacheConfigApi } from "metabase/services";
 import { Box, Stack, Title } from "metabase/ui";
 
 import { rootId } from "../constants";
+import { useCacheConfigs } from "../hooks/useCacheConfigs";
 import { useConfirmOnRouteLeave } from "../hooks/useConfirmOnRouteLeave";
 import { useDelayedLoadingSpinner } from "../hooks/useDelayedLoadingSpinner";
 import { useHasVerticalScrollbar } from "../hooks/useHasVerticalScrollbar";
-import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
-import { useResetToDefaultForm } from "../hooks/useResetToDefault";
-import type {
-  CacheConfigAPIResponse,
-  Config,
-  SafelyUpdateTargetId,
-  Strategy,
-  StrategyType,
-} from "../types";
-import { DurationUnit, Strategies } from "../types";
+import type { Config, SafelyUpdateTargetId, Strategy } from "../types";
+import { DurationUnit, getFieldsForStrategyType, Strategies } from "../types";
 
-import { ResetButtonContainer } from "./ResetButtonContainer";
 import { Panel, TabWrapper } from "./StrategyEditorForDatabases.styled";
 import { StrategyForm } from "./StrategyForm";
-import { StrategyFormLauncher } from "./StrategyFormLauncher";
+import { StrategyFormLauncherPanel } from "./StrategyFormLauncherPanel";
 
 const StrategyEditorForDatabases_Base = ({
   canOverrideRootStrategy,
@@ -49,51 +36,22 @@ const StrategyEditorForDatabases_Base = ({
     setTargetId,
   ] = useState<number | null>(null);
 
-  const databasesResult = useDatabaseListQuery();
-  const databases = databasesResult.data;
-
-  const shouldShowStrategyFormLaunchers = canOverrideRootStrategy;
-
-  const configsResult = useAsync(async () => {
-    const rootConfigsFromAPI = (
-      (await CacheConfigApi.list({ model: "root" })) as CacheConfigAPIResponse
-    ).data;
-    const rootConfig = rootConfigsFromAPI[0] ?? {
-      model: "root",
-      model_id: rootId,
-      strategy: { type: "nocache" },
-    };
-    const dbConfigsFromAPI = canOverrideRootStrategy
-      ? (
-          (await CacheConfigApi.list({
-            model: "database",
-          })) as CacheConfigAPIResponse
-        ).data
-      : [];
-    const configs = [rootConfig, ...dbConfigsFromAPI];
-    return configs;
-  }, []);
-
-  const configsFromAPI = configsResult.value;
-
-  const [configs, setConfigs] = useState<Config[]>([]);
-
-  const rootStrategyOverriddenOnce = configs.some(
-    config => config.model_id !== rootId,
-  );
-
-  const [rootStrategyRecentlyOverridden] = useRecentlyTrue(
+  const {
+    databases,
+    configs,
+    setConfigs,
     rootStrategyOverriddenOnce,
-    3000,
-  );
+    rootStrategyRecentlyOverridden,
+    error,
+    loading,
+  } = useCacheConfigs({
+    canOverrideRootStrategy,
+  });
+
   const shouldShowResetButton =
     rootStrategyOverriddenOnce || rootStrategyRecentlyOverridden;
 
-  useEffect(() => {
-    if (configsFromAPI) {
-      setConfigs(configsFromAPI);
-    }
-  }, [configsFromAPI]);
+  const shouldShowStrategyFormLaunchers = canOverrideRootStrategy;
 
   /** The config for the model currently being edited */
   const targetConfig = findWhere(configs, {
@@ -106,7 +64,6 @@ const StrategyEditorForDatabases_Base = ({
   }
 
   const [isStrategyFormDirty, setIsStrategyFormDirty] = useState(false);
-  const showStrategyForm = targetId !== null;
 
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
@@ -190,40 +147,12 @@ const StrategyEditorForDatabases_Base = ({
     [configs, setConfigs, targetId],
   );
 
-  const databaseIds = useMemo(
-    () =>
-      configs.reduce<number[]>(
-        (acc, config) =>
-          config.model === "database" ? [...acc, config.model_id] : acc,
-        [],
-      ),
-    [configs],
-  );
-
   const {
     hasVerticalScrollbar: formPanelHasVerticalScrollbar,
     ref: formPanelRef,
   } = useHasVerticalScrollbar();
 
   const showSpinner = useDelayedLoadingSpinner();
-  const error = databasesResult.error || configsResult.error;
-  const loading = databasesResult.isLoading || configsResult.loading;
-
-  const {
-    handleSubmit: resetAllToDefault,
-    versionNumber: resetFormVersionNumber,
-  } = useResetToDefaultForm({
-    configs,
-    setConfigs,
-    databaseIds,
-    isFormVisible: showStrategyForm,
-  });
-
-  const rootConfig = findWhere(configs, { model_id: rootId });
-  const rootConfigLabel =
-    (rootConfig?.strategy.type
-      ? Strategies[rootConfig?.strategy.type].shortLabel
-      : null) ?? "default";
 
   if (error || loading) {
     return showSpinner ? (
@@ -261,49 +190,21 @@ const StrategyEditorForDatabases_Base = ({
         mb="1rem"
       >
         {shouldShowStrategyFormLaunchers && (
-          <Panel role="group" style={{ backgroundColor: color("bg-light") }}>
-            <Box
-              p="lg"
-              style={{ borderBottom: `1px solid ${color("border")}` }}
-            >
-              <StrategyFormLauncher
-                forId={rootId}
-                title={t`Default policy`}
-                configs={configs}
-                targetId={targetId}
-                safelyUpdateTargetId={safelyUpdateTargetId}
-                isFormDirty={isStrategyFormDirty}
-              />
-            </Box>
-            <Stack p="lg" spacing="md">
-              {databases?.map(db => (
-                <StrategyFormLauncher
-                  forId={db.id}
-                  title={db.name}
-                  configs={configs}
-                  targetId={targetId}
-                  safelyUpdateTargetId={safelyUpdateTargetId}
-                  isFormDirty={isStrategyFormDirty}
-                  key={`database_${db.id}`}
-                />
-              ))}
-            </Stack>
-            <FormProvider
-              initialValues={{}}
-              onSubmit={resetAllToDefault}
-              key={resetFormVersionNumber} // To avoid using stale context
-            >
-              {shouldShowResetButton && (
-                <ResetButtonContainer rootConfigLabel={rootConfigLabel} />
-              )}
-            </FormProvider>
-          </Panel>
+          <StrategyFormLauncherPanel
+            configs={configs}
+            setConfigs={setConfigs}
+            targetId={targetId}
+            safelyUpdateTargetId={safelyUpdateTargetId}
+            databases={databases}
+            isStrategyFormDirty={isStrategyFormDirty}
+            shouldShowResetButton={shouldShowResetButton}
+          />
         )}
         <Panel
           ref={formPanelRef}
           hasVerticalScrollbar={formPanelHasVerticalScrollbar}
         >
-          {showStrategyForm && (
+          {targetId !== null && (
             <StrategyForm
               targetId={targetId}
               setIsDirty={setIsStrategyFormDirty}
@@ -320,12 +221,3 @@ const StrategyEditorForDatabases_Base = ({
 export const StrategyEditorForDatabases = withRouter(
   StrategyEditorForDatabases_Base,
 );
-
-const getFieldsForStrategyType = (strategyType: StrategyType) => {
-  const strategy = Strategies[strategyType];
-  const validationSchemaDescription =
-    strategy.validateWith.describe() as SchemaObjectDescription;
-  const fieldRecord = validationSchemaDescription.fields;
-  const fields = Object.keys(fieldRecord);
-  return fields;
-};
