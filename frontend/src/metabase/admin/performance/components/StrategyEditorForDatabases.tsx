@@ -88,14 +88,9 @@ const StrategyEditorForDatabases_Base = ({
 
   /** Update the targetId (the id of the currently edited model) but confirm if the form is unsaved */
   const updateTargetId: UpdateTargetId = (newTargetId, isFormDirty) => {
-    if (targetId === newTargetId) {
-      return;
-    }
-    const update = () => setTargetId(newTargetId);
-    if (isFormDirty) {
-      askBeforeDiscardingChanges(update);
-    } else {
-      update();
+    if (targetId !== newTargetId) {
+      const update = () => setTargetId(newTargetId);
+      isFormDirty ? askBeforeDiscardingChanges(update) : update();
     }
   };
 

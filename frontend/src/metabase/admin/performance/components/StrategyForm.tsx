@@ -111,31 +111,7 @@ const StrategyFormBody = ({
             </Field>
             <Field
               title={t`Cache time-to-live (TTL) multiplier`}
-              subtitle={
-                <div>
-                  {t`To determine how long each cached result should stick around, we take that query's average execution time and multiply that by what you input here. The result is how many seconds the cache should remain valid for.`}{" "}
-                  <Tooltip
-                    events={{
-                      hover: true,
-                      focus: true,
-                      touch: true,
-                    }}
-                    inline={true}
-                    styles={{
-                      tooltip: {
-                        whiteSpace: "normal",
-                      },
-                    }}
-                    label={t`If a query takes on average 120 seconds (2 minutes) to run, and you input 10 for your multiplier, its cache entry will persist for 1,200 seconds (20 minutes).`}
-                    maw="20rem"
-                    lh={1}
-                  >
-                    <Text tabIndex={0} display="inline" c="brand">
-                      Example
-                    </Text>
-                  </Tooltip>
-                </div>
-              }
+              subtitle={<MultiplierFieldSubtitle />}
             >
               <PositiveNumberInput strategyType="ttl" name="multiplier" />
             </Field>
@@ -291,3 +267,28 @@ const getDefaultValueForField = (
   fieldName?: string,
 ) =>
   fieldName ? Strategies[strategyType].validateWith.cast({})[fieldName] : "";
+
+const MultiplierFieldSubtitle = () => (
+  <div>
+    {t`To determine how long each cached result should stick around, we take that query's average execution time and multiply that by what you input here. The result is how many seconds the cache should remain valid for.`}{" "}
+    <Tooltip
+      events={{
+        hover: true,
+        focus: true,
+        touch: true,
+      }}
+      inline={true}
+      styles={{
+        tooltip: {
+          whiteSpace: "normal",
+        },
+      }}
+      label={t`If a query takes on average 120 seconds (2 minutes) to run, and you input 10 for your multiplier, its cache entry will persist for 1,200 seconds (20 minutes).`}
+      maw="20rem"
+    >
+      <Text tabIndex={0} lh="1" display="inline" c="brand">
+        Example
+      </Text>
+    </Tooltip>
+  </div>
+);
