@@ -78,6 +78,11 @@ function setup({
     collectionItems: [createMockCollectionItemFromCollection(COLLECTION.CHILD)],
   });
 
+  setupCollectionItemsEndpoint({
+    collection: COLLECTION.PERSONAL,
+    collectionItems: [],
+  });
+
   collections
     .filter(c => c.id !== "root")
     .forEach(c => fetchMock.get(`path:/api/collection/${c.id}`, c));
