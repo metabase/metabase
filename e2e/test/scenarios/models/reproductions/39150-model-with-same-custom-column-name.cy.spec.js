@@ -42,9 +42,8 @@ describe.skip("issue 39150", () => {
 
     cy.log("verify that rendered result has 3 'Total' columns");
 
-    cy.get("[data-testid='header-cell']:contains('Total')").should(
-      "have.length",
-      3,
-    );
+    cy.findAllByTestId("header-cell")
+      .filter(":contains('Total')")
+      .should("have.length", 3);
   });
 });
