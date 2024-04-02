@@ -1,10 +1,14 @@
 (ns ^:mb/once metabase.task.creator-sentiment-emails-test
   (:require
+   [buddy.core.codecs :as codecs]
+   [cheshire.core :as json]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.email-test :as et :refer [inbox]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.task.creator-sentiment-emails :as creator-sentiment-emails]
    [metabase.test :as mt]
+   [metabase.util.malli.schema :as ms]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest send-creator-sentiment-emails!-test
@@ -36,16 +40,38 @@
       (doseq [tracking-enabled? [true false]]
         (mt/reset-inbox!)
         (mt/with-temporary-setting-values [anon-tracking-enabled tracking-enabled?]
-          (with-redefs [creator-sentiment-emails/fetch-creators (fn [_] [{:email "a@metabase.com"}])]
+          (with-redefs [creator-sentiment-emails/fetch-creators (fn [_] [{:email          "a@metabase.com"
+                                                                          :created_at     (t/local-date-time)
+                                                                          :num_dashboards 4
+                                                                          :num_questions  7
+                                                                          :num_models     2}])]
             (#'creator-sentiment-emails/send-creator-sentiment-emails! 45)
             (is (= (if tracking-enabled? 1 0)
-                   (count (et/regex-email-bodies #"creator\?context="))))))))
+                   (count (et/regex-email-bodies #"creator\?context="))))
+            (when tracking-enabled?
+              (let [email-body (-> @inbox vals first first :body first :content)]
+                (is (string? email-body))
+                (let [[_ query-params] (re-find #"creator\?context=(.*)\"" email-body)
+                      decoded          (some-> query-params codecs/b64->str json/parse-string )]
+                  (is (=? {"instance" {"created_at"     (mt/malli=? ms/TemporalString)
+                                       "plan"           (mt/malli=? :string)
+                                       "version"        (mt/malli=? :string)
+                                       "num_users"      (mt/malli=? :int)
+                                       "num_dashboards" (mt/malli=? :int)
+                                       "num_databases"  (mt/malli=? :int)
+                                       "num_questions"  (mt/malli=? :int)
+                                       "num_models"     (mt/malli=? :int)}
+                           "user"     {"created_at"     (mt/malli=? ms/TemporalString)
+                                       "num_dashboards" 4
+                                       "num_questions"  7
+                                       "num_models"     2}}
+                          decoded)))))))))
     (testing "Make sure external services message is included when is self hosted"
       (doseq [hosted? [true false]]
         (mt/reset-inbox!)
         (with-redefs [creator-sentiment-emails/fetch-creators (fn [_] [{:email "a@metabase.com"}])
                       ;; can't use mt/with-temporary-setting-values because of a custom :getter
-                      premium-features/is-hosted? (constantly hosted?)]
+                      premium-features/is-hosted?             (constantly hosted?)]
           (#'creator-sentiment-emails/send-creator-sentiment-emails! 45)
           (is (= (if hosted? 0 1)
                  (count (et/regex-email-bodies #"external services")))))))))

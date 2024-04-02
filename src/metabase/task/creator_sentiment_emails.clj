@@ -64,11 +64,21 @@
 (defn- fetch-instance-data []
   {:created_at     (snowplow/instance-creation)
    :plan           (fetch-plan-info)
-   :verison        (config/mb-version-info :tag)
+   :version        (config/mb-version-info :tag)
    :num_users      (t2/count :model/User :is_active true, :type "personal")
    :num_dashboards (t2/count :model/Dashboard :archived false)
+   :num_databases  (t2/count :model/Database :is_audit false)
    :num_questions  (t2/count :model/Card :archived false :type "question")
    :num_models     (t2/count :model/Card :archived false :type "model")})
+
+(defn- user-instance-info
+  "Create a blob of instance/user data to be sent to the creator sentiment survey."
+  [instance-data {:keys [created_at num_dashboards num_questions num_models]}]
+  {:instance instance-data
+   :user     {:created_at     created_at
+              :num_dashboards num_dashboards
+              :num_questions  num_questions
+              :num_models     num_models}})
 
 (defn- send-creator-sentiment-emails!
   "Send an email to the instance admin following up on their experience with Metabase thus far."
@@ -76,16 +86,19 @@
   ;; we need access to email AND the instance must have surveys enabled.
   (when (and (email/email-configured?)
              (email/surveys-enabled))
-    (let [instance-data (when (public-settings/anon-tracking-enabled)
-                          (fetch-instance-data))
+    (let [instance-data (fetch-instance-data)
           all-creators  (fetch-creators (premium-features/enable-whitelabeling?))
           this-week?    (fn [c] (= current-week (-> c :email hash (mod 52))))
-          recipients    (filter this-week? all-creators)]
+          recipients    (filter this-week? all-creators)
+          blob          (if (public-settings/anon-tracking-enabled)
+                          (fn [creator]
+                            (user-instance-info instance-data creator))
+                          (constantly nil))]
       (log/infof "Sending surveys to %d creators of a total %d"
                  (count all-creators) (count recipients))
       (doseq [creator recipients]
         (try
-          (messages/send-creator-sentiment-email! creator instance-data)
+          (messages/send-creator-sentiment-email! creator (blob creator))
           (catch Throwable e
             (log/error e "Problem sending creator sentiment email:")))))))
 
