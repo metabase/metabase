@@ -1136,24 +1136,33 @@
                              (if (isa? (type v) java.time.temporal.Temporal)
                                :%now
                                v))]
-      (doseq [table-name [:collection
-                          :metabase_database
-                          :metabase_table
-                          :metabase_field
-                          :report_card
-                          :parameter_card
-                          :report_dashboard
-                          :dashboard_tab
-                          :report_dashboardcard
-                          :dashboardcard_series]]
-        (when-let [;; We sort the rows by id and remove them so that auto-incrementing ids are generated in the
+      (let [collection (-> (:collection table-name->rows)
+                           first
+                           (update-vals replace-temporal)
+                           (dissoc :id))]
+        (t2/query {:insert-into :collection :values [collection]}))
+      (let [max-collection-id (first (vals (t2/query-one {:select [:%max.id] :from :collection})))]
+        ;; if that did not succeed in creating the first collection with id=1, that means we're reusing a database that
+        ;; has been cleared out before, such as in tests. in this rare care we delete the collection and do nothing else
+        (if (not= max-collection-id 1)
+          (t2/query {:delete-from :collection :where [:= :id max-collection-id]})
+          (doseq [table-name [:metabase_database
+                              :metabase_table
+                              :metabase_field
+                              :report_card
+                              :parameter_card
+                              :report_dashboard
+                              :dashboard_tab
+                              :report_dashboardcard
+                              :dashboardcard_series]]
+            (when-let [;; We sort the rows by id and remove them so that auto-incrementing ids are generated in the
                    ;; same order. We can't insert the ids directly in H2 without creating sequences for all the
                    ;; generated id columns.
-                   values (seq (->> (table-name table-name->rows)
-                                    (sort-by :id)
-                                    (map (fn [row]
-                                           (dissoc (update-vals row replace-temporal) :id)))))]
-          (t2/query {:insert-into table-name :values values}))))))
+                       values (seq (->> (table-name table-name->rows)
+                                        (sort-by :id)
+                                        (map (fn [row]
+                                               (dissoc (update-vals row replace-temporal) :id)))))]
+              (t2/query {:insert-into table-name :values values}))))))))
 
 (comment
   ;; How to create `resources/sample-content.edn` used in `CreateSampleContent`
