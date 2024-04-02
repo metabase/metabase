@@ -1181,8 +1181,7 @@
                           #_{:clj-kondo/ignore [:discouraged-var]}
                           (pprint/pprint data))))
         data (into {}
-                   (for [table-name [:core_user
-                                     :collection
+                   (for [table-name [:collection
                                      :metabase_database
                                      :metabase_table
                                      :metabase_field
