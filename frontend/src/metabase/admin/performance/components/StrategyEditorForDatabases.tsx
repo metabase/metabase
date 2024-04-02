@@ -13,7 +13,7 @@ import { rootId } from "../constants";
 import { useCacheConfigs } from "../hooks/useCacheConfigs";
 import { useConfirmOnRouteLeave } from "../hooks/useConfirmOnRouteLeave";
 import { useDelayedLoadingSpinner } from "../hooks/useDelayedLoadingSpinner";
-import { useHasVerticalScrollbar } from "../hooks/useHasVerticalScrollbar";
+import { useVerticallyOverflows } from "../hooks/useVerticallyOverflows";
 import type { Config, UpdateTargetId, Strategy } from "../types";
 import { DurationUnit, getFieldsForStrategyType, Strategies } from "../types";
 
@@ -150,9 +150,9 @@ const StrategyEditorForDatabases_Base = ({
   );
 
   const {
-    hasVerticalScrollbar: formPanelHasVerticalScrollbar,
+    verticallyOverflows: formPanelVerticallyOverflows,
     ref: formPanelRef,
-  } = useHasVerticalScrollbar();
+  } = useVerticallyOverflows();
 
   const showSpinner = useDelayedLoadingSpinner();
 
@@ -196,7 +196,7 @@ const StrategyEditorForDatabases_Base = ({
             configs={configs}
             setConfigs={setConfigs}
             targetId={targetId}
-            safelyUpdateTargetId={updateTargetId}
+            updateTargetId={updateTargetId}
             databases={databases}
             isStrategyFormDirty={isStrategyFormDirty}
             shouldShowResetButton={shouldShowResetButton}
@@ -204,7 +204,7 @@ const StrategyEditorForDatabases_Base = ({
         )}
         <Panel
           ref={formPanelRef}
-          hasVerticalScrollbar={formPanelHasVerticalScrollbar}
+          verticallyOverflows={formPanelVerticallyOverflows}
         >
           {targetId !== null && (
             <StrategyForm

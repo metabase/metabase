@@ -10,7 +10,7 @@ import { Button } from "metabase/ui";
 
 type ButtonProps = BaseButtonProps & HTMLAttributes<HTMLButtonElement>;
 
-export const Panel = styled.section<{ hasVerticalScrollbar?: boolean }>`
+export const Panel = styled.section<{ verticallyOverflows?: boolean }>`
   overflow-y: auto;
   display: flex;
   flex-flow: column nowrap;
@@ -29,7 +29,7 @@ export const Panel = styled.section<{ hasVerticalScrollbar?: boolean }>`
     border-inline-end-width: 2px;
   }
   ${props =>
-    !props.hasVerticalScrollbar &&
+    !props.verticallyOverflows &&
     css`
       &:last-child {
         border-start-end-radius: 1rem;
