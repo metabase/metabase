@@ -284,6 +284,7 @@ const buildEChartsBarSeries = (
       yAxisWithBarSeriesCount,
       !!stackName,
     ),
+    barMinWidth: CHART_STYLE.series.barMinWidth,
     encode: {
       y: seriesModel.dataKey,
       x: X_AXIS_DATA_KEY,

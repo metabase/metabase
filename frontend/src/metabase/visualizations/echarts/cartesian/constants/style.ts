@@ -4,6 +4,7 @@ export const CHART_STYLE = {
     zIndexLineArea: 3, // https://github.com/metabase/metabase/issues/40209
     barWidth: 0.8,
     histogramBarWidth: 0.995,
+    barMinWidth: 27,
   },
   axisTicksMarginX: 5,
   axisTicksMarginY: 10,
