@@ -163,11 +163,7 @@ export const FormButtons = () => {
             <Icon name="check" /> {t`Saved`}
           </Group>
         }
-        activeLabel={
-          <Group spacing="sm">
-            <Loader size="xs" />
-          </Group>
-        }
+        activeLabel={<Loader size="xs" />}
         variant="filled"
         data-testid="strategy-form-submit-button"
       />

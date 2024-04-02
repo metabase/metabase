@@ -14,9 +14,8 @@ import { FormProvider } from "metabase/forms";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
-import { PLUGIN_CACHING } from "metabase/plugins";
 import { CacheConfigApi } from "metabase/services";
-import { Box, Stack } from "metabase/ui";
+import { Box, Stack, Title } from "metabase/ui";
 
 import { rootId } from "../constants";
 import { useDelayedLoadingSpinner } from "../hooks/useDelayedLoadingSpinner";
@@ -294,7 +293,19 @@ const StrategyEditorForDatabases_Base = ({
   return (
     <TabWrapper role="region" aria-label={t`Data caching settings`}>
       <Stack spacing="xl" lh="1.5rem" maw="32rem" mb="1.5rem">
-        <aside>{PLUGIN_CACHING.explanation}</aside>
+        <aside>
+          <Stack spacing="xl">
+            {t`Cache the results of queries to have them display instantly. Here you can choose when cached results should be invalidated.`}
+            {canOverrideRootStrategy ? (
+              <>
+                {t`You can set up one rule for all your databases, or apply more specific settings to each database.`}
+                <Title
+                  order={4}
+                >{t`Pick the policy for when cached query results should be invalidated.`}</Title>{" "}
+              </>
+            ) : null}
+          </Stack>
+        </aside>
       </Stack>
       {confirmationModal}
       <Box

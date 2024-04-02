@@ -1,7 +1,4 @@
-import { t } from "ttag";
-
 import { PLUGIN_CACHING, PLUGIN_FORM_WIDGETS } from "metabase/plugins";
-import { Stack, Title } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import CacheTTLField from "./components/CacheTTLField";
@@ -33,12 +30,4 @@ if (hasPremiumFeature("cache_granular_controls")) {
   PLUGIN_CACHING.isEnabled = () => true;
   PLUGIN_CACHING.hasQuestionCacheSection = hasQuestionCacheSection;
   PLUGIN_CACHING.canOverrideRootStrategy = true;
-  PLUGIN_CACHING.explanation = (
-    <Stack spacing="xl">
-      {t`Cache the results of queries to have them display instantly. Here you can choose when cached results should be invalidated. You can set up one rule for all your databases, or apply more specific settings to each database.`}
-      <Title
-        order={4}
-      >{t`Pick the policy for when cached query results should be invalidated.`}</Title>
-    </Stack>
-  );
 }

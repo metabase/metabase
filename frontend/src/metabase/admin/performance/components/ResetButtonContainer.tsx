@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { Form, useFormContext } from "metabase/forms";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
-import { Box, Flex, Group, Icon, Text } from "metabase/ui";
+import { Box, Flex, Group, Icon, Loader, Text } from "metabase/ui";
 
 import { ResetAllToDefaultFormSubmitButton } from "./StrategyEditorForDatabases.styled";
 
@@ -62,7 +62,7 @@ const ResetAllToDefaultButtonFormBody = ({
                 color="error"
               >{t`Reset all to default`}</Text>
             }
-            activeLabel={t`Resetting...`}
+            activeLabel={<Loader size="xs" />}
             successLabel={
               <Text fw="bold" lh="1" color="success">
                 <Group spacing="xs">
