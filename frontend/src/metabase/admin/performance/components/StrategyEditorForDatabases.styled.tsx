@@ -20,22 +20,20 @@ export const Panel = styled.section<{ verticallyOverflows?: boolean }>`
   border-block-width: 2px;
   border-inline-end-width: 1px;
   border-inline-start-width: 0;
-  &:first-child {
+  :first-child {
     border-inline-start-width: 2px;
     border-start-start-radius: 1rem;
     border-end-start-radius: 1rem;
   }
-  &:last-child {
+  :last-child {
     border-inline-end-width: 2px;
-  }
-  ${props =>
-    !props.verticallyOverflows &&
-    css`
-      &:last-child {
+    ${props =>
+      !props.verticallyOverflows &&
+      css`
         border-start-end-radius: 1rem;
         border-end-end-radius: 1rem;
-      }
-    `}
+      `}
+  }
 `;
 
 export const PolicyToken = styled(Button)<
@@ -65,7 +63,7 @@ export const TabWrapper = styled.div`
   width: 100%;
 `;
 
-export const ResetAllToDefaultFormSubmitButton = styled(FormSubmitButton, {
+export const ResetAllFormSubmitButton = styled(FormSubmitButton, {
   shouldForwardProp: prop => prop !== "highlightOnHover",
 })<FormSubmitButtonProps & { highlightOnHover?: boolean }>`
   ${({ highlightOnHover }) =>

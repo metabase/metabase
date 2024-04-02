@@ -16,7 +16,7 @@ export const Tab = styled(Tabs.Tab)`
   border-bottom-width: 3px !important;
   padding: 0.625rem 0px;
   margin-inline-end: 1.25rem;
-  &:hover {
+  :hover {
     color: ${color("brand")};
     background-color: inherit;
     border-color: transparent;

@@ -5,7 +5,7 @@ import { Form, useFormContext } from "metabase/forms";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { Box, Flex, Group, Icon, Loader, Text } from "metabase/ui";
 
-import { ResetAllToDefaultFormSubmitButton } from "./StrategyEditorForDatabases.styled";
+import { ResetAllFormSubmitButton } from "./StrategyEditorForDatabases.styled";
 
 export const ResetButtonContainer = () => {
   return (
@@ -38,7 +38,7 @@ const ResetAllToDefaultButtonFormBody = () => {
     <>
       <Form>
         <Flex justify="flex-end">
-          <ResetAllToDefaultFormSubmitButton
+          <ResetAllFormSubmitButton
             px="1rem"
             py=".75rem"
             lh="1"
