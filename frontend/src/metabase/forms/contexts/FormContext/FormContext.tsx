@@ -7,11 +7,11 @@ export interface FormState {
   message?: string;
 }
 
-export interface FormContextType extends FormState {
+export interface IFormContext extends FormState {
   setStatus: (status: FormStatus) => void;
 }
 
-export const FormContext = createContext<FormContextType>({
+export const FormContext = createContext<IFormContext>({
   status: "idle",
   setStatus: () => {},
 });
