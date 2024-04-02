@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import type Table from "metabase-lib/v1/metadata/Table";
 
-import { ItemList } from "../../EntityPicker";
+import { ItemList, ListBox } from "../../EntityPicker";
 import type { NotebookDataPickerValueItem } from "../types";
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
   isLoading: boolean;
   isCurrentLevel: boolean;
   selectedItem: NotebookDataPickerValueItem | null;
-  tables: Table[];
+  tables: Table[] | undefined;
   onClick: (item: NotebookDataPickerValueItem) => void;
 }
 
@@ -24,8 +24,8 @@ export const TableList = ({
   tables,
   onClick,
 }: Props) => {
-  const items: NotebookDataPickerValueItem[] = useMemo(() => {
-    return tables.map(table => ({
+  const items: NotebookDataPickerValueItem[] | undefined = useMemo(() => {
+    return tables?.map(table => ({
       description: table.description,
       id: table.id,
       model: "table",
@@ -34,14 +34,16 @@ export const TableList = ({
   }, [tables]);
 
   return (
-    <ItemList
-      error={error}
-      isCurrentLevel={isCurrentLevel}
-      isFolder={isFolder}
-      isLoading={isLoading}
-      items={items}
-      selectedItem={selectedItem}
-      onClick={onClick}
-    />
+    <ListBox data-testid="item-picker-level-2">
+      <ItemList
+        error={error}
+        isCurrentLevel={isCurrentLevel}
+        isFolder={isFolder}
+        isLoading={isLoading}
+        items={items}
+        selectedItem={selectedItem}
+        onClick={onClick}
+      />
+    </ListBox>
   );
 };

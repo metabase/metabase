@@ -11,7 +11,6 @@ import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
 import {
   AutoScrollBox,
-  ListBox,
   type EntityPickerModalOptions,
 } from "../../EntityPicker";
 import type {
@@ -37,19 +36,19 @@ export const TablePicker = ({ onItemSelect, value }: Props) => {
   const [tableId, setTableId] = useState<TableId | undefined>(value?.id);
 
   const {
-    data: databases = [],
+    data: databases,
     error: errorDatabases,
     isLoading: isLoadingDatabases,
   } = useDatabaseListQuery({ query: { saved: false } });
 
   const {
-    data: schemas = [],
+    data: schemas,
     error: errorSchemas,
     isLoading: isLoadingSchemas,
   } = useSchemaListQuery({ enabled: isNotNull(dbId), query: { dbId } }); // TODO conditional type
 
   const {
-    data: tables = [],
+    data: tables,
     error: errorTables,
     isLoading: isLoadingTables,
   } = useTableListQuery({
@@ -101,14 +100,14 @@ export const TablePicker = ({ onItemSelect, value }: Props) => {
   );
 
   useEffect(() => {
-    if (databases.length === 1) {
+    if (databases?.length === 1) {
       const [database] = databases;
       setDbId(database.id);
     }
   }, [databases]);
 
   useEffect(() => {
-    if (schemas.length === 1) {
+    if (schemas?.length === 1) {
       const [schema] = schemas;
       setSchemaId(schema.name);
     }
@@ -116,51 +115,43 @@ export const TablePicker = ({ onItemSelect, value }: Props) => {
 
   return (
     <AutoScrollBox
-      data-testid="nested-item-picker"
       contentHash={generateKey(
         selectedDbItem,
         selectedSchemaItem,
         selectedTableItem,
       )}
+      data-testid="nested-item-picker"
     >
       <Flex h="100%" w="fit-content">
-        {databases.length > 1 && (
-          <ListBox data-testid="item-picker-level-0">
-            <DatabaseList
-              databases={databases}
-              error={errorDatabases}
-              isCurrentLevel={!schemaId}
-              isLoading={isLoadingDatabases}
-              selectedItem={selectedDbItem}
-              onClick={folder => handleFolderSelect({ folder })}
-            />
-          </ListBox>
-        )}
+        <DatabaseList
+          databases={databases}
+          error={errorDatabases}
+          isCurrentLevel={!schemaId}
+          isLoading={isLoadingDatabases}
+          selectedItem={selectedDbItem}
+          onClick={folder => handleFolderSelect({ folder })}
+        />
 
-        {isNotNull(dbId) && schemas.length > 1 && (
-          <ListBox data-testid="item-picker-level-1">
-            <SchemaList
-              error={errorSchemas}
-              isCurrentLevel={!tableId}
-              isLoading={isLoadingSchemas}
-              schemas={schemas}
-              selectedItem={selectedSchemaItem}
-              onClick={folder => handleFolderSelect({ folder })}
-            />
-          </ListBox>
+        {isNotNull(dbId) && (
+          <SchemaList
+            error={errorSchemas}
+            isCurrentLevel={!tableId}
+            isLoading={isLoadingSchemas}
+            schemas={schemas}
+            selectedItem={selectedSchemaItem}
+            onClick={folder => handleFolderSelect({ folder })}
+          />
         )}
 
         {isNotNull(schemaId) && (
-          <ListBox data-testid="item-picker-level-2">
-            <TableList
-              error={errorTables}
-              isCurrentLevel
-              isLoading={isLoadingTables}
-              selectedItem={selectedTableItem}
-              tables={tables}
-              onClick={handleItemSelect}
-            />
-          </ListBox>
+          <TableList
+            error={errorTables}
+            isCurrentLevel
+            isLoading={isLoadingTables}
+            selectedItem={selectedTableItem}
+            tables={tables}
+            onClick={handleItemSelect}
+          />
         )}
       </Flex>
     </AutoScrollBox>

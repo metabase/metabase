@@ -2,14 +2,14 @@ import { useMemo } from "react";
 
 import type Schema from "metabase-lib/v1/metadata/Schema";
 
-import { ItemList } from "../../EntityPicker";
+import { ItemList, ListBox } from "../../EntityPicker";
 import type { NotebookDataPickerFolderItem } from "../types";
 
 interface Props {
   error: unknown;
   isCurrentLevel: boolean;
   isLoading: boolean;
-  schemas: Schema[];
+  schemas: Schema[] | undefined;
   selectedItem: NotebookDataPickerFolderItem | null;
   onClick: (item: NotebookDataPickerFolderItem) => void;
 }
@@ -24,23 +24,29 @@ export const SchemaList = ({
   selectedItem,
   onClick,
 }: Props) => {
-  const items: NotebookDataPickerFolderItem[] = useMemo(() => {
-    return schemas.map(schema => ({
+  const items: NotebookDataPickerFolderItem[] | undefined = useMemo(() => {
+    return schemas?.map(schema => ({
       id: schema.name,
       model: "schema",
       name: schema.displayName() ?? schema.name,
     }));
   }, [schemas]);
 
+  if (!isLoading && !error && items && items.length <= 1) {
+    return null;
+  }
+
   return (
-    <ItemList
-      error={error}
-      isCurrentLevel={isCurrentLevel}
-      isFolder={isFolder}
-      isLoading={isLoading}
-      items={items}
-      selectedItem={selectedItem}
-      onClick={onClick}
-    />
+    <ListBox data-testid="item-picker-level-1">
+      <ItemList
+        error={error}
+        isCurrentLevel={isCurrentLevel}
+        isFolder={isFolder}
+        isLoading={isLoading}
+        items={items}
+        selectedItem={selectedItem}
+        onClick={onClick}
+      />
+    </ListBox>
   );
 };
