@@ -1,10 +1,12 @@
 export const TAG_TYPES = [
   "api-key",
+  "card",
   "database",
-  "schema",
-  "table",
   "field",
   "field-values",
+  "schema",
+  "segment",
+  "table",
 ] as const;
 
 export type TagType = typeof TAG_TYPES[number];
@@ -19,4 +21,8 @@ export function listTag(type: TagType) {
 
 export function idTag(type: TagType, id: string | number) {
   return { type, id };
+}
+
+export function invalidateTags<T>(error: unknown, tags: T[]) {
+  return !error ? tags : [];
 }

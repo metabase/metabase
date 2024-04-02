@@ -5,11 +5,14 @@ import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatab
 import {
   useDiscardDatabaseFieldValuesMutation,
   useRescanDatabaseFieldValuesMutation,
+  useSyncDatabaseSchemaMutation,
 } from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Button from "metabase/core/components/Button";
+import Tables from "metabase/entities/tables";
+import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseData, DatabaseId } from "metabase-types/api";
@@ -30,7 +33,6 @@ interface DatabaseEditAppSidebarProps {
   updateDatabase: (
     database: { id: DatabaseId } & Partial<DatabaseData>,
   ) => Promise<void>;
-  syncDatabaseSchema: (databaseId: DatabaseId) => Promise<void>;
   dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
   deleteDatabase: (
     databaseId: DatabaseId,
@@ -42,7 +44,6 @@ const DatabaseEditAppSidebar = ({
   database,
   updateDatabase,
   deleteDatabase,
-  syncDatabaseSchema,
   dismissSyncSpinner,
   isAdmin,
   isModelPersistenceEnabled,
@@ -56,13 +57,16 @@ const DatabaseEditAppSidebar = ({
   const hasModelCachingSection =
     isModelPersistenceEnabled && database.supportsPersistence();
 
+  const dispatch = useDispatch();
+  const [syncDatabaseSchema] = useSyncDatabaseSchemaMutation();
   const [rescanDatabaseFieldValues] = useRescanDatabaseFieldValuesMutation();
   const [discardDatabaseFieldValues] = useDiscardDatabaseFieldValuesMutation();
 
-  const handleSyncDatabaseSchema = useCallback(
-    () => syncDatabaseSchema(database.id),
-    [database.id, syncDatabaseSchema],
-  );
+  const handleSyncDatabaseSchema = async () => {
+    await syncDatabaseSchema(database.id);
+    // FIXME remove when MetadataEditor uses RTK query directly to load tables
+    dispatch({ type: Tables.actionTypes.INVALIDATE_LISTS_ACTION });
+  };
 
   const handleDismissSyncSpinner = useCallback(
     () => dismissSyncSpinner(database.id),
