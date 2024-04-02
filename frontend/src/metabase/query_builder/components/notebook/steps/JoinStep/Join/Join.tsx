@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { JoinDraft } from "metabase/query_builder/components/notebook/steps/JoinStep/JoinDraft";
 import { Box, Flex, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -37,6 +38,7 @@ export function Join({
   const strategy = useMemo(() => Lib.joinStrategy(join), [join]);
   const rhsTable = useMemo(() => Lib.joinedThing(query, join), [query, join]);
   const conditions = useMemo(() => Lib.joinConditions(join), [join]);
+  const [draftRhsTable, setDraftRhsTable] = useState<Lib.Joinable>();
   const [isAddingNewCondition, setIsAddingNewCondition] = useState(false);
 
   const lhsTableName = useMemo(
@@ -48,6 +50,11 @@ export function Join({
     () => Lib.displayInfo(query, stageIndex, rhsTable).displayName,
     [query, stageIndex, rhsTable],
   );
+
+  const handleJoinChange = (newJoin: Lib.Join) => {
+    setDraftRhsTable(undefined);
+    onJoinChange(newJoin);
+  };
 
   const handleStrategyChange = (newStrategy: Lib.JoinStrategy) => {
     const newJoin = Lib.withJoinStrategy(join, newStrategy);
@@ -63,6 +70,8 @@ export function Join({
     if (newConditions.length) {
       const newJoin = Lib.joinClause(newTable, newConditions);
       onJoinChange(newJoin);
+    } else {
+      setDraftRhsTable(newTable);
     }
   };
 
@@ -89,6 +98,21 @@ export function Join({
     const newJoin = Lib.withJoinConditions(join, newConditions);
     onJoinChange(newJoin);
   };
+
+  if (draftRhsTable) {
+    return (
+      <JoinDraft
+        query={query}
+        stageIndex={stageIndex}
+        color={color}
+        initialStrategy={strategy}
+        initialRhsTable={draftRhsTable}
+        isReadOnly={isReadOnly}
+        isModelDataSource={isModelDataSource}
+        onJoinChange={handleJoinChange}
+      />
+    );
+  }
 
   return (
     <Flex miw="100%" gap="1rem">
