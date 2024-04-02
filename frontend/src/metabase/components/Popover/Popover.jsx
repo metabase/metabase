@@ -233,6 +233,7 @@ export default class Popover extends Component {
     const content = (
       <div
         id={this.props.id}
+        data-element-id="legacy-popover"
         className={cx(
           PopoverS.PopoverBody,
           {
@@ -388,7 +389,7 @@ export default class Popover extends Component {
 
   constrainPopoverToBetweenViewportAndTarget(tetherOptions, direction) {
     const body = tetherOptions.element.querySelector(
-      `.${PopoverS.PopoverBody}`,
+      "[data-element-id=legacy-popover]",
     );
     const target = this._getTargetElement();
     const bodyHeight = body.getBoundingClientRect().height;
