@@ -303,7 +303,6 @@ export const PLUGIN_MODERATION = {
 };
 
 export const PLUGIN_CACHING = {
-  cacheTTLFormField: null as any,
   dashboardCacheTTLFormField: null,
   questionCacheTTLFormField: null,
   getQuestionsImplicitCacheTTL: (_question?: any) => null,
