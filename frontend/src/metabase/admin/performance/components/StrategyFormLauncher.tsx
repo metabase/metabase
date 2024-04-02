@@ -1,9 +1,8 @@
-import { useState } from "react";
 import { t } from "ttag";
 import { findWhere } from "underscore";
 
 import { color } from "metabase/lib/colors";
-import { FixedSizeIcon, Flex, Title, Tooltip } from "metabase/ui";
+import { FixedSizeIcon, Flex, Title, Tooltip, useHover } from "metabase/ui";
 
 import { rootId } from "../constants";
 import type { Config, SafelyUpdateTargetId } from "../types";
@@ -38,7 +37,8 @@ export const StrategyFormLauncher = ({
   const strategy = savedStrategy ?? rootStrategy;
   const isBeingEdited = targetId === forId;
 
-  const [hovered, setHovered] = useState(false);
+  const { hovered, ref: hoveredRef } = useHover<HTMLButtonElement>();
+
   const buttonVariant =
     isBeingEdited || hovered
       ? "filled"
@@ -86,8 +86,7 @@ export const StrategyFormLauncher = ({
             }
           }}
           aria-label={ariaLabel}
-          onMouseOver={() => setHovered(true)}
-          onMouseOut={() => setHovered(false)}
+          ref={hoveredRef}
           variant={buttonVariant}
           fw={forRoot || inheritsRootStrategy ? "normal" : "bold"}
           p="0.25rem .75rem"

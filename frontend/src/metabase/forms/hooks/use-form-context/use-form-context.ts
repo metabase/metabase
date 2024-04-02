@@ -1,8 +1,8 @@
 import { useContext } from "react";
 
-import type { FormState } from "../../contexts";
+import type { FormContextType } from "../../contexts";
 import { FormContext } from "../../contexts";
 
-export const useFormContext = (): FormState => {
+export const useFormContext = (): FormContextType => {
   return useContext(FormContext);
 };

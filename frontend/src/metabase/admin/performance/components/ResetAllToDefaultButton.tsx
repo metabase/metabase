@@ -1,13 +1,13 @@
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 
-import { Form, FormSubmitButton } from "metabase/forms";
+import { Form, useFormContext } from "metabase/forms";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { Box, Flex, Group, Icon, Text } from "metabase/ui";
 
-// TODO:
-// Rename to ResetAllToDefaultButtonContainer
-export const ResetAllToDefaultButton = ({
+import { ResetAllToDefaultFormSubmitButton } from "./StrategyEditorForDatabases.styled";
+
+export const ResetAllToDefaultButtonContainer = ({
   rootConfigLabel,
 }: {
   rootConfigLabel: string;
@@ -31,6 +31,7 @@ const ResetAllToDefaultButtonFormBody = ({
   const { submitForm } = useFormikContext();
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
+  const { status } = useFormContext();
 
   const confirmResetAllToDefault = () => {
     askConfirmation({
@@ -45,7 +46,7 @@ const ResetAllToDefaultButtonFormBody = ({
     <>
       <Form>
         <Flex justify="flex-end">
-          <FormSubmitButton
+          <ResetAllToDefaultFormSubmitButton
             px="1rem"
             py=".75rem"
             lh="1"
@@ -53,12 +54,6 @@ const ResetAllToDefaultButtonFormBody = ({
               confirmResetAllToDefault();
               e.preventDefault();
               return false;
-            }}
-            styles={{
-              root: {
-                // TODO: Fix this background color
-                "&:hover": "background-color: rgba(237, 110, 110, .15)",
-              },
             }}
             label={
               <Text
@@ -77,6 +72,7 @@ const ResetAllToDefaultButtonFormBody = ({
             }
             variant="subtle"
             color="error"
+            highlightOnHover={status === "idle"}
           />
         </Flex>
       </Form>

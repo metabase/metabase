@@ -63,12 +63,16 @@ const StrategyFormBody = ({
   setIsDirty: (isDirty: boolean) => void;
 }) => {
   const { dirty, values, setFieldValue } = useFormikContext<Strategy>();
+  const { setStatus } = useFormContext();
 
   const selectedStrategyType = values.type;
 
   useEffect(() => {
     setIsDirty(dirty);
-  }, [dirty, setIsDirty]);
+    if (dirty) {
+      setStatus("idle");
+    }
+  }, [dirty, setIsDirty, setStatus]);
 
   useEffect(() => {
     if (selectedStrategyType === "duration") {

@@ -1,7 +1,9 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, MutableRefObject } from "react";
 
+import type { FormSubmitButtonProps } from "metabase/forms";
+import { FormSubmitButton } from "metabase/forms";
 import { color } from "metabase/lib/colors";
 import type { ButtonProps as BaseButtonProps } from "metabase/ui";
 import { Button } from "metabase/ui";
@@ -36,7 +38,9 @@ export const Panel = styled.section<{ hasVerticalScrollbar?: boolean }>`
     `}
 `;
 
-export const PolicyToken = styled(Button)<{ variant: string } & ButtonProps>`
+export const PolicyToken = styled(Button)<
+  { variant: string; ref: MutableRefObject<HTMLButtonElement> } & ButtonProps
+>`
   cursor: pointer;
   display: flex;
   flex-flow: row nowrap;
@@ -59,4 +63,13 @@ export const TabWrapper = styled.div`
   display: grid;
   grid-template-rows: auto 1fr;
   width: 100%;
+`;
+
+export const ResetAllToDefaultFormSubmitButton = styled(FormSubmitButton)<
+  FormSubmitButtonProps & { highlightOnHover?: boolean }
+>`
+  &:hover {
+    background-color: ${({ highlightOnHover }) =>
+      highlightOnHover ? "rgba(237, 110, 110, .15)" : "transparent"};
+  }
 `;
