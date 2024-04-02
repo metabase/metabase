@@ -73,5 +73,5 @@ export const EChartsRenderer = ({
       );
   }, [zrEventHandlers]);
 
-  return <div ref={chartElemRef} />;
+  return <div data-testid="echarts-renderer" ref={chartElemRef} />;
 };
