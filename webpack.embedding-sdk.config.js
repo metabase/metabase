@@ -6,8 +6,6 @@ const TerserPlugin = require("terser-webpack-plugin");
 const webpack = require("webpack");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
-const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
-const path = require("path");
 
 const mainConfig = require("./webpack.config");
 
@@ -133,16 +131,6 @@ const config = {
     new webpack.ProvidePlugin({
       process: "process/browser.js",
     }),
-
-    // TODO: enable this to add types generation (but we also need a separate step to bundle types into a single module)
-    // new ForkTsCheckerWebpackPlugin({
-    //   async: isDevMode,
-    //   typescript: {
-    //     configFile: path.resolve(__dirname, "./tsconfig.sdk.json"),
-    //     // mode: "write-dts",
-    //     memoryLimit: 4096,
-    //   },
-    // }),
 
     shouldAnalyzeBundles &&
       new BundleAnalyzerPlugin({

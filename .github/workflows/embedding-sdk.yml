@@ -19,7 +19,6 @@ jobs:
     timeout-minutes: 3
     outputs:
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
-      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
@@ -48,7 +47,7 @@ jobs:
         run: yarn run build-release:sdk
       - name: Generate SDK package.json
         run: yarn run embedding-sdk:generate-package "$GITHUB_SHA"
-      - name: Generate .npmrc
+      - name: Generate .npmrc for Github npm registry
         uses: actions/setup-node@v4
         with:
           registry-url: 'https://npm.pkg.github.com'
