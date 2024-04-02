@@ -201,8 +201,14 @@ export function suggestedJoinConditions(
   query: Query,
   stageIndex: number,
   joinable: Joinable,
+  joinPosition?: number,
 ): JoinCondition[] {
-  return ML.suggested_join_conditions(query, stageIndex, joinable);
+  return ML.suggested_join_conditions(
+    query,
+    stageIndex,
+    joinable,
+    joinPosition,
+  );
 }
 
 export type JoinFields = ColumnMetadata[] | "all" | "none";

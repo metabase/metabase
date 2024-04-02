@@ -257,6 +257,52 @@ describe("Notebook Editor > Join Step", () => {
     expect(within(rhsColumnPicker).getByText("Body")).toBeInTheDocument();
   });
 
+  it("should allow to change the RHS table when there are suggested join conditions", async () => {
+    const { getRecentJoin } = setup(
+      createMockNotebookStep({ query: getJoinedQuery() }),
+    );
+
+    const rhsTablePicker = screen.getByLabelText("Right table");
+    const pickerButton = within(rhsTablePicker).getByText("Products");
+    await userEvent.click(pickerButton);
+
+    const tablePicker = await screen.findByTestId("popover");
+    await userEvent.click(await within(tablePicker).findByText("People"));
+
+    const { conditions } = getRecentJoin();
+    const [condition] = conditions;
+    expect(conditions).toHaveLength(1);
+    expect(condition.operator.shortName).toBe("=");
+    expect(condition.lhsColumn.longDisplayName).toBe("User ID");
+    expect(condition.rhsColumn.longDisplayName).toBe("People - User → ID");
+  });
+
+  it("should allow to change the RHS table when there are no suggested join conditions", async () => {
+    const { getRecentJoin } = setup(
+      createMockNotebookStep({ query: getJoinedQuery() }),
+    );
+
+    const rhsTablePicker = screen.getByLabelText("Right table");
+    const pickerButton = within(rhsTablePicker).getByText("Products");
+    await userEvent.click(pickerButton);
+
+    const tablePicker = await screen.findByTestId("popover");
+    await userEvent.click(await within(tablePicker).findByText("Reviews"));
+
+    const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
+    await userEvent.click(within(lhsColumnPicker).getByText("Total"));
+
+    const rhsColumnPicker = await screen.findByTestId("rhs-column-picker");
+    await userEvent.click(within(rhsColumnPicker).getByText("ID"));
+
+    const { conditions } = getRecentJoin();
+    const [condition] = conditions;
+    expect(conditions).toHaveLength(1);
+    expect(condition.operator.shortName).toBe("=");
+    expect(condition.lhsColumn.longDisplayName).toBe("Total");
+    expect(condition.rhsColumn.longDisplayName).toBe("Reviews -> ID");
+  });
+
   it("should highlight selected LHS column", async () => {
     setup(createMockNotebookStep({ query: getJoinedQuery() }));
 

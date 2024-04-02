@@ -17,6 +17,7 @@ interface JoinCompleteProps {
   query: Lib.Query;
   stageIndex: number;
   join: Lib.Join;
+  joinPosition: number;
   color: string;
   isReadOnly: boolean;
   isModelDataSource: boolean;
@@ -29,6 +30,7 @@ export function JoinComplete({
   query,
   stageIndex,
   join,
+  joinPosition,
   color,
   isReadOnly,
   isModelDataSource,
@@ -61,6 +63,7 @@ export function JoinComplete({
       query,
       stageIndex,
       newTable,
+      joinPosition,
     );
     if (newConditions.length) {
       const newJoin = Lib.joinClause(newTable, newConditions);

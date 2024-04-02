@@ -36,11 +36,12 @@ export function JoinStep({
     }
   };
 
-  return join ? (
+  return join && itemIndex != null ? (
     <Join
       query={query}
       stageIndex={stageIndex}
       join={join}
+      joinPosition={itemIndex}
       color={color}
       isReadOnly={isReadOnly}
       isModelDataSource={isModelDataSource}
