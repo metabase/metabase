@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-/*eslint-env node */
+/* eslint-env node */
 /* eslint-disable import/no-commonjs, import/order, no-console */
 const fs = require("fs");
 const path = require("path");
 
 const IGNORED_PACKAGES = ["react", "react-dom"];
 
-function filterReactDependencies(object) {
+function filterOutReactDependencies(object) {
   const result = {};
 
   Object.entries(object).forEach(([packageName, version]) => {
@@ -44,8 +44,10 @@ function generateSdkPackage() {
 
   const mergedContent = {
     ...sdkPackageTemplateJsonContent,
-    dependencies: filterReactDependencies(mainPackageJsonContent.dependencies),
-    resolutions: filterReactDependencies(mainPackageJsonContent.resolutions),
+    dependencies: filterOutReactDependencies(
+      mainPackageJsonContent.dependencies,
+    ),
+    resolutions: filterOutReactDependencies(mainPackageJsonContent.resolutions),
     version: maybeCommitHash
       ? `${sdkPackageTemplateJsonContent.version}-${todayDate}-${maybeCommitHash}`
       : sdkPackageTemplateJsonContent.version,
