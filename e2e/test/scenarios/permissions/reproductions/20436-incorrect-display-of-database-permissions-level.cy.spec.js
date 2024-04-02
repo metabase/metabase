@@ -41,13 +41,13 @@ describeEE("issue 20436", () => {
     });
 
     // Change the permission levels for ANY of the tables - it doesn't matter which one
-    changePermissions("No", "Query builder only");
+    changePermissions("Query builder only", "No");
 
     saveChanges();
     cy.wait("@updatePermissions");
 
-    // Now turn it back to the "Unrestricted" access
-    changePermissions("Query builder only", "No");
+    // Now turn it back to previous value
+    changePermissions("No", "Query builder only");
 
     saveChanges();
     cy.wait("@updatePermissions");
