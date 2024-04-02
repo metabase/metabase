@@ -68,8 +68,8 @@ export const TabWrapper = styled.div`
 export const ResetAllToDefaultFormSubmitButton = styled(FormSubmitButton, {
   shouldForwardProp: prop => prop !== "highlightOnHover",
 })<FormSubmitButtonProps & { highlightOnHover?: boolean }>`
-  &:hover {
-    background-color: ${({ highlightOnHover }) =>
-      highlightOnHover ? alpha("error", 0.15) : "transparent"};
-  }
+  ${({ highlightOnHover }) =>
+    highlightOnHover
+      ? `:hover { background-color: ${alpha("error", 0.15)}; }`
+      : ""}
 `;
