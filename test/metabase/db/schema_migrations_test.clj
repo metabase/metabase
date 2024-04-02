@@ -468,24 +468,26 @@
 (deftest fks-are-indexed-test
   (mt/test-driver :postgres
     (testing "FKs are not created automatically in Postgres, check that migrations add necessary indexes"
-     (is (= [] (t2/query
-                "SELECT
-                     conrelid::regclass AS table_name,
-                     a.attname AS column_name
-                 FROM
-                     pg_constraint AS c
-                     JOIN pg_attribute AS a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
-                 WHERE
-                     c.contype = 'f'
-                     AND NOT EXISTS (
-                         SELECT 1
-                         FROM pg_index AS i
-                         WHERE i.indrelid = c.conrelid
-                           AND a.attnum = ANY(i.indkey)
-                     )
-                 ORDER BY
-                     table_name,
-                     column_name;"))))))
+     (is (= [{:table_name  "field_usage"
+              :column_name "query_execution_id"}]
+            (t2/query
+              "SELECT
+                   conrelid::regclass::text AS table_name,
+                   a.attname AS column_name
+               FROM
+                   pg_constraint AS c
+                   JOIN pg_attribute AS a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
+               WHERE
+                   c.contype = 'f'
+                   AND NOT EXISTS (
+                       SELECT 1
+                       FROM pg_index AS i
+                       WHERE i.indrelid = c.conrelid
+                         AND a.attnum = ANY(i.indkey)
+                   )
+               ORDER BY
+                   table_name,
+                   column_name;"))))))
 
 (deftest remove-collection-color-test
   (testing "Migration v48.00-019"
