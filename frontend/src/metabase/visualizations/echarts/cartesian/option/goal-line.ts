@@ -5,7 +5,9 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 
-import { X_AXIS_DATA_KEY } from "../constants/dataset";
+import type { EChartsCartesianCoordinateSystem } from "../../types";
+import { GOAL_LINE_SERIES_ID, X_AXIS_DATA_KEY } from "../constants/dataset";
+import { CHART_STYLE } from "../constants/style";
 import type { CartesianChartModel, ChartDataset } from "../model/types";
 
 function getFirstNonNullXValue(dataset: ChartDataset) {
@@ -26,56 +28,80 @@ export function getGoalLineSeriesOption(
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-): RegisteredSeriesOption["line"] | null {
+): RegisteredSeriesOption["custom"] | null {
   if (!settings["graph.show_goal"] || settings["graph.goal_value"] == null) {
     return null;
   }
 
-  const lineStyle = {
-    color: renderingContext.getColor("text-medium"),
-    type: [5, 5],
-    width: 2,
-  };
+  const goalValue = settings["graph.goal_value"];
 
   return {
-    type: "line",
+    id: GOAL_LINE_SERIES_ID,
+    type: "custom",
     data: [
       [getFirstNonNullXValue(chartModel.dataset), settings["graph.goal_value"]],
     ],
-    lineStyle: {
-      opacity: 0,
+    z: 400,
+    blur: {
+      opacity: 1,
     },
-    itemStyle: {
-      opacity: 0,
-    },
-    // we hide the above line, it only exists to prevent the goal line from
-    // rendering out of bounds
-    markLine: {
-      data: [{ name: "goal-line", yAxis: settings["graph.goal_value"] }],
-      label: {
-        position:
-          chartModel.rightAxisModel == null ? "insideEndTop" : "insideStartTop",
-        formatter: () => settings["graph.goal_label"] ?? "",
-        fontFamily: renderingContext.fontFamily,
-        fontSize: 14,
-        fontWeight: 700,
-        color: renderingContext.getColor("text-medium"),
-        textBorderWidth: 1,
-        textBorderColor: renderingContext.getColor("white"),
-      },
-      symbol: ["none", "none"],
-      lineStyle,
-      emphasis: {
-        lineStyle,
-      },
-      blur: {
-        lineStyle: {
-          opacity: 1,
+    renderItem: (params, api) => {
+      const [_x, y] = api.coord([null, goalValue]);
+      const coordSys =
+        params.coordSys as unknown as EChartsCartesianCoordinateSystem;
+      const xStart = coordSys.x;
+      const xEnd = coordSys.width + coordSys.x;
+
+      const line = {
+        type: "line" as const,
+        shape: {
+          x1: xStart,
+          x2: xEnd,
+          y1: y,
+          y2: y,
         },
-        label: {
-          opacity: 1,
+        blur: {
+          style: {
+            opacity: 1,
+          },
         },
-      },
+        style: {
+          lineWidth: 2,
+          stroke: renderingContext.getColor("text-medium"),
+          color: renderingContext.getColor("text-medium"),
+          lineDash: [3, 4],
+        },
+      };
+
+      const hasRightYAxis = chartModel.rightAxisModel == null;
+      const align = hasRightYAxis ? ("right" as const) : ("left" as const);
+      const labelX = hasRightYAxis ? xEnd : xStart;
+      const labelY =
+        y - CHART_STYLE.goalLine.label.size - CHART_STYLE.goalLine.label.margin;
+
+      const label = {
+        type: "text" as const,
+        x: labelX,
+        y: labelY,
+        blur: {
+          style: {
+            opacity: 1,
+          },
+        },
+        style: {
+          align,
+          text: settings["graph.goal_label"] ?? "",
+          fontFamily: renderingContext.fontFamily,
+          fontSize: CHART_STYLE.goalLine.label.size,
+          fontWeight: CHART_STYLE.goalLine.label.weight,
+          fill: renderingContext.getColor("text-medium"),
+        },
+      };
+
+      return {
+        type: "group" as const,
+        children: [line, label],
+      };
     },
   };
 }
