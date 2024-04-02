@@ -38,7 +38,11 @@ const Questions = createEntity({
     list: (entityQuery, dispatch) =>
       entityCompatibleQuery(entityQuery, dispatch, cardApi.endpoints.listCards),
     get: (entityQuery, options, dispatch) =>
-      entityCompatibleQuery(entityQuery, dispatch, cardApi.endpoints.getCard),
+      entityCompatibleQuery(
+        { ...entityQuery, ignore_error: options?.noEvent },
+        dispatch,
+        cardApi.endpoints.getCard,
+      ),
     create: (entityQuery, dispatch) =>
       entityCompatibleQuery(
         entityQuery,

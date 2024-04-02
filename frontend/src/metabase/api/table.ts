@@ -76,10 +76,8 @@ export const tableApi = Api.injectEndpoints({
         method: "PUT",
         url: `/api/table/${id}/fields/order`,
         body,
+        bodyParamName: "field_order",
       }),
-      extraOptions: {
-        requestOptions: { bodyParamName: "field_order" },
-      },
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [
           idTag("table", id),

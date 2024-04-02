@@ -190,6 +190,7 @@ export interface ListCardsRequest {
 export interface GetCardRequest {
   id: CardId;
   ignore_view?: boolean;
+  ignore_error?: boolean;
 }
 
 export interface CreateCardRequest {

@@ -24,10 +24,11 @@ export const cardApi = Api.injectEndpoints({
       ],
     }),
     getCard: builder.query<Card, GetCardRequest>({
-      query: ({ id, ...body }) => ({
+      query: ({ id, ignore_error, ...body }) => ({
         method: "GET",
         url: `/api/card/${id}`,
         body,
+        noEvent: ignore_error,
       }),
       providesTags: card => (card ? [idTag("card", card.id)] : []),
     }),
