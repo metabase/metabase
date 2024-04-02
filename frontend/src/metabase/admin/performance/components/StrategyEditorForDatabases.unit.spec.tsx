@@ -14,6 +14,8 @@ import {
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
+import { DurationUnit } from "../types";
+
 import { StrategyEditorForDatabases } from "./StrategyEditorForDatabases";
 
 const storeInitialState = createMockState({
@@ -29,7 +31,7 @@ function setup() {
     createMockCacheConfig({
       model: "root",
       model_id: 0,
-      strategy: { type: "duration", duration: 1, unit: "hours" },
+      strategy: { type: "duration", duration: 1, unit: DurationUnit.Hours },
     }),
   ];
   setupPerformanceEndpoints(cacheConfigs);
