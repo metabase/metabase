@@ -1,10 +1,13 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export const useHasVerticalScrollbar = () => {
+  const [hasVerticalScrollbar, setHasVerticalScrollbar] = useState(false);
   const ref = useRef<HTMLElement>(null);
   const el = ref.current;
-  return {
-    hasVerticalScrollbar: el ? el.scrollHeight > el.clientHeight : false,
-    ref,
-  };
+  useEffect(() => {
+    if (el) {
+      setHasVerticalScrollbar(el.scrollHeight > el.clientHeight);
+    }
+  }, [el?.scrollHeight, el?.clientHeight, el, setHasVerticalScrollbar]);
+  return { hasVerticalScrollbar, ref };
 };
