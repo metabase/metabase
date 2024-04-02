@@ -39,19 +39,19 @@ export const TablePicker = ({ onItemSelect, value }: Props) => {
   const {
     data: databases,
     error: errorDatabases,
-    isLoading: isLoadingDatabases,
+    isFetching: isLoadingDatabases,
   } = useListDatabasesQuery({ saved: false });
 
   const {
     data: schemas,
     error: errorSchemas,
-    isLoading: isLoadingSchemas,
+    isFetching: isLoadingSchemas,
   } = useListDatabaseSchemasQuery(isNotNull(dbId) ? { id: dbId } : skipToken); // TODO conditional type
 
   const {
     data: tables,
     error: errorTables,
-    isLoading: isLoadingTables,
+    isFetching: isLoadingTables,
   } = useListDatabaseSchemaTablesQuery(
     isNotNull(schemaId) && isNotNull(dbId)
       ? { id: dbId, schema: schemaId }
@@ -80,8 +80,12 @@ export const TablePicker = ({ onItemSelect, value }: Props) => {
   const handleFolderSelect = useCallback(
     ({ folder }: { folder: NotebookDataPickerFolderItem }) => {
       if (folder.model === "database") {
-        setDbId(folder.id);
-        setSchemaId(undefined);
+        if (dbId === folder.id) {
+          setSchemaId(schemas?.length === 1 ? schemas[0] : undefined);
+        } else {
+          setDbId(folder.id);
+          setSchemaId(undefined);
+        }
         setTableId(undefined);
       }
 
@@ -90,7 +94,7 @@ export const TablePicker = ({ onItemSelect, value }: Props) => {
         setTableId(undefined);
       }
     },
-    [],
+    [dbId, schemas],
   );
 
   const handleItemSelect = useCallback(
@@ -126,7 +130,7 @@ export const TablePicker = ({ onItemSelect, value }: Props) => {
     >
       <Flex h="100%" w="fit-content">
         <DatabaseList
-          databases={databases?.data}
+          databases={isLoadingDatabases ? undefined : databases?.data}
           error={errorDatabases}
           isCurrentLevel={!schemaId}
           isLoading={isLoadingDatabases}
@@ -139,7 +143,7 @@ export const TablePicker = ({ onItemSelect, value }: Props) => {
             error={errorSchemas}
             isCurrentLevel={!tableId}
             isLoading={isLoadingSchemas}
-            schemas={schemas}
+            schemas={isLoadingSchemas ? undefined : schemas}
             selectedItem={selectedSchemaItem}
             onClick={folder => handleFolderSelect({ folder })}
           />
@@ -151,7 +155,7 @@ export const TablePicker = ({ onItemSelect, value }: Props) => {
             isCurrentLevel
             isLoading={isLoadingTables}
             selectedItem={selectedTableItem}
-            tables={tables}
+            tables={isLoadingTables ? undefined : tables}
             onClick={handleItemSelect}
           />
         )}
