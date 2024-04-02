@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -11,11 +11,7 @@ import type {
   EntityTab,
 } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
-import type {
-  NotebookDataPickerItem,
-  NotebookDataPickerValueItem,
-  Value,
-} from "../types";
+import type { NotebookDataPickerValueItem, Value } from "../types";
 
 import { TablePicker } from "./TablePicker";
 
@@ -76,10 +72,6 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
     }
   }, [table, value, onChange, onClose]);
 
-  const pickerRef = useRef<{
-    onFolderSelect: (item: { folder: NotebookDataPickerItem }) => void;
-  }>();
-
   const handleItemSelect = useCallback((item: NotebookDataPickerValueItem) => {
     setValueId(item.id);
     setSelectedItem(item);
@@ -109,7 +101,6 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
       element: (
         <TablePicker
           options={options}
-          ref={pickerRef}
           value={value}
           onItemSelect={handleItemSelect}
         />

@@ -1,12 +1,4 @@
-import type { Ref } from "react";
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   useDatabaseListQuery,
@@ -39,10 +31,7 @@ interface Props {
   onItemSelect: (item: NotebookDataPickerValueItem) => void;
 }
 
-export const TablePicker = forwardRef(function TablePicker(
-  { onItemSelect, value }: Props,
-  ref: Ref<unknown>,
-) {
+export const TablePicker = ({ onItemSelect, value }: Props) => {
   const [dbId, setDbId] = useState<DatabaseId | undefined>(value?.db_id);
   const [schemaId, setSchemaId] = useState<SchemaId | undefined>(value?.schema);
   const [tableId, setTableId] = useState<TableId | undefined>(value?.id);
@@ -111,16 +100,6 @@ export const TablePicker = forwardRef(function TablePicker(
     [setTableId, onItemSelect],
   );
 
-  // Exposing handleFolderSelect so that parent can select newly created
-  // folder
-  useImperativeHandle(
-    ref,
-    () => ({
-      handleFolderSelect,
-    }),
-    [handleFolderSelect],
-  );
-
   useEffect(() => {
     if (databases.length === 1) {
       const [database] = databases;
@@ -186,4 +165,4 @@ export const TablePicker = forwardRef(function TablePicker(
       </Flex>
     </AutoScrollBox>
   );
-});
+};
