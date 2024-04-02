@@ -115,7 +115,7 @@ const StrategyFormBody = ({
         )}
         {selectedStrategyType === "duration" && (
           <>
-            <Field title={t`Cache result for this many hours`}>
+            <Field title={t`Cache results for this many hours`}>
               <PositiveNumberInput strategyType="duration" name="duration" />
             </Field>
             <input type="hidden" name="unit" />
