@@ -204,6 +204,9 @@ const StrategyEditorForDatabases_Base = ({
         await CacheConfigApi.delete(baseConfig, { hasBody: true });
         setConfigs(otherConfigs);
       } else {
+        // If you change strategies, Formik will keep the old values
+        // for fields that are not in the new strategy,
+        // so let's remove these fields
         const validFields = getFieldsForStrategyType(values.type);
         const newStrategy = pick(values, validFields) as Strategy;
 
