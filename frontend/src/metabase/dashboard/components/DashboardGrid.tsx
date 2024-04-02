@@ -574,7 +574,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
           EmbedFrameS.DashCard,
           LegendS.DashCard,
           {
-            BrandColorResizeHandle: shouldChangeResizeHandle,
+            [DashboardS.BrandColorResizeHandle]: shouldChangeResizeHandle,
           },
         )}
         isAnimationDisabled={this.state.isAnimationPaused}
