@@ -684,18 +684,18 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.log(
       "Preview should not be possible without the source data (metabase#40608)",
     );
-    cy.findByTestId("step-data-0-0").within(() => {
-      cy.findByText("Pick your starting data").should("exist");
-      cy.icon("play").should("not.be.visible");
-    });
+    cy.findByTestId("step-data-0-0")
+      .as("dataStep")
+      .within(() => {
+        cy.findByText("Pick your starting data").should("exist");
+        cy.icon("play").should("not.be.visible");
+      });
 
-    popover().within(() => {
-      cy.findByTextEnsureVisible("Raw Data").click();
-      cy.icon("play").should("not.be.visible");
-      cy.findByTextEnsureVisible("Orders").click();
-    });
+    popover().findByTextEnsureVisible("Raw Data").click();
+    cy.get("@dataStep").icon("play").should("not.be.visible");
+    popover().findByTextEnsureVisible("Orders").click();
 
-    cy.findByTestId("step-data-0-0").within(() => {
+    cy.get("@dataStep").within(() => {
       cy.icon("play").click();
       assertTableRowCount(10);
       cy.findByTextEnsureVisible("Subtotal");
