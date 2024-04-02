@@ -67,10 +67,6 @@ export const PLUGIN_ADMIN_TOOLS = {
   EXTRA_ROUTES: [],
 };
 
-export const PLUGIN_ADMIN_CACHING = {
-  INDEX_ROUTE: "caching",
-};
-
 // functions that update the sections
 export const PLUGIN_ADMIN_SETTINGS_UPDATES: ((
   sections: typeof ADMIN_SETTINGS_SECTIONS,
