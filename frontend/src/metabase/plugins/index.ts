@@ -97,7 +97,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
     state: State,
   ) => Record<string, unknown>)[];
   hasChanges: ((state: State) => boolean)[];
-  updateNativePermission:
+  upgradeViewPermissionsIfNeeded:
     | ((
         permissions: GroupsPermissions,
         groupId: number,
@@ -110,7 +110,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
 } = {
   permissionsPayloadExtraSelectors: [],
   hasChanges: [],
-  updateNativePermission: null,
+  upgradeViewPermissionsIfNeeded: null,
 };
 
 // user form fields, e.x. login attributes

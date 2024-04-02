@@ -19,7 +19,7 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ImpersonationModal } from "./components/ImpersonationModal";
-import { updateNativePermission } from "./graph";
+import { upgradeViewPermissionsIfNeeded } from "./graph";
 import { getImpersonatedPostAction, advancedPermissionsSlice } from "./reducer";
 import { getImpersonations } from "./selectors";
 
@@ -114,7 +114,8 @@ if (hasPremiumFeature("advanced_permissions")) {
       push(getEditImpersonationUrl(entityId, groupId, view)),
   });
 
-  PLUGIN_DATA_PERMISSIONS.updateNativePermission = updateNativePermission;
+  PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded =
+    upgradeViewPermissionsIfNeeded;
 }
 
 const getDatabaseViewImpersonationModalUrl = (entityId, groupId) => {

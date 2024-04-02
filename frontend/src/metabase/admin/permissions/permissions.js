@@ -304,9 +304,9 @@ const dataPermissions = handleActions(
 
         if (
           permissionInfo.type === DataPermissionType.NATIVE &&
-          PLUGIN_DATA_PERMISSIONS.updateNativePermission
+          PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded
         ) {
-          PLUGIN_DATA_PERMISSIONS.updateNativePermission(
+          state = PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded(
             state,
             groupId,
             entityId,
