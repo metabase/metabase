@@ -493,7 +493,8 @@ class TableInteractive extends Component {
     } else {
       const map = this.props.PKRowIndexMap;
 
-      objectId = Object.keys(map).find(key => map[key] === rowIndex);
+      objectId =
+        Object.keys(map).find(key => map[key] === rowIndex) ?? rowIndex;
     }
 
     return () => {
