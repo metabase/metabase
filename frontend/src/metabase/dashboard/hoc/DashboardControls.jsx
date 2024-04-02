@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { replace } from "react-router-redux";
 import screenfull from "screenfull";
 
-import CS from "metabase/css/core/spacing.module.css";
+import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 

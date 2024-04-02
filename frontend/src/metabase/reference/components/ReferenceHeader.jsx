@@ -36,9 +36,7 @@ const ReferenceHeader = ({
         </Ellipsified>
 
         {headerLink && (
-          /* TODO: there is only L.headerButton, so either change to
-          L.headerButton or remove */
-          <div key="2" className={cx(CS.flexFull, S.headerButton)}>
+          <div key="2" className={cx(CS.flexFull, L.headerButton)}>
             <Link
               to={headerLink}
               className={cx(ButtonsS.Button, ButtonsS.ButtonBorderless, CS.ml3)}

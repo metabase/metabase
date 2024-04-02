@@ -55,7 +55,8 @@
 }
 
 :global(.border-error),
-.border-error {
+.border-error,
+.borderError {
   border-color: var(--color-error) !important;
 }
 
@@ -64,7 +65,8 @@
 }
 
 :global(.border-brand),
-.border-brand {
+.border-brand,
+.borderBrand {
   border-color: var(--color-brand) !important;
 }
 
@@ -80,7 +82,8 @@
   border: none !important;
 }
 
-.border-bottom {
+.border-bottom,
+.borderBottom {
   border-bottom: var(--border-size) dashed var(--color-border);
 }
 

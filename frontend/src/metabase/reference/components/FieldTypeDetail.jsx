@@ -19,7 +19,7 @@ const FieldTypeDetail = ({
   <div className={cx(D.detail)}>
     <div className={D.detailBody}>
       <div className={D.detailTitle}>
-        <span className={D.detailName}>{t`Field type`}</span>
+        <span>{t`Field type`}</span>
       </div>
       <div className={cx(D.detailSubtitle, { mt1: true })}>
         <span>

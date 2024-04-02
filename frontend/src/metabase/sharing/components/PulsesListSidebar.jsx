@@ -190,13 +190,7 @@ function PulseDetails({ pulse, parameters }) {
   return (
     <div className={cx("text-medium", CS.hoverChild)}>
       <ul
-        className={cx(
-          CS.flex,
-          CS.flexColumn,
-          CS.scrollX,
-          CS.scrollY,
-          CS.textUnspaced,
-        )}
+        className={cx(CS.flex, CS.flexColumn, CS.scrollX, CS.scrollY)}
         style={{ maxHeight: 130 }}
       >
         {recipientText && (
