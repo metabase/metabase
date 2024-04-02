@@ -65,16 +65,3 @@ export const strategyValidationSchema = Yup.object().test(
     }
   },
 ) as Yup.AnySchema;
-
-// TODO: These schemas are to be added in later
-
-// export const scheduleStrategyValidationSchema = Yup.object({
-//   // TODO: Enforce format?
-//   schedule: Yup.string(),
-// });
-
-// export const queryStrategyValidationSchema = Yup.object({
-//   field_id: requiredPositiveInteger,
-//   aggregation: Yup.string().matches(/max|count/),
-//   schedule: Yup.string(),
-// });
