@@ -18,6 +18,7 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
+   [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
@@ -1067,6 +1068,38 @@
       (run! rollback! (t2/reducible-query {:select [:*]
                                            :from   [:revision]
                                            :where  [:= :model "Card"]})))))
+
+(defn- internal-user-exists?
+  "If there is a user that is not the internal user, we know it's not a fresh install."
+  []
+  (pos? (t2/query-one {:select [:%count.*] :from :core_user :where [:= :id config/internal-mb-user-id]})))
+
+(define-migration CreateInternalUser
+  (when (not (internal-user-exists?)) ; the internal user may have been created in a previous version for Metabase Analytics
+    (let [salt (str (random-uuid))
+          user {;; we insert the internal user ID directly because it's
+                ;; deliberately high enough to not conflict with any other
+                :id               config/internal-mb-user-id
+                :password_salt    salt
+                :password         (hash-bcrypt (str salt (random-uuid)))
+                :email            "internal@metabase.com",
+                :first_name       "Metabase",
+                :locale           nil,
+                :last_login       nil,
+                :is_active        false,
+                :settings         nil,
+                :type             "internal",
+                :is_qbnewb        true,
+                :updated_at       nil,
+                :reset_triggered  nil,
+                :is_superuser     false,
+                :login_attributes nil,
+                :reset_token      nil,
+                :last_name        "Internal",
+                :date_joined      :%now,
+                :sso_source       nil,
+                :is_datasetnewb   true}]
+      (t2/query {:insert-into :core_user :values [user]}))))
 
 ;; This was renamed to TruncateAuditTables, so we need to delete the old job & trigger
 (define-migration DeleteTruncateAuditLogTask
