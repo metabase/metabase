@@ -1,10 +1,11 @@
+import { skipToken } from "@reduxjs/toolkit/dist/query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
-  useDatabaseListQuery,
-  useSchemaListQuery,
-  useTableListQuery,
-} from "metabase/common/hooks";
+  useListDatabaseSchemaTablesQuery,
+  useListDatabaseSchemasQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
 import { isNotNull } from "metabase/lib/types";
 import { Flex } from "metabase/ui";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
@@ -39,22 +40,23 @@ export const TablePicker = ({ onItemSelect, value }: Props) => {
     data: databases,
     error: errorDatabases,
     isLoading: isLoadingDatabases,
-  } = useDatabaseListQuery({ query: { saved: false } });
+  } = useListDatabasesQuery({ saved: false });
 
   const {
     data: schemas,
     error: errorSchemas,
     isLoading: isLoadingSchemas,
-  } = useSchemaListQuery({ enabled: isNotNull(dbId), query: { dbId } }); // TODO conditional type
+  } = useListDatabaseSchemasQuery(isNotNull(dbId) ? { id: dbId } : skipToken); // TODO conditional type
 
   const {
     data: tables,
     error: errorTables,
     isLoading: isLoadingTables,
-  } = useTableListQuery({
-    enabled: isNotNull(schemaId),
-    query: { dbId, schemaName: schemaId },
-  });
+  } = useListDatabaseSchemaTablesQuery(
+    isNotNull(schemaId) && isNotNull(dbId)
+      ? { id: dbId, schema: schemaId }
+      : skipToken,
+  );
 
   const selectedDbItem = useMemo<NotebookDataPickerFolderItem | null>(() => {
     return isNotNull(dbId)
@@ -100,8 +102,8 @@ export const TablePicker = ({ onItemSelect, value }: Props) => {
   );
 
   useEffect(() => {
-    if (databases?.length === 1) {
-      const [database] = databases;
+    if (databases?.data.length === 1) {
+      const [database] = databases.data;
       setDbId(database.id);
     }
   }, [databases]);
@@ -109,7 +111,7 @@ export const TablePicker = ({ onItemSelect, value }: Props) => {
   useEffect(() => {
     if (schemas?.length === 1) {
       const [schema] = schemas;
-      setSchemaId(schema.name);
+      setSchemaId(schema);
     }
   }, [schemas]);
 
@@ -124,7 +126,7 @@ export const TablePicker = ({ onItemSelect, value }: Props) => {
     >
       <Flex h="100%" w="fit-content">
         <DatabaseList
-          databases={databases}
+          databases={databases?.data}
           error={errorDatabases}
           isCurrentLevel={!schemaId}
           isLoading={isLoadingDatabases}

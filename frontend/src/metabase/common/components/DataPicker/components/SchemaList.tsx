@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
-import type Schema from "metabase-lib/v1/metadata/Schema";
+import { humanize, titleize } from "metabase/lib/formatting";
+import type { SchemaName } from "metabase-types/api";
 
 import { ItemList, ListBox } from "../../EntityPicker";
 import type { NotebookDataPickerFolderItem } from "../types";
@@ -9,7 +10,7 @@ interface Props {
   error: unknown;
   isCurrentLevel: boolean;
   isLoading: boolean;
-  schemas: Schema[] | undefined;
+  schemas: SchemaName[] | undefined;
   selectedItem: NotebookDataPickerFolderItem | null;
   onClick: (item: NotebookDataPickerFolderItem) => void;
 }
@@ -26,9 +27,9 @@ export const SchemaList = ({
 }: Props) => {
   const items: NotebookDataPickerFolderItem[] | undefined = useMemo(() => {
     return schemas?.map(schema => ({
-      id: schema.name,
+      id: schema,
       model: "schema",
-      name: schema.displayName() ?? schema.name,
+      name: schema ? titleize(humanize(schema)) : "",
     }));
   }, [schemas]);
 

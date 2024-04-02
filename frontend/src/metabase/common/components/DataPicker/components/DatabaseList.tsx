@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type Database from "metabase-lib/v1/metadata/Database";
+import type { Database } from "metabase-types/api";
 
 import { ItemList, ListBox } from "../../EntityPicker";
 import type { NotebookDataPickerFolderItem } from "../types";
@@ -29,7 +29,7 @@ export const DatabaseList = ({
       description: database.description,
       id: database.id,
       model: "database",
-      name: database.displayName(),
+      name: database.name,
     }));
   }, [databases]);
 

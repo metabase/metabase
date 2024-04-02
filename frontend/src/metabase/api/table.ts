@@ -4,6 +4,7 @@ import type {
   GetTableRequest,
   Table,
   TableId,
+  TableListQuery,
   UpdateTableFieldsOrderRequest,
   UpdateTableListRequest,
   UpdateTableRequest,
@@ -14,10 +15,11 @@ import { idTag, invalidateTags, listTag, tag } from "./tags";
 
 export const tableApi = Api.injectEndpoints({
   endpoints: builder => ({
-    listTables: builder.query<Table[], void>({
-      query: () => ({
+    listTables: builder.query<Table[], TableListQuery | void>({
+      query: body => ({
         method: "GET",
         url: "/api/table",
+        body,
       }),
       providesTags: (tables = []) => [
         listTag("table"),

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type Table from "metabase-lib/v1/metadata/Table";
+import type { Table } from "metabase-types/api";
 
 import { ItemList, ListBox } from "../../EntityPicker";
 import type { NotebookDataPickerValueItem } from "../types";
@@ -26,10 +26,9 @@ export const TableList = ({
 }: Props) => {
   const items: NotebookDataPickerValueItem[] | undefined = useMemo(() => {
     return tables?.map(table => ({
-      description: table.description,
       id: table.id,
       model: "table",
-      name: table.displayName(),
+      name: table.display_name,
     }));
   }, [tables]);
 
