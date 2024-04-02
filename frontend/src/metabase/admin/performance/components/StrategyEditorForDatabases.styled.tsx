@@ -4,7 +4,7 @@ import type { HTMLAttributes, MutableRefObject } from "react";
 
 import type { FormSubmitButtonProps } from "metabase/forms";
 import { FormSubmitButton } from "metabase/forms";
-import { color } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import type { ButtonProps as BaseButtonProps } from "metabase/ui";
 import { Button } from "metabase/ui";
 
@@ -65,11 +65,11 @@ export const TabWrapper = styled.div`
   width: 100%;
 `;
 
-export const ResetAllToDefaultFormSubmitButton = styled(FormSubmitButton)<
-  FormSubmitButtonProps & { highlightOnHover?: boolean }
->`
+export const ResetAllToDefaultFormSubmitButton = styled(FormSubmitButton, {
+  shouldForwardProp: prop => prop !== "highlightOnHover",
+})<FormSubmitButtonProps & { highlightOnHover?: boolean }>`
   &:hover {
     background-color: ${({ highlightOnHover }) =>
-      highlightOnHover ? "rgba(237, 110, 110, .15)" : "transparent"};
+      highlightOnHover ? alpha("error", 0.15) : "transparent"};
   }
 `;
