@@ -59,3 +59,7 @@ Get results via email or Slack, either on a schedule, or only when something int
 ### [Public sharing](./sharing/public-links.md)
 
 Create links or embeds for the good people of the internet.
+
+### [Exporting](./sharing/exporting-data.md)
+
+The different ways you can export the results of questions and dashboards.
