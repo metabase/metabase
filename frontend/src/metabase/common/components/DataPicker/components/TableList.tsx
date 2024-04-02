@@ -1,36 +1,37 @@
-import { useTableListQuery } from "metabase/common/hooks";
-import type { TableListQuery } from "metabase-types/api";
+import { useMemo } from "react";
 
-import { ItemList, type IsFolder } from "../../EntityPicker";
-import type { NotebookDataPickerItem } from "../types";
+import type Table from "metabase-lib/v1/metadata/Table";
+
+import { ItemList } from "../../EntityPicker";
+import type { NotebookDataPickerValueItem } from "../types";
 
 interface Props {
+  error: unknown;
+  isLoading: boolean;
   isCurrentLevel: boolean;
-  isFolder: IsFolder<
-    NotebookDataPickerItem["id"],
-    NotebookDataPickerItem["model"],
-    NotebookDataPickerItem
-  >;
-  query: TableListQuery;
-  selectedItem: NotebookDataPickerItem | null;
-  onClick: (item: NotebookDataPickerItem) => void;
+  selectedItem: NotebookDataPickerValueItem | null;
+  tables: Table[];
+  onClick: (item: NotebookDataPickerValueItem) => void;
 }
 
+const isFolder = () => false;
+
 export const TableList = ({
+  error,
+  isLoading,
   isCurrentLevel,
-  isFolder,
-  query,
   selectedItem,
+  tables,
   onClick,
 }: Props) => {
-  const { data: tables = [], error, isLoading } = useTableListQuery({ query });
-
-  const items: NotebookDataPickerItem[] = tables.map(table => ({
-    description: table.description,
-    id: table.id,
-    model: "table",
-    name: table.displayName(),
-  }));
+  const items: NotebookDataPickerValueItem[] = useMemo(() => {
+    return tables.map(table => ({
+      description: table.description,
+      id: table.id,
+      model: "table",
+      name: table.displayName(),
+    }));
+  }, [tables]);
 
   return (
     <ItemList

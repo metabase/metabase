@@ -2,36 +2,36 @@ import type { Ref } from "react";
 import {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useState,
 } from "react";
-import { t } from "ttag";
-
-import type {
-  DatabaseId,
-  SchemaId,
-  SchemaName,
-  TableId,
-} from "metabase-types/api";
 
 import {
-  NestedItemPicker,
+  useDatabaseListQuery,
+  useSchemaListQuery,
+  useTableListQuery,
+} from "metabase/common/hooks";
+import { isNotNull } from "metabase/lib/types";
+import { Flex } from "metabase/ui";
+import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+
+import {
+  AutoScrollBox,
+  ListBox,
   type EntityPickerModalOptions,
 } from "../../EntityPicker";
 import type {
-  NotebookDataPickerItem,
-  NotebookDataPickerModel,
+  NotebookDataPickerFolderItem,
   NotebookDataPickerValueItem,
-  PathEntry,
   Value,
 } from "../types";
-import { generateKey, isFolder } from "../utils";
+import { generateKey } from "../utils";
 
-import { DataPickerListResolver } from "./DataPickerListResolver";
-// import { getCollectionIdPath, isFolder } from "./utils";
-
-const defaultOptions: EntityPickerModalOptions = {};
+import { DatabaseList } from "./DatabaseList";
+import { SchemaList } from "./SchemaList";
+import { TableList } from "./TableList";
 
 interface Props {
   value: Value | null;
@@ -39,71 +39,56 @@ interface Props {
   onItemSelect: (item: NotebookDataPickerValueItem) => void;
 }
 
-const generatePath = (
-  dbId: DatabaseId | undefined,
-  schemaName: SchemaName | undefined,
-  tableId: TableId | undefined,
-) => {
-  const path: PathEntry<NotebookDataPickerModel> = [
-    {
-      model: "database",
-      query: { saved: false },
-      selectedItem: dbId
-        ? {
-            model: "database",
-            id: dbId,
-            name: "", // TODO
-          }
-        : null,
-    },
-  ];
-
-  if (dbId != null) {
-    path.push({
-      model: "schema",
-      query: { dbId },
-      selectedItem: schemaName
-        ? {
-            model: "schema",
-            id: schemaName,
-            name: "", // TODO
-          }
-        : null,
-    });
-  }
-
-  if (schemaName != null) {
-    path.push({
-      model: "table",
-      query: { dbId, schemaName },
-      selectedItem: tableId
-        ? {
-            model: "table",
-            id: tableId,
-            name: "", // TODO
-          }
-        : null,
-    });
-  }
-
-  return path;
-};
-
 export const TablePicker = forwardRef(function TablePicker(
-  { onItemSelect, value, options = defaultOptions }: Props,
+  { onItemSelect, value }: Props,
   ref: Ref<unknown>,
 ) {
   const [dbId, setDbId] = useState<DatabaseId | undefined>(value?.db_id);
   const [schemaId, setSchemaId] = useState<SchemaId | undefined>(value?.schema);
   const [tableId, setTableId] = useState<TableId | undefined>(value?.id);
 
-  const path = useMemo(
-    () => generatePath(dbId, schemaId, tableId),
-    [dbId, schemaId, tableId],
-  );
+  const {
+    data: databases = [],
+    error: errorDatabases,
+    isLoading: isLoadingDatabases,
+  } = useDatabaseListQuery({ query: { saved: false } });
+
+  const {
+    data: schemas = [],
+    error: errorSchemas,
+    isLoading: isLoadingSchemas,
+  } = useSchemaListQuery({ enabled: isNotNull(dbId), query: { dbId } }); // TODO conditional type
+
+  const {
+    data: tables = [],
+    error: errorTables,
+    isLoading: isLoadingTables,
+  } = useTableListQuery({
+    enabled: isNotNull(schemaId),
+    query: { dbId, schemaName: schemaId },
+  });
+
+  const selectedDbItem = useMemo<NotebookDataPickerFolderItem | null>(() => {
+    return isNotNull(dbId)
+      ? { model: "database", id: dbId, name: "" } // TODO: name
+      : null;
+  }, [dbId]);
+
+  const selectedSchemaItem =
+    useMemo<NotebookDataPickerFolderItem | null>(() => {
+      return isNotNull(schemaId)
+        ? { model: "schema", id: schemaId, name: "" } // TODO: name
+        : null;
+    }, [schemaId]);
+
+  const selectedTableItem = useMemo<NotebookDataPickerValueItem | null>(() => {
+    return isNotNull(tableId)
+      ? { model: "table", id: tableId, name: "" } // TODO: name
+      : null;
+  }, [tableId]);
 
   const handleFolderSelect = useCallback(
-    ({ folder }: { folder: NotebookDataPickerItem }) => {
+    ({ folder }: { folder: NotebookDataPickerFolderItem }) => {
       if (folder.model === "database") {
         setDbId(folder.id);
         setSchemaId(undefined);
@@ -115,11 +100,11 @@ export const TablePicker = forwardRef(function TablePicker(
         setTableId(undefined);
       }
     },
-    [setDbId, setSchemaId, setTableId],
+    [],
   );
 
   const handleItemSelect = useCallback(
-    (item: NotebookDataPickerItem) => {
+    (item: NotebookDataPickerValueItem) => {
       setTableId(item.id);
       onItemSelect(item);
     },
@@ -136,16 +121,69 @@ export const TablePicker = forwardRef(function TablePicker(
     [handleFolderSelect],
   );
 
+  useEffect(() => {
+    if (databases.length === 1) {
+      const [database] = databases;
+      setDbId(database.id);
+    }
+  }, [databases]);
+
+  useEffect(() => {
+    if (schemas.length === 1) {
+      const [schema] = schemas;
+      setSchemaId(schema.name);
+    }
+  }, [schemas]);
+
   return (
-    <NestedItemPicker
-      generateKey={generateKey}
-      isFolder={isFolder}
-      itemName={t`table`}
-      listResolver={DataPickerListResolver}
-      options={options}
-      path={path}
-      onFolderSelect={handleFolderSelect}
-      onItemSelect={handleItemSelect}
-    />
+    <AutoScrollBox
+      data-testid="nested-item-picker"
+      contentHash={generateKey(
+        selectedDbItem,
+        selectedSchemaItem,
+        selectedTableItem,
+      )}
+    >
+      <Flex h="100%" w="fit-content">
+        {databases.length > 1 && (
+          <ListBox data-testid="item-picker-level-0">
+            <DatabaseList
+              databases={databases}
+              error={errorDatabases}
+              isCurrentLevel={!schemaId}
+              isLoading={isLoadingDatabases}
+              selectedItem={selectedDbItem}
+              onClick={folder => handleFolderSelect({ folder })}
+            />
+          </ListBox>
+        )}
+
+        {isNotNull(dbId) && schemas.length > 1 && (
+          <ListBox data-testid="item-picker-level-1">
+            <SchemaList
+              error={errorSchemas}
+              isCurrentLevel={!tableId}
+              isLoading={isLoadingSchemas}
+              schemas={schemas}
+              selectedItem={selectedSchemaItem}
+              onClick={folder => handleFolderSelect({ folder })}
+            />
+          </ListBox>
+        )}
+
+        {isNotNull(schemaId) && (
+          <ListBox data-testid="item-picker-level-2">
+            <TableList
+              error={errorTables}
+              isCurrentLevel
+              isLoading={isLoadingTables}
+              selectedItem={selectedTableItem}
+              tables={tables}
+              onClick={handleItemSelect}
+            />
+          </ListBox>
+        )}
+      </Flex>
+    </AutoScrollBox>
   );
 });

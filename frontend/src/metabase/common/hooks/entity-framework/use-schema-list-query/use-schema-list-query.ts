@@ -7,6 +7,9 @@ import Schemas from "metabase/entities/schemas";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type { SchemaListQuery } from "metabase-types/api";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export const useSchemaListQuery = (
   props: UseEntityListQueryProps<SchemaListQuery> = {},
 ): UseEntityListQueryResult<Schema> => {

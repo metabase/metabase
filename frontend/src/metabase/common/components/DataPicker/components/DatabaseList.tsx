@@ -1,40 +1,37 @@
-import { useDatabaseListQuery } from "metabase/common/hooks";
-import type { DatabaseListQuery } from "metabase-types/api";
+import { useMemo } from "react";
 
-import { ItemList, type IsFolder } from "../../EntityPicker";
-import type { NotebookDataPickerItem } from "../types";
+import type Database from "metabase-lib/v1/metadata/Database";
+
+import { ItemList } from "../../EntityPicker";
+import type { NotebookDataPickerFolderItem } from "../types";
 
 interface Props {
+  databases: Database[];
+  error: unknown;
   isCurrentLevel: boolean;
-  isFolder: IsFolder<
-    NotebookDataPickerItem["id"],
-    NotebookDataPickerItem["model"],
-    NotebookDataPickerItem
-  >;
-  query: DatabaseListQuery;
-  selectedItem: NotebookDataPickerItem | null;
-  onClick: (val: NotebookDataPickerItem) => void;
+  isLoading: boolean;
+  selectedItem: NotebookDataPickerFolderItem | null;
+  onClick: (item: NotebookDataPickerFolderItem) => void;
 }
 
+const isFolder = () => true;
+
 export const DatabaseList = ({
+  databases,
+  error,
   isCurrentLevel,
-  isFolder,
-  query,
+  isLoading,
   selectedItem,
   onClick,
 }: Props) => {
-  const {
-    data: databases = [],
-    error,
-    isLoading,
-  } = useDatabaseListQuery({ query });
-
-  const items: NotebookDataPickerItem[] = databases.map(database => ({
-    description: database.description,
-    id: database.id,
-    model: "database",
-    name: database.displayName(),
-  }));
+  const items: NotebookDataPickerFolderItem[] = useMemo(() => {
+    return databases.map(database => ({
+      description: database.description,
+      id: database.id,
+      model: "database",
+      name: database.displayName(),
+    }));
+  }, [databases]);
 
   return (
     <ItemList

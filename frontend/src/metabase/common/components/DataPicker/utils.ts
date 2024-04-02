@@ -1,24 +1,12 @@
-import type { IsFolder } from "../EntityPicker";
-
 import type {
-  NotebookDataPickerItem,
-  NotebookDataPickerModel,
-  NotebookDataPickerQuery,
-  PathEntry,
+  NotebookDataPickerFolderItem,
+  NotebookDataPickerValueItem,
 } from "./types";
 
-export const isFolder: IsFolder<
-  NotebookDataPickerItem["id"],
-  NotebookDataPickerItem["model"],
-  NotebookDataPickerItem
-> = item => {
-  return (
-    item.model === "database" ||
-    item.model === "schema" ||
-    item.model === "collection"
-  );
-};
-
-export const generateKey = (item?: PathEntry) => {
-  return [item.model, JSON.stringify(item.query ?? "root")].join("-");
+export const generateKey = (
+  dbItem: NotebookDataPickerFolderItem | null,
+  schemaItem: NotebookDataPickerFolderItem | null,
+  tableItem: NotebookDataPickerValueItem | null,
+) => {
+  return [dbItem?.id, schemaItem?.id, tableItem?.id].join("-");
 };
