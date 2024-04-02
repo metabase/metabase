@@ -52,11 +52,11 @@ export const getShortStrategyLabel = (strategy?: Strategy) => {
   return type.shortLabel ?? type.label;
 };
 
+const validStrategyNames = new Set(Object.keys(Strategies));
+
 export const isValidStrategyName = (
   strategy: string,
-): strategy is StrategyType => {
-  return Object.keys(Strategies).includes(strategy);
-};
+): strategy is StrategyType => validStrategyNames.has(strategy);
 
 export type Model =
   | "root"
