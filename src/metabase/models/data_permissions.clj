@@ -643,9 +643,12 @@
   [group-or-id db-or-id]
   (let [group-id             (u/the-id group-or-id)
         view-data-level      (new-database-view-data-permission-level group-id)
-        create-queries-level (lowest-permission-level-in-any-database group-id :perms/create-queries)
-        download-level       (if (= view-data-level :blocked) :no
-                                 (lowest-permission-level-in-any-database group-id :perms/download-results))]
+        create-queries-level (or (lowest-permission-level-in-any-database group-id :perms/create-queries)
+                                 :query-builder-and-native)
+        download-level       (if (= view-data-level :blocked)
+                               :no
+                               (or (lowest-permission-level-in-any-database group-id :perms/download-results)
+                                   :one-million-rows))]
     (set-database-permission! group-or-id db-or-id :perms/view-data view-data-level)
     (set-database-permission! group-or-id db-or-id :perms/create-queries create-queries-level)
     (set-database-permission! group-or-id db-or-id :perms/download-results download-level)
