@@ -42,10 +42,13 @@ export const StrategyForm = ({
   saveStrategy: (values: Strategy) => Promise<void>;
   savedStrategy?: Strategy;
 }) => {
+  const defaultStrategy: Strategy = {
+    type: targetId === rootId ? "nocache" : "inherit",
+  };
   return (
     <FormProvider<Strategy>
       key={targetId}
-      initialValues={savedStrategy ?? { type: "inherit" }}
+      initialValues={savedStrategy ?? defaultStrategy}
       validationSchema={strategyValidationSchema}
       onSubmit={saveStrategy}
       enableReinitialize={true}

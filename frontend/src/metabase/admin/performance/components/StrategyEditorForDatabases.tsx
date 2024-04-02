@@ -114,15 +114,20 @@ const StrategyEditorForDatabases_Base = ({
         return;
       }
 
+      const isRoot = targetId === rootId;
       const baseConfig: Pick<Config, "model" | "model_id"> = {
-        model: targetId === rootId ? "root" : "database",
+        model: isRoot ? "root" : "database",
         model_id: targetId,
       };
 
       const otherConfigs = configs.filter(
         config => config.model_id !== targetId,
       );
-      if (values.type === "inherit") {
+      const shouldDeleteStrategy =
+        values.type === "inherit" ||
+        // To set "don't cache" as the root strategy, we delete the root strategy
+        (isRoot && values.type === "nocache");
+      if (shouldDeleteStrategy) {
         await CacheConfigApi.delete(baseConfig, { hasBody: true });
         setConfigs(otherConfigs);
       } else {

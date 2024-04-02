@@ -30,7 +30,7 @@ export const StrategyFormLauncher = ({
   const config = findWhere(configs, { model_id: forId });
   const rootConfig = findWhere(configs, { model: "root" });
 
-  const rootStrategy = rootConfig?.strategy;
+  const rootStrategy = rootConfig?.strategy ?? { type: "nocache" };
   const savedStrategy = config?.strategy;
 
   const inheritsRootStrategy = savedStrategy === undefined;

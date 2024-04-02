@@ -21,11 +21,6 @@ export const useCacheConfigs = ({
     const rootConfigsFromAPI = (
       (await CacheConfigApi.list({ model: "root" })) as CacheConfigAPIResponse
     ).data;
-    const rootConfig = rootConfigsFromAPI[0] ?? {
-      model: "root",
-      model_id: rootId,
-      strategy: { type: "nocache" },
-    };
     const dbConfigsFromAPI = canOverrideRootStrategy
       ? (
           (await CacheConfigApi.list({
@@ -33,7 +28,7 @@ export const useCacheConfigs = ({
           })) as CacheConfigAPIResponse
         ).data
       : [];
-    const configs = [rootConfig, ...dbConfigsFromAPI];
+    const configs = [...rootConfigsFromAPI, ...dbConfigsFromAPI];
     return configs;
   }, []);
 
