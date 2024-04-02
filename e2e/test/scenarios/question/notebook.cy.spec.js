@@ -678,8 +678,22 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  it("should properly render previews (metabase#28726), (metabase#29959)", () => {
-    openOrdersTable({ mode: "notebook" });
+  it("should properly render previews (metabase#28726, metabase#29959, metabase#40608)", () => {
+    startNewQuestion();
+
+    cy.log(
+      "Preview should not be possible without the source data (metabase#40608)",
+    );
+    cy.findByTestId("step-data-0-0").within(() => {
+      cy.findByText("Pick your starting data").should("exist");
+      cy.icon("play").should("not.be.visible");
+    });
+
+    popover().within(() => {
+      cy.findByTextEnsureVisible("Raw Data").click();
+      cy.findByTextEnsureVisible("Orders").click();
+    });
+
     cy.findByTestId("step-data-0-0").within(() => {
       cy.icon("play").click();
       assertTableRowCount(10);
@@ -691,12 +705,12 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.button("Row limit").click();
     cy.findByTestId("step-limit-0-0").within(() => {
-      cy.findByPlaceholderText("Enter a limit").type("5").blur();
+      cy.findByPlaceholderText("Enter a limit").type("5").realPress("Tab");
 
       cy.icon("play").click();
       assertTableRowCount(5);
 
-      cy.findByDisplayValue("5").type("{selectall}50").blur();
+      cy.findByDisplayValue("5").type("{selectall}50").realPress("Tab");
       cy.button("Refresh").click();
       assertTableRowCount(10);
     });
