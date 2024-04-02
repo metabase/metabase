@@ -193,8 +193,7 @@ const StrategySelector = ({ targetId }: { targetId: number | null }) => {
                 option.label
               ) : (
                 <>
-                  <strong>{option.label.split(":")[0]}</strong>:
-                  {option.label.split(":")[1]}
+                  <strong>{optionLabelParts[0]}</strong>:{optionLabelParts[1]}
                 </>
               );
             return (
