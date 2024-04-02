@@ -1,4 +1,3 @@
-import cx from "classnames";
 import type { TransitionEventHandler } from "react";
 import { useEffect, useState } from "react";
 
@@ -42,7 +41,7 @@ export const NotebookContainer = ({
 
   return (
     <Flex
-      className={cx(NC.notebookContainer)}
+      className={NC.notebookContainer}
       bg="white"
       opacity={isOpen ? 1 : 0}
       style={{
@@ -52,14 +51,14 @@ export const NotebookContainer = ({
       onTransitionEnd={handleTransitionEnd}
     >
       {shouldShowNotebook && (
-        <Box className={cx(NC.main)}>
+        <Box className={NC.main}>
           <Notebook {...props} />
         </Box>
       )}
 
       {isNativePreviewSidebarOpen && (
         <Flex
-          className={cx(NC.sqlSidebar)}
+          className={NC.sqlSidebar}
           data-testid="native-query-preview-sidebar"
           role="complementary"
           direction="column"

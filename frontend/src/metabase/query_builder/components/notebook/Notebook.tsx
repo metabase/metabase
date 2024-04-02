@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -83,7 +82,7 @@ const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
   };
 
   return (
-    <div className={cx(N.notebookRoot)}>
+    <div className={N.notebookRoot}>
       <NotebookSteps updateQuestion={handleUpdateQuestion} {...props} />
       {hasVisualizeButton && isRunnable && (
         <Button variant="filled" style={{ minWidth: 220 }} onClick={visualize}>
