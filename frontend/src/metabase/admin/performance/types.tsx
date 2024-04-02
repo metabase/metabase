@@ -122,8 +122,10 @@ export enum TabId {
   ModelPersistence = "modelPersistence",
   CachingStats = "cachingStats",
 }
+const validTabIds = new Set(Object.values(TabId).map(String))
+
 export const isValidTabId = (tab: unknown): tab is TabId =>
-  typeof tab === "string" && Object.values(TabId).map(String).includes(tab);
+  typeof tab === "string" && validTabIds.has(tab);
 
 export type ObjectWithType = {
   type: string;
