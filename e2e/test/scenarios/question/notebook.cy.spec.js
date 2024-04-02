@@ -691,6 +691,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     popover().within(() => {
       cy.findByTextEnsureVisible("Raw Data").click();
+      cy.icon("play").should("not.be.visible");
       cy.findByTextEnsureVisible("Orders").click();
     });
 
