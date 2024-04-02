@@ -1,8 +1,6 @@
-import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { InjectedRouter, Route } from "react-router";
 import { withRouter } from "react-router";
-import { push } from "react-router-redux";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 import { findWhere, pick } from "underscore";
@@ -13,14 +11,15 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { FormProvider } from "metabase/forms";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { color } from "metabase/lib/colors";
-import { useDispatch } from "metabase/lib/redux";
 import { CacheConfigApi } from "metabase/services";
 import { Box, Stack, Title } from "metabase/ui";
 
 import { rootId } from "../constants";
+import { useConfirmOnRouteLeave } from "../hooks/useConfirmOnRouteLeave";
 import { useDelayedLoadingSpinner } from "../hooks/useDelayedLoadingSpinner";
 import { useHasVerticalScrollbar } from "../hooks/useHasVerticalScrollbar";
 import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
+import { useResetToDefaultForm } from "../hooks/useResetToDefault";
 import type {
   CacheConfigAPIResponse,
   Config,
@@ -91,13 +90,6 @@ const StrategyEditorForDatabases_Base = ({
     rootStrategyOverriddenOnce || rootStrategyRecentlyOverridden;
 
   useEffect(() => {
-    // Avoid stale context in the 'reset all to default' form
-    if (!rootStrategyRecentlyOverridden) {
-      setResetFormVersionNumber(n => n + 1);
-    }
-  }, [rootStrategyRecentlyOverridden]);
-
-  useEffect(() => {
     if (configsFromAPI) {
       setConfigs(configsFromAPI);
     }
@@ -113,7 +105,8 @@ const StrategyEditorForDatabases_Base = ({
     savedStrategy.unit = DurationUnit.Hours;
   }
 
-  const [nextLocation, setNextLocation] = useState<Location>();
+  const [isStrategyFormDirty, setIsStrategyFormDirty] = useState(false);
+  const showStrategyForm = targetId !== null;
 
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
@@ -129,40 +122,12 @@ const StrategyEditorForDatabases_Base = ({
     [askConfirmation],
   );
 
-  const [isStrategyFormDirty, setIsStrategyFormDirty] = useState(false);
-  const showStrategyForm = targetId !== null;
-
-  const [isConfirmed, setIsConfirmed] = useState(false);
-
-  useEffect(() => {
-    if (!route) {
-      return;
-    }
-    const removeLeaveHook = router.setRouteLeaveHook(route, location => {
-      if (isStrategyFormDirty && !isConfirmed) {
-        askBeforeDiscardingChanges(() => {
-          setIsConfirmed(true);
-          setNextLocation(location);
-        });
-        return false;
-      }
-    });
-    return removeLeaveHook;
-  }, [
+  useConfirmOnRouteLeave({
     router,
     route,
-    isConfirmed,
-    isStrategyFormDirty,
-    askBeforeDiscardingChanges,
-  ]);
-
-  const dispatch = useDispatch();
-
-  useEffect(() => {
-    if (nextLocation) {
-      dispatch(push(nextLocation));
-    }
-  }, [dispatch, nextLocation]);
+    shouldConfirm: isStrategyFormDirty,
+    confirm: askBeforeDiscardingChanges,
+  });
 
   /** Update the targetId (the id of the currently edited model) but confirm if the form is unsaved */
   const safelyUpdateTargetId: SafelyUpdateTargetId = (
@@ -235,27 +200,6 @@ const StrategyEditorForDatabases_Base = ({
     [configs],
   );
 
-  const [resetFormVersionNumber, setResetFormVersionNumber] = useState(0);
-
-  const resetAllToDefault = useCallback(async () => {
-    const originalConfigs = [...configs];
-    if (databaseIds.length === 0) {
-      return;
-    }
-    try {
-      await CacheConfigApi.delete(
-        { model_id: databaseIds, model: "database" },
-        { hasBody: true },
-      );
-      setConfigs((configs: Config[]) =>
-        configs.filter(({ model }) => model !== "database"),
-      );
-    } catch (e) {
-      setConfigs(originalConfigs);
-      throw e;
-    }
-  }, [configs, setConfigs, databaseIds]);
-
   const {
     hasVerticalScrollbar: formPanelHasVerticalScrollbar,
     ref: formPanelRef,
@@ -265,6 +209,22 @@ const StrategyEditorForDatabases_Base = ({
   const error = databasesResult.error || configsResult.error;
   const loading = databasesResult.isLoading || configsResult.loading;
 
+  const {
+    handleSubmit: resetAllToDefault,
+    versionNumber: resetFormVersionNumber,
+  } = useResetToDefaultForm({
+    configs,
+    setConfigs,
+    databaseIds,
+    isFormVisible: showStrategyForm,
+  });
+
+  const rootConfig = findWhere(configs, { model_id: rootId });
+  const rootConfigLabel =
+    (rootConfig?.strategy.type
+      ? Strategies[rootConfig?.strategy.type].shortLabel
+      : null) ?? "default";
+
   if (error || loading) {
     return showSpinner ? (
       <LoadingAndErrorWrapper error={error} loading={loading} />
@@ -272,13 +232,6 @@ const StrategyEditorForDatabases_Base = ({
       <></>
     );
   }
-
-  const rootConfig = findWhere(configs, { model_id: rootId });
-
-  const rootConfigLabel =
-    (rootConfig?.strategy.type
-      ? Strategies[rootConfig?.strategy.type].shortLabel
-      : null) ?? "default";
 
   return (
     <TabWrapper role="region" aria-label={t`Data caching settings`}>
@@ -288,6 +241,7 @@ const StrategyEditorForDatabases_Base = ({
             {t`Cache the results of queries to have them display instantly. Here you can choose when cached results should be invalidated.`}
             {canOverrideRootStrategy ? (
               <>
+                &nbsp;
                 {t`You can set up one rule for all your databases, or apply more specific settings to each database.`}
                 <Title
                   order={4}

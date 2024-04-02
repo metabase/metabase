@@ -1,5 +1,6 @@
 import type { FormikConfig, FormikValues } from "formik";
 import { Formik } from "formik";
+import { useCallback } from "react";
 import type { AnySchema } from "yup";
 
 import type { FormStatus } from "../../contexts";
@@ -24,8 +25,10 @@ export function FormProvider<T extends FormikValues, C = unknown>({
     validationSchema,
     validationContext,
   });
-  const setStatus = (status: FormStatus) =>
-    setState(state => ({ ...state, status }));
+  const setStatus = useCallback(
+    (status: FormStatus) => setState(state => ({ ...state, status })),
+    [setState],
+  );
 
   return (
     <FormContext.Provider value={{ ...state, setStatus }}>
