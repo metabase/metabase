@@ -228,9 +228,7 @@ const StrategyEditorForDatabases_Base = ({
   if (error || loading) {
     return showSpinner ? (
       <LoadingAndErrorWrapper error={error} loading={loading} />
-    ) : (
-      <></>
-    );
+    ) : null;
   }
 
   return (
