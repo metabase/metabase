@@ -54,6 +54,15 @@ export function runNativeQuery({ wait = true } = {}) {
   cy.icon("play").should("not.exist");
 }
 
+export function focusNativeEditor() {
+  return cy
+    .findByTestId("native-query-editor")
+    .should("be.visible")
+    .should("have.class", "ace_editor")
+    .click()
+    .should("have.class", "ace_focus");
+}
+
 /**
  * Intercepts a request and returns resolve function that allows
  * the request to continue
