@@ -617,6 +617,19 @@
         (set-database-permission! group-or-id db-or-id :perms/create-queries :no)
         (set-database-permission! group-or-id db-or-id :perms/download-results :no)))))
 
+(defn- lowest-permission-level-in-any-database
+  "Given a group and a permission type, returns the lowest permission level for that group in any database, at the DB or table-level.
+  This is used to determine the default permission level for the group when a new database is added."
+  [group-id perm-type]
+  (let [lowest-to-highest-values (-> Permissions perm-type :values reverse)]
+    (first (filter
+            (fn [value]
+              (t2/exists? :model/DataPermissions
+                          :perm_type perm-type
+                          :perm_value value
+                          :group_id group-id))
+            lowest-to-highest-values))))
+
 (defn set-new-database-permissions!
   "Sets permissions for a newly-added database to their appropriate values for a single group. For certain permission
   types, the value computed based on the existing permissions the group has for other databases."
@@ -632,39 +645,9 @@
                                                 :group_id group-id))
                               :blocked
                               :unrestricted)
-        create-queries-level (cond
-                              (t2/exists? :model/DataPermissions
-                                          :perm_type :perms/create-queries
-                                          :perm_value :no
-                                          :group_id group-id)
-                              :no
-
-                              (t2/exists? :model/DataPermissions
-                                          :perm_type :perms/create-queries
-                                          :perm_value :query-builder
-                                          :group_id group-id)
-                              :query-builder
-
-                              :else
-                              :query-builder-and-native)
-        download-level        (cond
-                               (= view-data-level :blocked)
-                               :no
-
-                               (t2/exists? :model/DataPermissions
-                                           :perm_type :perms/download-results
-                                           :perm_value :no
-                                           :group_id group-id)
-                               :no
-
-                               (t2/exists? :model/DataPermissions
-                                           :perm_type :perms/download-results
-                                           :perm_value :ten-thousand-rows
-                                           :group_id group-id)
-                               :ten-thousand-rows
-
-                               :else
-                               :one-million-rows)]
+        create-queries-level (lowest-permission-level-in-any-database group-id :perms/create-queries)
+        download-level        (if (= view-data-level :blocked) :no
+                                  (lowest-permission-level-in-any-database group-id :perms/download-results))]
     (set-database-permission! group-or-id db-or-id :perms/view-data view-data-level)
     (set-database-permission! group-or-id db-or-id :perms/create-queries create-queries-level)
     (set-database-permission! group-or-id db-or-id :perms/download-results download-level)
