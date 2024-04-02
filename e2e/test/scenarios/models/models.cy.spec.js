@@ -480,10 +480,10 @@ describe("scenarios > models", () => {
       "{leftarrow}{leftarrow}{backspace}{backspace}#1-orders",
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
+    cy.findByText("Save").click({ force: true });
 
     cy.findByTestId("save-question-modal").within(modal => {
-      cy.findByText("Save").click();
+      cy.findByText("Save").click({ force: true });
     });
 
     turnIntoModel();
