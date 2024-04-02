@@ -1,6 +1,6 @@
 import type { FormikConfig, FormikValues } from "formik";
 import { Formik } from "formik";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import type { AnySchema } from "yup";
 
 import type { FormStatus } from "../../contexts";
@@ -29,9 +29,10 @@ export function FormProvider<T extends FormikValues, C = unknown>({
     (status: FormStatus) => setState(state => ({ ...state, status })),
     [setState],
   );
+  const value = useMemo(() => ({ ...state, setStatus }), [state, setStatus]);
 
   return (
-    <FormContext.Provider value={{ ...state, setStatus }}>
+    <FormContext.Provider value={value}>
       <Formik<T>
         initialValues={initialValues}
         initialErrors={initialErrors}
