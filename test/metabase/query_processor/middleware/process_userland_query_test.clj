@@ -114,7 +114,7 @@
              #"Oops!"
              (process-userland-query query))))
       (is (=? {:hash         "58af781ea2ba252ce3131462bdc7c54bc57538ed965d55beec62928ce8b32635"
-               :database_id  (mt/id)
+               :database_id  2
                :error        "Oops!"
                :result_rows  0
                :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
@@ -140,7 +140,7 @@
 (deftest ^:parallel viewlog-call-test
   (testing "no viewlog event with nil card id"
     (binding [*viewlog-call-count* (atom 0)]
-      (process-userland-query {:type :query, :query? true})
+      (process-userland-query {:database 2, :type :query, :query {:source-table 26}})
       (is (zero? @*viewlog-call-count*)))))
 
 (deftest cancel-test
