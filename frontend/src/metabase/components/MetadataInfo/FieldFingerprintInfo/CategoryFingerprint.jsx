@@ -61,7 +61,7 @@ export function CategoryFingerprint({
   const isMissingFieldValues = fieldValues.length === 0;
   const shouldFetchFieldValues = hasListValues && isMissingFieldValues;
 
-  const distinctCount = field.fingerprint?.global?.["distinct-count"];
+  const distinctCount = field?.fingerprint?.global?.["distinct-count"];
   const formattedDistinctCount = formatNumber(distinctCount);
 
   const [isLoading, setIsLoading] = useState(shouldFetchFieldValues);
