@@ -54,6 +54,18 @@ export function Join({
     onJoinChange(newJoin);
   };
 
+  const handleTableChange = (newTable: Lib.Joinable) => {
+    const newConditions = Lib.suggestedJoinConditions(
+      query,
+      stageIndex,
+      newTable,
+    );
+    if (newConditions.length) {
+      const newJoin = Lib.joinClause(newTable, newConditions);
+      onJoinChange(newJoin);
+    }
+  };
+
   const handleAddCondition = (newCondition: Lib.JoinCondition) => {
     const newConditions = [...conditions, newCondition];
     const newJoin = Lib.withJoinConditions(join, newConditions);
@@ -107,6 +119,7 @@ export function Join({
                 onChange={onQueryChange}
               />
             }
+            onChange={handleTableChange}
           />
         </Flex>
       </JoinCell>

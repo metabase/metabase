@@ -58,7 +58,7 @@ export function JoinTablePicker({
 
   const tableId = pickerInfo?.tableId ?? pickerInfo?.cardId;
   const tableFilter = (table: Table) => !tableId || table.db_id === databaseId;
-  const isDisabled = table != null || isReadOnly;
+  const isDisabled = isReadOnly;
 
   const handleTableChange = async (tableId: TableId) => {
     await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
