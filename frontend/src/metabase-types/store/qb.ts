@@ -34,7 +34,7 @@ export interface QueryBuilderUIControls {
   previousQueryBuilderMode: boolean;
   snippetCollectionId: number | null;
   datasetEditorTab: DatasetEditorTab;
-  isNativePreviewSidebarOpen: boolean;
+  isNativePreviewSidebarOpen?: boolean;
 }
 
 export interface QueryBuilderLoadingControls {
