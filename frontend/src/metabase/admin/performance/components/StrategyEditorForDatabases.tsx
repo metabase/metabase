@@ -1,5 +1,5 @@
 import type { Location } from "history";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { InjectedRouter, Route } from "react-router";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
@@ -19,6 +19,7 @@ import { Box, Stack, Title } from "metabase/ui";
 
 import { rootId } from "../constants";
 import { useDelayedLoadingSpinner } from "../hooks/useDelayedLoadingSpinner";
+import { useHasVerticalScrollbar } from "../hooks/useHasVerticalScrollbar";
 import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
 import type {
   CacheConfigAPIResponse,
@@ -89,8 +90,8 @@ const StrategyEditorForDatabases_Base = ({
   const shouldShowResetButton =
     rootStrategyOverriddenOnce || rootStrategyRecentlyOverridden;
 
-  // When reset button is hidden, create a new version of the form to avoid carrying old context over
   useEffect(() => {
+    // Avoid stale context in the 'reset all to default' form
     if (!rootStrategyRecentlyOverridden) {
       setResetFormVersionNumber(n => n + 1);
     }
@@ -252,24 +253,10 @@ const StrategyEditorForDatabases_Base = ({
     }
   }, [configs, setConfigs, databaseIds]);
 
-  const formPanelRef = useRef<HTMLDivElement>(null);
-  const [formPanelHasVerticalScrollbar, setFormPanelHasVerticalScrollbar] =
-    useState(false);
-
-  useEffect(() => {
-    const formPanel = formPanelRef.current;
-    if (!formPanel) {
-      return;
-    }
-    setFormPanelHasVerticalScrollbar(
-      formPanel.scrollHeight > formPanel.clientHeight,
-    );
-  }, [
-    formPanelRef.current?.scrollHeight,
-    formPanelRef.current?.clientHeight,
-    formPanelRef,
-    setFormPanelHasVerticalScrollbar,
-  ]);
+  const {
+    hasVerticalScrollbar: formPanelHasVerticalScrollbar,
+    ref: formPanelRef,
+  } = useHasVerticalScrollbar();
 
   const showSpinner = useDelayedLoadingSpinner();
   const error = databasesResult.error || configsResult.error;
