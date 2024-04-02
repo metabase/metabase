@@ -91,7 +91,7 @@ Metabase's reference documentation.
 - [Sharing answers](./questions/sharing/answers.md)
 - [Alerts](./questions/sharing/alerts.md)
 - [Public sharing](./questions/sharing/public-links.md)
-- [Exporting data](./questions/sharing/exporting-data.md)
+- [Exporting data](./questions/sharing/exporting-results.md)
 
 ### Dashboards
 

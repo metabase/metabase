@@ -1,8 +1,8 @@
 ---
-title: Exporting data
+title: Exporting results
 ---
 
-# Exporting data
+# Exporting results
 
 You can export the results of a question or dashboard.
 

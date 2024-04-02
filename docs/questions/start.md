@@ -60,6 +60,6 @@ Get results via email or Slack, either on a schedule, or only when something int
 
 Create links or embeds for the good people of the internet.
 
-### [Exporting](./sharing/exporting-data.md)
+### [Exporting](./sharing/exporting-results.md)
 
 The different ways you can export the results of questions and dashboards.
