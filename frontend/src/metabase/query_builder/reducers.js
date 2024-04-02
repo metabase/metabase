@@ -90,6 +90,7 @@ const DEFAULT_UI_CONTROLS = {
   previousQueryBuilderMode: false,
   snippetCollectionId: null,
   datasetEditorTab: "query", // "query" / "metadata"
+  isNativePreviewSidebarOpen: false,
 };
 
 const DEFAULT_LOADING_CONTROLS = {
