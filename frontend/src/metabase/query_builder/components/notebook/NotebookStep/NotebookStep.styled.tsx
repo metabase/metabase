@@ -23,8 +23,8 @@ export interface StepHeaderProps {
 }
 
 export const StepContent = styled.div`
-  max-width: 60rem;
   width: ${getPercentage(11 / 12)};
+  max-width: 75rem;
 `;
 
 export const StepHeader = styled(StepContent)`
