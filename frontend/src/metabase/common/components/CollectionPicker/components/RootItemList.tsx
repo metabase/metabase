@@ -98,7 +98,6 @@ export const RootItemList = ({
         here: personalCollectionItems?.length ? ["collection"] : [],
         model: "collection",
         can_write: true,
-        location: personalCollection.location || "/",
       });
 
       if (isAdmin) {

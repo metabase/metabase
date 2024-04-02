@@ -107,3 +107,20 @@ export const getParentCollectionId = (
   const parentCollectionId = location?.split("/").filter(Boolean).reverse()[0];
   return parentCollectionId ? Number(parentCollectionId) : "root";
 };
+
+export const getPathLevelForItem = (
+  item: CollectionPickerItem,
+  path: PickerState<CollectionPickerItem, SearchListQuery>,
+  userPersonalCollectionId?: CollectionId,
+): number => {
+  if (item.id === userPersonalCollectionId) {
+    return 0;
+  }
+
+  const parentCollectionId = item?.collection_id || "root";
+
+  // set selected item at the correct level
+  return path.findIndex(
+    level => String(level?.query?.collection) === String(parentCollectionId),
+  );
+};

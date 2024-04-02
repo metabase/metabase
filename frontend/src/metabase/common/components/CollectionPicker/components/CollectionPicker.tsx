@@ -19,6 +19,7 @@ import {
   generateKey,
   getCollectionIdPath,
   getParentCollectionId,
+  getPathLevelForItem,
   getStateFromIdPath,
   isFolder,
 } from "../utils";
@@ -89,12 +90,10 @@ export const CollectionPickerInner = (
 
   const handleItemSelect = useCallback(
     (item: CollectionPickerItem) => {
-      // set selected item at the correct level
-      const parentCollectionId = item?.collection_id || "root";
-
-      const pathLevel = path.findIndex(
-        level =>
-          String(level?.query?.collection) === String(parentCollectionId),
+      const pathLevel = getPathLevelForItem(
+        item,
+        path,
+        userPersonalCollectionId,
       );
 
       const newPath = path.slice(0, pathLevel + 1);
@@ -103,7 +102,7 @@ export const CollectionPickerInner = (
       setPath(newPath);
       onItemSelect(item);
     },
-    [path, onItemSelect, setPath],
+    [path, onItemSelect, setPath, userPersonalCollectionId],
   );
 
   const handleNewCollection = useCallback(
@@ -171,8 +170,6 @@ export const CollectionPickerInner = (
           // start with the current item selected if we can
           onItemSelect({
             ...currentCollection,
-            here: ["collection"],
-            below: ["collection"],
             model: "collection",
           });
         }
