@@ -4,7 +4,7 @@ import _ from "underscore";
 import Questions from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
-import { Button } from "metabase/ui";
+import { Box, Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import {
@@ -13,7 +13,6 @@ import {
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { State } from "metabase-types/store";
 
-import N from "./Notebook.module.css";
 import { NotebookSteps } from "./NotebookSteps";
 
 interface NotebookOwnProps {
@@ -82,14 +81,14 @@ const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
   };
 
   return (
-    <div className={N.notebookRoot}>
+    <Box pos="relative" p={{ base: "1rem", sm: "2rem" }}>
       <NotebookSteps updateQuestion={handleUpdateQuestion} {...props} />
       {hasVisualizeButton && isRunnable && (
         <Button variant="filled" style={{ minWidth: 220 }} onClick={visualize}>
           {t`Visualize`}
         </Button>
       )}
-    </div>
+    </Box>
   );
 };
 

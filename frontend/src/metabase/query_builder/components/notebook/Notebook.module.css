@@ -1,8 +1,0 @@
-.notebookRoot {
-  position: relative;
-  padding: 1rem;
-
-  @media screen and (--breakpoint-min-sm) {
-    padding: 2rem;
-  }
-}
