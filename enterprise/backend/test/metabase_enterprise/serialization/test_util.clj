@@ -72,7 +72,13 @@
         data-source       (mdb.data-source/raw-connection-string->DataSource connection-string)]
     ;; DB should stay open as long as `conn` is held open.
     (with-open [_conn (.getConnection data-source)]
-      (with-db data-source (mdb/setup-db!))
+      (with-db data-source
+        (mdb/setup-db!)
+        ;; Delete existing data that was initialized during
+        ;; setup that pollutes the test environment, such as sample content.
+        (t2/delete! :model/Collection)
+        (t2/delete! :model/Dashboard)
+        (t2/delete! :model/Database))
       (f data-source))))
 
 (defn do-with-dbs

@@ -270,4 +270,9 @@
      (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-group-name)
                    perms-group/admin     (#'perms-group/magic-group perms-group/admin-group-name)]
        (mdb/setup-db!)
+       ;; Delete existing data that was initialized during
+       ;; setup that pollutes the test environment, such as sample content.
+       (t2/delete! :model/Collection)
+       (t2/delete! :model/Dashboard)
+       (t2/delete! :model/Database)
        ~@body)))
