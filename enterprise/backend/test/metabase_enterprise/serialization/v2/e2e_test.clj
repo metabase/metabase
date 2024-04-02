@@ -222,7 +222,7 @@
                :pulse-channel-recipient (many-random-fks 40 {} {:pulse_channel_id [:pulse-channel 30]
                                                                 :user_id          [:u 100]})}))
 
-          (is (= 101 (count (t2/select-fn-set :email 'User))))
+          (is (= 101 (count (t2/select-fn-set :email 'User)))) ; +1 for the internal user
 
           (testing "extraction"
             (reset! extraction (serdes/with-cache (into [] (extract/extract {}))))
