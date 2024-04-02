@@ -41,7 +41,7 @@ export const PaletteResults = () => {
     <Flex align="stretch" direction="column" p="0.75rem 0">
       <KBarResults
         items={processedResults}
-        maxHeight={500}
+        maxHeight={530}
         onRender={({
           item,
           active,

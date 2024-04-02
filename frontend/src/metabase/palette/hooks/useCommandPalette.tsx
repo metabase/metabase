@@ -169,8 +169,8 @@ export const useCommandPalette = ({
   const adminActions = useMemo<KBarAction[]>(() => {
     return adminPaths.map(adminPath => ({
       id: `admin-page-${adminPath.key}`,
-      name: `Admin - ${adminPath.name}`,
-      icon: "link",
+      name: `${adminPath.name}`,
+      icon: "gear",
       perform: () => dispatch(push(adminPath.path)),
       section: "admin",
     }));
@@ -188,7 +188,7 @@ export const useCommandPalette = ({
       .map(([slug, section]) => ({
         id: `admin-settings-${slug}`,
         name: `Settings - ${section.name}`,
-        icon: "link",
+        icon: "gear",
         perform: () => dispatch(push(`/admin/settings/${slug}`)),
         section: "admin",
       }));

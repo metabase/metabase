@@ -47,7 +47,7 @@ const PaletteContainer = () => {
       <Center>
         <Card
           ref={ref}
-          w="60vw"
+          w="640px"
           mt="10vh"
           p="0"
           style={{
