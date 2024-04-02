@@ -127,11 +127,6 @@ const validTabIds = new Set(Object.values(TabId).map(String))
 export const isValidTabId = (tab: unknown): tab is TabId =>
   typeof tab === "string" && validTabIds.has(tab);
 
-export type ObjectWithType = {
-  type: string;
-  [key: string]: string;
-};
-
 export type SafelyUpdateTargetId = (
   newTargetId: number | null,
   isFormDirty: boolean,
