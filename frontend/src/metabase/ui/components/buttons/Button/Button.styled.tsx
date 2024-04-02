@@ -132,6 +132,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
         const primaryColor = getPrimaryColor(theme, color);
         const hoverColor = getHoverColor(theme, primaryColor);
 
+        // FIXME: Somehow the primary color is getting used for the background color
         return {
           root: {
             color: primaryColor,
