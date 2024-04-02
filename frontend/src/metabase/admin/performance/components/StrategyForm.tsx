@@ -51,7 +51,7 @@ export const StrategyForm = ({
       initialValues={savedStrategy ?? defaultStrategy}
       validationSchema={strategyValidationSchema}
       onSubmit={saveStrategy}
-      enableReinitialize={true}
+      enableReinitialize
     >
       <StrategyFormBody targetId={targetId} setIsDirty={setIsDirty} />
     </FormProvider>
