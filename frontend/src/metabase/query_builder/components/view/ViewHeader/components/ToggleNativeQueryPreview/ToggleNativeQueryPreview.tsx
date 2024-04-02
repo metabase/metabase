@@ -28,9 +28,7 @@ export const ToggleNativeQueryPreview = ({
   question,
 }: ToggleNativeQueryPreviewProps): JSX.Element => {
   const dispatch = useDispatch();
-  const {
-    isNativePreviewSidebarOpen,
-  }: { isNativePreviewSidebarOpen?: boolean } = useSelector(getUiControls);
+  const { isNativePreviewSidebarOpen } = useSelector(getUiControls);
 
   const engineType = getEngineNativeType(question.database()?.engine);
   const tooltip = isNativePreviewSidebarOpen

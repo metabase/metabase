@@ -832,5 +832,10 @@ describe("QB Actions > initializeQB", () => {
       });
       expect(result.uiControls.isShowingNewbModal).toBeFalsy();
     });
+
+    it("initializes `isNativePreviewSidebarOpen` value as false when it is undefined", async () => {
+      const { result } = await setupOrdersTable();
+      expect(result.uiControls.isNativePreviewSidebarOpen).toBe(false);
+    });
   });
 });

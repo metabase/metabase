@@ -391,6 +391,9 @@ async function handleQBInit(
       }),
     );
   }
+
+  // We need this to be boolean even if it's undefined initially
+  uiControls.isNativePreviewSidebarOpen ??= false;
 }
 
 export const initializeQB =
