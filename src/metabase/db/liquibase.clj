@@ -25,7 +25,7 @@
    (liquibase.changelog.visitor AbstractChangeExecListener ChangeExecListener UpdateVisitor)
    (liquibase.database Database DatabaseFactory)
    (liquibase.database.jvm JdbcConnection)
-   (liquibase.exception LockException)
+   (liquibase.exception LockException MigrationFailedException)
    (liquibase.lockservice LockService LockServiceFactory)
    (liquibase.resource ClassLoaderResourceAccessor)))
 
@@ -293,7 +293,16 @@
             (log/info (trs "Running {0} migrations ..." unrun-migrations-count))
             (doseq [^ChangeSet change to-run-migrations]
               (log/tracef "To run migration %s" (.getId change)))
-            (.update liquibase contexts)
+            (try
+              (.update liquibase contexts)
+              (catch Exception e
+                (when (instance? MigrationFailedException (ex-cause (ex-cause e)))
+                  (when-let [next-migration ^ChangeSet (first (unrun-migrations data-source))]
+                    ;; The id will have already been printed above the preceding stacktrace, but repeat next to comment.
+                    (log/infof "Migration id: %s" (.getId next-migration))
+                    (log/infof "Migration comment: %s" (.getComments next-migration))))
+                (throw e)))
+
             (log/info (trs "Migration complete in {0}" (u/format-milliseconds (- (System/currentTimeMillis) start-time)))))
           (log/info
            (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance."))))))
@@ -342,8 +351,10 @@
                                (when (instance? ChangeSet change-set)
                                  (log/info (format "Start executing migration with id %s" (.getId change-set)))))
 
-                             (runFailed [^ChangeSet _change-set _database-change-log _database ^Exception e]
-                               (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e))))
+                             (runFailed [^ChangeSet change-set _database-change-log _database ^Exception e]
+                               (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e)))
+                               (log/infof "Migration id: %s" (.getId change-set))
+                               (log/infof "Migration comment: %s" (.getComments change-set)))
 
                              (ran [change-set _database-change-log _database ^ChangeSet$ExecType exec-type]
                                (when (instance? ChangeSet change-set)
