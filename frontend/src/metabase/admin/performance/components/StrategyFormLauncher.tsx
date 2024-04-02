@@ -43,7 +43,7 @@ export const StrategyFormLauncher = ({
     isBeingEdited || hovered
       ? "filled"
       : inheritsRootStrategy || forRoot
-      ? undefined
+      ? "white" // FIXME: Does this variant exist
       : "outline";
   const shortStrategyLabel = getShortStrategyLabel(
     inheritsRootStrategy ? rootStrategy : strategy,

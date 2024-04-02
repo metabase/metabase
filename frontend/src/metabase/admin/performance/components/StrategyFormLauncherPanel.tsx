@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from "react";
+import { useMemo, type Dispatch, type SetStateAction } from "react";
 import { t } from "ttag";
 
 import { FormProvider } from "metabase/forms";
@@ -31,7 +31,7 @@ export const StrategyFormLauncherPanel = ({
   isStrategyFormDirty: boolean;
   shouldShowResetButton: boolean;
 }) => {
-  const databaseIds = databases.map(db => db.id);
+  const databaseIds = useMemo(() => databases.map(db => db.id), [databases]);
 
   const {
     handleSubmit: resetAllToDefault,
