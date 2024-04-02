@@ -7,7 +7,7 @@ import { Box, Flex, Group, Icon, Text } from "metabase/ui";
 
 import { ResetAllToDefaultFormSubmitButton } from "./StrategyEditorForDatabases.styled";
 
-export const ResetAllToDefaultButtonContainer = ({
+export const ResetButtonContainer = ({
   rootConfigLabel,
 }: {
   rootConfigLabel: string;

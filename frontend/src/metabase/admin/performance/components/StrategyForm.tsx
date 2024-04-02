@@ -1,6 +1,6 @@
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -64,15 +64,21 @@ const StrategyFormBody = ({
 }) => {
   const { dirty, values, setFieldValue } = useFormikContext<Strategy>();
   const { setStatus } = useFormContext();
+  const [wasDirty, setWasDirty] = useState(false);
 
   const selectedStrategyType = values.type;
 
   useEffect(() => {
     setIsDirty(dirty);
-    if (dirty) {
+  }, [dirty, setIsDirty]);
+
+  useEffect(() => {
+    // When form becomes dirty, reset form status to idle
+    setWasDirty(dirty);
+    if (dirty && !wasDirty) {
       setStatus("idle");
     }
-  }, [dirty, setIsDirty, setStatus]);
+  }, [dirty, wasDirty, setIsDirty, setStatus]);
 
   useEffect(() => {
     if (selectedStrategyType === "duration") {

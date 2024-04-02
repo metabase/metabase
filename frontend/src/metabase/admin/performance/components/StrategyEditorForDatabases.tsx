@@ -30,7 +30,7 @@ import type {
 } from "../types";
 import { DurationUnit, Strategies } from "../types";
 
-import { ResetAllToDefaultButtonContainer } from "./ResetAllToDefaultButton";
+import { ResetButtonContainer } from "./ResetButtonContainer";
 import { Panel, TabWrapper } from "./StrategyEditorForDatabases.styled";
 import { StrategyForm } from "./StrategyForm";
 import { StrategyFormLauncher } from "./StrategyFormLauncher";
@@ -341,9 +341,7 @@ const StrategyEditorForDatabases_Base = ({
               key={resetFormVersionNumber} // To avoid using stale context
             >
               {shouldShowResetButton && (
-                <ResetAllToDefaultButtonContainer
-                  rootConfigLabel={rootConfigLabel}
-                />
+                <ResetButtonContainer rootConfigLabel={rootConfigLabel} />
               )}
             </FormProvider>
           </Panel>
