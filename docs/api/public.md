@@ -112,6 +112,8 @@ Fetch a publicly-accessible Card and return query results in the specified forma
 
 -  **`parameters`** nullable value must be a valid JSON string.
 
+-  **`format_rows`** nullable boolean.
+
 ## `GET /api/public/dashboard/:uuid`
 
 Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled.
