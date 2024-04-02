@@ -157,8 +157,7 @@
                                                   (qp.pipeline/*result* rows))]
             (future
               (let [futur (future
-                            (process-userland-query
-                             {:type :query}))]
+                            (process-userland-query (mt/mbql-query venues)))]
                 (is (not= ::done
                           @status))
                 (Thread/sleep 100)
