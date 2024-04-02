@@ -8,7 +8,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 
 import { rootId } from "../constants";
 import { useResetToDefaultForm } from "../hooks/useResetToDefault";
-import type { Config, SafelyUpdateTargetId } from "../types";
+import type { Config, UpdateTargetId } from "../types";
 
 import { ResetButtonContainer } from "./ResetButtonContainer";
 import { Panel } from "./StrategyEditorForDatabases.styled";
@@ -18,7 +18,7 @@ export const StrategyFormLauncherPanel = ({
   configs,
   setConfigs,
   targetId,
-  safelyUpdateTargetId,
+  updateTargetId,
   databases,
   isStrategyFormDirty,
   shouldShowResetButton,
@@ -26,7 +26,7 @@ export const StrategyFormLauncherPanel = ({
   configs: Config[];
   setConfigs: Dispatch<SetStateAction<Config[]>>;
   targetId: number | null;
-  safelyUpdateTargetId: SafelyUpdateTargetId;
+  updateTargetId: UpdateTargetId;
   databases: Database[];
   isStrategyFormDirty: boolean;
   shouldShowResetButton: boolean;
@@ -51,7 +51,7 @@ export const StrategyFormLauncherPanel = ({
           title={t`Default policy`}
           configs={configs}
           targetId={targetId}
-          safelyUpdateTargetId={safelyUpdateTargetId}
+          updateTargetId={updateTargetId}
           isFormDirty={isStrategyFormDirty}
         />
       </Box>
@@ -62,7 +62,7 @@ export const StrategyFormLauncherPanel = ({
             title={db.name}
             configs={configs}
             targetId={targetId}
-            safelyUpdateTargetId={safelyUpdateTargetId}
+            updateTargetId={updateTargetId}
             isFormDirty={isStrategyFormDirty}
             key={`database_${db.id}`}
           />

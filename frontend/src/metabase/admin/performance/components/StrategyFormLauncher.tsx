@@ -5,7 +5,7 @@ import { color } from "metabase/lib/colors";
 import { FixedSizeIcon, Flex, Title, Tooltip, useHover } from "metabase/ui";
 
 import { rootId } from "../constants";
-import type { Config, SafelyUpdateTargetId } from "../types";
+import type { Config, UpdateTargetId } from "../types";
 import { getShortStrategyLabel } from "../types";
 
 import { PolicyToken } from "./StrategyEditorForDatabases.styled";
@@ -14,14 +14,14 @@ export const StrategyFormLauncher = ({
   forId,
   targetId,
   title,
-  safelyUpdateTargetId,
+  updateTargetId,
   configs,
   isFormDirty,
 }: {
   forId: number;
   targetId: number | null;
   title: string;
-  safelyUpdateTargetId: SafelyUpdateTargetId;
+  updateTargetId: UpdateTargetId;
   configs: Config[];
   isFormDirty: boolean;
 }) => {
@@ -82,7 +82,7 @@ export const StrategyFormLauncher = ({
         <PolicyToken
           onClick={() => {
             if (targetId !== forId) {
-              safelyUpdateTargetId(forId, isFormDirty);
+              updateTargetId(forId, isFormDirty);
             }
           }}
           aria-label={ariaLabel}

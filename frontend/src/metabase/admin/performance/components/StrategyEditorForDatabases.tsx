@@ -14,7 +14,7 @@ import { useCacheConfigs } from "../hooks/useCacheConfigs";
 import { useConfirmOnRouteLeave } from "../hooks/useConfirmOnRouteLeave";
 import { useDelayedLoadingSpinner } from "../hooks/useDelayedLoadingSpinner";
 import { useHasVerticalScrollbar } from "../hooks/useHasVerticalScrollbar";
-import type { Config, SafelyUpdateTargetId, Strategy } from "../types";
+import type { Config, UpdateTargetId, Strategy } from "../types";
 import { DurationUnit, getFieldsForStrategyType, Strategies } from "../types";
 
 import { Panel, TabWrapper } from "./StrategyEditorForDatabases.styled";
@@ -87,10 +87,7 @@ const StrategyEditorForDatabases_Base = ({
   });
 
   /** Update the targetId (the id of the currently edited model) but confirm if the form is unsaved */
-  const safelyUpdateTargetId: SafelyUpdateTargetId = (
-    newTargetId,
-    isFormDirty,
-  ) => {
+  const updateTargetId: UpdateTargetId = (newTargetId, isFormDirty) => {
     if (targetId === newTargetId) {
       return;
     }
@@ -177,7 +174,7 @@ const StrategyEditorForDatabases_Base = ({
                 {t`You can set up one rule for all your databases, or apply more specific settings to each database.`}
                 <Title
                   order={4}
-                >{t`Pick the policy for when cached query results should be invalidated.`}</Title>{" "}
+                >{t`Pick the policy for when cached query results should be invalidated.`}</Title>
               </>
             ) : null}
           </Stack>
@@ -199,7 +196,7 @@ const StrategyEditorForDatabases_Base = ({
             configs={configs}
             setConfigs={setConfigs}
             targetId={targetId}
-            safelyUpdateTargetId={safelyUpdateTargetId}
+            safelyUpdateTargetId={updateTargetId}
             databases={databases}
             isStrategyFormDirty={isStrategyFormDirty}
             shouldShowResetButton={shouldShowResetButton}
