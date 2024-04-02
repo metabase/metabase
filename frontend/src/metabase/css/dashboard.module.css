@@ -75,7 +75,7 @@
   pointer-events: none;
 }
 
-.DashEditing :global(.PinMap) {
+.DashEditing .PinMap {
   /* allow map to pan. need to stopPropagation in PinMap to prevent weird dragging interaction */
   pointer-events: all;
 }
