@@ -243,7 +243,7 @@ export default class PinMap extends Component {
                 ButtonsS.ButtonSmall,
                 CS.mb1,
                 {
-                  "PinMapUpdateButton--disabled": disableUpdateButton,
+                  [DashboardS.PinMapUpdateButtonDisabled]: disableUpdateButton,
                 },
               )}
               onClick={this.updateSettings}

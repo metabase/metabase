@@ -80,7 +80,7 @@
   pointer-events: all;
 }
 
-:global(.PinMapUpdateButton--disabled) {
+.PinMapUpdateButtonDisabled {
   pointer-events: none;
   color: var(--color-text-light);
 }
