@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode, Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
@@ -8,9 +8,7 @@ import { Button } from "metabase/ui";
 import type { FormStatus } from "../../contexts";
 import { useFormSubmitButton } from "../../hooks";
 
-export interface FormSubmitButtonProps
-  extends Omit<ButtonProps, "children">,
-    Omit<HTMLAttributes<HTMLButtonElement>, "color"> {
+export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
   label?: ReactNode;
   activeLabel?: ReactNode;
   successLabel?: ReactNode;
