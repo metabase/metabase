@@ -20,9 +20,11 @@ if (hasPremiumFeature("cache_granular_controls")) {
     validate: validateCacheTTL,
     normalize: normalizeCacheTTL,
   };
+
   PLUGIN_FORM_WIDGETS.dashboardCacheTTL = CacheTTLField;
   PLUGIN_FORM_WIDGETS.databaseCacheTTL = DatabaseCacheTTLField;
   PLUGIN_FORM_WIDGETS.questionCacheTTL = QuestionCacheTTLField;
+
   PLUGIN_CACHING.getQuestionsImplicitCacheTTL = getQuestionsImplicitCacheTTL;
   PLUGIN_CACHING.DatabaseCacheTimeField = DatabaseCacheTimeField;
   PLUGIN_CACHING.DashboardCacheSection = DashboardCacheSection;
