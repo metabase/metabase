@@ -53,14 +53,17 @@
                                                                       [:= :t.active true]
                                                                       [:= :t.database_require_filter true]
                                                                       [:in :t.id table-ids]]}))
-        filter-clause          (when (seq required-filter-fields)
-                                 (into [:and] (map partition-field->filter-form required-filter-fields)))]
-    (if filter-clause
-      (update query :filter (fn [existing-filter]
-                              (if (some? existing-filter)
-                                [:and existing-filter filter-clause]
-                                filter-clause)))
-      query)))
+        update-query-filter-fn (fn [existing-filter new-filter]
+                                (if (some? existing-filter)
+                                  [:and existing-filter new-filter]
+                                  new-filter))]
+    (case (count required-filter-fields)
+      0
+      query
+      1
+      (update query :filter update-query-filter-fn (partition-field->filter-form (first required-filter-fields)))
+      ;; > 1
+      (update query :filter update-query-filter-fn (into [:and] (map partition-field->filter-form required-filter-fields))))))
 
 (defn- field-mbql-query
   [table mbql-query]

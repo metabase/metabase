@@ -74,7 +74,7 @@
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions]))))))))))
 
-(deftest mbql-on-table-requires-filter-will-include-the-filter-test
+(deftest ^:parallel mbql-on-table-requires-filter-will-include-the-filter-test
   (mt/with-temp
     [:model/Database db     {}
      :model/Table    table  {:database_require_filter true :db_id (:id db)}
@@ -89,7 +89,7 @@
       (is (=? [:> [:field (:id field2) {:base-type :type/Integer}] (mt/malli=? int?)]
               (get (#'metadata-queries/field-mbql-query table {}) :filter))))))
 
-(deftest text-field?-test
+(deftest ^:parallel text-field?-test
   (testing "recognizes fields suitable for fingerprinting"
     (doseq [field [{:base_type :type/Text}
                    {:base_type :type/Text :semantic_type :type/State}
@@ -99,3 +99,31 @@
                    {:base_type :type/Text :semantic_type :type/SerializedJSON} ; "legacy" json fields in pg
                    {:base_type :type/Text :semantic_type :type/XML}]]
       (is (not (#'metadata-queries/text-field? field))))))
+
+(deftest ^:parallel add-required-filter-if-needed-test
+  (mt/with-temp
+    [:model/Database db               {:engine :h2}
+     :model/Table    product          {:name "PRODUCT" :db_id (:id db)}
+     :model/Field    _product-id      {:name "ID" :table_id (:id product) :base_type :type/Integer}
+     :model/Field    _product-name    {:name "NAME" :table_id (:id product) :base_type :type/Integer}
+     :model/Table    order            {:name "ORDER" :database_require_filter true :db_id (:id db)}
+     :model/Field    _order-id        {:name "ID" :table_id (:id order) :base_type :type/Integer}
+     :model/Field    order-product-id {:name "PRODUCT_ID" :table_id (:id order) :base_type :type/Integer :database_partitioned true}]
+    (mt/with-db db
+      (mt/$ids
+       (testing "no op for tables that do not require filter"
+         (let [query (:query (mt/mbql-query product))]
+           (is (= query
+                  (metadata-queries/add-required-filter-if-needed query)))))
+       (testing "if the source table requires a filter, add the partitioned filter"
+         (let [query (:query (mt/mbql-query order))]
+           (is (= (assoc query
+                         :filter [:> [:field (:id order-product-id) {:base-type :type/Integer}] -9223372036854775808])
+                  (metadata-queries/add-required-filter-if-needed query)))))
+       (testing "if a joined table require a filter, add the partitioned filter"
+         (let [query (:query (mt/mbql-query product {:joins [{:source-table (:id order)
+                                                              :condition    [:= $order.product_id $product.id]
+                                                              :alias        "Product"}]}))]
+           (is (= (assoc query
+                         :filter [:> [:field (:id order-product-id) {:base-type :type/Integer}] -9223372036854775808])
+                  (metadata-queries/add-required-filter-if-needed query)))))))))
