@@ -1143,11 +1143,6 @@
                                        (mt/id)
                                        (#'upload/table-identifier new-table))))))))))
 
-(defn append-csv-with-defaults!
-  "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden."
-  [& {:as options}]
-  (update-csv-with-defaults! ::upload/append options))
-
 (defn catch-ex-info* [f]
   (try
     (f)
@@ -1158,37 +1153,42 @@
   [& body]
   `(catch-ex-info* (fn [] ~@body)))
 
-(deftest can-append-test
+(deftest can-update-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (testing "Happy path"
-      (is (= {:row-count 2}
-             (append-csv-with-defaults!))))
-    (testing "Even if the uploads database, schema and table prefix are not set, appends succeed"
-      (mt/with-temporary-setting-values [uploads-database-id nil
-                                         uploads-schema-name nil
-                                         uploads-table-prefix nil]
-        (is (some? (append-csv-with-defaults!)))))
-    (testing "Uploads must be enabled"
-      (is (= {:message "Uploads are not enabled."
-              :data    {:status-code 422}}
-             (catch-ex-info (append-csv-with-defaults! :uploads-enabled false)))))
-    (testing "The table must exist"
-      (is (= {:message "Not found."
-              :data    {:status-code 404}}
-             (catch-ex-info (append-csv-with-defaults! :table-id Integer/MAX_VALUE)))))
-    (testing "The table must be an uploaded table"
-      (is (= {:message "The table must be an uploaded table."
-              :data    {:status-code 422}}
-             (catch-ex-info (append-csv-with-defaults! :is-upload false)))))
-    (testing "The CSV file must not be empty"
-      (is (= {:message "The CSV file is missing columns that are in the table:\n- name",
-              :data    {:status-code 422}}
-             (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
-    (testing "Uploads must be supported"
-      (mt/with-dynamic-redefs [driver/database-supports? (constantly false)]
-        (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
-                :data    {:status-code 422}}
-               (catch-ex-info (append-csv-with-defaults!))))))))
+    (doseq [verb [::upload/append ::upload/replace]]
+      (testing (format "Can %s an existing upload\n"
+                       (case verb
+                         ::upload/append "append to"
+                         ::upload/replace "replace"))
+        (testing "Happy path"
+          (is (= {:row-count 2}
+                 (update-csv-with-defaults! verb))))
+        (testing "Even if the uploads database, schema and table prefix are not set, appends succeed"
+          (mt/with-temporary-setting-values [uploads-database-id  nil
+                                             uploads-schema-name  nil
+                                             uploads-table-prefix nil]
+            (is (some? (update-csv-with-defaults! verb)))))
+        (testing "Uploads must be enabled"
+          (is (= {:message "Uploads are not enabled."
+                  :data    {:status-code 422}}
+                 (catch-ex-info (update-csv-with-defaults! verb :uploads-enabled false)))))
+        (testing "The table must exist"
+          (is (= {:message "Not found."
+                  :data    {:status-code 404}}
+                 (catch-ex-info (update-csv-with-defaults! verb :table-id Integer/MAX_VALUE)))))
+        (testing "The table must be an uploaded table"
+          (is (= {:message "The table must be an uploaded table."
+                  :data    {:status-code 422}}
+                 (catch-ex-info (update-csv-with-defaults! verb :is-upload false)))))
+        (testing "The CSV file must not be empty"
+          (is (= {:message "The CSV file is missing columns that are in the table:\n- name",
+                  :data    {:status-code 422}}
+                 (catch-ex-info (update-csv-with-defaults! verb :file (csv-file-with [] (mt/random-name)))))))
+        (testing "Uploads must be supported"
+          (mt/with-dynamic-redefs [driver/database-supports? (constantly false)]
+            (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
+                    :data    {:status-code 422}}
+                   (catch-ex-info (update-csv-with-defaults! verb))))))))))
 
 (deftest append-column-match-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
