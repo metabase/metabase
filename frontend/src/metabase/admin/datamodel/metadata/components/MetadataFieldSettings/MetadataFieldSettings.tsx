@@ -86,8 +86,8 @@ const MetadataFieldSettings = ({
   table,
   field,
   idFields,
-  fetched,
-  loading,
+  fetched = false,
+  loading = true,
   params: { schemaId, section },
 }: MetadataFieldSettingsProps) => {
   const schema = schemas.find(schema => schema.id === schemaId);
