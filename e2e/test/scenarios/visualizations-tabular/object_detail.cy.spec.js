@@ -92,6 +92,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
             alias: "Products",
           },
         ],
+        limit: 5,
       },
     };
 
