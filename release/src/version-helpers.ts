@@ -153,7 +153,6 @@ export const getNextVersions = (versionString: string): string[] => {
   // minor releases -> next minor release
   const [major, minor] = versionString
     .replace(/(v1|v0)\./, "")
-    .replace(/.0$/, "")
     .split(".")
     .map(Number);
 
