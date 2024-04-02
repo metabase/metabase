@@ -37,28 +37,30 @@
       :type/DateTime [:> field-form "0001-01-01T00:00:00"])))
 
 (defn add-required-filter-if-needed
-  "If the table requires a filter, add a dummy filter clause so the query can be executed.
+  "Add a dummy filter for tables that require a filters.
+  Look into tables from source tables and all the joins.
   Currently this only apply to partitioned tables on bigquery that requires a partition filter."
-  [query {:keys [id] :as table}]
-  ;; we probably need to look in to query, then find all field-id -> get tables -> add the required filters
-  (if (:database_require_filter table)
-    (let [;; In bigquery, range or datetime partitioned table can have only one partioned field,
-          ;; Ingestion time partitioned table can use either _PARTITIONDATE or _PARTITIONTIME as
-          ;; partitioned field
-          partition-field (or (t2/select-one :model/Field
-                                             :table_id id
-                                             :database_partitioned true
-                                             :active true
-                                             ;; prefer _PARTITIONDATE over _PARTITIONTIME for ingestion time query
-                                             {:order-by [[:name :asc]]})
-                              (throw (ex-info (format "No partitioned field found for table: %d" id)
-                                              {:table_id id})))
-          filter-form     (partition-field->filter-form partition-field)]
+  [query]
+  (let [table-ids              (->> (conj (keep :source-table (:joins query)) (:source-table query))
+                                    (filter pos-int?))
+        required-filter-fields (when (seq table-ids)
+                                 (t2/select :model/Field {:select    [:f.*]
+                                                          :from      [[:metabase_field :f]]
+                                                          :left-join [[:metabase_table :t] [:= :t.id :f.table_id]]
+                                                          :where     [:and
+                                                                      [:= :f.active true]
+                                                                      [:= :f.database_partitioned true]
+                                                                      [:= :t.active true]
+                                                                      [:= :t.database_require_filter true]
+                                                                      [:in :t.id table-ids]]}))
+        filter-clause          (when (seq required-filter-fields)
+                                 (into [:and] (map partition-field->filter-form required-filter-fields)))]
+    (if filter-clause
       (update query :filter (fn [existing-filter]
                               (if (some? existing-filter)
-                                [:and existing-filter filter-form]
-                                filter-form))))
-    query))
+                                [:and existing-filter filter-clause]
+                                filter-clause)))
+      query)))
 
 (defn- field-mbql-query
   [table mbql-query]
@@ -68,7 +70,7 @@
       ;; Currently this only applied to Partitioned table in bigquery where the partition field
       ;; is required as a filter.
       ;; In the future we probably want this to be dispatched by database engine type
-      (add-required-filter-if-needed table)))
+      add-required-filter-if-needed))
 
 (defn- field-query
   [{table-id :table_id} mbql-query]
@@ -191,7 +193,7 @@
                    (assoc :order-by order-by)
 
                    true
-                   (add-required-filter-if-needed table))
+                   add-required-filter-if-needed)
      :middleware {:format-rows?           false
                   :skip-results-metadata? true}}))
 

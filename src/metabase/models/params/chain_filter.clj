@@ -388,7 +388,6 @@
                    joins                 (find-all-joins source-table-id (cond-> (set (map :field-id constraints))
                                                                            original-field-id (conj original-field-id)))
                    joined-table-ids      (set (map #(get-in % [:rhs :table]) joins))
-                   table-id->table       (t2/select-pk->fn identity :model/Table [:in (cons source-table-id joined-table-ids)])
                    original-field-clause (when original-field-id
                                            (let [original-table-id (field/field-id->table-id original-field-id)]
                                              [:field
@@ -426,7 +425,7 @@
                              :order-by [[:asc [:field field-id nil]]]}))
                    (add-joins source-table-id joins)
                    (add-filters source-table-id joined-table-ids constraints)
-                   ((fn [query] (reduce metadata-queries/add-required-filter-if-needed query (vals table-id->table))))))
+                   metadata-queries/add-required-filter-if-needed))
    :middleware {:disable-remaps? true}})
 
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------
