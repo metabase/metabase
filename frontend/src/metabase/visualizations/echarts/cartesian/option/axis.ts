@@ -21,7 +21,6 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 
-import { parseNumberValue } from "metabase/components/TokenField";
 import type { ChartMeasurements } from "../chart-measurements/types";
 import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
 
@@ -31,6 +30,16 @@ const NORMALIZED_RANGE = { min: 0, max: 1 };
 
 export const getAxisNameGap = (ticksWidth: number): number => {
   return ticksWidth + CHART_STYLE.axisNameMargin;
+};
+
+const parseNumberValue = (value: any): number | null => {
+  const number = Number.parseFloat(value);
+
+  if (Number.isFinite(number)) {
+    return number;
+  } else {
+    return null;
+  }
 };
 
 const getCustomAxisRange = ({
