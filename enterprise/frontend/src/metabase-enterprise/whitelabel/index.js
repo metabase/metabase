@@ -7,7 +7,7 @@ import { SettingTextInput } from "metabase/admin/settings/components/widgets/Set
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
-  PLUGIN_APP_INIT_FUCTIONS,
+  PLUGIN_APP_INIT_FUNCTIONS,
   PLUGIN_LANDING_PAGE,
   PLUGIN_LOGO_ICON_COMPONENTS,
   PLUGIN_SELECTORS,
@@ -234,7 +234,7 @@ if (hasPremiumFeature("whitelabel")) {
     },
   );
 
-  PLUGIN_APP_INIT_FUCTIONS.push(() => {
+  PLUGIN_APP_INIT_FUNCTIONS.push(() => {
     updateColors();
   });
 
@@ -242,7 +242,7 @@ if (hasPremiumFeature("whitelabel")) {
   PLUGIN_SELECTORS.canWhitelabel = () => true;
 
   // these selectors control whitelabeling UI
-  PLUGIN_SELECTORS.getLoadingMessage = getLoadingMessage;
+  PLUGIN_SELECTORS.getLoadingMessageFactory = getLoadingMessage;
   PLUGIN_SELECTORS.getIsWhiteLabeling = getIsWhiteLabeling;
   PLUGIN_SELECTORS.getApplicationName = getApplicationName;
   PLUGIN_SELECTORS.getShowMetabaseLinks = getShowMetabaseLinks;

@@ -43,7 +43,7 @@ import type {
 } from "./types";
 
 // functions called when the application is started
-export const PLUGIN_APP_INIT_FUCTIONS = [];
+export const PLUGIN_APP_INIT_FUNCTIONS = [];
 
 // function to determine the landing page
 export const PLUGIN_LANDING_PAGE = [];
@@ -156,7 +156,7 @@ export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
   canWhitelabel: (_state: State) => false,
-  getLoadingMessage: (_state: State) => (isSlow: boolean) =>
+  getLoadingMessageFactory: (_state: State) => (isSlow: boolean) =>
     isSlow ? t`Waiting for results...` : t`Doing science...`,
   getIsWhiteLabeling: (_state: State) => false,
   // eslint-disable-next-line no-literal-metabase-strings -- This is the actual Metabase name, so we don't want to translate it.
