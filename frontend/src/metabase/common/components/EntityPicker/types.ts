@@ -14,14 +14,9 @@ export type IsFolder<
   Item extends TypeWithModel<Id, Model>,
 > = (item: Item) => boolean;
 
-export type PickerState<Model, Item, Query> = PickerStateItem<
-  Model,
-  Item,
-  Query
->[];
+export type PickerState<Item, Query> = PickerStateItem<Item, Query>[];
 
-export type PickerStateItem<Model, Item, Query> = {
-  model: Model;
+export type PickerStateItem<Item, Query> = {
   query?: Query;
   selectedItem: Item | null;
 };
@@ -42,9 +37,8 @@ export type ListProps<
   Query,
   Options extends EntityPickerOptions,
 > = {
-  model: Model;
   query?: Query;
-  onClick: (item: Item) => void;
+  onClick: (val: Item) => void;
   selectedItem: Item | null;
   isFolder: IsFolder<Id, Model, Item>;
   isCurrentLevel: boolean;
