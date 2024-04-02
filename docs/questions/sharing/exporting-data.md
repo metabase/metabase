@@ -23,7 +23,7 @@ You can download up to 1 million rows.
 
 ### Exporting unformatted results
 
-You can export the unformatted results of a question by holding the `option` key when selecting the file format for your download.
+You can export the unformatted results of a question by holding the `option` key on a Mac or the `Alt` key on PC when selecting the file format for your download.
 
 Metabase will export the raw results of a question without applying any of the [formatting you applied](../../data-modeling/formatting.md) to the columns in the question. For example, if you formatted a floating point number to display only the first two decimal digits in the table results, exporting the unformatted results would include additional decimal digits (if any) found in the raw results.
 
