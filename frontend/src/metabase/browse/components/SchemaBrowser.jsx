@@ -3,7 +3,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import TableBrowser from "metabase/browse/containers/TableBrowser";
-import BrowserCrumbs from "metabase/components/BrowserCrumbs";
+import { BrowserCrumbs } from "metabase/components/BrowserCrumbs";
 import Card from "metabase/components/Card";
 import EntityItem from "metabase/components/EntityItem";
 import { Grid } from "metabase/components/Grid";

@@ -88,8 +88,8 @@ const QueryDownloadPopover = ({
   };
 
   const formattingInfoTooltipLabel = isMac()
-    ? t`Option click to download without formatting applied`
-    : t`Alt click to download without formatting applied`;
+    ? t`Hold the Option key to download unformatted results`
+    : t`Hold the Alt key to download unformatted results`;
 
   return (
     <DownloadPopoverRoot isExpanded={hasTruncatedResults}>

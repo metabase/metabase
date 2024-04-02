@@ -1,5 +1,5 @@
 import { useUserListQuery } from "metabase/common/hooks";
-import BrowserCrumbs from "metabase/components/BrowserCrumbs";
+import { BrowserCrumbs } from "metabase/components/BrowserCrumbs";
 import Card from "metabase/components/Card";
 import { Grid } from "metabase/components/Grid";
 import PaginationControls from "metabase/components/PaginationControls";

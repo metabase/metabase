@@ -314,6 +314,8 @@ describe(
 function convertToSql() {
   openNotebook();
   cy.findByLabelText("View the SQL").click();
+  cy.intercept("POST", "/api/dataset").as("dataset");
   cy.button("Convert this question to SQL").click();
+  cy.wait("@dataset");
   cy.findByTestId("native-query-editor").should("be.visible");
 }
