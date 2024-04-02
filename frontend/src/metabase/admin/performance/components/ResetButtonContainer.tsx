@@ -7,27 +7,19 @@ import { Box, Flex, Group, Icon, Loader, Text } from "metabase/ui";
 
 import { ResetAllToDefaultFormSubmitButton } from "./StrategyEditorForDatabases.styled";
 
-export const ResetButtonContainer = ({
-  rootConfigLabel,
-}: {
-  rootConfigLabel: string;
-}) => {
+export const ResetButtonContainer = () => {
   return (
     <Box
       pb="1rem"
       mt="auto"
       style={{ marginInlineStart: "auto", marginInlineEnd: ".75rem" }}
     >
-      <ResetAllToDefaultButtonFormBody rootConfigLabel={rootConfigLabel} />
+      <ResetAllToDefaultButtonFormBody />
     </Box>
   );
 };
 
-const ResetAllToDefaultButtonFormBody = ({
-  rootConfigLabel,
-}: {
-  rootConfigLabel: string;
-}) => {
+const ResetAllToDefaultButtonFormBody = () => {
   const { submitForm } = useFormikContext();
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
@@ -35,7 +27,7 @@ const ResetAllToDefaultButtonFormBody = ({
 
   const confirmResetAllToDefault = () => {
     askConfirmation({
-      title: t`Reset all database caching policies to ${rootConfigLabel}?`,
+      title: t`Reset all database caching policies to the default?`,
       message: "",
       confirmButtonText: t`Reset`,
       onConfirm: submitForm,
