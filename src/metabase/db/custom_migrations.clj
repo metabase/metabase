@@ -1116,97 +1116,27 @@
       (t2/query {:insert-into :permissions_group_membership :values [perms-group]}))))
 
 (defn- load-edn
-  "Load edn from an io/reader source (filename or io/resource)."
-  [source]
-  (with-open [r (io/reader source)]
-    (edn/read (java.io.PushbackReader. r))))
-
-(defn- replace-generated-values [m v]
-  (-> m
-      (m/update-existing :updated_at (constantly v))
-      (m/update-existing :date_joined (constantly v)) ; user
-      (m/update-existing :created_at (constantly v))
-      (m/update-existing :last_analyzed (constantly v)))) ; field
-
-(comment
-  (type (first (map :date_joined (t2/query {:select [:*] :from :core_user}))))
-  (isa? java.time.OffsetDateTime java.time.temporal.Temporal)
-
-  ;; STEPS to create resources/examples-collection.edn
-  ;; start a fresh metabase instance without the :ee alias
-  ;; create a dashboard called 'dash', with some dashcards
-  ;; or import one with (metabase.cmd/import "<path>")
-  ;; evaluate (install-internal-user!) to create the internal user
-  ;; (defn- install-internal-user! []
-  ;;   (t2/insert-returning-instances!
-  ;;    User
-  ;;    {:id config/internal-mb-user-id
-  ;;     :first_name "Metabase"
-  ;;     :last_name "Internal"
-  ;;     :email "internal@metabase.com"
-  ;;     :password (str (random-uuid))
-  ;;     :is_active false
-  ;;     :is_superuser false
-  ;;     :login_attributes nil
-  ;;     :sso_source nil
-  ;;     :type :internal}))
-  (let [pretty-spit (fn [file-name data]
-                      (with-open [writer (io/writer file-name)]
-                        (binding [*out* writer]
-                          #_{:clj-kondo/ignore [:discouraged-var]}
-                          (pprint/pprint data))))
-        data (into {}
-                   (for [table-name [:core_user
-                                     :collection
-                                     :metabase_database
-                                     :metabase_table
-                                     :metabase_field
-                                     :report_dashboard
-                                     :report_dashboardcard
-                                     :report_card
-                                     :parameter_card
-                                     :dashboard_tab
-                                     :dashboardcard_series]
-                         :let [query (cond-> {:select [:*] :from table-name}
-                                       (= table-name :core_user) (assoc :where [:= :id config/internal-mb-user-id]))]]
-                     [table-name (map #(into {} %) (t2/query query))]))]
-    (pretty-spit "resources/sample-data.edn" data))
-  ;; in the .edn file:
-  ;; - find-replace :creator_id 1, 2, etc with :creator_id 13371338 (the internal user ID)
-  ;; - delete the personal collection, and make the example dashboard prototype have id 1
-  ;; - find-replace collection_id 2 with collection_id 1
-  ;; - manually set user's password, password_salt, and settings to nil.
-  ;; - replace metabase_version <version> with metabase_version nil,
-  ;; drop + create the database again, with the migration turned on
-  )
-
-(defn- load-edn
   "Loads edn from an EDN file. Parses values tagged with #t into the appropriate `java.time` class"
   [file-name]
   (with-open [r (io/reader file-name)]
     (edn/read {:readers {'t u.date/parse}} (java.io.PushbackReader. r))))
 
-(defn- hash-bcrypt
-  "Hashes a given plaintext password using bcrypt.  Should be used to hash
-   passwords included in stored user credentials that are to be later verified
-   using `bcrypt-credential-fn`."
-  [password]
-  (BCrypt/hashpw password (BCrypt/gensalt)))
-
 (defn- fresh-install?
-  "If there is a user that is not the internal user, we know it's not a fresh install."
+  "If there is a user that is not the internal user, we know it's not a fresh install. Additionally we check that the
+  sample database is not present, because it could have been installed from a previous version and be out of date. In
+  that (rare) case we will be conservative and not add the sample content."
   []
-  (zero? (first (vals (t2/query-one {:select [:%count.*] :from :core_user :where [:not= :id config/internal-mb-user-id]})))))
+  (and (zero? (first (vals (t2/query-one {:select [:%count.*] :from :core_user :where [:not= :id config/internal-mb-user-id]}))))
+       (nil? (t2/query-one {:select [:*] :from :metabase_database :where :is_sample}))))
 
 (define-migration CreateSampleContent
   (when (and (config/load-sample-content?) (fresh-install?))
-    (let [table-name->rows  (load-edn "resources/sample-content.edn")
-          replace-temporal  (fn [v]
-                              (if (isa? (type v) java.time.temporal.Temporal)
-                                :%now
-                                v))]
-      (doseq [table-name [:core_user
-                          :collection
+    (let [table-name->rows (load-edn "resources/sample-content.edn")
+          replace-temporal (fn [v]
+                             (if (isa? (type v) java.time.temporal.Temporal)
+                               :%now
+                               v))]
+      (doseq [table-name [:collection
                           :metabase_database
                           :metabase_table
                           :metabase_field
@@ -1216,20 +1146,13 @@
                           :dashboard_tab
                           :report_dashboardcard
                           :dashboardcard_series]]
-        (when-let [;; We sort the rows by id so that auto-incrementing ids are generated in the same order. We can't
-                   ;; insert the ids directly in H2 without creating sequences for all the generated id columns.
-                   values (seq (->> (sort-by :id (table-name table-name->rows))
+        (when-let [;; We sort the rows by id and remove them so that auto-incrementing ids are generated in the
+                   ;; same order. We can't insert the ids directly in H2 without creating sequences for all the
+                   ;; generated id columns.
+                   values (seq (->> (table-name table-name->rows)
+                                    (sort-by :id)
                                     (map (fn [row]
-                                           (let [row (update-vals row replace-temporal)]
-                                             (if-not (= table-name :core_user)
-                                               (dissoc row :id)
-                                               (let [salt (str (random-uuid))]
-                                                 (assoc row
-                                                        ;; we can insert the internal user ID directly because it's
-                                                        ;; deliberately high
-                                                        :id config/internal-mb-user-id
-                                                        :password_salt salt
-                                                        :password (hash-bcrypt (str salt (random-uuid)))))))))))]
+                                           (dissoc (update-vals row replace-temporal) :id)))))]
           (t2/query {:insert-into table-name :values values}))))))
 
 (comment
