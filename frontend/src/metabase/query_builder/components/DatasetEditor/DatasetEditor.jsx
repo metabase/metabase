@@ -11,6 +11,7 @@ import DebouncedFrame from "metabase/components/DebouncedFrame";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
+import Tooltip from "metabase/core/components/Tooltip";
 import { modelIndexes } from "metabase/entities";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
@@ -24,6 +25,7 @@ import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
   getDatasetEditorTab,
+  getIsResultDirty,
   getResultsMetadata,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
@@ -56,6 +58,7 @@ const propTypes = {
   metadata: PropTypes.object,
   resultsMetadata: PropTypes.shape({ columns: PropTypes.array }),
   isMetadataDirty: PropTypes.bool.isRequired,
+  isResultDirty: PropTypes.bool.isRequired,
   result: PropTypes.object,
   height: PropTypes.number,
   isDirty: PropTypes.bool.isRequired,
@@ -88,6 +91,7 @@ function mapStateToProps(state) {
     metadata: getMetadata(state),
     datasetEditorTab: getDatasetEditorTab(state),
     isMetadataDirty: isResultsMetadataDirty(state),
+    isResultDirty: getIsResultDirty(state),
     resultsMetadata: getResultsMetadata(state),
   };
 }
@@ -182,6 +186,7 @@ function DatasetEditor(props) {
     resultsMetadata,
     metadata,
     isMetadataDirty,
+    isResultDirty,
     height,
     isDirty: isModelQueryDirty,
     setQueryBuilderMode,
@@ -403,9 +408,17 @@ function DatasetEditor(props) {
     if (dataset.query().isEmpty()) {
       return false;
     }
+    if (dataset.isNative() && isResultDirty) {
+      return false;
+    }
     const everyFieldHasDisplayName = fields.every(field => field.display_name);
     return everyFieldHasDisplayName && isDirty;
-  }, [dataset, fields, isDirty]);
+  }, [dataset, fields, isDirty, isResultDirty]);
+
+  const saveButtonTooltip =
+    !dataset.query().isEmpty() && dataset.isNative() && isDirty && isResultDirty
+      ? t`You must run the query before you can save this model`
+      : undefined;
 
   const sidebar = getSidebar(
     { ...props, modelIndexes },
@@ -445,16 +458,17 @@ function DatasetEditor(props) {
             small
             onClick={handleCancelClick}
           >{t`Cancel`}</Button>,
-          <ActionButton
-            key="save"
-            disabled={!canSaveChanges}
-            actionFn={handleSave}
-            normalText={dataset.isSaved() ? t`Save changes` : t`Save`}
-            activeText={t`Saving…`}
-            failedText={t`Save failed`}
-            successText={t`Saved`}
-            className="Button Button--primary Button--small"
-          />,
+          <Tooltip key="save" tooltip={saveButtonTooltip}>
+            <ActionButton
+              disabled={!canSaveChanges}
+              actionFn={handleSave}
+              normalText={dataset.isSaved() ? t`Save changes` : t`Save`}
+              activeText={t`Saving…`}
+              failedText={t`Save failed`}
+              successText={t`Saved`}
+              className="Button Button--primary Button--small"
+            />
+          </Tooltip>,
         ]}
       />
       <Root>
