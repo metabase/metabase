@@ -105,13 +105,13 @@
   border: 1px solid var(--color-brand);
 }
 
-.DashEditing .DashCard :global(.Visualization-slow-spinner) {
+.DashEditing .DashCard .VisualizationSlowSpinner {
   position: absolute;
   right: -2px;
   top: -2px;
 }
 
-.DashEditing .DashCard:hover :global(.Visualization-slow-spinner) {
+.DashEditing .DashCard:hover .VisualizationSlowSpinner {
   opacity: 0;
   transition: opacity 0.15s linear;
 }
