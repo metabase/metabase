@@ -5,6 +5,7 @@ export * from "./database";
 export * from "./dataset";
 export * from "./field";
 export * from "./login-history";
+export * from "./metric";
 export * from "./segment";
 export * from "./session";
 export * from "./table";

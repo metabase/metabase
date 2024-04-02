@@ -4,6 +4,7 @@ export const TAG_TYPES = [
   "database",
   "field",
   "field-values",
+  "metric",
   "schema",
   "segment",
   "table",
