@@ -457,6 +457,35 @@
           (is (= :query-builder (data-perms/most-permissive-database-permission-for-user
                                  user-id-1 :perms/create-queries database-id-1))))))))
 
+(deftest set-new-database-permissions!-test
+  (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
+                 :model/Database         {db-id :id}      {}]
+    ;; First delete the default permissions for the group so we start with a clean slate
+    (t2/delete! :model/DataPermissions :group_id group-id)
+    (testing "A new database gets `blocked` data perms if a group has `blocked` perms for another database"
+      (data-perms/set-database-permission! group-id db-id :perms/view-data :blocked)
+      (mt/with-temp [:model/Database {new-db-id :id} {}]
+        (is (= :blocked (t2/select-one-fn :perm_value
+                                          :model/DataPermissions
+                                          :db_id     new-db-id
+                                          :group_id  group-id
+                                          :perm_type :perms/view-data)))))
+    (testing "A new database gets `unrestricted` data perms if a group only has `unrestricted` (or `legacy-no-self-service`) perms other databases"
+      (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+      (mt/with-temp [:model/Database {new-db-id :id} {}]
+        (is (= :unrestricted (t2/select-one-fn :perm_value
+                                               :model/DataPermissions
+                                               :db_id     new-db-id
+                                               :group_id  group-id
+                                               :perm_type :perms/view-data))))
+      (data-perms/set-database-permission! group-id db-id :perms/view-data :legacy-no-self-service)
+      (mt/with-temp [:model/Database {new-db-id :id} {}]
+        (is (= :unrestricted (t2/select-one-fn :perm_value
+                                               :model/DataPermissions
+                                               :db_id     new-db-id
+                                               :group_id  group-id
+                                               :perm_type :perms/view-data)))))))
+
 (deftest set-new-table-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
                  :model/Database         {db-id :id}      {}

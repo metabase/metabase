@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -630,24 +631,21 @@
                           :group_id group-id))
             lowest-to-highest-values))))
 
+(defenterprise new-database-view-data-permission-level
+  "Returns the default view-data permission level for a new database for a given group. On OSS, this is always `unrestricted`."
+  metabase-enterprise.advanced-permissions.common
+  [_group-id]
+  :unrestricted)
+
 (defn set-new-database-permissions!
   "Sets permissions for a newly-added database to their appropriate values for a single group. For certain permission
   types, the value computed based on the existing permissions the group has for other databases."
   [group-or-id db-or-id]
-  (let [group-id            (u/the-id group-or-id)
-        view-data-level     (if (or (t2/exists? :model/DataPermissions
-                                                :perm_type :perms/view-data
-                                                :perm_value :blocked
-                                                :group_id group-id)
-                                    (t2/exists? :model/GroupTableAccessPolicy
-                                                :group_id group-id)
-                                    (t2/exists? :model/ConnectionImpersonation
-                                                :group_id group-id))
-                              :blocked
-                              :unrestricted)
+  (let [group-id             (u/the-id group-or-id)
+        view-data-level      (new-database-view-data-permission-level group-id)
         create-queries-level (lowest-permission-level-in-any-database group-id :perms/create-queries)
-        download-level        (if (= view-data-level :blocked) :no
-                                  (lowest-permission-level-in-any-database group-id :perms/download-results))]
+        download-level       (if (= view-data-level :blocked) :no
+                                 (lowest-permission-level-in-any-database group-id :perms/download-results))]
     (set-database-permission! group-or-id db-or-id :perms/view-data view-data-level)
     (set-database-permission! group-or-id db-or-id :perms/create-queries create-queries-level)
     (set-database-permission! group-or-id db-or-id :perms/download-results download-level)
