@@ -420,8 +420,8 @@
   of `honeysql-form`. Most drivers can use the default implementations for all of these methods, but some may need to
   override one or more (e.g. SQL Server needs to override this method for the `:limit` clause, since T-SQL uses `TOP`
   instead of `LIMIT`)."
-  {:added "0.32.0", :arglists '([driver top-level-clause honeysql-form query]), :style/indent [:form]}
-  (fn [driver top-level-clause _ _]
+  {:added "0.32.0", :arglists '([driver top-level-clause honeysql-form inner-query]), :style/indent [:form]}
+  (fn [driver top-level-clause _honeysql-form _inner-query]
     [(driver/dispatch-on-initialized-driver driver) top-level-clause])
   :hierarchy #'driver/hierarchy)
 
@@ -689,14 +689,14 @@
 
 (defn- window-function-order-by-strategy [driver]
   (case driver
-    (:postgres :athena :mysql :presto-jdbc :redshift :sqlserver)
+    (:postgres :athena :mysql :presto-jdbc :redshift :sqlserver :snowflake :vertica :bigquery-cloud-sdk)
     ::over-order-by-strategy.copy-expressions
 
-    (:h2 :sqlite :bigquery-cloud-sdk :oracle)
+    (:h2 :sqlite :oracle)
     ::over-order-by-strategy.use-output-column-numbers
 
     ;; NOT SURE ABOUT THESE!
-    (:snowflake :sparksql :vertica)
+    (:sparksql)
     ::over-order-by-strategy.copy-expressions
 
     ;; the rest are unknown; try using output column numbers.
@@ -712,7 +712,7 @@
  #'format-rows-unbounded-preceding
  nil)
 
-(defn- over-rows-with-order-by-for-current-stage
+(defn- over-rows-with-order-by-copying-expressions
   "e.g.
 
     OVER (ORDER BY date_trunc('month', my_column))"
@@ -732,7 +732,7 @@
 ;;; For databases that do something intelligent with ORDER BY 1, 2: we can take advantage of that functionality
 ;;; implement the window function versions of cumulative sum and cumulative sum more simply.
 
-(defn- over-rows-with-order-by-select-expression-positions
+(defn- over-rows-with-order-by-output-column-numbers
   "e.g.
 
     OVER (ORDER BY 1 ROWS UNBOUNDED PRECEDING)"
@@ -746,8 +746,8 @@
 
 (defn- cumulative-aggregation-window-function [driver expr]
   (let [over-rows-with-order-by (case (window-function-order-by-strategy driver)
-                                  ::over-order-by-strategy.copy-expressions          over-rows-with-order-by-for-current-stage
-                                  ::over-order-by-strategy.use-output-column-numbers over-rows-with-order-by-select-expression-positions)]
+                                  ::over-order-by-strategy.copy-expressions          over-rows-with-order-by-copying-expressions
+                                  ::over-order-by-strategy.use-output-column-numbers over-rows-with-order-by-output-column-numbers)]
     (over-rows-with-order-by driver expr)))
 
 ;;;    cum-count()

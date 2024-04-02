@@ -10,6 +10,8 @@
    [metabase.driver.bigquery-cloud-sdk.query-processor-test.reconciliation-test-util
     :as bigquery.qp.reconciliation-tu]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -1131,3 +1133,85 @@
   (testing "correct format of log10 for BigQuery"
     (is (= ["LOG(150, 10)"]
            (sql/format-expr (sql.qp/->honeysql :bigquery-cloud-sdk [:log 150]))))))
+
+(deftest ^:parallel mixed-cumulative-and-non-cumulative-aggregations-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          orders            (lib.metadata/table metadata-provider (mt/id :orders))
+          orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
+          orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
+          query             (-> (lib/query metadata-provider orders)
+                                ;; 1. month
+                                (lib/breakout (lib/with-temporal-bucket orders-created-at :month))
+                                ;; 2. cumulative count of orders
+                                (lib/aggregate (lib/cum-count))
+                                ;; 3. cumulative sum of order total
+                                (lib/aggregate (lib/cum-sum orders-total))
+                                ;; 4. sum of order total
+                                (lib/aggregate (lib/sum orders-total))
+                                (lib/limit 3))]
+      (is (= ["SELECT"
+              "  `source`.`created_at` AS `created_at`,"
+              "  `source`.`count` AS `count`,"
+              "  `source`.`sum` AS `sum`,"
+              "  `source`.`sum_2` AS `sum_2`"
+              "FROM"
+              "  ("
+              "    SELECT"
+              "      `source`.`created_at` AS `created_at`,"
+              "      `source`.`count` AS `__cumulative_count`,"
+              "      `source`.`sum` AS `__cumulative_sum`,"
+              "      `source`.`sum_2` AS `sum_2`,"
+              "      SUM(SUM(`source`.`count`)) OVER ("
+              "        ORDER BY"
+              "          `source`.`created_at` ASC,"
+              "          `source`.`count` ASC,"
+              "          `source`.`sum` ASC,"
+              "          `source`.`sum_2` ASC ROWS UNBOUNDED PRECEDING"
+              "      ) AS `count`,"
+              "      SUM(SUM(`source`.`sum`)) OVER ("
+              "        ORDER BY"
+              "          `source`.`created_at` ASC,"
+              "          `source`.`count` ASC,"
+              "          `source`.`sum` ASC,"
+              "          `source`.`sum_2` ASC ROWS UNBOUNDED PRECEDING"
+              "      ) AS `sum`"
+              "    FROM"
+              "      ("
+              "        SELECT"
+              "          TIMESTAMP_TRUNC("
+              "            `test_data.orders`.`created_at`,"
+              "            month"
+              "          ) AS `created_at`,"
+              "          COUNT(*) AS `count`,"
+              "          SUM("
+              "            `test_data.orders`.`total`"
+              "          ) AS `sum`,"
+              "          SUM("
+              "            `test_data.orders`.`total`"
+              "          ) AS `sum_2`"
+              "        FROM"
+              "          `test_data.orders`"
+              "        GROUP BY"
+              "          `created_at`"
+              "        ORDER BY"
+              "          `created_at` ASC"
+              "        LIMIT"
+              "          3"
+              "      ) AS `source`"
+              "    GROUP BY"
+              "      `created_at`,"
+              "      `__cumulative_count`,"
+              "      `__cumulative_sum`,"
+              "      `sum_2`"
+              "    ORDER BY"
+              "      `created_at` ASC,"
+              "      `__cumulative_count` ASC,"
+              "      `__cumulative_sum` ASC,"
+              "      `sum_2` ASC"
+              "  ) AS `source`"]
+             (-> (qp.compile/compile query)
+                 :query
+                 (->> (driver/prettify-native-form :bigquery-cloud-sdk))
+                 (str/replace #"v4_test_data__transient_\d+" "test_data")
+                 str/split-lines))))))

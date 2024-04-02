@@ -324,9 +324,21 @@
   (boolean (seq (dissoc (lib.util/query-stage query stage-number) :lib/type :source-table :source-card))))
 
 (mu/defn append-stage :- ::lib.schema/query
-  "Adds a new blank stage to the end of the pipeline"
+  "Adds a new blank stage to the end of the pipeline."
   [query]
   (update query :stages conj {:lib/type :mbql.stage/mbql}))
+
+(mu/defn add-stage-at-index :- ::lib.schema/query
+  "Add a new blank stage to `query` after the stage at `after-stage-number`."
+  [query after-stage-number]
+  (let [after-stage-number (lib.util/canonical-stage-index query (or after-stage-number -1))]
+    (update query :stages (fn [stages]
+                            (let [[before after] (split-at (inc after-stage-number) stages)]
+                              (into []
+                                    cat
+                                    [before
+                                     [{:lib/type :mbql.stage/mbql}]
+                                     after]))))))
 
 (mu/defn drop-stage :- ::lib.schema/query
   "Drops the final stage in the pipeline, will no-op if it is the only stage"

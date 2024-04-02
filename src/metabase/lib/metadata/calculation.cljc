@@ -450,6 +450,11 @@
   [_query _stage-number _x _options]
   [])
 
+;;; if you pass in an integer assume it's a stage number; use the method for the query stage itself.
+(defmethod returned-columns-method :dispatch-type/integer
+  [query _stage-number stage-number options]
+  (returned-columns-method query stage-number (lib.util/query-stage query stage-number) options))
+
 (mu/defn returned-columns :- [:maybe ColumnsWithUniqueAliases]
   "Return a sequence of metadata maps for all the columns expected to be 'returned' at a query, stage of the query, or
   join, and include the `:lib/source` of where they came from. This should only include columns that will be present
