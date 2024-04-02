@@ -37,7 +37,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
               marginLeft: 0,
             },
           },
-          "&:active": animate ? "" : { transform: "none" },
+          ...(animate ? {} : { "&:active": { transform: "none" } }),
         },
         label: {
           ref: getStylesRef("label"),
