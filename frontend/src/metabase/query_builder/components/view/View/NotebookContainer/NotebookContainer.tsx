@@ -57,14 +57,12 @@ export const NotebookContainer = ({
       )}
 
       {isNativePreviewSidebarOpen && (
-        <Flex
+        <aside
           className={NC.sqlSidebar}
           data-testid="native-query-preview-sidebar"
-          role="complementary"
-          direction="column"
         >
           <NativeQueryPreviewSidebar />
-        </Flex>
+        </aside>
       )}
     </Flex>
   );

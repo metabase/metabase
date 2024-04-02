@@ -62,7 +62,7 @@ export const NativeQueryPreviewSidebar = (): JSX.Element => {
   const borderStyle = `1px solid ${color("border")}`;
 
   return (
-    <>
+    <Flex direction="column" w="100%" h="100%" bg={color("white")}>
       <Box
         component="header"
         c={color("text-dark")}
@@ -110,6 +110,6 @@ export const NativeQueryPreviewSidebar = (): JSX.Element => {
           </Button>
         )}
       </Box>
-    </>
+    </Flex>
   );
 };

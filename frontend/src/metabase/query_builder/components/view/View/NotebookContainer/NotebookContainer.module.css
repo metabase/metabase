@@ -22,7 +22,6 @@
 .sqlSidebar {
   position: absolute;
   inset: 0;
-  background-color: white;
 
   @media screen and (--breakpoint-min-lg) {
     position: relative;
