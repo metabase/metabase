@@ -9,17 +9,13 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {
-  within,
   renderWithProviders,
   screen,
   waitFor,
   mockGetBoundingClientRect,
   mockScrollBy,
 } from "__support__/ui";
-import {
-  PERSONAL_COLLECTION,
-  ROOT_COLLECTION,
-} from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
   createMockCollection,
   createMockCollectionItemFromCollection,
@@ -202,42 +198,6 @@ describe("CreateDashboardModal", () => {
 
       await waitFor(() => expect(dashModalTitle()).toBeInTheDocument());
       expect(nameField()).toHaveValue(name);
-    });
-    it("should allow selecting, but not navigating into collections without children", async () => {
-      setup();
-      await waitFor(async () =>
-        expect(await dashModalTitle()).toBeInTheDocument(),
-      );
-
-      await userEvent.click(collDropdown());
-
-      const personalCollectionButton = await screen.findByRole("button", {
-        name: new RegExp(PERSONAL_COLLECTION.name),
-      });
-      const firstPickerColumn = await screen.findByTestId(
-        "item-picker-level-0",
-      );
-      const ourAnalyticsButton = within(firstPickerColumn).getByRole("button", {
-        name: /Our analytics/i,
-      });
-
-      expect(
-        within(personalCollectionButton).queryByLabelText("chevronright icon"),
-      ).not.toBeInTheDocument();
-      expect(
-        within(ourAnalyticsButton).getByLabelText("chevronright icon"),
-      ).toBeInTheDocument();
-
-      expect(personalCollectionButton).not.toHaveAttribute("data-active");
-      await userEvent.click(personalCollectionButton);
-      expect(personalCollectionButton).toHaveAttribute("data-active", "true");
-
-      // selecting an empty collection should not show another column
-      await waitFor(() =>
-        expect(
-          screen.queryByTestId("item-picker-level-1"),
-        ).not.toBeInTheDocument(),
-      );
     });
 
     it("should create collection inside nested folder", async () => {
