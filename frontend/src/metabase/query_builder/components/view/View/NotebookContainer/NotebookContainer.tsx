@@ -1,5 +1,6 @@
 import type { TransitionEventHandler } from "react";
 import { useEffect, useState } from "react";
+import { ResizableBox } from "react-resizable";
 
 import { useSelector } from "metabase/lib/redux";
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
@@ -40,8 +41,13 @@ export const NotebookContainer = ({
     isOpen && setShouldShowNotebook(isOpen);
   }, [isOpen]);
 
-  const { isNativePreviewSidebarOpen } = useSelector(getUiControls);
+  const { isNativePreviewSidebarOpen, nativePreviewSidebarWidth } =
+    useSelector(getUiControls);
+
   const minNotebookWidth = 640;
+  const minSidebarWidth = 428;
+  const maxSidebarWidth = windowWidth - minNotebookWidth;
+  const sidebarWidth = nativePreviewSidebarWidth || minSidebarWidth;
 
   const handleTransitionEnd: TransitionEventHandler<HTMLDivElement> = (
     event,
@@ -77,6 +83,20 @@ export const NotebookContainer = ({
         >
           <NativeQueryPreviewSidebar />
         </aside>
+      )}
+
+      {isNativePreviewSidebarOpen && windowWidth >= 1280 && (
+        <ResizableBox
+          width={sidebarWidth}
+          minConstraints={[minSidebarWidth, 0]}
+          maxConstraints={[maxSidebarWidth, 0]}
+          axis="x"
+          resizeHandles={["w"]}
+          className={NC.sqlSidebar}
+          data-testid="native-query-preview-sidebar"
+        >
+          <NativeQueryPreviewSidebar />
+        </ResizableBox>
       )}
     </Flex>
   );
