@@ -88,17 +88,17 @@ const VisualizationPreview = ({ rawSeries, result, error }) => {
 
   const transitionDuration = preferReducedMotion ? 80 : 700;
 
+  const err = coerceError(error || result?.error);
+
   return (
     <Visualization
       rawSeries={rawSeries}
-      error={coerceError(error || result?.error)}
+      error={err}
       className={cx("bordered shadowed rounded bg-white", {
-        p2: result && result.error,
+        p2: err,
       })}
       style={{
-        height: open
-          ? getPreviewHeightForResult(result)
-          : getPreviewHeightForResult(result) / 2,
+        height: err ? "auto" : getPreviewHeightForResult(result) / (2 - open),
         transition: `height ${transitionDuration}ms cubic-bezier(0, 0, 0.2, 1)`,
       }}
     />
