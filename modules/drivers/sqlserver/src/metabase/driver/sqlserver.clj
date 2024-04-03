@@ -39,7 +39,9 @@
                               :datetime-diff                          true
                               :convert-timezone                       true
                               :test/jvm-timezone-setting              false
-                              :index-info                             true}]
+                              :index-info                             true
+                              ;; temporarily disabled, will be fixed in a follow-on to #40752
+                              :window-functions                       false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
