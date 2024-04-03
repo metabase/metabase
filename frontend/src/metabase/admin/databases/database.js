@@ -4,7 +4,6 @@ import _ from "underscore";
 
 import { updateSetting } from "metabase/admin/settings/settings";
 import Databases from "metabase/entities/databases";
-import Tables from "metabase/entities/tables";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getDefaultEngine } from "metabase/lib/engine";
 import {
@@ -234,23 +233,6 @@ export const deleteDatabase = function (databaseId, isDetailView = true) {
     }
   };
 };
-
-// syncDatabaseSchema
-export const syncDatabaseSchema = createThunkAction(
-  SYNC_DATABASE_SCHEMA,
-  function (databaseId) {
-    return async function (dispatch, getState) {
-      try {
-        const call = await MetabaseApi.db_sync_schema({ dbId: databaseId });
-        dispatch({ type: Tables.actionTypes.INVALIDATE_LISTS_ACTION });
-        MetabaseAnalytics.trackStructEvent("Databases", "Manual Sync");
-        return call;
-      } catch (error) {
-        console.error("error syncing database", error);
-      }
-    };
-  },
-);
 
 export const dismissSyncSpinner = createThunkAction(
   DISMISS_SYNC_SPINNER,
