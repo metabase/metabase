@@ -120,7 +120,7 @@
      (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
      (is (nil? (test-db-perms group-id)))
      (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
-     (is (= {"PUBLIC" {(mt/id :venues) :unrestricted}}
+     (is (= {"PUBLIC" :unrestricted}
             (test-db-perms group-id))))))
 
 (deftest update-graph-disallow-native-query-perms-test
