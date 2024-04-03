@@ -769,7 +769,7 @@
   (mt/test-drivers
    (mt/normal-drivers)
    (mt/dataset
-    test-data-with-null-date-checkins
+    test-data-null-date
     (testing ":is-empty works with not emptyable type argument (#40883)"
       (is (= [[1 1]]
              (mt/formatted-rows
