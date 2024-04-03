@@ -1156,10 +1156,15 @@
             ::upload/append "append to"
             ::upload/replace "replace")))
 
+(defn- id->pattern [row]
+  (assoc row 0 pos-int?))
+
 (defn- updated-contents [verb initial added]
-  (case verb
-    ::upload/append (into initial added)
-    ::upload/replace added))
+  ;; TODO make precise if we fix inconsistent mysql semantics
+  (map id->pattern
+       (case verb
+         ::upload/append (into initial added)
+         ::upload/replace added)))
 
 (deftest can-update-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -1213,11 +1218,11 @@
                 (is (some? (update-csv! verb {:file     file
                                               :table-id (:id table)})))
                 (testing "Check the data was uploaded into the table correctly"
-                  (is (= (updated-contents verb
-                                           [[1 10 "Obi-Wan Kenobi"]]
-                                           [[2 20 "Luke Skywalker"]
-                                            [3 30 "Darth Vader"]])
-                         (rows-for-table table))))
+                  (is (=? (updated-contents verb
+                                            [[1 10 "Obi-Wan Kenobi"]]
+                                            [[2 20 "Luke Skywalker"]
+                                             [3 30 "Darth Vader"]])
+                          (rows-for-table table))))
                 (io/delete-file file)))))))))
 
 (defn- trim-lines [s]
@@ -1306,7 +1311,7 @@
                     (is (some? (update-csv! verb {:file     file
                                                   :table-id (:id table)})))
                     (testing "Check the data was uploaded into the table correctly"
-                      (is (= (updated-contents verb
+                      (is (=? (updated-contents verb
                                                [[1 1000000 1.0 "some_text" false "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]]
                                                [[2 2000000 2.0 "some_text" true "2020-02-02T00:00:00Z" "2020-02-02T02:02:02Z" "2020-02-02T00:02:02Z"]])
                              (rows-for-table table))))
@@ -1326,8 +1331,8 @@
                          (update-csv! verb {:file     file
                                             :table-id (:id table)})))
                   (testing "Check the data was not uploaded into the table"
-                    (is (= (updated-contents verb [[1 "Obi-Wan Kenobi"]] [])
-                           (rows-for-table table))))
+                    (is (=? (updated-contents verb [[1 "Obi-Wan Kenobi"]] [])
+                            (rows-for-table table))))
                   (io/delete-file file))))))))))
 
 (deftest update-mb-row-id-csv-only-test
@@ -1420,10 +1425,10 @@
                      (update-csv! verb {:file     file
                                         :table-id (:id table)})))
               (testing "Check the data was uploaded into the table, but the _mb_row_id was ignored"
-                (is (= (updated-contents verb
-                                         [[1 "Obi-Wan Kenobi"]]
-                                         [[2 "Luke Skywalker"]])
-                       (rows-for-table table))))
+                (is (=? (updated-contents verb
+                                          [[1 "Obi-Wan Kenobi"]]
+                                          [[2 "Luke Skywalker"]])
+                        (rows-for-table table))))
               (io/delete-file file))))))))
 
 (deftest ^:mb/once update-snowplow-test
@@ -1504,10 +1509,10 @@
               (is (= {:row-count 1}
                      (update-csv! verb {:file file, :table-id (:id table)})))
               (testing "Check the data was uploaded into the table, but the _mb_row_id was ignored"
-                (is (= (updated-contents verb
-                                         [[1 "Obi-Wan Kenobi"]]
-                                         [[2 "Luke Skywalker"]])
-                       (rows-for-table table))))
+                (is (=? (updated-contents verb
+                                          [[1 "Obi-Wan Kenobi"]]
+                                          [[2 "Luke Skywalker"]])
+                        (rows-for-table table))))
               (io/delete-file file)))
 
           ;; TODO we can deduplicate a lot of code in this test
@@ -1518,10 +1523,10 @@
                 (is (= {:row-count 1}
                        (update-csv! verb {:file file, :table-id (:id table)})))
                 (testing "Check the data was uploaded into the table, but the _mb_row_id was ignored"
-                  (is (= (updated-contents verb
-                                           [[1 "Obi-Wan Kenobi"]]
-                                           [[2 "Luke Skywalker"]])
-                         (rows-for-table table))))
+                  (is (=? (updated-contents verb
+                                            [[1 "Obi-Wan Kenobi"]]
+                                            [[2 "Luke Skywalker"]])
+                          (rows-for-table table))))
                 (io/delete-file file)))))))))
 
 (deftest update-duplicate-header-csv-test
@@ -1557,7 +1562,7 @@
 
               (testing "The new row is inserted with the values correctly reordered"
                 (is (= {:row-count 1} (update-csv! verb {:file file, :table-id (:id table)})))
-                (is (= (updated-contents verb
+                (is (=? (updated-contents verb
                                          [[1 "Obi-Wan Kenobi" "No one really knows me"]]
                                          [[2 "Puke Nightstalker" "Nothing - you can't prove it"]])
                        (rows-for-table table))))
@@ -1575,10 +1580,10 @@
                    file     (csv-file-with csv-rows (mt/random-name))]
                (testing "The new row is inserted with the values correctly reordered"
                  (is (= {:row-count 1} (update-csv! verb {:file file, :table-id (:id table)})))
-                 (is (= (updated-contents verb
-                                          [[1 "Obi-Wan Kenobi" nil]]
-                                          [[2 "Fluke Skytalker" "Witticisms"]])
-                        (rows-for-table table))))
+                 (is (=? (updated-contents verb
+                                           [[1 "Obi-Wan Kenobi" nil]]
+                                           [[2 "Fluke Skytalker" "Witticisms"]])
+                         (rows-for-table table))))
                (io/delete-file file)))))))))
 
 (deftest update-type-mismatch-test
@@ -1655,7 +1660,7 @@
     (doseq [verb (verbs-to-test driver/*driver*)]
       (testing (verb-testing-str verb)
         (with-mysql-local-infile-off
-          (testing "Append fails if the CSV file contains string values that are too long for the column"
+          (testing "Fails if the CSV file contains string values that are too long for the column"
             ;; for drivers that insert rows in chunks, we change the chunk size to 1 so that we can test that the
             ;; inserted rows are rolled back
             (binding [driver/*insert-chunk-rows* 1]
@@ -1672,7 +1677,9 @@
                              :data    {:status-code 422}}
                             (catch-ex-info (update-csv! verb {:file file, :table-id (:id table)})))))
                   (testing "\nCheck the data was not uploaded into the table"
-                    (is (= 1 (count (rows-for-table table)))))
+                    ;; TODO in future it would be good to enhance ::replace to be atomic, i.e. to preserve the existing row
+                    (is (= (case verb ::upload/append 1 ::upload/replace 0)
+                           (count (rows-for-table table)))))
                   (io/delete-file file))))))))))
 
 (deftest update-too-long-for-varchar-255-mysql-local-infile-test
@@ -1801,10 +1808,10 @@
                             "1  , 1.0"]
                   file     (csv-file-with csv-rows (mt/random-name))]
               (is (some? (update-csv! verb {:file file, :table-id (:id table)})))
-              (is (= (updated-contents verb
-                                       [[1 1 1]]
-                                       [[2 1 1]
-                                        [3 1 1]])
-                     (rows-for-table table)))
+              (is (=? (updated-contents verb
+                                        [[1 1 1]]
+                                        [[2 1 1]
+                                         [3 1 1]])
+                      (rows-for-table table)))
 
               (io/delete-file file))))))))
