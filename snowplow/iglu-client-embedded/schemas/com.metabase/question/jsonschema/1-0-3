@@ -55,9 +55,16 @@
     },
     "question_id": {
       "description": "Unique identifier for the question within the Metabase instance",
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 2147483647
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "description": "Unique question identifier",
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 2147483647
+      }
     },
     "database_id": {
       "description": "Unique identifier(s) for the database connection(s) used to create the question",
