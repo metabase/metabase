@@ -80,7 +80,7 @@
                    :run           (^:once fn* [query info]
                                    (qp/process-query
                                     (qp/userland-query-with-default-constraints query info))))]
-      (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty]) (is-card-empty? result))
+      (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty]) (is-card-empty? (assoc card :result result)))
         {:card     card
          :dashcard dashcard
          :result   result

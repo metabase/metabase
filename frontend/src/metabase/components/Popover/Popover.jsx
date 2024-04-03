@@ -5,9 +5,10 @@ import ReactDOM from "react-dom";
 import Tether from "tether";
 
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
+import CS from "metabase/css/core/index.css";
 import { isCypressActive } from "metabase/env";
 
-import "./Popover.module.css";
+import PopoverS from "./Popover.module.css";
 
 // space we should leave between page edge and popover edge
 const PAGE_PADDING = 10;
@@ -96,7 +97,10 @@ export default class Popover extends Component {
 
     if (!this._popoverElement && isOpen) {
       this._popoverElement = document.createElement("span");
-      this._popoverElement.className = `PopoverContainer ${this.props.containerClassName}`;
+      this._popoverElement.className = cx(
+        PopoverS.PopoverContainer,
+        this.props.containerClassName,
+      );
       this._popoverElement.dataset.testid = "popover";
       document.body.appendChild(this._popoverElement);
 
@@ -229,13 +233,14 @@ export default class Popover extends Component {
     const content = (
       <div
         id={this.props.id}
+        data-element-id="legacy-popover"
         className={cx(
-          "PopoverBody",
+          PopoverS.PopoverBody,
           {
-            "PopoverBody--withBackground": this.props.hasBackground,
-            "PopoverBody--withArrow":
+            [PopoverS.PopoverBodyWithBackground]: this.props.hasBackground,
+            [PopoverS.PopoverBodyWithArrow]:
               this.props.hasArrow && this.props.hasBackground,
-            "PopoverBody--autoWidth": this.props.autoWidth,
+            [PopoverS.PopoverBodyAutoWidth]: this.props.autoWidth,
           },
           // TODO kdoh 10/16/2017 we should eventually remove this
           this.props.className,
@@ -383,7 +388,9 @@ export default class Popover extends Component {
   }
 
   constrainPopoverToBetweenViewportAndTarget(tetherOptions, direction) {
-    const body = tetherOptions.element.querySelector(".PopoverBody");
+    const body = tetherOptions.element.querySelector(
+      "[data-element-id=legacy-popover]",
+    );
     const target = this._getTargetElement();
     const bodyHeight = body.getBoundingClientRect().height;
     const space =
@@ -393,8 +400,8 @@ export default class Popover extends Component {
     const maxHeight = space - PAGE_PADDING;
     if (bodyHeight > maxHeight) {
       body.style.maxHeight = maxHeight + "px";
-      body.classList.add("scroll-y");
-      body.classList.add("scroll-show");
+      body.classList.add(CS.scrollY);
+      body.classList.add(CS.scrollShow);
     }
   }
 
@@ -421,6 +428,6 @@ export default class Popover extends Component {
       );
     }
 
-    return <span className="hide" />;
+    return <span className={CS.hide} />;
   }
 }

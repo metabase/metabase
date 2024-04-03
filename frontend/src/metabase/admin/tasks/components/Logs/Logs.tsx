@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useState, useMemo } from "react";
 import * as React from "react";
 import reactAnsiStyle from "react-ansi-style";
@@ -5,6 +6,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Select, { Option } from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
 
 import { LogsContainer, LogsContent } from "./Logs.styled";
 import { usePollingLogsQuery, useTailLogs } from "./hooks";
@@ -47,7 +49,7 @@ export const Logs = ({ pollingDurationMs = 1000 }: LogsProps) => {
               refollow();
               setSelectedProcessUUID(e.target.value);
             }}
-            className="inline-block ml1"
+            className={cx(CS.inlineBlock, CS.ml1)}
             width={400}
           >
             <Option value="ALL" key="ALL">{t`All Metabase processes`}</Option>

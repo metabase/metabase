@@ -319,16 +319,7 @@ export const TimelineEventApi = {
 };
 
 export const MetabaseApi = {
-  db_validate: POST("/api/database/validate"),
   db_add_sample_database: POST("/api/database/sample_database"),
-  db_metadata: GET("/api/database/:dbId/metadata"),
-  db_schemas: GET("/api/database/:dbId/schemas"),
-  db_syncable_schemas: GET("/api/database/:dbId/syncable_schemas"),
-  db_schema_tables: GET("/api/database/:dbId/schema/:schemaName"),
-  db_virtual_dataset_tables: GET("/api/database/:dbId/datasets/:schemaName"),
-  //db_tables:   GET("/api/database/:dbId/tables"),
-  db_fields: GET("/api/database/:dbId/fields"),
-  db_idfields: GET("/api/database/:dbId/idfields"),
   db_autocomplete_suggestions: GET(
     "/api/database/:dbId/autocomplete_suggestions?:matchStyle=:query",
   ),
@@ -362,9 +353,6 @@ export const MetabaseApi = {
   // field_summary:               GET("/api/field/:fieldId/summary"),
   field_values: GET("/api/field/:fieldId/values"),
   field_values_update: POST("/api/field/:fieldId/values"),
-  field_update: PUT("/api/field/:id"),
-  field_dimension_update: POST("/api/field/:fieldId/dimension"),
-  field_dimension_delete: DELETE("/api/field/:fieldId/dimension"),
   field_search: GET("/api/field/:fieldId/search/:searchFieldId"),
   field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
@@ -616,4 +604,10 @@ export const ApiKeysApi = {
   delete: DELETE("/api/api-key/:id"),
   edit: PUT("/api/api-key/:id"),
   regenerate: PUT("/api/api-key/:id/regenerate"),
+};
+
+export const CacheConfigApi = {
+  list: GET("/api/cache"),
+  update: PUT("/api/cache"),
+  delete: DELETE("/api/cache"),
 };

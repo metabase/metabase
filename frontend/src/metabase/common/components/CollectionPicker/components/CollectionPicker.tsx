@@ -67,14 +67,23 @@ export const CollectionPickerInner = (
 
   const onFolderSelect = useCallback(
     ({ folder }: { folder: CollectionPickerItem }) => {
+      const isUserPersonalCollection = folder?.id === userPersonalCollectionId;
+      const isUserSubfolder =
+        path?.[1]?.query?.collection === "personal" &&
+        !isUserPersonalCollection;
+
       const newPath = getStateFromIdPath({
-        idPath: getCollectionIdPath(folder, userPersonalCollectionId),
+        idPath: getCollectionIdPath(
+          folder,
+          userPersonalCollectionId,
+          isUserSubfolder,
+        ),
         namespace: options.namespace,
       });
       setPath(newPath);
       onItemSelect(folder);
     },
-    [setPath, onItemSelect, options.namespace, userPersonalCollectionId],
+    [setPath, onItemSelect, options.namespace, userPersonalCollectionId, path],
   );
 
   // Exposing onFolderSelect so that parent can select newly created

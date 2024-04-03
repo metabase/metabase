@@ -75,7 +75,7 @@ export class WindowModal extends Component<WindowModalProps> {
       >
         <FocusTrap active={this.props.trapFocus}>
           <div
-            className={cx(className, "relative bg-white rounded")}
+            className={cx(className, CS.relative, CS.bgWhite, CS.rounded)}
             role="dialog"
           >
             {getModalContent({

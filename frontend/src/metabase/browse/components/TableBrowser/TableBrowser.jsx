@@ -2,7 +2,7 @@ import PropTypes from "prop-types";
 import { Fragment } from "react";
 import { t } from "ttag";
 
-import BrowserCrumbs from "metabase/components/BrowserCrumbs";
+import { BrowserCrumbs } from "metabase/components/BrowserCrumbs";
 import EntityItem from "metabase/components/EntityItem";
 import Database from "metabase/entities/databases";
 import { color } from "metabase/lib/colors";

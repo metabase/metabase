@@ -5530,6 +5530,20 @@ databaseChangeLog:
       rollback: # not needed
 
   - changeSet:
+      id: v49.2024-03-26T10:23:12
+      author: adam-james
+      comment: Add pulse_card.format_rows
+      changes:
+        - addColumn:
+            tableName: pulse_card
+            columns:
+              - column:
+                  name: format_rows
+                  type: ${boolean.type}
+                  defaultValue: true
+                  remarks: Whether or not to apply formatting to the rows of the export
+
+  - changeSet:
       id: v49.2024-03-26T20:27:58
       author: noahmoss
       comment: Added 0.46.0 - Delete the truncate audit log task (renamed to truncate audit tables)
@@ -6075,6 +6089,30 @@ databaseChangeLog:
                   name: estimated_row_count
                   type: bigint
                   remarks: The estimated row count
+
+  - changeSet:
+      id: v50.2024-03-25T14:53:00
+      author: tsmacdonald
+      comment: Add query_field.direct_reference
+      changes:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: direct_reference
+                  type: ${boolean.type}
+                  remarks: "Is the Field referenced directly or via a wildcard"
+                  constraints:
+                    nullable: false
+                  defaultValue: true
+
+  - changeSet:
+      id: v50.2024-03-28T16:30:35
+      author: calherries
+      comment: Create internal user
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateInternalUser"
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

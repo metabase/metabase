@@ -46,9 +46,8 @@ const ViewFooter = ({
     return null;
   }
 
-  const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
-  const hasDataPermission = isEditable;
-  const hideChartSettings = result.error && !hasDataPermission;
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  const hideChartSettings = result.error && !isEditable;
   const type = question.type();
 
   return (
@@ -109,18 +108,18 @@ const ViewFooter = ({
             result,
             isObjectDetail,
           }) && <QuestionRowCount key="row_count" />,
-          isNative && <ExecutionTime time={result.running_time} />,
+          <ExecutionTime key="execution_time" time={result.running_time} />,
           QuestionLastUpdated.shouldRender({ result }) && (
             <QuestionLastUpdated
               key="last-updated"
-              className="hide sm-show"
+              className={cx(CS.hide, CS.smShow)}
               result={result}
             />
           ),
           QueryDownloadWidget.shouldRender({ result }) && (
             <QueryDownloadWidget
               key="download"
-              className="hide sm-show"
+              className={cx(CS.hide, CS.smShow)}
               question={question}
               result={result}
               visualizationSettings={visualizationSettings}
@@ -134,7 +133,7 @@ const ViewFooter = ({
           }) && (
             <QuestionAlertWidget
               key="alerts"
-              className="hide sm-show"
+              className={cx(CS.hide, CS.smShow)}
               canManageSubscriptions={canManageSubscriptions}
               question={question}
               questionAlerts={questionAlerts}
@@ -165,7 +164,7 @@ const ViewFooter = ({
           QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
             <QuestionTimelineWidget
               key="timelines"
-              className="hide sm-show"
+              className={cx(CS.hide, CS.smShow)}
               isShowingTimelineSidebar={isShowingTimelineSidebar}
               onOpenTimelines={onOpenTimelines}
               onCloseTimelines={onCloseTimelines}
