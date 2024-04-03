@@ -53,7 +53,6 @@ function setup({
   // Using mockResolvedValue since `ActionButton` component
   // the Sidebar is using is expecting these callbacks to be async
   const updateDatabase = jest.fn().mockResolvedValue({});
-  const syncDatabaseSchema = jest.fn().mockResolvedValue({});
   const dismissSyncSpinner = jest.fn().mockResolvedValue({});
   const deleteDatabase = jest.fn().mockResolvedValue({});
 
@@ -63,7 +62,6 @@ function setup({
       isAdmin={isAdmin}
       isModelPersistenceEnabled={isModelPersistenceEnabled}
       updateDatabase={updateDatabase}
-      syncDatabaseSchema={syncDatabaseSchema}
       dismissSyncSpinner={dismissSyncSpinner}
       deleteDatabase={deleteDatabase}
     />,
@@ -74,7 +72,6 @@ function setup({
     ...utils,
     database,
     updateDatabase,
-    syncDatabaseSchema,
     dismissSyncSpinner,
     deleteDatabase,
   };
@@ -82,9 +79,13 @@ function setup({
 
 describe("DatabaseEditApp/Sidebar", () => {
   it("syncs database schema", async () => {
-    const { database, syncDatabaseSchema } = setup();
+    const { database } = setup();
     await userEvent.click(screen.getByText(/Sync database schema now/i));
-    expect(syncDatabaseSchema).toHaveBeenCalledWith(database.id);
+    await waitFor(() => {
+      expect(
+        fetchMock.called(`path:/api/database/${database.id}/sync_schema`),
+      ).toBe(true);
+    });
   });
 
   it("re-scans database field values", async () => {

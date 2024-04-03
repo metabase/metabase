@@ -119,6 +119,6 @@ describe("PaletteResults", () => {
   it("should provide links to admin pages", async () => {
     setup({ query: "permi" });
     expect(await screen.findByText("Admin")).toBeInTheDocument();
-    expect(await screen.findByText("Admin - Permissions")).toBeInTheDocument();
+    expect(await screen.findByText("Permissions")).toBeInTheDocument();
   });
 });

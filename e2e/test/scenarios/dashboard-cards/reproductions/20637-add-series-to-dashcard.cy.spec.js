@@ -23,9 +23,7 @@ describe("adding an additional series to a dashcard (metabase#20637)", () => {
     // make sure the card query endpoint was used
     cy.wait("@additionalSeriesCardQuery");
 
-    cy.get(".AddSeriesModal").within(() => {
-      cy.findByText("Done").click();
-    });
+    cy.findByTestId("add-series-modal").button("Done").click();
     saveDashboard();
 
     // refresh the page and make sure the dashcard query endpoint was used

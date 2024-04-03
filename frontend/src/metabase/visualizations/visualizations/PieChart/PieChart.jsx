@@ -283,7 +283,9 @@ export default class PieChart extends Component {
         groupElement.getBoundingClientRect().width >= 120 &&
         settings["pie.show_total"];
 
-      this.setState({ showChartDetail });
+      if (showChartDetail !== this.state.showChartDetail) {
+        this.setState({ showChartDetail });
+      }
     });
 
     if (
