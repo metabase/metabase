@@ -16,8 +16,12 @@ export const generateKey = (
 };
 
 export const tablePickerValueFromTable = (
-  table: Table | TableEntity,
-): TablePickerValue => {
+  table: Table | TableEntity | null,
+): TablePickerValue | null => {
+  if (table === null) {
+    return null;
+  }
+
   // Temporary, for backward compatibility in DataStep, until entity framework is no more
   if (table instanceof TableEntity) {
     return tablePickerValueFromTableEntity(table);

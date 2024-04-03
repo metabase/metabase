@@ -89,7 +89,7 @@ export const DataStep = ({
           {isDataPickerOpen && (
             <DataPickerModal
               collectionId={collectionId}
-              value={table ? tablePickerValueFromTable(table) : null}
+              value={tablePickerValueFromTable(table)}
               onChange={handleTableSelect}
               onClose={() => setIsDataPickerOpen(false)}
             />
