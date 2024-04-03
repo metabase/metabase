@@ -463,7 +463,7 @@ describeEE("scenarios > embedding > full app", () => {
       );
     });
 
-    it("should send `frame` message with dashboard height when the dashboard is resized (metabase#40660)", () => {
+    it("should send `frame` message with dashboard height when the dashboard is resized (metabase#37437)", () => {
       const TAB_1 = { id: 1, name: "Tab 1" };
       const TAB_2 = { id: 2, name: "Tab 2" };
       createDashboardWithTabs({

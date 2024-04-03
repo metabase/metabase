@@ -19,7 +19,7 @@ const dashboardDetails = {
   enable_embedding: true,
 };
 
-describe("issue 37914", () => {
+describe("issue 40660", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/preview_embed/dashboard/**").as(
       "previewDashboard",
@@ -42,7 +42,7 @@ describe("issue 37914", () => {
     });
   });
 
-  it("dashboard linked filters values doesn't work in static embed preview (metabase#37914)", () => {
+  it("static dashboard content shouldn't overflow its container (metabase#40660)", () => {
     openStaticEmbeddingModal({
       activeTab: "parameters",
       previewMode: "preview",
