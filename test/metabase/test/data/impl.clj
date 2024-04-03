@@ -7,6 +7,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models :refer [Database Field FieldValues Secret Table]]
+   [metabase.models.data-permissions :as data-perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.models.secret :as secret]
    [metabase.plugins.classloader :as classloader]
    [metabase.test.data.dataset-definitions :as defs]
@@ -322,6 +324,12 @@
                  prop->old-id)))
       database)))
 
+(defn- set-temp-db-permissions!
+  [new-db-id]
+  (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/view-data :unrestricted)
+  (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/create-queries :query-builder-and-native)
+  (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/download-results :one-million-rows))
+
 (def ^:dynamic *db-is-temp-copy?*
   "Whether the current test database is a temp copy created with the [[metabase.test/with-temp-copy-of-db]] macro."
   false)
@@ -335,6 +343,7 @@
         {new-db-id :id, :as new-db} (first (t2/insert-returning-instances! Database original-db))]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)
+      (set-temp-db-permissions! new-db-id)
       (binding [*db-is-temp-copy?* true]
         (do-with-db new-db f))
       (finally
