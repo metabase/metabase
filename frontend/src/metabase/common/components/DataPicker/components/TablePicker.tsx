@@ -17,7 +17,7 @@ import {
 import type {
   NotebookDataPickerFolderItem,
   NotebookDataPickerValueItem,
-  Value,
+  TablePickerValue,
 } from "../types";
 import { generateKey } from "../utils";
 
@@ -26,7 +26,7 @@ import { SchemaList } from "./SchemaList";
 import { TableList } from "./TableList";
 
 interface Props {
-  value: Value | null;
+  value: TablePickerValue | null;
   options?: EntityPickerModalOptions;
   onItemSelect: (item: NotebookDataPickerValueItem) => void;
 }

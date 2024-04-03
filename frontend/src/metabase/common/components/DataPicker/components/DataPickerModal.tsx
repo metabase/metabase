@@ -11,16 +11,16 @@ import type {
   EntityTab,
 } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
-import type { NotebookDataPickerValueItem, Value } from "../types";
+import type { NotebookDataPickerValueItem, TablePickerValue } from "../types";
 
 import { TablePicker } from "./TablePicker";
 
 interface Props {
   collectionId: CollectionId | null | undefined; // TODO: use it
-  onChange: (item: Value) => void;
+  onChange: (value: TablePickerValue) => void;
   onClose: () => void;
   options?: EntityPickerOptions;
-  value: Value | null;
+  value: TablePickerValue | null;
 }
 
 const options: EntityPickerModalOptions = {
@@ -28,7 +28,10 @@ const options: EntityPickerModalOptions = {
   hasConfirmButtons: false,
 };
 
-const isValueEqual = (value1: Value | null, value2: Value | null) => {
+const isValueEqual = (
+  value1: TablePickerValue | null,
+  value2: TablePickerValue | null,
+) => {
   if (!value1 || !value2) {
     return value1 === value2;
   }

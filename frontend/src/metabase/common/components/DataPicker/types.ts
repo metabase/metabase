@@ -42,10 +42,10 @@ export type ModelItem = {
   model: "dataset";
 };
 
-export type Value = {
+export type TablePickerValue = {
   id: Table["id"];
   db_id: Table["db_id"];
-  schema?: Table["schema"];
+  schema: Table["schema"];
 };
 
 export type NotebookDataPickerFolderItem =
