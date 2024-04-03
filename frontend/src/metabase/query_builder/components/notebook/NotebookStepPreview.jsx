@@ -80,7 +80,7 @@ const NotebookStepPreview = ({ step, onClose }) => {
   );
 };
 
-const VisualizationPreview = ({ rawSeries, result, error }) => {
+export const VisualizationPreview = ({ rawSeries, result, error }) => {
   const err = coerceError(error || result?.error);
 
   return (
