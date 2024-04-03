@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { findWhere, pick } from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import useBeforeUnload from "metabase/hooks/use-before-unload";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { CacheConfigApi } from "metabase/services";
@@ -87,6 +88,7 @@ const StrategyEditorForDatabases_Base = ({
     shouldConfirm: isStrategyFormDirty,
     confirm: askBeforeDiscardingChanges,
   });
+  useBeforeUnload(isStrategyFormDirty);
 
   /** Update the targetId (the id of the currently edited model) but confirm if the form is unsaved */
   const updateTargetId: UpdateTargetId = (newTargetId, isFormDirty) => {
