@@ -7,8 +7,6 @@ import _ from "underscore";
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
-import { useModalOpen } from "metabase/hooks/use-modal-open";
-import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { Icon } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
@@ -83,11 +81,6 @@ const NotebookStepPreview = ({ step, onClose }) => {
 };
 
 const VisualizationPreview = ({ rawSeries, result, error }) => {
-  const { open } = useModalOpen();
-  const preferReducedMotion = isReducedMotionPreferred();
-
-  const transitionDuration = preferReducedMotion ? 80 : 700;
-
   const err = coerceError(error || result?.error);
 
   return (
@@ -98,8 +91,7 @@ const VisualizationPreview = ({ rawSeries, result, error }) => {
         p2: err,
       })}
       style={{
-        height: err ? "auto" : getPreviewHeightForResult(result) / (2 - open),
-        transition: `height ${transitionDuration}ms cubic-bezier(0, 0, 0.2, 1)`,
+        height: err ? "auto" : getPreviewHeightForResult(result),
       }}
     />
   );
