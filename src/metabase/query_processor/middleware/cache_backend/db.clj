@@ -1,9 +1,11 @@
 (ns metabase.query-processor.middleware.cache-backend.db
   (:require
+   [clojure.math :as math]
    [java-time.api :as t]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.models.query-cache :refer [QueryCache]]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
@@ -38,8 +40,9 @@
     (fn []
       (f (mdb/db-type)))))
 
-(defn- prepare-statement
-  ^PreparedStatement [^Connection conn query-hash max-age-seconds]
+(defn prepare-statement
+  "Create a prepared statement to query cache"
+  ^PreparedStatement [^Connection conn query-hash updated-at]
   (let [stmt (.prepareStatement conn ^String (cached-results-query-sql)
                                 ResultSet/TYPE_FORWARD_ONLY
                                 ResultSet/CONCUR_READ_ONLY
@@ -48,25 +51,44 @@
       (doto stmt
         (.setFetchDirection ResultSet/FETCH_FORWARD)
         (.setBytes 1 query-hash)
-        (.setObject 2 (seconds-ago max-age-seconds) Types/TIMESTAMP_WITH_TIMEZONE)
+        (.setObject 2 updated-at Types/TIMESTAMP_WITH_TIMEZONE)
         (.setMaxRows 1))
       (catch Throwable e
-        (log/error e (trs "Error preparing statement to fetch cached query results"))
+        (log/error e "Error preparing statement to fetch cached query results")
         (.close stmt)
         (throw e)))))
 
-(defn- cached-results [query-hash max-age-seconds respond]
+
+(defn fetch-cache-stmt-ttl
+  "Make a prepared statement for :ttl caching strategy"
+  ^PreparedStatement [strategy query-hash ^Connection conn]
+  (if-not (:avg-execution-ms strategy)
+    (log/debugf "Caching strategy %s needs :avg-execution-ms to work" (pr-str strategy))
+    (let [max-age-seconds (math/round (/ (* (:multiplier strategy)
+                                            (:avg-execution-ms strategy))
+                                         1000.0))]
+      (prepare-statement conn query-hash (seconds-ago max-age-seconds)))))
+
+(defenterprise fetch-cache-stmt
+  "Returns prepared statement for a given strategy and query hash - on EE. Returns `::oss` on OSS."
+  metabase-enterprise.cache.strategies
+  [strategy hash conn]
+  (when (= :ttl (:type strategy))
+    (fetch-cache-stmt-ttl strategy hash conn)))
+
+(defn- cached-results [query-hash strategy respond]
   ;; VERY IMPORTANT! Open up a connection (which internally binds [[toucan2.connection/*current-connectable*]] so it
   ;; will get reused elsewhere for the duration of results reduction, otherwise we can potentially end up deadlocking if
   ;; we need to acquire another connection for one reason or another, such as recording QueryExecutions
   (t2/with-connection [conn]
-    (with-open [stmt (prepare-statement conn query-hash max-age-seconds)
-                rs   (.executeQuery stmt)]
-      (assert (= t2.connection/*current-connectable* conn))
-      (if-not (.next rs)
-        (respond nil)
-        (with-open [is (.getBinaryStream rs 1)]
-          (respond is))))))
+    (when-let [stmt (fetch-cache-stmt strategy query-hash conn)]
+      (with-open [stmt ^PreparedStatement stmt
+                  rs   (.executeQuery stmt)]
+        (assert (= t2.connection/*current-connectable* conn))
+        (if-not (.next rs)
+          (respond nil)
+          (with-open [is (.getBinaryStream rs 1)]
+            (respond is)))))))
 
 (defn- purge-old-cache-entries!
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."
@@ -77,14 +99,14 @@
     (t2/delete! (t2/table-name QueryCache)
                 :updated_at [:<= (seconds-ago max-age-seconds)])
     (catch Throwable e
-      (log/error e (trs "Error purging old cache entries"))))
+      (log/error e "Error purging old cache entries")))
   nil)
 
 (defn- save-results!
   "Save the `results` of query with `query-hash`, updating an existing QueryCache entry if one already exists, otherwise
   creating a new entry."
   [^bytes query-hash ^bytes results]
-  (log/debug (trs "Caching results for query with hash {0}." (pr-str (i/short-hex-hash query-hash))))
+  (log/debugf "Caching results for query with hash %s." (pr-str (i/short-hex-hash query-hash)))
   (try
     (or (pos? (t2/update! QueryCache {:query_hash query-hash}
                           {:updated_at (t/offset-date-time)
@@ -100,8 +122,8 @@
 (defmethod i/cache-backend :db
   [_]
   (reify i/CacheBackend
-    (cached-results [_ query-hash max-age-seconds respond]
-      (cached-results query-hash max-age-seconds respond))
+    (cached-results [_ query-hash strategy respond]
+      (cached-results query-hash strategy respond))
 
     (save-results! [_ query-hash is]
       (save-results! query-hash is)

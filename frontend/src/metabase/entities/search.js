@@ -15,6 +15,9 @@ import Segments from "./segments";
 import SnippetCollections from "./snippet-collections";
 import Snippets from "./snippets";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export default createEntity({
   name: "search",
   path: "/api/search",

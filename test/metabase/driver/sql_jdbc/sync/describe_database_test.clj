@@ -45,10 +45,12 @@
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-database`. (As far as I know, this is
   all of them.)"
   []
-  (set
-   (filter
-    #(identical? (get-method driver/describe-database :sql-jdbc) (get-method driver/describe-database %))
-    (descendants driver/hierarchy :sql-jdbc))))
+  (conj (set
+         (filter
+          #(identical? (get-method driver/describe-database :sql-jdbc) (get-method driver/describe-database %))
+          (descendants driver/hierarchy :sql-jdbc)))
+        ;; redshift wraps the default implementation, but additionally filters tables according to the database name
+        :redshift))
 
 (deftest fast-active-tables-test
   (is (= ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"]

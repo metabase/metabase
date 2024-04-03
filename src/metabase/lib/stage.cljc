@@ -12,7 +12,6 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
@@ -22,14 +21,6 @@
 
 (lib.hierarchy/derive :mbql.stage/mbql   ::stage)
 (lib.hierarchy/derive :mbql.stage/native ::stage)
-
-(defmethod lib.normalize/normalize :mbql.stage/mbql
-  [stage]
-  (lib.normalize/normalize-map
-   stage
-   keyword
-   {:aggregation (partial mapv lib.normalize/normalize)
-    :filters     (partial mapv lib.normalize/normalize)}))
 
 (defmethod lib.metadata.calculation/metadata-method ::stage
   [_query _stage-number _stage]

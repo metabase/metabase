@@ -36,7 +36,7 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText(representativeResult);
       });
     });
@@ -56,7 +56,7 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
 
         SQLFilter.runQuery();
 
-        cy.get(".Visualization").within(() => {
+        cy.findByTestId("query-visualization-root").within(() => {
           cy.findByText(representativeResult);
         });
       },

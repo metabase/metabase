@@ -49,7 +49,7 @@
 
 (deftest ^:parallel default-select-test
   (is (= ["SELECT \"source\".* FROM (SELECT *) AS \"source\""]
-         (->> {:from [[[::sql.qp/sql-source-query "SELECT *"]
+         (->> {:from [[{::sql.qp/sql-source-query ["SELECT *"]}
                        [(h2x/identifier :table-alias "source")]]]}
               (#'sql.qp/add-default-select :redshift)
               (sql.qp/format-honeysql :redshift)))))
@@ -221,62 +221,62 @@
   (mt/test-driver
     :redshift
     (testing "Redshift specific types should be synced correctly"
-      (let [db-details   (tx/dbdef->connection-details :redshift nil nil)
-            tbl-nm       "redshift_specific_types"
-            qual-tbl-nm  (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) tbl-nm)
-            view-nm      "late_binding_view"
-            qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
+      (let [db-details (tx/dbdef->connection-details :redshift nil nil)]
         (mt/with-temp [:model/Database database {:engine :redshift, :details db-details}]
-          ;; create a table with a CHARACTER VARYING and a NUMERIC column, and a late bound view that selects from it
-          (execute!
-           (str "DROP TABLE IF EXISTS %1$s;%n"
-                "CREATE TABLE %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));%n"
-                "CREATE OR REPLACE VIEW %2$s AS SELECT * FROM %1$s WITH NO SCHEMA BINDING;")
-           qual-tbl-nm
-           qual-view-nm)
+          (let [tbl-nm       (tx/db-qualified-table-name (:name database) "table")
+                qual-tbl-nm  (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) tbl-nm)
+                view-nm      (tx/db-qualified-table-name (:name database) "view")
+                qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
+            ;; create a table with a CHARACTER VARYING and a NUMERIC column, and a late bound view that selects from it
+            (execute!
+             (str "DROP TABLE IF EXISTS %1$s;%n"
+                  "CREATE TABLE %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));%n"
+                  "CREATE OR REPLACE VIEW %2$s AS SELECT * FROM %1$s WITH NO SCHEMA BINDING;")
+             qual-tbl-nm
+             qual-view-nm)
             ;; sync the schema again to pick up the new view (and table, though we aren't checking that)
-          (sync/sync-database! database {:scan :schema})
-          (is (contains?
-               (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced
-               view-nm))
-          (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
+            (sync/sync-database! database {:scan :schema})
+            (is (contains?
+                 (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced
+                 view-nm))
+            (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
               ;; and its columns' :base_type should have been identified correctly
-            (is (= [{:name "numeric_col",   :database_type "numeric",           :base_type :type/Decimal}
-                    {:name "weird_varchar", :database_type "character varying", :base_type :type/Text}]
-                   (map
-                    mt/derecordize
-                    (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))))))))
+              (is (= [{:name "numeric_col",   :database_type "numeric",           :base_type :type/Decimal}
+                      {:name "weird_varchar", :database_type "character varying", :base_type :type/Text}]
+                     (map
+                      mt/derecordize
+                      (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]})))))))))))
 
 (deftest redshift-lbv-sync-error-test
   (mt/test-driver
     :redshift
     (testing "Late-binding view with with data types that cause a JDBC error can still be synced successfully (#21215)"
-      (let [db-details   (tx/dbdef->connection-details :redshift nil nil)
-            view-nm      "weird_late_binding_view"
-            qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
+      (let [db-details (tx/dbdef->connection-details :redshift nil nil)]
         (t2.with-temp/with-temp [Database database {:engine :redshift, :details db-details}]
-          (try
-            (execute!
-             (str "CREATE OR REPLACE VIEW %1$s AS ("
-                  "WITH test_data AS (SELECT 'open' AS shop_status UNION ALL SELECT 'closed' AS shop_status) "
-                  "SELECT NULL as raw_null, "
-                  "'hello' as raw_var, "
-                  "CASE WHEN shop_status = 'open' THEN 11387.133 END AS case_when_numeric_inc_nulls "
-                  "FROM test_data) WITH NO SCHEMA BINDING;")
-             qual-view-nm)
-            (sync/sync-database! database {:scan :schema})
-            (is (contains?
-                 (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced without errors
-                 view-nm))
-            (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
-              ;; and its columns' :base_type should have been identified correctly
-              (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric",           :base_type :type/Decimal}
-                      {:name "raw_null",                    :database_type "character varying", :base_type :type/Text}
-                      {:name "raw_var",                     :database_type "character varying", :base_type :type/Text}]
-                     (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))
-            (finally
-              (execute! (str "DROP VIEW IF EXISTS %s;")
-                        qual-view-nm))))))))
+          (let [view-nm      (tx/db-qualified-table-name (:name database) "lbv")
+                qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
+            (try
+              (execute!
+               (str "CREATE OR REPLACE VIEW %1$s AS ("
+                    "WITH test_data AS (SELECT 'open' AS shop_status UNION ALL SELECT 'closed' AS shop_status) "
+                    "SELECT NULL as raw_null, "
+                    "'hello' as raw_var, "
+                    "CASE WHEN shop_status = 'open' THEN 11387.133 END AS case_when_numeric_inc_nulls "
+                    "FROM test_data) WITH NO SCHEMA BINDING;")
+               qual-view-nm)
+              (sync/sync-database! database {:scan :schema})
+              (is (contains?
+                   (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced without errors
+                   view-nm))
+              (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
+                ;; and its columns' :base_type should have been identified correctly
+                (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric",           :base_type :type/Decimal}
+                        {:name "raw_null",                    :database_type "character varying", :base_type :type/Text}
+                        {:name "raw_var",                     :database_type "character varying", :base_type :type/Text}]
+                       (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))
+              (finally
+                (execute! (str "DROP VIEW IF EXISTS %s;")
+                          qual-view-nm)))))))))
 
 (deftest filtered-syncable-schemas-test
   (mt/test-driver :redshift
@@ -295,89 +295,86 @@
                   random-schema
                   temp-username)
         (try
-          (binding [redshift.test/*use-original-filtered-syncable-schemas-impl?* true]
-            (t2.with-temp/with-temp [Database db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
-              (sql-jdbc.execute/do-with-connection-with-options
-               :redshift
-               db
-               nil
-               (fn [^java.sql.Connection conn]
-                 (let [schemas (reduce conj
-                                       #{}
-                                       (sql-jdbc.sync/filtered-syncable-schemas :redshift
-                                                                                conn
-                                                                                (.getMetaData conn)
-                                                                                nil
-                                                                                nil))]
-                   (testing "filtered-syncable-schemas for the user should contain the newly created random schema"
-                     (is (contains? schemas random-schema)))
-                   (testing "should not contain the current session-schema name (since that was never granted)"
-                     (is (not (contains? schemas (redshift.test/unique-session-schema))))))))))
-          (finally
-            (execute! (str "REVOKE USAGE ON SCHEMA %s FROM %s;%n"
-                           "DROP USER IF EXISTS %s;%n"
-                           "DROP SCHEMA IF EXISTS %s;%n")
-                      random-schema
-                      temp-username
-                      temp-username
-                      random-schema)))))
+         (t2.with-temp/with-temp [Database db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
+           (sql-jdbc.execute/do-with-connection-with-options
+            :redshift
+            db
+            nil
+            (fn [^java.sql.Connection conn]
+              (let [schemas (reduce conj
+                                    #{}
+                                    (sql-jdbc.sync/filtered-syncable-schemas :redshift
+                                                                             conn
+                                                                             (.getMetaData conn)
+                                                                             nil
+                                                                             nil))]
+                (testing "filtered-syncable-schemas for the user should contain the newly created random schema"
+                  (is (contains? schemas random-schema)))
+                (testing "should not contain the current session-schema name (since that was never granted)"
+                  (is (not (contains? schemas (redshift.test/unique-session-schema)))))))))
+         (finally
+           (execute! (str "REVOKE USAGE ON SCHEMA %s FROM %s;%n"
+                          "DROP USER IF EXISTS %s;%n"
+                          "DROP SCHEMA IF EXISTS %s;%n")
+                     random-schema
+                     temp-username
+                     temp-username
+                     random-schema)))))
 
     (testing "Should filter out non-existent schemas (for which nobody has permissions)"
       (let [fake-schema-name (u/qualified-name ::fake-schema)]
-        (binding [redshift.test/*use-original-filtered-syncable-schemas-impl?* true]
-          ;; override `all-schemas` so it returns our fake schema in addition to the real ones.
-          (with-redefs [sql-jdbc.describe-database/all-schemas (let [orig sql-jdbc.describe-database/all-schemas]
-                                                                 (fn [metadata]
-                                                                   (eduction
-                                                                    cat
-                                                                    [(orig metadata) [fake-schema-name]])))]
-            (sql-jdbc.execute/do-with-connection-with-options
-             :redshift
-             (mt/db)
-             nil
-             (fn [^java.sql.Connection conn]
-               (letfn [(schemas []
-                         (reduce
-                          conj
-                          #{}
-                          (sql-jdbc.sync/filtered-syncable-schemas :redshift conn (.getMetaData conn) nil nil)))]
-                 (testing "if schemas-with-usage-permissions is disabled, the ::fake-schema should come back"
-                   (with-redefs [redshift/reducible-schemas-with-usage-permissions (fn [_ reducible]
-                                                                                     reducible)]
-                     (is (contains? (schemas) fake-schema-name))))
-                 (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
-                   (is (not (contains? (schemas) fake-schema-name)))))))))))))
+        (with-redefs [sql-jdbc.describe-database/all-schemas (let [orig sql-jdbc.describe-database/all-schemas]
+                                                               (fn [metadata]
+                                                                 (eduction
+                                                                  cat
+                                                                  [(orig metadata) [fake-schema-name]])))]
+          (sql-jdbc.execute/do-with-connection-with-options
+           :redshift
+           (mt/db)
+           nil
+           (fn [^java.sql.Connection conn]
+             (letfn [(schemas []
+                       (reduce
+                        conj
+                        #{}
+                        (sql-jdbc.sync/filtered-syncable-schemas :redshift conn (.getMetaData conn) nil nil)))]
+               (testing "if schemas-with-usage-permissions is disabled, the ::fake-schema should come back"
+                 (with-redefs [redshift/reducible-schemas-with-usage-permissions (fn [_ reducible]
+                                                                                   reducible)]
+                   (is (contains? (schemas) fake-schema-name))))
+               (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
+                 (is (not (contains? (schemas) fake-schema-name))))))))))))
 
 (deftest sync-materialized-views-test
   (mt/test-driver :redshift
     (testing "Check that we properly fetch materialized views"
-      (let [db-details   (tx/dbdef->connection-details :redshift nil nil)
-            table-name   "test_mv_table"
-            qual-tbl-nm  (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) table-name)
-            mview-nm     "test_mv_materialized_view"
-            qual-mview-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) mview-nm)]
-        (mt/with-temp [Database _database {:engine :redshift, :details db-details}]
-          (try
-           (execute!
-            (str "DROP TABLE IF EXISTS %1$s CASCADE;\n"
-                 "CREATE TABLE %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));\n"
-                 "CREATE MATERIALIZED VIEW %2$s AS SELECT * FROM %1$s;")
-            qual-tbl-nm
-            qual-mview-nm)
-           (is (some #(= mview-nm (:name %))
-                      (:tables (sql-jdbc.describe-database/describe-database :redshift (mt/db)))))
-           (finally
-            (execute! "DROP TABLE IF EXISTS %s CASCADE;" qual-tbl-nm))))))))
+      (let [db-details (tx/dbdef->connection-details :redshift nil nil)]
+        (mt/with-temp [Database database {:engine :redshift, :details db-details}]
+          (let [table-name    (tx/db-qualified-table-name (:name database) "table")
+                qual-tbl-nm   (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) table-name)
+                mview-nm      (tx/db-qualified-table-name (:name database) "mv")
+                qual-mview-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) mview-nm)]
+            (try
+              (execute!
+               (str "DROP TABLE IF EXISTS %1$s CASCADE;\n"
+                    "CREATE TABLE %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));\n"
+                    "CREATE MATERIALIZED VIEW %2$s AS SELECT * FROM %1$s;")
+               qual-tbl-nm
+               qual-mview-nm)
+              (is (some #(= mview-nm (:name %))
+                        (:tables (sql-jdbc.describe-database/describe-database :redshift database))))
+              (finally
+                (execute! "DROP TABLE IF EXISTS %s CASCADE;" qual-tbl-nm)))))))))
 
-(mt/defdataset numeric-unix-timestamps
+(mt/defdataset unix-timestamps
   [["timestamps"
     [{:field-name "timestamp", :base-type {:native "numeric"}}]
     [[1642704550656]]]])
 
-(deftest numeric-unix-timestamp-test
+(deftest unix-timestamp-test
   (mt/test-driver :redshift
     (testing "NUMERIC columns should work with UNIX timestamp conversion (#7487)"
-      (mt/dataset numeric-unix-timestamps
+      (mt/dataset unix-timestamps
         (testing "without coercion strategy"
           (let [query (mt/mbql-query timestamps)]
             (mt/with-native-query-testing-context query
@@ -402,78 +399,88 @@
 (deftest table-privileges-test
   (mt/test-driver :redshift
     (testing "`table-privileges` should return the correct data for current_user and role privileges"
-      (mt/with-temp [Database _database {:engine :redshift, :details (tx/dbdef->connection-details :redshift nil nil)}]
-        (let [schema-name     (redshift.test/unique-session-schema)
-              username        (str (sql.tu.unique-prefix/unique-prefix) "privilege_rows_test_role")
-              table-name      "test_tp_table"
-              qual-tbl-name   (format "\"%s\".\"%s\"" schema-name table-name)
-              view-nm         "test_tp_view"
-              qual-view-name  (format "\"%s\".\"%s\"" schema-name view-nm)
-              mview-name      "test_tp_materialized_view"
-              qual-mview-name (format "\"%s\".\"%s\"" schema-name mview-name)
-              conn-spec       (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-              get-privileges  (fn []
-                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
-                                  [spec [:redshift (assoc (:details (mt/db)) :user username)]]
-                                  (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                    (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
+      (mt/with-temp [Database database {:engine :redshift :details (tx/dbdef->connection-details :redshift nil nil)}]
+        (let [schema-name                  (redshift.test/unique-session-schema)
+              username                     (str (sql.tu.unique-prefix/unique-prefix) "privilege_rows_test_role")
+              db-name                      (:name database)
+              table-name                   (tx/db-qualified-table-name db-name "table")
+              qual-tbl-name                (format "\"%s\".\"%s\"" schema-name table-name)
+              table-partial-select-name    (tx/db-qualified-table-name db-name "tbl_sel")
+              qual-tbl-partial-select-name (format "\"%s\".\"%s\"" schema-name table-partial-select-name)
+              table-partial-update-name    (tx/db-qualified-table-name db-name "tbl_upd")
+              qual-tbl-partial-update-name (format "\"%s\".\"%s\"" schema-name table-partial-update-name)
+              view-nm                      (tx/db-qualified-table-name db-name "view")
+              qual-view-name               (format "\"%s\".\"%s\"" schema-name view-nm)
+              mview-name                   (tx/db-qualified-table-name db-name "mview")
+              qual-mview-name              (format "\"%s\".\"%s\"" schema-name mview-name)
+              conn-spec                    (sql-jdbc.conn/db->pooled-connection-spec database)
+              get-privileges               (fn []
+                                             (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                                               [spec [:redshift (assoc (:details database) :user username)]]
+                                               (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
+                                                 (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
           (try
            (execute! (format
                       (str
                        "CREATE TABLE %1$s (id INTEGER);\n"
                        "CREATE VIEW %2$s AS SELECT * from %1$s;\n"
                        "CREATE MATERIALIZED VIEW %3$s AS SELECT * from %1$s;\n"
-                       "CREATE USER \"%4$s\" WITH PASSWORD '%5$s';\n"
-                       "GRANT SELECT ON %1$s TO \"%4$s\";\n"
-                       "GRANT UPDATE ON %1$s TO \"%4$s\";\n"
-                       "GRANT SELECT ON %2$s TO \"%4$s\";\n"
-                       "GRANT SELECT ON %3$s TO \"%4$s\";")
+                       "CREATE TABLE %4$s (id INTEGER);\n"
+                       "CREATE TABLE %5$s (id INTEGER);\n"
+                       "CREATE USER \"%6$s\" WITH PASSWORD '%7$s';\n"
+                       "GRANT SELECT ON %1$s TO \"%6$s\";\n"
+                       "GRANT UPDATE ON %1$s TO \"%6$s\";\n"
+                       "GRANT SELECT ON %2$s TO \"%6$s\";\n"
+                       "GRANT SELECT ON %3$s TO \"%6$s\";\n"
+                       "GRANT SELECT (id) ON %4$s TO \"%6$s\";\n"
+                       "GRANT UPDATE (id) ON %5$s TO \"%6$s\";")
                       qual-tbl-name
                       qual-view-name
                       qual-mview-name
+                      qual-tbl-partial-select-name
+                      qual-tbl-partial-update-name
                       username
-                      (get-in (mt/db) [:details :password])))
+                      (get-in database [:details :password])))
            (testing "check that without USAGE privileges on the schema, nothing is returned"
              (is (= #{}
                     (get-privileges))))
            (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
              (jdbc/execute! conn-spec (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\";" schema-name username))
-             (is (= #{{:role   nil
-                       :schema schema-name
-                       :table  table-name
-                       :update true
-                       :select true
-                       :insert false
-                       :delete false}
-                      {:role   nil
-                       :schema schema-name
-                       :table  view-nm
-                       :update false
-                       :select true
-                       :insert false
-                       :delete false}
-                      {:role   nil
-                       :schema schema-name
-                       :table  mview-name
-                       :select true
-                       :update false
-                       :insert false
-                       :delete false}}
+             (is (= (into #{} (map #(merge {:schema schema-name
+                                            :role   nil
+                                            :select false
+                                            :update false
+                                            :insert false
+                                            :delete false}
+                                           %)
+                                   [{:table  table-name
+                                     :update true
+                                     :select true}
+                                    {:table  table-partial-select-name
+                                     :select true}
+                                    {:table  table-partial-update-name
+                                     :update true}
+                                    {:table  view-nm
+                                     :select true}
+                                    {:table  mview-name
+                                     :select true}]))
                     (get-privileges))))
            (finally
-            ;; comment out since it's causing flake
-            ;; can uncomment after we tackle #40058
-            #_(execute! (format
-                         (str
-                          "DROP TABLE IF EXISTS %2$s CASCADE;\n"
-                          "DROP VIEW IF EXISTS %3$s CASCADE;\n"
-                          "DROP MATERIALIZED VIEW IF EXISTS %4$s CASCADE;\n"
-                          "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%1$s\" FROM \"%5$s\";\n"
-                          "REVOKE ALL PRIVILEGES ON SCHEMA \"%1$s\" FROM \"%5$s\";\n"
-                          "REVOKE USAGE ON SCHEMA \"%1$s\" FROM \"%5$s\";\n"
-                          "DROP USER IF EXISTS \"%5$s\";")
-                         schema-name
-                         qual-tbl-name
-                         qual-view-name
-                         qual-mview-name
-                         username)))))))))
+            (execute! (format
+                       (str
+                        "DROP TABLE IF EXISTS %2$s CASCADE;\n"
+                        "DROP VIEW IF EXISTS %3$s CASCADE;\n"
+                        "DROP MATERIALIZED VIEW IF EXISTS %4$s CASCADE;\n"
+                        "DROP TABLE IF EXISTS %5$s CASCADE;\n"
+                        "DROP TABLE IF EXISTS %6$s CASCADE;\n"
+                        "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%1$s\" FROM \"%7$s\";\n"
+                        "REVOKE ALL PRIVILEGES ON SCHEMA \"%1$s\" FROM \"%7$s\";\n"
+                        "REVOKE USAGE ON SCHEMA \"%1$s\" FROM \"%7$s\";\n"
+                        "DROP USER IF EXISTS \"%7$s\";")
+                       schema-name
+                       qual-tbl-name
+                       qual-view-name
+                       qual-mview-name
+                       qual-tbl-partial-select-name
+                       qual-tbl-partial-update-name
+                       username)))))))))

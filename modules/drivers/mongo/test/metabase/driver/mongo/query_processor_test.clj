@@ -188,7 +188,7 @@
     (testing "Result timezone is respected when grouping by hour (#11149)"
       (mt/dataset attempted-murders
         (testing "Querying in UTC works"
-          (mt/with-system-timezone-id "UTC"
+          (mt/with-system-timezone-id! "UTC"
             (is (= [["2019-11-20T20:00:00Z" 1]
                     ["2019-11-19T00:00:00Z" 1]
                     ["2019-11-18T20:00:00Z" 1]
@@ -199,7 +199,7 @@
                                :order-by [[:desc [:field %datetime {:temporal-unit :hour}]]]
                                :limit 4}))))))
         (testing "Querying in Kathmandu works"
-          (mt/with-system-timezone-id "Asia/Kathmandu"
+          (mt/with-system-timezone-id! "Asia/Kathmandu"
             (is (= [["2019-11-21T01:00:00+05:45" 1]
                     ["2019-11-19T06:00:00+05:45" 1]
                     ["2019-11-19T02:00:00+05:45" 1]

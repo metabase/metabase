@@ -8,14 +8,14 @@
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.annotate :as annotate]
-   [metabase.query-processor.middleware.wrap-value-literals
-    :as qp.wrap-value-literals]
+   [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.nest-query :as nest-query]
@@ -38,6 +38,18 @@
   "The INNER query currently being processed, for situations where we need to refer back to it."
   nil)
 
+(defn make-nestable-sql*
+  "See [[make-nestable-sql]] but does not wrap in result in parens."
+  [sql]
+  (-> sql
+      (str/replace #";([\s;]*(--.*\n?)*)*$" "")
+      str/trimr
+      (as-> trimmed
+        ;; Query could potentially end with a comment.
+        (if (re-find #"--.*$" trimmed)
+          (str trimmed "\n")
+          trimmed))))
+
 (defn make-nestable-sql
   "Do best effort edit to the `sql`, to make it nestable in subselect.
 
@@ -53,23 +65,13 @@
   probably require _parsing_ sql string and not just a regular expression replacement. Link to the discussion:
   https://github.com/metabase/metabase/pull/30677
 
-  For the limitations see the [[metabase.driver.sql.query-processor-test/make-nestable-sql-test]]"
-  [sql]
-  (str "("
-       (-> sql
-           (str/replace #";([\s;]*(--.*\n?)*)*$" "")
-           str/trimr
-           (as-> trimmed
-                 ;; Query could potentially end with a comment.
-                 (if (re-find #"--.*$" trimmed)
-                   (str trimmed "\n")
-                   trimmed)))
-       ")"))
+  For the limitations see the [[metabase.driver.sql.query-processor-test/make-nestable-sql-test]]"  [sql]
+  (str "(" (make-nestable-sql* sql) ")"))
 
-(defn- format-sql-source-query [_fn [sql params]]
-  (into [(make-nestable-sql sql)] params))
+(defn- format-sql-source-query [_clause [sql params]]
+  (into [(make-nestable-sql* sql)] params))
 
-(sql/register-fn! ::sql-source-query #'format-sql-source-query)
+(sql/register-clause! ::sql-source-query #'format-sql-source-query :select)
 
 (defn sql-source-query
   "Wrap clause in `::sql-source-query`. Does additional validation."
@@ -84,7 +86,7 @@
                          (.getCanonicalName (class params)))
                     {:type  qp.error-type/invalid-query
                      :query params})))
-  [::sql-source-query sql params])
+  {::sql-source-query [sql params]})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Interface (Multimethods)                                            |
@@ -838,7 +840,7 @@
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
-  (mbql.u/match-one (nth (:aggregation *inner-query*) index)
+  (lib.util.match/match-one (nth (:aggregation *inner-query*) index)
     [:aggregation-options ag (options :guard :name)]
     (->honeysql driver (h2x/identifier :field-alias (:name options)))
 
@@ -986,7 +988,7 @@
   ([form]
    (rewrite-fields-to-force-using-column-aliases form {:is-breakout false}))
   ([form {is-breakout :is-breakout}]
-   (mbql.u/replace form
+   (lib.util.match/replace form
      [:field id-or-name opts]
      [:field id-or-name (cond-> opts
                           true
@@ -1125,7 +1127,7 @@
 
 (defn- correct-null-behaviour
   [driver [op & args :as clause]]
-  (if-let [field-arg (mbql.u/match-one args
+  (if-let [field-arg (lib.util.match/match-one args
                        :field          &match)]
     ;; We must not transform the head again else we'll have an infinite loop
     ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
@@ -1317,7 +1319,7 @@
 
 (defn- format-honeysql-2 [dialect honeysql-form]
   ;; throw people a bone and make sure they're not trying to use Honey SQL 1 stuff inside Honey SQL 2.
-  (mbql.u/match honeysql-form
+  (lib.util.match/match honeysql-form
     (form :guard record?)
     (throw (ex-info (format "Not supported by Honey SQL 2: ^%s %s"
                             (.getCanonicalName (class form))
@@ -1409,23 +1411,43 @@
 (declare apply-clauses)
 
 (defn- apply-source-query
-  "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. At the time of this writing, all
-  source queries are aliased as `source`."
-  [driver honeysql-form {{:keys [native params],
-                          persisted :persisted-info/native
-                          :as source-query} :source-query}]
-  (assoc honeysql-form
-         :from [[(cond
-                   persisted
-                   (sql-source-query persisted nil)
+  "Handle a `:source-query` clause by adding a recursive `SELECT` or native query.
+   If the source query has ambiguous column names, use a `WITH` statement to rename the source columns.
+   At the time of this writing, all source queries are aliased as `source`."
+  [driver honeysql-form {{:keys [native params] persisted :persisted-info/native :as source-query} :source-query
+                         source-metadata :source-metadata}]
+  (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))
+        source-clause (cond
+                        persisted
+                        (sql-source-query persisted nil)
 
-                   native
-                   (sql-source-query native params)
+                        native
+                        (sql-source-query native params)
 
-                   :else
-                   (apply-clauses driver {} source-query))
-                 (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))]
-                   [table-alias])]]))
+                        :else
+                        (apply-clauses driver {} source-query))
+        ;; TODO: Use MLv2 here to get source and desired-aliases
+        alias-info (mapv (fn [{[_ desired-ref-name] :field_ref source-name :name}]
+                           [source-name desired-ref-name])
+                         source-metadata)
+        source-aliases (mapv first alias-info)
+        desired-aliases (mapv second alias-info)
+        duplicate-source-aliases? (and (> (count source-aliases) 1)
+                                       (not (apply distinct? source-aliases)))
+        needs-columns? (and (seq desired-aliases)
+                            (> (count desired-aliases) 1)
+                            duplicate-source-aliases?
+                            (apply distinct? desired-aliases)
+                            (every? string? desired-aliases))]
+    (merge
+      honeysql-form
+      (if needs-columns?
+        ;; HoneySQL cannot expand [::h2x/identifier :table "source"] in the with alias.
+        ;; This is ok since we control the alias.
+        {:with [[[source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
+                 source-clause]]
+         :from [[table-alias]]}
+        {:from [[source-clause [table-alias]]]}))))
 
 (defn- apply-clauses
   "Like [[apply-top-level-clauses]], but handles `source-query` as well, which needs to be handled in a special way

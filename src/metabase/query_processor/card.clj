@@ -4,19 +4,16 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :as card :refer [Card]]
-   [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.database :refer [Database]]
    [metabase.models.query :as query]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features
-    :as premium-features
-    :refer [defenterprise]]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -25,43 +22,33 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defn- query-magic-ttl
-  "Compute a 'magic' cache TTL time (in seconds) for `query` by multipling its historic average execution times by the
-  `query-caching-ttl-ratio`. If the TTL is less than a second, this returns `nil` (i.e., the cache should not be
-  utilized.)"
-  [query]
-  (when-let [average-duration (query/average-execution-time-ms (qp.util/query-hash query))]
-    (let [ttl-seconds (Math/round (float (/ (* average-duration (public-settings/query-caching-ttl-ratio))
-                                            1000.0)))]
-      (when-not (zero? ttl-seconds)
-        (log/info (trs "Question''s average execution duration is {0}; using ''magic'' TTL of {1}"
-                       (u/format-milliseconds average-duration) (u/format-seconds ttl-seconds))
-                  (u/emoji "💾"))
-        ttl-seconds))))
+(defenterprise granular-cache-strategy
+  "Returns cache strategy for a card. On EE, this checks the hierarchy for the card, dashboard, or
+   database (in that order). Returns nil on OSS."
+  metabase-enterprise.cache.strategies
+  [_card _dashboard-id])
 
-(defenterprise granular-ttl
-  "Returns the granular cache ttl (in seconds) for a card. On EE, this first checking whether there is a stored value
-   for the card, dashboard, or database (in that order of decreasing preference). Returns nil on OSS."
-  metabase-enterprise.advanced-config.caching
-  [_card _dashboard _database])
-
-(defn- ttl-hierarchy
-  "Returns the cache ttl (in seconds), by first checking whether there is a stored value for the database,
-    dashboard, or card (in that order of increasing preference), and if all of those don't exist, then the
-    `query-magic-ttl`, which is based on average execution time."
-  [card dashboard database query]
+(defn- cache-strategy
+  [card dashboard-id]
   (when (public-settings/enable-query-caching)
-    (or (granular-ttl card dashboard database)
-        (query-magic-ttl query))))
+    (or (granular-cache-strategy card dashboard-id)
+        {:type            :ttl
+         :multiplier      (public-settings/query-caching-ttl-ratio)
+         :min_duration_ms (long (* (public-settings/query-caching-min-ttl) 1000))})))
+
+(defn- enrich-strategy [strategy query]
+  (case (:type strategy)
+    :ttl (let [et (query/average-execution-time-ms (qp.util/query-hash query))]
+           (assoc strategy :avg-execution-ms (or et 0)))
+    strategy))
 
 (defn query-for-card
   "Generate a query for a saved Card"
@@ -73,10 +60,9 @@
                       (assoc :constraints constraints
                              :parameters  parameters
                              :middleware  middleware))
-        dashboard (t2/select-one [Dashboard :cache_ttl] :id (:dashboard-id ids))
-        database  (t2/select-one [Database :cache_ttl] :id (:database_id card))
-        ttl-secs  (ttl-hierarchy card dashboard database query)]
-    (assoc query :cache-ttl ttl-secs)))
+        cs        (-> (cache-strategy card (:dashboard-id ids))
+                      (enrich-strategy query))]
+    (assoc query :cache-strategy cs)))
 
 (def ^:dynamic *allow-arbitrary-mbql-parameters*
   "In 0.41.0+ you can no longer add arbitrary `:parameters` to a query for a saved question -- only parameters for
@@ -116,17 +102,17 @@
                     (not= widget-type :none))
                [param-name widget-type]
 
-               (contains? mbql.s/raw-value-template-tag-types tag-type)
+               (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
                [param-name tag-type])))
       (filter some?))
      (get-in query [:native :template-tags]))))
 
 (defn- allowed-parameter-type-for-template-tag-widget-type? [parameter-type widget-type]
-  (when-let [allowed-template-tag-types (get-in mbql.s/parameter-types [parameter-type :allowed-for])]
+  (when-let [allowed-template-tag-types (get-in lib.schema.parameter/types [parameter-type :allowed-for])]
     (contains? allowed-template-tag-types widget-type)))
 
 (defn- allowed-parameter-types-for-template-tag-widget-type [widget-type]
-  (into #{} (for [[parameter-type {:keys [allowed-for]}] mbql.s/parameter-types
+  (into #{} (for [[parameter-type {:keys [allowed-for]}] lib.schema.parameter/types
                   :when                                  (contains? allowed-for widget-type)]
               parameter-type)))
 
@@ -139,10 +125,10 @@
   more appropriate; Dashboard stuff uses ID while Card stuff tends to use `:name` at this point).
 
   Background: some more-specific parameter types aren't allowed for certain types of parameters.
-  See [[metabase.mbql.schema/parameter-types]] for details."
+  See [[metabase.legacy-mbql.schema/parameter-types]] for details."
   [parameter-name
    widget-type          :- ::lib.schema.template-tag/widget-type
-   parameter-value-type :- ::mbql.s/ParameterType]
+   parameter-value-type :- ::lib.schema.parameter/type]
   (when-not (allowed-parameter-type-for-template-tag-widget-type? parameter-value-type widget-type)
     (let [allowed-types (allowed-parameter-types-for-template-tag-widget-type widget-type)]
       (throw (ex-info (tru "Invalid parameter type {0} for parameter {1}. Parameter type must be one of: {2}"
@@ -160,14 +146,14 @@
   [{parameter-name :name, :keys [target]}]
   (or
    parameter-name
-   (mbql.u/match-one target
+   (lib.util.match/match-one target
      [:template-tag tag-name]
      (name tag-name))))
 
 (mu/defn ^:private validate-card-parameters
   "Unless [[*allow-arbitrary-mbql-parameters*]] is truthy, check to make all supplied `parameters` actually match up
   with template tags in the query for Card with `card-id`."
-  [card-id    :- ms/PositiveInt
+  [card-id    :- ::lib.schema.id/card
    parameters :- mbql.s/ParameterList]
   (when-not *allow-arbitrary-mbql-parameters*
     (let [template-tags (card-template-tag-parameters card-id)]
@@ -208,7 +194,7 @@
   `StreamingResponse`.
 
   `context` is a keyword describing the situation in which this query is being ran, e.g. `:question` (from a Saved
-  Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.mbql.schema/Context]] for all valid
+  Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.legacy-mbql.schema/Context]] for all valid
   options."
   [card-id :- ::lib.schema.id/card
    export-format

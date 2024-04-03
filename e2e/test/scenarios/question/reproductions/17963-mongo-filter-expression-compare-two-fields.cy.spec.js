@@ -42,7 +42,7 @@ describe("issue 17963", { tags: "@mongo" }, () => {
 
     visualize();
 
-    cy.get(".ScalarValue").contains("1,337");
+    cy.findByTestId("scalar-value").contains("1,337");
   });
 });
 

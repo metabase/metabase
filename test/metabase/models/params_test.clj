@@ -20,7 +20,7 @@
 
 ;;; ---------------------------------------------- name_field hydration ----------------------------------------------
 
-(deftest hydrate-name-field-test
+(deftest ^:parallel hydrate-name-field-test
   (testing "make sure that we can hydrate the `name_field` property for PK Fields"
     (is (= {:name          "ID"
             :table_id      (mt/id :venues)
@@ -63,7 +63,7 @@
 
 ;;; -------------------------------------------------- param_fields --------------------------------------------------
 
-(deftest hydrate-param-fields-for-card-test
+(deftest ^:parallel hydrate-param-fields-for-card-test
   (testing "check that we can hydrate param_fields for a Card"
     (t2.with-temp/with-temp [Card card {:dataset_query
                                         {:database (mt/id)
@@ -122,13 +122,13 @@
     (testing "card->template-tag-field-clauses"
       (is (= #{[:field (mt/id :venues :id) nil]
                [:field "name" {:base-type :type/Text}]}
-             (params/card->template-tag-field-clauses card))))
+             (#'params/card->template-tag-field-clauses card))))
 
     (testing "card->template-tag-field-ids"
       (is (= #{(mt/id :venues :id)}
              (params/card->template-tag-field-ids card))))))
 
-(deftest get-linked-field-ids-test
+(deftest ^:parallel get-linked-field-ids-test
   (testing "get-linked-field-ids basic test"
     (is (= {"foo" #{256}
             "bar" #{267}}

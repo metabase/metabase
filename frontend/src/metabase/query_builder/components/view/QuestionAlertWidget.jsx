@@ -4,6 +4,7 @@ import { createRef, Component } from "react";
 import { t } from "ttag";
 
 import Popover from "metabase/components/Popover";
+import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
 import AlertListPopoverContent from "../AlertListPopoverContent";
@@ -56,7 +57,7 @@ export default class QuestionAlertWidget extends Component {
           <Popover
             target={this.rootRef.current}
             isOpen={isOpen}
-            className={isFrozen ? "hide" : null}
+            className={isFrozen ? CS.hide : null}
             onClose={this.close}
           >
             <AlertListPopoverContent

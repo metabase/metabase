@@ -24,6 +24,20 @@ export function getOptionByOperator(operator: Lib.StringFilterOperatorName) {
   return OPERATOR_OPTIONS[operator];
 }
 
+export function getDefaultOperator(
+  column: Lib.ColumnMetadata,
+): Lib.StringFilterOperatorName {
+  if (
+    Lib.isPrimaryKey(column) ||
+    Lib.isForeignKey(column) ||
+    Lib.isCategory(column)
+  ) {
+    return "=";
+  } else {
+    return "contains";
+  }
+}
+
 export function getDefaultValues(
   operator: Lib.StringFilterOperatorName,
   values: string[],

@@ -5,7 +5,7 @@
 }
 
 :global(.cursor-grab),
-.cursor-grab {
+.cursorGrab {
   cursor: grab;
 }
 

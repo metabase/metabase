@@ -27,6 +27,8 @@ import {
   getDashboardCard,
   saveDashboard,
   getNotebookStep,
+  selectFilterOperator,
+  focusNativeEditor,
 } from "e2e/support/helpers";
 import { questionInfoButton } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
@@ -304,9 +306,8 @@ describe("scenarios > models", () => {
       popover().within(() => {
         cy.findByText("Product").click();
         cy.findByText("Price").click();
-        cy.findByDisplayValue("Equal to").click();
       });
-      cy.findByRole("listbox").findByText("Less than").click();
+      selectFilterOperator("Less than");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("50");
         cy.button("Add filter").click();
@@ -475,14 +476,14 @@ describe("scenarios > models", () => {
     // Check card tags are supported by models
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open editor/i).click();
-    cy.get(".ace_content").type(
-      "{leftarrow}{leftarrow}{backspace}{backspace}#1",
+    focusNativeEditor().type(
+      "{leftarrow}{leftarrow}{backspace}{backspace}#1-orders",
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
+    cy.findByText("Save").click({ force: true });
 
     cy.findByTestId("save-question-modal").within(modal => {
-      cy.findByText("Save").click();
+      cy.findByText("Save").click({ force: true });
     });
 
     turnIntoModel();

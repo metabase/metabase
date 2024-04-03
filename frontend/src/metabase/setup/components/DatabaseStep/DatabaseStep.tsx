@@ -17,7 +17,6 @@ import {
   getDatabaseEngine,
   getInvite,
   getIsEmailConfigured,
-  getIsSetupCompleted,
   getUser,
 } from "../../selectors";
 import { useStep } from "../../useStep";
@@ -30,15 +29,13 @@ import type { NumberedStepProps } from "../types";
 import { StepDescription } from "./DatabaseStep.styled";
 
 export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
-  const { isStepActive, isStepCompleted, handleStepSelect } =
-    useStep("db_connection");
+  const { isStepActive, isStepCompleted } = useStep("db_connection");
   const user = useSelector(getUser);
   const database = useSelector(getDatabase);
   const engine = useSelector(getDatabaseEngine);
   const invite = useSelector(getInvite);
   const isEmailConfigured = useSelector(getIsEmailConfigured);
 
-  const isSetupCompleted = useSelector(getIsSetupCompleted);
   const dispatch = useDispatch();
 
   const handleEngineChange = (engine?: string) => {
@@ -67,8 +64,6 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
         title={getStepTitle(database, invite, isStepCompleted)}
         label={stepLabel}
         isStepCompleted={isStepCompleted}
-        isSetupCompleted={isSetupCompleted}
-        onStepSelect={handleStepSelect}
       />
     );
   }

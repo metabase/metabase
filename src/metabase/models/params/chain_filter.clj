@@ -69,7 +69,8 @@
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters.dates :as params.dates]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models :refer [Field FieldValues Table]]
    [metabase.models.database :as database]
    [metabase.models.field :as field]
@@ -719,5 +720,5 @@
                                               (for [id filter-field-ids]
                                                 {:field-id id :op := :value nil})
                                               nil)]
-      (set (mbql.u/match (-> mbql-query :query :filter)
+      (set (lib.util.match/match (-> mbql-query :query :filter)
              [:field (id :guard integer?) _] id)))))

@@ -685,8 +685,12 @@
                           qp.preprocess/preprocess
                           add/add-alias-info
                           :query
-                          nest-query/nest-expressions)))
+                          nest-query/nest-expressions)))))))
 
+(deftest ^:parallel uniquify-aliases-test-2
+  (driver/with-driver :h2
+    (mt/dataset test-data
+      (qp.store/with-metadata-provider meta/metadata-provider
         (testing "multi-stage query with an expression name that matches a table column (#39059)"
           (is (=? (lib.tu.macros/$ids orders
                     {:source-query {:fields       [[:field %id          {}]

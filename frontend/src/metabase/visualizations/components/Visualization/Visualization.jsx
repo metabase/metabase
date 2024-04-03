@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { assoc } from "icepick";
 import { PureComponent } from "react";
 import { connect } from "react-redux";
@@ -7,6 +8,8 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import ExplicitSize from "metabase/components/ExplicitSize";
+import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { formatNumber } from "metabase/lib/formatting";
 import { equals } from "metabase/lib/utils";
@@ -193,20 +196,9 @@ class Visualization extends PureComponent {
   };
 
   _getQuestionForCardCached(metadata, card) {
-    if (!metadata || !card) {
-      return;
-    }
-    const { isQueryBuilder, queryBuilderMode } = this.props;
-    const question = new Question(card, metadata);
-
-    // Datasets in QB should behave as raw tables opened in simple mode
-    // composeDataset replaces the dataset_query with a clean query using the dataset as a source table
-    // Ideally, this logic should happen somewhere else
-    return question.type() === "model" &&
-      isQueryBuilder &&
-      queryBuilderMode !== "dataset"
-      ? question.composeDataset()
-      : question;
+    return card != null && metadata != null
+      ? new Question(card, metadata)
+      : undefined;
   }
 
   getMode(maybeModeOrQueryMode, question) {
@@ -427,7 +419,7 @@ class Visualization extends PureComponent {
       <VisualizationActionButtonsContainer>
         {isSlow && !loading && (
           <VisualizationSlowSpinner
-            className="Visualization-slow-spinner"
+            className={DashboardS.VisualizationSlowSpinner}
             size={18}
             isUsuallySlow={isSlow === "usually-slow"}
           />
@@ -512,12 +504,16 @@ class Visualization extends PureComponent {
           ) : (
             <div
               data-card-key={getCardKey(series[0].card?.id)}
-              className="flex flex-column flex-full"
+              className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
             >
               <CardVisualization
                 {...this.props}
-                // NOTE: CardVisualization class used to target ExplicitSize HOC
-                className="CardVisualization flex-full flex-basis-none"
+                // NOTE: CardVisualization class used as a selector for tests
+                className={cx(
+                  "CardVisualization",
+                  CS.flexFull,
+                  CS.flexBasisNone,
+                )}
                 isPlaceholder={isPlaceholder}
                 isMobile={isMobile}
                 series={series}

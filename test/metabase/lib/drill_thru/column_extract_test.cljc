@@ -1,16 +1,18 @@
 (ns metabase.lib.drill-thru.column-extract-test
   "See also [[metabase.query-processor-test.drill-thru-e2e-test/quick-filter-on-bucketed-date-test]]"
   (:require
-   [clojure.test :refer [deftest testing]]
+   [clojure.test :refer [are deftest testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.util :as u]
    #?@(:clj  ([metabase.test :as mt])
-       :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [metabase.lib.test-util :as lib.tu]))
+       :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -28,12 +30,13 @@
   (concat time-extraction-units date-extraction-units))
 
 (deftest ^:parallel column-extract-availability-test
-  (testing "column-extract is avaiable for column clicks on temporal columns"
+  (testing "column-extract is available for column clicks on temporal and URL columns"
     (canned/canned-test
       :drill-thru/column-extract
-      (fn [_test-case _context {:keys [click column-type]}]
+      (fn [_test-case {:keys [column] :as _context} {:keys [click column-type]}]
         (and (= click :header)
-             (= column-type :datetime))))))
+             (or (= column-type :datetime)
+                 (#{:type/URL :type/Email} (:semantic-type column))))))))
 
 (deftest ^:parallel returns-column-extract-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -261,3 +264,149 @@
        :custom-query query
        :expected     {:type        :drill-thru/column-extract
                       :extractions date-extraction-units}})))
+
+(def ^:private url->host-regex
+  #?(:clj  @#'lib.drill-thru.column-extract/url->host-regex
+     :cljs lib.drill-thru.column-extract/url->host-regex))
+
+(def ^:private host->domain-regex
+  #?(:clj  @#'lib.drill-thru.column-extract/host->domain-regex
+     :cljs lib.drill-thru.column-extract/host->domain-regex))
+
+(def ^:private host->subdomain-regex
+  #?(:clj  @#'lib.drill-thru.column-extract/host->subdomain-regex
+     :cljs lib.drill-thru.column-extract/host->subdomain-regex))
+
+(def ^:private email->domain-regex
+  #?(:clj  @#'lib.drill-thru.column-extract/email->domain-regex
+     :cljs lib.drill-thru.column-extract/email->domain-regex))
+
+(deftest ^:parallel column-extract-url->domain-test
+  ;; There's no URL columns in the same dataset, but let's pretend there's one called People.HOMEPAGE.
+  (let [homepage (assoc (meta/field-metadata :people :email)
+                        :id             9999001
+                        :name           "HOMEPAGE"
+                        :display-name   "Homepage URL"
+                        :base-type      :type/Text
+                        :effective-type :type/Text
+                        :semantic-type  :type/URL)
+        mp       (lib/composed-metadata-provider
+                   (lib.tu/mock-metadata-provider {:fields [homepage]})
+                   meta/metadata-provider)
+        query    (lib/query mp (lib.metadata/table mp (meta/id :people)))]
+    (testing "Extracting Domain"
+      (lib.drill-thru.tu/test-drill-application
+        {:drill-type     :drill-thru/column-extract
+         :click-type     :header
+         :query-type     :unaggregated
+         :column-name    "HOMEPAGE"
+         :custom-query   query
+         :expected       {:type         :drill-thru/column-extract
+                          :display-name "Extract domain, subdomain…"
+                          :extractions  [{:key :domain,    :display-name "Domain"}
+                                         {:key :subdomain, :display-name "Subdomain"}]}
+         :drill-args     ["domain"]
+         :expected-query {:stages [{:expressions [[:regex-match-first {:lib/expression-name "Domain"}
+                                                   [:regex-match-first {}
+                                                    [:field {} 9999001]
+                                                    (u/regex->str url->host-regex)]
+                                                   (u/regex->str host->domain-regex)]]}]}}))
+    (testing "Extracting Subdomain"
+      (lib.drill-thru.tu/test-drill-application
+        {:drill-type     :drill-thru/column-extract
+         :click-type     :header
+         :query-type     :unaggregated
+         :column-name    "HOMEPAGE"
+         :custom-query   query
+         :expected       {:type         :drill-thru/column-extract
+                          :display-name "Extract domain, subdomain…"
+                          :extractions  [{:key :domain,    :display-name "Domain"}
+                                         {:key :subdomain, :display-name "Subdomain"}]}
+         :drill-args     ["subdomain"]
+         :expected-query {:stages [{:expressions [[:regex-match-first {:lib/expression-name "Subdomain"}
+                                                   [:regex-match-first {}
+                                                    [:field {} 9999001]
+                                                    (u/regex->str url->host-regex)]
+                                                   (u/regex->str host->subdomain-regex)]]}]}}))))
+
+(deftest ^:parallel url->host-regex-test
+  (are [host url] (= host (second (re-find url->host-regex url)))
+       "cdbaby.com"         "https://cdbaby.com/some.txt"
+       "fema.gov"           "https://fema.gov/some/path/Vatini?search=foo"
+       "www.geocities.jp"   "https://www.geocities.jp/some/path/Turbitt?search=foo"
+       "jalbum.net"         "https://jalbum.net/some/path/Kirsz?search=foo"
+       "usa.gov"            "https://usa.gov/some/path/Curdell?search=foo"
+       "taxes.va.gov"       "http://taxes.va.gov/some/path/Marritt?search=foo"
+       "log.stuff.gmpg.org" "http://log.stuff.gmpg.org/some/path/Cambden?search=foo"
+       "hatena.ne.jp"       "http://hatena.ne.jp/"
+       "telegraph.co.uk"    "//telegraph.co.uk?foo=bar#tail"
+       "bbc.co.uk"          "bbc.co.uk/some/path?search=foo"))
+
+(deftest ^:parallel host->domain-regex-test
+  (are [domain host] (= domain (second (re-find host->domain-regex host)))
+       ;; Easy cases: second-last part is the domain.
+       "cdbaby"    "cdbaby.com"
+       "fema"      "fema.gov"
+       "geocities" "www.geocities.jp"
+       "jalbum"    "sub.jalbum.net"
+       "jalbum"    "subdomains.go.here.jalbum.net"
+       "gmpg"      "log.stuff.gmpg.org"
+
+       ;; The second-last part is the domain even if it's short, sometimes.
+       "usa"       "usa.gov"
+       "va"        "va.gov"
+
+       ;; Oops, we picked a subdomain! But see below.
+       "taxes"     "taxes.va.gov" ; True domain is va
+       "hatena"    "hatena.ne.jp" ; True domain is ne
+
+       ;; Sometimes the second-last part is a short suffix.
+       ;; Mozilla maintains a huge list of these, but since this has to go into a regex and get passed to the database,
+       ;; we use a best-effort matcher that gets the domain right most of the time.
+       "telegraph" "telegraph.co.uk"
+       "bbc"       "bbc.co.uk"
+       "dot"       "dot.va.gov"
+
+       ;; "www" is disregarded as a possible subdomain.
+       "usa"       "www.usa.gov"
+       "va"        "www.va.gov"
+       "dot"       "www.dot.va.gov"))
+
+(deftest ^:parallel host->subdomain-regex-test
+  (are [subdomain host] (= subdomain (second (re-find host->subdomain-regex host)))
+       ;; Blanks. "www" doesn't count.
+       nil "cdbaby.com"
+       nil "fema.gov"
+       nil "www.geocities.jp"
+       nil "usa.gov"
+       nil "va.gov"
+
+       ;; Basics - taking the first segment that isn't "www", IF it isn't the domain.
+       "sub"        "sub.jalbum.net"
+       "subdomains" "subdomains.go.here.jalbum.net"
+       "log"        "log.stuff.gmpg.org"
+
+       ;; Oops, we missed those. This is the reverse of the problem when picking the domain.
+       nil "taxes.va.gov" ; True domain is va, subdomain is taxes.
+       nil "hatena.ne.jp" ; True domain is ne, subdomain is hatena.
+
+       ;; Sometimes the second-last part is a short suffix.
+       ;; Mozilla maintains a huge list of these, but since this has to go into a regex and get passed to the database,
+       ;; we use a best-effort matcher that gets the domain right most of the time.
+       nil         "telegraph.co.uk"
+       "local"     "local.news.telegraph.co.uk"
+       nil         "bbc.co.uk"
+       "video"     "video.bbc.co.uk"
+       ;; "www" is disregarded as a possible subdomain, so these are also incorrect.
+       nil         "www.usa.gov"
+       nil         "www.dot.va.gov"
+       "licensing" "www.licensing.dot.va.gov"))
+
+(deftest ^:parallel email->domain-regex-test
+  (are [domain email] (= domain (re-find email->domain-regex email))
+       "metabase"   "braden@metabase.com"
+       "homeoffice" "mholmes@homeoffice.gov.uk"
+       "someisp"    "john.smith@mail.someisp.com"
+       "amazon"     "trk@amazon.co.uk"
+       "hatena"     "takashi@hatena.ne.jp"
+       "ne"         "takashi@www.ne.jp"))

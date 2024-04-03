@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { getIn } from "icepick";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
@@ -7,6 +8,8 @@ import { t } from "ttag";
 import { QuestionResultLoader } from "metabase/containers/QuestionResultLoader";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import { formatColumn, formatValue } from "metabase/lib/formatting";
 import { getMetadata } from "metabase/selectors/metadata";
 import { CardApi } from "metabase/services";
@@ -88,7 +91,7 @@ function ErrorDetailDisplay(props) {
           <td align="right" className="m0 mt1 text-medium">
             {idx === 0 && formatColumn(resCols[nameToResCol.dash_name_str])}
           </td>
-          <td className="text-bold">
+          <td className={CS.textBold}>
             {formatValue(x, { column: resCols[nameToResCol.dash_name_str] })}
           </td>
         </tr>
@@ -102,7 +105,7 @@ function ErrorDetailDisplay(props) {
     );
 
     return [
-      <h2 className="PageTitle py2" key="card_name">
+      <h2 className={cx(CS.m0, CS.py2)} key="card_name">
         {
           <Link to={cardUrlVal} className={cardLinkClass}>
             {resRow[nameToResCol.card_name]}
@@ -111,11 +114,19 @@ function ErrorDetailDisplay(props) {
       </h2>,
       <div
         key="error_str"
-        className="half rounded p2 text-dark text-monospace text-small bg-light"
+        className={cx(
+          CS.half,
+          CS.rounded,
+          CS.p2,
+          CS.textDark,
+          CS.textMonospace,
+          CS.textSmall,
+          "bg-light",
+        )}
       >
         {resRow[nameToResCol.error_str]}
       </div>,
-      <table key="table" className="mt4 half ContentTable">
+      <table key="table" className={cx("half", AdminS.ContentTable, CS.mt4)}>
         <tbody>{[ordinaryRows, dashIdRows]}</tbody>
       </table>,
     ];

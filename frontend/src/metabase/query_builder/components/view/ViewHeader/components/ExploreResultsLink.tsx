@@ -10,7 +10,9 @@ interface ExploreResultsLinkProps {
 }
 
 export function ExploreResultsLink({ question }: ExploreResultsLinkProps) {
-  const query = question.composeThisQuery();
+  const query = question.isSaved()
+    ? question.composeQuestionAdhoc()
+    : undefined;
   const button = (
     <ViewButton disabled={!query} medium icon="insight" labelBreakpoint="sm">
       {t`Explore results`}

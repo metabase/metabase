@@ -28,7 +28,6 @@
      metabase.test.util.log/with-log-level
      metabase.test.util.log/with-log-messages-for-level
      metabase.test.util.misc/with-single-admin-user
-     metabase.test.util.timezone/with-system-timezone-id
      metabase.test.util/with-all-users-permission
      metabase.test.util/with-column-remappings
      metabase.test.util/with-discarded-collections-perms-changes
@@ -62,7 +61,6 @@
      metabase.test/with-non-admin-groups-no-root-collection-perms
      metabase.test/with-persistence-enabled
      metabase.test/with-single-admin-user
-     metabase.test/with-system-timezone-id
      metabase.test/with-temp-env-var-value
      metabase.test/with-temp-vals-in-db
      metabase.test/with-temporary-raw-setting-values
@@ -108,7 +106,8 @@
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
-     metabase.query-processor.store/store-database!})
+     metabase.query-processor.store/store-database!
+     next.jdbc/execute!})
 
 (defn- node->qualified-symbol [node]
   (try

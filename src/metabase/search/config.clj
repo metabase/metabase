@@ -54,7 +54,7 @@
    "database"       {:db-model :model/Database :alias :database}
    "dataset"        {:db-model :model/Card :alias :card}
    "indexed-entity" {:db-model :model/ModelIndexValue :alias :model-index-value}
-   "metric"         {:db-model :model/Metric :alias :metric}
+   "metric"         {:db-model :model/LegacyMetric :alias :metric}
    "segment"        {:db-model :model/Segment :alias :segment}
    "table"          {:db-model :model/Table :alias :table}})
 
@@ -147,6 +147,8 @@
    :bookmark            :boolean
    ;; returned for everything except Collection
    :updated_at          :timestamp
+   ;; returned only for Collection
+   :location            :text
    ;; returned for Card only, used for scoring and displays
    :dashboardcard_count :integer
    :last_edited_at      :timestamp
@@ -299,6 +301,7 @@
         [:name :collection_name]
         [:type :collection_type]
         [:authority_level :collection_authority_level]
+        :location
         bookmark-col))
 
 (defmethod columns-for-model "segment"

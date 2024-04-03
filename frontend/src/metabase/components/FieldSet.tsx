@@ -1,6 +1,8 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 
+import CS from "metabase/css/core/index.css";
+
 interface FieldSetProps {
   className?: string;
   legend?: string;
@@ -26,7 +28,14 @@ export function FieldSet({
       {legend && (
         <legend
           data-testid="field-set-legend"
-          className="h5 text-bold text-uppercase px1 text-nowrap text-medium"
+          className={cx(
+            CS.h5,
+            CS.textBold,
+            CS.textUppercase,
+            CS.px1,
+            CS.textNoWrap,
+            CS.textMedium,
+          )}
         >
           {legend}
           {required && <span>&nbsp;*</span>}

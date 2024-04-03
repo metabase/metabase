@@ -6,8 +6,8 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.schema.helpers :as helpers]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.schema.helpers :as helpers]
    [metabase.models.table :as table]
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]

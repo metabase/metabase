@@ -35,7 +35,7 @@ describe("scenarios > visualizations > rows", () => {
           { visitQuestion: true },
         );
 
-        cy.get(".Visualization").within(() => {
+        cy.findByTestId("query-visualization-root").within(() => {
           ["a", "b", "c", "d", "e", "f"].forEach(letter => {
             cy.findByText(letter);
           });
@@ -70,7 +70,7 @@ describe("scenarios > visualizations > rows", () => {
       { visitQuestion: true },
     );
 
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("query-visualization-root").within(() => {
       ["a", "b", "c", "d", "e", "f"].forEach(letter => {
         cy.findByText(letter);
       });

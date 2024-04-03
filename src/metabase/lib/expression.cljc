@@ -17,11 +17,10 @@
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
-   [metabase.lib.schema.temporal-bucketing
-    :as lib.schema.temporal-bucketing]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.util.match :as mbql.match]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.types :as types]
    [metabase.util.malli :as mu]
@@ -195,22 +194,39 @@
           expr-name (u/lower-case-en expression-name)]
       (some #(-> % :name u/lower-case-en (= expr-name)) cols)))
 
+(mr/def ::add-expression-options
+  [:map
+   ;; default: true
+   [:add-to-fields? {:optional true} [:maybe :boolean]]])
+
 (defn- add-expression-to-stage
-  [stage expression]
+  [stage
+   expression
+   {:keys [add-to-fields?], :or {add-to-fields? true}, :as _options}]
   (cond-> (update stage :expressions (fnil conj []) expression)
     ;; if there are explicit fields selected, add the expression to them
-    (vector? (:fields stage))
+    (and (vector? (:fields stage))
+         add-to-fields?)
     (update :fields conj (lib.options/ensure-uuid [:expression {} (lib.util/expression-name expression)]))))
 
 (mu/defn expression :- ::lib.schema/query
-  "Adds an expression to query."
+  "Adds an expression to query.
+
+  Options:
+
+  * `:add-to-fields?` (default: `true`) -- whether to add an `:expression` ref to `:fields` if one is present in the
+    query."
   ([query expression-name expressionable]
    (expression query -1 expression-name expressionable))
 
-  ([query                :- ::lib.schema/query
-    stage-number         :- [:maybe :int]
-    expression-name      :- ::lib.schema.common/non-blank-string
-    expressionable]
+  ([query stage-number expression-name expressionable]
+   (expression query stage-number expression-name expressionable nil))
+
+  ([query           :- ::lib.schema/query
+    stage-number    :- [:maybe :int]
+    expression-name :- ::lib.schema.common/non-blank-string
+    expressionable
+    options         :- [:maybe ::add-expression-options]]
    (let [stage-number (or stage-number -1)]
      ;; TODO: This logic was removed as part of fixing #39059. We might want to bring it back for collisions with other
      ;; expressions in the same stage; probably not with tables or earlier stages. De-duplicating names is supported by
@@ -222,7 +238,8 @@
        query stage-number
        add-expression-to-stage
        (-> (lib.common/->op-arg expressionable)
-           (lib.util/top-level-expression-clause expression-name))))))
+           (lib.util/top-level-expression-clause expression-name))
+       options))))
 
 (lib.common/defop + [x y & more])
 (lib.common/defop - [x y & more])
@@ -261,6 +278,7 @@
 (lib.common/defop substring [s start end])
 (lib.common/defop replace [s search replacement])
 (lib.common/defop regexextract [s regex])
+(lib.common/defop regex-match-first [s regex])
 (lib.common/defop length [s])
 (lib.common/defop trim [s])
 (lib.common/defop ltrim [s])
@@ -409,7 +427,7 @@
   [expr]
   (into #{}
         (map #(get % 2))
-        (mbql.match/match expr :expression)))
+        (lib.util.match/match expr :expression)))
 
 (defn- cyclic-definition
   ([node->children]

@@ -8,6 +8,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
 import CS from "metabase/css/core/index.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { rememberLastUsedDatabase } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { TimeseriesChrome } from "metabase/querying";
@@ -25,7 +26,7 @@ import { TagEditorSidebar } from "../template_tags/TagEditorSidebar";
 
 import NewQuestionHeader from "./NewQuestionHeader";
 import NewQuestionView from "./View/NewQuestionView";
-import QueryViewNotebook from "./View/QueryViewNotebook";
+import { NotebookContainer } from "./View/NotebookContainer";
 import {
   BorderedViewTitleHeader,
   NativeQueryEditorContainer,
@@ -313,9 +314,9 @@ class View extends Component {
         <TimeseriesChrome
           question={this.props.question}
           updateQuestion={this.props.updateQuestion}
-          className="flex-no-shrink"
+          className={CS.flexNoShrink}
         />
-        <ViewFooter {...this.props} className="flex-no-shrink" />
+        <ViewFooter {...this.props} className={CS.flexNoShrink} />
       </QueryBuilderMain>
     );
   };
@@ -337,7 +338,7 @@ class View extends Component {
 
     // if we don't have a question at all or no databases then we are initializing, so keep it simple
     if (!question || !databases) {
-      return <LoadingAndErrorWrapper className="full-height" loading />;
+      return <LoadingAndErrorWrapper className={CS.fullHeight} loading />;
     }
 
     const query = question.query();
@@ -350,7 +351,7 @@ class View extends Component {
         <NewQuestionView
           question={question}
           updateQuestion={updateQuestion}
-          className="full-height"
+          className={CS.fullHeight}
         />
       );
     }
@@ -376,16 +377,16 @@ class View extends Component {
       : SIDEBAR_SIZES.NORMAL;
 
     return (
-      <div className="full-height">
+      <div className={CS.fullHeight}>
         <QueryBuilderViewRoot
-          className="QueryBuilder"
+          className={QueryBuilderS.QueryBuilder}
           data-testid="query-builder-root"
         >
           {isHeaderVisible && this.renderHeader()}
           <QueryBuilderContentContainer>
             {!isNative && (
-              <QueryViewNotebook
-                isNotebookContainerOpen={isNotebookContainerOpen}
+              <NotebookContainer
+                isOpen={isNotebookContainerOpen}
                 {...this.props}
               />
             )}

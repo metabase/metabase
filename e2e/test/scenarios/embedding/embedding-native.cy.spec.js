@@ -345,7 +345,7 @@ describe("scenarios > embedding > native questions with default parameters", () 
     // The Name default ('Lina Heaney') should not apply, because the Name param is editable and empty
     // The Source default ('Facebook') should not apply because the param is locked but the value is unset
     // If either the Name or Source default applied the result would be 0.
-    cy.get(".ScalarValue").invoke("text").should("eq", "2");
+    cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
   });
 });
 

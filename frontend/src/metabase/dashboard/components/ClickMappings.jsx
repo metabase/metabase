@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { getIn, assocIn, dissocIn } from "icepick";
 import { Component } from "react";
 import { connect } from "react-redux";
@@ -6,10 +7,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Select from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
 import { getParameters } from "metabase/dashboard/selectors";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import MetabaseSettings from "metabase/lib/settings";
-import { loadMetadataForDependentItems } from "metabase/redux/metadata";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { GTAPApi } from "metabase/services";
 import { Icon } from "metabase/ui";
@@ -53,7 +55,9 @@ class ClickMappings extends Component {
 
     if (unsetTargetsWithSourceOptions.length === 0 && setTargets.length === 0) {
       return (
-        <p className="text-centered text-medium">{t`No available targets`}</p>
+        <p
+          className={cx(CS.textCentered, "text-medium")}
+        >{t`No available targets`}</p>
       );
     }
     return (
@@ -166,6 +170,7 @@ const getSourceOption = {
   parameter: p => ({ type: "parameter", id: p.id, name: p.name }),
   userAttribute: name => ({ type: "userAttribute", name, id: name }),
 };
+
 function TargetWithoutSource({
   target,
   sourceOptions,
@@ -217,7 +222,14 @@ function TargetWithSource({
   return (
     <div className="mb2">
       <div
-        className="bordered rounded p2 text-medium flex align-center"
+        className={cx(
+          CS.bordered,
+          CS.rounded,
+          CS.p2,
+          CS.textMedium,
+          CS.flex,
+          CS.alignCenter,
+        )}
         style={{ borderColor: "#E2E4E8" }}
       >
         <svg
@@ -243,7 +255,7 @@ function TargetWithSource({
         </svg>
         <div>
           <div>
-            <span className="text-bold text-dark">{source.name}</span>{" "}
+            <span className={cx(CS.textBold, "text-dark")}>{source.name}</span>{" "}
             {
               {
                 column: t`column`,
@@ -253,7 +265,8 @@ function TargetWithSource({
             }
           </div>
           <div style={{ marginTop: 9 }}>
-            <span className="text-brand text-bold">{name}</span> {targetName}
+            <span className={cx("text-brand", CS.textBold)}>{name}</span>{" "}
+            {targetName}
           </div>
         </div>
         <div
@@ -291,10 +304,9 @@ function loadQuestionMetadata(getQuestion) {
       }
 
       fetch() {
-        const { question, loadMetadataForDependentItems } = this.props;
+        const { question, loadMetadataForCard } = this.props;
         if (question) {
-          const dependentItems = Lib.dependentMetadata(question.query());
-          loadMetadataForDependentItems(dependentItems);
+          loadMetadataForCard(question.card());
         }
       }
 
@@ -308,7 +320,7 @@ function loadQuestionMetadata(getQuestion) {
       (state, props) => ({
         question: getQuestion && getQuestion(state, props),
       }),
-      { loadMetadataForDependentItems },
+      { loadMetadataForCard },
     )(MetadataLoader);
   };
 }
@@ -322,6 +334,7 @@ export function withUserAttributes(ComposedComponent) {
         this.setState({ userAttributes: await GTAPApi.attributes() });
       }
     }
+
     render() {
       return (
         <ComposedComponent

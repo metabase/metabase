@@ -5,6 +5,8 @@ import { t } from "ttag";
 import { currency } from "cljs/metabase.shared.util.currency";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select, { Option } from "metabase/core/components/Select";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 import { trackStructEvent } from "metabase/lib/analytics";
 import * as MetabaseCore from "metabase/lib/core";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
@@ -96,9 +98,12 @@ const SemanticTypeAndTargetPicker = ({
   );
 
   return (
-    <div className={cx(hasSeparator ? "flex align-center" : null)}>
+    <div
+      data-testid="semantic-type-target-picker"
+      className={hasSeparator ? cx(CS.flex, CS.alignCenter) : undefined}
+    >
       <Select
-        className={cx("TableEditor-field-semantic-type mt0", className)}
+        className={cx(AdminS.TableEditorFieldSemanticType, "mt0", className)}
         value={field.semantic_type}
         onChange={handleChangeSemanticType}
         options={TYPE_OPTIONS}
@@ -111,8 +116,9 @@ const SemanticTypeAndTargetPicker = ({
       {showCurrencyTypeSelect && (
         <Select
           className={cx(
-            "TableEditor-field-target inline-block",
-            hasSeparator ? "mt0" : "mt1",
+            AdminS.TableEditorFieldTarget,
+            CS.inlineBlock,
+            hasSeparator ? CS.mt0 : CS.mt1,
             className,
           )}
           value={getFieldCurrency(field)}
@@ -123,9 +129,11 @@ const SemanticTypeAndTargetPicker = ({
         >
           {currency.map(([_, c]: CurrencyOption[]) => (
             <Option name={c.name} value={c.code} key={c.code}>
-              <span className="flex full align-center">
+              <span className={cx(CS.flex, CS.full, CS.alignCenter)}>
                 <span>{c.name}</span>
-                <span className="text-bold text-light ml1">{c.symbol}</span>
+                <span className={cx(CS.textBold, CS.textLight, CS.ml1)}>
+                  {c.symbol}
+                </span>
               </span>
             </Option>
           ))}
@@ -134,10 +142,14 @@ const SemanticTypeAndTargetPicker = ({
       {showFKTargetSelect && hasSeparator && <FieldSeparator />}
       {showFKTargetSelect && (
         <Select
+          buttonProps={{
+            "data-testid": "fk-target-select",
+          }}
           disabled={!hasIdFields}
           className={cx(
-            "TableEditor-field-target text-wrap",
-            hasSeparator ? "mt0" : "mt1",
+            AdminS.TableEditorFieldTarget,
+            CS.textWrap,
+            hasSeparator ? CS.mt0 : CS.mt1,
             className,
           )}
           placeholder={getFkFieldPlaceholder(field, idFields)}

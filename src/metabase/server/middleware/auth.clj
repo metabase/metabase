@@ -12,10 +12,12 @@
 (defn enforce-authentication
   "Middleware that returns a 401 response if `request` has no associated `:metabase-user-id`."
   [handler]
-  (fn [{:keys [metabase-user-id] :as request} respond raise]
-    (if metabase-user-id
-      (handler request respond raise)
-      (respond req.util/response-unauthentic))))
+  (with-meta
+   (fn [{:keys [metabase-user-id] :as request} respond raise]
+     (if metabase-user-id
+       (handler request respond raise)
+       (respond req.util/response-unauthentic)))
+   (meta handler)))
 
 (defn- wrap-static-api-key* [{:keys [headers], :as request}]
   (if-let [api-key (headers static-metabase-api-key-header)]

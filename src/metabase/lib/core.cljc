@@ -273,6 +273,7 @@
   normalize]
  [lib.query
   can-run
+  can-save
   query
   stage-count
   uses-metric?
@@ -303,4 +304,5 @@
   temporal-bucket
   with-temporal-bucket]
  [lib.util
+  normalized-query-type
   source-table-id])

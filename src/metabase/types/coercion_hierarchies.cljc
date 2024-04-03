@@ -94,7 +94,7 @@
  #?(:clj #'clojure.core/global-hierarchy
     :cljs (#'clojure.core/get-global-hierarchy))
  ::rebuild-hierarchies
- (fn [_ _ old new]
+ (fn [_key _ref old new]
    (when-not (= old new)
      (reset! base-type-hierarchy* nil)
      (reset! effective-type-hierarchy* nil))))
@@ -104,13 +104,13 @@
 (add-watch
  strategy->allowed-base-types
  ::rebuild-hierarchies
- (fn [_ _ old new]
+ (fn [_key _ref old new]
    (when-not (= old new)
      (reset! base-type-hierarchy* nil))))
 
 (add-watch
  strategy->effective-type
  ::rebuild-hierarchies
- (fn [_ _ old new]
+ (fn [_key _ref old new]
    (when-not (= old new)
      (reset! effective-type-hierarchy* nil))))

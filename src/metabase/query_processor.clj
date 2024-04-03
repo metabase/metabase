@@ -6,7 +6,7 @@
   Various REST API endpoints, such as `POST /api/dataset`, return the results of queries; they usually
   use [[userland-query]] or [[userland-query-with-default-constraints]] (see below)."
   (:require
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.info :as lib.schema.info]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.execute :as qp.execute]
    [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
@@ -42,7 +42,7 @@
 
 (defn- process-query** [query rff]
   (let [preprocessed (qp.preprocess/preprocess query)
-        compiled     (assoc preprocessed :native (qp.compile/compile-preprocessed preprocessed))
+        compiled     (qp.compile/attach-compiled-query preprocessed)
         rff          (qp.postprocess/post-processing-rff preprocessed rff)]
     (qp.execute/execute compiled rff)))
 
@@ -92,7 +92,7 @@
    (userland-query query nil))
 
   ([query :- ::qp.schema/query
-    info  :- [:maybe mbql.s/Info]]
+    info  :- [:maybe ::lib.schema.info/info]]
    (-> query
        (assoc-in [:middleware :userland-query?] true)
        (update :info merge info))))
@@ -107,7 +107,7 @@
    (userland-query-with-default-constraints query nil))
 
   ([query :- ::qp.schema/query
-    info  :- [:maybe mbql.s/Info]]
+    info  :- [:maybe ::lib.schema.info/info]]
    (-> query
        (userland-query info)
        (assoc-in [:middleware :add-default-userland-constraints?] true))))

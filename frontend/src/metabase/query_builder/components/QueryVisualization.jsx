@@ -6,8 +6,9 @@ import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { useSelector } from "metabase/lib/redux";
-import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
+import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 import RunButtonWithTooltip from "./RunButtonWithTooltip";
@@ -51,9 +52,15 @@ export default function QueryVisualization(props) {
         />
       )}
       <div
-        className={cx(CS.spread, "Visualization", CS.z1, {
-          "Visualization--loading": isRunning,
-        })}
+        className={cx(
+          CS.spread,
+          QueryBuilderS.Visualization,
+          {
+            [QueryBuilderS.VisualizationLoading]: isRunning,
+          },
+          CS.z1,
+        )}
+        data-testid="query-visualization-root"
       >
         {result?.error ? (
           <VisualizationError
@@ -79,7 +86,15 @@ export default function QueryVisualization(props) {
 }
 
 export const VisualizationEmptyState = ({ className }) => (
-  <div className={cx(className, "flex flex-column layout-centered text-light")}>
+  <div
+    className={cx(
+      className,
+      CS.flex,
+      CS.flexColumn,
+      CS.layoutCentered,
+      CS.textLight,
+    )}
+  >
     <h3>{t`Here's where your results will appear`}</h3>
   </div>
 );
@@ -87,17 +102,21 @@ export const VisualizationEmptyState = ({ className }) => (
 export function VisualizationRunningState({ className = "" }) {
   const [isSlow] = useTimeout(SLOW_MESSAGE_TIMEOUT);
 
-  const loadingMessage = useSelector(getWhiteLabeledLoadingMessage);
+  const getLoadingMessage = useSelector(getWhiteLabeledLoadingMessageFactory);
 
   // show the slower loading message only when the loadingMessage is
-  // not customised
-  const message = loadingMessage(isSlow());
+  // not customized
+  const message = getLoadingMessage(isSlow());
 
   return (
     <div
       className={cx(
         className,
-        "Loading flex flex-column layout-centered text-brand",
+        QueryBuilderS.Loading,
+        CS.flex,
+        CS.flexColumn,
+        CS.layoutCentered,
+        CS.textBrand,
       )}
     >
       <LoadingSpinner />
@@ -117,9 +136,14 @@ export const VisualizationDirtyState = ({
   hidden,
 }) => (
   <div
-    className={cx(className, "Loading flex flex-column layout-centered", {
-      "Loading--hidden pointer-events-none": hidden,
-    })}
+    className={cx(
+      className,
+      QueryBuilderS.Loading,
+      CS.flex,
+      CS.flexColumn,
+      CS.layoutCentered,
+      { [QueryBuilderS.LoadingHidden]: hidden },
+    )}
   >
     <RunButtonWithTooltip
       className="py2 px3 shadowed"

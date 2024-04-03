@@ -187,10 +187,11 @@ describe("HomeContent", () => {
       await setup({
         user: createMockUser({ is_superuser: true }),
         hasEmbeddingHomepageFlag: true,
+        databases: [createMockDatabase()],
       });
 
       expect(
-        screen.getByText("Get started with Embedding Metabase in your app"),
+        screen.getByText("Embed Metabase in your app"),
       ).toBeInTheDocument();
     });
 
@@ -198,10 +199,11 @@ describe("HomeContent", () => {
       await setup({
         user: createMockUser({ is_superuser: false }),
         hasEmbeddingHomepageFlag: true,
+        databases: [createMockDatabase()],
       });
 
       expect(
-        screen.queryByText("Get started with Embedding Metabase in your app"),
+        screen.queryByText("Embed Metabase in your app"),
       ).not.toBeInTheDocument();
     });
 
@@ -209,12 +211,13 @@ describe("HomeContent", () => {
       await setup({
         user: createMockUser({ is_superuser: true }),
         hasEmbeddingHomepageFlag: true,
+        databases: [createMockDatabase()],
       });
 
       screen.getByRole("button", { name: "close icon" }).click();
 
       expect(
-        screen.queryByText("Get started with Embedding Metabase in your app"),
+        screen.queryByText("Embed Metabase in your app"),
       ).not.toBeInTheDocument();
 
       expect(localStorage.getItem("showEmbedHomepage")).toBeNull();
@@ -224,20 +227,22 @@ describe("HomeContent", () => {
       await setup({
         user: createMockUser({ is_superuser: false }),
         hasEmbeddingHomepageFlag: true,
+        databases: [createMockDatabase()],
       });
 
       expect(
-        screen.queryByText("Get started with Embedding Metabase in your app"),
+        screen.queryByText("Embed Metabase in your app"),
       ).not.toBeInTheDocument();
     });
 
     it("should not show it if the localStorage flag is not set", async () => {
       await setup({
         user: createMockUser({ is_superuser: true }),
+        databases: [createMockDatabase()],
       });
 
       expect(
-        screen.queryByText("Get started with Embedding Metabase in your app"),
+        screen.queryByText("Embed Metabase in your app"),
       ).not.toBeInTheDocument();
     });
   });

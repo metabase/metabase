@@ -44,6 +44,9 @@ export async function setup({
 
   fetchMock.post("path:/api/util/password_check", { valid: true });
   fetchMock.post("path:/api/setup", {});
+  fetchMock.put("path:/api/setting/anon-tracking-enabled", 200);
+  fetchMock.get("path:/api/session/properties", 200);
+  fetchMock.get("path:/api/setting", 200);
 
   renderWithProviders(<Setup />, { storeInitialState: state });
 
@@ -56,13 +59,13 @@ export async function setup({
 export const getSection = (name: string) =>
   screen.getByRole("listitem", { name });
 
-export const clickNextStep = () =>
-  userEvent.click(screen.getByRole("button", { name: "Next" }));
+export const clickNextStep = async () =>
+  await userEvent.click(screen.getByRole("button", { name: "Next" }));
 
-export const skipWelcomeScreen = () =>
-  userEvent.click(screen.getByText("Let's get started"));
+export const skipWelcomeScreen = async () =>
+  await userEvent.click(screen.getByText("Let's get started"));
 
-export const skipLanguageStep = () => clickNextStep();
+export const skipLanguageStep = clickNextStep;
 
 export const submitUserInfoStep = async ({
   firstName = "John",
@@ -71,16 +74,22 @@ export const submitUserInfoStep = async ({
   companyName = "Acme",
   password = "Monkeyabc123",
 } = {}) => {
-  userEvent.type(screen.getByLabelText("First name"), firstName);
-  userEvent.type(screen.getByLabelText("Last name"), lastName);
-  userEvent.type(screen.getByLabelText("Email"), email);
-  userEvent.type(screen.getByLabelText("Company or team name"), companyName);
-  userEvent.type(screen.getByLabelText("Create a password"), password);
-  userEvent.type(screen.getByLabelText("Confirm your password"), password);
+  await userEvent.type(screen.getByLabelText("First name"), firstName);
+  await userEvent.type(screen.getByLabelText("Last name"), lastName);
+  await userEvent.type(screen.getByLabelText("Email"), email);
+  await userEvent.type(
+    screen.getByLabelText("Company or team name"),
+    companyName,
+  );
+  await userEvent.type(screen.getByLabelText("Create a password"), password);
+  await userEvent.type(
+    screen.getByLabelText("Confirm your password"),
+    password,
+  );
   await waitFor(() =>
     expect(screen.getByRole("button", { name: "Next" })).toBeEnabled(),
   );
-  clickNextStep();
+  await clickNextStep();
   // formik+yup validation is async, we need to wait for the submit to finish
   await waitFor(() =>
     expect(
@@ -89,7 +98,7 @@ export const submitUserInfoStep = async ({
   );
 };
 
-export const selectUsageReason = (usageReason: UsageReason) => {
+export const selectUsageReason = async (usageReason: UsageReason) => {
   const label = {
     "self-service-analytics": "Self-service analytics for my own company",
     embedding: "Embedding analytics into my application",
@@ -97,7 +106,7 @@ export const selectUsageReason = (usageReason: UsageReason) => {
     "not-sure": "Not sure yet",
   }[usageReason];
 
-  userEvent.click(screen.getByLabelText(label));
+  await userEvent.click(screen.getByLabelText(label));
 };
 
 export const expectSectionToHaveLabel = (
@@ -114,7 +123,7 @@ export const expectSectionsToHaveLabelsInOrder = ({
 }: {
   from?: number;
 } = {}): void => {
-  screen.getAllByRole("listitem").forEach((section, index) => {
+  screen.getAllByTestId("setup-step").forEach((section, index) => {
     if (index >= from) {
       expect(within(section).getByText(`${index + 1}`)).toBeInTheDocument();
     }

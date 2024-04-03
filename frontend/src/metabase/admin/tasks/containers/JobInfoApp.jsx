@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -6,6 +7,8 @@ import { t } from "ttag";
 import AdminHeader from "metabase/components/AdminHeader";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
 
 import { fetchJobInfo } from "../jobInfo";
 
@@ -28,7 +31,7 @@ const renderSchedulerInfo = scheduler => {
 const renderJobsTable = jobs => {
   return (
     jobs && (
-      <table className="ContentTable mt2">
+      <table className={cx(AdminS.ContentTable, CS.mt2)}>
         <thead>
           <tr>
             <th>{t`Key`}</th>
@@ -41,13 +44,13 @@ const renderJobsTable = jobs => {
           {jobs &&
             jobs.map(job => (
               <tr key={job.key}>
-                <td className="text-bold">{job.key}</td>
+                <td className={CS.textBold}>{job.key}</td>
                 <td>{job.class}</td>
                 <td>{job.description}</td>
                 <td>{job.durable}</td>
                 <td>
                   <Link
-                    className="link"
+                    className={CS.link}
                     to={`/admin/troubleshooting/jobs/${job.key}`}
                   >
                     {t`View triggers`}

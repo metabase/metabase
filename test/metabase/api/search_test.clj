@@ -6,10 +6,10 @@
    [java-time.api :as t]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.search :as api.search]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models
     :refer [Action Card CardBookmark Collection Dashboard DashboardBookmark
-            DashboardCard Database Metric PermissionsGroup
+            DashboardCard Database LegacyMetric PermissionsGroup
             PermissionsGroupMembership Pulse PulseCard QueryAction Segment Table]]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
@@ -42,6 +42,8 @@
 
 (def ^:private default-search-row
   {:archived                   false
+   :effective_location         nil
+   :location                   nil
    :bookmark                   nil
    :collection                 default-collection
    :collection_authority_level nil
@@ -100,6 +102,8 @@
                                             :model "collection"
                                             ;; TODO the default-collection data for this doesn't make sense:
                                             :collection (assoc default-collection :id true :name true)
+                                            :effective_location "/"
+                                            :location "/"
                                             :updated_at false
                                             :can_write true))
 
@@ -163,7 +167,7 @@
                    Card        dataset        (assoc (coll-data-map "dataset %s dataset" coll)
                                                      :type :model)
                    Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
-                   Metric      metric         (assoc (data-map "metric %s metric")
+                   LegacyMetric      metric         (assoc (data-map "metric %s metric")
                                                      :table_id (mt/id :checkins))
                    Segment     segment        (data-map "segment %s segment")]
       (f {:action     action
@@ -493,7 +497,7 @@
     (mt/with-temp [Database {db-id :id} {}
                    Table    {table-id :id} {:db_id  db-id
                                             :schema nil}
-                   Metric   _ {:table_id table-id
+                   LegacyMetric   _ {:table_id table-id
                                :name     "test metric"}]
       (mt/with-no-data-perms-for-all-users!
         (is (= []
@@ -699,7 +703,7 @@
                      Card        _ (archived {:name "dataset test dataset" :type :model})
                      Dashboard   _ (archived {:name "dashboard test dashboard 2"})
                      Collection  _ (archived {:name "collection test collection 2"})
-                     Metric      _ (archived {:name     "metric test metric 2"
+                     LegacyMetric      _ (archived {:name     "metric test metric 2"
                                               :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment 2"})]
         (is (= (default-search-results)
@@ -720,7 +724,7 @@
                      Card        _ (archived {:name "dataset test dataset" :type :model})
                      Dashboard   _ (archived {:name "dashboard test dashboard"})
                      Collection  _ (archived {:name "collection test collection"})
-                     Metric      _ (archived {:name     "metric test metric"
+                     LegacyMetric      _ (archived {:name     "metric test metric"
                                               :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment"})]
         (is (= (default-archived-results)
@@ -737,7 +741,7 @@
                      Card        _ (archived {:name "dataset test dataset" :type :model})
                      Dashboard   _ (archived {:name "dashboard test dashboard"})
                      Collection  _ (archived {:name "collection test collection"})
-                     Metric      _ (archived {:name     "metric test metric"
+                     LegacyMetric      _ (archived {:name     "metric test metric"
                                               :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment"})]
         (is (ordered-subset? (default-archived-results)
@@ -888,11 +892,11 @@
        Database  _              {:name (str "database 3 " search-string)}
        Table     {table-id :id} {:db_id  db-id
                                  :schema nil}
-       Metric    _              {:table_id table-id
+       LegacyMetric    _              {:table_id table-id
                                  :name     (str "metric 1 " search-string)}
-       Metric    _              {:table_id table-id
+       LegacyMetric    _              {:table_id table-id
                                  :name     (str "metric 1 " search-string)}
-       Metric    _              {:table_id table-id
+       LegacyMetric    _              {:table_id table-id
                                  :name     (str "metric 2 " search-string)}
        Segment   _              {:table_id table-id
                                  :name     (str "segment 1 " search-string)}
@@ -1082,7 +1086,7 @@
 
         (testing "error if creator_id is not an integer"
           (let [resp (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_by "not-a-valid-user-id")]
-            (is (= {:created_by "nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero."}
+            (is (= {:created_by "nullable vector of value must be an integer greater than zero."}
                    (:errors resp)))))))))
 
 (deftest filter-by-last-edited-by-test
@@ -1094,14 +1098,14 @@
        :model/Card       {lucky-model-id :id}  {:name search-term :type :model}
        :model/Dashboard  {rasta-dash-id :id}   {:name search-term}
        :model/Dashboard  {lucky-dash-id :id}   {:name search-term}
-       :model/Metric     {rasta-metric-id :id} {:name search-term :table_id (mt/id :checkins)}
-       :model/Metric     {lucky-metric-id :id} {:name search-term :table_id (mt/id :checkins)}]
+       :model/LegacyMetric     {rasta-metric-id :id} {:name search-term :table_id (mt/id :checkins)}
+       :model/LegacyMetric     {lucky-metric-id :id} {:name search-term :table_id (mt/id :checkins)}]
       (let [rasta-user-id (mt/user->id :rasta)
             lucky-user-id (mt/user->id :lucky)]
         (doseq [[model id user-id] [[:model/Card rasta-card-id rasta-user-id] [:model/Card rasta-model-id rasta-user-id]
-                                    [:model/Dashboard rasta-dash-id rasta-user-id] [:model/Metric rasta-metric-id rasta-user-id]
+                                    [:model/Dashboard rasta-dash-id rasta-user-id] [:model/LegacyMetric rasta-metric-id rasta-user-id]
                                     [:model/Card lucky-card-id lucky-user-id] [:model/Card lucky-model-id lucky-user-id]
-                                    [:model/Dashboard lucky-dash-id lucky-user-id] [:model/Metric lucky-metric-id lucky-user-id]]]
+                                    [:model/Dashboard lucky-dash-id lucky-user-id] [:model/LegacyMetric lucky-metric-id lucky-user-id]]]
           (revision/push-revision!
            {:entity       model
             :id           id
@@ -1147,7 +1151,7 @@
 
         (testing "error if last_edited_by is not an integer"
           (let [resp (mt/user-http-request :crowberto :get 400 "search" :q search-term :last_edited_by "not-a-valid-user-id")]
-            (is (= {:last_edited_by "nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero."}
+            (is (= {:last_edited_by "nullable vector of value must be an integer greater than zero."}
                    (:errors resp)))))))))
 
 (deftest verified-filter-test
@@ -1235,12 +1239,12 @@
       [:model/Card       {card-id :id}   {:name search-term}
        :model/Card       {model-id :id}  {:name search-term :type :model}
        :model/Dashboard  {dash-id :id}   {:name search-term}
-       :model/Metric     {metric-id :id} {:name search-term :table_id (mt/id :checkins)}
+       :model/LegacyMetric {metric-id :id} {:name search-term :table_id (mt/id :checkins)}
        :model/Action     {action-id :id} {:name       search-term
                                           :model_id   model-id
                                           :type       :http}]
       (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
-                          [:model/Dashboard dash-id] [:model/Metric metric-id]]]
+                          [:model/Dashboard dash-id] [:model/LegacyMetric metric-id]]]
         (revision/push-revision!
          {:entity       model
           :id           id
@@ -1267,7 +1271,7 @@
 
       (testing "works with the last_edited_by filter too"
         (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
-                            [:model/Dashboard dash-id] [:model/Metric metric-id]]]
+                            [:model/Dashboard dash-id] [:model/LegacyMetric metric-id]]]
           (revision/push-revision!
            {:entity       model
             :id           id
@@ -1329,7 +1333,7 @@
                                                :created_at two-years-ago}
          :model/Segment    {_segment-new :id} {:name       search-term
                                                :created_at new}
-         :model/Metric     {_metric-new :id}  {:name       search-term
+         :model/LegacyMetric     {_metric-new :id}  {:name       search-term
                                                :created_at new
                                                :table_id (mt/id :checkins)}]
         ;; with clock doesn't work if calling via API, so we call the search function directly
@@ -1388,8 +1392,8 @@
                                                 :type       :model}
          :model/Card       {model-old :id}     {:name       search-term
                                                 :type       :model}
-         :model/Metric     {metric-new :id}    {:name       search-term :table_id (mt/id :checkins)}
-         :model/Metric     {metric-old :id}    {:name       search-term :table_id (mt/id :checkins)}
+         :model/LegacyMetric {metric-new :id}    {:name       search-term :table_id (mt/id :checkins)}
+         :model/LegacyMetric {metric-old :id}    {:name       search-term :table_id (mt/id :checkins)}
          :model/Action     {action-new :id}    {:name       search-term
                                                 :model_id   model-new
                                                 :type       :http

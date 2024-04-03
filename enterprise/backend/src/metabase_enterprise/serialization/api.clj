@@ -133,7 +133,7 @@
                 settings        true
                 data_model      true}}
         :query-params}]
-  {collection       [:maybe [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} ms/PositiveInt]]
+  {collection       [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    all_collections  [:maybe ms/BooleanValue]
    settings         [:maybe ms/BooleanValue]
    data_model       [:maybe ms/BooleanValue]

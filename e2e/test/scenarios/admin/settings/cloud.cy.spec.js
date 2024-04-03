@@ -10,7 +10,7 @@ describe.skip("Cloud settings section", () => {
   it("should be visible when running Metabase Cloud", () => {
     setupMetabaseCloud();
     cy.visit("/admin");
-    cy.get(".AdminList-items").findByText("Cloud").click();
+    cy.findByTestId("admin-list-settings-items").findByText("Cloud").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Cloud Settings/i);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -23,7 +23,9 @@ describe.skip("Cloud settings section", () => {
 
   it("should be invisible when self-hosting", () => {
     cy.visit("/admin");
-    cy.get(".AdminList-items").findByText("Cloud").should("not.exist");
+    cy.findByTestId("admin-list-settings-items")
+      .findByText("Cloud")
+      .should("not.exist");
     cy.visit("/admin/settings/cloud");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Cloud Settings/i).should("not.exist");

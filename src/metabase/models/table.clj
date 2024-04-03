@@ -8,7 +8,6 @@
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
-   [metabase.models.field-values :refer [FieldValues]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
@@ -167,25 +166,30 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(mi/define-simple-hydration-method ^{:arglists '([table])} field-values
-  :field_values
+(methodical/defmethod t2/batched-hydrate [:model/Table :field_values]
   "Return the FieldValues for all Fields belonging to a single `table`."
-  [{:keys [id]}]
-  (let [field-ids (t2/select-pks-set Field
-                    :table_id        id
-                    :visibility_type "normal"
-                    {:order-by field-order-rule})]
-    (when (seq field-ids)
-      (t2/select-fn->fn :field_id :values FieldValues, :field_id [:in field-ids] :type :full))))
+  [_model k tables]
+  (mi/instances-with-hydrated-data
+   tables k
+   #(-> (group-by :table_id (t2/select [:model/FieldValues :field_id :values :field.table_id]
+                                       {:join  [[:metabase_field :field] [:= :metabase_fieldvalues.field_id :field.id]]
+                                        :where [:and
+                                                [:in :field.table_id [(map :id tables)]]
+                                                [:= :field.visibility_type  "normal"]
+                                                [:= :metabase_fieldvalues.type "full"]]}))
+        (update-vals (fn [fvs] (->> fvs (map (juxt :field_id :values)) (into {})))))
+   :id))
 
-(mi/define-simple-hydration-method ^{:arglists '([table])} pk-field-id
-  :pk_field
-  "Return the ID of the primary key `Field` for `table`."
-  [{:keys [id]}]
-  (t2/select-one-pk Field
-    :table_id        id
-    :semantic_type   (mdb.query/isa :type/PK)
-    :visibility_type [:not-in ["sensitive" "retired"]]))
+(methodical/defmethod t2/batched-hydrate [:model/Table :pk_field]
+  [_model k tables]
+  (mi/instances-with-hydrated-data
+   tables k
+   #(t2/select-fn->fn :table_id :id
+                      :model/Field
+                      :table_id        [:in (map :id tables)]
+                      :semantic_type   (mdb.query/isa :type/PK)
+                      :visibility_type [:not-in ["sensitive" "retired"]])
+   :id))
 
 (defn- with-objects [hydration-key fetch-objects-fn tables]
   (let [table-ids         (set (map :id tables))
@@ -209,7 +213,7 @@
   [tables]
   (with-objects :metrics
     (fn [table-ids]
-      (t2/select :model/Metric :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (t2/select :model/LegacyMetric :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
 (defn with-fields

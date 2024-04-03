@@ -115,7 +115,7 @@
 (add-watch
  #'hierarchy
  nil
- (fn [_ _ _ _]
+ (fn [_key _ref _old-state _new-state]
    (when (not= hierarchy driver.impl/hierarchy)
      ;; this is a dev-facing error so no need to i18n it.
      (throw (Exception. (str "Don't alter #'metabase.driver/hierarchy directly, since it is imported from "
@@ -666,7 +666,7 @@
 
 (defmulti mbql->native
   "Transpile an MBQL query into the appropriate native query form. `query` will match the schema for an MBQL query in
-  [[metabase.mbql.schema/Query]]; this function should return a native query that conforms to that schema.
+  [[metabase.legacy-mbql.schema/Query]]; this function should return a native query that conforms to that schema.
 
   If the underlying query language supports remarks or comments, the driver should
   use [[metabase.query-processor.util/query->remark]] to generate an appropriate message and include that in an
@@ -937,6 +937,16 @@
 (defmulti drop-table!
   "Drop a table named `table-name`. If the table doesn't exist it will not be dropped."
   {:added "0.47.0", :arglists '([driver db-id table-name])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti truncate!
+  "Delete the current contents of `table-name`.
+  If something like a SQL TRUNCATE statement is supported, we use that, but may otherwise fall back to explicitly
+  deleting rows, or dropping and recreating the table.
+  Depending on the driver, the semantics can vary on whether triggers are fired, AUTO_INCREMENT is reset etc.
+  The application assumes that the implementation can be rolled back if inside a transaction."
+  {:added "0.50.0", :arglists '([driver db-id table-name])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

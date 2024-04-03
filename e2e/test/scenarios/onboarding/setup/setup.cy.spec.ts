@@ -99,20 +99,6 @@ describe("scenarios > setup", () => {
           // test database setup help card is NOT displayed before DB is selected
           cy.findByText("Need help connecting?").should("not.be.visible");
 
-          // test that you can return to user settings if you want
-          cy.findByText("Hi, Testy. Nice to meet you!").click();
-          cy.findByLabelText("Email").should(
-            "have.value",
-            "testy@metabase.test",
-          );
-
-          // test database setup help card is NOT displayed on other steps
-          cy.findByText("Need help connecting?").should("not.be.visible");
-
-          // now back to database setting
-          cy.button("Next").click();
-          cy.button("Next").click();
-
           // check database setup card is visible
           cy.findByText("MySQL").click();
           cy.findByText("Need help connecting?").should("be.visible");
@@ -208,9 +194,7 @@ describe("scenarios > setup", () => {
     });
     cy.location("pathname").should("eq", "/");
 
-    main()
-      .findByText("Get started with Embedding Metabase in your app")
-      .should("not.exist");
+    main().findByText("Embed Metabase in your app").should("not.exist");
   });
 
   // Values in this test are set through MB_USER_DEFAULTS environment variable!
@@ -288,6 +272,7 @@ describe("scenarios > setup", () => {
     });
 
     cy.visit("/browse");
+    cy.findByRole("tab", { name: "Databases" }).click();
     cy.findByTestId("database-browser").findByText(dbName);
   });
 
@@ -335,15 +320,7 @@ describe("scenarios > setup", () => {
 
     cy.location("pathname").should("eq", "/");
 
-    main()
-      .findByText("Get started with Embedding Metabase in your app")
-      .should("exist");
-
-    cy.reload();
-
-    main()
-      .findByText("Get started with Embedding Metabase in your app")
-      .should("exist");
+    main().findByText("Embed Metabase in your app").should("exist");
 
     main()
       .findByRole("link", { name: "Learn more" })
@@ -353,17 +330,10 @@ describe("scenarios > setup", () => {
         /https:\/\/www.metabase.com\/docs\/[^\/]*\/embedding\/start\.html\?utm_media=embed-minimal-homepage/,
       );
 
-    cy.icon("close").click();
-
-    main()
-      .findByText("Get started with Embedding Metabase in your app")
-      .should("not.exist");
-
     cy.reload();
 
-    main()
-      .findByText("Get started with Embedding Metabase in your app")
-      .should("not.exist");
+    // should only show up once
+    main().findByText("Embed Metabase in your app").should("not.exist");
   });
 });
 

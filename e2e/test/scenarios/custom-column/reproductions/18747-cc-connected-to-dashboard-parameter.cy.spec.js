@@ -68,7 +68,7 @@ function addNumberParameterToDashboard() {
 }
 
 function mapParameterToCustomColumn() {
-  cy.get(".DashCard").contains("Select…").click();
+  cy.findByTestId("dashcard-container").contains("Select…").click();
   popover().contains("Quantity_2").click({ force: true });
 }
 

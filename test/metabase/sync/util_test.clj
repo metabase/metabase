@@ -202,7 +202,7 @@
 
 (deftest ^:parallel error-handling-test
   (testing "A ConnectException will cause sync to stop"
-    (mt/dataset test-data-with-time
+    (mt/dataset time-test-data
       (let [expected           (java.io.IOException.
                                 "outer"
                                 (java.net.ConnectException.

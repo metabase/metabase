@@ -16,7 +16,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection.graph :as graph]
@@ -98,9 +98,10 @@
                         :id
                         (collection/permissions-set->visible-collection-ids permissions-set))]
                ;; Order NULL collection types first so that audit collections are last
-               :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
+               :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+                          [[[:case [:= :type nil] 0 :else 1]] :asc]
                           [:%lower.name :asc]]})
-    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
+   exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -228,9 +229,7 @@
 
 (def ^:private Models
   "This is basically a union type. [[api/defendpoint]] splits the string if it only gets one."
-  [:or
-   [:sequential ModelString]
-   ModelString])
+  [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} ModelString])
 
 (def ^:private valid-pinned-state-values
   "Valid values for the `?pinned_state` param accepted by endpoints in this namespace."
@@ -301,13 +300,14 @@
     always-false-hsql-expr
     always-true-hsql-expr))
 
+
 (defmulti ^:private post-process-collection-children
-  {:arglists '([model rows])}
-  (fn [model _]
+  {:arglists '([model collection rows])}
+  (fn [model _ _]
     (keyword model)))
 
 (defmethod ^:private post-process-collection-children :default
-  [_ rows]
+  [_ _ rows]
   rows)
 
 (defmethod collection-children-query :pulse
@@ -329,7 +329,7 @@
       (sql.helpers/where (pinned-state->clause pinned-state :p.collection_position))))
 
 (defmethod post-process-collection-children :pulse
-  [_ rows]
+  [_ _ rows]
   (for [row rows]
     (dissoc row
             :description :display :authority_level :moderated_status :icon :personal_owner_id
@@ -358,14 +358,14 @@
             [:= :archived (boolean archived?)]]})
 
 (defmethod post-process-collection-children :timeline
-  [_ rows]
+  [_ _collection rows]
   (for [row rows]
     (dissoc row
             :description :display :collection_position :authority_level :moderated_status
             :collection_preview :dataset_query :table_id :query_type :is_upload)))
 
 (defmethod post-process-collection-children :snippet
-  [_ rows]
+  [_ _collection rows]
   (for [row rows]
     (dissoc row
             :description :collection_position :display :authority_level
@@ -415,14 +415,14 @@
   (card-query true collection options))
 
 (defmethod post-process-collection-children :dataset
-  [_ rows]
+  [_ collection rows]
   (let [queries-before (map :dataset_query rows)
         queries-parsed (map (comp mbql.normalize/normalize json/parse-string) queries-before)]
     ;; We need to normalize the dataset queries for hydration, but reset the field to avoid leaking that transform.
     (->> (map #(assoc %2 :dataset_query %1) queries-parsed rows)
          upload/model-hydrate-based-on-upload
          (map #(assoc %2 :dataset_query %1) queries-before)
-         (post-process-collection-children :card))))
+         (post-process-collection-children :card collection))))
 
 (defmethod collection-children-query :card
   [_ collection options]
@@ -475,7 +475,7 @@
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
 (defmethod post-process-collection-children :card
-  [_ rows]
+  [_ _ rows]
   (map post-process-card-row rows))
 
 (defn- dashboard-query [collection {:keys [archived? pinned-state]}]
@@ -502,7 +502,7 @@
   (dashboard-query collection options))
 
 (defmethod post-process-collection-children :dashboard
-  [_ rows]
+  [_ _ rows]
   (map #(dissoc %
                 :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
                 :dataset_query :table_id :query_type :is_upload)
@@ -532,6 +532,7 @@
                       :entity_id
                       :personal_owner_id
                       :location
+                      [:type :collection_type]
                       [(h2x/literal "collection") :model]
                       :authority_level])
       ;; the nil indicates that collections are never pinned.
@@ -541,27 +542,72 @@
   [_ collection options]
   (collection-query collection options))
 
+(defn- annotate-collections
+  [parent-coll colls]
+  (let [visible-collection-ids (collection/permissions-set->visible-collection-ids
+                                @api/*current-user-permissions-set*)
+
+        descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-ids->honeysql-filter-clause
+                                                                         :id
+                                                                         visible-collection-ids))
+
+        descendant-collection-ids (map u/the-id descendant-collections)
+
+        child-type->coll-id-set
+        (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
+                  (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
+                {:dataset #{}
+                 :card    #{}}
+                (mdb.query/reducible-query {:select-distinct [:collection_id :type]
+                                            :from            [:report_card]
+                                            :where           [:and
+                                                              [:= :archived false]
+                                                              [:in :collection_id descendant-collection-ids]]}))
+
+        collections-containing-dashboards
+        (->> (t2/query {:select-distinct [:collection_id]
+                        :from :report_dashboard
+                        :where [:and
+                                [:= :archived false]
+                                [:in :collection_id descendant-collection-ids]]})
+             (map :collection_id)
+             (into #{}))
+
+        ;; the set of collections that contain collections (in terms of *effective* location)
+        collections-containing-collections
+        (->> descendant-collections
+             (reduce (fn [accu {:keys [location] :as _coll}]
+                       (let [effective-location (collection/effective-location-path location visible-collection-ids)
+                             parent-id (collection/location-path->parent-id effective-location)]
+                         (conj accu parent-id)))
+                     #{}))
+
+        child-type->coll-id-set
+        (merge child-type->coll-id-set
+               {:collection collections-containing-collections
+                :dashboard collections-containing-dashboards})
+
+        ;; why are we calling `annotate-collections` on all descendants, when we only need the collections in `colls`
+        ;; to be annotated? Because `annotate-collections` works by looping through the collections it's passed and
+        ;; using them to figure out the ancestors of a given collection. This could use a refactor - probably the
+        ;; caller of `annotate-collections` could be generating both `child-type->parent-ids` and
+        ;; `child-type->ancestor-ids`.
+        coll-id->annotated (m/index-by :id (collection/annotate-collections child-type->coll-id-set descendant-collections))]
+    (for [coll colls]
+      (merge coll (select-keys (coll-id->annotated (:id coll)) [:here :below])))))
+
 (defmethod post-process-collection-children :collection
-  [_ rows]
+  [_ parent-collection rows]
   (letfn [(update-personal-collection [{:keys [personal_owner_id] :as row}]
             (if personal_owner_id
               ;; when fetching root collection, we might have personal collection
               (assoc row :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
               (dissoc row :personal_owner_id)))]
-      (let [visible-collection-ids (collection/permissions-set->visible-collection-ids
-                                  @api/*current-user-permissions-set*)]
-        (for [row rows]
-          ;; Go through this rigamarole instead of hydration because we
-          ;; don't get models back from ulterior over-query
-          ;; Previous examination with logging to DB says that there's no N+1 query for this.
-          ;; However, this was only tested on H2 and Postgres
-          (-> row
-              (assoc :can_write (mi/can-write? Collection (:id row)))
-              (assoc :effective_location
-                      (collection/effective-location-path (:location row) visible-collection-ids))
-              (dissoc :collection_position :display :moderated_status :icon
-                      :collection_preview :dataset_query :table_id :query_type :is_upload)
-              update-personal-collection)))))
+    (for [row (annotate-collections parent-collection rows)]
+      (-> (t2/hydrate (t2/instance :model/Collection row) :can_write :effective_location)
+          (dissoc :collection_position :display :moderated_status :icon
+                  :collection_preview :dataset_query :table_id :query_type :is_upload)
+          update-personal-collection))))
 
 (mu/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
@@ -576,19 +622,23 @@
                    :last_edit_first_name :first_name
                    :last_edit_email      :email
                    :last_edit_timestamp  :timestamp}]
-      (cond-> (apply dissoc row :model_ranking (keys mapping))
+      (cond-> (apply dissoc row (keys mapping))
         ;; don't use contains as they all have the key, we care about a value present
         (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
+
+(defn- remove-unwanted-keys [row]
+  (dissoc row :collection_type :model_ranking))
 
 (defn- post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
   `post-process-collection-children`. Must respect the order passed in."
-  [rows]
+  [collection rows]
   (->> (map-indexed (fn [i row] (vary-meta row assoc ::index i)) rows) ;; keep db sort order
+       (map remove-unwanted-keys)
        (group-by :model)
        (into []
              (comp (map (fn [[model rows]]
-                          (post-process-collection-children (keyword model) rows)))
+                          (post-process-collection-children (keyword model) collection rows)))
                    cat
                    (map coalesce-edit-info)))
        (sort-by (comp ::index meta))))
@@ -623,6 +673,7 @@
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
+   :collection_type
    ;; for determining whether a model is based on a csv-uploaded table
    [:table_id :integer] [:is_upload :boolean] :query_type])
 
@@ -661,45 +712,48 @@
   "Given the client side sort-info, return sort clause to effect this. `db-type` is necessary due to complications from
   treatment of nulls in the different app db types."
   [sort-info db-type]
-  (case sort-info
-    nil                     [[:%lower.name :asc]]
-    [:name :asc]            [[:%lower.name :asc]]
-    [:name :desc]           [[:%lower.name :desc]]
-    [:last-edited-at :asc]  [(if (= db-type :mysql)
-                               [:%isnull.last_edit_timestamp]
-                               [:last_edit_timestamp :nulls-last])
-                             [:last_edit_timestamp :asc]
-                             [:%lower.name :asc]]
-    [:last-edited-at :desc] (remove nil?
-                                    [(case db-type
-                                       :mysql    [:%isnull.last_edit_timestamp]
-                                       :postgres [:last_edit_timestamp :desc-nulls-last]
-                                       :h2       nil)
-                                     [:last_edit_timestamp :desc]
-                                     [:%lower.name :asc]])
-    [:last-edited-by :asc]  [(if (= db-type :mysql)
-                               [:%isnull.last_edit_last_name]
-                               [:last_edit_last_name :nulls-last])
-                             [:last_edit_last_name :asc]
-                             (if (= db-type :mysql)
-                               [:%isnull.last_edit_first_name]
-                               [:last_edit_first_name :nulls-last])
-                             [:last_edit_first_name :asc]
-                             [:%lower.name :asc]]
-    [:last-edited-by :desc] (remove nil?
-                                    [(case db-type
-                                       :mysql    [:%isnull.last_edit_last_name]
-                                       :postgres [:last_edit_last_name :desc-nulls-last]
-                                       :h2       nil)
-                                     [:last_edit_last_name :desc]
-                                     (case db-type
-                                       :mysql    [:%isnull.last_edit_first_name]
-                                       :postgres [:last_edit_last_name :desc-nulls-last]
-                                       :h2       nil)
-                                     [:last_edit_first_name :desc]
-                                     [:%lower.name :asc]])
-    [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
-    [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]))
+  ;; always put "Metabase Analytics" last
+  (into [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+         [[[:case [:= :collection_type nil] 0 :else 1]] :asc]]
+        (case sort-info
+          nil                     [[:%lower.name :asc]]
+          [:name :asc]            [[:%lower.name :asc]]
+          [:name :desc]           [[:%lower.name :desc]]
+          [:last-edited-at :asc]  [(if (= db-type :mysql)
+                                     [:%isnull.last_edit_timestamp]
+                                     [:last_edit_timestamp :nulls-last])
+                                   [:last_edit_timestamp :asc]
+                                   [:%lower.name :asc]]
+          [:last-edited-at :desc] (remove nil?
+                                          [(case db-type
+                                             :mysql    [:%isnull.last_edit_timestamp]
+                                             :postgres [:last_edit_timestamp :desc-nulls-last]
+                                             :h2       nil)
+                                           [:last_edit_timestamp :desc]
+                                           [:%lower.name :asc]])
+          [:last-edited-by :asc]  [(if (= db-type :mysql)
+                                     [:%isnull.last_edit_last_name]
+                                     [:last_edit_last_name :nulls-last])
+                                   [:last_edit_last_name :asc]
+                                   (if (= db-type :mysql)
+                                     [:%isnull.last_edit_first_name]
+                                     [:last_edit_first_name :nulls-last])
+                                   [:last_edit_first_name :asc]
+                                   [:%lower.name :asc]]
+          [:last-edited-by :desc] (remove nil?
+                                          [(case db-type
+                                             :mysql    [:%isnull.last_edit_last_name]
+                                             :postgres [:last_edit_last_name :desc-nulls-last]
+                                             :h2       nil)
+                                           [:last_edit_last_name :desc]
+                                           (case db-type
+                                             :mysql    [:%isnull.last_edit_first_name]
+                                             :postgres [:last_edit_last_name :desc-nulls-last]
+                                             :h2       nil)
+                                           [:last_edit_first_name :desc]
+                                           [:%lower.name :asc]])
+          [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
+          [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]])))
 
 (defn- collection-children*
   [collection models {:keys [sort-info] :as options}]
@@ -731,7 +785,7 @@
                              :limit  mw.offset-paging/*limit*
                              :offset mw.offset-paging/*offset*))
         res         {:total  (->> (mdb.query/query total-query) first :count)
-                     :data   (->> (mdb.query/query limit-query) post-process-rows)
+                     :data   (->> (mdb.query/query limit-query) (post-process-rows collection))
                      :models models}
         limit-res   (assoc res
                            :limit  mw.offset-paging/*limit*

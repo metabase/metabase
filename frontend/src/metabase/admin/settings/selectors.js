@@ -710,7 +710,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
 };
 
-const getSectionsWithPlugins = _.once(() =>
+export const getSectionsWithPlugins = _.once(() =>
   updateSectionsWithPlugins(ADMIN_SETTINGS_SECTIONS),
 );
 

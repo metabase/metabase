@@ -60,7 +60,7 @@ export const Root = styled.div<{
       border-bottom: 1px solid ${color("border")};
     `}
 
-  input, .AdminSelect {
+  input {
     transition: border 0.3s;
 
     &:hover {

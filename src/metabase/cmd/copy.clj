@@ -53,8 +53,8 @@
     :model/Field
     :model/FieldValues
     :model/Segment
-    :model/Metric
-    :model/MetricImportantField
+    :model/LegacyMetric
+    :model/LegacyMetricImportantField
     :model/ModerationReview
     :model/Revision
     :model/ViewLog
@@ -70,7 +70,6 @@
     :model/BookmarkOrdering
     :model/DashboardCard
     :model/DashboardCardSeries
-    :model/Activity
     :model/Pulse
     :model/PulseCard
     :model/PulseChannel
@@ -200,7 +199,8 @@
   "Make sure [target] application DB is empty before we start copying data."
   [data-source]
   ;; check that there are no Users yet
-  (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} "SELECT count(*) AS cnt FROM core_user;")]
+  (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} ["SELECT count(*) AS cnt FROM core_user where not id = ?;"
+                                                               config/internal-mb-user-id])]
     (assert (integer? cnt))
     (when (pos? cnt)
       (throw (ex-info (trs "Target DB is already populated!")

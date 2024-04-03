@@ -1,5 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { openQuestionActions, popover, restore } from "e2e/support/helpers";
+import {
+  createQuestion,
+  openQuestionActions,
+  popover,
+  restore,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -11,7 +16,7 @@ describe("issue 29943", () => {
   });
 
   it("selects the right column when clicking a column header (metabase#29943)", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         type: "model",
         query: {

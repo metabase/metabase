@@ -5,6 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
+import CS from "metabase/css/core/index.css";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import {
   WidgetRoot,
@@ -58,7 +59,7 @@ export default function ParameterFieldWidget({
     <WidgetRoot>
       <div className="p1">
         {verboseName && !isEqualsOp && (
-          <div className="text-bold mb1">{verboseName}...</div>
+          <div className={cx(CS.textBold, "mb1")}>{verboseName}...</div>
         )}
 
         {_.times(numFields, index => {
@@ -75,7 +76,7 @@ export default function ParameterFieldWidget({
           return (
             <FieldValuesWidget
               key={index}
-              className={cx("input", numFields - 1 !== index && "mb1")}
+              className={cx(CS.input, numFields - 1 !== index && CS.mb1)}
               value={value}
               parameter={parameter}
               parameters={parameters}

@@ -12,6 +12,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.db.custom-migrations-test :as custom-migrations-test]
    [metabase.db.query :as mdb.query]
@@ -467,7 +468,7 @@
                                          :id [:in [rev-dash-1-new rev-dash-2-new rev-card-1-new]])))))))
 (deftest fks-are-indexed-test
   (mt/test-driver :postgres
-    (testing "all FKs should be indexed"
+    (testing "FKs are not created automatically in Postgres, check that migrations add necessary indexes"
      (is (= [] (t2/query
                 "SELECT
                      conrelid::regclass AS table_name,
@@ -536,7 +537,8 @@
     (mt/test-drivers [:postgres :mysql]
      (impl/test-migrations "v48.00-049" [migrate!]
        (create-raw-user! "noah@metabase.com")
-       (let [_activity-1 (t2/insert-returning-pks! (t2/table-name :model/Activity)
+       ;; Use raw :activity keyword as table name since the model has since been removed
+       (let [_activity-1 (t2/insert-returning-pks! :activity
                                                    {:topic       "card-create"
                                                     :user_id     1
                                                     :timestamp   :%now
@@ -547,10 +549,10 @@
                                                     :details     "{\"arbitrary_key\": \"arbitrary_value\"}"})]
          (testing "activity rows are copied into audit_log"
            (is (= 0 (t2/count :model/AuditLog)))
-           (is (= 1 (t2/count :model/Activity)))
+           (is (= 1 (t2/count :activity)))
            (migrate!)
            (is (= 1 (t2/count :model/AuditLog)))
-           (is (= 1 (t2/count :model/Activity))))
+           (is (= 1 (t2/count :activity))))
 
          (testing "`database_id` and `table_id` are merged into `details`"
            (is (partial=
@@ -567,7 +569,7 @@
     (mt/test-drivers [:h2]
      (impl/test-migrations "v48.00-049" [migrate!]
        (create-raw-user! "noah@metabase.com")
-       (let [_activity-1 (t2/insert-returning-pks! (t2/table-name :model/Activity)
+       (let [_activity-1 (t2/insert-returning-pks! "activity"
                                                    {:topic       "card-create"
                                                     :user_id     1
                                                     :timestamp   :%now
@@ -578,10 +580,10 @@
                                                     :details     "{\"arbitrary_key\": \"arbitrary_value\"}"})]
          (testing "activity rows are copied into audit_log"
            (is (= 0 (t2/count :model/AuditLog)))
-           (is (= 1 (t2/count :model/Activity)))
+           (is (= 1 (t2/count :activity)))
            (migrate!)
            (is (= 1 (t2/count :model/AuditLog)))
-           (is (= 1 (t2/count :model/Activity))))
+           (is (= 1 (t2/count :activity))))
 
          (testing "`database_id` and `table_id` are inserted into `details`, but not merged with the previous value
                    (H2 limitation)"
@@ -1178,6 +1180,47 @@
           (is (= "no" (t2/select-one-fn :perm_value
                                         (t2/table-name :model/DataPermissions)
                                         :db_id db-id :group_id group-id :perm_type "perms/manage-database"))))))))
+
+(deftest create-internal-user-test
+  (testing "The internal user is created if it doesn't already exist"
+    (impl/test-migrations "v50.2024-03-28T16:30:35" [migrate!]
+      (let [get-users #(t2/query "SELECT * FROM core_user")]
+        (is (= [] (get-users)))
+        (migrate!)
+        (is (=? [{:id               config/internal-mb-user-id
+                  :first_name       "Metabase"
+                  :last_name        "Internal"
+                  :email            "internal@metabase.com"
+                  :password         some?
+                  :password_salt    some?
+                  :is_active        false
+                  :is_superuser     false
+                  :login_attributes nil
+                  :sso_source       nil
+                  :type             "internal"
+                  :date_joined      some?}]
+                (get-users))))))
+  (testing "The internal user isn't created again if it already exists"
+    (impl/test-migrations "v50.2024-03-28T16:30:35" [migrate!]
+      (t2/insert-returning-pks!
+       :core_user
+       ;; Copied from the old `metabase-enterprise.internal-user` namespace
+       {:id               config/internal-mb-user-id
+        :first_name       "Metabase"
+        :last_name        "Internal"
+        :email            "internal@metabase.com"
+        :password         (str (random-uuid))
+        :password_salt    (str (random-uuid))
+        :is_active        false
+        :is_superuser     false
+        :login_attributes nil
+        :sso_source       nil
+        :type             "internal"
+        :date_joined      :%now})
+      (let [get-users    #(t2/query "SELECT * FROM core_user")
+            users-before (get-users)]
+        (migrate!)
+        (is (= users-before (get-users)))))))
 
 (deftest data-permissions-migration-rollback-test
   (testing "Data permissions are correctly rolled back from `data_permissions` to `permissions`"

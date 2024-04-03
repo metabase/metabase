@@ -138,7 +138,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
           cy.findByText("A look at the number of 15655").should("exist");
         });
 
-        cy.get(".DashCard");
+        cy.findAllByTestId("dashcard-container");
       });
     });
 
@@ -187,7 +187,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     cy.url().should("contain", "a-look-at-orders");
 
-    cy.get(".Card").contains("18,760");
+    cy.findAllByTestId("dashcard").contains("18,760");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("How these transactions are distributed");
   });

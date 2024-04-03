@@ -2,9 +2,9 @@
   (:require
    [clojure.walk :as walk]
    [metabase.api.common :as api]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [trs]]
@@ -24,7 +24,7 @@
     (and (every? empty? [breakouts aggregations])
          (or (empty? fields)
              (and (= (count fields) (count nested-source-metadata))
-                  (every? #(mbql.u/match-one % [:field (_ :guard string?) _])
+                  (every? #(lib.util.match/match-one % [:field (_ :guard string?) _])
                           fields))))))
 
 (mu/defn ^:private native-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]

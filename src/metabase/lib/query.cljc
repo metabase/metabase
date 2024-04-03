@@ -3,29 +3,21 @@
   (:require
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
+   [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
-
-(defmethod lib.normalize/normalize :mbql/query
-  [query]
-  (lib.normalize/normalize-map
-   query
-   keyword
-   {:type   keyword
-    :stages (partial mapv lib.normalize/normalize)}))
 
 (defmethod lib.metadata.calculation/metadata-method :mbql/query
   [_query _stage-number _query]
@@ -72,6 +64,12 @@
   (and (mc/validate ::lib.schema/query query)
        (boolean (can-run-method query))))
 
+(mu/defn can-save :- :boolean
+  "Returns whether the query can be saved."
+  [query :- ::lib.schema/query]
+  (and (lib.metadata/editable? query)
+       (can-run query)))
+
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."
   ([metadata-providerable stages]
@@ -87,10 +85,15 @@
 
 (defn- query-from-legacy-query
   [metadata-providerable legacy-query]
-  (let [pmbql-query (lib.convert/->pMBQL (mbql.normalize/normalize legacy-query))]
-    (merge
-     pmbql-query
-     (query-with-stages metadata-providerable (:stages pmbql-query)))))
+  (try
+    (let [pmbql-query (lib.convert/->pMBQL (mbql.normalize/normalize-or-throw legacy-query))]
+      (merge
+       pmbql-query
+       (query-with-stages metadata-providerable (:stages pmbql-query))))
+    (catch #?(:clj Throwable :cljs :default) e
+      (throw (ex-info (i18n/tru "Error creating query from legacy query: {0}" (ex-message e))
+                      {:legacy-query legacy-query}
+                      e)))))
 
 (defn- query-from-unknown-query [metadata-providerable query]
   (assoc (lib.convert/->pMBQL query)
@@ -135,7 +138,7 @@
         :stages
         (into []
               (map (fn [[stage-number stage]]
-                     (mbql.u/replace stage
+                     (lib.util.match/replace stage
                        [:field
                         (opts :guard (every-pred map? (complement (some-fn :base-type :effective-type))))
                         (field-id :guard (every-pred number? pos?))]
@@ -170,6 +173,14 @@
   (query-with-stages metadata-providerable
                      [{:lib/type     :mbql.stage/mbql
                        :source-card (u/the-id card-metadata)}]))
+
+(defmethod query-method :mbql.stage/mbql
+  [metadata-providerable mbql-stage]
+  (query-with-stages metadata-providerable [mbql-stage]))
+
+(defmethod query-method :mbql.stage/native
+  [metadata-providerable native-stage]
+  (query-with-stages metadata-providerable [native-stage]))
 
 (mu/defn query :- ::lib.schema/query
   "Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an

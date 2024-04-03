@@ -1,12 +1,12 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses-test
   (:require
    [clojure.test :refer :all]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.middleware.add-implicit-clauses
     :as qp.add-implicit-clauses]
    [metabase.query-processor.middleware.add-source-metadata

@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { merge } from "icepick";
 import PropTypes from "prop-types";
-import { useEffect, useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
@@ -27,10 +27,12 @@ import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
   getDatasetEditorTab,
+  getIsResultDirty,
   getResultsMetadata,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
 import { getMetadata } from "metabase/selectors/metadata";
+import { Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import {
   checkCanBeModel,
@@ -39,14 +41,14 @@ import {
 import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 
 import {
-  Root,
   DatasetEditBar,
   FieldTypeIcon,
   MainContainer,
   QueryEditorContainer,
-  TableHeaderColumnName,
-  TableContainer,
+  Root,
   TabHintToastContainer,
+  TableContainer,
+  TableHeaderColumnName,
 } from "./DatasetEditor.styled";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
@@ -63,6 +65,7 @@ const propTypes = {
   result: PropTypes.object,
   height: PropTypes.number,
   isDirty: PropTypes.bool.isRequired,
+  isResultDirty: PropTypes.bool.isRequired,
   isRunning: PropTypes.bool.isRequired,
   setQueryBuilderMode: PropTypes.func.isRequired,
   setDatasetEditorTab: PropTypes.func.isRequired,
@@ -93,6 +96,7 @@ function mapStateToProps(state) {
     datasetEditorTab: getDatasetEditorTab(state),
     isMetadataDirty: isResultsMetadataDirty(state),
     resultsMetadata: getResultsMetadata(state),
+    isResultDirty: getIsResultDirty(state),
   };
 }
 
@@ -196,6 +200,7 @@ function DatasetEditor(props) {
     isMetadataDirty,
     height,
     isDirty: isModelQueryDirty,
+    isResultDirty,
     setQueryBuilderMode,
     runQuestionQuery,
     setDatasetEditorTab,
@@ -413,18 +418,21 @@ function DatasetEditor(props) {
     [datasetEditorTab, renderSelectableTableColumnHeader],
   );
 
-  const canSaveChanges = useMemo(() => {
-    const { isNative } = Lib.queryDisplayInfo(dataset.query());
-    const isEmpty = !isNative
-      ? Lib.databaseID(dataset.query()) == null
-      : dataset.legacyQuery().isEmpty();
+  const { isNative } = Lib.queryDisplayInfo(dataset.query());
 
-    if (isEmpty) {
-      return false;
-    }
-    const everyFieldHasDisplayName = fields.every(field => field.display_name);
-    return everyFieldHasDisplayName && isDirty;
-  }, [dataset, fields, isDirty]);
+  const canSaveChanges =
+    isDirty &&
+    (!isNative || !isResultDirty) &&
+    fields.every(field => field.display_name) &&
+    Lib.canSave(dataset.query());
+
+  const saveButtonTooltipLabel =
+    isDirty &&
+    isNative &&
+    isResultDirty &&
+    Lib.rawNativeQuery(dataset.query()).length > 0
+      ? t`You must run the query before you can save this model`
+      : undefined;
 
   const sidebar = getSidebar(
     { ...props, modelIndexes },
@@ -464,20 +472,27 @@ function DatasetEditor(props) {
             small
             onClick={handleCancelClick}
           >{t`Cancel`}</Button>,
-          <ActionButton
+          <Tooltip
             key="save"
-            disabled={!canSaveChanges}
-            actionFn={handleSave}
-            normalText={dataset.isSaved() ? t`Save changes` : t`Save`}
-            activeText={t`Saving…`}
-            failedText={t`Save failed`}
-            successText={t`Saved`}
-            className={cx(
-              ButtonsS.Button,
-              ButtonsS.ButtonPrimary,
-              ButtonsS.ButtonSmall,
-            )}
-          />,
+            refProp="innerRef"
+            label={saveButtonTooltipLabel}
+            disabled={!saveButtonTooltipLabel}
+          >
+            <ActionButton
+              key="save"
+              disabled={!canSaveChanges}
+              actionFn={handleSave}
+              normalText={dataset.isSaved() ? t`Save changes` : t`Save`}
+              activeText={t`Saving…`}
+              failedText={t`Save failed`}
+              successText={t`Saved`}
+              className={cx(
+                ButtonsS.Button,
+                ButtonsS.ButtonPrimary,
+                ButtonsS.ButtonSmall,
+              )}
+            />
+          </Tooltip>,
         ]}
       />
       <Root>
@@ -500,7 +515,7 @@ function DatasetEditor(props) {
             )}
           </QueryEditorContainer>
           <TableContainer isSidebarOpen={!!sidebar}>
-            <DebouncedFrame className="flex-full" enabled>
+            <DebouncedFrame className={cx(CS.flexFull)} enabled>
               <QueryVisualization
                 {...props}
                 className={CS.spread}

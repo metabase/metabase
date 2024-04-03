@@ -7,7 +7,7 @@
   defprotocol+                                                     [[:block 1] [:inner 1]]
   potemkin/defprotocol+                                            [[:block 1] [:inner 1]]
   let-404                                                          [[:block 1]]
-  metabase.mbql.util/match-one                                     [[:inner 0]]
+  metabase.legacy-mbql.util/match-one                              [[:inner 0]]
   merge-with                                                       [[:inner 0]]
   metabase.test/dataset                                            [[:inner 0]]
   metabase.test/formatted-rows                                     [[:inner 0]]

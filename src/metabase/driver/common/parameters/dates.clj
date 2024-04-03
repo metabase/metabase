@@ -4,8 +4,9 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.params :as params]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.date-2 :as u.date]
@@ -26,7 +27,7 @@
 (mu/defn date-type?
   "Is param type `:date` or some subtype like `:date/month-year`?"
   [param-type :- :keyword]
-  (= (get-in mbql.s/parameter-types [param-type :type]) :date))
+  (= (get-in lib.schema.parameter/types [param-type :type]) :date))
 
 (defn not-single-date-type?
   "Does date `param-type` represent a range of dates, rather than a single absolute date? (The value may be relative,

@@ -17,7 +17,8 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.honey-sql-2 :as h2x]
@@ -573,13 +574,34 @@
     (cond-> t
       (timezoneless-comparison?) (format-without-trailing-zeros datetime-format))))
 
+;;; this is a psuedo-MBQL clause to signify that we need to do a cast, see the code below where we add it for an
+;;; explanation.
+(defmethod sql.qp/->honeysql [:sqlserver ::cast]
+  [driver [_tag expr database-type]]
+  (h2x/maybe-cast database-type (sql.qp/->honeysql driver expr)))
+
 (doseq [op [:= :!= :< :<= :> :>= :between]]
   (defmethod sql.qp/->honeysql [:sqlserver op]
-    [driver [_ field :as clause]]
+    [driver [_tag field & args :as _clause]]
     (binding [*compared-field-options* (when (and (vector? field)
                                                   (= (get field 0) :field))
                                          (get field 2))]
-      ((get-method sql.qp/->honeysql [:sql-jdbc op]) driver clause))))
+      ;; We read string literals like `2019-11-05T14:23:46.410` as `datetime2`, which is never going to be `=` to a
+      ;; `datetime` (etc.). Wrap all args after the first in temporal filters in a cast() to the same type as the first
+      ;; arg so filters work correctly. Do this before we fully compile to Honey SQL so we can still use the parent
+      ;; method to take care of things like `[:= <string> <expr>]` generating `WHERE <string> = ? AND <string> IS NOT
+      ;; NULL` for us.
+      (let [clause (into [op field]
+                         ;; we're compiling this ahead of time and throwing out the compiled value to make it easier to
+                         ;; get the real database type of the expression... maybe when we convert this to MLv2 we can
+                         ;; just use MLv2 metadata or type calculation functions instead.
+                         (or (when-let [field-database-type (h2x/database-type (sql.qp/->honeysql driver field))]
+                               (when (#{"datetime" "datetime2" "datetimeoffset" "smalldatetime"} field-database-type)
+                                 (map (fn [expr]
+                                        [::cast expr field-database-type]))))
+                             identity)
+                         args)]
+        ((get-method sql.qp/->honeysql [:sql-jdbc op]) driver clause)))))
 
 (defmethod driver/db-default-timezone :sqlserver
   [driver database]
@@ -641,7 +663,7 @@
             (and (has-order-by-without-limit? m)
                  (not (in-join-source-query? path))
                  (in-source-query? path)))]
-    (mbql.u/replace inner-query
+    (lib.util.match/replace inner-query
       ;; remove order by and then recurse in case we need to do more tranformations at another level
       (m :guard (partial remove-order-by? &parents))
       (fix-order-bys (dissoc m :order-by))

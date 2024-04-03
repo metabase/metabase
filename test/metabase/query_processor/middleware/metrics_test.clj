@@ -41,9 +41,9 @@
                                (-> stage
                                    (assoc :sources [{:lib/type :source/metric :id  (:id source-metric)}])
                                    (dissoc :source-card :source-table))))
-      (lib/aggregate [:metric {} (:id source-metric)])))
+      (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} (:id source-metric)])))
 
-(deftest expand-aggregation-metric-ref-test
+(deftest ^:parallel expand-aggregation-metric-ref-test
   (let [[source-metric mp] (mock-metric)
         query (-> (lib/query mp source-metric)
                   (add-metric-source source-metric)
@@ -54,7 +54,7 @@
                                    [:+ {} [:avg {} [:field {} (meta/id :products :rating)]] 1]]}]}
           (metrics/expand query)))))
 
-(deftest expand-basic-test
+(deftest ^:parallel expand-basic-test
   (let [[source-metric mp] (mock-metric)
         query (-> (lib/query mp source-metric)
                   (add-metric-source source-metric))]
@@ -66,7 +66,7 @@
           (lib/query mp (:dataset-query source-metric))
           (metrics/expand query)))))
 
-(deftest expand-expression-test
+(deftest ^:parallel expand-expression-test
   (let [[source-metric mp] (mock-metric #(lib/expression % "source" (lib/+ 1 1)))
         query (-> (lib/query mp source-metric)
                   (lib/expression "target" (lib/- 2 2))
@@ -76,7 +76,7 @@
                                    [:- {} 2 2]]}]}
           (metrics/expand query)))))
 
-(deftest expand-filter-test
+(deftest ^:parallel expand-filter-test
   (let [[source-metric mp] (mock-metric #(lib/filter % (lib/> (meta/field-metadata :products :price) 1)))
         query (-> (lib/query mp source-metric)
                   (lib/filter (lib/= (meta/field-metadata :products :category) "Widget"))
@@ -86,7 +86,7 @@
                                [:= {} [:field {} (meta/id :products :category)] "Widget"]]}]}
           (metrics/expand query)))))
 
-(deftest expand-multi-metric-test
+(deftest ^:parallel expand-multi-metric-test
   (let [[first-metric mp] (mock-metric #(lib/filter % (lib/> (meta/field-metadata :products :price) 1)))
         [second-metric mp] (mock-metric mp #(-> %
                                                 (lib/filter (lib/< (meta/field-metadata :products :price) 100))
@@ -101,13 +101,12 @@
                                [:= {} [:field {} (meta/id :products :category)] "Widget"]]}]}
           (metrics/expand query)))))
 
-(deftest e2e-results-test
+(deftest ^:parallel e2e-results-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                          (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating)))))]
     (mt/with-temp [:model/Card source-metric {:dataset_query (lib.convert/->legacy-MBQL source-query)
                                               :database_id (mt/id)
-                                              :creator_id 1
                                               :type :metric}]
       (let [query {:lib/type :mbql/query
                    :database (mt/id)

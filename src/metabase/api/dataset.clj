@@ -9,9 +9,9 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.params.custom-values :as custom-values]
@@ -98,7 +98,7 @@
   "Schema for valid export formats for downloading query results."
   (into [:enum] export-formats))
 
-(mu/defn export-format->context :- mbql.s/Context
+(mu/defn export-format->context :- ::lib.schema.info/context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
   in `export-format`.
 
@@ -125,9 +125,11 @@
 
 (api/defendpoint POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
-  [export-format :as {{:keys [query visualization_settings] :or {visualization_settings "{}"}} :params}]
+  [export-format :as {{:keys [query visualization_settings format_rows]
+                       :or   {visualization_settings "{}"}} :params}]
   {query                  ms/JSONString
    visualization_settings ms/JSONString
+   format_rows            [:maybe :boolean]
    export-format          (into [:enum] export-formats)}
   (let [query        (json/parse-string query keyword)
         viz-settings (-> (json/parse-string visualization_settings viz-setting-key-fn)
@@ -140,7 +142,7 @@
                                                   (dissoc :add-default-userland-constraints? :js-int-to-string?)
                                                   (assoc :process-viz-settings? true
                                                          :skip-results-metadata? true
-                                                         :format-rows? false))))]
+                                                         :format-rows? format_rows))))]
     (run-streaming-query
      (qp/userland-query query)
      :export-format export-format

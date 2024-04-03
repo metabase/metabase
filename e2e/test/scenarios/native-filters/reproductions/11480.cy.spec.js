@@ -32,9 +32,9 @@ describe("issue 11480", () => {
     SQLFilter.chooseType("Number");
     cy.location("search").should("eq", "?x=");
 
-    // We cannot run the query unless the default value for a required parameter is set.
+    // Although there's no default, we should be still able to run the query.
     cy.findByTestId("native-query-editor-sidebar")
       .button("Get Answer")
-      .should("be.disabled");
+      .should("not.be.disabled");
   });
 });

@@ -1,10 +1,10 @@
 import type { ChangeEvent } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
   Checkbox,
-  MultiSelect,
+  MultiAutocomplete,
   Stack,
   Text,
   TextInput,
@@ -12,7 +12,7 @@ import {
 } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
 
-import { getEffectiveOptions } from "../utils";
+import { getEffectiveOptions, getFieldOptions } from "../utils";
 
 import { ColumnGrid } from "./ListValuePicker.styled";
 import { LONG_OPTION_LENGTH, MAX_INLINE_OPTIONS } from "./constants";
@@ -22,50 +22,22 @@ interface ListValuePickerProps {
   fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
+  shouldCreate: (query: string) => boolean;
   autoFocus?: boolean;
   compact?: boolean;
   onChange: (newValues: string[]) => void;
 }
 
-export function ListValuePicker({
-  fieldValues,
-  selectedValues,
-  placeholder,
-  autoFocus,
-  compact,
-  onChange,
-}: ListValuePickerProps) {
-  if (!compact) {
-    return (
-      <CheckboxListPicker
-        fieldValues={fieldValues}
-        selectedValues={selectedValues}
-        placeholder={placeholder}
-        autoFocus={autoFocus}
-        onChange={onChange}
-      />
-    );
+export function ListValuePicker(props: ListValuePickerProps) {
+  if (!props.compact) {
+    return <CheckboxListPicker {...props} />;
   }
 
-  if (fieldValues.length <= MAX_INLINE_OPTIONS) {
-    return (
-      <CheckboxGridPicker
-        fieldValues={fieldValues}
-        selectedValues={selectedValues}
-        placeholder={placeholder}
-        onChange={onChange}
-      />
-    );
+  if (props.fieldValues.length <= MAX_INLINE_OPTIONS) {
+    return <CheckboxGridPicker {...props} />;
   }
 
-  return (
-    <MultiSelectPicker
-      fieldValues={fieldValues}
-      selectedValues={selectedValues}
-      placeholder={placeholder}
-      onChange={onChange}
-    />
-  );
+  return <AutocompletePicker {...props} />;
 }
 
 function CheckboxListPicker({
@@ -145,20 +117,22 @@ function CheckboxGridPicker({
   );
 }
 
-export function MultiSelectPicker({
+export function AutocompletePicker({
   fieldValues,
   selectedValues,
   placeholder,
+  shouldCreate,
   autoFocus,
   onChange,
 }: ListValuePickerProps) {
-  const options = getEffectiveOptions(fieldValues, selectedValues);
+  const options = useMemo(() => getFieldOptions(fieldValues), [fieldValues]);
 
   return (
-    <MultiSelect
+    <MultiAutocomplete
       data={options}
       value={selectedValues}
       placeholder={placeholder}
+      shouldCreate={shouldCreate}
       autoFocus={autoFocus}
       searchable
       aria-label={t`Filter value`}

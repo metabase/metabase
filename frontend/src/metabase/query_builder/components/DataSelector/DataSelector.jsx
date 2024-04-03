@@ -11,6 +11,7 @@ import ListSearchField from "metabase/components/ListSearchField";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DATA_BUCKET, getDataTypes } from "metabase/containers/DataPicker";
+import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Schemas from "metabase/entities/schemas";
@@ -785,7 +786,9 @@ export class UnconnectedDataSelector extends Component {
 
   getTriggerClasses() {
     const { readOnly, triggerClasses } = this.props;
-    return cx(triggerClasses ?? "flex align-center", { disabled: readOnly });
+    return cx(triggerClasses ?? cx(CS.flex, CS.alignCenter), {
+      disabled: readOnly,
+    });
   }
 
   handleSavedEntityPickerClose = () => {

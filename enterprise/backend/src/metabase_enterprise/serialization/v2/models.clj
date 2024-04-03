@@ -4,7 +4,7 @@
   "Schema model types"
   ["Database"
    "Field"
-   "Metric"
+   "LegacyMetric"
    "Segment"
    "Table"])
 
@@ -37,11 +37,11 @@
 
 (def excluded-models
   "List of models which are not going to be serialized ever."
-  ["Activity"
-   "ApiKey"
+  ["ApiKey"
    "ApplicationPermissionsRevision"
    "AuditLog"
    "BookmarkOrdering"
+   "CacheConfig"
    "CardBookmark"
    "CollectionBookmark"
    "CollectionPermissionGraphRevision"
@@ -52,7 +52,7 @@
    "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
-   "MetricImportantField"
+   "LegacyMetricImportantField"
    "ModelIndex"
    "ModelIndexValue"
    "ModerationReview"

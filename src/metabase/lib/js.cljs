@@ -12,6 +12,8 @@
    [clojure.walk :as walk]
    [goog.object :as gobject]
    [medley.core :as m]
+   [metabase.legacy-mbql.js :as mbql.js]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
@@ -27,8 +29,6 @@
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.js :as mbql.js]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -416,8 +416,9 @@
   For now it pulls logic that touches query internals into `metabase.lib`."
   ([query1 query2] (query= query1 query2 nil))
   ([query1 query2 field-ids]
-   (let [n1 (prep-query-for-equals query1 field-ids)
-         n2 (prep-query-for-equals query2 field-ids)]
+   (let [ids (mapv js->clj field-ids)
+         n1 (prep-query-for-equals query1 ids)
+         n2 (prep-query-for-equals query2 ids)]
      (query=* n1 n2))))
 
 (defn ^:export group-columns
@@ -1024,8 +1025,8 @@
 (defn ^:export available-metrics
   "Get a list of Metrics that you may consider using as aggregations for a query. Returns JS array of opaque Metric
   metadata objects."
-  [a-query]
-  (to-array (lib.core/available-metrics a-query)))
+  [a-query stage-number]
+  (to-array (lib.core/available-metrics a-query stage-number)))
 
 (defn ^:export joinable-columns
   "Return information about the fields that you can pass to [[with-join-fields]] when constructing a join against
@@ -1050,7 +1051,7 @@
 
 (defn ^:export database-id
   "Get the Database ID (`:database`) associated with a query. If the query is using
-  the [[metabase.mbql.schema/saved-questions-virtual-database-id]] (used in some situations for queries with a
+  the [[metabase.legacy-mbql.schema/saved-questions-virtual-database-id]] (used in some situations for queries with a
   `:source-card`)
 
     {:database -1337}
@@ -1315,3 +1316,11 @@
     :can-run a-query
     (fn [_]
       (lib.core/can-run a-query))))
+
+(defn ^:export can-save
+  "Returns true if the query can be saved."
+  [a-query]
+  (lib.cache/side-channel-cache
+   :can-save a-query
+   (fn [_]
+     (lib.core/can-save a-query))))

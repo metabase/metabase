@@ -1,5 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { popover, queryBuilderMain, restore } from "e2e/support/helpers";
+import {
+  popover,
+  queryBuilderMain,
+  restore,
+  selectFilterOperator,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -37,8 +42,9 @@ describe("issue 30312", () => {
       .should("have.text", "Count")
       .click();
 
+    popover().findByText("Filter by this column").click();
+    selectFilterOperator("Equal to");
     popover().within(() => {
-      cy.findByText("Filter by this column").click();
       cy.findByPlaceholderText("Enter a number").type("10");
       cy.realPress("Tab");
       cy.button("Add filter").should("be.enabled").click();

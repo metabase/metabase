@@ -31,6 +31,10 @@
 
 (set! *warn-on-reflection* true)
 
+(comment
+  ;; idk why condo complains on this not being used when it is, in a keyword down there
+  lib.schema.metadata/used)
+
 ;;; --------------------------------------------- Basic CRUD Operations ----------------------------------------------
 
 (def ^:private default-max-field-search-limit 1000)
@@ -399,7 +403,7 @@
       (get-in results [:data :rows]))
     (catch Throwable e
       (log/error e (trs "Error searching field values"))
-      nil))))
+      []))))
 
 (api/defendpoint GET "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for

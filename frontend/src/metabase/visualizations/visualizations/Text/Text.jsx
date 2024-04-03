@@ -6,6 +6,7 @@ import rehypeExternalLinks from "rehype-external-links";
 import remarkGfm from "remark-gfm";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { isEmpty } from "metabase/lib/validate";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
@@ -18,10 +19,10 @@ import {
 } from "./Text.styled";
 
 const getSettingsStyle = settings => ({
-  "align-center": settings["text.align_horizontal"] === "center",
-  "align-end": settings["text.align_horizontal"] === "right",
-  "justify-center": settings["text.align_vertical"] === "middle",
-  "justify-end": settings["text.align_vertical"] === "bottom",
+  [CS.alignCenter]: settings["text.align_horizontal"] === "center",
+  [CS.alignStart]: settings["text.align_horizontal"] === "right",
+  [CS.justifyCenter]: settings["text.align_vertical"] === "middle",
+  [CS.justifyEnd]: settings["text.align_vertical"] === "bottom",
 });
 
 const REMARK_PLUGINS = [remarkGfm];
@@ -92,7 +93,12 @@ export function Text({
               remarkPlugins={REMARK_PLUGINS}
               rehypePlugins={REHYPE_PLUGINS}
               className={cx(
-                "full flex-full flex flex-column text-card-markdown cursor-text",
+                CS.full,
+                CS.flexFull,
+                CS.flex,
+                CS.flexColumn,
+                "text-card-markdown",
+                "cursor-text",
                 getSettingsStyle(settings),
               )}
             >
@@ -134,7 +140,11 @@ export function Text({
           remarkPlugins={REMARK_PLUGINS}
           rehypePlugins={REHYPE_PLUGINS}
           className={cx(
-            "full flex-full flex flex-column text-card-markdown",
+            CS.full,
+            CS.flexFull,
+            CS.flex,
+            CS.flexColumn,
+            "text-card-markdown",
             getSettingsStyle(settings),
           )}
         >

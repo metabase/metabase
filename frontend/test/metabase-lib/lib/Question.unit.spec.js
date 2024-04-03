@@ -2,7 +2,6 @@ import { assoc, dissoc, assocIn } from "icepick";
 import { parse } from "url";
 
 import { createMockMetadata } from "__support__/metadata";
-import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
 import { deserializeCardFromUrl } from "metabase/lib/card";
 import Question from "metabase-lib/v1/Question";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -821,24 +820,6 @@ describe("Question", () => {
     it("should default to an array", () => {
       const question = base_question.setResultsMetadata(null);
       expect(question.getResultMetadata()).toEqual([]);
-    });
-  });
-
-  describe("Question.prototype.dependentMetadata", () => {
-    it("should return model FK field targets", () => {
-      const question = base_question.setResultsMetadata({
-        columns: [{ semantic_type: SEMANTIC_TYPE.FK, fk_target_field_id: 5 }],
-      });
-
-      expect(question.dependentMetadata()).toEqual([{ type: "field", id: 5 }]);
-    });
-
-    it("should skip FK field targets which are not FKs semantically", () => {
-      const question = base_question.setResultsMetadata({
-        columns: [{ fk_target_field_id: 5 }],
-      });
-
-      expect(question.dependentMetadata()).toEqual([]);
     });
   });
 

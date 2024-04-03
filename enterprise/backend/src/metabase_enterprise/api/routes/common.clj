@@ -16,9 +16,11 @@
   if we do not."
   [feature feature-name handler]
   (assert (i18n/localized-string? feature-name), "`feature-name` must be i18ned")
-  (fn [request respond raise]
-    (premium-features/assert-has-feature feature feature-name)
-    (handler request respond raise)))
+  (with-meta
+   (fn [request respond raise]
+     (premium-features/assert-has-feature feature feature-name)
+     (handler request respond raise))
+   (meta handler)))
 
 (defn ^:deprecated +when-premium-feature
   "Wraps Ring `handler`. Only applies handler if we have a premium token with `feature`; if not, passes thru to the next

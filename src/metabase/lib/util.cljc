@@ -10,6 +10,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -19,7 +20,6 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
-   [metabase.mbql.util :as mbql.u]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -465,14 +465,14 @@
   [query]
   (-> query :stages first :source-card))
 
-(defn first-stage-type
+(mu/defn first-stage-type :- [:maybe [:enum :mbql.stage/mbql :mbql.stage/native]]
   "Type of the first query stage."
-  [query]
+  [query :- :map]
   (:lib/type (query-stage query 0)))
 
-(defn first-stage-is-native?
+(mu/defn first-stage-is-native? :- :boolean
   "Whether the first stage of the query is a native query stage."
-  [query]
+  [query :- :map]
   (= (first-stage-type query) :mbql.stage/native))
 
 (mu/defn unique-name-generator :- [:=>
@@ -553,3 +553,10 @@
 
     :else
     x))
+
+(mu/defn normalized-query-type :- [:maybe [:enum #_MLv2 :mbql/query #_legacy :query :native #_audit :internal]]
+  "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."
+  [query :- [:maybe :map]]
+  (when (map? query)
+    (keyword (some #(get query %)
+                   [:lib/type :type "lib/type" "type"]))))

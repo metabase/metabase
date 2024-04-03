@@ -86,7 +86,6 @@ export function updateCardTemplateTagNames(
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class NativeQuery extends AtomicQuery {
-  // For Flow type completion
   _nativeDatasetQuery: NativeDatasetQuery;
 
   constructor(
@@ -294,11 +293,6 @@ export default class NativeQuery extends AtomicQuery {
         );
         if (!dimension) {
           return new ValidationError(t`Invalid template tag: ${tag.name}`);
-        }
-        if (tag.required && !tag.default) {
-          return new ValidationError(
-            t`Missing default value for a required template tag: ${tag.name}`,
-          );
         }
 
         return dimension.validateTemplateTag();

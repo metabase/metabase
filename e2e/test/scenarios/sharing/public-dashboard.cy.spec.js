@@ -169,7 +169,7 @@ describe("scenarios > public > dashboard", () => {
           );
         });
 
-        cy.get(".ScalarValue").should("have.text", COUNT_ALL);
+        cy.findByTestId("scalar-value").should("have.text", COUNT_ALL);
 
         filterWidget().click();
         popover().within(() => {
@@ -177,7 +177,7 @@ describe("scenarios > public > dashboard", () => {
           cy.button("Add filter").click();
         });
 
-        cy.get(".ScalarValue").should("have.text", COUNT_DOOHICKEY);
+        cy.findByTestId("scalar-value").should("have.text", COUNT_DOOHICKEY);
       });
     }),
   );
@@ -191,7 +191,7 @@ describe("scenarios > public > dashboard", () => {
       visitPublicDashboard(id);
     });
 
-    cy.get(".ScalarValue").should("have.text", COUNT_ALL);
+    cy.findByTestId("scalar-value").should("have.text", COUNT_ALL);
     cy.button("Apply").should("not.exist");
 
     filterWidget().click();
@@ -200,11 +200,11 @@ describe("scenarios > public > dashboard", () => {
       cy.button("Add filter").click();
     });
 
-    cy.get(".ScalarValue").should("have.text", COUNT_ALL);
+    cy.findByTestId("scalar-value").should("have.text", COUNT_ALL);
 
     cy.button("Apply").should("be.visible").click();
     cy.button("Apply").should("not.exist");
-    cy.get(".ScalarValue").should("have.text", COUNT_DOOHICKEY);
+    cy.findByTestId("scalar-value").should("have.text", COUNT_DOOHICKEY);
   });
 
   it("should only display filters mapped to cards on the selected tab", () => {

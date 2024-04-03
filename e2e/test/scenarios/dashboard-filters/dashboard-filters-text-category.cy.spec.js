@@ -54,7 +54,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
         applyFilterByType(filter, value);
 
         cy.log(`Make sure ${filter} filter returns correct result`);
-        cy.get(".Card").within(() => {
+        cy.findByTestId("dashcard").within(() => {
           cy.contains(representativeResult);
         });
 
@@ -114,7 +114,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
 
     cy.location("search").should("eq", "?text=Organic&id=");
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.contains("39.58");
     });
 

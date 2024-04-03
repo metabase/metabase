@@ -16,10 +16,6 @@ export const getHasMetabotLogo = (state: State) => {
   return getSetting(state, "show-metabot");
 };
 
-export const getHasIllustration = (state: State) => {
-  return getSetting(state, "show-lighthouse-illustration");
-};
-
 export const getCustomHomePageDashboardId = createSelector(
   [getUser],
   user => user?.custom_homepage?.dashboard_id || null,

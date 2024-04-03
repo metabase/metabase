@@ -165,7 +165,7 @@ Sections include:
 
 ### Dashboard width
 
-You change the width of a dashboard.
+You can change the width of a dashboard.
 
 ![Change dashboard width](./images/toggle-width.png)
 

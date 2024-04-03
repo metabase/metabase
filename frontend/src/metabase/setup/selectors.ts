@@ -86,9 +86,11 @@ export const getSteps = (state: State) => {
 
   const isPaidPlan =
     tokenFeatures && Object.values(tokenFeatures).some(value => value === true);
+  const hasAddedPaidPlanInPreviousStep = Boolean(state.setup.licenseToken);
 
   const shouldShowDBConnectionStep = usageReason !== "embedding";
-  const shouldShowLicenseStep = isEEBuild() && !isPaidPlan;
+  const shouldShowLicenseStep =
+    isEEBuild() && (!isPaidPlan || hasAddedPaidPlanInPreviousStep);
 
   const steps: { key: SetupStep; isActiveStep: boolean }[] = [
     { key: "welcome" as const },

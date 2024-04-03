@@ -4,7 +4,7 @@ import { createAction } from "redux-actions";
 import { t } from "ttag";
 
 import Questions from "metabase/entities/questions";
-import { loadMetadataForDependentItems } from "metabase/redux/metadata";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
 import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
@@ -49,8 +49,7 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
   const metadata = getMetadata(getState());
   const dataset = metadata.question(question.id());
 
-  const dependentItems = dataset.dependentMetadata();
-  await dispatch(loadMetadataForDependentItems(dependentItems));
+  await dispatch(loadMetadataForCard(dataset.card()));
 
   await dispatch({ type: API_UPDATE_QUESTION, payload: dataset.card() });
 

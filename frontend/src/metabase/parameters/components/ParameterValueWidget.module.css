@@ -58,7 +58,7 @@
   color: var(--color-text-medium);
 }
 
-:global(.Dashboard--night) .parameter.noPopover input:focus,
+.DashboardNight .parameter.noPopover input:focus,
 :global(.Theme--night) .parameter.noPopover input:focus {
   color: var(--color-text-white);
 }

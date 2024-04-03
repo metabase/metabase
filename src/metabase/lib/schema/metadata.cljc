@@ -255,9 +255,9 @@
    [:definition [:maybe :map]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
-(mr/def ::metric
+(mr/def ::legacy-metric
   [:map
-   {:error/message "Valid Metric metadata"}
+   {:error/message "Valid legacy (v1) Metric metadata"}
    [:lib/type   [:= :metadata/metric]]
    [:id         ::lib.schema.id/metric]
    [:name       ::lib.schema.common/non-blank-string]
@@ -296,11 +296,9 @@
    #'lib.metadata.protocols/metadata-provider?])
 
 (mr/def ::metadata-providerable
-  [:or
-   [:ref ::metadata-provider]
-   [:map
-    {:error/message "map with a MetadataProvider in the key :lib/metadata (i.e. a query)"}
-    [:lib/metadata [:ref ::metadata-provider]]]])
+  [:fn
+   {:error/message "Valid MetadataProvider, or a map with a MetadataProvider in the key :lib/metadata (i.e. a query)"}
+   #'lib.metadata.protocols/metadata-providerable?])
 
 ;;; Metadata about the columns returned by a particular stage of a pMBQL query. For example a single-stage native
 ;;; query like

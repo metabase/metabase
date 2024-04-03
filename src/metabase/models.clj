@@ -1,9 +1,9 @@
 (ns metabase.models
   (:require
    [metabase.models.action :as action]
-   [metabase.models.activity :as activity]
    [metabase.models.application-permissions-revision :as a-perm-revision]
    [metabase.models.bookmark :as bookmark]
+   [metabase.models.cache-config :as cache-config]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection-permission-graph-revision
@@ -57,9 +57,9 @@
 
 ;; Fool the linter
 (comment action/keep-me
-         activity/keep-me
          card/keep-me
          bookmark/keep-me
+         cache-config/keep-me
          collection/keep-me
          c-perm-revision/keep-me
          dashboard/keep-me
@@ -103,7 +103,6 @@
 
 (p/import-vars
  [action Action HTTPAction ImplicitAction QueryAction]
- [activity Activity]
  [bookmark CardBookmark]
  [bookmark DashboardBookmark]
  [bookmark CollectionBookmark]
@@ -119,10 +118,10 @@
  [field Field]
  [field-values FieldValues]
  [login-history LoginHistory]
- [metric Metric]
+ [metric LegacyMetric]
  [moderation-review ModerationReview]
  [model-index ModelIndex ModelIndexValue]
- [metric-important-field MetricImportantField]
+ [metric-important-field LegacyMetricImportantField]
  [native-query-snippet NativeQuerySnippet]
  [parameter-card ParameterCard]
  [perms Permissions]

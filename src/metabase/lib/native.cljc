@@ -156,20 +156,20 @@
   "Create a new native query.
 
   Native in this sense means a pMBQL query with a first stage that is a native query."
-  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-    inner-query :- ::common/non-blank-string]
-   (native-query metadata-providerable inner-query nil nil))
+  ([metadata-providerable     :- ::lib.schema.metadata/metadata-providerable
+    sql-or-other-native-query :- ::common/non-blank-string]
+   (native-query metadata-providerable sql-or-other-native-query nil nil))
 
-  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-    inner-query :- ::common/non-blank-string
-    results-metadata :- [:maybe ::lib.schema.metadata/stage]
-    native-extras :- [:maybe ::native-extras]]
-   (let [tags (extract-template-tags inner-query)]
+  ([metadata-providerable     :- ::lib.schema.metadata/metadata-providerable
+    sql-or-other-native-query :- ::common/non-blank-string
+    results-metadata          :- [:maybe ::lib.schema.metadata/stage]
+    native-extras             :- [:maybe ::native-extras]]
+   (let [tags (extract-template-tags sql-or-other-native-query)]
      (-> (lib.query/query-with-stages metadata-providerable
                                       [{:lib/type           :mbql.stage/native
                                         :lib/stage-metadata results-metadata
                                         :template-tags      tags
-                                        :native             inner-query}])
+                                        :native             sql-or-other-native-query}])
          (with-native-extras native-extras)))))
 
 (mu/defn with-different-database :- ::lib.schema/query

@@ -12,11 +12,13 @@
    [clojure.core.match :refer [match]]
    [clojure.java.io :as io]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
+   [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
@@ -30,7 +32,8 @@
    (liquibase.change Change)
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
    (liquibase.exception ValidationErrors)
-   (liquibase.util BooleanUtil)))
+   (liquibase.util BooleanUtil)
+   (org.mindrot.jbcrypt BCrypt)))
 
 (set! *warn-on-reflection* true)
 
@@ -90,7 +93,15 @@
 ;; metabase.util/upper-case-en
 (defn- upper-case-en
   ^String [s]
-  (.toUpperCase (str s) Locale/US))
+  (when s
+    (.toUpperCase (str s) Locale/US)))
+
+
+;; metabase.util/lower-case-en
+(defn- lower-case-en
+  ^String [s]
+  (when s
+   (.toLowerCase (str s) Locale/US)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  MIGRATIONS                                                    |
@@ -903,80 +914,30 @@
 (defn- db-type->to-unified-columns
   "Each unified column is 3 items sequence [table-name, column-name, is-nullable?]"
   [db-type]
-  (case db-type
-    :h2      [[:activity :timestamp false]
-              [:application_permissions_revision :created_at false]
-              [:collection_permission_graph_revision :created_at false]
-              [:core_session :created_at false]
-              [:core_user :date_joined false]
-              [:core_user :last_login true]
-              [:core_user :updated_at true]
-              [:dependency :created_at false]
-              [:dimension :created_at false]
-              [:dimension :updated_at false]
-              [:metabase_database :created_at false]
-              [:metabase_database :updated_at false]
-              [:metabase_field :created_at false]
-              [:metabase_field :updated_at false]
-              [:metabase_field :last_analyzed true]
-              [:metabase_fieldvalues :created_at false]
-              [:metabase_table :created_at false]
-              [:metabase_table :updated_at false]
-              [:metric :created_at false]
-              [:metric :updated_at false]
-              [:permissions_revision :created_at false]
-              [:pulse :created_at false]
-              [:pulse :updated_at false]
-              [:pulse_channel :created_at false]
-              [:pulse_channel :updated_at false]
-              [:recent_views :timestamp false]
-              [:report_card :created_at false]
-              [:report_cardfavorite :created_at false]
-              [:report_cardfavorite :updated_at false]
-              [:report_dashboard :created_at false]
-              [:report_dashboard :updated_at false]
-              [:report_dashboardcard :created_at false]
-              [:report_dashboardcard :updated_at false]
-              [:segment :created_at false]
-              [:segment :updated_at false]]
-    :mysql   [[:activity :timestamp false]
-              [:application_permissions_revision :created_at false]
-              [:collection_permission_graph_revision :created_at false]
-              [:core_session :created_at false]
-              [:core_user :date_joined false]
-              [:core_user :last_login true]
-              [:core_user :updated_at true]
-              [:dependency :created_at false]
-              [:dimension :created_at false]
-              [:dimension :updated_at false]
-              [:metabase_field :created_at false]
-              [:metabase_field :last_analyzed true]
-              [:metabase_field :updated_at false]
-              [:metabase_fieldvalues :created_at false]
-              [:metabase_table :created_at false]
-              [:metabase_table :updated_at false]
-              [:metric :created_at false]
-              [:metric :updated_at false]
-              [:permissions_revision :created_at false]
-              [:pulse :created_at false]
-              [:pulse :updated_at false]
-              [:pulse_channel :created_at false]
-              [:pulse_channel :updated_at false]
-              [:recent_views :timestamp false]
-              [:report_card :created_at false]
-              [:report_cardfavorite :created_at false]
-              [:report_cardfavorite :updated_at false]
-              [:report_dashboard :created_at false]
-              [:report_dashboard :updated_at false]
-              [:segment :created_at false]
-              [:segment :updated_at false]]
-   :postgres [[:application_permissions_revision :created_at false]
-              [:collection_permission_graph_revision :created_at false]
-              [:core_user :updated_at true]
-              [:dimension :updated_at false]
-              [:dimension :created_at false]
-              [:permissions_revision :created_at false]
-              [:recent_views :timestamp false]]))
+  (let [query (case db-type
+                :postgres {:select [:table_name :column_name :is_nullable]
+                           :from   [:information_schema.columns]
+                           :where  [:and
+                                    [:= :data_type "timestamp without time zone"]
+                                    [:= :table_schema :%current_schema]
+                                    [:= :table_catalog :%current_database]]}
+
+                :mysql    {:select [:table_name :column_name :is_nullable]
+                           :from   [:information_schema.columns]
+                           :where  [:and
+                                    [:= :data_type "datetime"]
+                                    [:= :table_schema :%database]]}
+                :h2      {:select [:table_name :column_name :is_nullable]
+                          :from   [:information_schema.columns]
+                          :where  [:= :data_type "TIMESTAMP"]})]
+    (->> (t2/query query)
+         (map #(update-vals % (comp keyword lower-case-en)))
+         (remove (fn [{:keys [table_name]}]
+                   (or (#{:databasechangelog :databasechangeloglock} table_name)
+                       ;; excludes views
+                       (str/starts-with? (name table_name) "v_"))))
+         (map #(update % :is_nullable (fn [x] (= :yes x))))
+         (map (juxt :table_name :column_name :is_nullable)))))
 
 (defn- alter-table-column-type-sql
   [db-type table column ttype nullable?]
@@ -1108,3 +1069,56 @@
       (run! rollback! (t2/reducible-query {:select [:*]
                                            :from   [:revision]
                                            :where  [:= :model "Card"]})))))
+
+(defn- hash-bcrypt
+  "Hashes a given plaintext password using bcrypt.  Should be used to hash
+   passwords included in stored user credentials that are to be later verified
+   using `bcrypt-credential-fn`."
+  [password]
+  (BCrypt/hashpw password (BCrypt/gensalt)))
+
+(defn- internal-user-exists? []
+  (pos? (first (vals (t2/query-one {:select [:%count.*] :from :core_user :where [:= :id config/internal-mb-user-id]})))))
+
+(define-migration CreateInternalUser
+  ;; the internal user may have been created in a previous version for Metabase Analytics, so don't add it again if it
+  ;; exists already.
+  (when (not (internal-user-exists?))
+    (let [salt     (str (random-uuid))
+          password (hash-bcrypt (str salt (random-uuid)))
+          user     {;; we insert the internal user ID directly because it's
+                    ;; deliberately high enough to not conflict with any other
+                    :id               config/internal-mb-user-id
+                    :password_salt    salt
+                    :password         password
+                    :email            "internal@metabase.com"
+                    :first_name       "Metabase"
+                    :locale           nil
+                    :last_login       nil
+                    :is_active        false
+                    :settings         nil
+                    :type             "internal"
+                    :is_qbnewb        true
+                    :updated_at       nil
+                    :reset_triggered  nil
+                    :is_superuser     false
+                    :login_attributes nil
+                    :reset_token      nil
+                    :last_name        "Internal"
+                    :date_joined      :%now
+                    :sso_source       nil
+                    :is_datasetnewb   true}]
+      (t2/query {:insert-into :core_user :values [user]}))
+    (let [all-users-id (first (vals (t2/query-one {:select [:id] :from :permissions_group :where [:= :name "All Users"]})))
+          perms-group  {:user_id config/internal-mb-user-id :group_id all-users-id}]
+      (t2/query {:insert-into :permissions_group_membership :values [perms-group]}))))
+
+;; This was renamed to TruncateAuditTables, so we need to delete the old job & trigger
+(define-migration DeleteTruncateAuditLogTask
+  (classloader/the-classloader)
+  (set-jdbc-backend-properties!)
+  (let [scheduler (qs/initialize)]
+    (qs/start scheduler)
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.truncate-audit-log.trigger"))
+    (qs/delete-job scheduler (jobs/key "metabase.task.truncate-audit-log.job"))
+    (qs/shutdown scheduler)))

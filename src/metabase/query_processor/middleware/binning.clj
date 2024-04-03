@@ -2,6 +2,7 @@
   "Middleware that handles `:binning` strategy in `:field` clauses. This adds extra info to the `:binning` options maps
   that contain the information Query Processors will need in order to perform binning."
   (:require
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.binning.util :as lib.binning.util]
    [metabase.lib.card :as lib.card]
    [metabase.lib.equality :as lib.equality]
@@ -9,8 +10,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
@@ -28,8 +28,8 @@
   (reduce
    (partial merge-with concat)
    {}
-   (for [subclause (mbql.u/match filter-clause #{:between :< :<= :> :>=})
-         field-id-or-name (mbql.u/match subclause [:field field-id-or-name _] field-id-or-name)]
+   (for [subclause (lib.util.match/match filter-clause #{:between :< :<= :> :>=})
+         field-id-or-name (lib.util.match/match subclause [:field field-id-or-name _] field-id-or-name)]
      {field-id-or-name [subclause]})))
 
 (mu/defn ^:private extract-bounds :- [:map [:min-value number?] [:max-value number?]]
@@ -42,9 +42,9 @@
   (let [{global-min :min, global-max :max} (get-in fingerprint [:type :type/Number])
         filter-clauses                     (get field-id-or-name->filters field-id-or-name)
         ;; [:between <field> <min> <max>] or [:< <field> <x>]
-        user-maxes                         (mbql.u/match filter-clauses
+        user-maxes                         (lib.util.match/match filter-clauses
                                              [(_ :guard #{:< :<= :between}) & args] (last args))
-        user-mins                          (mbql.u/match filter-clauses
+        user-mins                          (lib.util.match/match filter-clauses
                                              [(_ :guard #{:> :>= :between}) _ min-val & _] min-val)
         min-value                          (or (when (seq user-mins)
                                                  (apply max user-mins))
@@ -117,7 +117,7 @@
   "Update `:field` clauses with `:binning` strategy options in an `inner` [MBQL] query."
   [{filters :filter, :as inner-query}]
   (let [field-id-or-name->filters (filter->field-map filters)]
-    (mbql.u/replace inner-query
+    (lib.util.match/replace inner-query
       [:field _ (_ :guard :binning)]
       (try
         (update-binned-field inner-query field-id-or-name->filters &match)

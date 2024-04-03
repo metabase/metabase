@@ -2,6 +2,7 @@
   "Tests for /api/card endpoints."
   (:require
    [cheshire.core :as json]
+   [clojure.data.csv :as csv]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -16,6 +17,9 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models
     :refer [Card CardBookmark Collection Dashboard Database ModerationReview
             Pulse PulseCard PulseChannel PulseChannelRecipient Table Timeline
@@ -298,10 +302,14 @@
                    :model/Card         relevant-card            {:name "Card with stale query"}
                    :model/Card         not-stale-card           {:name "Card whose columns are up to date"}
                    :model/Card         irrelevant-card          {:name "Card with no QueryFields at all"}
+                   :model/Card         select-*-card            {:name "Card with only wildcard refs"}
                    :model/QueryField   _                        {:card_id  (u/the-id relevant-card)
                                                                  :field_id inactive-field-id}
                    :model/QueryField   _                        {:card_id  (u/the-id not-stale-card)
-                                                                 :field_id active-field-id}]
+                                                                 :field_id active-field-id}
+                   :model/QueryField   _                        {:card_id  (u/the-id select-*-card)
+                                                                 :field_id inactive-field-id
+                                                                 :direct_reference false}]
       (with-cards-in-readable-collection [relevant-card not-stale-card irrelevant-card]
         (is (=? [{:name         "Card with stale query"
                   :query_fields [{:card_id  (u/the-id relevant-card)
@@ -312,7 +320,7 @@
   (mt/with-temp [:model/Database {database-id :id} {}
                  :model/Table {table-id :id} {:db_id database-id}
                  :model/Segment {segment-id :id} {:table_id table-id}
-                 :model/Metric {metric-id :id} {:table_id table-id}
+                 :model/LegacyMetric {metric-id :id} {:table_id table-id}
                  :model/Card {model-id :id :as model} {:name "Model"
                                                        :type :model
                                                        :dataset_query {:query {:source-table (mt/id :venues)
@@ -3447,10 +3455,82 @@
                   (is (nil? (:based_on_upload (request card'))))))
               (testing "\nIf the card is a native query, based_on_upload should be nil"
                 (mt/with-temp [:model/Card card' (assoc card-defaults
-                                                        :dataset_query (mt/native-query {:native "select 1"}))]
+                                                        :dataset_query (mt/native-query {:query "select 1"}))]
                   (is (nil? (:based_on_upload (request card')))))))))))))
 
 (deftest based-on-upload-test
   (run-based-on-upload-test!
    (fn [card]
      (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))))
+
+(deftest save-mlv2-card-test
+  (testing "POST /api/card"
+    (testing "Should be able to save a Card with an MLv2 query (#39024)"
+      (mt/with-model-cleanup [:model/Card]
+        (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+              venues            (lib.metadata/table metadata-provider (mt/id :venues))
+              query             (lib/query metadata-provider venues)
+              response          (mt/user-http-request :crowberto :post 200 "card"
+                                                      {:name                   "pMBQL Card"
+                                                       :dataset_query          (dissoc query :lib/metadata)
+                                                       :display                :table
+                                                       :visualization_settings {}})]
+          (is (=? {:dataset_query {:lib/type     "mbql/query"
+                                   :lib/metadata (symbol "nil #_\"key is not present.\"") ; should be removed in JSON serialization
+                                   :database     (mt/id)
+                                   :stages       [{:lib/type     "mbql.stage/mbql"
+                                                   :source-table (mt/id :venues)}]}}
+                  response)))))))
+
+(deftest ^:parallel run-mlv2-card-query-test
+  (testing "POST /api/card/:id/query"
+    (testing "Should be able to run a query for a Card with an MLv2 query (#39024)"
+      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            venues            (lib.metadata/table metadata-provider (mt/id :venues))
+            query             (-> (lib/query metadata-provider venues)
+                                  (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
+                                  (lib/limit 2))]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
+          (is (=? {:data {:rows [["1" "Red Medicine" "4" 10.0646 -165.374 3]
+                                 ["2" "Stout Burgers & Beers" "11" 34.0996 -118.329 2]]}}
+                  (mt/user-http-request :crowberto :post 202 (format "card/%d/query" card-id)))))))))
+
+(deftest ^:parallel validate-template-tags-test
+  (testing "POST /api/card"
+    (testing "Disallow saving a Card with native query Field filter template tags referencing a different Database (#14145)"
+      (let [bird-counts-db-id (mt/dataset daily-bird-counts (mt/id))
+            card-data         {:database_id            bird-counts-db-id
+                               :dataset_query          {:database bird-counts-db-id
+                                                        :type     :native
+                                                        :native   {:query         "SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}"
+                                                                   :template-tags {"FILTER" {:id           "_FILTER_"
+                                                                                             :name         "FILTER"
+                                                                                             :display-name "Filter"
+                                                                                             :type         :dimension
+                                                                                             :dimension    [:field (mt/id :venues :name) nil]
+                                                                                             :widget-type  :string/=
+                                                                                             :default      nil}}}}
+                               :name                   "Bad Card"
+                               :display                "table"
+                               :visualization_settings {}}]
+        (is (=? {:message #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"daily-bird-counts\""}
+                (mt/user-http-request :crowberto :post 400 "card" card-data)))))))
+
+(deftest ^:parallel format-export-middleware-test
+  (testing "The `:format-export?` query processor middleware has the intended effect on file exports."
+    (let [q             {:database (mt/id)
+                         :type     :native
+                         :native   {:query "SELECT 2000 AS number, '2024-03-26'::DATE AS date;"}}
+          output-helper {:csv  (fn [output] (->> output csv/read-csv last))
+                         :json (fn [output] (->> output (map (juxt :NUMBER :DATE)) last))}]
+      (t2.with-temp/with-temp [Card {card-id :id} {:display :table :dataset_query q}]
+        (doseq [[export-format apply-formatting? expected] [[:csv true ["2,000" "March 26, 2024"]]
+                                                            [:csv false ["2000" "2024-03-26"]]
+                                                            [:json true ["2,000" "March 26, 2024"]]
+                                                            [:json false [2000 "2024-03-26"]]]]
+          (testing (format "export_format %s yields expected output for %s exports." apply-formatting? export-format)
+              (is (= expected
+                     (->> (mt/user-http-request
+                           :crowberto :post 200
+                           (format "card/%s/query/%s?format_rows=%s" card-id (name export-format) apply-formatting?))
+                          ((get output-helper export-format)))))))))))

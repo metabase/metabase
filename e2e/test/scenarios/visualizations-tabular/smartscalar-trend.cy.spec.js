@@ -447,6 +447,6 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.log("Reported failing on v0.35 - v0.37.0.2");
     cy.log("Bug: showing blank visualization");
 
-    cy.get(".ScalarValue").contains("100");
+    cy.findByTestId("scalar-value").contains("100");
   });
 });

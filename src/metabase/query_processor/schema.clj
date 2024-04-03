@@ -14,6 +14,12 @@
 ;; TODO -- fill this out a bit.
 (mr/def ::metadata :any)
 
+(mr/def ::rf
+  [:function
+   [:=> [:cat]           :any]
+   [:=> [:cat :any]      :any]
+   [:=> [:cat :any :any] :any]])
+
 (mr/def ::rff
   [:and
    ;; apparently the `:function` schema below just checks for an [[ifn?]], which is not quite what we want, since a map
@@ -21,10 +27,7 @@
    fn?
    [:=>
     [:cat ::metadata]
-    [:function
-     [:=> [:cat]           :any]
-     [:=> [:cat :any]      :any]
-     [:=> [:cat :any :any] :any]]]])
+    ::rf]])
 
 (mr/def ::qp
   [:=>

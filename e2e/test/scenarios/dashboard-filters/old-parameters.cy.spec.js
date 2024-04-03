@@ -128,7 +128,9 @@ describe("scenarios > dashboard > OLD parameters", () => {
         cy.findByText("Add filter").click();
       });
 
-      cy.get(".DashCard tbody tr").should("have.length", 1);
+      cy.findByTestId("dashcard-container")
+        .get("tbody tr")
+        .should("have.length", 1);
     });
   });
 

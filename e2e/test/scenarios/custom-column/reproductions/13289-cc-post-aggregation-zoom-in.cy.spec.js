@@ -43,7 +43,7 @@ describe("issue 13289", () => {
 
     visualize();
 
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("query-visualization-root").within(() => {
       cy.get("circle")
         .eq(5) // random circle in the graph (there is no specific reason for this index)
         .click({ force: true });

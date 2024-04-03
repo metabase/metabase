@@ -1,6 +1,8 @@
+export type ApiKeyId = number;
+
 export type ApiKey = {
   name: string;
-  id: number;
+  id: ApiKeyId;
   group: {
     id: number;
     name: string;
@@ -13,4 +15,25 @@ export type ApiKey = {
     id: number;
     common_name: string;
   };
+};
+
+export type CreateApiKeyRequest = {
+  name: string;
+  group_id: string;
+};
+
+export type CreateApiKeyResponse = {
+  unmasked_key: string;
+};
+
+export type UpdateApiKeyRequest = {
+  id: ApiKeyId;
+  group_id: string;
+  name: string;
+};
+
+export type UpdateApiKeyResponse = void;
+
+export type RegenerateApiKeyResponse = {
+  unmasked_key: string;
 };

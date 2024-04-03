@@ -184,6 +184,29 @@ export const getPKRowIndexMap = createSelector(
   },
 );
 
+// it's very similar to `getPKRowIndexMap` but it is required for covering "view details" click
+// we don't have objectId there, only rowId, mapping from `getPKRowIndexMap` is opposite
+// if rows are showing the same PK, only last one will have the entry in the map
+// and we'll not know which object to show
+export const getRowIndexToPKMap = createSelector(
+  [getFirstQueryResult, getPKColumnIndex],
+  (result, PKColumnIndex) => {
+    if (!result || !Number.isSafeInteger(PKColumnIndex)) {
+      return {};
+    }
+    const { rows } = result.data;
+    if (PKColumnIndex < 0) {
+      return rows.map((_, index) => index);
+    }
+    const map = {};
+    rows.forEach((row, index) => {
+      const PKValue = row[PKColumnIndex];
+      map[index] = PKValue;
+    });
+    return map;
+  },
+);
+
 export const getQueryStartTime = state => state.qb.queryStartTime;
 
 export const getDatabaseId = createSelector(
@@ -334,16 +357,14 @@ export const getQuestion = createSelector(
     }
 
     const type = question.type();
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
 
-    // When opening a model, we swap it's `dataset_query`
-    // with clean query using the model as a source table,
-    // to enable "simple mode" like features
-    // This has to be skipped for users without data permissions
-    // as it would be blocked by the backend as an ad-hoc query
-    // see https://github.com/metabase/metabase/issues/20042
-    const hasDataPermission = !!question.database();
-    return type !== "question" && hasDataPermission && !isEditingModel
-      ? question.composeDataset()
+    // When opening a model or a metric, we construct a question
+    // with a clean, ad-hoc, query.
+    // This has to be skipped for users without data permissions.
+    // See https://github.com/metabase/metabase/issues/20042
+    return type !== "question" && isEditable
+      ? question.composeQuestion()
       : question;
   },
 );
@@ -356,7 +377,7 @@ function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
   );
 }
 
-// Model questions may be composed via the `composeDataset` method.
+// Model questions may be composed via the `composeQuestion` method.
 // A composed model question should be treated as equivalent to its original form.
 // We need to handle scenarios where both the `lastRunQuestion` and the `currentQuestion` are
 // in either form.
@@ -371,7 +392,7 @@ function areModelsEquivalent({
     return false;
   }
 
-  const composedOriginal = originalQuestion.composeDataset();
+  const composedOriginal = originalQuestion.composeQuestionAdhoc();
 
   const isLastRunComposed = areLegacyQueriesEqual(
     lastRunQuestion.datasetQuery(),
@@ -1017,16 +1038,6 @@ export const canUploadToQuestion = question => state => {
 
 export const getTemplateTags = createSelector([getCard], card =>
   getIn(card, ["dataset_query", "native", "template-tags"]),
-);
-
-export const getRequiredTemplateTags = createSelector(
-  [getTemplateTags],
-  templateTags =>
-    templateTags
-      ? Object.keys(templateTags)
-          .filter(key => templateTags[key].required)
-          .map(key => templateTags[key])
-      : [],
 );
 
 export const getEmbeddingParameters = createSelector([getCard], card => {

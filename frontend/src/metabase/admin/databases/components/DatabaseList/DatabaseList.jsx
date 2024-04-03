@@ -8,9 +8,10 @@ import { t } from "ttag";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
 import FormMessage from "metabase/components/form/FormMessage";
+import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import DatabaseSyncModal from "metabase/databases/containers/DatabaseSyncModal";
+import { DatabaseSyncModal } from "metabase/databases/components/DatabaseSyncModal";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
@@ -75,7 +76,7 @@ export default class DatabaseList extends Component {
 
     return (
       <div className={CS.wrapper} data-testid="database-list">
-        <section className="PageHeader px2 clearfix">
+        <section className={cx(AdminS.PageHeader, CS.px2, "clearfix")}>
           {isAdmin && (
             <Link
               to="/admin/databases/create"
@@ -86,7 +87,7 @@ export default class DatabaseList extends Component {
               )}
             >{t`Add database`}</Link>
           )}
-          <h2 className="PageTitle">{t`Databases`}</h2>
+          <h2 className={CS.m0}>{t`Databases`}</h2>
         </section>
         {error && (
           <section>
@@ -94,7 +95,7 @@ export default class DatabaseList extends Component {
           </section>
         )}
         <section>
-          <table className="ContentTable">
+          <table className={AdminS.ContentTable}>
             <thead>
               <tr>
                 <th>{t`Name`}</th>
@@ -119,7 +120,7 @@ export default class DatabaseList extends Component {
                             )}
                             <Link
                               to={"/admin/databases/" + database.id}
-                              className="text-bold link"
+                              className={cx(CS.textBold, CS.link)}
                             >
                               {database.name}
                             </Link>
@@ -147,12 +148,12 @@ export default class DatabaseList extends Component {
           {!hasSampleDatabase && isAdmin ? (
             <div className="pt4">
               <span
-                className={cx("p2 text-italic", {
+                className={cx("p2", CS.textItalic, {
                   [CS.borderTop]: databases && databases.length > 0,
                 })}
               >
                 {isAddingSampleDatabase ? (
-                  <span className="text-light no-decoration">
+                  <span className={cx("text-light", CS.noDecoration)}>
                     {t`Restoring the sample database...`}
                   </span>
                 ) : (

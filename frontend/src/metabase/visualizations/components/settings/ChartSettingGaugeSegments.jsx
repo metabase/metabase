@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Fragment } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -6,6 +7,7 @@ import _ from "underscore";
 import NumericInput from "metabase/components/NumericInput";
 import Button from "metabase/core/components/Button";
 import ColorSelector from "metabase/core/components/ColorSelector";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import { Icon } from "metabase/ui";
@@ -42,7 +44,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                 <td>
                   <NumericInput
                     type="number"
-                    className="full"
+                    className={CS.full}
                     value={segment.min}
                     onChange={value => onChangeProperty(index, "min", value)}
                     placeholder={t`Min`}
@@ -51,7 +53,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                 <td>
                   <NumericInput
                     type="number"
-                    className="full"
+                    className={CS.full}
                     value={segment.max}
                     onChange={value => onChangeProperty(index, "max", value)}
                     placeholder={t`Max`}
@@ -73,7 +75,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                 <td colSpan={3} className="pb2">
                   <input
                     type="text"
-                    className="input full"
+                    className={cx(CS.full, CS.input)}
                     value={segment.label}
                     onChange={e =>
                       onChangeProperty(index, "label", e.target.value)

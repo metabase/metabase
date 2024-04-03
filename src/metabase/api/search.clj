@@ -333,7 +333,7 @@
                                (filter (fn [[_k v]] (= v :text)))
                                (map first)
                                (remove #{:collection_authority_level :moderated_status
-                                         :initial_sync_status :pk_ref}))
+                                         :initial_sync_status :pk_ref :location}))
         case-clauses      (as-> columns-to-search <>
                             (map (fn [col] [:like [:lower col] match]) <>)
                             (interleave <> (repeat [:inline 0]))
@@ -448,6 +448,9 @@
         xf                 (comp
                             (map t2.realize/realize)
                             (map to-toucan-instance)
+                            (map #(if (t2/instance-of? :model/Collection %)
+                                    (t2/hydrate % :effective_location)
+                                    (assoc % :effective_location nil)))
                             (filter (partial check-permissions-for-model (:archived? search-ctx)))
                             ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
                             ;; needed
@@ -538,9 +541,9 @@
   {archived            [:maybe ms/BooleanValue]
    table-db-id         [:maybe ms/PositiveInt]
    created_at          [:maybe ms/NonBlankString]
-   created_by          [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
+   created_by          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    last_edited_at      [:maybe ms/PositiveInt]
-   last_edited_by      [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
+   last_edited_by      [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    search_native_query [:maybe true?]
    verified            [:maybe true?]}
   (query-model-set (search-context {:search-string       q
@@ -581,29 +584,28 @@
   {q                                   [:maybe ms/NonBlankString]
    archived                            [:maybe :boolean]
    table_db_id                         [:maybe ms/PositiveInt]
-   models                              [:maybe [:or SearchableModel [:sequential SearchableModel]]]
+   models                              [:maybe (ms/QueryVectorOf SearchableModel)]
    filter_items_in_personal_collection [:maybe [:enum "only" "exclude"]]
    context                             [:maybe [:enum "search-bar" "search-app"]]
    created_at                          [:maybe ms/NonBlankString]
-   created_by                          [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
+   created_by                          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    last_edited_at                      [:maybe ms/NonBlankString]
-   last_edited_by                      [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
+   last_edited_by                      [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    search_native_query                 [:maybe true?]
    verified                            [:maybe true?]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (let [start-time (System/currentTimeMillis)
-        models-set (cond
-                     (nil? models)    search.config/all-models
-                     (string? models) #{models}
-                     :else            (set models))
+        models-set (if (seq models)
+                     (set models)
+                     search.config/all-models)
         results    (search (search-context
                             {:search-string       q
                              :archived            archived
                              :created-at          created_at
-                             :created-by          (set (u/one-or-many created_by))
+                             :created-by          (set created_by)
                              :filter-items-in-personal-collection filter_items_in_personal_collection
                              :last-edited-at      last_edited_at
-                             :last-edited-by      (set (u/one-or-many last_edited_by))
+                             :last-edited-by      (set last_edited_by)
                              :table-db-id         table_db_id
                              :models              models-set
                              :limit               mw.offset-paging/*limit*
@@ -621,7 +623,7 @@
       (when has-advanced-filters
         (snowplow/track-event! ::snowplow/search-results-filtered api/*current-user-id*
                                {:runtime-milliseconds  duration
-                                :content-type          (u/one-or-many models)
+                                :content-type          models
                                 :creator               (some? created_by)
                                 :creation-date         (some? created_at)
                                 :last-editor           (some? last_edited_by)
