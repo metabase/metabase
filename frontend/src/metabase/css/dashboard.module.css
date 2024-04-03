@@ -169,6 +169,11 @@
   transition: all 0.15s linear;
 }
 
+/* Used in frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.styled.tsx */
+/* stylelint-disable-next-line block-no-empty */
+.DashDragging {
+}
+
 :global(.Modal).AddSeriesModal {
   height: 80%;
   max-height: 600px;

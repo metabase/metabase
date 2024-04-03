@@ -594,9 +594,9 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     const rowHeight = this.getRowHeight();
     return (
       <GridLayout
-        className={cx("DashboardGrid", {
+        className={cx({
           [DashboardS.DashEditing]: this.isEditingLayout,
-          "Dash--dragging": this.state.isDragging,
+          [DashboardS.DashDragging]: this.state.isDragging,
         })}
         layouts={layouts}
         breakpoints={GRID_BREAKPOINTS}
