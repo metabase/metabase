@@ -7,6 +7,7 @@ import type {
 } from "echarts/types/src/coord/axisCommonTypes";
 import type { CartesianAxisOption } from "echarts/types/src/coord/cartesian/AxisModel";
 
+import { parseNumberValue } from "metabase/lib/number";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   BaseCartesianChartModel,
@@ -30,16 +31,6 @@ const NORMALIZED_RANGE = { min: 0, max: 1 };
 
 export const getAxisNameGap = (ticksWidth: number): number => {
   return ticksWidth + CHART_STYLE.axisNameMargin;
-};
-
-const parseNumberValue = (value: any): number | null => {
-  const number = Number.parseFloat(value);
-
-  if (Number.isFinite(number)) {
-    return number;
-  } else {
-    return null;
-  }
 };
 
 const getCustomAxisRange = ({
