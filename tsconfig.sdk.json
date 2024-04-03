@@ -11,7 +11,7 @@
       "metabase-shared/*": ["./frontend/src/metabase-shared/*"],
       "metabase-types/*": ["./frontend/src/metabase-types/*"],
       "metabase-enterprise/*": ["./enterprise/frontend/src/metabase-enterprise/*"],
-      "cljs/*": ["./target/cljs_dev/*"]
+      "cljs/*": ["./target/cljs_release/*"]
     }
   },
   "include": [
