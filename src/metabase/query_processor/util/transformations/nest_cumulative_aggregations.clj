@@ -68,7 +68,7 @@
   The new top-level query restores the original column order as needed.
 
   [[nest-cumulative-aggregations]] rewrites MBQL queries that would have produced broken queries so we get correct
-  ones instead. Currently, this doesn't work with cumulative aggregations inside of expressions. (FIXME)"
+  ones instead."
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.core :as lib]
@@ -76,18 +76,11 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
+   [metabase.query-processor.util.transformations.common :as qp.transformations.common]
+   [metabase.query-processor.util.transformations.nest-cumulative-aggregations-in-expressions :as qp.transformations.nest-cumulative-aggregations-in-expressions]
    [metabase.util.malli :as mu]))
-
-(mu/defn ^:private update-aggregation-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage :- ::lib.schema.metadata/column
-  "Force a `[:field {} <name>]` ref."
-  [col :- ::lib.schema.metadata/column]
-  (-> col
-      (assoc :lib/source              :source/previous-stage
-             :lib/source-column-alias (:lib/desired-column-alias col))
-      (lib/with-temporal-bucket nil)
-      (lib/with-join-alias nil)
-      (lib/with-binning nil)))
 
 (mu/defn ^:private convert-first-stage-cumulative-aggregations-to-regular-aggregations :- ::lib.schema/stage
   "Convert cumulative aggregations to regular versions in first stage."
@@ -112,12 +105,15 @@
                                              (str "__cumulative_" (:lib/desired-column-alias col))
                                              (:lib/desired-column-alias col))]
                          (-> col
-                             update-aggregation-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage
+                             qp.transformations.common/update-aggregation-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage
                              lib/ref
                              (lib.options/update-options assoc :name desired-alias))))
                      original-cols))
         breakouts (refs)
         ;; also, add order-bys, since we don't expect the QP middleware that usually adds it to be run again.
+        ;;
+        ;; TODO -- probably not safe to assume `:asc` order by here, this actually should probably get copied from the
+        ;; first stage.
         order-bys (mapv (fn [col-ref]
                           [:asc {:lib/uuid (str (random-uuid))} col-ref])
                         (refs))]
@@ -130,7 +126,7 @@
   (let [cumulative-ag-columns (filter ::cumulative? original-cols)
         aggregations (mapv (fn [col]
                              (-> col
-                                 update-aggregation-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage
+                                 qp.transformations.common/update-aggregation-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage
                                  lib/cum-sum
                                  (lib.options/update-options assoc :name (:lib/desired-column-alias col))))
                            cumulative-ag-columns)]
@@ -143,7 +139,7 @@
    original-cols :- [:sequential ::lib.schema.metadata/column]]
   (let [fields (mapv (fn [col]
                        (-> col
-                           update-aggregation-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage
+                           qp.transformations.common/update-aggregation-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage
                            lib.ref/ref))
                      original-cols)]
     (assoc third-stage :fields fields)))
@@ -162,13 +158,20 @@
    query
    stage-path))
 
-(mu/defn ^:private nest-cumulative-aggregations-in-stage :- [:maybe [:sequential {:min 3, :max 3} ::lib.schema/stage]]
+(defn- has-breakouts? [stage]
+  (seq (:breakout stage)))
+
+(defn- has-cumulative-aggregations? [stage]
+  (lib.util.match/match-one (:aggregation stage) #{:cum-sum :cum-count}))
+
+(mu/defn ^:private nest-cumulative-aggregations-in-stage :- [:maybe [:sequential {:min 3} ::lib.schema/stage]]
   [query :- ::lib.schema/query
    path  :- ::lib.walk/stage-path
    stage :- ::lib.schema/stage]
   ;; we only need to rewrite queries with at least one breakout. With no breakouts, cumulative sum and cumulative
   ;; count are treated the same as regular sum or count respectively; base SQL QP implementation handles this case.
-  (when (seq (:breakout stage))
+  (when (and (has-cumulative-aggregations? stage)
+             (has-breakouts? stage))
     (let [original-cols (original-returned-columns query path)
           first-stage   (-> stage
                             ;; 1. convert cumulative aggregations to regular versions in first stage
@@ -192,6 +195,6 @@
   using [[metabase.lib.query/query]] and [[metabase.query-processor.store/metadata-provider]] first."
   {:added "0.50.0"}
   [query :- ::lib.schema/query]
-  (lib.walk/walk-stages
-   query
-   nest-cumulative-aggregations-in-stage))
+  (-> query
+      qp.transformations.nest-cumulative-aggregations-in-expressions/nest-cumulative-aggregations-in-expressions
+      (lib.walk/walk-stages nest-cumulative-aggregations-in-stage)))

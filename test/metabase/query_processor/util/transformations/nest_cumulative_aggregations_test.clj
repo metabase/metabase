@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.util.transformations.nest-cumulative-aggregations :as qp.util.transformations.nest-cumulative-aggregations]))
 
@@ -30,14 +31,18 @@
                               ;; 3. cumulative sum of order total
                               (lib/aggregate (lib/cum-sum orders-total))
                               ;; 4. sum of order total
-                              (lib/aggregate (lib/sum orders-total)))]
+                              (lib/aggregate (lib/sum orders-total)))
+        original-uuids  (mapv lib.options/uuid (lib/aggregations query))]
+    (is (every? string? original-uuids))
     (is (=? {:lib/type :mbql/query
              :stages   [ ;; original final stage should be rewritten to return non-cumulative aggregations
                         {:source-table (meta/id :orders)
                          :breakout     [[:field {:temporal-unit :month} (meta/id :orders :created-at)]]
-                         :aggregation  [[:count {}]
-                                        [:sum {} [:field {} (meta/id :orders :total)]]
-                                        [:sum {} [:field {} (meta/id :orders :total)]]]}
+                         :aggregation  [[:count {:lib/uuid (nth original-uuids 0)}]
+                                        [:sum {:lib/uuid (nth original-uuids 1)}
+                                         [:field {} (meta/id :orders :total)]]
+                                        [:sum {:lib/uuid (nth original-uuids 1)}
+                                         [:field {} (meta/id :orders :total)]]]}
                         ;; add a new stage to do cumulative sum of the non-cumulative aggregations.
                         {:breakout [[:field
                                      {:temporal-unit (symbol "nil #_\"key is not present.\"")
@@ -167,3 +172,46 @@
                           {:fields [[:field {} "ID"]
                                     [:field {} "sum"]]}]}
               (qp.util.transformations.nest-cumulative-aggregations/nest-cumulative-aggregations query))))))
+
+(deftest ^:parallel nest-cumulative-aggregations-in-expressions-test
+  (let [metadata-provider meta/metadata-provider
+        users             (lib.metadata/table metadata-provider (meta/id :users))
+        users-id          (lib.metadata/field metadata-provider (meta/id :users :id))
+        query             (-> (lib/query metadata-provider users)
+                              (lib/breakout users-id)
+                              (lib/aggregate (lib/+ (lib// (lib/cum-sum users-id)
+                                                           (lib/cum-count users-id))
+                                                    1)))]
+    (is (=? {:lib/type :mbql/query
+             :stages   [{:breakout    [[:field {} (meta/id :users :id)]]
+                         :aggregation [[:sum {:name #"arg_\d+"}
+                                        [:field {} (meta/id :users :id)]]
+                                       [:count {:name #"arg_\d+"}
+                                        [:field {} (meta/id :users :id)]]]}
+                        {:breakout    [[:field {:name "ID"} "ID"]
+                                       [:field {:name #"__cumulative_arg_\d+"} #"arg_\d+"]
+                                       [:field {:name #"__cumulative_arg_\d+"} #"arg_\d+"]]
+                         :order-by    [[:asc {} [:field {} "ID"]]
+                                       [:asc {} [:field {} #"arg_\d+"]]
+                                       [:asc {} [:field {} #"arg_\d+"]]]
+                         :aggregation [[:cum-sum {:name #"arg_\d+"} [:field {} #"arg_\d+"]]
+                                       [:cum-sum {:name #"arg_\d+"} [:field {} #"arg_\d+"]]]}
+                        {:fields [[:field {} "ID"]
+                                  [:field {} #"arg_\d+"]
+                                  [:field {} #"arg_\d+"]]}
+                        ;; these two stages get added
+                        ;; by [[metabase.query-processor.util.transformations.nest-cumulative-aggregations-in-expressions/nest-cumulative-aggregations-in-expressions]]
+                        ;; to handle the math done on the expression aggregations.
+                        {:fields      [[:field {} "ID"]
+                                       [:expression {} #"arg_\d+"]]
+                         :expressions [[:/ {:name #"arg_\d+", :lib/expression-name #"arg_\d+"}
+                                        [:field {} #"arg_\d+"]
+                                        [:field {} #"arg_\d+"]]]}
+                        {:fields      [[:field {} "ID"]
+                                       [:expression {} "expression"]],
+                         :expressions [[:+ {:name "expression", :lib/expression-name "expression"}
+                                        [:field {} #"arg_\d+"]
+                                        1]]}]}
+            (qp.util.transformations.nest-cumulative-aggregations/nest-cumulative-aggregations query)))))
+
+;; TODO -- make sure we preserve custom order bys in first stage... or just move order bys (and LIMIT) to third stage?
