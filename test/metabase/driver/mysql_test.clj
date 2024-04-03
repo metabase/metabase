@@ -231,15 +231,20 @@
           (is (= ["2018-04-18T00:00:00+08:00"]
                  (run-query-with-report-timezone "Asia/Hong_Kong"))))
 
+        ;; [August, 2018]
         ;; This tests a similar scenario, but one in which the JVM timezone is in Hong Kong, but the report timezone
         ;; is in Los Angeles. The Joda Time date parsing functions for the most part default to UTC. Our tests all run
         ;; with a UTC JVM timezone. This test catches a bug where we are incorrectly assuming a date is in UTC when
         ;; the JVM timezone is different.
         ;;
         ;; The original bug can be found here: https://github.com/metabase/metabase/issues/8262. The MySQL driver code
-        ;; was parsing the date using JodateTime's date parser, which is in UTC. The MySQL driver code was assuming
+        ;; was parsing the date using Joda Time's date parser, which is in UTC. The MySQL driver code was assuming
         ;; that date was in the system timezone rather than UTC which caused an incorrect conversion and with the
-        ;; trucation, let to it being off by a day
+        ;; trucation, let to it being off by a day.
+        ;;
+        ;; [April, 2024]
+        ;; We no longer use Joda Time at all (this logic has been pulled out to qp.timezone, and uses java-time), but
+        ;; are keeping the test in place since it's still a legitimate case.
         (testing "date formatting when system-timezone != report-timezone"
           (is (= ["2018-04-18T00:00:00-07:00"]
                  (run-query-with-report-timezone "America/Los_Angeles"))))))))
