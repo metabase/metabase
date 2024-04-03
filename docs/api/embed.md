@@ -138,7 +138,9 @@ Like `GET /api/embed/card/query`, but returns the results as a file in the speci
 
 -  **`export-format`** enum of csv, api, xlsx, json.
 
--  **`query-params`**
+-  **`query-params`** 
+
+-  **`format_rows`** nullable boolean.
 
 ## `GET /api/embed/dashboard/:token`
 
@@ -183,6 +185,8 @@ Fetch the results of running a Card belonging to a Dashboard using a JSON Web To
 -  **`dashcard-id`** value must be an integer greater than zero.
 
 -  **`card-id`** value must be an integer greater than zero.
+
+-  **`format_rows`** nullable boolean.
 
 -  **`query-params`**
 

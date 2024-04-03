@@ -44,7 +44,7 @@ Logout.
 
 ### PARAMS:
 
--  **`metabase-session-id`**
+-  **`cookies`** map where {metabase.SESSION -> <map where {:value -> <value must be a non-blank string.>}>}.
 
 ---
 

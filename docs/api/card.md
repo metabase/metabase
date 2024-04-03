@@ -208,6 +208,8 @@ Run the query associated with a Card, and return its results as a file in the sp
 
 -  **`parameters`** nullable value must be a valid JSON string.
 
+-  **`format_rows`** nullable boolean.
+
 ## `POST /api/card/:card-id/refresh`
 
 Refresh the persisted model caching `card-id`.

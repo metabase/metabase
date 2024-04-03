@@ -206,6 +206,8 @@ Run the query associated with a Saved Question (`Card`) in the context of a `Das
 
 -  **`parameters`** nullable value must be a valid JSON string.
 
+-  **`format_rows`** nullable boolean.
+
 -  **`request-parameters`**
 
 ## `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/execute`
