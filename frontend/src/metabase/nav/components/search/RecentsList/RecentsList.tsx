@@ -12,8 +12,6 @@ import {
 import { Paper, type IconName } from "metabase/ui";
 import type { RecentItem, UnrestrictedLinkEntity } from "metabase-types/api";
 
-import { CommandPaletteMessage } from "./CommandPaletteMessage";
-
 type RecentsListProps = {
   onClick?: (elem: UnrestrictedLinkEntity) => void;
   className?: string;
@@ -68,7 +66,6 @@ export const RecentsList = ({ onClick, className }: RecentsListProps) => {
         results={wrappedResults}
         onClick={onContainerClick}
       />
-      <CommandPaletteMessage />
     </Paper>
   );
 };
