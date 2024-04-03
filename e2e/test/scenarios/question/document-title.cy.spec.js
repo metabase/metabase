@@ -7,7 +7,7 @@ describe("question loading changes document title", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should verify document title changes while loading a slow question", () => {
+  it("should verify document title changes while loading a slow question (metabase#40051)", () => {
     cy.log("run a slow question");
 
     visitQuestionAdhoc(
