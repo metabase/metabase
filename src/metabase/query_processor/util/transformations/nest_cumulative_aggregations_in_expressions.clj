@@ -129,6 +129,14 @@
    path))
 
 (mu/defn ^:private nest-cumulative-aggregations-in-expressions* :- [:maybe [:sequential {:min 2} ::lib.schema/stage]]
+  [query :- ::lib.schema/query
+   path  :- ::lib.walk/stage-path
+   stage :- ::lib.schema/stage]
+  (when (has-cumulative-aggregations-inside-expressions? stage)
+    (let [returned-columns (returned-columns query path)]
+      (new-stages stage returned-columns))))
+
+(mu/defn nest-cumulative-aggregations-in-expressions :- ::lib.schema/query
   "Replace a stage like
 
     {:aggregation [[:+ {} [:cum-sum {} x] [:cum-count {} y]]]}
@@ -140,14 +148,6 @@
      {:expressions [[:+ {}
                      [:field {} \"arg_1\"]
                      [:field {} \"arg_2\"]]]}]"
-  [query :- ::lib.schema/query
-   path  :- ::lib.walk/stage-path
-   stage :- ::lib.schema/stage]
-  (when (has-cumulative-aggregations-inside-expressions? stage)
-    (let [returned-columns (returned-columns query path)]
-      (new-stages stage returned-columns))))
-
-(mu/defn nest-cumulative-aggregations-in-expressions :- ::lib.schema/query
   [query :- ::lib.schema/query]
   (let [query' (lib.walk/walk-stages query nest-cumulative-aggregations-in-expressions*)]
     (if (= query query')
