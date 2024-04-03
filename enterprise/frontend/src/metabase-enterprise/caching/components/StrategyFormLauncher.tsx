@@ -67,6 +67,7 @@ export const StrategyFormLauncher = ({
       bg={color(forRoot ? "bg-medium" : "white")}
       justify="space-between"
       align="center"
+      gap="md"
       style={{
         border: forRoot ? undefined : `1px solid ${color("border")}`,
         borderRadius: ".5rem",
