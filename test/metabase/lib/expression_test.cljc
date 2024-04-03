@@ -258,10 +258,10 @@
   (testing "collisions with other column names are detected and rejected"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))
           ex    (try
-                 (lib/expression query "ID" (meta/field-metadata :categories :name))
-                 nil
-                 (catch #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) e
-                   e))]
+                  (lib/expression query "ID" (meta/field-metadata :categories :name))
+                  nil
+                  (catch #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) e
+                    e))]
       (is (some? ex)
           "Expected adding a conflicting expression to throw")
       (is (= "Expression name conflicts with a column in the same query stage"
