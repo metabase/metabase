@@ -767,7 +767,7 @@
 
 (deftest ^:parallel is-empty-not-empty-with-not-emptyable-args-test
   (mt/test-drivers
-   ;; TODO: Investigate how to make test work with Athena!
+   ;; TODO: Investigate how to make the test work with Athena!
    (disj (mt/normal-drivers) :athena)
    (mt/dataset
     test-data-null-date
@@ -791,6 +791,23 @@
                checkins
                {:expressions {"caseExpr" [:case
                                           [[[:not-empty [:field %null_only_date {:base-type :type/Date}]] 1]]
+                                          {:default 0}]}
+                :fields [$id [:expression "caseExpr"]]
+                :order-by [[$id :asc]]
+                :limit 1})))))
+    ;; We should handle correctly also situation where there is missing base type of is empty arg. In that case,
+    ;; [[metabase.query-processor.middleware.wrap-value-literals/add-type-info]], String implementation, should not
+    ;; try to parse the empty string as date/time type, but return value as is.
+    (testing (str ":not-empty works with argument missing base-type,\n"
+                  "hence treated as emptyable,\n"
+                  "but in reality it is not emptyable Temporal!")
+      (is (= [[1 1]]
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query
+               checkins
+               {:expressions {"caseExpr" [:case
+                                          [[[:is-empty [:field %null_only_date nil]] 1]]
                                           {:default 0}]}
                 :fields [$id [:expression "caseExpr"]]
                 :order-by [[$id :asc]]
