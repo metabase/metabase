@@ -7,6 +7,7 @@ import {
   useGetFieldQuery,
   useGetTableMetadataQuery,
 } from "metabase/api";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -31,10 +32,10 @@ function MappedFieldPicker({
   tabIndex,
 }: MappedFieldPickerProps) {
   const { databaseId = null } = formField;
-  const { currentData: field } = useGetFieldQuery(
+  const { currentData: field, ...fieldQuery } = useGetFieldQuery(
     selectedFieldId ? { id: selectedFieldId } : skipToken,
   );
-  const { currentData: table } = useGetTableMetadataQuery(
+  const { currentData: table, ...tableQuery } = useGetTableMetadataQuery(
     field ? { id: field.table_id } : skipToken,
   );
 
@@ -56,8 +57,6 @@ function MappedFieldPicker({
     const label =
       field && table
         ? `${field.display_name} → ${table?.display_name}`
-        : field
-        ? field.display_name
         : t`None`;
     return (
       <StyledSelectButton
@@ -70,6 +69,20 @@ function MappedFieldPicker({
       </StyledSelectButton>
     );
   }, [field, table, onChange, tabIndex]);
+
+  if (
+    fieldQuery.isLoading ||
+    tableQuery.isLoading ||
+    fieldQuery.error ||
+    tableQuery.error
+  ) {
+    return (
+      <LoadingAndErrorWrapper
+        loading={fieldQuery.isLoading || tableQuery.isLoading}
+        error={fieldQuery.error ?? tableQuery.error}
+      />
+    );
+  }
 
   // DataSelector doesn't handle selectedTableId change prop nicely.
   // During the initial load, field might have `table_id` set to `card__$ID` (retrieved from metadata)
