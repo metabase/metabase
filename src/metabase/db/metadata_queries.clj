@@ -37,7 +37,7 @@
       :type/DateTime [:> field-form "0001-01-01T00:00:00"])))
 
 (defn add-required-filters-if-needed
-  "Add a dummy filter for tables that require a filters.
+  "Add a dummy filter for tables that require filters.
   Look into tables from source tables and all the joins.
   Currently this only apply to partitioned tables on bigquery that requires a partition filter.
   In the future we probably want this to be dispatched by database engine or handled by QP."
