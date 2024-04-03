@@ -20,6 +20,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -560,3 +561,8 @@
   (when (map? query)
     (keyword (some #(get query %)
                    [:lib/type :type "lib/type" "type"]))))
+
+(mu/defn referenced-field-ids :- [:maybe [:sequential ::lib.schema.id/field]]
+  "Find all the integer field IDs in `coll`, Which can arbitrarily be anything that is part of MLv2 query schema."
+  [clause]
+  (lib.util.match/match clause [:field _ (id :guard int?)] id))

@@ -24,6 +24,7 @@
                   :model/Card card      {:dataset_query (mt/mbql-query
                                                          nil
                                                          {:source-table (format "card__%d" (:id base-card))
+                                                          :aggregation  [:sum [:field "sum" {:base-type :type/Integer}]]
                                                           :filter       [:between $orders.created_at "2019-01-01" "2019-12-31"]})}]
      (mt/with-metadata-provider (mt/id)
        (let [query  (:dataset_query card)

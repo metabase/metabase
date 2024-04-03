@@ -262,6 +262,7 @@
     metabase.legacy-mbql.schema                                   mbql.s
     metabase.legacy-mbql.util                                     mbql.u
     metabase.lib.util                                             lib.util
+    metabase.lib.util.match                                       lib.util.match
     metabase.models.activity                                      activity
     metabase.models.application-permissions-revision              a-perm-revision
     metabase.models.bookmark                                      bookmark

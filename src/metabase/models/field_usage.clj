@@ -5,7 +5,6 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.util.malli :as mu]
@@ -61,7 +60,7 @@
 
 (defn- expression->field-usage
   [expresison-clause]
-  (when-let [field-ids (seq (lib.util.match/match expresison-clause [:field _ (id :guard int?)] id))]
+  (when-let [field-ids (seq (lib.util/referenced-field-ids expresison-clause))]
     (for [field-id field-ids]
       {:field_id field-id
        :used_in  :expression})))
