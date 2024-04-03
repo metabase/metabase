@@ -103,7 +103,6 @@
 }
 
 .guideSeeAllLink {
-  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: py1 border-top from "style";
   text-decoration: none;
   display: block;

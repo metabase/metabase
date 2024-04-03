@@ -1,5 +1,4 @@
 .usefulQuestions {
-  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: mt1 from "style";
   color: var(--color-brand);
   font-size: 16px;

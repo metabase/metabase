@@ -1,5 +1,4 @@
 .queryButton {
-  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: text-brand py1 from "style";
   text-decoration: none;
   align-items: center;
@@ -7,7 +6,6 @@
 }
 
 .queryButtonText {
-  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: ml2 from "style";
   flex: 1 0 auto;
   max-width: 100%;

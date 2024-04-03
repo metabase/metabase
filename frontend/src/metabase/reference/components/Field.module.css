@@ -8,7 +8,6 @@
 }
 
 .fieldNameTitle {
-  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: pr2 from "style";
   flex: 0.5;
 }
@@ -18,7 +17,6 @@
 }
 
 .fieldNameTextInput {
-  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: input p1 from "style";
   color: var(--title-color);
   width: 100%;
@@ -26,7 +24,6 @@
 }
 
 .fieldType {
-  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: text-medium pr2 from "style";
   flex: 0.25;
   overflow: hidden;
@@ -34,7 +31,6 @@
 }
 
 .fieldDataType {
-  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: text-medium from "style";
   flex: 0.25;
 }

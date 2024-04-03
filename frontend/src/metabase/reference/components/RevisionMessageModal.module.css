@@ -8,7 +8,6 @@
 }
 
 .modalTextArea {
-  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: text-dark input p2 from "style";
   flex: 1 0 auto;
   resize: none;

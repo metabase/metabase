@@ -34,7 +34,6 @@
 }
 
 .detailTextarea {
-  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: text-dark input p2 from "style";
   resize: none;
   font-size: 16px;

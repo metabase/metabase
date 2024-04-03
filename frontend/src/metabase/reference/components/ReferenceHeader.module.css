@@ -12,7 +12,6 @@
 }
 
 .headerTextInput {
-  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: p1 from "style";
   font-size: 18px;
   color: var(--title-color);
