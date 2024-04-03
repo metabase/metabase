@@ -6135,7 +6135,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: filter_op
-                  remarks: fitler's operator that applied to the field
+                  remarks: filter's operator that applied to the field
                   type: varchar(25)
                   constraints:
                     nullable: true
@@ -6166,7 +6166,7 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: ${timestamp_type}
-                  remarks: The time an field usage was recorded
+                  remarks: The time a field usage was recorded
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
