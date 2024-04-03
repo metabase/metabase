@@ -10,14 +10,13 @@ import { PLUGIN_CACHING } from "metabase/plugins";
 import { CacheConfigApi } from "metabase/services";
 import { Box, Stack, Title } from "metabase/ui";
 
-import { rootId } from "../constants";
 import { useCacheConfigs } from "../hooks/useCacheConfigs";
 import { useConfirmOnRouteLeave } from "../hooks/useConfirmOnRouteLeave";
 import { useDelayedLoadingSpinner } from "../hooks/useDelayedLoadingSpinner";
 import { useVerticallyOverflows } from "../hooks/useVerticallyOverflows";
+import { getFieldsForStrategyType, rootId, Strategies } from "../strategies";
 import type { Config, Strategy, UpdateTargetId } from "../types";
-import { DurationUnit, Strategies } from "../types";
-import { getFieldsForStrategyType } from "../utils";
+import { DurationUnit } from "../types";
 
 import { Panel, TabWrapper } from "./StrategyEditorForDatabases.styled";
 import { StrategyForm } from "./StrategyForm";
@@ -51,8 +50,6 @@ const StrategyEditorForDatabases_Base = ({
 
   const shouldShowResetButton =
     rootStrategyOverriddenOnce || rootStrategyRecentlyOverridden;
-
-  const shouldShowStrategyFormLaunchers = canOverrideRootStrategy;
 
   /** The config for the model currently being edited */
   const targetConfig = findWhere(configs, {
@@ -187,7 +184,7 @@ const StrategyEditorForDatabases_Base = ({
         mx="0"
         mb="1rem"
       >
-        {shouldShowStrategyFormLaunchers && (
+        {canOverrideRootStrategy && (
           <PLUGIN_CACHING.StrategyFormLauncherPanel
             configs={configs}
             setConfigs={setConfigs}

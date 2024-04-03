@@ -1,9 +1,14 @@
 import { t } from "ttag";
 import { findWhere } from "underscore";
 
-import { rootId } from "metabase/admin/performance/constants";
-import type { Config, UpdateTargetId } from "metabase/admin/performance/types";
-import { getShortStrategyLabel } from "metabase/admin/performance/utils";
+import type {
+  Config,
+  UpdateTargetId,
+} from "metabase/admin/performance/strategies";
+import {
+  getShortStrategyLabel,
+  rootId,
+} from "metabase/admin/performance/strategies";
 import { color } from "metabase/lib/colors";
 import { FixedSizeIcon, Flex, Title, Tooltip, useHover } from "metabase/ui";
 

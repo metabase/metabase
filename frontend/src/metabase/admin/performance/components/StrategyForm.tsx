@@ -26,11 +26,10 @@ import {
   Tooltip,
 } from "metabase/ui";
 
-import { rootId } from "../constants";
 import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
+import { rootId, Strategies, strategyValidationSchema } from "../strategies";
 import type { Strategy, StrategyType } from "../types";
-import { DurationUnit, Strategies } from "../types";
-import { strategyValidationSchema } from "../validation";
+import { DurationUnit } from "../types";
 
 export const StrategyForm = ({
   targetId,

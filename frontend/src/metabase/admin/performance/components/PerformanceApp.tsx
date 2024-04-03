@@ -5,7 +5,8 @@ import { t } from "ttag";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { Flex, Tabs } from "metabase/ui";
 
-import { isValidTabId, TabId } from "../types";
+import { TabId } from "../types";
+import { isValidTabId } from "../validation";
 
 import { Tab, TabsList, TabsPanel } from "./PerformanceApp.styled";
 import { StrategyEditorForDatabases } from "./StrategyEditorForDatabases";
@@ -29,7 +30,8 @@ export const PerformanceApp = ({ route }: { route: Route }) => {
     };
     window.addEventListener("resize", handleResize);
     handleResize();
-    setTimeout(handleResize, 50);
+    // TODO: Is this needed?
+    // setTimeout(handleResize, 50);
     return () => {
       window.removeEventListener("resize", handleResize);
     };
