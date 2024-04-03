@@ -1,14 +1,15 @@
 import type { TransitionEventHandler, SyntheticEvent } from "react";
-import { useEffect, useState } from "react";
-import type { ResizeCallbackData } from "react-resizable";
+import { useEffect, useState, forwardRef } from "react";
+import type { ResizeCallbackData, ResizableBoxProps } from "react-resizable";
 import { ResizableBox } from "react-resizable";
 
+import { darken } from "metabase/lib/colors";
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
 import { NativeQueryPreviewSidebar } from "metabase/query_builder/components/view/NativeQueryPreviewSidebar";
 import { getUiControls } from "metabase/query_builder/selectors";
-import { Flex, Box } from "metabase/ui";
+import { Flex, Box, rem } from "metabase/ui";
 
 import NC from "./NotebookContainer.module.css";
 
@@ -69,6 +70,34 @@ export const NotebookContainer = ({
 
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
 
+  const Handle = forwardRef<HTMLDivElement, Partial<ResizableBoxProps>>(
+    function Handle(props, ref) {
+      const handleWidth = 6;
+      // 0.5 accounts for the border width of 1px
+      const left = rem(-(handleWidth / 2 + 0.5));
+
+      return (
+        <Box
+          ref={ref}
+          {...props}
+          pos="absolute"
+          top={0}
+          bottom={0}
+          m="auto 0"
+          h={rem(100)}
+          w={rem(handleWidth)}
+          left={left}
+          bg={darken("border", 0.03)}
+          style={{
+            zIndex: 5,
+            cursor: "ew-resize",
+            borderRadius: rem(8),
+          }}
+        ></Box>
+      );
+    },
+  );
+
   return (
     <Flex
       className={NC.notebookContainer}
@@ -104,6 +133,7 @@ export const NotebookContainer = ({
           resizeHandles={["w"]}
           className={NC.sqlSidebar}
           data-testid="native-query-preview-sidebar"
+          handle={<Handle />}
           onResizeStop={handleResizeStop}
         >
           <NativeQueryPreviewSidebar />
