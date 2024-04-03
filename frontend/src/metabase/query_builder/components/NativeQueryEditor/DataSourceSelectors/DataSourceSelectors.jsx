@@ -177,10 +177,7 @@ const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
 DatabaseSelector.propTypes = DatabaseSelectorPropTypes;
 
 const SingleDatabaseName = ({ database }) => (
-  <div
-    className={cx(CS.p2, CS.textBold, "text-grey")}
-    data-testid="selected-database"
-  >
+  <div className={cx(CS.p2, CS.textBold)} data-testid="selected-database">
     {database.name}
   </div>
 );

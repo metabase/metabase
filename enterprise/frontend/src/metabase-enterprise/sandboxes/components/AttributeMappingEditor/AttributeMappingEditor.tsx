@@ -35,13 +35,7 @@ const AttributeMappingEditor = ({
     keyPlaceholder={t`Pick a user attribute`}
     keyHeader={
       <div
-        className={cx(
-          CS.textUppercase,
-          CS.textSmall,
-          "text-grey-4",
-          CS.flex,
-          CS.alignCenter,
-        )}
+        className={cx(CS.textUppercase, CS.textSmall, CS.flex, CS.alignCenter)}
       >
         {t`User attribute`}
         <Tooltip
@@ -62,7 +56,7 @@ const AttributeMappingEditor = ({
       shouldUseSavedQuestion ? t`Pick a parameter` : t`Pick a column`
     }
     valueHeader={
-      <div className={cx(CS.textUppercase, CS.textSmall, "text-grey-4")}>
+      <div className={cx(CS.textUppercase, CS.textSmall)}>
         {shouldUseSavedQuestion ? t`Parameter or variable` : t`Column`}
       </div>
     }

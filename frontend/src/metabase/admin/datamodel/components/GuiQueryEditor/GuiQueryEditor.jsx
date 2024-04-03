@@ -266,14 +266,7 @@ export class GuiQueryEditor extends Component {
           />
         ) : (
           <span
-            className={cx(
-              CS.flex,
-              CS.alignCenter,
-              CS.px2,
-              CS.py2,
-              CS.textBold,
-              "text-grey",
-            )}
+            className={cx(CS.flex, CS.alignCenter, CS.px2, CS.py2, CS.textBold)}
           >
             {legacyQuery.table() && legacyQuery.table().displayName()}
           </span>
