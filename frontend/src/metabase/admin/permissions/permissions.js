@@ -99,8 +99,11 @@ export const granulateDatabasePermissions = createThunkAction(
   GRANULATE_DATABASE_TABLE_PERMISSIONS,
   (groupId, entityId, permission, value, defaultValue) =>
     async (dispatch, getState) => {
-      // NOTE: table data needs to be loaded in order for downstreams functions
-      // to have all tables ids to key permissions by their ids
+      // NOTE: table data may not be loaded at this point, which results in downstreams
+      // functions within updateDataPermission not having all the table ids, so the
+      // migration of db level permission onto the db schemas/tables will generate
+      // an incorrect graph. by loading here we assure that later functions will have
+      // the context they need
       await dispatch(
         Tables.actions.fetchList({
           dbId: entityId.databaseId,
@@ -109,10 +112,12 @@ export const granulateDatabasePermissions = createThunkAction(
         }),
       );
 
-      // HACK: updatePermission fn in metabase/admin/permissions/utils/graph sets child entities of
-      // entities becoming controlled to the current value of the entity. in some cases the current
-      // value is one we can't allow the child entity to become, so we quickly update the entity's
-      // value to the prefered default here, then proceed with the actual update
+      // HACK: when an entity becomes controlled, updatePermission fn in metabase/admin/permissions/utils/graph.ts
+      // will set child entities to the current value of the parent entity. In some cases, the current
+      // value is one that we don't allow the child entity to become (e.g. we don't allow you to have native
+      // query creation permissions for some tables but not others, as we don't parse SQL to ensure users aren't
+      // accessing tables they shouldn't be). As a consequence, we quickly update the entity's value which will
+      // serve as the default when we proceed with the actual update.
       if (value === DataPermissionValue.CONTROLLED) {
         dispatch(
           updateDataPermission({

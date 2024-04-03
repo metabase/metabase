@@ -85,7 +85,7 @@ const buildAccessPermission = (
   return {
     permission: DataPermission.VIEW_DATA,
     type: DataPermissionType.ACCESS,
-    isDisabled: isAdmin || options.length <= 1,
+    isDisabled: isAdmin || (!isAdmin && options.length <= 1),
     disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
     isHighlighted: isAdmin,
     value: accessPermissionValue,

@@ -91,8 +91,12 @@ const buildAccessPermission = (
     type: DataPermissionType.ACCESS,
     isDisabled:
       isAdmin ||
-      options.length <= 1 ||
-      PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(value, "tables"),
+      (!isAdmin &&
+        (options.length <= 1 ||
+          PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(
+            value,
+            "tables",
+          ))),
     isHighlighted: isAdmin,
     disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
     value,
@@ -129,7 +133,9 @@ const buildNativePermission = (
   return {
     permission: DataPermission.CREATE_QUERIES,
     type: DataPermissionType.NATIVE,
-    isDisabled: accessPermissionValue === DataPermissionValue.BLOCKED,
+    isDisabled:
+      isAdmin ||
+      (!isAdmin && accessPermissionValue === DataPermissionValue.BLOCKED),
     disabledTooltip: getNativePermissionDisabledTooltip(
       isAdmin,
       accessPermissionValue,

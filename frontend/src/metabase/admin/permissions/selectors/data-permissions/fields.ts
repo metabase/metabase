@@ -102,14 +102,19 @@ const buildAccessPermission = (
     ]),
     value,
   );
+  const isDisabled =
+    isAdmin ||
+    (!isAdmin &&
+      (options.length <= 1 ||
+        PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(
+          value,
+          "fields",
+        )));
 
   return {
     permission: DataPermission.VIEW_DATA,
     type: DataPermissionType.ACCESS,
-    isDisabled:
-      isAdmin ||
-      options.length <= 1 ||
-      PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(value, "fields"),
+    isDisabled,
     disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
     isHighlighted: isAdmin,
     value,
@@ -145,7 +150,9 @@ const buildNativePermission = (
   return {
     permission: DataPermission.CREATE_QUERIES,
     type: DataPermissionType.NATIVE,
-    isDisabled: accessPermissionValue === DataPermissionValue.BLOCKED,
+    isDisabled:
+      isAdmin ||
+      (!isAdmin && accessPermissionValue === DataPermissionValue.BLOCKED),
     disabledTooltip: getNativePermissionDisabledTooltip(
       isAdmin,
       accessPermissionValue,

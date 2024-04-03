@@ -25,7 +25,7 @@ export const DATA_PERMISSION_OPTIONS = {
         <Icon
           name="warning"
           color={color("accent5")}
-          style={{ marginBottom: "-3px", marginLeft: ".25rem" }}
+          style={{ marginBottom: "-3px", marginInlineStart: ".25rem" }}
         />
       </>
     ),
