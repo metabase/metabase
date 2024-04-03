@@ -1,7 +1,3 @@
-:root {
-  --notebook-width: 40rem;
-}
-
 .notebookContainer {
   position: absolute;
   inset: 0;
@@ -12,10 +8,6 @@
 .main {
   flex: 1;
   overflow-y: auto;
-
-  @media screen and (--breakpoint-min-lg) {
-    min-width: var(--notebook-width);
-  }
 }
 
 .sqlPreview {

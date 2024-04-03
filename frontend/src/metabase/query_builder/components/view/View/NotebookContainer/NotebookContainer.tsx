@@ -41,6 +41,7 @@ export const NotebookContainer = ({
   }, [isOpen]);
 
   const { isNativePreviewSidebarOpen } = useSelector(getUiControls);
+  const minNotebookWidth = 640;
 
   const handleTransitionEnd: TransitionEventHandler<HTMLDivElement> = (
     event,
@@ -64,7 +65,7 @@ export const NotebookContainer = ({
       onTransitionEnd={handleTransitionEnd}
     >
       {shouldShowNotebook && (
-        <Box className={NC.main}>
+        <Box className={NC.main} miw={{ lg: minNotebookWidth }}>
           <Notebook {...props} />
         </Box>
       )}
