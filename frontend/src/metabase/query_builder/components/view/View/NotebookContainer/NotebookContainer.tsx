@@ -1,8 +1,10 @@
-import type { TransitionEventHandler } from "react";
+import type { TransitionEventHandler, SyntheticEvent } from "react";
 import { useEffect, useState } from "react";
+import type { ResizeCallbackData } from "react-resizable";
 import { ResizableBox } from "react-resizable";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector, useDispatch } from "metabase/lib/redux";
+import { setUIControls } from "metabase/query_builder/actions";
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
 import { NativeQueryPreviewSidebar } from "metabase/query_builder/components/view/NativeQueryPreviewSidebar";
 import { getUiControls } from "metabase/query_builder/selectors";
@@ -57,6 +59,14 @@ export const NotebookContainer = ({
     }
   };
 
+  const dispatch = useDispatch();
+  const handleResizeStop = (
+    _event: SyntheticEvent,
+    data: ResizeCallbackData,
+  ) => {
+    dispatch(setUIControls({ nativePreviewSidebarWidth: data.size.width }));
+  };
+
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
 
   return (
@@ -94,6 +104,7 @@ export const NotebookContainer = ({
           resizeHandles={["w"]}
           className={NC.sqlSidebar}
           data-testid="native-query-preview-sidebar"
+          onResizeStop={handleResizeStop}
         >
           <NativeQueryPreviewSidebar />
         </ResizableBox>
