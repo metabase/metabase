@@ -21,7 +21,7 @@ import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { zoomInRow } from "metabase/query_builder/actions";
 import {
-  getPKRowIndexMap,
+  getRowIndexToPKMap,
   getQueryBuilderMode,
 } from "metabase/query_builder/selectors";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -80,7 +80,7 @@ function pickRowsToMeasure(rows, columnIndex, count = 10) {
 
 const mapStateToProps = state => ({
   queryBuilderMode: getQueryBuilderMode(state),
-  PKRowIndexMap: getPKRowIndexMap(state),
+  rowIndexToPkMap: getRowIndexToPKMap(state),
 });
 
 const mapDispatchToProps = dispatch => ({
@@ -485,21 +485,16 @@ class TableInteractive extends Component {
     }
   }
 
-  pkClick = rowIndex => {
+  pkClick = rowIndex => () => {
     let objectId;
 
     if (this.state.IDColumn) {
       objectId = this.props.data.rows[rowIndex][this.state.IDColumnIndex];
     } else {
-      const map = this.props.PKRowIndexMap;
-
-      objectId =
-        Object.keys(map).find(key => map[key] === rowIndex) ?? rowIndex;
+      objectId = this.props.rowIndexToPkMap[rowIndex] ?? rowIndex;
     }
 
-    return () => {
-      this.props.onZoomRow(objectId);
-    };
+    this.props.onZoomRow(objectId);
   };
 
   onKeyDown = event => {

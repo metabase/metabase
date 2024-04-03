@@ -15,8 +15,16 @@ import {
   createQuestion,
 } from "e2e/support/helpers";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
-  SAMPLE_DATABASE;
+const {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  PEOPLE,
+  PEOPLE_ID,
+  REVIEWS,
+  REVIEWS_ID,
+} = SAMPLE_DATABASE;
 
 const FIRST_ORDER_ID = 9676;
 const SECOND_ORDER_ID = 10874;
@@ -117,6 +125,55 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       cy.get("h2").should("contain", "Order").should("contain", 3);
       cy.findByText("52.72");
     });
+  });
+
+  it("applies correct filter (metabase#34070)", () => {
+    const questionDetails = {
+      name: "34070",
+      query: {
+        "source-table": PRODUCTS_ID,
+        joins: [
+          {
+            fields: "all",
+            alias: "Products",
+            condition: [
+              "=",
+              [
+                "field",
+                PRODUCTS.ID,
+                {
+                  "base-type": "type/BigInteger",
+                },
+              ],
+              [
+                "field",
+                REVIEWS.PRODUCT_ID,
+                {
+                  "base-type": "type/BigInteger",
+                  "join-alias": "Products",
+                },
+              ],
+            ],
+            "source-table": REVIEWS_ID,
+          },
+        ],
+        limit: 10,
+      },
+    };
+
+    createQuestion(questionDetails, { visitQuestion: true });
+
+    cy.get(".cellData").contains("4966277046676").realHover();
+    cy.findByTestId("detail-shortcut").findByRole("button").click();
+
+    cy.findByRole("dialog")
+      .filter(":visible")
+      .findByTestId("fk-relation-orders")
+      .click();
+
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Product ID is 3")
+      .should("be.visible");
   });
 
   it("handles browsing records by PKs", () => {
