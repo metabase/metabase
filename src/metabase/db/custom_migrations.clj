@@ -1137,59 +1137,46 @@
 (define-migration CreateSampleContent
   (when *create-sample-content*
     (when (and (config/load-sample-content?) (fresh-install?))
-      (let [table-name->rows (load-edn "resources/sample-content.edn")
-            replace-temporal (fn [v]
-                               (if (isa? (type v) java.time.temporal.Temporal)
-                                 :%now
-                                 v))]
-        (let [collection (-> (:collection table-name->rows)
-                             first
-                             (update-vals replace-temporal)
-                             (dissoc :id))]
-          (t2/query {:insert-into :collection :values [collection]}))
-        (let [max-collection-id (first (vals (t2/query-one {:select [:%max.id] :from :collection})))]
-          ;; if that did not succeed in creating the first collection with id=1, we could be reusing a database that
-          ;; has been cleared out before, such as in tests. in this rare care we delete the collection and do nothing else
-          (if (not= max-collection-id 1)
-            (t2/query {:delete-from :collection :where [:= :id max-collection-id]})
-            (doseq [table-name [:metabase_database
-                                :metabase_table
-                                :metabase_field
-                                :report_card
-                                :parameter_card
-                                :report_dashboard
-                                :dashboard_tab
-                                :report_dashboardcard
-                                :dashboardcard_series]]
-              (when-let [;; We sort the rows by id and remove them so that auto-incrementing ids are generated in the
-                   ;; same order. We can't insert the ids directly in H2 without creating sequences for all the
-                   ;; generated id columns.
-                         values (seq (->> (table-name table-name->rows)
-                                          (sort-by :id)
-                                          (map (fn [row]
-                                                 (dissoc (update-vals row replace-temporal) :id)))))]
-                (t2/query {:insert-into table-name :values values})))))))))
+      (let [table-name->raw-rows (load-edn "resources/sample-content.edn")
+            replace-temporals (fn [v]
+                                (if (isa? (type v) java.time.temporal.Temporal)
+                                  :%now
+                                  v))
+            table-name->rows (fn [table-name]
+                               (->> (table-name->raw-rows table-name)
+                                    ;; We sort the rows by id and remove them so that auto-incrementing ids are
+                                    ;; generated in the same order. We can't insert the ids directly in H2 without
+                                    ;; creating sequences for all the generated id columns.
+                                    (sort-by :id)
+                                    (map (fn [row]
+                                           (dissoc (update-vals row replace-temporals) :id)))))
+            collections (table-name->rows :collection)
+            _ (t2/query {:insert-into :collection :values collections})
+            collection-ids (set (map :id (t2/query {:select :id :from :collection})))]
+        ;; If that did not succeed in creating the collections with id=1 and id=2, we could be reusing a database that
+        ;; has been cleared out before. in this rare care we delete the collections and do nothing
+        ;; else, to be safe.
+        (if (not= collection-ids #{1 2})
+          (when (seq collection-ids)
+            (t2/query {:delete-from :collection :where [:in :id collection-ids]}))
+          (doseq [table-name [:metabase_database
+                              :metabase_table
+                              :metabase_field
+                              :report_card
+                              :parameter_card
+                              :report_dashboard
+                              :dashboard_tab
+                              :report_dashboardcard
+                              :dashboardcard_series]]
+            (when-let [values (seq (table-name->rows table-name))]
+              (t2/query {:insert-into table-name :values values}))))))))
 
 (comment
   ;; How to create `resources/sample-content.edn` used in `CreateSampleContent`
   ;; -----------------------------------------------------------------------------
   ;; Start a fresh metabase instance without the :ee alias
   ;; 1. create a collection with dashboards, or import one with (metabase.cmd/import "<path>")
-  ;; 2. ensure the internal user is created, currently defined by `metabase-enterprise.internal-user`:
-  ;; (defn- install-internal-user! []
-  ;;   (t2/insert-returning-instances!
-  ;;    User
-  ;;    {:id config/internal-mb-user-id
-  ;;     :first_name "Metabase"
-  ;;     :last_name "Internal"
-  ;;     :email "internal@metabase.com"
-  ;;     :password (str (random-uuid))
-  ;;     :is_active false
-  ;;     :is_superuser false
-  ;;     :login_attributes nil
-  ;;     :sso_source nil
-  ;;     :type :internal}))
-  ;; 3. now execute the following to spit out the collection to an EDN file:
+  ;; 2. execute the following to spit out the collection to an EDN file:
   (let [pretty-spit (fn [file-name data]
                       (with-open [writer (io/writer file-name)]
                         (binding [*out* writer]
@@ -1207,10 +1194,14 @@
                                      :dashboard_tab
                                      :dashboardcard_series]
                          :let [query (cond-> {:select [:*] :from table-name}
-                                       (= table-name :core_user) (assoc :where [:= :id config/internal-mb-user-id]))]]
+                                       (= table-name :collection) (assoc :where [:and
+                                                                                 [:= :namespace nil] ; excludes the analytics namespace
+                                                                                 [:= :personal_owner_id nil]]))]]
                      [table-name (map #(into {} %) (t2/query query))]))]
     (pretty-spit "resources/sample-content.edn" data))
-  ;; 4. update the EDN file:
+  ;; (make sure there's no other content in the file)
+  ;; 3. update the EDN file:
+  ;; - replace the database details and dbms_version with placeholders e.g. "{}" to make sure they are replaced
   ;; - find-replace :creator_id 1, 2, etc with :creator_id 13371338 (the internal user ID)
   ;; - delete the personal collection, and make the example dashboard prototype have id 1
   ;; - find-replace collection_id 2 with collection_id 1
