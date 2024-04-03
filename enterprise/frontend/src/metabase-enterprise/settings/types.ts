@@ -9,7 +9,7 @@ interface EnterpriseSettingsState extends SettingsState {
   values: EnterpriseSettings;
 }
 
-export type IllustrationSettingValue = "default" | "no-illustration" | "custom";
+export type IllustrationSettingValue = "default" | "none" | "custom";
 
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: Record<string, string>;
