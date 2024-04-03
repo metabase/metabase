@@ -122,7 +122,9 @@ export const getEventDimensions = (
     });
   }
 
-  return dimensions;
+  return dimensions.filter(
+    dimension => dimension.column.source !== "query-transform",
+  );
 };
 
 export const getEventColumnsData = (

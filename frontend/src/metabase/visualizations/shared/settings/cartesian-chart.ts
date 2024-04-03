@@ -176,6 +176,12 @@ export const getDefaultXAxisScale = (
   return "ordinal";
 };
 
+export const getDefaultLegendIsReversed = (
+  vizSettings: ComputedVisualizationSettings,
+) =>
+  vizSettings["stackable.stack_display"] != null &&
+  vizSettings["stackable.stack_type"] != null;
+
 const WATERFALL_UNSUPPORTED_X_AXIS_SCALES = ["pow", "log"];
 export const isXAxisScaleValid = (
   series: RawSeries,
