@@ -672,12 +672,10 @@
                                            {:perm_type   perm-type
                                             :group_id    group-id
                                             :perm_value  (case existing-db-perm-value
-                                                           ;; `:query-builder-and-native` can only be set at the
-                                                           ;; database level. So if we're setting a particular table
-                                                           ;; to something other than `:query-builder-and-native` when
-                                                           ;; the *database* had that permission, the db-level
-                                                           ;; permission needs to be dropped to `:query-builder`.
+                                                           ;; If the previous database-level permission can't be set at
+                                                           ;; the table-level, we need to provide a new default
                                                            :query-builder-and-native :query-builder
+                                                           :blocked                  :unrestricted
                                                            existing-db-perm-value)
                                             :db_id       db-id
                                             :table_id    (:id table)
