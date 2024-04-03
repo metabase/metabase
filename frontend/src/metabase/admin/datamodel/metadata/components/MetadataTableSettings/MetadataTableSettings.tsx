@@ -1,24 +1,20 @@
 import cx from "classnames";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   useDiscardTableFieldValuesMutation,
+  useGetDatabaseQuery,
+  useGetTableQuery,
+  useListDatabaseSchemasQuery,
   useRescanTableFieldValuesMutation,
 } from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import Databases from "metabase/entities/databases";
-import Schemas from "metabase/entities/schemas";
-import Tables from "metabase/entities/tables";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Schema from "metabase-lib/v1/metadata/Schema";
-import type Table from "metabase-lib/v1/metadata/Table";
-import type { State } from "metabase-types/store";
+import { parseSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 
 import MetadataBackButton from "../MetadataBackButton";
 import MetadataSection from "../MetadataSection";
@@ -30,36 +26,32 @@ interface RouteParams {
   tableId: string;
 }
 
-interface RouterProps {
+type MetadataTableSettingsProps = {
   params: RouteParams;
-}
-
-interface DatabaseLoaderProps {
-  database: Database;
-}
-
-interface SchemaLoaderProps {
-  schemas: Schema[];
-}
-
-interface TableLoaderProps {
-  table: Table;
-}
-
-type MetadataTableSettingsProps = RouterProps &
-  DatabaseLoaderProps &
-  SchemaLoaderProps &
-  TableLoaderProps;
+};
 
 const MetadataTableSettings = ({
-  database,
-  schemas,
-  table,
-  params: { schemaId },
+  params: { databaseId, schemaId, tableId },
 }: MetadataTableSettingsProps) => {
-  const schema = schemas.find(schema => schema.id === schemaId);
+  const [_, schema] = parseSchemaId(schemaId);
+  const { data: database } = useGetDatabaseQuery({
+    id: parseInt(databaseId),
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  });
+  const { data: schemas } = useListDatabaseSchemasQuery({
+    id: parseInt(databaseId),
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  });
+  const { data: table } = useGetTableQuery({
+    id: parseInt(tableId),
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  });
   const [rescanTableFieldValues] = useRescanTableFieldValuesMutation();
   const [discardTableFieldValues] = useDiscardTableFieldValuesMutation();
+
+  if (!database || !schemas || !table) {
+    return null;
+  }
 
   return (
     <div className={CS.relative}>
@@ -73,12 +65,12 @@ const MetadataTableSettings = ({
           <div className="my4 py1 ml2">
             <Breadcrumbs
               crumbs={[
-                [database.displayName(), Urls.dataModelDatabase(database.id)],
+                [database.name, Urls.dataModelDatabase(database.id)],
                 ...(schema && schemas.length > 1
-                  ? [[schema.name, Urls.dataModelSchema(database.id, schemaId)]]
+                  ? [[schema, Urls.dataModelSchema(database.id, schemaId)]]
                   : []),
                 [
-                  table.displayName(),
+                  table.display_name,
                   Urls.dataModelTable(database.id, schemaId, table.id),
                 ],
                 t`Settings`,
@@ -114,23 +106,4 @@ const MetadataTableSettings = ({
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Databases.load({
-    id: (_: State, { params }: RouterProps) =>
-      Urls.extractEntityId(params.databaseId),
-    query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-  }),
-  Schemas.loadList({
-    query: (_: State, { params }: RouterProps) => ({
-      dbId: Urls.extractEntityId(params.databaseId),
-      include_hidden: true,
-      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-    }),
-  }),
-  Tables.load({
-    id: (_: State, { params }: RouterProps) =>
-      Urls.extractEntityId(params.tableId),
-    query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-    selectorName: "getObjectUnfiltered",
-  }),
-)(MetadataTableSettings);
+export default MetadataTableSettings;
