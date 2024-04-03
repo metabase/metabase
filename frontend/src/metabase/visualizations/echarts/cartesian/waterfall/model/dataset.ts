@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   replaceValues,
@@ -22,6 +23,8 @@ import {
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { RowValue } from "metabase-types/api";
+
+import { isNumericAxis, isTimeSeriesAxis } from "../../model/guards";
 
 export const getWaterfallDataset = (
   dataset: ChartDataset,
@@ -46,8 +49,15 @@ export const getWaterfallDataset = (
       end = start + getNumberOr(value, 0);
     }
 
+    if (
+      (isTimeSeriesAxis(xAxisModel) || isNumericAxis(xAxisModel)) &&
+      datum[X_AXIS_DATA_KEY] == null
+    ) {
+      return;
+    }
+
     const waterfallDatum: Datum = {
-      [X_AXIS_DATA_KEY]: datum[X_AXIS_DATA_KEY],
+      [X_AXIS_DATA_KEY]: datum[X_AXIS_DATA_KEY] ?? NULL_DISPLAY_VALUE,
       [WATERFALL_VALUE_KEY]: value,
       [WATERFALL_START_KEY]: start,
       [WATERFALL_END_KEY]: end,
