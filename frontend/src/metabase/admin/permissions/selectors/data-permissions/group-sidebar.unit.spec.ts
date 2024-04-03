@@ -63,12 +63,6 @@ describe("getGroupsDataPermissionEditor", () => {
         label: "No self-service",
         value: "none",
       },
-      {
-        icon: "permissions_limited",
-        iconColor: "warning",
-        label: "Granular",
-        value: DataPermissionValue.CONTROLLED,
-      },
     ]);
 
     expect(nativeQueryPermission.value).toEqual("write");
