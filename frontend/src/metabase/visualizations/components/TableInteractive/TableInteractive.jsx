@@ -19,7 +19,10 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { zoomInRow } from "metabase/query_builder/actions";
-import { getQueryBuilderMode } from "metabase/query_builder/selectors";
+import {
+  getRowIndexToPKMap,
+  getQueryBuilderMode,
+} from "metabase/query_builder/selectors";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { Icon, DelayGroup } from "metabase/ui";
 import {
@@ -75,6 +78,7 @@ function pickRowsToMeasure(rows, columnIndex, count = 10) {
 
 const mapStateToProps = state => ({
   queryBuilderMode: getQueryBuilderMode(state),
+  rowIndexToPkMap: getRowIndexToPKMap(state),
 });
 
 const mapDispatchToProps = dispatch => ({
@@ -477,11 +481,16 @@ class TableInteractive extends Component {
     }
   }
 
-  pkClick = rowIndex => {
-    const objectId = this.state.IDColumn
-      ? this.props.data.rows[rowIndex][this.state.IDColumnIndex]
-      : rowIndex;
-    return e => this.props.onZoomRow(objectId);
+  pkClick = rowIndex => () => {
+    let objectId;
+
+    if (this.state.IDColumn) {
+      objectId = this.props.data.rows[rowIndex][this.state.IDColumnIndex];
+    } else {
+      objectId = this.props.rowIndexToPkMap[rowIndex] ?? rowIndex;
+    }
+
+    this.props.onZoomRow(objectId);
   };
 
   onKeyDown = event => {
