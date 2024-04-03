@@ -48,12 +48,12 @@
   "Schema for the info we fetch about `external` type Dimensions that will be used for remappings in this Query. Fetched
   by the pre-processing portion of the middleware, and passed along to the post-processing portion."
   [:map
-   [:id                        ms/PositiveInt]      ; unique ID for the remapping
-   [:name                      ms/NonBlankString]   ; display name for the remapping
-   [:field-id                  ms/PositiveInt]      ; ID of the Field being remapped
-   [:field-name                ms/NonBlankString]   ; Name of the Field being remapped
-   [:human-readable-field-id   ms/PositiveInt]      ; ID of the FK Field to remap values to
-   [:human-readable-field-name ms/NonBlankString]]) ; Name of the FK Field to remap values to
+   [:id                        ::lib.schema.id/dimension] ; unique ID for the remapping
+   [:name                      ms/NonBlankString]         ; display name for the remapping
+   [:field-id                  ::lib.schema.id/field]     ; ID of the Field being remapped
+   [:field-name                ms/NonBlankString]         ; Name of the Field being remapped
+   [:human-readable-field-id   ::lib.schema.id/field]     ; ID of the FK Field to remap values to
+   [:human-readable-field-name ms/NonBlankString]])       ; Name of the FK Field to remap values to
 
 ;;;; Pre-processing
 

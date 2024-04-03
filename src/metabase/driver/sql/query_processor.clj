@@ -1578,7 +1578,9 @@
 
 (defmethod preprocess :sql
   [_driver inner-query]
-  (nest-query/nest-expressions (add/add-alias-info inner-query)))
+  (-> inner-query
+      nest-query/nest-expressions
+      add/add-alias-info))
 
 (defn mbql->honeysql
   "Build the HoneySQL form we will compile to SQL and execute."
