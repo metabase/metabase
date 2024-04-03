@@ -89,7 +89,7 @@ describe("IllustrationWidget", () => {
     it("should allow setting 'No illustration' option", async () => {
       const noIllustrationOption = {
         label: "No illustration",
-        value: "no-illustration",
+        value: "none",
       };
 
       const { onChange } = setup({
@@ -126,7 +126,7 @@ describe("IllustrationWidget", () => {
     it("should not remove the custom uploaded image after changing the option to 'No illustration'", async () => {
       const noIllustrationOption = {
         label: "No illustration",
-        value: "no-illustration",
+        value: "none",
       };
       const setting = {
         ...defaultSetting,
@@ -230,7 +230,7 @@ describe("IllustrationWidget", () => {
     it("should not call callbacks when selecting 'No illustration' option twice", async () => {
       const setting = {
         ...defaultSetting,
-        value: "no-illustration",
+        value: "none",
       } as const;
       const { onChange, onChangeSetting } = setup({
         setting,

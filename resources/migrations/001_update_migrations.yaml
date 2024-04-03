@@ -6106,6 +6106,14 @@ databaseChangeLog:
                     nullable: false
                   defaultValue: true
 
+  - changeSet:
+      id: v50.2024-03-28T16:30:35
+      author: calherries
+      comment: Create internal user
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateInternalUser"
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
