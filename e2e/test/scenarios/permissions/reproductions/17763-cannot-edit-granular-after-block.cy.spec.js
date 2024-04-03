@@ -29,7 +29,7 @@ describeEE("issue 17763", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Block").click();
+    cy.findByText("Blocked").click();
 
     popover().contains("Granular").click();
 
@@ -39,11 +39,10 @@ describeEE("issue 17763", () => {
     );
 
     cy.findByTestId("permission-table").within(() => {
-      cy.findAllByText("No self-service").first().click();
+      cy.findAllByText("Can view").first().click();
     });
 
     popover().within(() => {
-      cy.findByText("Unrestricted");
       cy.findByText("Sandboxed");
     });
   });
