@@ -4,7 +4,7 @@ import type Schema from "metabase-lib/v1/metadata/Schema";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import MetadataSchemaList from "../MetadataSchemaList";
+import { MetadataSchemaList } from "../MetadataSchemaList";
 import MetadataTableList from "../MetadataTableList";
 
 interface OwnProps {

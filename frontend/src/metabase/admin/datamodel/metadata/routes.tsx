@@ -4,7 +4,7 @@ import { Route } from "metabase/hoc/Title";
 
 import MetadataEditor from "./components/MetadataEditor/MetadataEditor";
 import MetadataFieldSettings from "./components/MetadataFieldSettings";
-import MetadataTableSettings from "./components/MetadataTableSettings";
+import { MetadataTableSettings } from "./components/MetadataTableSettings";
 
 export const getMetadataRoutes = () => (
   <>

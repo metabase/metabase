@@ -10,6 +10,7 @@ import {
 } from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
@@ -30,20 +31,20 @@ type MetadataTableSettingsProps = {
   params: RouteParams;
 };
 
-const MetadataTableSettings = ({
+export const MetadataTableSettings = ({
   params: { databaseId, schemaId, tableId },
 }: MetadataTableSettingsProps) => {
   const [_, schema] = parseSchemaId(schemaId);
-  const { data: database } = useGetDatabaseQuery({
+  const { data: database, ...databaseQuery } = useGetDatabaseQuery({
     id: parseInt(databaseId),
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   });
-  const { data: schemas } = useListDatabaseSchemasQuery({
+  const { data: schemas, ...schemaQuery } = useListDatabaseSchemasQuery({
     id: parseInt(databaseId),
     include_hidden: true,
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   });
-  const { data: table } = useGetTableQuery({
+  const { data: table, ...tableQuery } = useGetTableQuery({
     id: parseInt(tableId),
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   });
@@ -51,7 +52,16 @@ const MetadataTableSettings = ({
   const [discardTableFieldValues] = useDiscardTableFieldValuesMutation();
 
   if (!database || !schemas || !table) {
-    return null;
+    return (
+      <LoadingAndErrorWrapper
+        loading={
+          databaseQuery.isLoading ||
+          schemaQuery.isLoading ||
+          tableQuery.isLoading
+        }
+        error={databaseQuery.error ?? schemaQuery.error ?? tableQuery.error}
+      />
+    );
   }
 
   return (
@@ -105,6 +115,3 @@ const MetadataTableSettings = ({
     </div>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default MetadataTableSettings;

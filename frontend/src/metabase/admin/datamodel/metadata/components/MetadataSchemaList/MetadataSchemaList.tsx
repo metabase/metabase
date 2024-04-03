@@ -1,81 +1,67 @@
 import cx from "classnames";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
-import { connect } from "react-redux";
 import { push, replace } from "react-router-redux";
 import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
 
+import { useListDatabaseSchemasQuery } from "metabase/api";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import Schemas from "metabase/entities/schemas";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Icon } from "metabase/ui";
-import type Schema from "metabase-lib/v1/metadata/Schema";
+import {
+  generateSchemaId,
+  parseSchemaId,
+} from "metabase-lib/v1/metadata/utils/schema";
 import type { DatabaseId, SchemaId } from "metabase-types/api";
-import type { Dispatch, State } from "metabase-types/store";
 
-interface OwnProps {
+type MetadataSchemaListProps = {
   selectedDatabaseId: DatabaseId;
   selectedSchemaId?: SchemaId;
-}
+};
 
-interface SchemaLoaderProps {
-  schemas: Schema[];
-}
-
-interface DispatchProps {
-  onSelectSchema: (
-    databaseId: DatabaseId,
-    schemaId: SchemaId,
-    options?: { useReplace?: boolean },
-  ) => void;
-}
-
-type MetadataSchemaListProps = OwnProps & SchemaLoaderProps & DispatchProps;
-
-const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
-  // When navigating programatically, use replace so that the browser back button works
-  onSelectSchema: (databaseId, schemaId, { useReplace = false } = {}) => {
-    dispatch(
-      useReplace
-        ? replace(Urls.dataModelSchema(databaseId, schemaId))
-        : push(Urls.dataModelSchema(databaseId, schemaId)),
-    );
-  },
-});
-
-const MetadataSchemaList = ({
-  schemas: allSchemas,
+export const MetadataSchemaList = ({
   selectedDatabaseId,
   selectedSchemaId,
-  onSelectSchema,
 }: MetadataSchemaListProps) => {
+  const {
+    data: allSchemas = [],
+    error,
+    isLoading,
+  } = useListDatabaseSchemasQuery({
+    id: selectedDatabaseId,
+    include_hidden: true,
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  });
   const [searchText, setSearchText] = useState("");
+  const [_, selectedSchema] = parseSchemaId(selectedSchemaId);
+  const dispatch = useDispatch();
 
   const schemas = useMemo(() => {
     const searchValue = searchText.toLowerCase();
 
-    return _.chain(allSchemas)
-      .filter(schema => (schema.name ?? "").toLowerCase().includes(searchValue))
-      .sortBy(schema => schema.name ?? "")
-      .value();
+    return allSchemas
+      .filter(schema => schema.toLowerCase().includes(searchValue))
+      .sort();
   }, [allSchemas, searchText]);
 
-  const handleSelectSchema = useCallback(
-    (schemaId: SchemaId) => {
-      onSelectSchema(selectedDatabaseId, schemaId);
-    },
-    [selectedDatabaseId, onSelectSchema],
-  );
+  const handleSelectSchema = (newSchema: string) => {
+    const newSchemaId = generateSchemaId(selectedDatabaseId, newSchema);
+    dispatch(push(Urls.dataModelSchema(selectedDatabaseId, newSchemaId)));
+  };
 
   useLayoutEffect(() => {
     if (allSchemas.length === 1 && selectedSchemaId == null) {
-      onSelectSchema(selectedDatabaseId, allSchemas[0].id, {
-        useReplace: true,
-      });
+      const newSchemaId = generateSchemaId(selectedDatabaseId, allSchemas[0]);
+      dispatch(replace(Urls.dataModelSchema(selectedDatabaseId, newSchemaId)));
     }
-  }, [selectedDatabaseId, selectedSchemaId, allSchemas, onSelectSchema]);
+  }, [selectedDatabaseId, selectedSchemaId, allSchemas, dispatch]);
+
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
 
   return (
     <aside className={cx(AdminS.AdminList, CS.flexNoShrink)}>
@@ -99,9 +85,9 @@ const MetadataSchemaList = ({
         </div>
         {schemas.map(schema => (
           <SchemaRow
-            key={schema.id}
+            key={schema}
             schema={schema}
-            isSelected={schema.id === selectedSchemaId}
+            isSelected={schema === selectedSchema}
             onSelectSchema={handleSelectSchema}
           />
         ))}
@@ -111,18 +97,18 @@ const MetadataSchemaList = ({
 };
 
 interface SchemaRowProps {
-  schema: Schema;
+  schema: string;
   isSelected: boolean;
-  onSelectSchema: (schemaId: SchemaId) => void;
+  onSelectSchema: (schema: string) => void;
 }
 
 const SchemaRow = ({ schema, isSelected, onSelectSchema }: SchemaRowProps) => {
   const handleSelect = useCallback(() => {
-    onSelectSchema(schema.id);
+    onSelectSchema(schema);
   }, [schema, onSelectSchema]);
 
   return (
-    <li key={schema.id}>
+    <li key={schema}>
       <a
         className={cx(
           CS.textWrap,
@@ -134,20 +120,8 @@ const SchemaRow = ({ schema, isSelected, onSelectSchema }: SchemaRowProps) => {
         )}
         onClick={handleSelect}
       >
-        {schema.name}
+        {schema}
       </a>
     </li>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Schemas.loadList({
-    query: (_: State, { selectedDatabaseId }: OwnProps) => ({
-      dbId: selectedDatabaseId,
-      include_hidden: true,
-      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-    }),
-  }),
-  connect(null, mapDispatchToProps),
-)(MetadataSchemaList);
