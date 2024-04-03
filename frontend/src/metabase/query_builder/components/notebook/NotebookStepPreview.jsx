@@ -69,8 +69,12 @@ const NotebookStepPreview = ({ step, onClose }) => {
         </PreviewButtonContainer>
       ) : (
         <QuestionResultLoader question={activeQuestion}>
-          {({ rawSeries, result }) => (
-            <VisualizationPreview rawSeries={rawSeries} result={result} />
+          {({ rawSeries, result, error }) => (
+            <VisualizationPreview
+              rawSeries={rawSeries}
+              result={result}
+              error={error}
+            />
           )}
         </QuestionResultLoader>
       )}
@@ -78,7 +82,7 @@ const NotebookStepPreview = ({ step, onClose }) => {
   );
 };
 
-const VisualizationPreview = ({ rawSeries, result }) => {
+const VisualizationPreview = ({ rawSeries, result, error }) => {
   const { open } = useModalOpen();
   const preferReducedMotion = isReducedMotionPreferred();
 
@@ -87,7 +91,7 @@ const VisualizationPreview = ({ rawSeries, result }) => {
   return (
     <Visualization
       rawSeries={rawSeries}
-      error={result && result.error}
+      error={coerceError(error || result?.error)}
       className={cx("bordered shadowed rounded bg-white", {
         p2: result && result.error,
       })}
@@ -104,6 +108,22 @@ const VisualizationPreview = ({ rawSeries, result }) => {
 function getPreviewHeightForResult(result) {
   const rowCount = result ? result.data.rows.length : 1;
   return rowCount * 36 + 36 + 2;
+}
+
+function coerceError(err) {
+  if (!err) {
+    return null;
+  }
+
+  if (typeof err === "string") {
+    return err;
+  }
+
+  if (typeof err.message === "string") {
+    return err.message;
+  }
+
+  return t`Could not fetch preview`;
 }
 
 export default NotebookStepPreview;
