@@ -2,12 +2,11 @@ import type { FormEventHandler } from "react";
 import { useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
-import { Box, Button, Card, Flex, Icon, Stack, Title } from "metabase/ui";
+import { Box, Button, Card, Flex, Icon, Stack, Title, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { ColumnAndSeparator } from "../../types";
 import {
-  formatSeparator,
   getColumnOptions,
   getInitialColumnAndSeparator,
   getNextColumnAndSeparator,
@@ -32,7 +31,7 @@ export const CombineColumnsDrill = ({
   stageIndex,
   onSubmit,
 }: Props) => {
-  const { availableColumns, column, defaultSeparator } = drillInfo;
+  const { availableColumns, column } = drillInfo;
   const columnInfo = Lib.displayInfo(query, stageIndex, column);
   const options = useMemo(() => {
     return getColumnOptions(query, stageIndex, availableColumns);
@@ -40,7 +39,6 @@ export const CombineColumnsDrill = ({
   const [columnsAndSeparators, setColumnsAndSeparators] = useState([
     getInitialColumnAndSeparator(drillInfo),
   ]);
-  const [isUsingDefaultSeparator, setIsUsingDefaultSeparator] = useState(true);
 
   const handleChange = (index: number, change: Partial<ColumnAndSeparator>) => {
     setColumnsAndSeparators(value => [
@@ -64,10 +62,6 @@ export const CombineColumnsDrill = ({
     ]);
   };
 
-  const handleEditSeparators = () => {
-    setIsUsingDefaultSeparator(false);
-  };
-
   const handleSubmit: FormEventHandler = event => {
     event.preventDefault();
     onSubmit(columnsAndSeparators);
@@ -77,7 +71,7 @@ export const CombineColumnsDrill = ({
     <form onSubmit={handleSubmit}>
       <Card className={styles.card} maw="100vw" miw={340} p="lg">
         <Title
-          mb="md"
+          mb="lg"
           order={4}
         >{jt`Combine ${columnInfo.displayName} with`}</Title>
 
@@ -91,22 +85,25 @@ export const CombineColumnsDrill = ({
                   key={index}
                   options={options}
                   separator={separator}
-                  showLabels={!isUsingDefaultSeparator && index === 0}
+                  showLabels={index === 0}
                   showRemove={columnsAndSeparators.length > 1}
-                  showSeparator={!isUsingDefaultSeparator}
                   onChange={handleChange}
                   onRemove={handleRemove}
                 />
               ))}
             </Stack>
 
-            {isUsingDefaultSeparator && (
-              <Box>
-                <Button p={0} variant="subtle" onClick={handleEditSeparators}>
-                  {jt`Separated by ${formatSeparator(defaultSeparator)}`}
-                </Button>
-              </Box>
-            )}
+            <Box>
+              <Button
+                leftIcon={<Icon name="add" />}
+                px={0}
+                py={rem(4)}
+                variant="subtle"
+                onClick={handleAdd}
+              >
+                {t`Add another column`}
+              </Button>
+            </Box>
           </Stack>
 
           <Preview
@@ -116,16 +113,7 @@ export const CombineColumnsDrill = ({
             stageIndex={stageIndex}
           />
 
-          <Flex align="center" gap="md" justify="space-between">
-            <Button
-              leftIcon={<Icon name="add" />}
-              p={0}
-              variant="subtle"
-              onClick={handleAdd}
-            >
-              {t`Add another column`}
-            </Button>
-
+          <Flex align="center" gap="md" justify="end">
             <Button type="submit" variant="filled">
               {t`Done`}
             </Button>

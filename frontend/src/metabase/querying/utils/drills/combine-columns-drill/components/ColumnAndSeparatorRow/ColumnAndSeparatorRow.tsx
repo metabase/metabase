@@ -15,7 +15,6 @@ interface Props {
   separator: string;
   showLabels: boolean;
   showRemove: boolean;
-  showSeparator: boolean;
   onChange: (index: number, change: Partial<ColumnAndSeparator>) => void;
   onRemove: (index: number) => void;
 }
@@ -27,25 +26,22 @@ export const ColumnAndSeparatorRow = ({
   separator,
   showLabels,
   showRemove,
-  showSeparator,
   onChange,
   onRemove,
 }: Props) => {
   return (
     <Flex align="flex-end" gap={12}>
-      {showSeparator && (
-        <TextInput
-          className={styles.separator}
-          label={showLabels ? t`Separator` : undefined}
-          placeholder={t`Separator`}
-          value={separator}
-          w={110}
-          onChange={event => {
-            const separator = event.target.value;
-            onChange(index, { separator });
-          }}
-        />
-      )}
+      <TextInput
+        className={styles.separator}
+        label={showLabels ? t`Separator` : undefined}
+        placeholder={t`Separator`}
+        value={separator}
+        w={110}
+        onChange={event => {
+          const separator = event.target.value;
+          onChange(index, { separator });
+        }}
+      />
 
       <Select
         className={styles.column}

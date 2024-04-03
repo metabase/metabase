@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type { Dataset, RowValue, RowValues } from "metabase-types/api";
@@ -55,14 +53,6 @@ export const getNextColumnAndSeparator = (
   });
   const column = nextUnusedOption ? nextUnusedOption.column : defaultColumn;
   return { column, separator };
-};
-
-export const formatSeparator = (separator: string) => {
-  if (separator === " ") {
-    return `(${t`space`})`;
-  }
-
-  return separator;
 };
 
 export const extractQueryResults = (
