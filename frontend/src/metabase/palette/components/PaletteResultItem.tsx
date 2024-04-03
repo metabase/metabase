@@ -63,7 +63,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
               name="verified_filled"
               color={active ? color("white") : color("brand")}
               style={{
-                verticalAlign: "bottom",
+                verticalAlign: "sub",
                 marginLeft: "0.25rem",
               }}
             />
