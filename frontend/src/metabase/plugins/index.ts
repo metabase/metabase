@@ -33,7 +33,7 @@ import type { AdminPathKey, State } from "metabase-types/store";
 import type { GetAuthProviders, PluginGroupManagersType } from "./types";
 
 // functions called when the application is started
-export const PLUGIN_APP_INIT_FUCTIONS = [];
+export const PLUGIN_APP_INIT_FUNCTIONS = [];
 
 // function to determine the landing page
 export const PLUGIN_LANDING_PAGE = [];
@@ -146,7 +146,7 @@ export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
   canWhitelabel: (_state: State) => false,
-  getLoadingMessage: (_state: State) => (isSlow: boolean) =>
+  getLoadingMessageFactory: (_state: State) => (isSlow: boolean) =>
     isSlow ? t`Waiting for results...` : t`Doing science...`,
   getIsWhiteLabeling: (_state: State) => false,
   getApplicationName: (_state: State) => "Metabase",

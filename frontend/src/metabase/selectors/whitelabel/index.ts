@@ -1,8 +1,8 @@
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 import type { State } from "metabase-types/store";
 
-export function getWhiteLabeledLoadingMessage(state: State) {
-  return PLUGIN_SELECTORS.getLoadingMessage(state);
+export function getWhiteLabeledLoadingMessageFactory(state: State) {
+  return PLUGIN_SELECTORS.getLoadingMessageFactory(state);
 }
 
 export function getIsWhiteLabeling(state: State) {
