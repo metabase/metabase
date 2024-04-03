@@ -26,7 +26,6 @@ export const DatabaseList = ({
 }: Props) => {
   const items: NotebookDataPickerFolderItem[] | undefined = useMemo(() => {
     return databases?.map(database => ({
-      description: database.description,
       id: database.id,
       model: "database",
       name: database.name,
