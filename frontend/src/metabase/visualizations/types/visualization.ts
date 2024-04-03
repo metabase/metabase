@@ -33,7 +33,7 @@ export interface RenderingContext {
   fontFamily: string;
 }
 
-type OnChangeCardAndRunOpts = {
+export type OnChangeCardAndRunOpts = {
   previousCard?: Card;
   nextCard: Card;
   seriesIndex?: number;

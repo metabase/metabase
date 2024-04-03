@@ -11,6 +11,7 @@ import {
   getDefaultIsHistogram,
   getDefaultIsNumeric,
   getDefaultIsTimeSeries,
+  getDefaultLegendIsReversed,
   getDefaultStackDisplayValue,
   getDefaultStackingValue,
   getDefaultXAxisScale,
@@ -242,6 +243,12 @@ export const computeStaticComboChartSettings = (
   );
 
   fillWithDefaultValue(settings, "graph.goal_label", getDefaultGoalLabel());
+
+  fillWithDefaultValue(
+    settings,
+    "legend.is_reversed",
+    getDefaultLegendIsReversed(mainDataset),
+  );
 
   // For scatter plot
   fillWithDefaultValue(
