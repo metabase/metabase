@@ -26,3 +26,5 @@ export const TICKS_INTERVAL_THRESHOLD = 3;
 // distinguish between null and empty string so we have to use another special
 // value for nulls.
 export const ECHARTS_CATEGORY_AXIS_NULL_VALUE = `${NULL_CHAR}_NULL`;
+
+export const GOAL_LINE_SERIES_ID = `${NULL_CHAR}_goal_line`;
