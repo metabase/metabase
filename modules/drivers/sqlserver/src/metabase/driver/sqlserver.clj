@@ -40,7 +40,7 @@
                               :convert-timezone                       true
                               :test/jvm-timezone-setting              false
                               :index-info                             true
-                              ;; temporarily disabled, will be fixed in a follow-on to #40752
+                              ;; temporarily disabled, will be fixed by #40990
                               :window-functions                       false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
