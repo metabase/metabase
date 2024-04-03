@@ -13,6 +13,7 @@ import nativeTimeSeriesWithGaps from "./native-time-series-with-gaps.json";
 import negativeOnly from "./negative-only.json";
 import noTotalOrdinal from "./no-total-ordinal.json";
 import noTotalTimeseries from "./no-total-timeseries.json";
+import nullXAxisValue from "./null-x-axis-value.json";
 import nulls from "./nulls.json";
 import ordinalXScale from "./ordinal-x-scale.json";
 import powYScaleMixed from "./pow-y-scale-mixed.json";
@@ -64,4 +65,5 @@ export const data = {
   timeXScaleTwoBarsWithoutTotal,
   enormousDataset,
   nulls,
+  nullXAxisValue,
 };

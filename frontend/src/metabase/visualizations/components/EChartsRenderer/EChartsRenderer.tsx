@@ -8,6 +8,8 @@ import type {
   ZREventHandler,
 } from "metabase/visualizations/types/echarts";
 
+import { EChartsRendererRoot } from "./EChartsRenderer.styled";
+
 export interface EChartsRendererProps {
   option: EChartsOption;
   eventHandlers?: EChartsEventHandler[];
@@ -73,5 +75,7 @@ export const EChartsRenderer = ({
       );
   }, [zrEventHandlers]);
 
-  return <div data-testid="echarts-renderer" ref={chartElemRef} />;
+  return (
+    <EChartsRendererRoot data-testid="echarts-renderer" ref={chartElemRef} />
+  );
 };
