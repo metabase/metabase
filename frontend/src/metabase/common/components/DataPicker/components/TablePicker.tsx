@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import { isNotNull } from "metabase/lib/types";
 import { Flex } from "metabase/ui";
-import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+import type { DatabaseId, SchemaName, TableId } from "metabase-types/api";
 
 import { AutoScrollBox } from "../../EntityPicker";
 import type {
@@ -29,7 +29,9 @@ interface Props {
 
 export const TablePicker = ({ value, onItemSelect }: Props) => {
   const [dbId, setDbId] = useState<DatabaseId | undefined>(value?.db_id);
-  const [schemaId, setSchemaId] = useState<SchemaId | undefined>(value?.schema); // TODO schemaId -> schemaName
+  const [schemaName, setSchemaName] = useState<SchemaName | undefined>(
+    value?.schema,
+  );
   const [tableId, setTableId] = useState<TableId | undefined>(value?.id);
 
   const {
@@ -49,8 +51,8 @@ export const TablePicker = ({ value, onItemSelect }: Props) => {
     error: errorTables,
     isFetching: isLoadingTables,
   } = useListDatabaseSchemaTablesQuery(
-    isNotNull(dbId) && isNotNull(schemaId)
-      ? { id: dbId, schema: schemaId }
+    isNotNull(dbId) && isNotNull(schemaName)
+      ? { id: dbId, schema: schemaName }
       : skipToken,
   );
 
@@ -59,7 +61,10 @@ export const TablePicker = ({ value, onItemSelect }: Props) => {
     [databases, dbId],
   );
 
-  const selectedSchemaItem = useMemo(() => getSchemaItem(schemaId), [schemaId]);
+  const selectedSchemaItem = useMemo(
+    () => getSchemaItem(schemaName),
+    [schemaName],
+  );
 
   const selectedTableItem = useMemo(
     () => getTableItem(tables, tableId),
@@ -70,16 +75,16 @@ export const TablePicker = ({ value, onItemSelect }: Props) => {
     ({ folder }: { folder: NotebookDataPickerFolderItem }) => {
       if (folder.model === "database") {
         if (dbId === folder.id) {
-          setSchemaId(schemas?.length === 1 ? schemas[0] : undefined);
+          setSchemaName(schemas?.length === 1 ? schemas[0] : undefined);
         } else {
           setDbId(folder.id);
-          setSchemaId(undefined);
+          setSchemaName(undefined);
         }
         setTableId(undefined);
       }
 
       if (folder.model === "schema") {
-        setSchemaId(folder.id);
+        setSchemaName(folder.id);
         setTableId(undefined);
       }
     },
@@ -104,7 +109,7 @@ export const TablePicker = ({ value, onItemSelect }: Props) => {
   useEffect(() => {
     if (schemas?.length === 1) {
       const [schema] = schemas;
-      setSchemaId(schema);
+      setSchemaName(schema);
     }
   }, [schemas]);
 
@@ -121,7 +126,7 @@ export const TablePicker = ({ value, onItemSelect }: Props) => {
         <DatabaseList
           databases={isLoadingDatabases ? undefined : databases?.data}
           error={errorDatabases}
-          isCurrentLevel={!schemaId || (schemas?.length === 1 && !tableId)}
+          isCurrentLevel={!schemaName || (schemas?.length === 1 && !tableId)}
           isLoading={isLoadingDatabases}
           selectedItem={selectedDbItem}
           onClick={folder => handleFolderSelect({ folder })}
@@ -138,7 +143,7 @@ export const TablePicker = ({ value, onItemSelect }: Props) => {
           />
         )}
 
-        {isNotNull(schemaId) && (
+        {isNotNull(schemaName) && (
           <TableList
             error={errorTables}
             isCurrentLevel
