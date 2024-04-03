@@ -26,7 +26,7 @@ const options: EntityPickerModalOptions = {
 };
 
 export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
-  const handleItemSelect = useCallback(
+  const handleItemChange = useCallback(
     (item: NotebookDataPickerValueItem) => {
       onChange(item.id);
       onClose();
@@ -42,7 +42,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
       displayName: t`Tables`,
       model: "table",
       icon: "table",
-      element: <TablePicker value={value} onItemSelect={handleItemSelect} />,
+      element: <TablePicker value={value} onChange={handleItemChange} />,
     },
   ];
 
@@ -55,7 +55,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
       title={t`Pick your starting data`}
       onClose={onClose}
       onConfirm={_.noop} // onConfirm is unused when options.hasConfirmButtons is falsy
-      onItemSelect={handleItemSelect}
+      onItemSelect={handleItemChange}
     />
   );
 };

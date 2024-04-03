@@ -24,10 +24,10 @@ import { TableList } from "./TableList";
 
 interface Props {
   value: TablePickerValue | null;
-  onItemSelect: (item: NotebookDataPickerValueItem) => void;
+  onChange: (value: NotebookDataPickerValueItem) => void;
 }
 
-export const TablePicker = ({ value, onItemSelect }: Props) => {
+export const TablePicker = ({ value, onChange }: Props) => {
   const [dbId, setDbId] = useState<DatabaseId | undefined>(value?.db_id);
   const [schemaName, setSchemaName] = useState<SchemaName | undefined>(
     value?.schema,
@@ -94,9 +94,9 @@ export const TablePicker = ({ value, onItemSelect }: Props) => {
   const handleItemSelect = useCallback(
     (item: NotebookDataPickerValueItem) => {
       setTableId(item.id);
-      onItemSelect(item);
+      onChange(item);
     },
-    [setTableId, onItemSelect],
+    [setTableId, onChange],
   );
 
   useEffect(() => {
