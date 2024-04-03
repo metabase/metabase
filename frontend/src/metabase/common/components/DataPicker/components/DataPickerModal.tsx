@@ -12,6 +12,7 @@ import type {
 } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import type { NotebookDataPickerValueItem, TablePickerValue } from "../types";
+import { isTablePickerValueEqual } from "../utils";
 
 import { TablePicker } from "./TablePicker";
 
@@ -26,21 +27,6 @@ interface Props {
 const options: EntityPickerModalOptions = {
   ...defaultOptions,
   hasConfirmButtons: false,
-};
-
-const isValueEqual = (
-  value1: TablePickerValue | null,
-  value2: TablePickerValue | null,
-) => {
-  if (!value1 || !value2) {
-    return value1 === value2;
-  }
-
-  return (
-    value1.db_id === value2.db_id &&
-    value1.id === value2.id &&
-    value1.schema === value2.schema
-  );
 };
 
 export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
@@ -62,13 +48,13 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
 
   useEffect(() => {
     if (table) {
-      const valueFromTable = {
+      const valueFromTable: TablePickerValue = {
         db_id: table.db_id,
         id: table.id,
         schema: table.schema_name,
       };
 
-      if (!isValueEqual(value, valueFromTable)) {
+      if (!isTablePickerValueEqual(value, valueFromTable)) {
         onChange(valueFromTable);
         onClose();
       }
