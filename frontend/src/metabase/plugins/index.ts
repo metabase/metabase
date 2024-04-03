@@ -306,6 +306,7 @@ export const PLUGIN_CACHING = {
   QuestionCacheSection: PluginPlaceholder as any,
   DashboardCacheSection: PluginPlaceholder as any,
   DatabaseCacheTimeField: PluginPlaceholder as any,
+  StrategyFormLauncherPanel: PluginPlaceholder as any,
   isEnabled: () => false,
   hasQuestionCacheSection: (_question: Question) => false,
   canOverrideRootStrategy: false,

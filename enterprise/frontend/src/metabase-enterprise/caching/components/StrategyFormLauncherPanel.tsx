@@ -1,17 +1,17 @@
 import { useMemo, type Dispatch, type SetStateAction } from "react";
 import { t } from "ttag";
 
+import { Panel } from "metabase/admin/performance/components/StrategyEditorForDatabases.styled";
+import { rootId } from "metabase/admin/performance/constants";
+import type { Config, UpdateTargetId } from "metabase/admin/performance/types";
 import { FormProvider } from "metabase/forms";
 import { color } from "metabase/lib/colors";
 import { Box, Stack } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 
-import { rootId } from "../constants";
-import { useResetToDefaultForm } from "../hooks/useResetToDefault";
-import type { Config, UpdateTargetId } from "../types";
+import { useResetToDefaultForm } from "../hooks/useResetToDefaultForm";
 
 import { ResetButtonContainer } from "./ResetButtonContainer";
-import { Panel } from "./StrategyEditorForDatabases.styled";
 import { StrategyFormLauncher } from "./StrategyFormLauncher";
 
 export const StrategyFormLauncherPanel = ({

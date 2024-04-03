@@ -6,6 +6,7 @@ import { findWhere, pick } from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import { CacheConfigApi } from "metabase/services";
 import { Box, Stack, Title } from "metabase/ui";
 
@@ -14,12 +15,12 @@ import { useCacheConfigs } from "../hooks/useCacheConfigs";
 import { useConfirmOnRouteLeave } from "../hooks/useConfirmOnRouteLeave";
 import { useDelayedLoadingSpinner } from "../hooks/useDelayedLoadingSpinner";
 import { useVerticallyOverflows } from "../hooks/useVerticallyOverflows";
-import type { Config, UpdateTargetId, Strategy } from "../types";
-import { DurationUnit, getFieldsForStrategyType, Strategies } from "../types";
+import type { Config, Strategy, UpdateTargetId } from "../types";
+import { DurationUnit, Strategies } from "../types";
+import { getFieldsForStrategyType } from "../utils";
 
 import { Panel, TabWrapper } from "./StrategyEditorForDatabases.styled";
 import { StrategyForm } from "./StrategyForm";
-import { StrategyFormLauncherPanel } from "./StrategyFormLauncherPanel";
 
 const StrategyEditorForDatabases_Base = ({
   canOverrideRootStrategy,
@@ -187,7 +188,7 @@ const StrategyEditorForDatabases_Base = ({
         mb="1rem"
       >
         {shouldShowStrategyFormLaunchers && (
-          <StrategyFormLauncherPanel
+          <PLUGIN_CACHING.StrategyFormLauncherPanel
             configs={configs}
             setConfigs={setConfigs}
             targetId={targetId}

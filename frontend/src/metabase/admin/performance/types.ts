@@ -1,12 +1,10 @@
 import { c, t } from "ttag";
 import type { AnySchema } from "yup";
-import type { SchemaObjectDescription } from "yup/lib/schema";
 
 import {
   doNotCacheStrategyValidationSchema,
   durationStrategyValidationSchema,
   inheritStrategyValidationSchema,
-  strategyValidationSchema,
   ttlStrategyValidationSchema,
 } from "./validation";
 
@@ -40,24 +38,6 @@ export const Strategies: Record<StrategyType, StrategyData> = {
     validateWith: inheritStrategyValidationSchema,
   },
 };
-
-export const getStrategyLabel = (strategy?: Strategy) => {
-  return strategy ? Strategies[strategy.type].label : null;
-};
-
-export const getShortStrategyLabel = (strategy?: Strategy) => {
-  if (!strategy) {
-    return null;
-  }
-  const type = Strategies[strategy.type];
-  return type.shortLabel ?? type.label;
-};
-
-const validStrategyNames = new Set(Object.keys(Strategies));
-
-export const isValidStrategyName = (
-  strategy: string,
-): strategy is StrategyType => validStrategyNames.has(strategy);
 
 export type Model =
   | "root"
@@ -112,20 +92,12 @@ export interface Config {
   /** Cache invalidation strategy */
   strategy: Strategy;
 }
-
-export const isValidStrategy = (x: unknown): x is Strategy => {
-  return strategyValidationSchema.isValidSync(x);
-};
-
 export enum TabId {
   DataCachingSettings = "dataCachingSettings",
   DashboardAndQuestionCaching = "dashboardAndQuestionCaching",
   ModelPersistence = "modelPersistence",
   CachingStats = "cachingStats",
 }
-const validTabIds = new Set(Object.values(TabId).map(String));
-export const isValidTabId = (tab: unknown): tab is TabId =>
-  typeof tab === "string" && validTabIds.has(tab);
 
 export type UpdateTargetId = (
   newTargetId: number | null,
@@ -140,13 +112,4 @@ export type LeaveConfirmationData =
 
 export type CacheConfigAPIResponse = {
   data: Config[];
-};
-
-export const getFieldsForStrategyType = (strategyType: StrategyType) => {
-  const strategy = Strategies[strategyType];
-  const validationSchemaDescription =
-    strategy.validateWith.describe() as SchemaObjectDescription;
-  const fieldRecord = validationSchemaDescription.fields;
-  const fields = Object.keys(fieldRecord);
-  return fields;
 };

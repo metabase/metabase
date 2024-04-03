@@ -1,7 +1,8 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { Strategies, isValidStrategyName } from "./types";
+import type { StrategyType } from "./types";
+import { Strategies, TabId } from "./types";
 
 export const unitOfTimeRegex = /hours|minutes|seconds|days/;
 
@@ -65,3 +66,11 @@ export const strategyValidationSchema = Yup.object().test(
     }
   },
 ) as Yup.AnySchema;
+
+const validStrategyNames = new Set(Object.keys(Strategies));
+const isValidStrategyName = (strategy: string): strategy is StrategyType =>
+  validStrategyNames.has(strategy);
+
+const validTabIds = new Set(Object.values(TabId).map(String));
+export const isValidTabId = (tab: unknown): tab is TabId =>
+  typeof tab === "string" && validTabIds.has(tab);

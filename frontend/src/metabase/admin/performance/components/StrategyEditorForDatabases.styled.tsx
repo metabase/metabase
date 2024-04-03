@@ -1,14 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import type { HTMLAttributes, MutableRefObject } from "react";
 
-import type { FormSubmitButtonProps } from "metabase/forms";
-import { FormSubmitButton } from "metabase/forms";
-import { alpha, color } from "metabase/lib/colors";
-import type { ButtonProps as BaseButtonProps } from "metabase/ui";
-import { Button } from "metabase/ui";
-
-type ButtonProps = BaseButtonProps & HTMLAttributes<HTMLButtonElement>;
+import { color } from "metabase/lib/colors";
 
 export const Panel = styled.section<{ verticallyOverflows?: boolean }>`
   overflow-y: auto;
@@ -36,38 +29,8 @@ export const Panel = styled.section<{ verticallyOverflows?: boolean }>`
   }
 `;
 
-export const PolicyToken = styled(Button)<
-  { variant: string; ref: MutableRefObject<HTMLButtonElement> } & ButtonProps
->`
-  cursor: pointer;
-  display: flex;
-  flex-flow: row nowrap;
-  padding: 1rem;
-  border-width: 1px;
-  border-style: solid;
-  ${({ variant }) =>
-    css`
-      border-color: ${color(
-        ["filled", "outline"].includes(variant) ? "brand" : "border",
-      )} !important;
-    `};
-  span {
-    gap: 0.5rem;
-  }
-`;
-PolicyToken.defaultProps = { radius: "sm" };
-
 export const TabWrapper = styled.div`
   display: grid;
   grid-template-rows: auto 1fr;
   width: 100%;
-`;
-
-export const ResetAllFormSubmitButton = styled(FormSubmitButton, {
-  shouldForwardProp: prop => prop !== "highlightOnHover",
-})<FormSubmitButtonProps & { highlightOnHover?: boolean }>`
-  ${({ highlightOnHover }) =>
-    highlightOnHover
-      ? `:hover { background-color: ${alpha("error", 0.15)}; }`
-      : ""}
 `;

@@ -5,7 +5,7 @@ import { Form, useFormContext } from "metabase/forms";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { Box, Flex, Group, Icon, Loader, Text } from "metabase/ui";
 
-import { ResetAllFormSubmitButton } from "./StrategyEditorForDatabases.styled";
+import { ResetAllFormSubmitButton } from "./ResetButtonContainer.styled";
 
 export const ResetButtonContainer = () => {
   return (

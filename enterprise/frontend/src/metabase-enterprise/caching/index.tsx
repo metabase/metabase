@@ -7,6 +7,7 @@ import DatabaseCacheTTLField from "./components/DatabaseCacheTTLField";
 import DatabaseCacheTimeField from "./components/DatabaseCacheTimeField";
 import QuestionCacheSection from "./components/QuestionCacheSection";
 import QuestionCacheTTLField from "./components/QuestionCacheTTLField";
+import { StrategyFormLauncherPanel } from "./components/StrategyFormLauncherPanel";
 import {
   getQuestionsImplicitCacheTTL,
   hasQuestionCacheSection,
@@ -29,6 +30,7 @@ if (hasPremiumFeature("cache_granular_controls")) {
   PLUGIN_CACHING.DatabaseCacheTimeField = DatabaseCacheTimeField;
   PLUGIN_CACHING.DashboardCacheSection = DashboardCacheSection;
   PLUGIN_CACHING.QuestionCacheSection = QuestionCacheSection;
+  PLUGIN_CACHING.StrategyFormLauncherPanel = StrategyFormLauncherPanel;
   PLUGIN_CACHING.isEnabled = () => true;
   PLUGIN_CACHING.hasQuestionCacheSection = hasQuestionCacheSection;
   PLUGIN_CACHING.canOverrideRootStrategy = true;
