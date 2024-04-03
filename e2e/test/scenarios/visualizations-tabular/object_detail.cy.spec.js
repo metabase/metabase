@@ -166,10 +166,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.get(".cellData").contains("4966277046676").realHover();
     cy.findByTestId("detail-shortcut").findByRole("button").click();
 
-    cy.findByRole("dialog")
-      .filter(":visible")
-      .findByTestId("fk-relation-orders")
-      .click();
+    cy.findByRole("dialog").findByTestId("fk-relation-orders").click();
 
     cy.findByTestId("qb-filters-panel")
       .findByText("Product ID is 3")
