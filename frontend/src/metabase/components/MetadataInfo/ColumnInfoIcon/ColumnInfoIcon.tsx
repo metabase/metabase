@@ -13,22 +13,17 @@ import {
 import { PopoverHoverTarget, HoverParent, defaultDelay } from "../InfoIcon";
 export { HoverParent };
 
-export type QueryColumnInfoIconProps = QueryColumnInfoPopoverProps & {
-  showIfEmpty?: boolean;
-};
-
 export function QueryColumnInfoIcon({
   className,
   delay = defaultDelay,
-  showIfEmpty = false,
   ...props
-}: QueryColumnInfoIconProps) {
+}: QueryColumnInfoPopoverProps) {
   const { query, stageIndex, column } = props;
   const { description = "" } = query
     ? Lib.displayInfo(query, stageIndex, column)
     : {};
 
-  if (!description && !showIfEmpty) {
+  if (!description) {
     return null;
   }
 
@@ -46,18 +41,13 @@ export function QueryColumnInfoIcon({
 
 QueryColumnInfoIcon.HoverParent = HoverParent;
 
-export type TableColumnInfoIconProps = TableColumnInfoPopoverProps & {
-  showIfEmpty?: boolean;
-};
-
 export function TableColumnInfoIcon({
   className,
   delay = defaultDelay,
   field,
-  showIfEmpty = false,
   ...props
-}: TableColumnInfoIconProps) {
-  if (!field.description && !showIfEmpty) {
+}: TableColumnInfoPopoverProps) {
+  if (!field.description) {
     return null;
   }
 
