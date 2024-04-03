@@ -201,5 +201,5 @@ export const undoToastList = () => {
 };
 
 export function dashboardCards() {
-  return cy.get("#Dashboard-Cards-Container");
+  return cy.get("[data-element-id=dashboard-cards-container]");
 }
