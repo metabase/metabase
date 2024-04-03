@@ -7,16 +7,33 @@ const path = require("path");
 const SDK_DIST_DIR_PATH = path.resolve("./resources/embedding-sdk/dist");
 const SDK_PACKAGE_NAME = "@metabase/embedding-sdk-react";
 
-const walk = dir => {
+/*
+ * This script replaces all custom aliases in Embedding SDK generated ".d.ts" files so that this imports could be resolved
+ * in the host app
+ * */
+
+// this map should be synced with "tsconfig.sdk.json"
+const REPLACES_MAP = {
+  "metabase-enterprise/": `${SDK_PACKAGE_NAME}/dist/enterprise/frontend/src/metabase-enterprise/`,
+  "metabase-lib/": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-lib/`,
+  "metabase-lib": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-lib`,
+  "metabase-shared/": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-shared/`,
+  "metabase-types/": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-types/`,
+
+  "metabase/": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase/`,
+
+  "cljs/": `${SDK_PACKAGE_NAME}/dist/target/cljs_release/`,
+};
+
+const traverseFilesTree = dir => {
   try {
-    let results = [];
+    const results = [];
     const list = fs.readdirSync(dir);
     list.forEach(file => {
       file = path.join(dir, file);
       const stat = fs.statSync(file);
       if (stat && stat.isDirectory()) {
-        // Recurse into subdir
-        results = [...results, ...walk(file)];
+        results.push(...traverseFilesTree(file));
       } else if (file.endsWith(".d.ts")) {
         // Is a ".d.ts" file
         results.push(file);
@@ -28,29 +45,32 @@ const walk = dir => {
   }
 };
 
-const edit = filePath => {
-  const oldContent = fs.readFileSync(filePath, { encoding: "utf8" });
+const replaceAliasedImports = filePath => {
+  let fileContent = fs.readFileSync(filePath, { encoding: "utf8" });
 
-  const enterpriseImport = `from "metabase-enterprise/`;
-  const enterpriseImportReplace = `from "${SDK_PACKAGE_NAME}/dist/enterprise/frontend/src/metabase-enterprise/`;
+  Object.entries(REPLACES_MAP).forEach(([alias, replacement]) => {
+    fileContent = fileContent
+      .replaceAll(`from "${alias}`, `from "${replacement}`)
+      .replaceAll(`import("${alias}`, `import("${replacement}`)
+      .replace(
+        // replace dynamic imports using alias, with possible relative paths - "../../" and "frontend/src/"
+        // import("(../)*(frontend/src/)*<alias>
+        new RegExp(
+          `import\\("(\\.\\.\/)*(frontend\/src\/)*${alias.replace("/", "\\/")}`,
+          "gi",
+        ),
+        `import("${replacement}`,
+      );
+  });
 
-  const mainProjectImport = `from "metabase`;
-  const mainProjectImportReplace = `from "${SDK_PACKAGE_NAME}/dist/frontend/src/metabase`;
-
-  // const mainProjectImport = 'from "metabase';
-  // const mainProjectImportReplace = `from "${SDK_PACKAGE_NAME}/dist/frontend/src/metabase`;
-
-  const newContent = oldContent
-    .replaceAll(enterpriseImport, enterpriseImportReplace)
-    .replaceAll(mainProjectImport, mainProjectImportReplace);
-  fs.writeFileSync(filePath, newContent, { encoding: "utf-8" });
+  fs.writeFileSync(filePath, fileContent, { encoding: "utf-8" });
   console.log(`Edited file: ${filePath}`);
 };
 
 const fixupTypesAfterCompilation = () => {
-  const filePaths = walk(SDK_DIST_DIR_PATH);
+  const dtsFilePaths = traverseFilesTree(SDK_DIST_DIR_PATH);
 
-  filePaths.forEach(edit);
+  dtsFilePaths.forEach(replaceAliasedImports);
 };
 
 fixupTypesAfterCompilation();
