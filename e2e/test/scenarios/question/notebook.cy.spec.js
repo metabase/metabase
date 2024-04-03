@@ -695,6 +695,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.get("@dataStep").icon("play").should("not.be.visible");
     popover().findByTextEnsureVisible("Orders").click();
 
+    cy.findByTestId("step-filter-0-0").icon("play").should("not.be.visible");
+    cy.findByTestId("step-summarize-0-0").icon("play").should("not.be.visible");
+
     cy.get("@dataStep").within(() => {
       cy.icon("play").click();
       assertTableRowCount(10);
