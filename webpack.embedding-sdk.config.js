@@ -6,8 +6,6 @@ const TerserPlugin = require("terser-webpack-plugin");
 const webpack = require("webpack");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
-const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
-const path = require("path");
 
 const mainConfig = require("./webpack.config");
 
@@ -17,8 +15,6 @@ const BUILD_PATH = __dirname + "/resources/embedding-sdk";
 // default WEBPACK_BUNDLE to development
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const isDevMode = WEBPACK_BUNDLE !== "production";
-
-// TODO: add package.json generation to CI
 
 // TODO: Reuse babel and css configs from webpack.config.js
 // Babel:
@@ -79,16 +75,12 @@ module.exports = env => {
           ],
         },
 
-        ...(isDevMode
-          ? [
-              {
-                test: /\.js$/,
-                exclude: /node_modules/,
-                enforce: "pre",
-                use: ["source-map-loader"],
-              },
-            ]
-          : []),
+        {
+          test: /\.js$/,
+          exclude: /node_modules/,
+          enforce: "pre",
+          use: ["source-map-loader"],
+        },
 
         {
           test: /\.svg/,
@@ -139,14 +131,6 @@ module.exports = env => {
       // https://github.com/remarkjs/remark/discussions/903
       new webpack.ProvidePlugin({
         process: "process/browser.js",
-      }),
-      new ForkTsCheckerWebpackPlugin({
-        async: isDevMode,
-        typescript: {
-          configFile: path.resolve(__dirname, "./tsconfig.sdk.json"),
-          // mode: "write-dts", // TODO: enable this to add types generation (but we also need a separate step to bundle types into a single module)
-          memoryLimit: 4096,
-        },
       }),
 
       shouldAnalyzeBundles &&

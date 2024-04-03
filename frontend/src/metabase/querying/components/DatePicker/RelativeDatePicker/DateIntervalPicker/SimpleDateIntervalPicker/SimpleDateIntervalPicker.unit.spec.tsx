@@ -44,14 +44,14 @@ describe("SimpleDateIntervalPicker", () => {
     direction => {
       const defaultValue = getDefaultValue(direction);
 
-      it("should change the interval", () => {
+      it("should change the interval", async () => {
         const { onChange } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Interval");
-        userEvent.clear(input);
-        userEvent.type(input, "20");
+        await userEvent.clear(input);
+        await userEvent.type(input, "20");
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
@@ -59,14 +59,14 @@ describe("SimpleDateIntervalPicker", () => {
         });
       });
 
-      it("should change the interval with a negative value", () => {
+      it("should change the interval with a negative value", async () => {
         const { onChange } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Interval");
-        userEvent.clear(input);
-        userEvent.type(input, "-10");
+        await userEvent.clear(input);
+        await userEvent.type(input, "-10");
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
@@ -74,15 +74,15 @@ describe("SimpleDateIntervalPicker", () => {
         });
       });
 
-      it("should coerce zero", () => {
+      it("should coerce zero", async () => {
         const { onChange } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Interval");
-        userEvent.clear(input);
-        userEvent.type(input, "0");
-        userEvent.tab();
+        await userEvent.clear(input);
+        await userEvent.type(input, "0");
+        await userEvent.tab();
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
@@ -90,40 +90,40 @@ describe("SimpleDateIntervalPicker", () => {
         });
       });
 
-      it("should ignore empty values", () => {
+      it("should ignore empty values", async () => {
         const { onChange } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Interval");
-        userEvent.clear(input);
-        userEvent.tab();
+        await userEvent.clear(input);
+        await userEvent.tab();
 
         expect(input).toHaveValue("30");
         expect(onChange).not.toHaveBeenCalled();
       });
 
-      it("should ignore invalid values", () => {
+      it("should ignore invalid values", async () => {
         const { onChange } = setup({
           value: defaultValue,
         });
 
         const input = screen.getByLabelText("Interval");
-        userEvent.clear(input);
-        userEvent.type(input, "abc");
-        userEvent.tab();
+        await userEvent.clear(input);
+        await userEvent.type(input, "abc");
+        await userEvent.tab();
 
         expect(input).toHaveValue("30");
         expect(onChange).not.toHaveBeenCalled();
       });
 
-      it("should allow to change the unit", () => {
+      it("should allow to change the unit", async () => {
         const { onChange } = setup({
           value: defaultValue,
         });
 
-        userEvent.click(screen.getByLabelText("Unit"));
-        userEvent.click(screen.getByText("years"));
+        await userEvent.click(screen.getByLabelText("Unit"));
+        await userEvent.click(screen.getByText("years"));
 
         expect(onChange).toHaveBeenCalledWith({
           ...defaultValue,

@@ -169,13 +169,15 @@ function setup({
 
 describe("ListPickerConnected", () => {
   describe("static value list", () => {
-    it("without values", () => {
+    it("without values", async () => {
       const { onChangeMock, fetchValuesMock } = setup({
         value: null,
         parameter: getStaticListParam([]),
       });
 
-      userEvent.click(screen.getByPlaceholderText("Select a default value…"));
+      await userEvent.click(
+        screen.getByPlaceholderText("Select a default value…"),
+      );
       expect(screen.getByText("No matching result")).toBeVisible();
 
       expect(onChangeMock).toHaveBeenCalledTimes(0);
@@ -190,19 +192,21 @@ describe("ListPickerConnected", () => {
 
       // there's a hidden input with the same value that you can't click
       const input = screen.getByRole("searchbox");
-      userEvent.click(input);
+      await userEvent.click(input);
       STATIC_VALUES.forEach(value =>
         expect(screen.getByText(value)).toBeVisible(),
       );
 
-      act(() => userEvent.click(screen.getByText("1 Joseph Drive")));
+      await act(
+        async () => await userEvent.click(screen.getByText("1 Joseph Drive")),
+      );
 
       expect(onChangeMock).toHaveBeenCalledTimes(1);
       expect(onChangeMock).toHaveBeenCalledWith("1 Joseph Drive");
       expect(fetchValuesMock).toHaveBeenCalledTimes(0);
     });
 
-    it("filters on search", () => {
+    it("filters on search", async () => {
       setup({
         value: null,
         parameter: getStaticListParam(STATIC_VALUES, "search"),
@@ -210,8 +214,8 @@ describe("ListPickerConnected", () => {
 
       const select = screen.getByPlaceholderText("Start typing to filter…");
 
-      userEvent.click(select);
-      userEvent.type(select, "Road");
+      await userEvent.click(select);
+      await userEvent.type(select, "Road");
 
       STATIC_VALUES.filter(value => value.includes("Road")).forEach(value => {
         const listItem = screen.queryByText(value);
@@ -224,36 +228,48 @@ describe("ListPickerConnected", () => {
       });
     });
 
-    it("clears value when clicked on close", () => {
+    it("clears value when clicked on close", async () => {
       const { onChangeMock } = setup({
         value: "1-1245 Lee Road 146",
         parameter: getStaticListParam(),
       });
 
-      userEvent.click(screen.getByLabelText("close icon"));
+      await userEvent.click(screen.getByLabelText("close icon"));
       expect(onChangeMock).toHaveBeenCalledTimes(1);
       expect(onChangeMock).toHaveBeenCalledWith(null);
       onChangeMock.mockClear();
 
-      act(() =>
-        userEvent.click(screen.getByPlaceholderText("Select a default value…")),
+      await act(
+        async () =>
+          await userEvent.click(
+            screen.getByPlaceholderText("Select a default value…"),
+          ),
       );
-      act(() => userEvent.click(screen.getByText("1-7 County Road 462")));
+      await act(
+        async () =>
+          await userEvent.click(screen.getByText("1-7 County Road 462")),
+      );
 
       expect(onChangeMock).toHaveBeenCalledTimes(1);
       expect(onChangeMock).toHaveBeenCalledWith("1-7 County Road 462");
     });
 
-    it("resets and keeps working when re-rendering with another parameter", () => {
+    it("resets and keeps working when re-rendering with another parameter", async () => {
       const render1 = setup({
         value: null,
         parameter: getStaticListParam(),
       });
 
-      act(() =>
-        userEvent.click(screen.getByPlaceholderText("Select a default value…")),
+      await act(
+        async () =>
+          await userEvent.click(
+            screen.getByPlaceholderText("Select a default value…"),
+          ),
       );
-      act(() => userEvent.click(screen.getByText("1-7 County Road 462")));
+      await act(
+        async () =>
+          await userEvent.click(screen.getByText("1-7 County Road 462")),
+      );
 
       render1.onChangeMock.mockClear();
 
@@ -261,7 +277,9 @@ describe("ListPickerConnected", () => {
       expect(render1.onChangeMock).toHaveBeenCalledTimes(1);
       expect(render1.onChangeMock).toHaveBeenCalledWith(null);
 
-      userEvent.click(screen.getByPlaceholderText("Select a default value…"));
+      await userEvent.click(
+        screen.getByPlaceholderText("Select a default value…"),
+      );
       OTHER_VALUES.forEach(value => {
         expect(screen.getByText(value)).toBeVisible();
       });
@@ -273,18 +291,24 @@ describe("ListPickerConnected", () => {
         parameter: getAnotherStaticListParam(),
       });
 
-      act(() =>
-        userEvent.click(screen.getByPlaceholderText("Select a default value…")),
+      await act(
+        async () =>
+          await userEvent.click(
+            screen.getByPlaceholderText("Select a default value…"),
+          ),
       );
       OTHER_VALUES.forEach(value => {
         expect(screen.getByText(value)).toBeVisible();
       });
-      act(() => userEvent.click(screen.getByText("AL")));
+      await act(async () => await userEvent.click(screen.getByText("AL")));
 
-      act(() =>
-        userEvent.click(screen.getByPlaceholderText("Select a default value…")),
+      await act(
+        async () =>
+          await userEvent.click(
+            screen.getByPlaceholderText("Select a default value…"),
+          ),
       );
-      act(() => userEvent.click(screen.getByText("CA")));
+      await act(async () => await userEvent.click(screen.getByText("CA")));
       expect(render2.onChangeMock).toHaveBeenCalledTimes(2);
       expect(render2.onChangeMock).toHaveBeenCalledWith("AL");
       expect(render2.onChangeMock).toHaveBeenCalledWith("CA");
@@ -293,7 +317,9 @@ describe("ListPickerConnected", () => {
       render2.rerender(null, getAnotherStaticListParam());
       expect(render2.onChangeMock).toHaveBeenCalledTimes(0);
 
-      userEvent.click(screen.getByPlaceholderText("Select a default value…"));
+      await userEvent.click(
+        screen.getByPlaceholderText("Select a default value…"),
+      );
       OTHER_VALUES.forEach(value => {
         expect(screen.getByText(value)).toBeVisible();
       });
@@ -397,7 +423,7 @@ async function checkFetch(mock: jest.Mock, callValue: string, value: string) {
 }
 
 async function clickCheckChange(mock: jest.Mock, calls: number, value: string) {
-  act(() => userEvent.click(screen.getByText(value)));
+  await act(async () => await userEvent.click(screen.getByText(value)));
   await waitFor(() => expect(mock).toHaveBeenCalledWith(value));
   await waitFor(() => expect(mock).toHaveBeenCalledTimes(calls));
 }

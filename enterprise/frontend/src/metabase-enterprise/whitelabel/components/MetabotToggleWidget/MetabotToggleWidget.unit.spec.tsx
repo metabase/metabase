@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import MetabotToggleWidget from "./MetabotToggleWidget";
+import { MetabotToggleWidget } from "./MetabotToggleWidget";
 
 const TOGGLE_LABEL = "Display welcome message on the homepage";
 
@@ -19,18 +19,18 @@ const setup = ({ value = null }: SetupOpts = {}) => {
 };
 
 describe("MetabotToggleWidget", () => {
-  it("should disable Metabot", () => {
+  it("should disable Metabot", async () => {
     const { onChange } = setup();
 
-    userEvent.click(screen.getByText(TOGGLE_LABEL));
+    await userEvent.click(screen.getByText(TOGGLE_LABEL));
 
     expect(onChange).toHaveBeenCalledWith(false);
   });
 
-  it("should enable Metabot", () => {
+  it("should enable Metabot", async () => {
     const { onChange } = setup({ value: false });
 
-    userEvent.click(screen.getByText(TOGGLE_LABEL));
+    await userEvent.click(screen.getByText(TOGGLE_LABEL));
 
     expect(onChange).toHaveBeenCalledWith(true);
   });

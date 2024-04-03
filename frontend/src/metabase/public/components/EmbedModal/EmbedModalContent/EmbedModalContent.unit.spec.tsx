@@ -18,12 +18,12 @@ describe("EmbedModalContent", () => {
       expect(screen.getByText("Public embed")).toBeInTheDocument();
     });
 
-    it("should switch to StaticEmbedSetupPane", () => {
+    it("should switch to StaticEmbedSetupPane", async () => {
       const { goToNextStep } = setup();
 
       expect(goToNextStep).toHaveBeenCalledTimes(0);
 
-      userEvent.click(screen.getByText("Set this up"));
+      await userEvent.click(screen.getByText("Set this up"));
 
       expect(goToNextStep).toHaveBeenCalledTimes(1);
     });

@@ -60,14 +60,20 @@ describe("TimelineDetailsModal", () => {
 
     setup(props);
 
-    userEvent.type(screen.getByPlaceholderText("Search for an event"), "RC");
+    await userEvent.type(
+      screen.getByPlaceholderText("Search for an event"),
+      "RC",
+    );
     await waitFor(() => {
       expect(screen.queryByText("Release")).not.toBeInTheDocument();
     });
     expect(screen.getByText("RC1")).toBeInTheDocument();
     expect(screen.getByText("RC2")).toBeInTheDocument();
 
-    userEvent.type(screen.getByPlaceholderText("Search for an event"), "1");
+    await userEvent.type(
+      screen.getByPlaceholderText("Search for an event"),
+      "1",
+    );
     await waitFor(() => {
       expect(screen.queryByText("RC2")).not.toBeInTheDocument();
     });
