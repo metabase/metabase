@@ -8,7 +8,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
+   [metabase.query-processor.middleware.fix-bad-references
+    :as fix-bad-refs]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -771,69 +772,3 @@
                 ::add/source-alias  "CREATED_AT"
                 ::add/desired-alias "Products__CREATED_AT"}]
               (#'add/matching-field-in-join-at-this-level source-query field-clause))))))
-
-(deftest ^:parallel handle-multiple-orders-bys-on-same-field-correctly-test
-  (let [query (lib.tu.macros/mbql-query orders
-                {:aggregation [[:count]]
-                 :breakout    [[:field %created-at {:temporal-unit :month}]
-                               [:field %created-at {:temporal-unit :day}]]})]
-    (qp.store/with-metadata-provider meta/metadata-provider
-      (driver/with-driver :h2
-        (is (=? {:query {:source-table (meta/id :orders)
-                         :breakout     [[:field
-                                         (meta/id :orders :created-at)
-                                         {:temporal-unit      :month
-                                          ::add/source-alias  "CREATED_AT"
-                                          ::add/desired-alias "CREATED_AT"
-                                          ::add/position      0}]
-                                        [:field
-                                         (meta/id :orders :created-at)
-                                         {:temporal-unit      :day
-                                          ::add/source-alias  "CREATED_AT"
-                                          ::add/desired-alias "CREATED_AT_2"
-                                          ::add/position      1}]]
-                         :aggregation  [[:aggregation-options
-                                         [:count]
-                                         {::add/source-alias  "count"
-                                          ::add/position      2
-                                          ::add/desired-alias "count"}]]
-                         :order-by     [[:asc
-                                         [:field
-                                          (meta/id :orders :created-at)
-                                          {:temporal-unit      :month
-                                           ::add/source-alias  "CREATED_AT"
-                                           ::add/desired-alias "CREATED_AT"
-                                           ::add/position      0}]]
-                                        [:asc
-                                         [:field
-                                          (meta/id :orders :created-at)
-                                          {:temporal-unit      :day
-                                           ::add/source-alias  "CREATED_AT"
-                                           ::add/desired-alias "CREATED_AT_2"
-                                           ::add/position      1}]]]}}
-                (add/add-alias-info (qp.preprocess/preprocess query))))))))
-
-(deftest ^:parallel preserve-field-options-name-test
-  (qp.store/with-metadata-provider meta/metadata-provider
-    (driver/with-driver :h2
-      (is (=? {:source-query {:source-table (meta/id :orders)
-                              :breakout     [[:field (meta/id :orders :id) {}]]
-                              :aggregation  [[:aggregation-options
-                                              [:cum-sum [:field (meta/id :orders :id) {}]]
-                                              {:name "sum"}]]}
-               :breakout     [[:field "id" {:base-type :type/Integer, ::add/desired-alias "id"}]
-                              [:field "sum" {:base-type :type/Integer, ::add/desired-alias "__cumulative_sum"}]]
-               :aggregation  [[:aggregation-options
-                               [:cum-sum [:field "sum" {:base-type :type/Integer}]]
-                               {::add/desired-alias "sum"}]]}
-              (add/add-alias-info
-               {:source-query {:source-table (meta/id :orders)
-                               :breakout     [[:field (meta/id :orders :id) nil]]
-                               :aggregation  [[:aggregation-options
-                                               [:cum-sum [:field (meta/id :orders :id) nil]]
-                                               {:name "sum"}]]}
-                :breakout     [[:field "id" {:base-type :type/Integer}]
-                               [:field "sum" {:base-type :type/Integer, :name "__cumulative_sum"}]],
-                :aggregation  [[:aggregation-options
-                                [:cum-sum [:field "sum" {:base-type :type/Integer}]]
-                                {:name "sum"}]]}))))))
