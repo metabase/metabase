@@ -86,7 +86,7 @@ function MappedFieldPicker({
 
   // DataSelector doesn't handle selectedTableId change prop nicely.
   // During the initial load, field might have `table_id` set to `card__$ID` (retrieved from metadata)
-  // But at some point, we fetch  the formField object by ID to get the real table ID and pass it to the selector
+  // But at some point, we fetch  the field object by ID to get the real table ID and pass it to the selector
   // Until it's fetched, we need to pass `null` as `selectedTableId` to avoid invalid selector state
   // This should be removed once DataSelector handles prop changes better
   const selectedTableId =
