@@ -158,7 +158,7 @@
   [query]
   (->> (normalize/normalize-preprocessing-middleware query)
        fetch-source-query/resolve-source-cards
-       field-usage/pquery->field-usages))
+       field-usage/pmbql->field-usages))
 
 (mu/defn process-userland-query-middleware :- ::qp.schema/qp
   "Around middleware.

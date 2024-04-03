@@ -65,35 +65,35 @@
       {:field_id field-id
        :used_in  :expression})))
 
-(defmulti ^:private pquery->field-usages-method
-  "Impl for [[pquery->field-usages]]."
+(defmulti ^:private pmbql->field-usages-method
+  "Impl for [[pmbql->field-usages]]."
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x] (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
-(defmethod pquery->field-usages-method :mbql/query
+(defmethod pmbql->field-usages-method :mbql/query
   [query _stage-number x]
   (flatten (for [stage (range (lib/stage-count x))]
-                (pquery->field-usages-method query stage (lib.util/query-stage query stage)))))
+                (pmbql->field-usages-method query stage (lib.util/query-stage query stage)))))
 
-(defmethod pquery->field-usages-method :metabase.lib.stage/stage
+(defmethod pmbql->field-usages-method :metabase.lib.stage/stage
   [query stage-number x]
   (concat
     (keep #(filter->field-usage query stage-number %) (lib/filters query stage-number))
     (keep #(aggregation->field-usage query stage-number %) (lib/aggregations query stage-number))
     (keep #(breakout->field-usage query stage-number %) (lib/breakouts query stage-number))
     (flatten (keep expression->field-usage (lib/expressions query stage-number)))
-    (flatten (keep #(pquery->field-usages-method query stage-number %) (:joins x)))))
+    (flatten (keep #(pmbql->field-usages-method query stage-number %) (:joins x)))))
 
-(defmethod pquery->field-usages-method :mbql/join
+(defmethod pmbql->field-usages-method :mbql/join
   [query _stage-number x]
   (let [join-query (fetch-source-query/resolve-source-cards (assoc query :stages (get x :stages)))]
     ;; treat the source query as a :mbql/query
-    (pquery->field-usages-method join-query nil join-query)))
+    (pmbql->field-usages-method join-query nil join-query)))
 
-(mu/defn pquery->field-usages
+(mu/defn pmbql->field-usages
   "Given a pmbql query, returns field usages from filter, breakout, aggregation, expression of a query.
   Walk all stages and joins.
   Expects all the source cards were resolved"
-  [pquery :- ::lib.schema/query]
-  (pquery->field-usages-method pquery nil pquery))
+  [pmbql :- ::lib.schema/query]
+  (pmbql->field-usages-method pmbql nil pmbql))

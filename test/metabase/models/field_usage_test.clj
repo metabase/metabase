@@ -7,8 +7,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
-(deftest pquery->field-usages-test
-  (testing "pquery->field-usages should find filter, breakout, aggregation, expression in all stages and joins of a query"
+(deftest pmbql->field-usages-test
+  (testing "pmbql->field-usages should find filter, breakout, aggregation, expression in all stages and joins of a query"
    (mt/with-temp [:model/Card join-card {:dataset_query (mt/mbql-query products
                                                                        {:filter [:= $products.category "Gizmo"]})}
                   :model/Card base-card {:dataset_query (mt/mbql-query orders
@@ -27,10 +27,10 @@
                                                           :aggregation  [:sum [:field "sum" {:base-type :type/Integer}]]
                                                           :filter       [:between $orders.created_at "2019-01-01" "2019-12-31"]})}]
      (mt/with-metadata-provider (mt/id)
-       (let [query  (:dataset_query card)
-             pquery (->> query
-                         (lib/query (qp.store/metadata-provider))
-                         fetch-source-query/resolve-source-cards)]
+       (let [query (:dataset_query card)
+             pmbql (->> query
+                        (lib/query (qp.store/metadata-provider))
+                        fetch-source-query/resolve-source-cards)]
          (is (= #{;; from join-card
                   {:used_in                :filter
                    :field_id               (mt/id :products :category)
@@ -60,4 +60,4 @@
                    :field_id               (mt/id :orders :created_at)
                    :filter_op              :between
                    :filter_args            ["2019-01-01" "2019-12-31"]}}
-                (set (field-usage/pquery->field-usages pquery)))))))))
+                (set (field-usage/pmbql->field-usages pmbql)))))))))
