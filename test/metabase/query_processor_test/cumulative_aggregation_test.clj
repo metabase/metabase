@@ -1,6 +1,5 @@
 (ns metabase.query-processor-test.cumulative-aggregation-test
   (:require
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.lib.core :as lib]
@@ -221,13 +220,9 @@
                (mt/formatted-rows [->local-date ->local-date int]
                  (qp/process-query query))))))))
 
-(def ^:private cumulative-aggregation-in-expressions-unsupported-drivers
-  #{:bigquery-cloud-sdk})
-
 (deftest ^:parallel cumulative-count-and-sum-in-expressions-test
   (testing "Cumulative count should work inside expressions (#13634, #15118)"
-    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :window-functions)
-                                     cumulative-aggregation-in-expressions-unsupported-drivers)
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
       (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
