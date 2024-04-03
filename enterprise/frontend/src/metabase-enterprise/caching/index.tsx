@@ -5,13 +5,15 @@ import CacheTTLField from "./components/CacheTTLField";
 import DashboardCacheSection from "./components/DashboardCacheSection";
 import DatabaseCacheTTLField from "./components/DatabaseCacheTTLField";
 import DatabaseCacheTimeField from "./components/DatabaseCacheTimeField";
+import { GranularControlsExplanation } from "./components/GranularControlsExplanation";
 import QuestionCacheSection from "./components/QuestionCacheSection";
 import QuestionCacheTTLField from "./components/QuestionCacheTTLField";
+import { StrategyFormLauncherPanel } from "./components/StrategyFormLauncherPanel";
 import {
   getQuestionsImplicitCacheTTL,
-  validateCacheTTL,
-  normalizeCacheTTL,
   hasQuestionCacheSection,
+  normalizeCacheTTL,
+  validateCacheTTL,
 } from "./utils";
 
 if (hasPremiumFeature("cache_granular_controls")) {
@@ -29,6 +31,9 @@ if (hasPremiumFeature("cache_granular_controls")) {
   PLUGIN_CACHING.DatabaseCacheTimeField = DatabaseCacheTimeField;
   PLUGIN_CACHING.DashboardCacheSection = DashboardCacheSection;
   PLUGIN_CACHING.QuestionCacheSection = QuestionCacheSection;
+  PLUGIN_CACHING.StrategyFormLauncherPanel = StrategyFormLauncherPanel;
   PLUGIN_CACHING.isEnabled = () => true;
   PLUGIN_CACHING.hasQuestionCacheSection = hasQuestionCacheSection;
+  PLUGIN_CACHING.canOverrideRootStrategy = true;
+  PLUGIN_CACHING.GranularControlsExplanation = GranularControlsExplanation;
 }
