@@ -14,11 +14,10 @@
   [feature]
   (let [database (lib.metadata/database (qp.store/metadata-provider))]
     (when-not (driver/database-supports? driver/*driver* feature database)
-      (throw (ex-info (tru "{0} is not supported by this driver." (name feature))
+      (throw (ex-info (tru "{0} is not supported by {1} driver." (name feature) (name driver/*driver*))
                       {:type    qp.error-type/unsupported-feature
                        :feature feature
-                       :db-driver (:engine database)
-                       :bound-driver driver/*driver*})))))
+                       :driver  driver/*driver*})))))
 
 ;; TODO - definitely a little incomplete. It would be cool if we cool look at the metadata in the schema namespace and
 ;; auto-generate this logic
