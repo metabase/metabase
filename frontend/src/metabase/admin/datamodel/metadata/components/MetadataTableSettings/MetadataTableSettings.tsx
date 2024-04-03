@@ -40,6 +40,7 @@ const MetadataTableSettings = ({
   });
   const { data: schemas } = useListDatabaseSchemasQuery({
     id: parseInt(databaseId),
+    include_hidden: true,
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   });
   const { data: table } = useGetTableQuery({
