@@ -12,10 +12,12 @@
 (defn assert-driver-supports
   "Assert that the driver/database supports keyword `feature`."
   [feature]
-  (when-not (driver/database-supports? driver/*driver* feature (lib.metadata/database (qp.store/metadata-provider)))
-    (throw (ex-info (tru "{0} is not supported by this driver." (name feature))
-                    {:type    qp.error-type/unsupported-feature
-                     :feature feature}))))
+  (let [database (lib.metadata/database (qp.store/metadata-provider))]
+    (when-not (driver/database-supports? driver/*driver* feature database)
+      (throw (ex-info (tru "{0} is not supported by this driver." (name feature))
+                      {:type    qp.error-type/unsupported-feature
+                       :feature feature
+                       :driver  (:engine database)})))))
 
 ;; TODO - definitely a little incomplete. It would be cool if we cool look at the metadata in the schema namespace and
 ;; auto-generate this logic

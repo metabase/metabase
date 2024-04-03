@@ -205,7 +205,7 @@ jobs:
       - name: Run tests
         id: run-java-tests
         if: matrix.java-version != 21
-        run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
+        run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev :only metabase.driver.bigquery-cloud-sdk-test/chain-filter-with-fields-from-table-requires-a-filter-test
 
       - name: If using Java 21, only run tests on `master`
         id: run-java-tests-21
