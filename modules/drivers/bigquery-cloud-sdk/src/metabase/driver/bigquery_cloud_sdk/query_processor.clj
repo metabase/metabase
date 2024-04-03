@@ -602,7 +602,7 @@
       true                                    (vary-meta assoc ::do-not-qualify? true))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
-  [driver [_field _id-or-name {::add/keys [source-table]} :as field-clause]]
+  [driver [_field _id-or-name {::add/keys [source-table], :as _opts} :as field-clause]]
   (let [parent-method (get-method sql.qp/->honeysql [:sql :field])]
     ;; if the Field is from a join or source table, record this fact so that we know never to qualify it with the
     ;; project ID no matter what
