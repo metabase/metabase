@@ -1393,11 +1393,11 @@
 
 (deftest create-sample-content-test
   (testing "The sample content's creation depends on on `*create-sample-content*`"
-    (doseq [skip? [true false]]
-      (testing (str "*create-sample-content* = " skip?)
+    (doseq [create? [true false]]
+      (testing (str "*create-sample-content* = " create?)
         (impl/test-migrations "v50.2024-03-28T16:30:36" [migrate!]
-          (binding [custom-migrations/*create-sample-content* skip?]
+          (binding [custom-migrations/*create-sample-content* create?]
             (let [get-dashboards (fn [] (t2/query "SELECT * FROM report_dashboard"))]
               (is (empty? (get-dashboards)))
               (migrate!)
-              (is ((if skip? empty? not-empty) (get-dashboards))))))))))
+              (is ((if create? not-empty empty?) (get-dashboards))))))))))
