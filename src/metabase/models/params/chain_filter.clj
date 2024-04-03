@@ -425,7 +425,7 @@
                              :order-by [[:asc [:field field-id nil]]]}))
                    (add-joins source-table-id joins)
                    (add-filters source-table-id joined-table-ids constraints)
-                   metadata-queries/add-required-filter-if-needed))
+                   metadata-queries/add-required-filters-if-needed))
    :middleware {:disable-remaps? true}})
 
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------
