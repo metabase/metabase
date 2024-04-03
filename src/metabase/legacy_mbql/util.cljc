@@ -159,16 +159,10 @@
     [:is-null field]  [:=  field nil]
     [:not-null field] [:!= field nil]))
 
-(defn- base-type-for-legacy-field
-  [[_ _id-or-name {:keys [base-type]} :as field]]
-  (or base-type
-      ;; TODO: How to make following work in JS?
-      #?(:clj (when (integer? _id-or-name)
-                (:base-type (@(requiring-resolve 'metabase.lib.metadata/field)
-                             (@(requiring-resolve 'metabase.query-processor.store/metadata-provider))
-                             _id-or-name))))
-      (log/warnf "Unable to determine base-type for %s" (pr-str field))
-      nil))
+(defn- emptyable-expansion?
+  [[_ _id-or-name {:keys [base-type]} :as _field]]
+  (boolean (or (isa? base-type :metabase.lib.schema.expression/emptyable)
+               (nil? base-type))))
 
 (defn desugar-is-empty-and-not-empty
   "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively.
@@ -178,12 +172,12 @@
   [m]
   (lib.util.match/replace m
     [:is-empty field]
-    (if (isa? (base-type-for-legacy-field field) :metabase.lib.schema.expression/emptyable)
+    (if (emptyable-expansion? field)
       [:or [:= field nil] [:= field ""]]
       [:= field nil])
 
     [:not-empty field]
-    (if (isa? (base-type-for-legacy-field field) :metabase.lib.schema.expression/emptyable)
+    (if (emptyable-expansion? field)
       [:and [:!= field nil] [:!= field ""]]
       [:!=  field nil])))
 

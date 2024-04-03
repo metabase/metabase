@@ -777,7 +777,7 @@
               (mt/run-mbql-query
                checkins
                {:expressions {"caseExpr" [:case
-                                          [[[:is-empty $null_only_date] 1]]
+                                          [[[:is-empty [:field %null_only_date {:base-type :type/Date}]] 1]]
                                           {:default 0}]}
                 :fields [$id [:expression "caseExpr"]]
                 :order-by [[$id :asc]]
@@ -789,7 +789,7 @@
               (mt/run-mbql-query
                checkins
                {:expressions {"caseExpr" [:case
-                                          [[[:not-empty $null_only_date] 1]]
+                                          [[[:not-empty [:field %null_only_date {:base-type :type/Date}]] 1]]
                                           {:default 0}]}
                 :fields [$id [:expression "caseExpr"]]
                 :order-by [[$id :asc]]

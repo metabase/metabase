@@ -3,9 +3,6 @@
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
-   [metabase.test :as mt]
    [metabase.types]))
 
 (comment metabase.types/keep-me)
@@ -349,27 +346,32 @@
   (t/testing "desugaring :not-null"
     (t/is (= [:!= [:field 1 nil] nil]
              (mbql.u/desugar-filter-clause [:not-null [:field 1 nil]]))))
-  ;; :base-type of mocked field is set to :type/DateTime, which _is not_ emptyable, hence expected expansion is same as
-  ;; using :is-null or :not-null.
-  (mt/with-metadata-provider (lib.tu/mock-metadata-provider
-                              meta/metadata-provider
-                              {:fields [{:id             1
-                                         :name           "SomeField"
-                                         :base-type      :type/DateTime}]})
-    (t/testing "desugaring :is-empty of not emptyable base-type"
-      (t/is (= [:= [:field 1 nil] nil]
-               (mbql.u/desugar-filter-clause [:is-empty [:field 1 nil]]))))
-    (t/testing "desugaring :is-empty of emptyable base-type"
-      (t/is (= [:or [:= [:field 1 {:base-type :type/Text}] nil]
-                [:= [:field 1 {:base-type :type/Text}] ""]]
-               (mbql.u/desugar-filter-clause [:is-empty [:field 1 {:base-type :type/Text}]]))))
-    (t/testing "desugaring :not-empty of not emptyable base-type"
-      (t/is (= [:!= [:field 1 nil] nil]
-               (mbql.u/desugar-filter-clause [:not-empty [:field 1 nil]]))))
-    (t/testing "desugaring :not-empty of emptyable base-type"
-      (t/is (= [:and [:!= [:field 1 {:base-type :type/Text}] nil]
-                [:!= [:field 1 {:base-type :type/Text}] ""]]
-               (mbql.u/desugar-filter-clause [:not-empty [:field 1 {:base-type :type/Text}]]))))))
+  (t/testing "desugaring :is-empty of nil base-type"
+    (t/is (= [:or
+              [:= [:field 1 nil] nil]
+              [:= [:field 1 nil] ""]]
+             (mbql.u/desugar-filter-clause [:is-empty [:field 1 nil]]))))
+  (t/testing "desugaring :is-empty of emptyable base-type :type/Text"
+    (t/is (= [:or
+              [:= [:field 1 {:base-type :type/Text}] nil]
+              [:= [:field 1 {:base-type :type/Text}] ""]]
+             (mbql.u/desugar-filter-clause [:is-empty [:field 1 {:base-type :type/Text}]]))))
+  (t/testing "desugaring :is-empty of not emptyable base-type :type/DateTime"
+    (t/is (= [:= [:field 1 {:base-type :type/DateTime}] nil]
+             (mbql.u/desugar-filter-clause [:is-empty [:field 1 {:base-type :type/DateTime}]]))))
+  (t/testing "desugaring :not-empty of nil base-type"
+    (t/is (= [:and
+              [:!= [:field 1 nil] nil]
+              [:!= [:field 1 nil] ""]]
+             (mbql.u/desugar-filter-clause [:not-empty [:field 1 nil]]))))
+  (t/testing "desugaring :not-empty of emptyable base-type :type/Text"
+    (t/is (= [:and
+              [:!= [:field 1 {:base-type :type/Text}] nil]
+              [:!= [:field 1 {:base-type :type/Text}] ""]]
+             (mbql.u/desugar-filter-clause [:not-empty [:field 1 {:base-type :type/Text}]]))))
+  (t/testing "desugaring :not-empty of not emptyable base-type"
+    (t/is (= [:!= [:field 1 {:base-type :type/DateTime}] nil]
+             (mbql.u/desugar-filter-clause [:not-empty [:field 1 {:base-type :type/DateTime}]])))))
 
 (t/deftest ^:parallel desugar-does-not-contain-test
   (t/testing "desugaring does-not-contain without options"
