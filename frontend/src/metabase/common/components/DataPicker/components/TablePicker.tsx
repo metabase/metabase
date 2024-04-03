@@ -16,7 +16,7 @@ import type {
   NotebookDataPickerValueItem,
   TablePickerValue,
 } from "../types";
-import { generateKey } from "../utils";
+import { generateKey, getDbItem, getSchemaItem, getTableItem } from "../utils";
 
 import { DatabaseList } from "./DatabaseList";
 import { SchemaList } from "./SchemaList";
@@ -29,7 +29,7 @@ interface Props {
 
 export const TablePicker = ({ value, onItemSelect }: Props) => {
   const [dbId, setDbId] = useState<DatabaseId | undefined>(value?.db_id);
-  const [schemaId, setSchemaId] = useState<SchemaId | undefined>(value?.schema);
+  const [schemaId, setSchemaId] = useState<SchemaId | undefined>(value?.schema); // TODO schemaId -> schemaName
   const [tableId, setTableId] = useState<TableId | undefined>(value?.id);
 
   const {
@@ -49,29 +49,22 @@ export const TablePicker = ({ value, onItemSelect }: Props) => {
     error: errorTables,
     isFetching: isLoadingTables,
   } = useListDatabaseSchemaTablesQuery(
-    isNotNull(schemaId) && isNotNull(dbId)
+    isNotNull(dbId) && isNotNull(schemaId)
       ? { id: dbId, schema: schemaId }
       : skipToken,
   );
 
-  const selectedDbItem = useMemo<NotebookDataPickerFolderItem | null>(() => {
-    return isNotNull(dbId)
-      ? { model: "database", id: dbId, name: "" } // TODO: name
-      : null;
-  }, [dbId]);
+  const selectedDbItem = useMemo(
+    () => getDbItem(databases?.data, dbId),
+    [databases, dbId],
+  );
 
-  const selectedSchemaItem =
-    useMemo<NotebookDataPickerFolderItem | null>(() => {
-      return isNotNull(schemaId)
-        ? { model: "schema", id: schemaId, name: "" } // TODO: name
-        : null;
-    }, [schemaId]);
+  const selectedSchemaItem = useMemo(() => getSchemaItem(schemaId), [schemaId]);
 
-  const selectedTableItem = useMemo<NotebookDataPickerValueItem | null>(() => {
-    return isNotNull(tableId)
-      ? { model: "table", id: tableId, name: "" } // TODO: name
-      : null;
-  }, [tableId]);
+  const selectedTableItem = useMemo(
+    () => getTableItem(tables, tableId),
+    [tables, tableId],
+  );
 
   const handleFolderSelect = useCallback(
     ({ folder }: { folder: NotebookDataPickerFolderItem }) => {

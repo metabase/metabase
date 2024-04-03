@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 
-import { humanize, titleize } from "metabase/lib/formatting";
 import type { SchemaName } from "metabase-types/api";
 
 import { ItemList, ListBox } from "../../EntityPicker";
 import type { NotebookDataPickerFolderItem } from "../types";
+import { getSchemaDisplayName } from "../utils";
 
 interface Props {
   error: unknown;
@@ -29,7 +29,7 @@ export const SchemaList = ({
     return schemas?.map(schema => ({
       id: schema,
       model: "schema",
-      name: schema ? titleize(humanize(schema)) : "",
+      name: getSchemaDisplayName(schema),
     }));
   }, [schemas]);
 
