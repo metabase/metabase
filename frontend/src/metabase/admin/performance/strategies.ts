@@ -26,13 +26,6 @@ export interface DoNotCacheStrategy extends StrategyBase {
   type: "nocache";
 }
 
-export enum DurationUnit {
-  Hours = "hours",
-  Minutes = "minutes",
-  Seconds = "seconds",
-  Days = "days",
-}
-
 export interface DurationStrategy extends StrategyBase {
   type: "duration";
   duration: number;
@@ -58,12 +51,6 @@ export interface Config {
   /** Cache invalidation strategy */
   strategy: Strategy;
 }
-export enum TabId {
-  DataCachingSettings = "dataCachingSettings",
-  DashboardAndQuestionCaching = "dashboardAndQuestionCaching",
-  ModelPersistence = "modelPersistence",
-  CachingStats = "cachingStats",
-}
 
 export type UpdateTargetId = (
   newTargetId: number | null,
@@ -88,7 +75,13 @@ type StrategyData = {
 
 export const rootId = 0;
 
-export const unitOfTimeRegex = /hours|minutes|seconds|days/;
+export enum DurationUnit {
+  Hours = "hours",
+  Minutes = "minutes",
+  Seconds = "seconds",
+  Days = "days",
+}
+const durationUnits = new Set(Object.values(DurationUnit).map(String));
 
 const positiveInteger = Yup.number()
   .positive(t`The minimum query duration must be a positive number.`)
@@ -111,7 +104,11 @@ export const ttlStrategyValidationSchema = Yup.object({
 export const durationStrategyValidationSchema = Yup.object({
   type: Yup.string().equals(["duration"]),
   duration: positiveInteger.default(24),
-  unit: Yup.string().matches(unitOfTimeRegex),
+  unit: Yup.string().test(
+    "is-duration-unit",
+    "${path} is not a valid duration",
+    value => !!value && durationUnits.has(value),
+  ),
 });
 
 export const strategyValidationSchema = Yup.object().test(
@@ -147,10 +144,6 @@ export const strategyValidationSchema = Yup.object().test(
     }
   },
 ) as Yup.AnySchema;
-
-const validTabIds = new Set(Object.values(TabId).map(String));
-export const isValidTabId = (tab: unknown): tab is TabId =>
-  typeof tab === "string" && validTabIds.has(tab);
 
 /** Cache invalidation strategies and related metadata */
 export const Strategies: Record<StrategyType, StrategyData> = {

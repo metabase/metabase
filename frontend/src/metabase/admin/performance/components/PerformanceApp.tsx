@@ -3,13 +3,18 @@ import type { Route } from "react-router";
 import { t } from "ttag";
 
 import { PLUGIN_CACHING } from "metabase/plugins";
+import type { TabsValue } from "metabase/ui";
 import { Flex, Tabs } from "metabase/ui";
-
-import { TabId } from "../types";
-import { isValidTabId } from "../validation";
 
 import { Tab, TabsList, TabsPanel } from "./PerformanceApp.styled";
 import { StrategyEditorForDatabases } from "./StrategyEditorForDatabases";
+
+export enum TabId {
+  DataCachingSettings = "dataCachingSettings",
+}
+const validTabIds = new Set(Object.values(TabId).map(String));
+const isValidTabId = (tab: TabsValue): tab is TabId =>
+  !!tab && validTabIds.has(tab);
 
 export const PerformanceApp = ({ route }: { route: Route }) => {
   const [tabId, setTabId] = useState<TabId>(TabId.DataCachingSettings);
