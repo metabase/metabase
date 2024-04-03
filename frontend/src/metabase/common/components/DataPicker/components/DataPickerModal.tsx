@@ -50,11 +50,11 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
     <EntityPickerModal
       canSelectItem
       options={options}
-      selectedItem={null} // TODO allow undefined
+      selectedItem={null}
       tabs={tabs}
       title={t`Pick your starting data`}
       onClose={onClose}
-      onConfirm={_.noop} // TODO allow undefined
+      onConfirm={_.noop} // onConfirm is unused when options.hasConfirmButtons is falsy
       onItemSelect={handleItemSelect}
     />
   );
