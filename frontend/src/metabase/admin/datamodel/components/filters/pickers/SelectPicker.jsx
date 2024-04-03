@@ -4,6 +4,7 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import ListSearchField from "metabase/components/ListSearchField";
+import PopoverS from "metabase/components/Popover/Popover.module.css";
 import CheckBox from "metabase/core/components/CheckBox";
 import CS from "metabase/css/core/index.css";
 import { capitalize } from "metabase/lib/formatting";
@@ -103,7 +104,7 @@ export default class SelectPicker extends Component {
           </div>
         )}
         <div
-          className={cx(CS.px1, CS.pt1, "PopoverBody--marginBottom")}
+          className={cx(CS.px1, CS.pt1, PopoverS.PopoverBodyMarginBottom)}
           style={{ maxHeight: "400px", overflowY: "scroll" }}
         >
           {placeholder ? <h5>{placeholder}</h5> : null}

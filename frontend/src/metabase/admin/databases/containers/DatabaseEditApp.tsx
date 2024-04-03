@@ -34,7 +34,6 @@ import {
   initializeDatabase,
   saveDatabase,
   updateDatabase,
-  syncDatabaseSchema,
   dismissSyncSpinner,
   deleteDatabase,
   selectEngine,
@@ -54,7 +53,6 @@ interface DatabaseEditAppProps {
   params: { databaseId: DatabaseId };
   reset: () => void;
   initializeDatabase: (databaseId: DatabaseId) => void;
-  syncDatabaseSchema: (databaseId: DatabaseId) => Promise<void>;
   dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
   deleteDatabase: (
     databaseId: DatabaseId,
@@ -89,7 +87,6 @@ const mapDispatchToProps = {
   initializeDatabase,
   saveDatabase,
   updateDatabase,
-  syncDatabaseSchema,
   dismissSyncSpinner,
   deleteDatabase,
   selectEngine,
@@ -111,7 +108,6 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
     deleteDatabase,
     updateDatabase,
     initializeError,
-    syncDatabaseSchema,
     dismissSyncSpinner,
     isAdmin,
     isModelPersistenceEnabled,
@@ -195,7 +191,6 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
             isModelPersistenceEnabled={isModelPersistenceEnabled}
             updateDatabase={updateDatabase}
             deleteDatabase={deleteDatabase}
-            syncDatabaseSchema={syncDatabaseSchema}
             dismissSyncSpinner={dismissSyncSpinner}
           />
         )}

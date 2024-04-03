@@ -773,7 +773,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
     getNotebookStep("summarize").within(() => {
       cy.findByTestId("aggregate-step").within(() => {
-        moveElement({ name: "Count", vertical: 100, index: 3 });
+        moveElement({ name: "Count", vertical: 100, index: 4 });
       });
       cy.findByTestId("breakout-step").within(() => {
         moveElement({ name: "ID", horizontal: 100, index: 1 });

@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import PopoverS from "metabase/components/Popover/Popover.module.css";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import type Filter from "metabase-lib/v1/queries/structured/Filter";
@@ -29,7 +30,7 @@ export function FilterPopoverFooter({
     className,
     CS.flex,
     CS.alignCenter,
-    "PopoverFooter",
+    PopoverS.PopoverFooter,
   );
   return (
     <div className={containerClassName}>
