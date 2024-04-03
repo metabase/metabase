@@ -29,7 +29,7 @@ const AppBar = (props: AppBarProps): JSX.Element => {
 
   return (
     <AppBarRoot
-      id="App-Bar"
+      data-element-id="app-bar"
       data-testid="app-bar"
       aria-label={t`Navigation bar`}
     >

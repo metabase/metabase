@@ -70,11 +70,13 @@ function defaultGetScrollHeight() {
 }
 
 function getScrollHeight() {
-  const appBarHeight = document.getElementById("App-Bar")?.offsetHeight ?? 0;
+  const appBarHeight =
+    document.getElementById("[data-element-id=app-bar]")?.offsetHeight ?? 0;
   const dashboardHeaderHeight =
-    document.getElementById("Dashboard-Header-Container")?.offsetHeight ?? 0;
+    document.querySelector("[data-element-id=dashboard-header-container]")
+      ?.offsetHeight ?? 0;
   const dashboardContentHeight =
-    document.getElementById("Dashboard-Parameters-And-Cards-Container")
+    document.querySelector("[data-element-id=dashboard-parameters-and-cards]")
       ?.scrollHeight ?? 0;
   const dashboardHeight = dashboardHeaderHeight + dashboardContentHeight;
 
