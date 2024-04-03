@@ -765,6 +765,36 @@
                    (mt/formatted-rows [int]
                      (mt/run-mbql-query airport {:aggregation [:count], :filter [:not-empty $code]}))))))))))
 
+(deftest ^:parallel is-empty-not-empty-with-not-emptyable-args-test
+  (mt/test-drivers
+   (mt/normal-drivers)
+   (mt/dataset
+    test-data-with-null-date-checkins
+    (testing ":is-empty works with not emptyable type argument (#40883)"
+      (is (= [[1 1]]
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query
+               checkins
+               {:expressions {"caseExpr" [:case
+                                          [[[:is-empty $null_only_date] 1]]
+                                          {:default 0}]}
+                :fields [$id [:expression "caseExpr"]]
+                :order-by [[$id :asc]]
+                :limit 1})))))
+    (testing ":not-empty works with not emptyable type argument (#40883)"
+      (is (= [[1 0]]
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query
+               checkins
+               {:expressions {"caseExpr" [:case
+                                          [[[:not-empty $null_only_date] 1]]
+                                          {:default 0}]}
+                :fields [$id [:expression "caseExpr"]]
+                :order-by [[$id :asc]]
+                :limit 1}))))))))
+
 (deftest ^:parallel order-by-nulls-test
   (testing "Check that we can sort by numeric columns that contain NULLs (#6615)"
     (mt/dataset daily-bird-counts

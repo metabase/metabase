@@ -159,12 +159,33 @@
     [:is-null field]  [:=  field nil]
     [:not-null field] [:!= field nil]))
 
+(defn- base-type-for-legacy-field
+  [[_ _id-or-name {:keys [base-type]} :as field]]
+  (or base-type
+      ;; TODO: How to make following work in JS?
+      #?(:clj (when (integer? _id-or-name)
+                (:base-type (@(requiring-resolve 'metabase.lib.metadata/field)
+                             (@(requiring-resolve 'metabase.query-processor.store/metadata-provider))
+                             _id-or-name))))
+      (log/warnf "Unable to determine base-type for %s" (pr-str field))
+      nil))
+
 (defn desugar-is-empty-and-not-empty
-  "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively."
+  "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively.
+
+   If `:not-empty` is called on `:metabase.lib.schema.expression/emptyable` type, expand check for empty string. For
+   non-`emptyable` types act as `:is-null`."
   [m]
   (lib.util.match/replace m
-    [:is-empty field]  [:or  [:=  field nil] [:=  field ""]]
-    [:not-empty field] [:and [:!= field nil] [:!= field ""]]))
+    [:is-empty field]
+    (if (isa? (base-type-for-legacy-field field) :metabase.lib.schema.expression/emptyable)
+      [:or [:= field nil] [:= field ""]]
+      [:= field nil])
+
+    [:not-empty field]
+    (if (isa? (base-type-for-legacy-field field) :metabase.lib.schema.expression/emptyable)
+      [:and [:!= field nil] [:!= field ""]]
+      [:!=  field nil])))
 
 (defn- replace-field-or-expression
   "Replace a field or expression inside :time-interval"
