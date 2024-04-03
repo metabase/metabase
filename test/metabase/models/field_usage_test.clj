@@ -8,7 +8,7 @@
    [metabase.test :as mt]))
 
 (deftest pquery->field-usages-test
-  (testing "pquery->field-usages should find filter, breakout, aggregation, expression in all stages and joined of a query"
+  (testing "pquery->field-usages should find filter, breakout, aggregation, expression in all stages and joins of a query"
    (mt/with-temp [:model/Card join-card {:dataset_query (mt/mbql-query products
                                                                        {:filter [:= $products.category "Gizmo"]})}
                   :model/Card base-card {:dataset_query (mt/mbql-query orders
