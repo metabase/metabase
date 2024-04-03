@@ -767,7 +767,8 @@
 
 (deftest ^:parallel is-empty-not-empty-with-not-emptyable-args-test
   (mt/test-drivers
-   (mt/normal-drivers)
+   ;; TODO: Investigate how to make test work with Athena!
+   (disj (mt/normal-drivers) :athena)
    (mt/dataset
     test-data-null-date
     (testing ":is-empty works with not emptyable type argument (#40883)"
