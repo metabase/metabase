@@ -562,7 +562,7 @@ function DashboardInner(props: DashboardProps) {
               }
             >
               {renderParameterList()}
-              <CardsContainer id="Dashboard-Cards-Container">
+              <CardsContainer data-element-id="dashboard-cards-container">
                 {renderContent()}
               </CardsContainer>
             </ParametersAndCardsContainer>
