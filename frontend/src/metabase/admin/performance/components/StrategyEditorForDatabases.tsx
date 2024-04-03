@@ -9,7 +9,7 @@ import useBeforeUnload from "metabase/hooks/use-before-unload";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { CacheConfigApi } from "metabase/services";
-import { Box, Stack, Title } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 import type { Config, Strategy } from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
 
@@ -164,15 +164,7 @@ const StrategyEditorForDatabases_Base = ({
         <aside>
           <Stack spacing="xl">
             {t`Cache the results of queries to have them display instantly. Here you can choose when cached results should be invalidated.`}
-            {canOverrideRootStrategy ? (
-              <>
-                &nbsp;
-                {t`You can set up one rule for all your databases, or apply more specific settings to each database.`}
-                <Title
-                  order={4}
-                >{t`Pick the policy for when cached query results should be invalidated.`}</Title>
-              </>
-            ) : null}
+            <PLUGIN_CACHING.GranularControlsExplanation />
           </Stack>
         </aside>
       </Stack>
