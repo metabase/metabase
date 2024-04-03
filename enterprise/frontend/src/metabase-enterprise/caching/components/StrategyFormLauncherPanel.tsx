@@ -2,15 +2,13 @@ import { useMemo, type Dispatch, type SetStateAction } from "react";
 import { t } from "ttag";
 
 import { Panel } from "metabase/admin/performance/components/StrategyEditorForDatabases.styled";
-import type {
-  Config,
-  UpdateTargetId,
-} from "metabase/admin/performance/strategies";
+import type { UpdateTargetId } from "metabase/admin/performance/strategies";
 import { rootId } from "metabase/admin/performance/strategies";
 import { FormProvider } from "metabase/forms";
 import { color } from "metabase/lib/colors";
 import { Box, Stack } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
+import type { Config } from "metabase-types/api";
 
 import { useResetToDefaultForm } from "../hooks/useResetToDefaultForm";
 
