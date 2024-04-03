@@ -1,6 +1,5 @@
 :root {
   --notebook-width: 40rem;
-  --sidebar-width: 428px;
 }
 
 .notebookContainer {
@@ -19,17 +18,12 @@
   }
 }
 
-.sqlSidebar {
+.sqlPreview {
   position: absolute;
   inset: 0;
+}
 
-  @media screen and (--breakpoint-min-lg) {
-    position: relative;
-    flex: 0;
-    border-left: 1px solid var(--color-border);
-  }
-
-  @media screen and (--breakpoint-min-lg) {
-    flex-basis: var(--sidebar-width);
-  }
+.sqlSidebar {
+  position: relative;
+  border-left: 1px solid var(--color-border);
 }

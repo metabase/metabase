@@ -22,6 +22,19 @@ export const NotebookContainer = ({
   ...props
 }: NotebookContainerProps) => {
   const [shouldShowNotebook, setShouldShowNotebook] = useState(isOpen);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [windowWidth]);
 
   useEffect(() => {
     isOpen && setShouldShowNotebook(isOpen);
@@ -56,9 +69,9 @@ export const NotebookContainer = ({
         </Box>
       )}
 
-      {isNativePreviewSidebarOpen && (
+      {isNativePreviewSidebarOpen && windowWidth < 1280 && (
         <aside
-          className={NC.sqlSidebar}
+          className={NC.sqlPreview}
           data-testid="native-query-preview-sidebar"
         >
           <NativeQueryPreviewSidebar />
