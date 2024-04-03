@@ -17,7 +17,7 @@ import Fields from "metabase/entities/fields";
 import * as MetabaseCore from "metabase/lib/core";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
-import type { FieldValuesType } from "metabase-types/api";
+import type { FieldValue, FieldValuesType } from "metabase-types/api";
 
 import FieldRemappingSettings from "../FieldRemappingSettings";
 import FieldVisibilityPicker from "../FieldVisibilityPicker";
@@ -29,6 +29,7 @@ import { FieldNameInput } from "./FieldGeneralSettings.styled";
 
 interface OwnProps {
   field: Field;
+  fieldValues: FieldValue[];
   idFields: Field[];
   table: Table;
 }
@@ -45,6 +46,7 @@ const mapDispatchToProps: DispatchProps = {
 
 const FieldGeneralSettings = ({
   field,
+  fieldValues,
   idFields,
   table,
   onUpdateField,
@@ -71,7 +73,11 @@ const FieldGeneralSettings = ({
         />
       )}
       <FieldValuesTypeSection field={field} onUpdateField={onUpdateField} />
-      <FieldRemappingSection field={field} table={table} />
+      <FieldRemappingSection
+        field={field}
+        fieldValues={fieldValues}
+        table={table}
+      />
       <FieldCachedValuesSection field={field} />
     </div>
   );
@@ -285,11 +291,13 @@ const FieldValuesTypeSection = ({
 
 interface FieldRemappingSectionProps {
   field: Field;
+  fieldValues: FieldValue[];
   table: Table;
 }
 
 const FieldRemappingSection = ({
   field,
+  fieldValues,
   table,
 }: FieldRemappingSectionProps) => {
   return (
@@ -298,7 +306,11 @@ const FieldRemappingSection = ({
         title={t`Display values`}
         description={t`Choose to show the original value from the database, or have this field display associated or custom information.`}
       />
-      <FieldRemappingSettings field={field} table={table} />
+      <FieldRemappingSettings
+        field={field}
+        fieldValues={fieldValues}
+        table={table}
+      />
     </MetadataSection>
   );
 };

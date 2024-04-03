@@ -3,6 +3,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useGetFieldValuesQuery } from "metabase/api";
 import { AdminLayout } from "metabase/components/AdminLayout";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
@@ -86,12 +87,12 @@ const MetadataFieldSettings = ({
   table,
   field,
   idFields,
-  fetched = false,
-  loading = true,
   params: { schemaId, section },
 }: MetadataFieldSettingsProps) => {
+  const { data: fieldData } = useGetFieldValuesQuery(Number(field.id));
+
   const schema = schemas.find(schema => schema.id === schemaId);
-  if (!schema || (!fetched && loading)) {
+  if (!schema || !fieldData) {
     return <LoadingAndErrorWrapper loading />;
   }
 
@@ -118,6 +119,7 @@ const MetadataFieldSettings = ({
         {section === "general" && (
           <FieldGeneralSettings
             field={field}
+            fieldValues={fieldData.values}
             idFields={idFields}
             table={table}
           />
@@ -255,16 +257,7 @@ export default _.compose(
     requestType: "fetchMetadata",
     selectorName: "getObjectUnfiltered",
     entityAlias: "foreignKeyTable",
-    loadingAndErrorWrapper: false,
-  }),
-  Fields.load({
-    id: (_: State, { params }: RouterProps) =>
-      Urls.extractEntityId(params.fieldId),
-    query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-    fetchType: "fetchFieldValues",
-    requestType: "values",
-    selectorName: "getObjectUnfiltered",
-    loadingAndErrorWrapper: false,
+    loadingAndErrorWrapper: true,
   }),
   connect(mapStateToProps),
 )(MetadataFieldSettings);

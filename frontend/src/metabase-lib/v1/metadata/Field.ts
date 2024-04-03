@@ -8,10 +8,7 @@ import { formatField, stripId } from "metabase/lib/formatting";
 import { getFilterOperators } from "metabase-lib/v1/operators/utils";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
-import {
-  getFieldValues,
-  getRemappings,
-} from "metabase-lib/v1/queries/utils/field";
+import { getFieldValues } from "metabase-lib/v1/queries/utils/field";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   isa,
@@ -304,10 +301,6 @@ class FieldInner extends Base {
 
   hasFieldValues() {
     return !_.isEmpty(this.fieldValues());
-  }
-
-  remappedValues() {
-    return getRemappings(this);
   }
 
   icon() {

@@ -68,9 +68,13 @@ class FieldRemappingSettings extends Component {
     return isFK(this.props.field) && this.getForeignKeys().length > 0;
   };
 
+  getFieldRemapping = () => {
+    const { field, fieldValues } = this.props;
+    return new Map([...fieldValues, ...(field.remappings ?? [])]);
+  };
+
   hasMappableNumeralValues = () => {
-    const { field } = this.props;
-    const remapping = new Map(field.remappedValues());
+    const remapping = this.getFieldRemapping();
 
     // Only show the "custom" option if we have some values that can be mapped to user-defined custom values
     // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
@@ -228,7 +232,7 @@ class FieldRemappingSettings extends Component {
       dismissedInitialFkTargetPopover,
     } = this.state;
 
-    const remapping = new Map(field.remappedValues());
+    const remapping = new Map(this.getFieldRemapping());
     const isFieldsAccessRestricted = fieldsError?.status === 403;
 
     const mappingType = this.getMappingTypeForField(field);
