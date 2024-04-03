@@ -55,7 +55,10 @@ export const DataStep = ({
   const canSelectTableColumns = tableMetadata && isRaw && !readOnly;
 
   const handleTableSelect = async (tableId: TableId) => {
+    // we need to populate question metadata with selected table
     await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
+
+    // using questionRef because question is most likely stale by now
     const metadata = questionRef.current.metadata();
     const table = checkNotNull(metadata.table(tableId));
     const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
