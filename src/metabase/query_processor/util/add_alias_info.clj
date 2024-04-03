@@ -254,7 +254,12 @@
           (when (string? field-name)
             (when-let [column (m/find-first #(= (:name %) field-name) source-metadata)]
               (let [signature (field-signature (:field_ref column))]
-                (m/find-first #(= (field-signature %) signature) field-exports))))))))
+                (or ;; First try to match with the join alias.
+                    (m/find-first #(= (field-signature %) signature) field-exports)
+                    ;; Then just the names, but if the match is ambiguous, warn and return nil.
+                    (let [matches (filter #(= (second %) field-name) field-exports)]
+                      (when (= (count matches) 1)
+                        (first matches)))))))))))
 
 (defn- matching-field-in-join-at-this-level
   "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause
