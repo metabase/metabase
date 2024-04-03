@@ -6,7 +6,7 @@ import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { useSelector } from "metabase/lib/redux";
-import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
+import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 
 import RunButtonWithTooltip from "./RunButtonWithTooltip";
@@ -82,11 +82,11 @@ export const VisualizationEmptyState = ({ className }) => (
 export function VisualizationRunningState({ className = "" }) {
   const [isSlow] = useTimeout(SLOW_MESSAGE_TIMEOUT);
 
-  const loadingMessage = useSelector(getWhiteLabeledLoadingMessage);
+  const getLoadingMessage = useSelector(getWhiteLabeledLoadingMessageFactory);
 
   // show the slower loading message only when the loadingMessage is
-  // not customised
-  const message = loadingMessage(isSlow());
+  // not customized
+  const message = getLoadingMessage(isSlow());
 
   return (
     <div

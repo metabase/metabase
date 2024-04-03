@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import {
-  PLUGIN_APP_INIT_FUCTIONS,
+  PLUGIN_APP_INIT_FUNCTIONS,
   PLUGIN_LANDING_PAGE,
   PLUGIN_LOGO_ICON_COMPONENTS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
@@ -124,7 +124,7 @@ if (hasPremiumFeature("whitelabel")) {
     ...sections,
   }));
 
-  PLUGIN_APP_INIT_FUCTIONS.push(() => {
+  PLUGIN_APP_INIT_FUNCTIONS.push(() => {
     updateColors();
     MetabaseSettings.on("application-colors", updateColors);
   });
@@ -133,7 +133,7 @@ if (hasPremiumFeature("whitelabel")) {
   PLUGIN_SELECTORS.canWhitelabel = () => true;
 
   // these selectors control whitelabeling UI
-  PLUGIN_SELECTORS.getLoadingMessage = getLoadingMessage;
+  PLUGIN_SELECTORS.getLoadingMessageFactory = getLoadingMessage;
   PLUGIN_SELECTORS.getIsWhiteLabeling = getIsWhiteLabeling;
   PLUGIN_SELECTORS.getApplicationName = getApplicationName;
   PLUGIN_SELECTORS.getShowMetabaseLinks = getShowMetabaseLinks;
