@@ -33,7 +33,7 @@ export const isTablePickerValueEqual = (
 export const tablePickerValueFromTable = (
   table: Table | TableEntity,
 ): TablePickerValue => {
-  // temporary, for backwards-compatibility in DataStep
+  // Temporary, for backward compatibility in DataStep, until entity framework is no more
   if (table instanceof TableEntity) {
     return tablePickerValueFromTableEntity(table);
   }
