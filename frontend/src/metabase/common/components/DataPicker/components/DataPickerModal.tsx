@@ -17,7 +17,10 @@ import { isTablePickerValueEqual } from "../utils";
 import { TablePicker } from "./TablePicker";
 
 interface Props {
-  collectionId: CollectionId | null | undefined; // TODO: use it
+  /**
+   * TODO: use this prop in https://github.com/metabase/metabase/issues/40719
+   */
+  collectionId: CollectionId | null | undefined;
   onChange: (value: TablePickerValue) => void;
   onClose: () => void;
   options?: EntityPickerOptions;
