@@ -21,6 +21,7 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
+import { isNumber } from "metabase-lib/v1/types/utils/isa";
 
 import type { ChartMeasurements } from "../chart-measurements/types";
 import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
@@ -324,6 +325,7 @@ export const buildCategoricalDimensionAxis = (
 ): CategoryAxisBaseOption => {
   const {
     xAxisModel: { formatter },
+    dimensionModel: { column },
   } = chartModel;
 
   return {
@@ -339,7 +341,7 @@ export const buildCategoricalDimensionAxis = (
       ...getHistogramTicksOptions(chartModel, settings, chartMeasurements),
       formatter: (value: string) => {
         const numberValue = parseNumberValue(value);
-        if (numberValue !== null) {
+        if (isNumber(column) && numberValue !== null) {
           return ` ${formatter(numberValue)} `;
         }
 
