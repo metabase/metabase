@@ -36,10 +36,11 @@
       :type/Date     [:> field-form "0001-01-01"]
       :type/DateTime [:> field-form "0001-01-01T00:00:00"])))
 
-(defn add-required-filter-if-needed
+(defn add-required-filters-if-needed
   "Add a dummy filter for tables that require a filters.
   Look into tables from source tables and all the joins.
-  Currently this only apply to partitioned tables on bigquery that requires a partition filter."
+  Currently this only apply to partitioned tables on bigquery that requires a partition filter.
+  In the future we probably want this to be dispatched by database engine or handled by QP."
   [query]
   (let [table-ids              (->> (conj (keep :source-table (:joins query)) (:source-table query))
                                     (filter pos-int?))
@@ -69,11 +70,7 @@
   [table mbql-query]
   (-> mbql-query
       (assoc :source-table (:id table))
-      ;; Some table requires a filter to be able to query the data
-      ;; Currently this only applied to Partitioned table in bigquery where the partition field
-      ;; is required as a filter.
-      ;; In the future we probably want this to be dispatched by database engine type
-      add-required-filter-if-needed))
+      add-required-filters-if-needed))
 
 (defn- field-query
   [{table-id :table_id} mbql-query]
@@ -112,23 +109,24 @@
    (field-query field {:breakout [[:field (u/the-id field) nil]]
                        :limit    (min max-results absolute-max-distinct-values-limit)})))
 
-;; TODO this function and field-distinct-values should be in metabase.models.field-values
+;; I'm not sure whether this field-distinct-values and field-distinct-values belong to this namespace
+;; maybe it's better to keep this in metabase.models.field or metabase.models.field-values
 (defn search-values-query
-  "Generate the MBQL query used to power FieldValues search in [[search-values]] below. The actual query generated
+ "Generate the MBQL query used to power FieldValues search in [[metabase.api.field/search-values]]. The actual query generated
   differs slightly based on whether the two Fields are the same Field.
 
   Note: the generated MBQL query assume that both `field` and `search-field` are from the same table."
-  [field search-field value limit]
-  (field-query field {:filter   (when (some? value)
-                                  [:contains [:field (u/the-id search-field) nil] value {:case-sensitive false}])
-                      ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
-                      ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
-                      ;; identifiers/aliases
-                      :breakout (if (= (u/the-id field) (u/the-id search-field))
-                                  [[:field (u/the-id field) nil]]
-                                  [[:field (u/the-id field) nil]
-                                   [:field (u/the-id search-field) nil]])
-                      :limit    limit}))
+ [field search-field value limit]
+ (field-query field {:filter   (when (some? value)
+                                 [:contains [:field (u/the-id search-field) nil] value {:case-sensitive false}])
+                     ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
+                     ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
+                     ;; identifiers/aliases
+                     :breakout (if (= (u/the-id field) (u/the-id search-field))
+                                 [[:field (u/the-id field) nil]]
+                                 [[:field (u/the-id field) nil]
+                                  [:field (u/the-id search-field) nil]])
+                     :limit    limit}))
 
 (defn field-distinct-count
   "Return the distinct count of `field`."
@@ -196,7 +194,7 @@
                    (assoc :order-by order-by)
 
                    true
-                   add-required-filter-if-needed)
+                   add-required-filters-if-needed)
      :middleware {:format-rows?           false
                   :skip-results-metadata? true}}))
 
