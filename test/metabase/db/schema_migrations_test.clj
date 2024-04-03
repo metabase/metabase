@@ -1392,12 +1392,40 @@
         (is (nil? (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))))))
 
 (deftest create-sample-content-test
-  (testing "The sample content's creation depends on on `*create-sample-content*`"
+  (testing "The sample content is created iff *create-sample-content*=true"
     (doseq [create? [true false]]
       (testing (str "*create-sample-content* = " create?)
         (impl/test-migrations "v50.2024-03-28T16:30:36" [migrate!]
-          (binding [custom-migrations/*create-sample-content* create?]
-            (let [get-dashboards (fn [] (t2/query "SELECT * FROM report_dashboard"))]
-              (is (empty? (get-dashboards)))
+          (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
+            (binding [custom-migrations/*create-sample-content* create?]
+              (is (false? (sample-content-created?)))
               (migrate!)
-              (is ((if create? not-empty empty?) (get-dashboards))))))))))
+              (is ((if create? true? false?) (sample-content-created?)))))))))
+  (testing "The sample content isn't created if the sample database existed already in the past (or any database for that matter)"
+    (impl/test-migrations "v50.2024-03-28T16:30:36" [migrate!]
+      (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
+        (is (false? (sample-content-created?)))
+        (t2/insert-returning-pks! :metabase_database {:name       "db"
+                                                      :engine     "h2"
+                                                      :created_at :%now
+                                                      :updated_at :%now
+                                                      :details    "{}"})
+        (t2/query {:delete-from :metabase_database})
+        (migrate!)
+        (is (false? (sample-content-created?)))
+        (is (empty? (t2/query "SELECT * FROM metabase_database"))
+            "No database should have been created"))))
+  (testing "The sample content isn't created if a user existed already"
+    (impl/test-migrations "v50.2024-03-28T16:30:36" [migrate!]
+      (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
+        (is (false? (sample-content-created?)))
+        (t2/insert-returning-pks!
+         :core_user
+         {:first_name       "Rasta"
+          :last_name        "Toucan"
+          :email            "rasta@metabase.com"
+          :password         "password"
+          :password_salt    "and pepper"
+          :date_joined      :%now})
+        (migrate!)
+        (is (false? (sample-content-created?)))))))

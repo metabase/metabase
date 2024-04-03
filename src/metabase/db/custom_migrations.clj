@@ -1121,13 +1121,16 @@
   (with-open [r (io/reader file-name)]
     (edn/read {:readers {'t u.date/parse}} (java.io.PushbackReader. r))))
 
-(defn- fresh-install?
-  "If there is a user that is not the internal user, we know it's not a fresh install. Additionally we check that the
-  sample database is not present, because it could have been installed from a previous version and be out of date. In
-  that (rare) case we will be conservative and not add the sample content."
+(defn- no-user?
+  "If there is a user that is not the internal user, we know it's not a fresh install."
   []
-  (and (zero? (first (vals (t2/query-one {:select [:%count.*] :from :core_user :where [:not= :id config/internal-mb-user-id]}))))
-       (nil? (t2/query-one {:select [:*] :from :metabase_database :where :is_sample}))))
+  (zero? (first (vals (t2/query-one {:select [:%count.*] :from :core_user :where [:not= :id config/internal-mb-user-id]})))))
+
+(defn- no-db?
+  "We check there is no database is not present, because the sample database could have been installed from a previous version and be out of
+  date. In that (rare) case we will be conservative and not add the sample content."
+  []
+  (nil? (t2/query-one {:select [:*] :from :metabase_database})))
 
 (def ^:dynamic *create-sample-content*
   "If true, we skip creating sample content. This is bound to false sometimes in load-from-h2, during serialization load, and in
@@ -1136,7 +1139,7 @@
 
 (define-migration CreateSampleContent
   (when *create-sample-content*
-    (when (and (config/load-sample-content?) (fresh-install?))
+    (when (and (config/load-sample-content?) (no-user?) (no-db?))
       (let [table-name->raw-rows (load-edn "resources/sample-content.edn")
             replace-temporals (fn [v]
                                 (if (isa? (type v) java.time.temporal.Temporal)
@@ -1150,16 +1153,17 @@
                                     (sort-by :id)
                                     (map (fn [row]
                                            (dissoc (update-vals row replace-temporals) :id)))))
-            collections (table-name->rows :collection)
-            _ (t2/query {:insert-into :collection :values collections})
-            collection-ids (set (map :id (t2/query {:select :id :from :collection})))]
-        ;; If that did not succeed in creating the collections with id=1 and id=2, we could be reusing a database that
-        ;; has been cleared out before. in this rare care we delete the collections and do nothing
-        ;; else, to be safe.
-        (if (not= collection-ids #{1 2})
-          (when (seq collection-ids)
-            (t2/query {:delete-from :collection :where [:in :id collection-ids]}))
-          (doseq [table-name [:metabase_database
+            dbs (table-name->rows :metabase_database)
+            _ (t2/query {:insert-into :metabase_database :values dbs})
+            db-ids (set (map :id (t2/query {:select :id :from :metabase_database})))
+            expected-db-ids #{1}]
+        ;; If that did not succeed in creating the metabase_database rows we could be reusing a database that
+        ;; previously had rows in it even if there are no users. in this rare care we delete the metabase_database row
+        ;; and do nothing else, to be safe.
+        (if (not= db-ids expected-db-ids)
+          (when (seq db-ids)
+            (t2/query {:delete-from :metabase_database :where [:in :id db-ids]}))
+          (doseq [table-name [:collection
                               :metabase_table
                               :metabase_field
                               :report_card
