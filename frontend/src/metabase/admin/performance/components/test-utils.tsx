@@ -5,6 +5,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
+import { DurationUnit } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -17,8 +18,6 @@ import {
 } from "metabase-types/api/mocks/performance";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-
-import { DurationUnit } from "../strategies";
 
 import { StrategyEditorForDatabases } from "./StrategyEditorForDatabases";
 

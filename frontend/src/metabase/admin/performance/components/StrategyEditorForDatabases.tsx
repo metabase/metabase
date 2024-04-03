@@ -10,18 +10,15 @@ import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { CacheConfigApi } from "metabase/services";
 import { Box, Stack, Title } from "metabase/ui";
+import type { Config, Strategy } from "metabase-types/api";
+import { DurationUnit } from "metabase-types/api";
 
 import { useCacheConfigs } from "../hooks/useCacheConfigs";
 import { useConfirmOnRouteLeave } from "../hooks/useConfirmOnRouteLeave";
 import { useDelayedLoadingSpinner } from "../hooks/useDelayedLoadingSpinner";
 import { useVerticallyOverflows } from "../hooks/useVerticallyOverflows";
-import type { Config, Strategy, UpdateTargetId } from "../strategies";
-import {
-  DurationUnit,
-  getFieldsForStrategyType,
-  rootId,
-  Strategies,
-} from "../strategies";
+import type { UpdateTargetId } from "../strategies";
+import { getFieldsForStrategyType, rootId, Strategies } from "../strategies";
 
 import { Panel, TabWrapper } from "./StrategyEditorForDatabases.styled";
 import { StrategyForm } from "./StrategyForm";

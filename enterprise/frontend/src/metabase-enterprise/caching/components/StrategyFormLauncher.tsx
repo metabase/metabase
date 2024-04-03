@@ -1,16 +1,14 @@
 import { t } from "ttag";
 import { findWhere } from "underscore";
 
-import type {
-  Config,
-  UpdateTargetId,
-} from "metabase/admin/performance/strategies";
+import type { UpdateTargetId } from "metabase/admin/performance/strategies";
 import {
   getShortStrategyLabel,
   rootId,
 } from "metabase/admin/performance/strategies";
 import { color } from "metabase/lib/colors";
 import { FixedSizeIcon, Flex, Title, Tooltip, useHover } from "metabase/ui";
+import type { Config } from "metabase-types/api";
 
 import { PolicyToken } from "./StrategyFormLauncher.styled";
 

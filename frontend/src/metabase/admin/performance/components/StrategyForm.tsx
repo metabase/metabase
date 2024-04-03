@@ -25,15 +25,11 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
+import type { Strategy, StrategyType } from "metabase-types/api";
+import { DurationUnit } from "metabase-types/api";
 
 import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
-import type { Strategy, StrategyType } from "../strategies";
-import {
-  DurationUnit,
-  rootId,
-  Strategies,
-  strategyValidationSchema,
-} from "../strategies";
+import { rootId, Strategies, strategyValidationSchema } from "../strategies";
 
 export const StrategyForm = ({
   targetId,

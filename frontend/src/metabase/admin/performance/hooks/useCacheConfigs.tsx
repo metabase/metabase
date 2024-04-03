@@ -3,8 +3,8 @@ import { useAsync } from "react-use";
 
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import { CacheConfigApi } from "metabase/services";
+import type { CacheConfigAPIResponse, Config } from "metabase-types/api";
 
-import type { CacheConfigAPIResponse, Config } from "../strategies";
 import { rootId } from "../strategies";
 
 import { useRecentlyTrue } from "./useRecentlyTrue";

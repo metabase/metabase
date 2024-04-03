@@ -3,58 +3,13 @@ import type { AnySchema } from "yup";
 import * as Yup from "yup";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
-export type StrategyType = "nocache" | "ttl" | "duration" | "inherit";
-
-type Model = "root" | "database" | "collection" | "dashboard" | "question";
-
-interface StrategyBase {
-  type: StrategyType;
-}
-
-export interface TTLStrategy extends StrategyBase {
-  type: "ttl";
-  multiplier: number;
-  min_duration_ms: number;
-}
-
-export interface DoNotCacheStrategy extends StrategyBase {
-  type: "nocache";
-}
-
-export interface DurationStrategy extends StrategyBase {
-  type: "duration";
-  duration: number;
-  unit: DurationUnit;
-}
-
-export interface InheritStrategy extends StrategyBase {
-  type: "inherit";
-}
-
-/** Cache invalidation strategy */
-export type Strategy =
-  | DoNotCacheStrategy
-  | TTLStrategy
-  | DurationStrategy
-  | InheritStrategy;
-
-/** Cache invalidation configuration */
-export interface Config {
-  /** The type of cacheable object this configuration concerns */
-  model: Model;
-  model_id: number;
-  /** Cache invalidation strategy */
-  strategy: Strategy;
-}
+import type { Strategy, StrategyType } from "metabase-types/api";
+import { DurationUnit } from "metabase-types/api";
 
 export type UpdateTargetId = (
   newTargetId: number | null,
   isFormDirty: boolean,
 ) => void;
-
-export type CacheConfigAPIResponse = {
-  data: Config[];
-};
 
 type StrategyData = {
   label: string;
@@ -64,12 +19,6 @@ type StrategyData = {
 
 export const rootId = 0;
 
-export enum DurationUnit {
-  Hours = "hours",
-  Minutes = "minutes",
-  Seconds = "seconds",
-  Days = "days",
-}
 const durationUnits = new Set(Object.values(DurationUnit).map(String));
 
 const positiveInteger = Yup.number()
@@ -109,7 +58,7 @@ export const strategyValidationSchema = Yup.object().test(
         message: `Strategy is falsy`,
       });
     }
-    const { type } = value as unknown as { type: string }; // TODO: fix
+    const { type } = value as unknown as { type: string };
     if (!isValidStrategyName(type)) {
       return this.createError({
         message: `"${type}" is not a valid strategy name`,
