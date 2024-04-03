@@ -31,7 +31,7 @@
   (when-not (contains? @h2-test-dbs-created-by-this-instance database-name)
     (locking h2-test-dbs-created-by-this-instance
       (when-not (contains? @h2-test-dbs-created-by-this-instance database-name)
-        (mdb/setup-db!)                 ; if not already setup
+        (mdb/setup-db! :create-sample-content? true)
         (t2/delete! Database :engine "h2", :name database-name)
         (swap! h2-test-dbs-created-by-this-instance conj database-name)))))
 

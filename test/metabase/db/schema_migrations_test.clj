@@ -1392,11 +1392,11 @@
         (is (nil? (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))))))
 
 (deftest create-sample-content-test
-  (testing "The sample content's creation depends on on `*skip-create-sample-content*`"
+  (testing "The sample content's creation depends on on `*create-sample-content*`"
     (doseq [skip? [true false]]
-      (testing (str "*skip-create-sample-content* = " skip?)
+      (testing (str "*create-sample-content* = " skip?)
         (impl/test-migrations "v50.2024-03-28T16:30:36" [migrate!]
-          (binding [custom-migrations/*skip-create-sample-content* skip?]
+          (binding [custom-migrations/*create-sample-content* skip?]
             (let [get-dashboards (fn [] (t2/query "SELECT * FROM report_dashboard"))]
               (is (empty? (get-dashboards)))
               (migrate!)

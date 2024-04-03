@@ -33,7 +33,7 @@
     ;; create a new completely empty database.
     (mt/with-temp-empty-app-db [_conn :h2]
       ;; make sure the DB is setup (e.g., run all the Liquibase migrations)
-      (mdb/setup-db!)
+      (mdb/setup-db! :create-sample-content? true)
       (t2/with-call-count [call-count]
         (dotimes [_ 5]
           (is (= false

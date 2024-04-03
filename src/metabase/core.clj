@@ -110,7 +110,11 @@
   (settings/validate-settings-formatting!)
   ;; startup database.  validates connection & runs any necessary migrations
   (log/info (trs "Setting up and migrating Metabase DB. Please sit tight, this may take a minute..."))
-  (mdb/setup-db!)
+  ;; Cal 2024-04-03:
+  ;; we have to skip creating sample content if we're running tests, because it causes some tests to timeout
+  ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
+  ;; negatives, but for now there's not much we can do
+  (mdb/setup-db! :create-sample-content? (not config/is-test?))
   (init-status/set-progress! 0.5)
   ;; Set up Prometheus
   (when (prometheus/prometheus-server-port)

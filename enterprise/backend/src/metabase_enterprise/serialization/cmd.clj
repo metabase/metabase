@@ -13,7 +13,6 @@
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.db :as mdb]
-   [metabase.db.custom-migrations :as custom-migrations]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -58,7 +57,7 @@
   "Load serialized metabase instance as created by [[dump]] command from directory `path`."
   [path context :- Context]
   (plugins/load-plugins!)
-  (mdb/setup-db!)
+  (mdb/setup-db! :create-sample-content? false)
   (check-premium-token!)
   (when-not (load/compatible? path)
     (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
@@ -92,8 +91,7 @@
    & {:keys [token-check?]
       :or   {token-check? true}}]
   (plugins/load-plugins!)
-  (binding [custom-migrations/*skip-create-sample-content* true]
-    (mdb/setup-db!))
+  (mdb/setup-db! :create-sample-content? false)
   (when token-check?
     (check-premium-token!))
   ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
@@ -186,7 +184,7 @@
   "Legacy Metabase app data dump"
   [path {:keys [state user include-entity-id] :or {state :active} :as opts}]
   (log/info (trs "BEGIN DUMP to {0} via user {1}" path user))
-  (mdb/setup-db!)
+  (mdb/setup-db! :create-sample-content? false)
   (check-premium-token!)
   (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (let [users       (if user
@@ -230,7 +228,7 @@
   "Exports Metabase app data to directory at path"
   [path {:keys [collection-ids] :as opts}]
   (log/info (trs "Exporting Metabase to {0}" path) (u/emoji "🏭 🚛💨"))
-  (mdb/setup-db!)
+  (mdb/setup-db! :create-sample-content? false)
   (check-premium-token!)
   (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (let [f (io/file path)]

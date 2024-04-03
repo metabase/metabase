@@ -53,19 +53,21 @@
 
 (defn setup-db!
   "Do general preparation of database by validating that we can connect. Caller can specify if we should run any pending
-  database migrations. If DB is already set up, this function will no-op. Thread-safe."
-  []
+  database migrations. If DB is already set up, this function will no-op. Thread-safe.
+  Callers must decide whether or not to create sample content during migrations."
+  [& {:keys [create-sample-content?]}]
+  {:pre [(some? create-sample-content?)]}
   (when-not (db-is-set-up?)
-    ;; It doesn't really matter too much what we lock on, as long as the lock is per-application-DB e.g. so we can run
-    ;; setup for DIFFERENT application DBs at the same time, but CAN NOT run it for the SAME application DB. We can just
-    ;; use the application DB object itself to lock on since that will be a different object for different application
-    ;; DBs.
+      ;; It doesn't really matter too much what we lock on, as long as the lock is per-application-DB e.g. so we can run
+      ;; setup for DIFFERENT application DBs at the same time, but CAN NOT run it for the SAME application DB. We can just
+      ;; use the application DB object itself to lock on since that will be a different object for different application
+      ;; DBs.
     (locking mdb.connection/*application-db*
       (when-not (db-is-set-up?)
         (let [db-type       (db-type)
               data-source   (data-source)
               auto-migrate? (config/config-bool :mb-db-automigrate)]
-          (mdb.setup/setup-db! db-type data-source auto-migrate?))
+          (mdb.setup/setup-db! db-type data-source auto-migrate? create-sample-content?))
         (reset! (:status mdb.connection/*application-db*) ::setup-finished))))
   :done)
 
