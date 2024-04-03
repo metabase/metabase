@@ -90,13 +90,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
       displayName: t`Tables`,
       model: "table",
       icon: "table",
-      element: (
-        <TablePicker
-          options={options}
-          value={value}
-          onItemSelect={handleItemSelect}
-        />
-      ),
+      element: <TablePicker value={value} onItemSelect={handleItemSelect} />,
     },
     // {
     //   displayName: t`Saved questions`,

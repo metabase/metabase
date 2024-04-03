@@ -1,7 +1,7 @@
-import { skipToken } from "@reduxjs/toolkit/dist/query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
+  skipToken,
   useListDatabaseSchemaTablesQuery,
   useListDatabaseSchemasQuery,
   useListDatabasesQuery,
@@ -10,10 +10,7 @@ import { isNotNull } from "metabase/lib/types";
 import { Flex } from "metabase/ui";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
-import {
-  AutoScrollBox,
-  type EntityPickerModalOptions,
-} from "../../EntityPicker";
+import { AutoScrollBox } from "../../EntityPicker";
 import type {
   NotebookDataPickerFolderItem,
   NotebookDataPickerValueItem,
@@ -27,11 +24,10 @@ import { TableList } from "./TableList";
 
 interface Props {
   value: TablePickerValue | null;
-  options?: EntityPickerModalOptions;
   onItemSelect: (item: NotebookDataPickerValueItem) => void;
 }
 
-export const TablePicker = ({ onItemSelect, value }: Props) => {
+export const TablePicker = ({ value, onItemSelect }: Props) => {
   const [dbId, setDbId] = useState<DatabaseId | undefined>(value?.db_id);
   const [schemaId, setSchemaId] = useState<SchemaId | undefined>(value?.schema);
   const [tableId, setTableId] = useState<TableId | undefined>(value?.id);
