@@ -18,14 +18,13 @@ export const funnelToBarTransform: TransformSeries = (
     col => col.name === settings["funnel.metric"],
   );
 
-  return rows.map((row, index) => {
+  return rows.map(row => {
     const name = renderingContext.formatValue(row[dimensionIndex], {
       column: cols[dimensionIndex],
     });
     return {
       card: {
         ...card,
-        id: index,
         name,
         display: "bar",
         visualization_settings: {
@@ -35,6 +34,8 @@ export const funnelToBarTransform: TransformSeries = (
           "graph.dimensions": [settings["funnel.dimension"]],
           "graph.metrics": [name],
           "graph.y_axis.auto_split": false,
+          "graph.y_axis.title_text": cols[metricIndex].display_name,
+          "legend.is_reversed": false,
         },
       },
       data: {
