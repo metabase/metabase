@@ -127,7 +127,7 @@ describeEE("impersonated permission", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors
       cy.findByText(
-        'Groups with View data access set to "Blocked" can\'t create queries.',
+        "Native query editor access requires full data access.",
       ).should("not.exist");
 
       // Return back to the database view

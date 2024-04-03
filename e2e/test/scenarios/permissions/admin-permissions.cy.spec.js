@@ -48,22 +48,22 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     );
 
     assertPermissionTable([
-      ["Accounts", "Can view", "No"],
-      ["Analytic Events", "Can view", "No"],
-      ["Feedback", "Can view", "No"],
-      ["Invoices", "Can view", "No"],
-      ["Orders", "Can view", "No"],
-      ["People", "Can view", "No"],
-      ["Products", "Can view", "No"],
-      ["Reviews", "Can view", "No"],
+      ["Accounts", "No self-service", "No"],
+      ["Analytic Events", "No self-service", "No"],
+      ["Feedback", "No self-service", "No"],
+      ["Invoices", "No self-service", "No"],
+      ["Orders", "No self-service", "No"],
+      ["People", "No self-service", "No"],
+      ["Products", "No self-service", "No"],
+      ["Reviews", "No self-service", "No"],
     ]);
   });
 
   it("should display error on failed save", () => {
     // revoke some permissions
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
-    cy.icon("close").first().click();
-    cy.findAllByRole("option").contains("Query builder and native").click();
+    cy.icon("eye").first().click();
+    cy.findAllByRole("option").contains("Unrestricted").click();
 
     // stub out the PUT and save
     cy.intercept("PUT", "/api/permissions/graph", req => {
@@ -286,8 +286,8 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
 
       modifyPermission(
         "Sample Database",
-        NATIVE_QUERIES_PERMISSION_INDEX,
-        "Query builder and native",
+        DATA_ACCESS_PERMISSION_INDEX,
+        "Unrestricted",
       );
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -371,22 +371,20 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("1 person");
 
-        assertPermissionTable([
-          ["Sample Database", "Can view", "Query builder and native"],
-        ]);
+        assertPermissionTable([["Sample Database", "Unrestricted", "Yes"]]);
 
         // Drill down to tables permissions
         cy.findByTextEnsureVisible("Sample Database").click();
 
         assertPermissionTable([
-          ["Accounts", "Can view", "Query builder and native"],
-          ["Analytic Events", "Can view", "Query builder and native"],
-          ["Feedback", "Can view", "Query builder and native"],
-          ["Invoices", "Can view", "Query builder and native"],
-          ["Orders", "Can view", "Query builder and native"],
-          ["People", "Can view", "Query builder and native"],
-          ["Products", "Can view", "Query builder and native"],
-          ["Reviews", "Can view", "Query builder and native"],
+          ["Accounts", "Unrestricted", "Yes"],
+          ["Analytic Events", "Unrestricted", "Yes"],
+          ["Feedback", "Unrestricted", "Yes"],
+          ["Invoices", "Unrestricted", "Yes"],
+          ["Orders", "Unrestricted", "Yes"],
+          ["People", "Unrestricted", "Yes"],
+          ["Products", "Unrestricted", "Yes"],
+          ["Reviews", "Unrestricted", "Yes"],
         ]);
       });
 
@@ -395,47 +393,74 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
 
         selectSidebarItem("collection");
 
-        assertPermissionTable([["Sample Database", "Can view", "No"]]);
+        assertPermissionTable([["Sample Database", "No self-service", "No"]]);
 
         // Drill down to tables permissions
         cy.findByTextEnsureVisible("Sample Database").click();
 
         assertPermissionTable([
-          ["Accounts", "Can view", "No"],
-          ["Analytic Events", "Can view", "No"],
-          ["Feedback", "Can view", "No"],
-          ["Invoices", "Can view", "No"],
-          ["Orders", "Can view", "No"],
-          ["People", "Can view", "No"],
-          ["Products", "Can view", "No"],
-          ["Reviews", "Can view", "No"],
+          ["Accounts", "No self-service", "No"],
+          ["Analytic Events", "No self-service", "No"],
+          ["Feedback", "No self-service", "No"],
+          ["Invoices", "No self-service", "No"],
+          ["Orders", "No self-service", "No"],
+          ["People", "No self-service", "No"],
+          ["Products", "No self-service", "No"],
+          ["Reviews", "No self-service", "No"],
+        ]);
+
+        modifyPermission(
+          "Orders",
+          DATA_ACCESS_PERMISSION_INDEX,
+          "Unrestricted",
+        );
+
+        modal().within(() => {
+          cy.findByText("Change access to this database to granular?");
+          cy.button("Change").click();
+        });
+
+        assertPermissionTable([
+          ["Accounts", "No self-service", "No"],
+          ["Analytic Events", "No self-service", "No"],
+          ["Feedback", "No self-service", "No"],
+          ["Invoices", "No self-service", "No"],
+          ["Orders", "Unrestricted", "No"],
+          ["People", "No self-service", "No"],
+          ["Products", "No self-service", "No"],
+          ["Reviews", "No self-service", "No"],
         ]);
 
         // Navigate back
         selectSidebarItem("collection");
 
+        assertPermissionTable([["Sample Database", "Granular", "No"]]);
+
         modifyPermission(
           "Sample Database",
           NATIVE_QUERIES_PERMISSION_INDEX,
-          "Query builder and native",
+          "Yes",
         );
 
-        assertPermissionTable([
-          ["Sample Database", "Can view", "Query builder and native"],
-        ]);
+        modal().within(() => {
+          cy.findByText("Allow native query editing?");
+          cy.button("Allow").click();
+        });
+
+        assertPermissionTable([["Sample Database", "Unrestricted", "Yes"]]);
 
         // Drill down to tables permissions
         cy.findByTextEnsureVisible("Sample Database").click();
 
         assertPermissionTable([
-          ["Accounts", "Can view", "Query builder and native"],
-          ["Analytic Events", "Can view", "Query builder and native"],
-          ["Feedback", "Can view", "Query builder and native"],
-          ["Invoices", "Can view", "Query builder and native"],
-          ["Orders", "Can view", "Query builder and native"],
-          ["People", "Can view", "Query builder and native"],
-          ["Products", "Can view", "Query builder and native"],
-          ["Reviews", "Can view", "Query builder and native"],
+          ["Accounts", "Unrestricted", "Yes"],
+          ["Analytic Events", "Unrestricted", "Yes"],
+          ["Feedback", "Unrestricted", "Yes"],
+          ["Invoices", "Unrestricted", "Yes"],
+          ["Orders", "Unrestricted", "Yes"],
+          ["People", "Unrestricted", "Yes"],
+          ["Products", "Unrestricted", "Yes"],
+          ["Reviews", "Unrestricted", "Yes"],
         ]);
 
         cy.button("Save changes").click();
@@ -443,7 +468,10 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         modal().within(() => {
           cy.findByText("Save permissions?");
           cy.contains(
-            "collection will now be able to read or write native queries for Sample Database.",
+            "collection will be given access to 8 tables in Sample Database.",
+          );
+          cy.contains(
+            "collection will now be able to write native queries for Sample Database.",
           );
           cy.button("Yes").click();
         });
@@ -452,14 +480,14 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         cy.findByText("Save changes").should("not.exist");
 
         assertPermissionTable([
-          ["Accounts", "Can view", "Query builder and native"],
-          ["Analytic Events", "Can view", "Query builder and native"],
-          ["Feedback", "Can view", "Query builder and native"],
-          ["Invoices", "Can view", "Query builder and native"],
-          ["Orders", "Can view", "Query builder and native"],
-          ["People", "Can view", "Query builder and native"],
-          ["Products", "Can view", "Query builder and native"],
-          ["Reviews", "Can view", "Query builder and native"],
+          ["Accounts", "Unrestricted", "Yes"],
+          ["Analytic Events", "Unrestricted", "Yes"],
+          ["Feedback", "Unrestricted", "Yes"],
+          ["Invoices", "Unrestricted", "Yes"],
+          ["Orders", "Unrestricted", "Yes"],
+          ["People", "Unrestricted", "Yes"],
+          ["Products", "Unrestricted", "Yes"],
+          ["Reviews", "Unrestricted", "Yes"],
         ]);
 
         // After saving permissions, user should be able to make further edits without refreshing the page
@@ -483,8 +511,8 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
 
         modifyPermission(
           "Sample Database",
-          NATIVE_QUERIES_PERMISSION_INDEX,
-          "Query builder and native",
+          DATA_ACCESS_PERMISSION_INDEX,
+          "Unrestricted",
         );
 
         cy.get("@graph").then(data => {
@@ -512,49 +540,82 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         selectSidebarItem("Sample Database");
 
         assertPermissionTable([
-          ["Administrators", "Can view", "Query builder and native"],
-          ["All Users", "Can view", "No"],
-          ["collection", "Can view", "No"],
-          ["data", "Can view", "Query builder and native"],
-          ["nosql", "Can view", "Query builder only"],
-          ["readonly", "Can view", "No"],
-        ]);
-
-        modifyPermission(
-          "readonly",
-          NATIVE_QUERIES_PERMISSION_INDEX,
-          "Query builder and native",
-        );
-
-        assertPermissionTable([
-          ["Administrators", "Can view", "Query builder and native"],
-          ["All Users", "Can view", "No"],
-          ["collection", "Can view", "No"],
-          ["data", "Can view", "Query builder and native"],
-          ["nosql", "Can view", "Query builder only"],
-          ["readonly", "Can view", "Query builder and native"],
+          ["Administrators", "Unrestricted", "Yes"],
+          ["All Users", "No self-service", "No"],
+          ["collection", "No self-service", "No"],
+          ["data", "Unrestricted", "Yes"],
+          ["nosql", "Unrestricted", "No"],
+          ["readonly", "No self-service", "No"],
         ]);
 
         selectSidebarItem("Orders");
 
         assertPermissionTable([
-          ["Administrators", "Can view", "Query builder and native"],
-          ["All Users", "Can view", "No"],
-          ["collection", "Can view", "No"],
-          ["data", "Can view", "Query builder and native"],
-          ["nosql", "Can view", "Query builder only"],
-          ["readonly", "Can view", "Query builder and native"],
+          ["Administrators", "Unrestricted", "Yes"],
+          ["All Users", "No self-service", "No"],
+          ["collection", "No self-service", "No"],
+          ["data", "Unrestricted", "Yes"],
+          ["nosql", "Unrestricted", "No"],
+          ["readonly", "No self-service", "No"],
+        ]);
+
+        modifyPermission(
+          "readonly",
+          DATA_ACCESS_PERMISSION_INDEX,
+          "Unrestricted",
+        );
+
+        modal().within(() => {
+          cy.findByText("Change access to this database to granular?");
+          cy.button("Change").click();
+        });
+
+        assertPermissionTable([
+          ["Administrators", "Unrestricted", "Yes"],
+          ["All Users", "No self-service", "No"],
+          ["collection", "No self-service", "No"],
+          ["data", "Unrestricted", "Yes"],
+          ["nosql", "Unrestricted", "No"],
+          ["readonly", "Unrestricted", "No"],
         ]);
 
         // Navigate back
         cy.get("a").contains("Sample Database").click();
+
+        assertPermissionTable([
+          ["Administrators", "Unrestricted", "Yes"],
+          ["All Users", "No self-service", "No"],
+          ["collection", "No self-service", "No"],
+          ["data", "Unrestricted", "Yes"],
+          ["nosql", "Unrestricted", "No"],
+          ["readonly", "Granular", "No"],
+        ]);
+
+        modifyPermission("readonly", NATIVE_QUERIES_PERMISSION_INDEX, "Yes");
+
+        modal().within(() => {
+          cy.findByText("Allow native query editing?");
+          cy.button("Allow").click();
+        });
+
+        assertPermissionTable([
+          ["Administrators", "Unrestricted", "Yes"],
+          ["All Users", "No self-service", "No"],
+          ["collection", "No self-service", "No"],
+          ["data", "Unrestricted", "Yes"],
+          ["nosql", "Unrestricted", "No"],
+          ["readonly", "Unrestricted", "Yes"],
+        ]);
 
         cy.button("Save changes").click();
 
         modal().within(() => {
           cy.findByText("Save permissions?");
           cy.contains(
-            "readonly will now be able to read or write native queries for Sample Database.",
+            "readonly will be given access to 8 tables in Sample Database.",
+          );
+          cy.contains(
+            "readonly will now be able to write native queries for Sample Database.",
           );
           cy.button("Yes").click();
         });
@@ -563,15 +624,14 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         cy.findByText("Save changes").should("not.exist");
 
         assertPermissionTable([
-          ["Administrators", "Can view", "Query builder and native"],
-          ["All Users", "Can view", "No"],
-          ["collection", "Can view", "No"],
-          ["data", "Can view", "Query builder and native"],
-          ["nosql", "Can view", "Query builder only"],
-          ["readonly", "Can view", "Query builder and native"],
+          ["Administrators", "Unrestricted", "Yes"],
+          ["All Users", "No self-service", "No"],
+          ["collection", "No self-service", "No"],
+          ["data", "Unrestricted", "Yes"],
+          ["nosql", "Unrestricted", "No"],
+          ["readonly", "Unrestricted", "Yes"],
         ]);
       });
-
       it("should show a modal when a revision changes while an admin is editing", () => {
         cy.intercept("/api/permissions/graph/group/1").as("graph");
         cy.visit("/admin/permissions/");
@@ -580,8 +640,8 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
 
         modifyPermission(
           "Sample Database",
-          NATIVE_QUERIES_PERMISSION_INDEX,
-          "Query builder and native",
+          DATA_ACCESS_PERMISSION_INDEX,
+          "Unrestricted",
         );
 
         cy.get("@graph").then(data => {
@@ -639,18 +699,12 @@ describeEE("scenarios > admin > permissions", () => {
     cy.button("Save").click();
 
     assertPermissionTable([
-      [
-        "Administrators",
-        "Can view",
-        "Query builder and native",
-        "1 million rows",
-        "Yes",
-      ],
+      ["Administrators", "Unrestricted", "Yes", "1 million rows", "Yes"],
       ["All Users", "Sandboxed", "No", "1 million rows", "No"],
-      ["collection", "Can view", "No", "No", "No"],
-      ["data", "Can view", "Query builder and native", "No", "No"],
-      ["nosql", "Can view", "Query builder only", "No", "No"],
-      ["readonly", "Can view", "No", "No", "No"],
+      ["collection", "No self-service", "No", "No", "No"],
+      ["data", "Unrestricted", "Yes", "No", "No"],
+      ["nosql", "Unrestricted", "No", "No", "No"],
+      ["readonly", "No self-service", "No", "No", "No"],
     ]);
 
     modifyPermission(
@@ -673,18 +727,12 @@ describeEE("scenarios > admin > permissions", () => {
     cy.button("Save changes").click();
 
     assertPermissionTable([
-      [
-        "Administrators",
-        "Can view",
-        "Query builder and native",
-        "1 million rows",
-        "Yes",
-      ],
+      ["Administrators", "Unrestricted", "Yes", "1 million rows", "Yes"],
       ["All Users", "Sandboxed", "No", "1 million rows", "No"],
-      ["collection", "Can view", "No", "No", "No"],
-      ["data", "Can view", "Query builder and native", "No", "No"],
-      ["nosql", "Can view", "Query builder only", "No", "No"],
-      ["readonly", "Can view", "No", "No", "No"],
+      ["collection", "No self-service", "No", "No", "No"],
+      ["data", "Unrestricted", "Yes", "No", "No"],
+      ["nosql", "Unrestricted", "No", "No", "No"],
+      ["readonly", "No self-service", "No", "No", "No"],
     ]);
   });
 
@@ -717,14 +765,14 @@ describeEE("scenarios > admin > permissions", () => {
     modal().button("Save").click();
 
     assertPermissionTable([
-      ["Accounts", "Can view", "No", "1 million rows", "No"],
-      ["Analytic Events", "Can view", "No", "1 million rows", "No"],
-      ["Feedback", "Can view", "No", "1 million rows", "No"],
-      ["Invoices", "Can view", "No", "1 million rows", "No"],
+      ["Accounts", "No self-service", "No", "1 million rows", "No"],
+      ["Analytic Events", "No self-service", "No", "1 million rows", "No"],
+      ["Feedback", "No self-service", "No", "1 million rows", "No"],
+      ["Invoices", "No self-service", "No", "1 million rows", "No"],
       ["Orders", "Sandboxed", "No", "1 million rows", "No"],
-      ["People", "Can view", "No", "1 million rows", "No"],
-      ["Products", "Can view", "No", "1 million rows", "No"],
-      ["Reviews", "Can view", "No", "1 million rows", "No"],
+      ["People", "No self-service", "No", "1 million rows", "No"],
+      ["Products", "No self-service", "No", "1 million rows", "No"],
+      ["Reviews", "No self-service", "No", "1 million rows", "No"],
     ]);
 
     modifyPermission(
@@ -769,14 +817,14 @@ describeEE("scenarios > admin > permissions", () => {
     cy.reload();
 
     assertPermissionTable([
-      ["Accounts", "Can view", "No", "1 million rows", "No"],
-      ["Analytic Events", "Can view", "No", "1 million rows", "No"],
-      ["Feedback", "Can view", "No", "1 million rows", "No"],
-      ["Invoices", "Can view", "No", "1 million rows", "No"],
+      ["Accounts", "No self-service", "No", "1 million rows", "No"],
+      ["Analytic Events", "No self-service", "No", "1 million rows", "No"],
+      ["Feedback", "No self-service", "No", "1 million rows", "No"],
+      ["Invoices", "No self-service", "No", "1 million rows", "No"],
       ["Orders", "Sandboxed", "No", "1 million rows", "No"],
-      ["People", "Can view", "No", "1 million rows", "No"],
-      ["Products", "Can view", "No", "1 million rows", "No"],
-      ["Reviews", "Can view", "No", "1 million rows", "No"],
+      ["People", "No self-service", "No", "1 million rows", "No"],
+      ["Products", "No self-service", "No", "1 million rows", "No"],
+      ["Reviews", "No self-service", "No", "1 million rows", "No"],
     ]);
   });
 
@@ -790,10 +838,10 @@ describeEE("scenarios > admin > permissions", () => {
       .within(() => {
         isPermissionDisabled(
           DATA_ACCESS_PERMISSION_INDEX,
-          "Can view",
+          "No self-service",
           false,
         ).click();
-        isPermissionDisabled(NATIVE_QUERIES_PERMISSION_INDEX, "No", false);
+        isPermissionDisabled(NATIVE_QUERIES_PERMISSION_INDEX, "No", true);
       });
 
     popover().contains("Block").click();
@@ -873,8 +921,8 @@ describe("scenarios > admin > permissions", () => {
       .as("permissionsHelpContent")
       .within(() => {
         cy.findByText("Data permissions");
-        cy.findByText("Database levels");
-        cy.findByText("Schema and table levels");
+        cy.findByText("Unrestricted");
+        cy.findByText("Impersonated (Pro)");
         cy.findByLabelText("Close").click();
       });
 

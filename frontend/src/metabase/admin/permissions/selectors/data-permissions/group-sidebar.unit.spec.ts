@@ -1,7 +1,5 @@
 import type { State } from "metabase-types/store";
 
-import { DataPermissionValue } from "../../types";
-
 import { state as mockState } from "./data-permissions.unit.spec.fixtures";
 
 import { getGroupsDataPermissionEditor } from ".";
@@ -45,13 +43,25 @@ describe("getGroupsDataPermissionEditor", () => {
 
     const [accessPermission, nativeQueryPermission] =
       entities?.[1].permissions ?? [];
-    expect(accessPermission.value).toEqual(DataPermissionValue.UNRESTRICTED);
+    expect(accessPermission.value).toEqual("all");
     expect(accessPermission.options).toEqual([
       {
-        icon: "eye",
+        icon: "check",
         iconColor: "success",
-        label: "Can view",
-        value: DataPermissionValue.UNRESTRICTED,
+        label: "Unrestricted",
+        value: "all",
+      },
+      {
+        icon: "permissions_limited",
+        iconColor: "warning",
+        label: "Granular",
+        value: "controlled",
+      },
+      {
+        icon: "eye",
+        iconColor: "accent5",
+        label: "No self-service",
+        value: "none",
       },
       {
         icon: "permissions_limited",
@@ -61,33 +71,19 @@ describe("getGroupsDataPermissionEditor", () => {
       },
     ]);
 
-    expect(nativeQueryPermission.value).toEqual(
-      DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
-    );
+    expect(nativeQueryPermission.value).toEqual("write");
     expect(nativeQueryPermission.options).toEqual([
       {
-        label: `Query builder and native`,
-        value: DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
         icon: "check",
         iconColor: "success",
+        label: "Yes",
+        value: "write",
       },
       {
-        label: `Granular`,
-        value: DataPermissionValue.CONTROLLED,
-        icon: "permissions_limited",
-        iconColor: "warning",
-      },
-      {
-        label: `Query builder only`,
-        value: DataPermissionValue.QUERY_BUILDER,
-        icon: "permissions_limited",
-        iconColor: "warning",
-      },
-      {
-        label: `No`,
-        value: DataPermissionValue.NO,
         icon: "close",
         iconColor: "danger",
+        label: "No",
+        value: "none",
       },
     ]);
   });
