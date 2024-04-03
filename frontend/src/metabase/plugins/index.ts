@@ -8,6 +8,7 @@ import type {
   DatabaseEntityId,
   PermissionSubject,
   DataPermissionValue,
+  EntityId,
 } from "metabase/admin/permissions/types";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type {
@@ -97,6 +98,15 @@ export const PLUGIN_DATA_PERMISSIONS: {
     state: State,
   ) => Record<string, unknown>)[];
   hasChanges: ((state: State) => boolean)[];
+  shouldRestrictNativeQueryPermissions: (
+    permissions: GroupsPermissions,
+    groupId: number,
+    entityId: EntityId,
+    permission: DataPermission,
+    value: DataPermissionValue,
+    database: Database,
+  ) => boolean;
+
   upgradeViewPermissionsIfNeeded:
     | ((
         permissions: GroupsPermissions,
@@ -111,6 +121,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
   permissionsPayloadExtraSelectors: [],
   hasChanges: [],
   upgradeViewPermissionsIfNeeded: null,
+  shouldRestrictNativeQueryPermissions: () => false,
 };
 
 // user form fields, e.x. login attributes

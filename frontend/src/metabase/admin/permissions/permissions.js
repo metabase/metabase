@@ -9,7 +9,7 @@ import {
   updateSchemasPermission,
   updateTablesPermission,
   updatePermission,
-  getSchemasPermission,
+  restrictNativeQueryPermissionsIfNeeded,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import Group from "metabase/entities/groups";
@@ -99,9 +99,8 @@ export const granulateDatabasePermissions = createThunkAction(
   GRANULATE_DATABASE_TABLE_PERMISSIONS,
   (groupId, entityId, permission, value, defaultValue) =>
     async (dispatch, getState) => {
-      // NOTE: need to have table and schema data before updates are called as update fns load the values async
-      // without awaiting, meaning the data most likely won't be loaded the first the first time we need it
-      // resulting in a perms graph that is invalid
+      // NOTE: table data needs to be loaded in order for downstreams functions
+      // to have all tables ids to key permissions by their ids
       await dispatch(
         Tables.actions.fetchList({
           dbId: entityId.databaseId,
@@ -110,10 +109,10 @@ export const granulateDatabasePermissions = createThunkAction(
         }),
       );
 
-      // HACK: updatePermission fn sets entities of controlled values (schemas in this case
-      // to the previously set value of the parent (database in this case). if the db perm
-      // value is set to something other than restrictied before changing to controlled, the
-      // table's view data dropdowns will get locked in an unchangable state (e.g. blocked, impersonated)
+      // HACK: updatePermission fn in metabase/admin/permissions/utils/graph sets child entities of
+      // entities becoming controlled to the current value of the entity. in some cases the current
+      // value is one we can't allow the child entity to become, so we quickly update the entity's
+      // value to the prefered default here, then proceed with the actual update
       if (value === DataPermissionValue.CONTROLLED) {
         dispatch(
           updateDataPermission({
@@ -121,6 +120,7 @@ export const granulateDatabasePermissions = createThunkAction(
             permission,
             value: defaultValue,
             entityId,
+            skipTracking: true,
           }),
         );
       }
@@ -135,7 +135,14 @@ export const UPDATE_DATA_PERMISSION =
   "metabase/admin/permissions/UPDATE_DATA_PERMISSION";
 export const updateDataPermission = createThunkAction(
   UPDATE_DATA_PERMISSION,
-  ({ groupId, permission: permissionInfo, value, entityId, view }) => {
+  ({
+    groupId,
+    permission: permissionInfo,
+    value,
+    entityId,
+    view,
+    skipTracking,
+  }) => {
     return (dispatch, getState) => {
       if (isDatabaseEntityId(entityId)) {
         dispatch(
@@ -162,12 +169,14 @@ export const updateDataPermission = createThunkAction(
         }
       }
 
-      trackPermissionChange(
-        entityId,
-        permissionInfo.permission,
-        permissionInfo.type === DataPermissionType.NATIVE,
-        value,
-      );
+      if (!skipTracking) {
+        trackPermissionChange(
+          entityId,
+          permissionInfo.permission,
+          permissionInfo.type === DataPermissionType.NATIVE,
+          value,
+        );
+      }
 
       return { groupId, permissionInfo, value, metadata, entityId };
     };
@@ -316,57 +325,14 @@ const dataPermissions = handleActions(
           );
         }
 
-        // TODO: consolidate this block somehow...
-        const currDbNativePermission = getSchemasPermission(
+        restrictNativeQueryPermissionsIfNeeded(
           state,
           groupId,
-          { databaseId: entityId.databaseId },
-          DataPermission.CREATE_QUERIES,
+          entityId,
+          permissionInfo.permission,
+          value,
+          database,
         );
-        const shouldGranulateNative =
-          permissionInfo.permission === DataPermission.CREATE_QUERIES &&
-          (entityId.tableId != null || entityId.schemaName != null) &&
-          currDbNativePermission ===
-            DataPermissionValue.QUERY_BUILDER_AND_NATIVE;
-        if (shouldGranulateNative) {
-          state = updateTablesPermission(
-            state,
-            groupId,
-            {
-              databaseId: entityId.databaseId,
-              schemaName: entityId.schemaName,
-            },
-            DataPermissionValue.QUERY_BUILDER,
-            database,
-            permissionInfo.permission,
-          );
-        }
-        // TODO: consolidate this block somehow...
-
-        // if view permissions are now going to sandboxed
-        // and the permissions for the db is qb + native
-        // then granulte perms to query builder only
-        //
-
-        //TODO: make this check happen in enterprise code
-        if (
-          value === DataPermissionValue.SANDBOXED &&
-          currDbNativePermission ===
-            DataPermissionValue.QUERY_BUILDER_AND_NATIVE
-        ) {
-          state = updateTablesPermission(
-            state,
-            groupId,
-            {
-              databaseId: entityId.databaseId,
-              schemaName: entityId.schemaName,
-            },
-            DataPermissionValue.QUERY_BUILDER,
-            database,
-            DataPermission.CREATE_QUERIES,
-          );
-        }
-        //TODO: make this check happen in enterprise code
 
         const shouldDowngradeNative =
           permissionInfo.type === DataPermissionType.ACCESS;

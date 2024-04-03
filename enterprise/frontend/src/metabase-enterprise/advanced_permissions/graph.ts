@@ -1,6 +1,9 @@
 import _ from "underscore";
 
-import type { DatabaseEntityId } from "metabase/admin/permissions/types";
+import type {
+  DatabaseEntityId,
+  EntityId,
+} from "metabase/admin/permissions/types";
 import {
   DataPermission,
   DataPermissionValue,
@@ -11,6 +14,27 @@ import {
 } from "metabase/admin/permissions/utils/graph";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { GroupsPermissions, NativePermissions } from "metabase-types/api";
+
+export function shouldRestrictNativeQueryPermissions(
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: EntityId,
+  _permission: DataPermission,
+  value: DataPermissionValue,
+  _database: Database,
+) {
+  const currDbNativePermission = getSchemasPermission(
+    permissions,
+    groupId,
+    { databaseId: entityId.databaseId },
+    DataPermission.CREATE_QUERIES,
+  );
+
+  return (
+    value === DataPermissionValue.SANDBOXED &&
+    currDbNativePermission === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
+  );
+}
 
 export function upgradeViewPermissionsIfNeeded(
   permissions: GroupsPermissions,

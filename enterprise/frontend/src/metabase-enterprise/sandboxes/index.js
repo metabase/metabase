@@ -1,6 +1,7 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
@@ -25,7 +26,7 @@ import { getDraftPolicies, hasPolicyChanges } from "./selectors";
 
 const OPTION_SEGMENTED = {
   label: t`Sandboxed`,
-  value: "sandboxed",
+  value: DataPermissionValue.SANDBOXED,
   icon: "permissions_limited",
   iconColor: "brand",
 };

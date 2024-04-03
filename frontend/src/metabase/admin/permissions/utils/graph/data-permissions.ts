@@ -1,6 +1,7 @@
 import { getIn, setIn } from "icepick";
 import _ from "underscore";
 
+import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { GroupsPermissions, ConcreteTableId } from "metabase-types/api";
@@ -187,11 +188,67 @@ export const getFieldsPermission = (
   }
 };
 
+// Ideally this would live in downgradeNativePermissionsIfNeeded, but originally that function was
+// created to only be called if a view permission was changing. there needs to be some reworking
+// in some of the setter methods to make sure the downgrading will always happen at the appropriate time
+export function restrictNativeQueryPermissionsIfNeeded(
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: EntityId,
+  permission: DataPermission,
+  value: DataPermissionValue,
+  database: Database,
+) {
+  const currDbNativePermission = getSchemasPermission(
+    permissions,
+    groupId,
+    { databaseId: entityId.databaseId },
+    DataPermission.CREATE_QUERIES,
+  );
+
+  const isMakingGranularCreateQueriesChange =
+    permission === DataPermission.CREATE_QUERIES &&
+    value !== DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
+    (entityId.tableId != null || entityId.schemaName != null) &&
+    currDbNativePermission === DataPermissionValue.QUERY_BUILDER_AND_NATIVE;
+
+  const shouldDowngradeNative =
+    isMakingGranularCreateQueriesChange ||
+    PLUGIN_DATA_PERMISSIONS.shouldRestrictNativeQueryPermissions(
+      permissions,
+      groupId,
+      entityId,
+      permission,
+      value,
+      database,
+    );
+
+  if (shouldDowngradeNative) {
+    const schemaNames = (database && database.schemaNames()) ?? [null];
+
+    schemaNames.forEach(schemaName => {
+      permissions = updateTablesPermission(
+        permissions,
+        groupId,
+        {
+          databaseId: entityId.databaseId,
+          schemaName,
+        },
+        DataPermissionValue.QUERY_BUILDER,
+        database,
+        DataPermission.CREATE_QUERIES,
+      );
+    });
+  }
+
+  return permissions;
+}
+
 export function downgradeNativePermissionsIfNeeded(
   permissions: GroupsPermissions,
   groupId: number,
   { databaseId }: DatabaseEntityId,
-  value: DataPermissionValue, // TODO: type to view data permission values
+  value: DataPermissionValue,
 ) {
   // if changing schemas to none, downgrade native to none
   if (isRestrictivePermission(value)) {

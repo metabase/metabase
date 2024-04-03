@@ -82,11 +82,6 @@ const buildAccessPermission = (
     database,
   );
 
-  // HACK: if the only two options are unrestricted and controlled, then let's remove the controlled option
-  if (options.length === 2) {
-    options.pop();
-  }
-
   return {
     permission: DataPermission.VIEW_DATA,
     type: DataPermissionType.ACCESS,
