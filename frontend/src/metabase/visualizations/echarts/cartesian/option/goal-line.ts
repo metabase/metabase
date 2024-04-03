@@ -41,7 +41,7 @@ export function getGoalLineSeriesOption(
     data: [
       [getFirstNonNullXValue(chartModel.dataset), settings["graph.goal_value"]],
     ],
-    z: 400,
+    z: CHART_STYLE.goalLine.zIndex,
     blur: {
       opacity: 1,
     },
