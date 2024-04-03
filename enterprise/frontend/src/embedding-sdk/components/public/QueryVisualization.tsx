@@ -1,6 +1,8 @@
+import cx from "classnames";
 import { useEffect, useState } from "react";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import {
   onCloseChartType,
@@ -119,7 +121,7 @@ export const QueryVisualizationSdk = ({
 
   return (
     <LoadingAndErrorWrapper
-      className="flex-full full-width"
+      className={cx(CS.flexFull, CS.fullWidth)}
       loading={isLoading}
       error={cardError || resultError}
       noWrapper
@@ -146,7 +148,7 @@ export const QueryVisualizationSdk = ({
               </Box>
             )}
             <QueryVisualization
-              className="flex full-width"
+              className={cx(CS.flexFull, CS.fullWidth)}
               question={question}
               rawSeries={[{ card, data: result?.data }]}
               isRunning={isLoading}

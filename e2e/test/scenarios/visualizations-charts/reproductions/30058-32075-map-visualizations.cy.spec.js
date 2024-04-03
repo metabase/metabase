@@ -51,7 +51,7 @@ describe("issue 32075", () => {
     visualize();
 
     cy.findByTestId("TableInteractive-root").should("not.exist");
-    cy.get(".PinMap").should("exist");
+    cy.get("[data-element-id=pin-map]").should("exist");
   });
 
   it("should still display visualization as a map after adding another column to group by", () => {
@@ -63,7 +63,7 @@ describe("issue 32075", () => {
     visualize();
 
     cy.findByTestId("TableInteractive-root").should("not.exist");
-    cy.get(".PinMap").should("exist");
+    cy.get("[data-element-id=pin-map]").should("exist");
   });
 
   it("should still display visualization as a map after adding another aggregation", () => {
@@ -75,7 +75,7 @@ describe("issue 32075", () => {
     visualize();
 
     cy.findByTestId("TableInteractive-root").should("not.exist");
-    cy.get(".PinMap").should("exist");
+    cy.get("[data-element-id=pin-map]").should("exist");
   });
 
   it("should change display to default after removing a column to group by when map is not sensible anymore", () => {
@@ -86,7 +86,7 @@ describe("issue 32075", () => {
     removeSummaryGroupingField({ field: "Latitude: Auto binned" });
     visualize();
 
-    cy.get(".PinMap").should("not.exist");
+    cy.get("[data-element-id=pin-map]").should("not.exist");
     cy.get(".LineAreaBarChart").should("exist");
   });
 });

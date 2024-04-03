@@ -2,6 +2,7 @@ import type { ComponentType, HTMLAttributes, ReactNode } from "react";
 import { t } from "ttag";
 import type { AnySchema } from "yup";
 
+import noResultsSource from "assets/img/no_results.svg";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import type {
   DataPermission,
@@ -43,7 +44,7 @@ import type {
 } from "./types";
 
 // functions called when the application is started
-export const PLUGIN_APP_INIT_FUCTIONS = [];
+export const PLUGIN_APP_INIT_FUNCTIONS = [];
 
 // function to determine the landing page
 export const PLUGIN_LANDING_PAGE = [];
@@ -156,14 +157,36 @@ export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
   canWhitelabel: (_state: State) => false,
-  getLoadingMessage: (_state: State) => (isSlow: boolean) =>
+  getLoadingMessageFactory: (_state: State) => (isSlow: boolean) =>
     isSlow ? t`Waiting for results...` : t`Doing science...`,
   getIsWhiteLabeling: (_state: State) => false,
   // eslint-disable-next-line no-literal-metabase-strings -- This is the actual Metabase name, so we don't want to translate it.
   getApplicationName: (_state: State) => "Metabase",
   getShowMetabaseLinks: (_state: State) => true,
-  getDashboardOverviewId: (_state: State) => undefined,
+  getLoginPageIllustration: (_state: State): IllustrationValue => {
+    return {
+      src: "app/img/bridge.svg",
+      isDefault: true,
+    };
+  },
+  getLandingPageIllustration: (_state: State): IllustrationValue => {
+    return {
+      src: "app/img/bridge.svg",
+      isDefault: true,
+    };
+  },
+  getNoDataIllustration: (_state: State): string => {
+    return noResultsSource;
+  },
+  getNoObjectIllustration: (_state: State): string => {
+    return noResultsSource;
+  },
 };
+
+export type IllustrationValue = {
+  src: string;
+  isDefault: boolean;
+} | null;
 
 export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
 

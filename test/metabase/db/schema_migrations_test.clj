@@ -1182,7 +1182,7 @@
                                         :db_id db-id :group_id group-id :perm_type "perms/manage-database"))))))))
 
 (deftest create-internal-user-test
-  (testing "The internal user is created again if it doesn't already exist"
+  (testing "The internal user is created if it doesn't already exist"
     (impl/test-migrations "v50.2024-03-28T16:30:35" [migrate!]
       (let [get-users #(t2/query "SELECT * FROM core_user")]
         (is (= [] (get-users)))
@@ -1204,7 +1204,7 @@
     (impl/test-migrations "v50.2024-03-28T16:30:35" [migrate!]
       (t2/insert-returning-pks!
        :core_user
-                               ;; Copied from the old `metabase-enterprise.internal-user` namespace
+       ;; Copied from the old `metabase-enterprise.internal-user` namespace
        {:id               config/internal-mb-user-id
         :first_name       "Metabase"
         :last_name        "Internal"

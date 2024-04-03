@@ -22,7 +22,7 @@
     (let [{:keys [data total]} (mt/user-http-request :crowberto :get 200 "user", :include_deactivated true)
           internal-user-email  (t2/select-one-fn :email :model/User config/internal-mb-user-id)]
       (testing "does not return the internal user"
-        (is (not (some #{internal-user-email} (map :email data)))))
+        (is (not-any? (comp #{internal-user-email} :email) data)))
       (testing "does not count the internal user"
         (is (= total (count data))))))
   (testing "User Endpoints with :id"
@@ -33,7 +33,7 @@
                                            [:put "user/:id/modal/qbnewb" 400]
                                            [:post "user/:id/send_invite" 400]]]
       (let [endpoint (str/replace endpoint #":id" (str config/internal-mb-user-id))
-            testing-details-string (str/join " " [(u/upper-case-en (name :get))
+            testing-details-string (str/join " " [(u/upper-case-en (name method))
                                                   endpoint
                                                   "does not allow modifying the internal user"])]
         (testing testing-details-string
