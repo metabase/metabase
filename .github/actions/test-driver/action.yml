@@ -19,7 +19,7 @@ runs:
       run: yarn build-static-viz
       shell: bash
     - name: Test database driver
-      run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test ${{ inputs.test-args }} :only metabase.driver.bigquery-cloud-sdk-test/chain-filter-with-fields-from-table-requires-a-filter-test
+      run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
       shell: bash
     - name: Publish Test Report (JUnit)
       uses: dorny/test-reporter@v1
