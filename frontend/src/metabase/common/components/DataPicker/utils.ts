@@ -15,21 +15,6 @@ export const generateKey = (
   return [dbItem?.id, schemaItem?.id, tableItem?.id].join("-");
 };
 
-export const isTablePickerValueEqual = (
-  value1: TablePickerValue | null,
-  value2: TablePickerValue | null,
-) => {
-  if (!value1 || !value2) {
-    return value1 === value2;
-  }
-
-  return (
-    value1.db_id === value2.db_id &&
-    value1.id === value2.id &&
-    value1.schema === value2.schema
-  );
-};
-
 export const tablePickerValueFromTable = (
   table: Table | TableEntity,
 ): TablePickerValue => {
