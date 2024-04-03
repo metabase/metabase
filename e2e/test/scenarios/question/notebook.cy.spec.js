@@ -684,7 +684,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.log(
       "Preview should not be possible without the source data (metabase#40608)",
     );
-    cy.findByTestId("step-data-0-0")
+    getNotebookStep("data")
       .as("dataStep")
       .within(() => {
         cy.findByText("Pick your starting data").should("exist");
@@ -695,8 +695,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.get("@dataStep").icon("play").should("not.be.visible");
     popover().findByTextEnsureVisible("Orders").click();
 
-    cy.findByTestId("step-filter-0-0").icon("play").should("not.be.visible");
-    cy.findByTestId("step-summarize-0-0").icon("play").should("not.be.visible");
+    getNotebookStep("filter").icon("play").should("not.be.visible");
+    getNotebookStep("summarize").icon("play").should("not.be.visible");
 
     cy.get("@dataStep").within(() => {
       cy.icon("play").click();
@@ -708,7 +708,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     cy.button("Row limit").click();
-    cy.findByTestId("step-limit-0-0").within(() => {
+    getNotebookStep("limit").within(() => {
       cy.findByPlaceholderText("Enter a limit").type("5").realPress("Tab");
 
       cy.icon("play").click();
