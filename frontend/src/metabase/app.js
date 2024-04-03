@@ -43,7 +43,7 @@ import api from "metabase/lib/api";
 import { initializeEmbedding } from "metabase/lib/embed";
 import { captureConsoleErrors } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
-import { PLUGIN_APP_INIT_FUCTIONS } from "metabase/plugins";
+import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
@@ -89,7 +89,7 @@ function _init(reducers, getRoutes, callback) {
 
   store.dispatch(refreshSiteSettings());
 
-  PLUGIN_APP_INIT_FUCTIONS.forEach(init => init());
+  PLUGIN_APP_INIT_FUNCTIONS.forEach(init => init());
 
   window.Metabase = window.Metabase || {};
   window.Metabase.store = store;
