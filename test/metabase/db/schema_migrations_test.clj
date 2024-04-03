@@ -14,6 +14,7 @@
    [java-time.api :as t]
    [metabase.config :as config]
    [metabase.db :as mdb]
+   [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.custom-migrations-test :as custom-migrations-test]
    [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
@@ -1389,3 +1390,14 @@
         (insert-perm! "perms/manage-database" "no")
         (migrate! :down 49)
         (is (nil? (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))))))
+
+(deftest create-sample-content-test
+  (testing "The sample content's creation depends on on `*skip-create-sample-content*`"
+    (doseq [skip? [true false]]
+      (testing (str "*skip-create-sample-content* = " skip?)
+        (impl/test-migrations "v50.2024-03-28T16:30:36" [migrate!]
+          (binding [custom-migrations/*skip-create-sample-content* skip?]
+            (let [get-dashboards (fn [] (t2/query "SELECT * FROM report_dashboard"))]
+              (is (empty? (get-dashboards)))
+              (migrate!)
+              (is ((if skip? empty? not-empty) (get-dashboards))))))))))

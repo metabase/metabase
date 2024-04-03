@@ -13,6 +13,7 @@
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.db :as mdb]
+   [metabase.db.custom-migrations :as custom-migrations]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -91,7 +92,8 @@
    & {:keys [token-check?]
       :or   {token-check? true}}]
   (plugins/load-plugins!)
-  (mdb/setup-db!)
+  (binding [custom-migrations/*skip-create-sample-content* true]
+    (mdb/setup-db!))
   (when token-check?
     (check-premium-token!))
   ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
