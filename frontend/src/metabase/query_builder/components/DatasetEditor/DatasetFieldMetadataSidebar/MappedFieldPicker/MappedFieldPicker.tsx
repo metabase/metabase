@@ -2,15 +2,19 @@ import cx from "classnames";
 import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
+import {
+  skipToken,
+  useGetFieldQuery,
+  useGetTableMetadataQuery,
+} from "metabase/api";
 import CS from "metabase/css/core/index.css";
-import Fields from "metabase/entities/fields";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
-import type Field from "metabase-lib/v1/metadata/Field";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 
 import { StyledSelectButton } from "./MappedFieldPicker.styled";
 
-type MappedFieldPickerOwnProps = {
+type MappedFieldPickerProps = {
   field: {
     value: number | null;
     onChange: (fieldId: number | null) => void;
@@ -18,36 +22,21 @@ type MappedFieldPickerOwnProps = {
   formField: {
     databaseId: number;
   };
-  fieldObject?: Field;
   tabIndex?: number;
 };
 
-type MappedFieldPickerStateProps = {
-  fieldObject?: Field;
-};
-
-type MappedFieldPickerProps = MappedFieldPickerOwnProps &
-  MappedFieldPickerStateProps;
-
-const query = {
-  id: (state: unknown, { field }: MappedFieldPickerOwnProps) =>
-    field.value || null,
-
-  // When using Field object loader, it passes the field object as a `field` prop
-  // and overwrites form's `field` prop. Entity alias makes it pass the `fieldObject` prop instead
-  entityAlias: "fieldObject",
-
-  loadingAndErrorWrapper: false,
-};
-
 function MappedFieldPicker({
-  field,
+  field: { value: selectedFieldId = null, onChange },
   formField,
-  fieldObject,
   tabIndex,
 }: MappedFieldPickerProps) {
-  const { value: selectedFieldId = null, onChange } = field;
   const { databaseId = null } = formField;
+  const { currentData: field } = useGetFieldQuery(
+    selectedFieldId ? { id: selectedFieldId } : skipToken,
+  );
+  const { currentData: table } = useGetTableMetadataQuery(
+    field ? { id: field.table_id } : skipToken,
+  );
 
   const selectButtonRef = useRef<HTMLButtonElement>();
 
@@ -64,12 +53,15 @@ function MappedFieldPicker({
   );
 
   const renderTriggerElement = useCallback(() => {
-    const label = fieldObject
-      ? fieldObject.displayName({ includeTable: true })
-      : t`None`;
+    const label =
+      field && table
+        ? `${field.display_name} → ${table?.display_name}`
+        : field
+        ? field.display_name
+        : t`None`;
     return (
       <StyledSelectButton
-        hasValue={!!fieldObject}
+        hasValue={!!field}
         tabIndex={tabIndex}
         ref={selectButtonRef as any}
         onClear={() => onChange(null)}
@@ -77,17 +69,15 @@ function MappedFieldPicker({
         {label}
       </StyledSelectButton>
     );
-  }, [fieldObject, onChange, tabIndex]);
+  }, [field, table, onChange, tabIndex]);
 
   // DataSelector doesn't handle selectedTableId change prop nicely.
-  // During the initial load, fieldObject might have `table_id` set to `card__$ID` (retrieved from metadata)
-  // But at some point, we fetch  the field object by ID to get the real table ID and pass it to the selector
+  // During the initial load, field might have `table_id` set to `card__$ID` (retrieved from metadata)
+  // But at some point, we fetch  the formField object by ID to get the real table ID and pass it to the selector
   // Until it's fetched, we need to pass `null` as `selectedTableId` to avoid invalid selector state
   // This should be removed once DataSelector handles prop changes better
   const selectedTableId =
-    !fieldObject || isVirtualCardId(fieldObject.table?.id)
-      ? null
-      : fieldObject?.table?.id;
+    !field || isVirtualCardId(field.table_id) ? null : field.table_id;
 
   return (
     <SchemaTableAndFieldDataSelector
@@ -100,7 +90,7 @@ function MappedFieldPicker({
       )}
       selectedDatabaseId={databaseId}
       selectedTableId={selectedTableId}
-      selectedSchemaId={fieldObject?.table?.schema?.id}
+      selectedSchemaId={table && generateSchemaId(table.db_id, table.schema)}
       selectedFieldId={selectedFieldId}
       getTriggerElementContent={renderTriggerElement}
       hasTriggerExpandControl={false}
@@ -111,4 +101,4 @@ function MappedFieldPicker({
   );
 }
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Fields.load(query)(MappedFieldPicker);
+export default MappedFieldPicker;
