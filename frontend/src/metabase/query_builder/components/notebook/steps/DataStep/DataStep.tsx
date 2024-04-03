@@ -1,8 +1,14 @@
 import { useMemo, useState } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { DataPickerModal } from "metabase/common/components/DataPicker";
+import {
+  DataPickerModal,
+  tablePickerValueFromTable,
+} from "metabase/common/components/DataPicker";
 import { FieldPicker } from "metabase/common/components/FieldPicker";
+import Tables from "metabase/entities/tables";
+import { useDispatch } from "metabase/lib/redux";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, TableId } from "metabase-types/api";
@@ -19,8 +25,10 @@ export const DataStep = ({
   color,
   updateQuery,
 }: NotebookStepUiComponentProps) => {
+  const dispatch = useDispatch();
   const { stageIndex } = step;
   const question = step.question;
+  const questionRef = useLatest(question);
   const metadata = question.metadata();
   const collectionId = question.collectionId();
 
@@ -45,8 +53,12 @@ export const DataStep = ({
 
   const canSelectTableColumns = tableMetadata && isRaw && !readOnly;
 
-  const handleTableSelect = (tableId: TableId, databaseId: DatabaseId) => {
-    const metadata = question.metadata();
+  const handleTableSelect = async (
+    tableId: TableId,
+    databaseId: DatabaseId,
+  ) => {
+    await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
+    const metadata = questionRef.current.metadata();
     const metadataProvider = Lib.metadataProvider(databaseId, metadata);
     const nextTable = Lib.tableOrCardMetadata(metadataProvider, tableId);
     updateQuery(Lib.queryFromTableOrCardMetadata(metadataProvider, nextTable));
@@ -78,15 +90,7 @@ export const DataStep = ({
           {isDataPickerOpen && (
             <DataPickerModal
               collectionId={collectionId}
-              value={
-                table
-                  ? {
-                      id: table.id,
-                      db_id: table.db_id,
-                      schema: table.schema?.name,
-                    }
-                  : null
-              }
+              value={table ? tablePickerValueFromTable(table) : null}
               onChange={table => {
                 handleTableSelect(table.id, table.db_id);
               }}
