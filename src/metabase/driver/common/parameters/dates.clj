@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.params :as params]
@@ -174,7 +175,7 @@
 (defn- with-temporal-unit-if-field
   [clause unit]
   (cond-> clause
-    (mbql.u/is-clause? :field clause) (mbql.u/with-temporal-unit unit)))
+    (schema.helpers/is-clause? :field clause) (mbql.u/with-temporal-unit unit)))
 
 (def ^:private relative-date-string-decoders
   [{:parser #(= % "today")

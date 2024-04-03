@@ -3,6 +3,7 @@
   `optimize-temporal-filters` for more details."
   (:require
    [clojure.walk :as walk]
+   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
@@ -191,7 +192,7 @@
 
 (defn- optimize-temporal-filters* [query]
   (lib.util.match/replace query
-    (_ :guard (partial mbql.u/is-clause? (set (keys (methods optimize-filter)))))
+    (_ :guard (partial schema.helpers/is-clause? (set (keys (methods optimize-filter)))))
     (or (when (can-optimize-filter? &match)
           (u/prog1 (optimize-filter &match)
             (if <>

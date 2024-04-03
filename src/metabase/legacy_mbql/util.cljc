@@ -31,26 +31,6 @@
       (str/replace #"_" "-")
       keyword))
 
-(defn mbql-clause?
-  "True if `x` is an MBQL clause (a sequence with a keyword as its first arg). (Since this is used by the code in
-  `normalize` this handles pre-normalized clauses as well.)"
-  [x]
-  (and (sequential? x)
-       (not (map-entry? x))
-       (keyword? (first x))))
-
-(defn is-clause?
-  "If `x` is an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
-
-    (is-clause? :count [:count 10])        ; -> true
-    (is-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> true"
-  [k-or-ks x]
-  (and
-   (mbql-clause? x)
-   (if (coll? k-or-ks)
-     ((set k-or-ks) (first x))
-     (= k-or-ks (first x)))))
-
 (defn check-clause
   "Returns `x` if it's an instance of a clause defined by keyword(s) `k-or-ks`
 
@@ -58,7 +38,7 @@
     (check-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> [:+ 10 20]
     (check-clause :sum [:count 10]) ; => nil"
   [k-or-ks x]
-  (when (is-clause? k-or-ks x)
+  (when (schema.helpers/is-clause? k-or-ks x)
     x))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -83,7 +63,7 @@
       0 nil
       ;; single arg, unwrap it
       1 (simplify-compound-filter (first args))
-      (if (some (partial is-clause? op) args)
+      (if (some (partial schema.helpers/is-clause? op) args)
         ;; clause of the same type embedded, faltten it
         (recur op (combine-compound-filters-of-type op args))
         ;; simplify the arguments
@@ -404,7 +384,7 @@
   clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
   ([x]
    (letfn [(clause-type [x]
-             (when (mbql-clause? x)
+             (when (schema.helpers/mbql-clause? x)
                (first x)))
            (mlv2-lib-type [x]
              (when (map? x)
@@ -719,7 +699,7 @@
   "Set the `:temporal-unit` of a `:field` clause to `unit`."
   [[_ _ {:keys [base-type]} :as clause] unit]
   ;; it doesn't make sense to call this on an `:expression` or `:aggregation`.
-  (assert (is-clause? :field clause))
+  (assert (schema.helpers/is-clause? :field clause))
   (if (or (not base-type)
           (mbql.s/valid-temporal-unit-for-base-type? base-type unit))
     (assoc-field-options clause :temporal-unit unit)

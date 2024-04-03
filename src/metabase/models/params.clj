@@ -16,7 +16,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.field-values :as field-values]
@@ -68,7 +68,7 @@
   "Wrap a raw Field ID in a `:field` clause if needed."
   [field-id-or-form]
   (cond
-    (mbql.u/mbql-clause? field-id-or-form)
+    (schema.helpers/mbql-clause? field-id-or-form)
     field-id-or-form
 
     (integer? field-id-or-form)
@@ -114,9 +114,9 @@
   ID it references (if any)."
   [target card]
   (let [target (mbql.normalize/normalize target)]
-    (when (mbql.u/is-clause? :dimension target)
+    (when (schema.helpers/is-clause? :dimension target)
       (let [[_ dimension] target
-            field-form    (if (mbql.u/is-clause? :template-tag dimension)
+            field-form    (if (schema.helpers/is-clause? :template-tag dimension)
                             (template-tag->field-form dimension card)
                             dimension)]
         ;; Being extra safe here since we've got many reports on this cause loading dashboard to fail

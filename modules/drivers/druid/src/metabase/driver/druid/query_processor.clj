@@ -5,6 +5,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.druid.js :as druid.js]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -162,7 +163,7 @@
 ;;; ---------------------- handle-filter. See http://druid.io/docs/latest/querying/filters.html ----------------------
 
 (def ^:private ^{:arglists '([clause])} field?
-  (partial mbql.u/is-clause? :field))
+  (partial schema.helpers/is-clause? :field))
 
 (defn- filter:and
   [filters]
@@ -184,7 +185,7 @@
 
 (defn- filter:nil?
   [clause-or-field]
-  (if (mbql.u/is-clause? #{:+ :- :/ :*} clause-or-field)
+  (if (schema.helpers/is-clause? #{:+ :- :/ :*} clause-or-field)
     (filter:and (vec (for [arg   (rest clause-or-field)
                            :when (field? arg)]
                        (filter:nil? arg))))
@@ -325,7 +326,7 @@
   "Return a `relative-datetime` clause with `n` units added to it."
   [absolute-or-relative-datetime :- mbql.s/DateTimeValue
    n                             :- number?]
-  (if (mbql.u/is-clause? :relative-datetime absolute-or-relative-datetime)
+  (if (schema.helpers/is-clause? :relative-datetime absolute-or-relative-datetime)
     (let [[_ original-n unit] absolute-or-relative-datetime]
       [:relative-datetime (+ n original-n) unit])
     (let [[_ t unit] absolute-or-relative-datetime]
@@ -471,9 +472,9 @@
   {:post [(every? (some-fn keyword? string?) %)]}
   (flatten (for [arg   args
                  :when (or (field? arg)
-                           (mbql.u/is-clause? #{:+ :- :/ :*} arg))]
+                           (schema.helpers/is-clause? #{:+ :- :/ :*} arg))]
              (cond
-               (mbql.u/is-clause? #{:+ :- :/ :*} arg) (expression->field-names arg)
+               (schema.helpers/is-clause? #{:+ :- :/ :*} arg) (expression->field-names arg)
                (field? arg)                           (->rvalue arg)))))
 
 (defn- expression-arg->js
@@ -508,7 +509,7 @@
 
 (defn- ag:doubleSum
   [field-clause output-name]
-  (if (mbql.u/is-clause? #{:+ :- :/ :*} field-clause)
+  (if (schema.helpers/is-clause? #{:+ :- :/ :*} field-clause)
     (ag:doubleSum:expression field-clause output-name)
     ;; metrics can use the built-in :doubleSum aggregator, but for dimensions we have to roll something that does the
     ;; same thing in JS
@@ -539,7 +540,7 @@
 
 (defn- ag:doubleMin
   [field-clause output-name]
-  (if (mbql.u/is-clause? #{:+ :- :/ :*} field-clause)
+  (if (schema.helpers/is-clause? #{:+ :- :/ :*} field-clause)
     (ag:doubleMin:expression field-clause output-name)
     (case (dimension-or-metric? field-clause)
       :metric    {:type      :doubleMin
@@ -568,7 +569,7 @@
 
 (defn- ag:doubleMax
   [field output-name]
-  (if (mbql.u/is-clause? #{:+ :- :/ :*} field)
+  (if (schema.helpers/is-clause? #{:+ :- :/ :*} field)
     (ag:doubleMax:expression field output-name)
     (case (dimension-or-metric? field)
       :metric    {:type      :doubleMax
@@ -595,7 +596,7 @@
 (defn- ag:distinct
   [field output-name]
   (cond
-    (mbql.u/is-clause? #{:+} field)
+    (schema.helpers/is-clause? #{:+} field)
     {:type       :cardinality
      :name       output-name
      :fieldNames (mapv ->rvalue (rest field))
@@ -616,7 +617,7 @@
   ([output-name]
    {:type :count, :name output-name})
   ([field output-name]
-   (if (and (mbql.u/is-clause? #{:field-id} field)
+   (if (and (schema.helpers/is-clause? #{:field-id} field)
             (hyper-unique? field))
      {:type      :hyperUnique
       :name      output-name
@@ -774,7 +775,7 @@
   (into []
         (comp (remove number?)
               (map (fn [arg]
-                     (if (mbql.u/is-clause? #{:+ :- :/ :*} arg)
+                     (if (schema.helpers/is-clause? #{:+ :- :/ :*} arg)
                        (expression->actual-ags arg)
                        [arg])))
               cat)
@@ -782,7 +783,7 @@
 
 (defn- unwrap-name
   [x]
-  (if (mbql.u/is-clause? :aggregation-options x)
+  (if (schema.helpers/is-clause? :aggregation-options x)
     (second x)
     x))
 

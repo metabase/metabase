@@ -4,6 +4,7 @@
   (:require
    [java-time.api :as t]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
@@ -231,7 +232,7 @@
 
 ;;; -------------------------------------------- wrap-literals-in-clause ---------------------------------------------
 
-(def ^:private raw-value? (complement mbql.u/mbql-clause?))
+(def ^:private raw-value? (complement schema.helpers/mbql-clause?))
 
 (defn wrap-value-literals-in-mbql
   "Given a normalized mbql query (important to desugar forms like `[:does-not-contain ...]` -> `[:not [:contains

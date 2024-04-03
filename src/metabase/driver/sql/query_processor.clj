@@ -9,6 +9,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -688,7 +689,7 @@
    (->honeysql driver power)])
 
 (defn- interval? [expr]
-  (mbql.u/is-clause? :interval expr))
+  (schema.helpers/is-clause? :interval expr))
 
 (defmethod ->honeysql [:sql :+]
   [driver [_ & args]]

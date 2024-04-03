@@ -4,7 +4,7 @@
    [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.util.yaml :as yaml]))
 
 (def MBQL
@@ -13,7 +13,7 @@
    {:decode/domain-entity-spec mbql.normalize/normalize
     :decode/transform-spec     mbql.normalize/normalize
     :error/message             "valid MBQL clause"}
-   mbql.u/mbql-clause?])
+   schema.helpers/mbql-clause?])
 
 (def FieldType
   "Field type designator -- a keyword derived from `type/*`"

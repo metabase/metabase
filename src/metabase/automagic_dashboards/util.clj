@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.field :refer [Field]]
@@ -41,11 +42,11 @@
   (filter #(-> % :entity_type (isa? tablespec)) tables))
 
 (def ^{:arglists '([metric]) :doc "Is metric a saved metric?"} saved-metric?
-  (every-pred (partial mbql.u/is-clause? :metric)
+  (every-pred (partial schema.helpers/is-clause? :metric)
               (complement mbql.u/ga-metric-or-segment?)))
 
 (def ^{:arglists '([metric]) :doc "Is this a custom expression?"} custom-expression?
-  (partial mbql.u/is-clause? :aggregation-options))
+  (partial schema.helpers/is-clause? :aggregation-options))
 
 (def ^{:arglists '([metric]) :doc "Is this an adhoc metric?"} adhoc-metric?
   (complement (some-fn saved-metric? custom-expression?)))

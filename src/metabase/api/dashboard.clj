@@ -15,6 +15,7 @@
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util.match :as lib.util.match]
@@ -931,7 +932,7 @@
                                   (mbql.u/check-clause :dimension))]
         :when dimension
         :let  [ttag      (get-template-tag dimension card)
-               dimension (condp mbql.u/is-clause? dimension
+               dimension (condp schema.helpers/is-clause? dimension
                            :field        dimension
                            :expression   dimension
                            :template-tag (:dimension ttag)

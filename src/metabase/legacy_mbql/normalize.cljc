@@ -33,6 +33,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
@@ -561,7 +562,7 @@
   ;; if you specify a `:temporal-unit` for the Field inside a `:time-interval`, remove it. The unit in
   ;; `:time-interval` takes precedence.
   (let [field (cond-> (canonicalize-implicit-field-id field)
-                (mbql.u/is-clause? :field field) (mbql.u/update-field-options dissoc :temporal-unit))]
+                (schema.helpers/is-clause? :field field) (mbql.u/update-field-options dissoc :temporal-unit))]
     (into [:time-interval field] args)))
 
 ;; all the other filter types have an implict field ID for the first arg

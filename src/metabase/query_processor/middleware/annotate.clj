@@ -7,6 +7,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -139,7 +140,7 @@
     true
 
     :+
-    (some (partial mbql.u/is-clause? :interval) (rest clause))
+    (some (partial schema.helpers/is-clause? :interval) (rest clause))
 
     _ false))
 
@@ -160,28 +161,28 @@
     (number? expression)
     {:base_type :type/Number}
 
-    (mbql.u/is-clause? :field expression)
+    (schema.helpers/is-clause? :field expression)
     (col-info-for-field-clause {} expression)
 
-    (mbql.u/is-clause? :coalesce expression)
+    (schema.helpers/is-clause? :coalesce expression)
     (select-keys (infer-expression-type (second expression)) type-info-columns)
 
-    (mbql.u/is-clause? :length expression)
+    (schema.helpers/is-clause? :length expression)
     {:base_type :type/BigInteger}
 
-    (mbql.u/is-clause? :case expression)
+    (schema.helpers/is-clause? :case expression)
     (let [[_ clauses] expression]
       (some
        (fn [[_ expression]]
          ;; get the first non-nil val
          (when (and (not= expression nil)
-                    (or (not (mbql.u/is-clause? :value expression))
+                    (or (not (schema.helpers/is-clause? :value expression))
                         (let [[_ value] expression]
                           (not= value nil))))
            (select-keys (infer-expression-type expression) type-info-columns)))
        clauses))
 
-    (mbql.u/is-clause? :convert-timezone expression)
+    (schema.helpers/is-clause? :convert-timezone expression)
     {:converted_timezone (nth expression 2)
      :base_type          :type/DateTime}
 
@@ -198,10 +199,10 @@
     (merge (select-keys (infer-expression-type (second expression)) [:converted_timezone])
      {:base_type :type/DateTime})
 
-    (mbql.u/is-clause? mbql.s/string-functions expression)
+    (schema.helpers/is-clause? mbql.s/string-functions expression)
     {:base_type :type/Text}
 
-    (mbql.u/is-clause? mbql.s/numeric-functions expression)
+    (schema.helpers/is-clause? mbql.s/numeric-functions expression)
     {:base_type :type/Float}
 
     :else
