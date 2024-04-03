@@ -1,7 +1,7 @@
 import {
   DurationUnit,
   type Config as CacheConfig,
-} from "metabase/admin/performance/types";
+} from "metabase/admin/performance/strategies";
 
 export const createMockCacheConfig = (
   opts?: Partial<CacheConfig>,

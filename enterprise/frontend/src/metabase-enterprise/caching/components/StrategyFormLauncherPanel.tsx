@@ -2,8 +2,11 @@ import { useMemo, type Dispatch, type SetStateAction } from "react";
 import { t } from "ttag";
 
 import { Panel } from "metabase/admin/performance/components/StrategyEditorForDatabases.styled";
-import { rootId } from "metabase/admin/performance/constants";
-import type { Config, UpdateTargetId } from "metabase/admin/performance/types";
+import type {
+  Config,
+  UpdateTargetId,
+} from "metabase/admin/performance/strategies";
+import { rootId } from "metabase/admin/performance/strategies";
 import { FormProvider } from "metabase/forms";
 import { color } from "metabase/lib/colors";
 import { Box, Stack } from "metabase/ui";

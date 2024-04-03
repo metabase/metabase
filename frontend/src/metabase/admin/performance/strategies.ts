@@ -5,12 +5,7 @@ import type { SchemaObjectDescription } from "yup/lib/schema";
 
 export type StrategyType = "nocache" | "ttl" | "duration" | "inherit";
 
-export type Model =
-  | "root"
-  | "database"
-  | "collection"
-  | "dashboard"
-  | "question";
+type Model = "root" | "database" | "collection" | "dashboard" | "question";
 
 interface StrategyBase {
   type: StrategyType;
@@ -56,12 +51,6 @@ export type UpdateTargetId = (
   newTargetId: number | null,
   isFormDirty: boolean,
 ) => void;
-
-export type LeaveConfirmationData =
-  | {
-      isModalOpen: false;
-    }
-  | { isModalOpen: true; onConfirm: () => void };
 
 export type CacheConfigAPIResponse = {
   data: Config[];
@@ -171,10 +160,6 @@ export const Strategies: Record<StrategyType, StrategyData> = {
 const validStrategyNames = new Set(Object.keys(Strategies));
 const isValidStrategyName = (strategy: string): strategy is StrategyType =>
   validStrategyNames.has(strategy);
-
-export const getStrategyLabel = (strategy?: Strategy) => {
-  return strategy ? Strategies[strategy.type].label : null;
-};
 
 export const getShortStrategyLabel = (strategy?: Strategy) => {
   if (!strategy) {

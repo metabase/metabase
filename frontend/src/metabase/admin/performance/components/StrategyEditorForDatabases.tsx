@@ -14,19 +14,21 @@ import { useCacheConfigs } from "../hooks/useCacheConfigs";
 import { useConfirmOnRouteLeave } from "../hooks/useConfirmOnRouteLeave";
 import { useDelayedLoadingSpinner } from "../hooks/useDelayedLoadingSpinner";
 import { useVerticallyOverflows } from "../hooks/useVerticallyOverflows";
-import { getFieldsForStrategyType, rootId, Strategies } from "../strategies";
-import type { Config, Strategy, UpdateTargetId } from "../types";
-import { DurationUnit } from "../types";
+import type { Config, Strategy, UpdateTargetId } from "../strategies";
+import {
+  DurationUnit,
+  getFieldsForStrategyType,
+  rootId,
+  Strategies,
+} from "../strategies";
 
 import { Panel, TabWrapper } from "./StrategyEditorForDatabases.styled";
 import { StrategyForm } from "./StrategyForm";
 
 const StrategyEditorForDatabases_Base = ({
-  canOverrideRootStrategy,
   router,
   route,
 }: {
-  canOverrideRootStrategy: boolean;
   router: InjectedRouter;
   route?: Route;
 }) => {
@@ -35,6 +37,8 @@ const StrategyEditorForDatabases_Base = ({
     targetId,
     setTargetId,
   ] = useState<number | null>(null);
+
+  const { canOverrideRootStrategy } = PLUGIN_CACHING;
 
   const {
     databases,

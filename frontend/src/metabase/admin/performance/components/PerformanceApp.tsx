@@ -2,7 +2,6 @@ import { useLayoutEffect, useRef, useState } from "react";
 import type { Route } from "react-router";
 import { t } from "ttag";
 
-import { PLUGIN_CACHING } from "metabase/plugins";
 import type { TabsValue } from "metabase/ui";
 import { Flex, Tabs } from "metabase/ui";
 
@@ -20,8 +19,6 @@ export const PerformanceApp = ({ route }: { route: Route }) => {
   const [tabId, setTabId] = useState<TabId>(TabId.DataCachingSettings);
   const [tabsHeight, setTabsHeight] = useState<number>(300);
   const tabsRef = useRef<HTMLDivElement>(null);
-
-  const { canOverrideRootStrategy } = PLUGIN_CACHING;
 
   useLayoutEffect(() => {
     const handleResize = () => {
@@ -64,10 +61,7 @@ export const PerformanceApp = ({ route }: { route: Route }) => {
       </TabsList>
       <TabsPanel key={tabId} value={tabId} p="1rem 2.5rem">
         <Flex style={{ flex: 1 }} bg="bg-light" h="100%">
-          <StrategyEditorForDatabases
-            route={route}
-            canOverrideRootStrategy={canOverrideRootStrategy}
-          />
+          <StrategyEditorForDatabases route={route} />
         </Flex>
       </TabsPanel>
     </Tabs>

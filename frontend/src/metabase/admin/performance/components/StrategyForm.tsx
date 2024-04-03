@@ -27,9 +27,13 @@ import {
 } from "metabase/ui";
 
 import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
-import { rootId, Strategies, strategyValidationSchema } from "../strategies";
-import type { Strategy, StrategyType } from "../types";
-import { DurationUnit } from "../types";
+import type { Strategy, StrategyType } from "../strategies";
+import {
+  DurationUnit,
+  rootId,
+  Strategies,
+  strategyValidationSchema,
+} from "../strategies";
 
 export const StrategyForm = ({
   targetId,

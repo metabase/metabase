@@ -1,9 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useState } from "react";
 
+import type { Config } from "metabase/admin/performance/strategies";
 import { CacheConfigApi } from "metabase/services";
-
-import type { Config } from "../types";
 
 export const useResetToDefaultForm = ({
   configs,
