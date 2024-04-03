@@ -89,10 +89,14 @@ const MetadataFieldSettings = ({
   idFields,
   params: { schemaId, section },
 }: MetadataFieldSettingsProps) => {
-  const { data: fieldData } = useGetFieldValuesQuery(Number(field.id));
+  const {
+    data: fieldValues,
+    error: fieldValuesError,
+    isLoading: isLoadingFieldValues,
+  } = useGetFieldValuesQuery(Number(field.id));
 
   const schema = schemas.find(schema => schema.id === schemaId);
-  if (!schema || !fieldData) {
+  if (!schema || isLoadingFieldValues) {
     return <LoadingAndErrorWrapper loading />;
   }
 
@@ -119,7 +123,8 @@ const MetadataFieldSettings = ({
         {section === "general" && (
           <FieldGeneralSettings
             field={field}
-            fieldValues={fieldData.values}
+            fieldValues={fieldValues?.values ?? []}
+            fieldValuesError={fieldValuesError}
             idFields={idFields}
             table={table}
           />

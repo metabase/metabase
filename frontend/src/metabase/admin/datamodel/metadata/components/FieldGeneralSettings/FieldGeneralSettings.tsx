@@ -30,6 +30,7 @@ import { FieldNameInput } from "./FieldGeneralSettings.styled";
 interface OwnProps {
   field: Field;
   fieldValues: FieldValue[];
+  fieldValuesError: unknown;
   idFields: Field[];
   table: Table;
 }
@@ -47,6 +48,7 @@ const mapDispatchToProps: DispatchProps = {
 const FieldGeneralSettings = ({
   field,
   fieldValues,
+  fieldValuesError,
   idFields,
   table,
   onUpdateField,
@@ -76,6 +78,7 @@ const FieldGeneralSettings = ({
       <FieldRemappingSection
         field={field}
         fieldValues={fieldValues}
+        fieldValuesError={fieldValuesError}
         table={table}
       />
       <FieldCachedValuesSection field={field} />
@@ -292,12 +295,14 @@ const FieldValuesTypeSection = ({
 interface FieldRemappingSectionProps {
   field: Field;
   fieldValues: FieldValue[];
+  fieldValuesError: unknown;
   table: Table;
 }
 
 const FieldRemappingSection = ({
   field,
   fieldValues,
+  fieldValuesError,
   table,
 }: FieldRemappingSectionProps) => {
   return (
@@ -309,6 +314,7 @@ const FieldRemappingSection = ({
       <FieldRemappingSettings
         field={field}
         fieldValues={fieldValues}
+        fieldValuesError={fieldValuesError}
         table={table}
       />
     </MetadataSection>

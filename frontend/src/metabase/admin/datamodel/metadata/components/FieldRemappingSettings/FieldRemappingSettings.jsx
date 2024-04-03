@@ -225,7 +225,7 @@ class FieldRemappingSettings extends Component {
   };
 
   render() {
-    const { field, table, metadata, fieldsError } = this.props;
+    const { field, table, metadata, fieldValuesError } = this.props;
     const {
       isChoosingInitialFkTarget,
       hasChanged,
@@ -233,7 +233,7 @@ class FieldRemappingSettings extends Component {
     } = this.state;
 
     const remapping = new Map(this.getFieldRemapping());
-    const isFieldsAccessRestricted = fieldsError?.status === 403;
+    const isFieldsAccessRestricted = fieldValuesError?.status === 403;
 
     const mappingType = this.getMappingTypeForField(field);
     const isFKMapping = mappingType === MAP_OPTIONS.foreign;
@@ -468,10 +468,6 @@ const RemappingNamingTip = () => (
 
 const mapStateToProps = (state, { field }) => ({
   metadata: getMetadataUnfiltered(state),
-  fieldsError: Fields.selectors.getError(state, {
-    entityId: field.id,
-    requestType: "values",
-  }),
 });
 
 const mapDispatchToProps = {
