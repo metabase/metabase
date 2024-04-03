@@ -1,9 +1,9 @@
 import type {
-  Card,
+  CardId,
   Collection,
-  Database,
-  NormalizedSchema,
-  Table,
+  DatabaseId,
+  SchemaName,
+  TableId,
 } from "metabase-types/api";
 
 export type CollectionItem = {
@@ -13,39 +13,39 @@ export type CollectionItem = {
 };
 
 export type DatabaseItem = {
-  id: Database["id"];
-  name: Database["name"];
+  id: DatabaseId;
+  name: string;
   model: "database";
 };
 
 export type SchemaItem = {
-  id: NormalizedSchema["id"];
-  name: NormalizedSchema["name"];
+  id: SchemaName;
+  name: string;
   model: "schema";
 };
 
 export type TableItem = {
-  id: Table["id"];
-  name: Table["name"];
+  id: TableId;
+  name: string;
   model: "table";
 };
 
 export type QuestionItem = {
-  id: Card["id"];
-  name: Card["name"];
+  id: CardId;
+  name: string;
   model: "card";
 };
 
 export type ModelItem = {
-  id: Card["id"];
-  name: Card["name"];
+  id: CardId;
+  name: string;
   model: "dataset";
 };
 
 export type TablePickerValue = {
-  id: Table["id"];
-  db_id: Table["db_id"];
-  schema?: Table["schema"];
+  id: TableId;
+  db_id: DatabaseId;
+  schema?: SchemaName;
 };
 
 export type NotebookDataPickerFolderItem =
