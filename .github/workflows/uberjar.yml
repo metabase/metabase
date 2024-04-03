@@ -9,9 +9,6 @@ jobs:
     name: Build MB oss
     runs-on: ubuntu-22.04
     timeout-minutes: 40
-    strategy:
-      matrix:
-        edition: [oss]
     env:
       MB_EDITION: oss
       INTERACTIVE: false
@@ -29,7 +26,7 @@ jobs:
     - name: Prepare uberjar artifact
       uses: ./.github/actions/prepare-uberjar-artifact
       with:
-        name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
+        name: metabase-oss-uberjar
 
   check_jar_health:
     runs-on: ubuntu-22.04
