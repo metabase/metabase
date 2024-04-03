@@ -182,13 +182,13 @@
                   (let [result (rff metadata)]
                     (add-and-save-execution-metadata-xform! execution-info field-usages result)))]
           (try
-           (qp query rff*)
-           (catch Throwable e
-             (save-failed-query-execution!
-              execution-info
-              (or
-               (some-> e ex-cause ex-message)
-               (ex-message e)))
-             (throw (ex-info (ex-message e)
-                             {:query-execution execution-info}
-                             e)))))))))
+            (qp query rff*)
+            (catch Throwable e
+              (save-failed-query-execution!
+               execution-info
+               (or
+                (some-> e ex-cause ex-message)
+                (ex-message e)))
+              (throw (ex-info (ex-message e)
+                              {:query-execution execution-info}
+                              e)))))))))
