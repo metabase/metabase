@@ -7,6 +7,7 @@ import type {
 } from "echarts/types/src/coord/axisCommonTypes";
 import type { CartesianAxisOption } from "echarts/types/src/coord/cartesian/AxisModel";
 
+import { parseNumberValue } from "metabase/lib/number";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   BaseCartesianChartModel,
@@ -337,6 +338,11 @@ export const buildCategoricalDimensionAxis = (
       ...getDimensionTicksDefaultOption(settings, renderingContext),
       ...getHistogramTicksOptions(chartModel, settings, chartMeasurements),
       formatter: (value: string) => {
+        const numberValue = parseNumberValue(value);
+        if (numberValue !== null) {
+          return ` ${formatter(numberValue)} `;
+        }
+
         return ` ${formatter(value)} `; // spaces force padding between ticks
       },
     },
