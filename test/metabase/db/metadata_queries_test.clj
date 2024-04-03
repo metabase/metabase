@@ -74,7 +74,7 @@
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions]))))))))))
 
-(deftest ^:parallel mbql-on-table-requires-filter-will-include-the-filter-test
+(deftest mbql-on-table-requires-filter-will-include-the-filter-test
   (mt/with-temp
     [:model/Database db     {}
      :model/Table    table  {:database_require_filter true :db_id (:id db)}
@@ -100,7 +100,7 @@
                    {:base_type :type/Text :semantic_type :type/XML}]]
       (is (not (#'metadata-queries/text-field? field))))))
 
-(deftest ^:parallel add-required-filter-if-needed-test
+(deftest add-required-filter-if-needed-test
   (mt/with-temp
     [:model/Database db               {:engine :h2}
      :model/Table    product          {:name "PRODUCT" :db_id (:id db)}
