@@ -1,5 +1,7 @@
 import { screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import userEvent, {
+  PointerEventsCheckLevel,
+} from "@testing-library/user-event";
 
 import { renderWithProviders } from "__support__/ui";
 import Field from "metabase-lib/v1/metadata/Field";
@@ -38,38 +40,39 @@ describe("ParameterWidget", () => {
     expect(screen.getByText("Text contains")).toBeInTheDocument();
   });
 
-  it("should be able to set parameter value", () => {
+  it("should be able to set parameter value", async () => {
     const { setValue } = setup();
 
-    userEvent.click(screen.getByText("Text contains"));
-    userEvent.type(screen.getByPlaceholderText("Enter some text"), "Gadget");
+    await userEvent.click(screen.getByText("Text contains"));
+    await userEvent.type(
+      screen.getByPlaceholderText("Enter some text"),
+      "Gadget",
+    );
 
-    userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
     expect(setValue).toHaveBeenCalledWith(["Gadget"]);
   });
 
-  it("should not be able to submit empty value (metabase#15462)", () => {
+  it("should not be able to submit empty value (metabase#15462)", async () => {
     const { setValue } = setup();
 
-    userEvent.click(screen.getByText("Text contains"));
+    await userEvent.click(screen.getByText("Text contains"));
 
     const text = "Gadget";
     const textInput = screen.getByPlaceholderText("Enter some text");
-    userEvent.type(textInput, text);
+    await userEvent.type(textInput, text);
     expect(screen.getByRole("button", { name: "Add filter" })).toBeEnabled();
 
-    userEvent.type(textInput, "{backspace}".repeat(text.length));
+    await userEvent.type(textInput, "{backspace}".repeat(text.length));
     expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
 
-    userEvent.click(
-      screen.getByRole("button", { name: "Add filter" }),
-      undefined,
-      { skipPointerEventsCheck: true },
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Add filter" }), {
+      pointerEventsCheck: PointerEventsCheckLevel.Never,
+    });
     expect(setValue).not.toHaveBeenCalled();
   });
 
-  it("should not be able to submit empty value when parameter has connected field (metabase#15462)", () => {
+  it("should not be able to submit empty value when parameter has connected field (metabase#15462)", async () => {
     const field = new Field(
       createMockField({
         id: 1,
@@ -80,21 +83,19 @@ describe("ParameterWidget", () => {
     );
     const { setValue } = setup({ connectedField: field });
 
-    userEvent.click(screen.getByText("Text contains"));
+    await userEvent.click(screen.getByText("Text contains"));
 
     const text = "Gadget";
     const textInput = screen.getByPlaceholderText("Enter some text");
-    userEvent.type(textInput, text);
+    await userEvent.type(textInput, text);
     expect(screen.getByRole("button", { name: "Add filter" })).toBeEnabled();
 
-    userEvent.type(textInput, "{backspace}".repeat(text.length));
+    await userEvent.type(textInput, "{backspace}".repeat(text.length));
     expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
 
-    userEvent.click(
-      screen.getByRole("button", { name: "Add filter" }),
-      undefined,
-      { skipPointerEventsCheck: true },
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Add filter" }), {
+      pointerEventsCheck: PointerEventsCheckLevel.Never,
+    });
     expect(setValue).not.toHaveBeenCalled();
   });
 });

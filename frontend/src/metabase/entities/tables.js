@@ -3,13 +3,17 @@ import { updateIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { databaseApi, tableApi } from "metabase/api";
 import Fields from "metabase/entities/fields";
 import Questions from "metabase/entities/questions";
 import Metrics from "metabase/entities/metrics"; // eslint-disable-line import/order -- circular dependencies
 import Segments from "metabase/entities/segments";
-import { PUT } from "metabase/lib/api";
 import { color } from "metabase/lib/colors";
-import { createEntity, notify } from "metabase/lib/entities";
+import {
+  createEntity,
+  entityCompatibleQuery,
+  notify,
+} from "metabase/lib/entities";
 import {
   compose,
   createThunkAction,
@@ -23,19 +27,12 @@ import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
-import { MetabaseApi } from "metabase/services";
 import {
   convertSavedQuestionToVirtualTable,
   getQuestionVirtualTableId,
   getCollectionVirtualSchemaId,
   getCollectionVirtualSchemaName,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
-
-const listTablesForDatabase = async (...args) =>
-  // HACK: no /api/database/:dbId/tables endpoint
-  (await MetabaseApi.db_metadata(...args)).tables;
-const updateFieldOrder = PUT("/api/table/:id/fields/order");
-const updateTables = PUT("/api/table");
 
 // OBJECT ACTIONS
 export const TABLES_BULK_UPDATE = "metabase/entities/TABLES_BULK_UPDATE";
@@ -56,15 +53,30 @@ const Tables = createEntity({
   schema: TableSchema,
 
   api: {
-    list: async (params, ...args) => {
-      if (params.dbId != null && params.schemaName != null) {
-        return MetabaseApi.db_schema_tables(params, ...args);
-      } else if (params.dbId != null) {
-        return listTablesForDatabase(params, ...args);
+    list: async ({ dbId, schemaName, ...params } = {}, dispatch) => {
+      if (dbId != null && schemaName != null) {
+        return entityCompatibleQuery(
+          { id: dbId, schema: schemaName, ...params },
+          dispatch,
+          databaseApi.endpoints.listDatabaseSchemaTables,
+        );
+      } else if (dbId != null) {
+        const database = await entityCompatibleQuery(
+          { id: dbId, ...params },
+          dispatch,
+          databaseApi.endpoints.getDatabaseMetadata,
+        );
+        return database.tables;
       } else {
-        return MetabaseApi.table_list(params, ...args);
+        return entityCompatibleQuery(
+          params,
+          dispatch,
+          tableApi.endpoints.listTables,
+        );
       }
     },
+    get: (entityQuery, options, dispatch) =>
+      entityCompatibleQuery(entityQuery, dispatch, tableApi.endpoints.getTable),
   },
 
   actions: {
@@ -72,7 +84,14 @@ const Tables = createEntity({
     bulkUpdate: compose(
       withAction(TABLES_BULK_UPDATE),
       withNormalize([TableSchema]),
-    )(updates => async (dispatch, getState) => updateTables(updates)),
+    )(
+      updates => async dispatch =>
+        entityCompatibleQuery(
+          updates,
+          dispatch,
+          tableApi.endpoints.updateTableList,
+        ),
+    ),
   },
 
   // ACTION CREATORS
@@ -95,12 +114,12 @@ const Tables = createEntity({
       withNormalize(TableSchema),
     )(
       ({ id, ...params }, options = {}) =>
-        (dispatch, getState) =>
-          MetabaseApi.table_query_metadata({
-            tableId: id,
-            ...params,
-            ...options.params,
-          }),
+        dispatch =>
+          entityCompatibleQuery(
+            { id, ...params, ...options.params },
+            dispatch,
+            tableApi.endpoints.getTableMetadata,
+          ),
     ),
 
     // like fetchMetadata but also loads tables linked by foreign key
@@ -132,9 +151,13 @@ const Tables = createEntity({
         entityQuery => Tables.getQueryKey(entityQuery),
       ),
       withNormalize(TableSchema),
-    )(entityObject => async (dispatch, getState) => {
-      const fks = await MetabaseApi.table_fks({ tableId: entityObject.id });
-      return { id: entityObject.id, fks: fks };
+    )(({ id }) => async (dispatch, getState) => {
+      const fks = await entityCompatibleQuery(
+        id,
+        dispatch,
+        tableApi.endpoints.listTableForeignKeys,
+      );
+      return { id, fks: fks };
     }),
 
     setFieldOrder:
@@ -144,7 +167,11 @@ const Tables = createEntity({
           type: UPDATE_TABLE_FIELD_ORDER,
           payload: { id, fieldOrder },
         });
-        updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" });
+        entityCompatibleQuery(
+          { id, field_order: fieldOrder },
+          dispatch,
+          tableApi.endpoints.updateTableFieldsOrder,
+        );
       },
   },
 

@@ -416,8 +416,9 @@
   For now it pulls logic that touches query internals into `metabase.lib`."
   ([query1 query2] (query= query1 query2 nil))
   ([query1 query2 field-ids]
-   (let [n1 (prep-query-for-equals query1 field-ids)
-         n2 (prep-query-for-equals query2 field-ids)]
+   (let [ids (mapv js->clj field-ids)
+         n1 (prep-query-for-equals query1 ids)
+         n2 (prep-query-for-equals query2 ids)]
      (query=* n1 n2))))
 
 (defn ^:export group-columns

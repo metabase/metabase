@@ -59,8 +59,8 @@ describe("FormCheckboxGroup", () => {
   it("should submit a non-empty value", async () => {
     const { onSubmit } = setup();
 
-    userEvent.click(screen.getByLabelText("Name"));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByLabelText("Name"));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
@@ -82,9 +82,9 @@ describe("FormCheckboxGroup", () => {
     });
     expect(screen.queryByText("Required")).not.toBeInTheDocument();
 
-    userEvent.click(screen.getByLabelText("Name"));
-    userEvent.click(screen.getByLabelText("Name"));
-    userEvent.tab();
+    await userEvent.click(screen.getByLabelText("Name"));
+    await userEvent.click(screen.getByLabelText("Name"));
+    await userEvent.tab();
     await waitFor(() => {
       expect(screen.getByText("Required")).toBeInTheDocument();
     });

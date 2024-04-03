@@ -41,6 +41,11 @@ export const getAdminPaths: () => AdminPath[] = () => {
       path: "/admin/permissions",
       key: "permissions",
     },
+    {
+      name: t`Performance`,
+      path: "/admin/performance",
+      key: "performance",
+    },
   ];
 
   const isModelPersistenceEnabled = Settings.get("persisted-models-enabled");

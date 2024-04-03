@@ -76,7 +76,7 @@ function EntityItemName({ name, variant }) {
   return (
     <h3
       className={cx(CS.overflowHidden, {
-        "text-list": variant === "list",
+        [CS.textList]: variant === "list",
       })}
     >
       <Ellipsified>{name}</Ellipsified>

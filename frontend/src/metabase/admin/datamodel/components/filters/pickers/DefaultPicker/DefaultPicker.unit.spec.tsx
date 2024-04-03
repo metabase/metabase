@@ -143,7 +143,7 @@ describe("Filters > DefaultPicker", () => {
 
     const input = screen.getByRole("textbox");
 
-    userEvent.type(input, "Fancy Sandals");
+    await userEvent.type(input, "Fancy Sandals");
 
     expect(setValuesSpy).toHaveBeenLastCalledWith([
       "Ugly Shoes",
@@ -157,7 +157,7 @@ describe("Filters > DefaultPicker", () => {
 
     const input = screen.getByRole("textbox");
 
-    userEvent.type(input, "25");
+    await userEvent.type(input, "25");
     // index, value
     expect(setValueSpy).toHaveBeenLastCalledWith(0, 125);
   });
@@ -172,7 +172,7 @@ describe("Filters > DefaultPicker", () => {
 
     const input = screen.getAllByRole("textbox")[0];
 
-    userEvent.type(input, "1{enter}");
+    await userEvent.type(input, "1{enter}");
 
     expect(onCommitSpy).toHaveBeenCalled();
   });

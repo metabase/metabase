@@ -77,7 +77,7 @@ describe("BooleanFilterEditor", () => {
   const column = findColumn("ORDERS", BOOLEAN_FIELD.name);
 
   describe("new filter", () => {
-    it('should add a "true" filter', () => {
+    it('should add a "true" filter', async () => {
       const { getNextFilterName } = setup({
         query,
         stageIndex,
@@ -86,7 +86,7 @@ describe("BooleanFilterEditor", () => {
 
       const trueCheckbox = screen.getByRole("checkbox", { name: "True" });
       const falseCheckbox = screen.getByRole("checkbox", { name: "False" });
-      userEvent.click(trueCheckbox);
+      await userEvent.click(trueCheckbox);
 
       expect(getNextFilterName()).toBe("Is trial is true");
       expect(trueCheckbox).toBeChecked();
@@ -94,7 +94,7 @@ describe("BooleanFilterEditor", () => {
       expect(screen.queryByText("is")).not.toBeInTheDocument();
     });
 
-    it('should add a "false" filter', () => {
+    it('should add a "false" filter', async () => {
       const { getNextFilterName } = setup({
         query,
         stageIndex,
@@ -103,7 +103,7 @@ describe("BooleanFilterEditor", () => {
 
       const trueCheckbox = screen.getByRole("checkbox", { name: "True" });
       const falseCheckbox = screen.getByRole("checkbox", { name: "False" });
-      userEvent.click(falseCheckbox);
+      await userEvent.click(falseCheckbox);
 
       expect(getNextFilterName()).toBe("Is trial is false");
       expect(trueCheckbox).not.toBeChecked();
@@ -111,7 +111,7 @@ describe("BooleanFilterEditor", () => {
       expect(screen.queryByText("is")).not.toBeInTheDocument();
     });
 
-    it("should allow to remove a filter", () => {
+    it("should allow to remove a filter", async () => {
       const { getNextFilterName } = setup({
         query,
         stageIndex,
@@ -120,22 +120,22 @@ describe("BooleanFilterEditor", () => {
 
       const trueCheckbox = screen.getByRole("checkbox", { name: "True" });
       const falseCheckbox = screen.getByRole("checkbox", { name: "False" });
-      userEvent.click(trueCheckbox);
+      await userEvent.click(trueCheckbox);
       expect(getNextFilterName()).toBe("Is trial is true");
       expect(trueCheckbox).toBeChecked();
       expect(falseCheckbox).not.toBeChecked();
 
-      userEvent.click(trueCheckbox);
+      await userEvent.click(trueCheckbox);
       expect(getNextFilterName()).toBeNull();
       expect(trueCheckbox).not.toBeChecked();
       expect(falseCheckbox).not.toBeChecked();
 
-      userEvent.click(falseCheckbox);
+      await userEvent.click(falseCheckbox);
       expect(getNextFilterName()).toBe("Is trial is false");
       expect(trueCheckbox).not.toBeChecked();
       expect(falseCheckbox).toBeChecked();
 
-      userEvent.click(falseCheckbox);
+      await userEvent.click(falseCheckbox);
       expect(getNextFilterName()).toBeNull();
       expect(trueCheckbox).not.toBeChecked();
       expect(falseCheckbox).not.toBeChecked();
@@ -143,7 +143,7 @@ describe("BooleanFilterEditor", () => {
   });
 
   describe("existing filter", () => {
-    it("should update a filter with one value", () => {
+    it("should update a filter with one value", async () => {
       const { query, stageIndex, column, filter } = createQueryWithFilter({
         operator: "=",
         values: [true],
@@ -160,7 +160,7 @@ describe("BooleanFilterEditor", () => {
       expect(trueCheckbox).toBeChecked();
       expect(falseCheckbox).not.toBeChecked();
 
-      userEvent.click(falseCheckbox);
+      await userEvent.click(falseCheckbox);
       expect(getNextFilterName()).toBe("Is trial is false");
       expect(trueCheckbox).not.toBeChecked();
       expect(falseCheckbox).toBeChecked();
@@ -184,8 +184,8 @@ describe("BooleanFilterEditor", () => {
       expect(trueCheckbox).not.toBeChecked();
       expect(falseCheckbox).not.toBeChecked();
 
-      userEvent.click(screen.getByText("is empty"));
-      userEvent.click(await screen.findByText("Not empty"));
+      await userEvent.click(screen.getByText("is empty"));
+      await userEvent.click(await screen.findByText("Not empty"));
       expect(getNextFilterName()).toBe("Is trial is not empty");
       expect(screen.getByText("not empty")).toBeInTheDocument();
       expect(
@@ -193,9 +193,11 @@ describe("BooleanFilterEditor", () => {
       ).not.toBeChecked();
       expect(falseCheckbox).not.toBeChecked();
 
-      userEvent.click(screen.getByText("not empty"));
-      userEvent.click(await screen.findByText("Is"));
-      userEvent.click(await screen.findByRole("checkbox", { name: "True" }));
+      await userEvent.click(screen.getByText("not empty"));
+      await userEvent.click(await screen.findByText("Is"));
+      await userEvent.click(
+        await screen.findByRole("checkbox", { name: "True" }),
+      );
       expect(getNextFilterName()).toBe("Is trial is true");
       expect(screen.getByText("is")).toBeInTheDocument();
       expect(trueCheckbox).toBeChecked();

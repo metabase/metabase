@@ -635,7 +635,7 @@
     (try
       (let [timer             (start-timer)
             driver            (driver.u/database->driver database)
-            filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
+            filename-prefix   (or (second (re-matches #"(.*)\.(csv|tsv)$" filename))
                                   filename)
             table-name        (->> (str table-prefix filename-prefix)
                                    (unique-table-name driver)

@@ -57,7 +57,7 @@ function _AddEditEmailSidebar({
         className={cx(CS.my2, CS.px4, CS.fullHeight, CS.flex, CS.flexColumn)}
       >
         <div>
-          <div className="text-bold mb1">{t`To:`}</div>
+          <div className={cx(CS.textBold, "mb1")}>{t`To:`}</div>
           <RecipientPicker
             isNewPulse={pulse.id == null}
             autoFocus={false}
@@ -161,7 +161,7 @@ function _AddEditEmailSidebar({
             handleArchive={handleArchive}
           />
         )}
-        <div className="p2 mt-auto text-small text-medium">
+        <div className={cx("p2 mt-auto", CS.textSmall, "text-medium")}>
           {t`Charts in subscriptions may look slightly different from charts in dashboards.`}
         </div>
       </div>

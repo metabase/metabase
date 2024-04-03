@@ -208,7 +208,7 @@ describe("SmartScalar", () => {
       expect(screen.getByText("810.8k")).toBeInTheDocument();
     });
 
-    it("should display tooltip with comparison info if card is not wide enough", () => {
+    it("should display tooltip with comparison info if card is not wide enough", async () => {
       const rows = [
         ["2019-10-01T00:00:00", 50],
         ["2019-11-01T00:00:00", 100],
@@ -231,7 +231,7 @@ describe("SmartScalar", () => {
       expect(screen.queryByText("50")).not.toBeInTheDocument();
 
       // show tool-tip
-      userEvent.hover(lastChange);
+      await userEvent.hover(lastChange);
       expect(screen.queryAllByLabelText("arrow_up icon")).toHaveLength(2);
       expect(screen.queryAllByText("100%")).toHaveLength(2);
       expect(screen.getByText("vs. previous month:")).toBeInTheDocument();

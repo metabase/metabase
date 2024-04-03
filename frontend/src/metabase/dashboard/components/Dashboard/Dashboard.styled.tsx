@@ -140,6 +140,9 @@ export const ParametersAndCardsContainer = styled.div<{
     overflow-x: clip;
   }
   padding-bottom: 40px;
+  /* Makes sure it doesn't use all the height, so the actual content height could be used in embedding #37437 */
+  align-self: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
+    !shouldMakeDashboardHeaderStickyAfterScrolling && "flex-start"};
 
   &.${SAVING_DOM_IMAGE_CLASS} {
     ${ParametersWidgetContainer} {

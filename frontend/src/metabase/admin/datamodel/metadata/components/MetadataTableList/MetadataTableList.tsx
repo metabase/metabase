@@ -193,7 +193,7 @@ interface TableBreadcrumbsProps {
 
 const TableBreadcrumbs = ({ schemaId, onBack }: TableBreadcrumbsProps) => {
   return (
-    <h4 className="p2 border-bottom break-anywhere">
+    <h4 className={cx("p2 border-bottom", CS.breakAnywhere)}>
       <BackIconContainer onClick={onBack}>
         <Icon name="chevronleft" size={10} />
         {t`Schemas`}
@@ -284,7 +284,7 @@ const TableRow = ({
         onClick={handleSelect}
         data-testid="admin-metadata-table-list-item"
         className={cx(
-          "text-wrap",
+          CS.textWrap,
           CS.justifyBetween,
           CS.flex,
           CS.alignCenter,
