@@ -13,14 +13,14 @@
    :updated_at #t "2024-04-03T17:44:20.241895Z",
    :cache_ttl nil,
    :details
-   "{\"db\":\"file:/Users/callumherries/meta/metabase/plugins/sample-database.db;USER=GUEST;PASSWORD=guest\"}",
+   "{}",
    :is_sample true,
    :id 1,
    :is_on_demand false,
    :engine "h2",
    :initial_sync_status "complete",
    :is_audit false,
-   :dbms_version "{\"flavor\":\"H2\",\"version\":\"2.1.214 (2022-06-13)\",\"semantic-version\":[2,1]}",
+   :dbms_version "{}",
    :refingerprint nil,
    :created_at #t "2024-04-03T17:44:18.525245Z",
    :points_of_interest

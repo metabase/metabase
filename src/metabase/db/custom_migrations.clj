@@ -1207,10 +1207,7 @@
   ;; 3. update the EDN file:
   ;; - replace the database details and dbms_version with placeholders e.g. "{}" to make sure they are replaced
   ;; - find-replace :creator_id 1, 2, etc with :creator_id 13371338 (the internal user ID)
-  ;; - delete the personal collection, and make the example dashboard prototype have id 1
-  ;; - find-replace collection_id 2 with collection_id 1
-  ;; - manually set user's password, password_salt, and settings to nil.
-  ;; - replace metabase_version <version> with metabase_version nil,
+  ;; - replace metabase_version <version> with metabase_version nil
   )
 
 ;; This was renamed to TruncateAuditTables, so we need to delete the old job & trigger
