@@ -9,9 +9,10 @@ import {
 import { FieldPicker } from "metabase/common/components/FieldPicker";
 import Tables from "metabase/entities/tables";
 import { useDispatch } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { DatabaseId, TableId } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
 import type { NotebookStepUiComponentProps } from "../../types";
@@ -53,13 +54,11 @@ export const DataStep = ({
 
   const canSelectTableColumns = tableMetadata && isRaw && !readOnly;
 
-  const handleTableSelect = async (
-    tableId: TableId,
-    databaseId: DatabaseId,
-  ) => {
+  const handleTableSelect = async (tableId: TableId) => {
     await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
     const metadata = questionRef.current.metadata();
-    const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+    const table = checkNotNull(metadata.table(tableId));
+    const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
     const nextTable = Lib.tableOrCardMetadata(metadataProvider, tableId);
     updateQuery(Lib.queryFromTableOrCardMetadata(metadataProvider, nextTable));
   };
@@ -91,9 +90,7 @@ export const DataStep = ({
             <DataPickerModal
               collectionId={collectionId}
               value={table ? tablePickerValueFromTable(table) : null}
-              onChange={table => {
-                handleTableSelect(table.id, table.db_id);
-              }}
+              onChange={handleTableSelect}
               onClose={() => setIsDataPickerOpen(false)}
             />
           )}

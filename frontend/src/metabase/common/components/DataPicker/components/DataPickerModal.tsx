@@ -1,14 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { skipToken, useGetTableQuery } from "metabase/api";
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, TableId } from "metabase-types/api";
 
 import type { EntityPickerModalOptions, EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import type { NotebookDataPickerValueItem, TablePickerValue } from "../types";
-import { isTablePickerValueEqual, tablePickerValueFromTable } from "../utils";
 
 import { TablePicker } from "./TablePicker";
 
@@ -18,7 +16,7 @@ interface Props {
    */
   collectionId: CollectionId | null | undefined;
   value: TablePickerValue | null;
-  onChange: (value: TablePickerValue) => void;
+  onChange: (value: TableId) => void;
   onClose: () => void;
 }
 
@@ -28,32 +26,13 @@ const options: EntityPickerModalOptions = {
 };
 
 export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
-  const [selectedItem, setSelectedItem] =
-    useState<NotebookDataPickerValueItem | null>(null);
-  const [valueId, setValueId] = useState<
-    NotebookDataPickerValueItem["id"] | undefined
-  >(value?.id);
-
-  const shouldFetchNewMetadata = valueId != null && valueId !== value?.id;
-  const { data: table } = useGetTableQuery(
-    shouldFetchNewMetadata ? { id: valueId } : skipToken,
+  const handleItemSelect = useCallback(
+    (item: NotebookDataPickerValueItem) => {
+      onChange(item.id);
+      onClose();
+    },
+    [onChange, onClose],
   );
-
-  useEffect(() => {
-    if (table) {
-      const valueFromTable = tablePickerValueFromTable(table);
-
-      if (!isTablePickerValueEqual(value, valueFromTable)) {
-        onChange(valueFromTable);
-        onClose();
-      }
-    }
-  }, [table, value, onChange, onClose]);
-
-  const handleItemSelect = useCallback((item: NotebookDataPickerValueItem) => {
-    setValueId(item.id);
-    setSelectedItem(item);
-  }, []);
 
   const tabs: [
     EntityTab<NotebookDataPickerValueItem["model"]>,
@@ -71,7 +50,7 @@ export const DataPickerModal = ({ value, onChange, onClose }: Props) => {
     <EntityPickerModal
       canSelectItem
       options={options}
-      selectedItem={selectedItem}
+      selectedItem={null} // TODO allow undefined
       tabs={tabs}
       title={t`Pick your starting data`}
       onClose={onClose}
