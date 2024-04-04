@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 // See `zIndex` prop at https://v6.mantine.dev/core/modal/?t=props
 export const DEFAULT_MODAL_Z_INDEX = 200;
-const DEFAULT_MODAL_SPACING = "lg";
+const DEFAULT_MODAL_SPACING = "xl";
 
 export const getModalOverrides = (): MantineThemeOverride["components"] => ({
   Modal: {
@@ -16,6 +16,9 @@ export const getModalOverrides = (): MantineThemeOverride["components"] => ({
         backgroundColor: theme.fn.rgba(theme.fn.themeColor("bg-black"), 0.6),
       },
     }),
+    defaultProps: {
+      p: DEFAULT_MODAL_SPACING,
+    },
   },
   ModalRoot: {
     defaultProps: {
@@ -28,13 +31,7 @@ export const getModalOverrides = (): MantineThemeOverride["components"] => ({
   },
   ModalHeader: {
     defaultProps: {
-      p: DEFAULT_MODAL_SPACING,
       pb: "sm",
-    },
-  },
-  ModalBody: {
-    defaultProps: {
-      p: DEFAULT_MODAL_SPACING,
     },
   },
   ModalCloseButton: {
