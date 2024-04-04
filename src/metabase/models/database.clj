@@ -1,6 +1,7 @@
 (ns metabase.models.database
   (:require
    [clojure.core.match :refer [match]]
+   [clojure.test :as t]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.config :as config]
@@ -26,7 +27,9 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.realize :as t2.realize]
+   [toucan2.tools.with-temp :as t2.with-temp]
+   [toucan2.util :as t2.u]))
 
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
@@ -53,6 +56,31 @@
 (doto :model/Database
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :model/Database
+  [model explicit-attributes f]
+  (assert (some? model) (format "%s model cannot be nil." `with-temp))
+  (when (some? explicit-attributes)
+    (assert (map? explicit-attributes) (format "attributes passed to %s must be a map." `with-temp)))
+  (let [defaults          (t2.with-temp/with-temp-defaults model)
+        merged-attributes (merge {} defaults explicit-attributes)]
+    (t2.u/try-with-error-context ["with temp" {::model               model
+                                               ::explicit-attributes explicit-attributes
+                                               ::default-attributes  defaults
+                                               ::merged-attributes   merged-attributes}]
+      (log/debugf "Create temporary %s with attributes %s" model merged-attributes)
+      (let [temp-object (first (t2/insert-returning-instances! model merged-attributes))]
+        (log/debugf "[with-temp] => %s" temp-object)
+        (try
+          (t/testing (format "\nwith temporary %s with attributes\n%s\n"
+                             (pr-str model)
+                             (u/pprint-to-str merged-attributes))
+           (data-perms/set-database-permission! (perms-group/all-users) temp-object :perms/view-data :unrestricted)
+           (data-perms/set-database-permission! (perms-group/all-users) temp-object :perms/create-queries :query-builder-and-native)
+           (data-perms/set-database-permission! (perms-group/all-users) temp-object :perms/download-results :one-million-rows)
+           (f temp-object))
+         (finally
+           (t2/delete! model :toucan/pk ((t2/select-pks-fn model) temp-object))))))))
 
 (defn- should-read-audit-db?
   "Audit Database should only be fetched if audit app is enabled."
