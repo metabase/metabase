@@ -72,7 +72,7 @@ export default class ObjectActionsSelect extends Component {
                   CS.block,
                   CS.p2,
                   "bg-error-hover",
-                  "text-error",
+                  CS.textError,
                   "text-white-hover",
                   CS.cursorPointer,
                 )}

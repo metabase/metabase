@@ -597,7 +597,7 @@ export default class PieChart extends Component {
                       }
                       onMouseLeave={() => onHoverChange?.(null)}
                       className={cx({
-                        "cursor-pointer": isClickable,
+                        [CS.cursorPointer]: isClickable,
                       })}
                       onClick={e => handleSliceClick(e, index)}
                       data-testid="slice"
