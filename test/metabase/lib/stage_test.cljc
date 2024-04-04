@@ -86,23 +86,6 @@
     (testing "Dropping with 1 stage should no-op"
       (is (= query (lib/drop-stage query))))))
 
-(deftest ^:paralell add-stage-at-index-test
-  (let [query {:lib/type :mbql/query
-               :database 1
-               :stages   [{:lib/type :mbql.stage/mbql, :source-table 1, ::stage 0}
-                          {:lib/type :mbql.stage/mbql, ::stage 1}
-                          {:lib/type :mbql.stage/mbql, ::stage 2}
-                          {:lib/type :mbql.stage/mbql, ::stage 3}]}]
-    (is (= {:lib/type :mbql/query
-            :database 1
-            :stages   [{:lib/type :mbql.stage/mbql, :source-table 1, ::stage 0}
-                       {:lib/type :mbql.stage/mbql, ::stage 1}
-                       {:lib/type :mbql.stage/mbql, ::stage 2}
-                       {:lib/type :mbql.stage/mbql}
-                       {:lib/type :mbql.stage/mbql, ::stage 3}]}
-           (lib/add-stage-at-index query 2)
-           (lib/add-stage-at-index query -2)))))
-
 (deftest ^:parallel drop-empty-stages-test
   (let [query (lib/append-stage lib.tu/venues-query)]
     (testing "Dropping new stage works"

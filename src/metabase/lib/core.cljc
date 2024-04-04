@@ -290,7 +290,6 @@
  [lib.segment
   available-segments]
  [lib.stage
-  add-stage-at-index
   append-stage
   drop-stage
   drop-empty-stages
