@@ -158,7 +158,7 @@ export const AccordionListCell = ({
         aria-disabled={!isClickable}
         isClickable={isClickable}
         className={cx(
-          "List-item",
+          ListS.ListItem,
           CS.flex,
           CS.mx1,
           {

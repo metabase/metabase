@@ -1,5 +1,5 @@
 .ListSectionHeader :global(.Icon),
-:global(.List-item .List-item-arrow .Icon) {
+.ListItem :global(.List-item-arrow .Icon) {
   color: var(--color-text-dark);
 }
 
@@ -7,7 +7,7 @@
   color: inherit;
 }
 
-:global(.List-item .Icon) {
+.ListItem :global(.Icon) {
   color: var(--color-text-light);
 }
 
@@ -48,7 +48,7 @@
 }
 
 /* LIST ITEM */
-:global(.List-item) {
+.ListItem {
   display: flex;
   border-radius: 4px;
   margin-top: 2px;
@@ -60,7 +60,7 @@
 }
 
 :global(.List-item--cursor:not(.List-item--disabled)),
-:global(.List-item:not(.List-item--disabled):hover),
+.ListItem:global(:not(.List-item--disabled):hover),
 :global(.List-item--selected:not(.List-item--disabled)) {
   background-color: currentColor;
 }
@@ -75,7 +75,7 @@
 }
 
 :global(.List-item--cursor:not(.List-item--disabled) .List-item-title),
-:global(.List-item:not(.List-item--disabled):hover .List-item-title),
+.ListItem:global(:not(.List-item--disabled):hover .List-item-title),
 :global(.List-item--selected:not(.List-item--disabled) .List-item-title) {
   color: white;
 }
@@ -92,20 +92,20 @@
 }
 
 :global(.List-item--cursor:not(.List-item--disabled) .List-item-description),
-:global(.List-item:not(.List-item--disabled):hover .List-item-description),
+.ListItem:global(:not(.List-item--disabled):hover .List-item-description),
 :global(.List-item--selected:not(.List-item--disabled) .List-item-description) {
   color: rgba(255, 255, 255, 0.5);
 }
 
 /* LIST ITEM ICON */
 :global(.List-item--cursor:not(.List-item--disabled) .Icon),
-:global(.List-item:not(.List-item--disabled):hover .Icon),
+.ListItem:global(:not(.List-item--disabled):hover .Icon),
 :global(.List-item--selected:not(.List-item--disabled) .Icon) {
   color: white !important;
 }
 
 /* Moved from `query_builder.module.css` to make migration easier */
-:global(.List-item:not(.List-item--disabled):hover) .FieldListGroupingTrigger,
+.ListItem:global(:not(.List-item--disabled):hover) .FieldListGroupingTrigger,
 :global(.List-item--selected) .FieldListGroupingTrigger {
   visibility: visible;
 }
