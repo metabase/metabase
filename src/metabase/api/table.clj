@@ -41,12 +41,22 @@
   "Schema for a valid table field ordering."
   (into [:enum] (map name table/field-orderings)))
 
+(defn format-schema-for-response
+  [schema]
+  ;; for `nil` schemas return the empty string
+  (if (nil? schema) "" schema))
+
+(defn format-table-for-response
+  [table]
+  (update table :schema format-schema-for-response))
+
 (api/defendpoint GET "/"
   "Get all `Tables`."
   []
   (as-> (t2/select Table, :active true, {:order-by [[:name :asc]]}) tables
     (t2/hydrate tables :db)
-    (filterv mi/can-read? tables)))
+    (filterv mi/can-read? tables)
+    (mapv #(format-table-for-response %))))
 
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
@@ -57,7 +67,8 @@
                             api/write-check
                             api/read-check)]
     (-> (api-perm-check-fn Table id)
-        (t2/hydrate :db :pk_field))))
+        (t2/hydrate :db :pk_field)
+        format-table-for-response)))
 
 (defn- update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
@@ -331,6 +342,7 @@
         (t2/hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values] :segments :metrics)
         (m/dissoc-in [:db :details])
         (assoc-dimension-options db)
+        format-table-for-response
         format-fields-for-response
         (update :fields (partial filter (fn [{visibility-type :visibility_type}]
                                           (case (keyword visibility-type)

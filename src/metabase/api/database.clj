@@ -487,7 +487,8 @@
         (update :tables (if remove_inactive?
                           (fn [tables]
                             (filter :active tables))
-                          identity)))))
+                          identity))
+        (update :tables (mapv #(api.table/format-table-for-response %))))))
 
 (api/defendpoint GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.
@@ -1147,8 +1148,7 @@
                               ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
                               {:where [:= :visibility_type nil]})))
          filter-schemas
-         ;; for `nil` schemas return the empty string
-         (map #(if (nil? %) "" %))
+         (map #(api.table/format-schema-for-response %))
          distinct
          sort)))
 
