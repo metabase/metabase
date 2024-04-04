@@ -72,4 +72,37 @@ describe("ConnectedTables", () => {
     expect(screen.getByText("Foo")).toBeInTheDocument();
     expect(screen.getByText("Bar")).toBeInTheDocument();
   });
+
+  it("should limit the number of connected tables to 8", () => {
+    const fks = new Array(20).fill(0).map((_, idx) =>
+      createMockForeignKey({
+        origin_id: idx,
+        origin: createMockField({
+          id: idx,
+          table_id: 21 + idx,
+          table: createMockTable({
+            id: 21 + idx,
+            display_name: `Bar-${idx + 1}`,
+          }),
+        }),
+      }),
+    );
+
+    setup({
+      table: {
+        ...TABLE_WITH_FKS,
+        fks,
+      },
+    });
+
+    expect(screen.getByText("Bar-1")).toBeInTheDocument();
+    expect(screen.getByText("Bar-2")).toBeInTheDocument();
+    expect(screen.getByText("Bar-3")).toBeInTheDocument();
+    expect(screen.getByText("Bar-4")).toBeInTheDocument();
+    expect(screen.getByText("Bar-5")).toBeInTheDocument();
+    expect(screen.getByText("Bar-6")).toBeInTheDocument();
+    expect(screen.getByText("Bar-7")).toBeInTheDocument();
+    expect(screen.getByText("Bar-8")).toBeInTheDocument();
+    expect(screen.queryByText("Bar-9")).not.toBeInTheDocument();
+  });
 });
