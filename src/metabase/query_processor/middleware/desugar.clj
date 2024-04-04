@@ -21,7 +21,6 @@
     (let [id (second field-clause)
           metadata (lib.metadata/field (qp.store/metadata-provider) id)
           {:keys [base-type]} metadata]
-      (assert (some? base-type))
       (update field-clause 2 assoc
               :base-type base-type
               ::desugar-added-base-type true))))
