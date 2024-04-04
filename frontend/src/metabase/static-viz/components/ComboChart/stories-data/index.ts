@@ -19,6 +19,7 @@ import barLinearXScale from "./bar-linear-x-scale.json";
 import barLogYScaleStackedNegative from "./bar-log-y-scale-stacked-negative.json";
 import barLogYScaleStacked from "./bar-log-y-scale-stacked.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
+import barRelativeDatetimeOrdinalScale from "./bar-relative-datetime-ordinal-scale.json";
 import barStackDisplayOverridesSeriesDisplays from "./bar-stack-display-overrides-series-displays.json";
 import barStackLinearXAxis from "./bar-stack-linear-x-axis.json";
 import barStackedNormalizedEmptySpace37880 from "./bar-stacked-normalized-empty-space-37880.json";
@@ -144,4 +145,5 @@ export const data = {
   timezoneTicksPlacement,
   logYScaleCustomYAxisRange,
   powYScaleCustomYAxisRange,
+  barRelativeDatetimeOrdinalScale,
 };
