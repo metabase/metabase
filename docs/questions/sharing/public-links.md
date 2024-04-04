@@ -47,7 +47,7 @@ To create a public link that people can use to download the results of a questio
 
 ![Public export](../images/public-export.png)
 
-### Exporting unformatted question results
+### Exporting raw, unformatted question results
 
 To export the raw, unformatted rows, you'll need to append `?format_rows=false` to the URL Metabase generates. For example, if you create a public link for a CSV download, the URL would look like:
 
