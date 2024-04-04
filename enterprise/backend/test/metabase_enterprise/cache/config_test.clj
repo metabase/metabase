@@ -69,11 +69,13 @@
                                {:state :success})
                              (unpersist! [_ _database _persisted-info]))
             current-state! (fn [] (t2/select-one-fn :state :model/PersistedInfo (u/the-id prefreshing)))]
-        (is (= "refreshing" (current-state!)))
-        (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
-        (testing "Doesn't refresh models that have state='off' or 'deletable' if :cache-granular-controls feature flag is enabled"
-          (is (= #{(u/the-id refreshing)} @card-ids)))
-        (is (= "persisted" (current-state!)))))))
+        ;; ensure ee path is taken
+        (mt/with-premium-features #{:cache-granular-controls}
+          (is (= "refreshing" (current-state!)))
+          (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
+          (testing "Doesn't refresh models that have state='off' or 'deletable' if :cache-granular-controls feature flag is enabled"
+            (is (= #{(u/the-id refreshing)} @card-ids)))
+          (is (= "persisted" (current-state!))))))))
 
 (deftest model-caching-granular-controls-test
   (mt/with-model-cleanup [TaskHistory]
