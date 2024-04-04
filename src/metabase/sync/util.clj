@@ -192,7 +192,7 @@
          (do
            (log/warn e message)
            e)
-         (throw (ex-info (format "%s: %s" message (ex-message e)) {:f f} e)))))))
+         (throw e))))))
 
 (defmacro with-error-handling
   "Execute `body` in a way that catches and logs any Exceptions thrown, and returns `nil` if they do so. Pass a
