@@ -140,14 +140,13 @@
                                          [:desc [:field 10 nil]])))))
 
 (t/deftest ^:parallel add-order-by-clause-test-4
-  (t/testing "as should clauses that reference the same Field"
-    (t/testing "fields with different temporal-units should still get added"
-      (t/is (= {:source-table 1
-                :order-by     [[:asc [:field 10 nil]]
-                               [:asc [:field 10 {:temporal-unit :day}]]]}
-               (mbql.u/add-order-by-clause {:source-table 1
-                                            :order-by     [[:asc [:field 10 nil]]]}
-                                           [:asc [:field 10 {:temporal-unit :day}]]))))))
+  (t/testing "fields with different temporal-units should still get added (#40995)"
+    (t/is (= {:source-table 1
+              :order-by     [[:asc [:field 10 nil]]
+                             [:asc [:field 10 {:temporal-unit :day}]]]}
+             (mbql.u/add-order-by-clause {:source-table 1
+                                          :order-by     [[:asc [:field 10 nil]]]}
+                                         [:asc [:field 10 {:temporal-unit :day}]])))))
 
 (t/deftest ^:parallel combine-filter-clauses-test
   (t/is (= [:and [:= [:field 1 nil] 100] [:= [:field 2 nil] 200]]
@@ -656,7 +655,7 @@
              (map (mbql.u/unique-name-generator) [:x :y :x :x] ["count" "sum" "count" "count_2"])))))
 
 (t/deftest ^:parallel unique-name-generator-idempotence-test
-  (t/testing "idempotence (2-arity calls to generated function)"
+  (t/testing "idempotence (2-arity calls to generated function) (#40994)"
     (let [unique-name (mbql.u/unique-name-generator)]
       (t/is (= ["A" "B" "A" "A_2" "A_2"]
                [(unique-name :x "A")

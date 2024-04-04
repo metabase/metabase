@@ -687,25 +687,20 @@
    (->honeysql driver mbql-expr)
    (->honeysql driver power)])
 
+;;; NOCOMMIT -- we need to document the new `:window-functions` feature.
+(defmethod driver/database-supports? [:sql :sql/window-functions.order-by-output-column-numbers]
+  [_driver _feature _database]
+  true)
+
 (defn- window-function-order-by-strategy [driver]
-  (case driver
-    (:postgres :athena :mysql :presto-jdbc :redshift :sqlserver :snowflake :vertica :bigquery-cloud-sdk)
-    ::over-order-by-strategy.copy-expressions
-
-    (:h2 :sqlite :oracle)
+  (if (driver/database-supports? driver
+                                 :sql/window-functions.order-by-output-column-numbers
+                                 (lib.metadata/database (qp.store/metadata-provider)))
     ::over-order-by-strategy.use-output-column-numbers
-
-    ;; NOT SURE ABOUT THESE!
-    (:sparksql)
-    ::over-order-by-strategy.copy-expressions
-
-    ;; the rest are unknown; try using output column numbers.
-    ::over-order-by-strategy.use-output-column-numbers
-    ))
+    ::over-order-by-strategy.copy-expressions))
 
 (defn- format-rows-unbounded-preceding [_clause _args]
-  ["ROWS UNBOUNDED PRECEDING"
-   #_"RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW"])
+  ["ROWS UNBOUNDED PRECEDING"])
 
 (sql/register-clause!
  ::rows-unbounded-preceding

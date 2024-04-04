@@ -839,45 +839,46 @@
                                :query    {:source-table "card__3"}}))))))
 
 (deftest ^:parallel handle-multiple-orders-bys-on-same-field-correctly-test
-  (let [query (lib.tu.macros/mbql-query orders
-                {:aggregation [[:count]]
-                 :breakout    [[:field %created-at {:temporal-unit :month}]
-                               [:field %created-at {:temporal-unit :day}]]})]
-    (qp.store/with-metadata-provider meta/metadata-provider
-      (driver/with-driver :h2
-        (is (=? {:query {:source-table (meta/id :orders)
-                         :breakout     [[:field
-                                         (meta/id :orders :created-at)
-                                         {:temporal-unit      :month
-                                          ::add/source-alias  "CREATED_AT"
-                                          ::add/desired-alias "CREATED_AT"
-                                          ::add/position      0}]
-                                        [:field
-                                         (meta/id :orders :created-at)
-                                         {:temporal-unit      :day
-                                          ::add/source-alias  "CREATED_AT"
-                                          ::add/desired-alias "CREATED_AT_2"
-                                          ::add/position      1}]]
-                         :aggregation  [[:aggregation-options
-                                         [:count]
-                                         {::add/source-alias  "count"
-                                          ::add/position      2
-                                          ::add/desired-alias "count"}]]
-                         :order-by     [[:asc
-                                         [:field
-                                          (meta/id :orders :created-at)
-                                          {:temporal-unit      :month
-                                           ::add/source-alias  "CREATED_AT"
-                                           ::add/desired-alias "CREATED_AT"
-                                           ::add/position      0}]]
-                                        [:asc
-                                         [:field
-                                          (meta/id :orders :created-at)
-                                          {:temporal-unit      :day
-                                           ::add/source-alias  "CREATED_AT"
-                                           ::add/desired-alias "CREATED_AT_2"
-                                           ::add/position      1}]]]}}
-                (add/add-alias-info (qp.preprocess/preprocess query))))))))
+  (testing "#40993"
+    (let [query (lib.tu.macros/mbql-query orders
+                  {:aggregation [[:count]]
+                   :breakout    [[:field %created-at {:temporal-unit :month}]
+                                 [:field %created-at {:temporal-unit :day}]]})]
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (driver/with-driver :h2
+          (is (=? {:query {:source-table (meta/id :orders)
+                           :breakout     [[:field
+                                           (meta/id :orders :created-at)
+                                           {:temporal-unit      :month
+                                            ::add/source-alias  "CREATED_AT"
+                                            ::add/desired-alias "CREATED_AT"
+                                            ::add/position      0}]
+                                          [:field
+                                           (meta/id :orders :created-at)
+                                           {:temporal-unit      :day
+                                            ::add/source-alias  "CREATED_AT"
+                                            ::add/desired-alias "CREATED_AT_2"
+                                            ::add/position      1}]]
+                           :aggregation  [[:aggregation-options
+                                           [:count]
+                                           {::add/source-alias  "count"
+                                            ::add/position      2
+                                            ::add/desired-alias "count"}]]
+                           :order-by     [[:asc
+                                           [:field
+                                            (meta/id :orders :created-at)
+                                            {:temporal-unit      :month
+                                             ::add/source-alias  "CREATED_AT"
+                                             ::add/desired-alias "CREATED_AT"
+                                             ::add/position      0}]]
+                                          [:asc
+                                           [:field
+                                            (meta/id :orders :created-at)
+                                            {:temporal-unit      :day
+                                             ::add/source-alias  "CREATED_AT"
+                                             ::add/desired-alias "CREATED_AT_2"
+                                             ::add/position      1}]]]}}
+                  (add/add-alias-info (qp.preprocess/preprocess query)))))))))
 
 (deftest ^:parallel preserve-field-options-name-test
   (qp.store/with-metadata-provider meta/metadata-provider

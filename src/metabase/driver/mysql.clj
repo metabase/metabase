@@ -53,20 +53,21 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
-(doseq [[feature supported?] {:persist-models                         true
-                              :convert-timezone                       true
-                              :datetime-diff                          true
-                              :now                                    true
-                              :regex                                  false
-                              :percentile-aggregations                false
-                              :full-join                              false
-                              :uploads                                true
-                              :schemas                                false
-                              ;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
-                              ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
-                              ;; users in the UI
-                              :case-sensitivity-string-filter-options false
-                              :index-info                             true}]
+(doseq [[feature supported?] {;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the
+                              ;; server and the columns themselves. Since this isn't something we can really change in
+                              ;; the query itself don't present the option to the users in the UI
+                              :case-sensitivity-string-filter-options              false
+                              :convert-timezone                                    true
+                              :datetime-diff                                       true
+                              :full-join                                           false
+                              :index-info                                          true
+                              :now                                                 true
+                              :percentile-aggregations                             false
+                              :persist-models                                      true
+                              :regex                                               false
+                              :schemas                                             false
+                              :sql/window-functions.order-by-output-column-numbers false
+                              :uploads                                             true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
