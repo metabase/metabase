@@ -347,9 +347,7 @@
     (t/is (= [:!= [:field 1 nil] nil]
              (mbql.u/desugar-filter-clause [:not-null [:field 1 nil]]))))
   (t/testing "desugaring :is-empty of nil base-type"
-    (t/is (= [:or
-              [:= [:field 1 nil] nil]
-              [:= [:field 1 nil] ""]]
+    (t/is (= [:= [:field 1 nil] nil]
              (mbql.u/desugar-filter-clause [:is-empty [:field 1 nil]]))))
   (t/testing "desugaring :is-empty of emptyable base-type :type/Text"
     (t/is (= [:or
@@ -360,9 +358,7 @@
     (t/is (= [:= [:field 1 {:base-type :type/DateTime}] nil]
              (mbql.u/desugar-filter-clause [:is-empty [:field 1 {:base-type :type/DateTime}]]))))
   (t/testing "desugaring :not-empty of nil base-type"
-    (t/is (= [:and
-              [:!= [:field 1 nil] nil]
-              [:!= [:field 1 nil] ""]]
+    (t/is (= [:!= [:field 1 nil] nil]
              (mbql.u/desugar-filter-clause [:not-empty [:field 1 nil]]))))
   (t/testing "desugaring :not-empty of emptyable base-type :type/Text"
     (t/is (= [:and

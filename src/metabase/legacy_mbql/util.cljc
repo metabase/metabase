@@ -159,27 +159,22 @@
     [:is-null field]  [:=  field nil]
     [:not-null field] [:!= field nil]))
 
-(defn- emptyable-expansion?
-  [[_ _id-or-name {:keys [base-type]} :as _field]]
-  (boolean (or (isa? base-type :metabase.lib.schema.expression/emptyable)
-               (nil? base-type))))
-
 (defn desugar-is-empty-and-not-empty
   "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively.
 
    If `:not-empty` is called on `:metabase.lib.schema.expression/emptyable` type, expand check for empty string. For
-   non-`emptyable` types act as `:is-null`."
+   non-`emptyable` types act as `:is-null`. If field has nil base type it is considered not emptyable expansion wise."
   [m]
   (lib.util.match/replace m
     [:is-empty field]
-    (if (emptyable-expansion? field)
+    (if (isa? (get-in field [2 :base-type]) :metabase.lib.schema.expression/emptyable)
       [:or [:= field nil] [:= field ""]]
       [:= field nil])
 
     [:not-empty field]
-    (if (emptyable-expansion? field)
+    (if (isa? (get-in field [2 :base-type]) :metabase.lib.schema.expression/emptyable)
       [:and [:!= field nil] [:!= field ""]]
-      [:!=  field nil])))
+      [:!= field nil])))
 
 (defn- replace-field-or-expression
   "Replace a field or expression inside :time-interval"

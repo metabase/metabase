@@ -795,12 +795,7 @@
                 :fields [$id [:expression "caseExpr"]]
                 :order-by [[$id :asc]]
                 :limit 1})))))
-    ;; We should handle correctly also situation where there is missing base type of is empty arg. In that case,
-    ;; [[metabase.query-processor.middleware.wrap-value-literals/add-type-info]], String implementation, should not
-    ;; try to parse the empty string as date/time type, but return value as is.
-    (testing (str ":not-empty works with argument missing base-type,\n"
-                  "hence treated as emptyable,\n"
-                  "but in reality it is not emptyable Temporal!")
+    (testing (str "nil base-type arg of :not-empty should behave as not emptyable")
       (is (= [[1 1]]
              (mt/formatted-rows
               [int int]
