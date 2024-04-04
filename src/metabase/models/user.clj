@@ -474,6 +474,14 @@
   :default    false
   :audit      :never)
 
+(defsetting notebook-native-preview-preferences
+  (deferred-tru "User preferences for the native query preview in the notebook.")
+  :user-local :only
+  :visibility :authenticated
+  :type       :json
+  :default    {:sidebar_shown false
+               :sidebar_width nil})
+
 ;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
 
 (defmethod audit-log/model-details :model/User
