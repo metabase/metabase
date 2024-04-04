@@ -2,7 +2,7 @@ import { isRootCollection } from "metabase/collections/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import type {
   CollectionId,
-  SearchListQuery,
+  SearchRequest,
   SearchModelType,
 } from "metabase-types/api";
 
@@ -55,8 +55,8 @@ export const getStateFromIdPath = ({
 }: {
   idPath: CollectionId[];
   namespace?: "snippets";
-}): PickerState<CollectionPickerItem, SearchListQuery> => {
-  const statePath: PickerState<CollectionPickerItem, SearchListQuery> = [
+}): PickerState<CollectionPickerItem, SearchRequest> => {
+  const statePath: PickerState<CollectionPickerItem, SearchRequest> = [
     {
       selectedItem: {
         name: "",
@@ -96,5 +96,5 @@ export const isFolder: IsFolder<
   return item.model === "collection";
 };
 
-export const generateKey = (query?: SearchListQuery) =>
+export const generateKey = (query?: SearchRequest) =>
   JSON.stringify(query ?? "root");

@@ -13,7 +13,7 @@ import { Box, Flex, Icon, Stack, Tabs, TextInput } from "metabase/ui";
 import type {
   SearchModelType,
   SearchResultId,
-  SearchResults,
+  SearchResponse,
 } from "metabase-types/api";
 
 import type { TypeWithModel } from "../../types";
@@ -59,7 +59,7 @@ export function EntityPickerSearchInput<
         if (searchQuery) {
           Search.api
             .list({ models, q: searchQuery }, { cancelled: cancelled.promise })
-            .then((results: SearchResults<Id, Model, Item>) => {
+            .then((results: SearchResponse<Id, Model, Item>) => {
               if (results.data) {
                 const items = results.data;
                 const filteredResults = searchFilter(items);

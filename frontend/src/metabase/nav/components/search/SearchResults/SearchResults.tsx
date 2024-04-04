@@ -23,7 +23,7 @@ import { SearchContextTypes } from "metabase/search/constants";
 import type { SearchFilters } from "metabase/search/types";
 import { Loader, Text, Stack } from "metabase/ui";
 import type {
-  SearchResults as SearchResultsType,
+  SearchResponse as SearchResultsType,
   CollectionItem,
   SearchModelType,
 } from "metabase-types/api";

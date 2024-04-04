@@ -115,3 +115,20 @@ export interface CollectionListQuery {
   namespace?: string;
   tree?: boolean;
 }
+
+export interface ListCollectionItemsRequest {
+  id: CollectionId;
+  models?: CollectionItemModel | CollectionItemModel[];
+  archived?: boolean;
+  pinned_state?: "all" | "is_pinned" | "is_not_pinned";
+  sort_column?: "name" | "last_edited_at" | "last_edited_by" | "model";
+  sort_direction?: "asc" | "desc";
+}
+
+export interface ListCollectionItemsResponse {
+  data: CollectionItem[];
+  models: CollectionItemModel[] | null;
+  limit: number;
+  offset: number;
+  total: number;
+}

@@ -49,7 +49,7 @@ interface BaseSearchResult<
   name: string;
 }
 
-export interface SearchResults<
+export interface SearchResponse<
   Id extends SearchResultId = SearchResultId,
   Model extends SearchModelType = SearchModelType,
   Result extends BaseSearchResult<Id, Model> = SearchResult<Id, Model>,
@@ -112,14 +112,19 @@ export interface SearchResult<
   can_write: boolean | null;
 }
 
-export interface SearchListQuery {
+export interface SearchRequest {
   q?: string;
-  models?: SearchModelType | SearchModelType[];
   archived?: boolean;
   table_db_id?: DatabaseId;
+  models?: SearchModelType | SearchModelType[];
+  filter_items_in_personal_collection?: "only" | "exclude";
+  context?: "search-bar" | "search-app";
+  created_at?: string;
+  created_by?: UserId[];
+  last_edited_at?: string;
+  last_edited_by?: UserId[];
+  search_native_query?: boolean;
+  verified?: boolean;
   limit?: number;
   offset?: number;
-  collection?: CollectionId;
-  filter_items_in_personal_collection?: "only" | "exclude";
-  namespace?: "snippets";
 }
