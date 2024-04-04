@@ -68,11 +68,9 @@
   (mbql-clause/define-tuple-mbql-clause op :- :type/Boolean
     [:ref ::expression/expression]))
 
-;;; one-arg [:ref ::expression/string] filter clauses
-;;;
-;;; :is-empty is sugar for [:or [:= ... nil] [:= ... ""]]
-;;;
-;;; :not-empty is sugar for [:and [:!= ... nil] [:!= ... ""]]
+;;; :is-empty is sugar for [:or [:= ... nil] [:= ... ""]] for emptyable arguments
+;;; :not-empty is sugar for [:and [:!= ... nil] [:!= ... ""]] for emptyable arguments
+;;; For non emptyable arguments expansion is same with :is-null and :not-null
 (doseq [op [:is-empty :not-empty]]
   (mbql-clause/define-tuple-mbql-clause op :- :type/Boolean
     [:ref ::expression/expression]))
