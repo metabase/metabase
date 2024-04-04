@@ -212,7 +212,7 @@
                               :test/jvm-timezone-setting       false
                               ;; disabled for now, see issue #40991 to fix this.
                               :window-functions                false}]
-  (defmethod driver/database-supports? [:sparkql feature] [_driver _feature _db] supported?))
+  (defmethod driver/database-supports? [:sparksql feature] [_driver _feature _db] supported?))
 
 ;; only define an implementation for `:foreign-keys` if none exists already. In test extensions we define an alternate
 ;; implementation, and we don't want to stomp over that if it was loaded already

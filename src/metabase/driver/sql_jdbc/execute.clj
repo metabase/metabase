@@ -135,6 +135,7 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+;;; TODO -- we should just make this a FEATURE!!!!!1
 (defmulti ^Statement statement-supported?
   "Indicates whether the given driver supports creating a java.sql.Statement, via the Connection. By default, this is
   true for all :sql-jdbc drivers.  If the underlying driver does not support Statement creation, override this as
