@@ -6,21 +6,26 @@ import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import type { SetupOpts } from "./setup";
 import {
+  clickNextStep,
   expectSectionsToHaveLabelsInOrder,
   expectSectionToHaveLabel,
+  getLastSettingsPutPayload,
+  selectUsageReason,
   setup,
+  skipLanguageStep,
   skipWelcomeScreen,
+  submitUserInfoStep,
 } from "./setup";
 
 const setupPremium = (opts?: SetupOpts) => {
   return setup({
     ...opts,
     hasEnterprisePlugins: true,
-    tokenFeatures: createMockTokenFeatures({ hosting: true }),
+    tokenFeatures: createMockTokenFeatures({ hosting: true, embedding: true }),
   });
 };
 
-describe("setup (EE, hosting feature)", () => {
+describe("setup (EE, hosting and embedding feature)", () => {
   it("default step order should be correct, without the commercial step", async () => {
     await setupPremium();
     skipWelcomeScreen();
@@ -39,5 +44,24 @@ describe("setup (EE, hosting feature)", () => {
     expect(
       screen.queryByText("Activate your commercial license"),
     ).not.toBeInTheDocument();
+  });
+
+  it("should set 'setup-license-active-at-setup' to true", async () => {
+    await setupPremium();
+    skipWelcomeScreen();
+    skipLanguageStep();
+    await submitUserInfoStep();
+
+    selectUsageReason("embedding");
+    clickNextStep();
+
+    screen.getByText("Finish").click();
+
+    expect(await getLastSettingsPutPayload()).toEqual({
+      "embedding-homepage": "visible",
+      "enable-embedding": true,
+      "setup-embedding-autoenabled": true,
+      "setup-license-active-at-setup": true,
+    });
   });
 });

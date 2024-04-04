@@ -319,20 +319,20 @@ describe("scenarios > setup", () => {
 
     cy.location("pathname").should("eq", "/");
 
-    main().findByText("Embed Metabase in your app").should("exist");
+    // main().findByText("Embed Metabase in your app").should("exist");
 
-    main()
-      .findByRole("link", { name: "Learn more" })
-      .should("have.attr", "href")
-      .and(
-        "match",
-        /https:\/\/www.metabase.com\/docs\/[^\/]*\/embedding\/start\.html\?utm_media=embed-minimal-homepage/,
-      );
+    // main()
+    //   .findByRole("link", { name: "Learn more" })
+    //   .should("have.attr", "href")
+    //   .and(
+    //     "match",
+    //     /https:\/\/www.metabase.com\/docs\/[^\/]*\/embedding\/start\.html\?utm_media=embed-minimal-homepage/,
+    //   );
 
-    cy.reload();
+    // cy.reload();
 
-    // should only show up once
-    main().findByText("Embed Metabase in your app").should("not.exist");
+    // // should only show up once
+    // main().findByText("Embed Metabase in your app").should("not.exist");
   });
 });
 

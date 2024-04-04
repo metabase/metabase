@@ -3,9 +3,20 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { TokenFeatures, UsageReason } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import type {
+  SettingDefinition,
+  TokenFeatures,
+  UsageReason,
+} from "metabase-types/api";
+import {
+  createMockSettings,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockSetupState,
@@ -19,11 +30,13 @@ export interface SetupOpts {
   step?: SetupStep;
   tokenFeatures?: TokenFeatures;
   hasEnterprisePlugins?: boolean;
+  settingOverrides?: SettingDefinition[];
 }
 
 export async function setup({
   tokenFeatures = createMockTokenFeatures(),
   hasEnterprisePlugins = false,
+  settingOverrides = [],
 }: SetupOpts = {}) {
   localStorage.clear();
   jest.clearAllMocks();
@@ -45,8 +58,11 @@ export async function setup({
   fetchMock.post("path:/api/util/password_check", { valid: true });
   fetchMock.post("path:/api/setup", {});
   fetchMock.put("path:/api/setting/anon-tracking-enabled", 200);
-  fetchMock.get("path:/api/session/properties", 200);
-  fetchMock.get("path:/api/setting", 200);
+  setupPropertiesEndpoints(
+    createMockSettings({ "token-features": tokenFeatures }),
+  );
+  setupSettingsEndpoints(settingOverrides);
+  fetchMock.put("path:/api/setting", 200);
 
   renderWithProviders(<Setup />, { storeInitialState: state });
 
@@ -122,4 +138,15 @@ export const expectSectionsToHaveLabelsInOrder = ({
       expect(within(section).getByText(`${index + 1}`)).toBeInTheDocument();
     }
   });
+};
+
+export const getLastSettingsPutPayload = async () => {
+  const lastSettingsCall = fetchMock.lastCall("path:/api/setting", {
+    method: "PUT",
+  });
+
+  expect(lastSettingsCall).toBeTruthy();
+  expect(lastSettingsCall![1]).toBeTruthy();
+
+  return JSON.parse((await lastSettingsCall![1]!.body!) as string);
 };

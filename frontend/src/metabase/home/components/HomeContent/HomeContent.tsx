@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 import {
   useDatabaseListQuery,
   usePopularItemListQuery,
@@ -9,13 +7,11 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { getUser } from "metabase/selectors/user";
-import { Box } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { PopularItem, RecentItem, User } from "metabase-types/api";
 
 import { getIsXrayEnabled } from "../../selectors";
-import { isWithinWeeks, shouldShowEmbedHomepage } from "../../utils";
-import { EmbedMinimalHomepage } from "../EmbedMinimalHomepage";
+import { isWithinWeeks } from "../../utils";
 import { HomePopularSection } from "../HomePopularSection";
 import { HomeRecentSection } from "../HomeRecentSection";
 import { HomeXraySection } from "../HomeXraySection";
@@ -30,9 +26,6 @@ export const HomeContent = (): JSX.Element | null => {
   const { data: popularItems, error: popularItemsError } =
     usePopularItemListQuery({ reload: true });
   const error = databasesError || recentItemsError || popularItemsError;
-  const [showEmbedHomepage, setShowEmbedHomepage] = useState(() =>
-    shouldShowEmbedHomepage(),
-  );
 
   if (error) {
     return <LoadingAndErrorWrapper error={error} />;
@@ -51,23 +44,10 @@ export const HomeContent = (): JSX.Element | null => {
   }
 
   if (isXraySection(databases, isXrayEnabled)) {
-    return (
-      <>
-        <HomeXraySection />
-        {showEmbedHomepage && (
-          <Box mt={64}>
-            <EmbedMinimalHomepage
-              onDismiss={() => setShowEmbedHomepage(false)}
-            />
-          </Box>
-        )}
-      </>
-    );
+    return <HomeXraySection />;
   }
 
-  return showEmbedHomepage ? (
-    <EmbedMinimalHomepage onDismiss={() => setShowEmbedHomepage(false)} />
-  ) : null;
+  return null;
 };
 
 const isLoading = (
