@@ -636,8 +636,11 @@
                          ;; just use MLv2 metadata or type calculation functions instead.
                          (or (when-let [field-database-type (h2x/database-type (sql.qp/->honeysql driver field))]
                                (when (#{"datetime" "datetime2" "datetimeoffset" "smalldatetime"} field-database-type)
-                                 (map (fn [expr]
-                                        [::cast expr field-database-type]))))
+                                 (map (fn [[_type val :as expr]]
+                                        ;; Do not cast nil arguments to enable transformation to IS NULL.
+                                        (if (some? val)
+                                          [::cast expr field-database-type]
+                                          expr)))))
                              identity)
                          args)]
         ((get-method sql.qp/->honeysql [:sql-jdbc op]) driver clause)))))
