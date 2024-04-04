@@ -142,8 +142,8 @@
         (log/debug "Finished writing results; closing results writer.")
         (try
           (qp.si/finish! results-writer result)
-          (catch EofException _
-            (log/error "Client closed connection prematurely")))
+          (catch EofException e
+            (log/error e "Client closed connection prematurely")))
         (u/ignore-exceptions
           (.flush os)
           (.close os)))
