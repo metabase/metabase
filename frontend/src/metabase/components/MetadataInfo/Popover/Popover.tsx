@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import type { HoverCardProps } from "metabase/ui";
@@ -36,12 +36,10 @@ export function Popover({
   const { setupCloseHandler, removeCloseHandler } =
     useSequencedContentCloseHandler();
 
-  const ref = useRef(null);
   const handleOpen = useCallback(() => {
-    setupCloseHandler(ref.current, () => setIsOpen(false));
     group.onOpen();
     setIsOpen(true);
-  }, [setupCloseHandler, group]);
+  }, [group]);
 
   const handleClose = useCallback(() => {
     removeCloseHandler();
@@ -60,14 +58,19 @@ export function Popover({
       transitionProps={{
         duration: group.shouldDelay ? POPOVER_TRANSITION_DURATION : 0,
       }}
-      keepMounted
     >
       <HoverCard.Target>{children}</HoverCard.Target>
       <Dropdown>
         {/* HACK: adds an element between the target and the card */}
         {/* to avoid the card from disappearing */}
         <Target />
-        <WidthBound ref={ref}>{isOpen && content}</WidthBound>
+        <WidthBound
+          ref={node => {
+            setupCloseHandler(node, () => setIsOpen(false));
+          }}
+        >
+          {isOpen && content}
+        </WidthBound>
       </Dropdown>
     </HoverCard>
   );

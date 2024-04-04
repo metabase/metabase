@@ -254,7 +254,14 @@ const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => (
 
 const RulePreview = ({ rule, cols, onClick, onRemove }) => (
   <div
-    className="my2 bordered rounded shadowed cursor-pointer bg-white"
+    className={cx(
+      CS.my2,
+      CS.bordered,
+      CS.rounded,
+      CS.shadowed,
+      CS.cursorPointer,
+      CS.bgWhite,
+    )}
     onClick={onClick}
     data-testid="formatting-rule-preview"
   >
@@ -276,7 +283,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
         </span>
         <Icon
           name="close"
-          className="cursor-pointer text-light text-medium-hover"
+          className={cx(CS.cursorPointer, CS.textLight, "text-medium-hover")}
           onClick={e => {
             e.stopPropagation();
             onRemove();
