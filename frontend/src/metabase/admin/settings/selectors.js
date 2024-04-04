@@ -15,7 +15,7 @@ import {
 } from "metabase/plugins";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { PersistedModelsApi, UtilApi } from "metabase/services";
+import { PersistedModelsApi } from "metabase/services";
 
 import {
   trackTrackingPermissionChanged,
@@ -448,22 +448,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         display_name: t`Embedding`,
         description: null,
         widget: EmbeddingSwitchWidget,
-        onChanged: async (
-          oldValue,
-          newValue,
-          settingsValues,
-          onChangeSetting,
-        ) => {
-          // Generate a secret key if none already exists
-          if (
-            !oldValue &&
-            newValue &&
-            !settingsValues["embedding-secret-key"]
-          ) {
-            const result = await UtilApi.random_token();
-            await onChangeSetting("embedding-secret-key", result.token);
-          }
-        },
       },
       {
         key: "-static-embedding",

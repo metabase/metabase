@@ -1,10 +1,13 @@
 (ns metabase.embed.settings
   "Settings related to embedding Metabase in other applications."
   (:require
+   [clojure.string :as str]
+   [crypto.random :as crypto-random]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
+   [metabase.util.embed :as embed]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
 
@@ -25,6 +28,8 @@
   :setter     (fn [new-value]
                 (when (not= new-value (setting/get-value-of-type :boolean :enable-embedding))
                   (setting/set-value-of-type! :boolean :enable-embedding new-value)
+                  (when (and new-value (str/blank? (embed/embedding-secret-key)))
+                    (embed/embedding-secret-key! (crypto-random/hex 32)))
                   (let [snowplow-payload {:embedding-app-origin-set   (boolean (embedding-app-origin))
                                           :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
                                           :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}]
