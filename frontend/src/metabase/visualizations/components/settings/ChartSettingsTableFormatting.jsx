@@ -283,7 +283,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
         </span>
         <Icon
           name="close"
-          className="cursor-pointer text-light text-medium-hover"
+          className={cx(CS.cursorPointer, CS.textLight, "text-medium-hover")}
           onClick={e => {
             e.stopPropagation();
             onRemove();

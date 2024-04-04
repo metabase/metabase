@@ -47,36 +47,6 @@
     (throw (ex-info (tru ":parameter_mappings must be a sequence of maps with :parameter_id and :type keys")
                     {:parameter_mappings parameter_mappings}))))
 
-(mu/defn unwrap-field-clause :- [:maybe mbql.s/field]
-  "Unwrap something that contains a `:field` clause, such as a template tag.
-  Also handles unwrapped integers for legacy compatibility.
-
-    (unwrap-field-clause [:field 100 nil]) ; -> [:field 100 nil]"
-  [field-form]
-  (if (integer? field-form)
-    [:field field-form nil]
-    (lib.util.match/match-one field-form :field)))
-
-(mu/defn unwrap-field-or-expression-clause :- mbql.s/Field
-  "Unwrap a `:field` clause or expression clause, such as a template tag. Also handles unwrapped integers for
-  legacy compatibility."
-  [field-or-ref-form]
-  (or (unwrap-field-clause field-or-ref-form)
-      (lib.util.match/match-one field-or-ref-form :expression)))
-
-(defn wrap-field-id-if-needed
-  "Wrap a raw Field ID in a `:field` clause if needed."
-  [field-id-or-form]
-  (cond
-    (mbql.u/mbql-clause? field-id-or-form)
-    field-id-or-form
-
-    (integer? field-id-or-form)
-    [:field field-id-or-form nil]
-
-    :else
-    field-id-or-form))
-
 (def ^:dynamic *ignore-current-user-perms-and-return-all-field-values*
   "Whether to ignore permissions for the current User and return *all* FieldValues for the Fields being parameterized by
   Cards and Dashboards. This determines how `:param_values` gets hydrated for Card and Dashboard. Normally, this is
@@ -123,7 +93,7 @@
         ;; for unknown reasons. See #8917
         (if field-form
           (try
-           (unwrap-field-or-expression-clause field-form)
+           (mbql.u/unwrap-field-or-expression-clause field-form)
            (catch Exception e
              (log/error e "Failed unwrap field form" field-form)))
           (log/error "Could not find matching field clause for target:" target))))))
@@ -298,7 +268,7 @@
   [card]
   (set (for [[_ {dimension :dimension}] (get-in card [:dataset_query :native :template-tags])
              :when                      dimension
-             :let                       [field (unwrap-field-clause dimension)]
+             :let                       [field (mbql.u/unwrap-field-clause dimension)]
              :when                      field]
          field)))
 

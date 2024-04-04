@@ -1,3 +1,10 @@
 src/metabase @camsaul
 modules @camsaul
 enterprise/backend @camsaul
+enterprise/backend/src/metabase_enterprise/advanced_permissions @noahmoss
+enterprise/backend/src/metabase_enterprise/audit_app @noahmoss
+enterprise/backend/src/metabase_enterprise/sso @noahmoss
+enterprise/backend/src/metabase_enterprise/task/truncate_audit_table.clj @noahmoss
+enterprise/backend/src/metabase_enterprise/internal_user.clj @noahmoss
+src/metabase/**/*permissions* @noahmoss
+src/metabase/integrations @noahmoss

@@ -163,7 +163,7 @@ export class DimensionList extends Component {
         {isSelected && onRemoveDimension && (
           <Icon
             name="close"
-            className="mx1 cursor-pointer faded fade-in-hover"
+            className={cx(CS.mx1, CS.cursorPointer, "faded", "fade-in-hover")}
             onClick={e => {
               e.stopPropagation();
               this.handleRemove(item);

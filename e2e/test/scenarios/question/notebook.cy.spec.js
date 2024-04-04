@@ -678,9 +678,27 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  it("should properly render previews (metabase#28726), (metabase#29959)", () => {
-    openOrdersTable({ mode: "notebook" });
-    cy.findByTestId("step-data-0-0").within(() => {
+  it("should properly render previews (metabase#28726, metabase#29959, metabase#40608)", () => {
+    startNewQuestion();
+
+    cy.log(
+      "Preview should not be possible without the source data (metabase#40608)",
+    );
+    getNotebookStep("data")
+      .as("dataStep")
+      .within(() => {
+        cy.findByText("Pick your starting data").should("exist");
+        cy.icon("play").should("not.be.visible");
+      });
+
+    popover().findByTextEnsureVisible("Raw Data").click();
+    cy.get("@dataStep").icon("play").should("not.be.visible");
+    popover().findByTextEnsureVisible("Orders").click();
+
+    getNotebookStep("filter").icon("play").should("not.be.visible");
+    getNotebookStep("summarize").icon("play").should("not.be.visible");
+
+    cy.get("@dataStep").within(() => {
       cy.icon("play").click();
       assertTableRowCount(10);
       cy.findByTextEnsureVisible("Subtotal");
@@ -690,13 +708,13 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     cy.button("Row limit").click();
-    cy.findByTestId("step-limit-0-0").within(() => {
-      cy.findByPlaceholderText("Enter a limit").type("5").blur();
+    getNotebookStep("limit").within(() => {
+      cy.findByPlaceholderText("Enter a limit").type("5").realPress("Tab");
 
       cy.icon("play").click();
       assertTableRowCount(5);
 
-      cy.findByDisplayValue("5").type("{selectall}50").blur();
+      cy.findByDisplayValue("5").type("{selectall}50").realPress("Tab");
       cy.button("Refresh").click();
       assertTableRowCount(10);
     });
