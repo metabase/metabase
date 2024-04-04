@@ -1,0 +1,262 @@
+[
+  {
+    "card": {
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-04-04T01:08:06.549112Z",
+      "parameters": [],
+      "metabase_version": "v0.48.1-SNAPSHOT (04238f7)",
+      "collection": null,
+      "visualization_settings": {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["count"],
+        "graph.x_axis.scale": "ordinal"
+      },
+      "collection_preview": true,
+      "entity_id": "X5ORiUiwibT52ot6mE2jX",
+      "display": "bar",
+      "parameter_mappings": [],
+      "id": 125,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "day-of-week"
+              }
+            ]
+          ],
+          "filter": [
+            "between",
+            [
+              "field",
+              41,
+              {
+                "base-type": "type/Integer",
+                "temporal-unit": "day-of-week"
+              }
+            ],
+            1.5271502278946083,
+            3.4918293706512356
+          ]
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-04-04T01:08:06.549112Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": null,
+      "type": "question",
+      "dashboard_count": 0,
+      "last_query_start": null,
+      "name": "two days",
+      "query_type": "query",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": 1,
+      "can_write": true,
+      "initially_published_at": null,
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "day-of-week",
+          "name": "CREATED_AT",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "day-of-week"
+            }
+          ],
+          "effective_type": "type/Integer",
+          "id": 41,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/Integer"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 2,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 2664,
+                "q1": 2664,
+                "q3": 2695,
+                "max": 2695,
+                "sd": 21.920310216782973,
+                "avg": 2679.5
+              }
+            }
+          }
+        }
+      ],
+      "table_id": 5,
+      "collection_position": null,
+      "archived": false,
+      "description": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        [2, 2664],
+        [3, 2695]
+      ],
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "unit": "day-of-week",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "day-of-week"
+            }
+          ],
+          "effective_type": "type/Integer",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 41,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/Integer"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT CASE WHEN ((extract(iso_day_of_week from \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") + 1) % 7) = 0 THEN 7 ELSE (extract(iso_day_of_week from \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") + 1) % 7 END AS \"CREATED_AT\", COUNT(*) AS \"count\" FROM \"PUBLIC\".\"ORDERS\" WHERE CASE WHEN ((extract(iso_day_of_week from \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") + 1) % 7) = 0 THEN 7 ELSE (extract(iso_day_of_week from \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") + 1) % 7 END BETWEEN 1.5271502278946083 AND 3.4918293706512356 GROUP BY CASE WHEN ((extract(iso_day_of_week from \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") + 1) % 7) = 0 THEN 7 ELSE (extract(iso_day_of_week from \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") + 1) % 7 END ORDER BY CASE WHEN ((extract(iso_day_of_week from \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") + 1) % 7) = 0 THEN 7 ELSE (extract(iso_day_of_week from \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") + 1) % 7 END ASC",
+        "params": null
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Montevideo",
+      "requested_timezone": "Pacific/Guam",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "day-of-week",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "day-of-week"
+              }
+            ],
+            "effective_type": "type/Integer",
+            "id": 41,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/Integer"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 2,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 2664,
+                  "q1": 2664,
+                  "q3": 2695,
+                  "max": 2695,
+                  "sd": 21.920310216782973,
+                  "avg": 2679.5
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]
