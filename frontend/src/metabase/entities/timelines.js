@@ -31,7 +31,11 @@ const Timelines = createEntity({
             dispatch,
             timelineApi.endpoints.listCollectionTimelines,
           )
-        : entityCompatibleQuery(params, dispatch, timelineApi.listTimelines),
+        : entityCompatibleQuery(
+            params,
+            dispatch,
+            timelineApi.endpoints.listTimelines,
+          ),
     get: (entityQuery, options, dispatch) =>
       entityCompatibleQuery(
         entityQuery.id,
