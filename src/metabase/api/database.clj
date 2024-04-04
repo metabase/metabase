@@ -339,6 +339,7 @@
                           (cond->> tables
                             ; filter hidden tables
                             true                        (filter (every-pred (complement :visibility_type) mi/can-read?))
+                            true                        (map (fn [table] (update table :schema str)))
                             ; filter hidden fields
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
 
@@ -690,7 +691,7 @@
        :base_type     base_type
        :semantic_type semantic_type
        :table_name    (:name table)
-       :schema        (:schema table)})))
+       :schema        (:schema table "")})))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/idfields -----------------------------------------
