@@ -21,7 +21,12 @@ export const timelineApi = Api.injectEndpoints({
       }),
       providesTags: (timelines = []) => [
         listTag("timeline"),
-        ...timelines.map(({ id }) => idTag("timeline", id)),
+        ...timelines.flatMap(timeline => [
+          idTag("timeline", timeline.id),
+          ...(timeline.events ?? []).map(event =>
+            idTag("timeline-event", event.id),
+          ),
+        ]),
       ],
     }),
     listCollectionTimelines: builder.query<
@@ -35,7 +40,12 @@ export const timelineApi = Api.injectEndpoints({
       }),
       providesTags: (timelines = []) => [
         listTag("timeline"),
-        ...timelines.map(({ id }) => idTag("timeline", id)),
+        ...timelines.flatMap(timeline => [
+          idTag("timeline", timeline.id),
+          ...(timeline.events ?? []).map(event =>
+            idTag("timeline-event", event.id),
+          ),
+        ]),
       ],
     }),
     getTimeline: builder.query<Timeline, GetTimelineRequest>({

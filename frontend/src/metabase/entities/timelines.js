@@ -38,28 +38,24 @@ const Timelines = createEntity({
           ),
     get: (entityQuery, options, dispatch) =>
       entityCompatibleQuery(
-        entityQuery.id,
+        entityQuery,
         dispatch,
-        timelineApi.endpoints.getTimelineEvent,
+        timelineApi.endpoints.getTimeline,
       ),
     create: (entityQuery, dispatch) =>
       entityCompatibleQuery(
         entityQuery,
         dispatch,
-        timelineApi.endpoints.createTimelineEvent,
+        timelineApi.endpoints.createTimeline,
       ),
     update: (entityQuery, dispatch) =>
       entityCompatibleQuery(
         entityQuery,
         dispatch,
-        timelineApi.endpoints.updateTimelineEvent,
+        timelineApi.endpoints.updateTimeline,
       ),
     delete: ({ id }, dispatch) =>
-      entityCompatibleQuery(
-        id,
-        dispatch,
-        timelineApi.endpoints.deleteTimelineEvent,
-      ),
+      entityCompatibleQuery(id, dispatch, timelineApi.endpoints.deleteTimeline),
   },
 
   actions: {

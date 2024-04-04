@@ -18,12 +18,9 @@ const TimelineEvents = createEntity({
   schema: TimelineEventSchema,
 
   api: {
-    list: (entityQuery, dispatch) =>
-      entityCompatibleQuery(
-        entityQuery,
-        dispatch,
-        timelineEventApi.endpoints.listTimelineEvents,
-      ),
+    list: () => {
+      throw new TypeError("TimelineEvents.api.list is not supported");
+    },
     get: (entityQuery, options, dispatch) =>
       entityCompatibleQuery(
         entityQuery.id,
