@@ -4,7 +4,7 @@ import type { ResizeCallbackData, ResizableBoxProps } from "react-resizable";
 import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 
-import { darken } from "metabase/lib/colors";
+import { color, darken } from "metabase/lib/colors";
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
@@ -90,7 +90,7 @@ export const NotebookContainer = ({
   return (
     <Flex
       className={NC.notebookContainer}
-      bg="white"
+      bg={color("white")}
       opacity={isOpen ? 1 : 0}
       style={{
         transform: transformStyle,
