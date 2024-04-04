@@ -27,7 +27,7 @@
 /* these crazy rules are needed to get currentColor to propagate to the right elements in the right states */
 .ListSectionToggleAble .ListSectionHeader:hover,
 .ListSectionToggleAble .ListSectionHeader:hover :global(.Icon),
-.ListSectionToggleAble .ListSectionHeader:hover :global(.List-section-title),
+.ListSectionToggleAble .ListSectionHeader:hover .ListSectionTitle,
 :global(.List-section--expanded) .ListSectionHeader,
 :global(.List-section--expanded)
   .ListSectionHeader
@@ -35,13 +35,11 @@
   color: currentColor;
 }
 
-:global(.List-section--expanded)
-  .ListSectionHeader
-  :global(.List-section-title) {
+:global(.List-section--expanded) .ListSectionHeader .ListSectionTitle {
   color: var(--color-text-dark);
 }
 
-:global(.List-section-title) {
+.ListSectionTitle {
   word-wrap: break-word;
 }
 

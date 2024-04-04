@@ -99,7 +99,7 @@ export const AccordionListCell = ({
             </span>
           )}
           {name && (
-            <h3 className={cx("List-section-title", CS.textWrap)}>{name}</h3>
+            <h3 className={cx(ListS.ListSectionTitle, CS.textWrap)}>{name}</h3>
           )}
           {showSpinner(section) && (
             <Box ml="0.5rem">
