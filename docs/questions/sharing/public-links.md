@@ -49,11 +49,13 @@ To create a public link that people can use to download the results of a questio
 
 ### Exporting unformatted question results
 
-By default, Metabase will export the results of a question that include any formatting you added (for example, if you formatted a column with floats to display as a percentage (o.42 -> 42%)). To export the raw, unformatted rows, you'll need to append `?format_rows=false` to the URL. For example, if you create a public link for a CSV download, the URL would look like:
+To export the raw, unformatted rows, you'll need to append `?format_rows=false` to the URL Metabase generates. For example, if you create a public link for a CSV download, the URL would look like:
 
 ```html
 https://www.example.com/public/question/cf347ce0-90bb-4669-b73b-56c73edd10cb.csv?format_rows=false
 ```
+
+By default, Metabase will export the results of a question that include any formatting you added (for example, if you formatted a column with floats to display as a percentage (o.42 -> 42%)).
 
 See docs for the [export format endpoint](https://www.metabase.com/docs/latest/api/public#get-apipubliccarduuidqueryexport-format).
 
