@@ -1,8 +1,8 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
-import { measureTextWidth } from "metabase/lib/measure-text";
+import { createTextMeasurer } from "metabase/lib/measure-text";
 import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
 import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
 import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -28,6 +28,9 @@ export function useModelsAndOption({
   selectedTimelineEventIds,
   onRender,
 }: VisualizationProps) {
+  const measuringCanvasRef = useRef(document.createElement("canvas"));
+  const measureTextRef = useRef(createTextMeasurer(measuringCanvasRef.current));
+
   const seriesToRender = useMemo(
     () => (isPlaceholder ? transformedSeries : rawSeries),
     [isPlaceholder, transformedSeries, rawSeries],
@@ -42,7 +45,10 @@ export function useModelsAndOption({
     () => ({
       getColor: color,
       formatValue: (value, options) => String(formatValue(value, options)),
-      measureText: measureTextWidth,
+      measureText: (text, style) => {
+        const measureText = measureTextRef.current;
+        return measureText(text, style).width;
+      },
       fontFamily,
     }),
     [fontFamily],
