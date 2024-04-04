@@ -191,18 +191,14 @@ function makeOrdersSandboxed() {
     "include",
     `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
   );
-  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+
   cy.findByText("Grant sandboxed access to this table");
   cy.button("Save").should("be.disabled");
 
-  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("Pick a column").click();
-  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("User ID").click();
 
-  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("Pick a user attribute").click();
-  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("attr_uid").click();
   cy.button("Save").click();
 }
