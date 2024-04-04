@@ -283,7 +283,9 @@ export default class PieChart extends Component {
         groupElement.getBoundingClientRect().width >= 120 &&
         settings["pie.show_total"];
 
-      this.setState({ showChartDetail });
+      if (showChartDetail !== this.state.showChartDetail) {
+        this.setState({ showChartDetail });
+      }
     });
 
     if (
@@ -595,7 +597,7 @@ export default class PieChart extends Component {
                       }
                       onMouseLeave={() => onHoverChange?.(null)}
                       className={cx({
-                        "cursor-pointer": isClickable,
+                        [CS.cursorPointer]: isClickable,
                       })}
                       onClick={e => handleSliceClick(e, index)}
                       data-testid="slice"

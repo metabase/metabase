@@ -123,6 +123,11 @@ export interface ListDatabaseSchemaTablesRequest {
   include_editable_data_model?: boolean;
 }
 
+export interface ListVirtualDatabaseTablesRequest {
+  id: DatabaseId;
+  schema: string;
+}
+
 export interface GetDatabaseMetadataRequest {
   id: DatabaseId;
   include_hidden?: boolean;

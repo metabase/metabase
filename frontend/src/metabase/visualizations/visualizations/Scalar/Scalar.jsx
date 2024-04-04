@@ -224,7 +224,7 @@ export class Scalar extends Component {
       <ScalarWrapper>
         <div
           className={cx(
-            "Card-title",
+            DashboardS.CardTitle,
             CS.textDefault,
             CS.textSmaller,
             CS.absolute,

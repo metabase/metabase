@@ -61,6 +61,7 @@ function _PulsesListSidebar({
                 CS.rounded,
                 CS.p1,
                 CS.cursorPointer,
+                CS.mr1,
               )}
               size={18}
               onClick={createSubscription}

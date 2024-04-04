@@ -66,7 +66,7 @@ export function startNewNativeQuestion(alias = "editor") {
  */
 export function visitQuestionAdhoc(
   question,
-  { callback, mode, autorun = true } = {},
+  { callback, mode, autorun = true, skipWaiting = false } = {},
 ) {
   const questionMode = mode === "notebook" ? "/notebook" : "";
 
@@ -78,7 +78,7 @@ export function visitQuestionAdhoc(
 
   runQueryIfNeeded(question, autorun);
 
-  if (mode !== "notebook") {
+  if (mode !== "notebook" && !skipWaiting) {
     cy.wait("@" + alias).then(xhr => callback && callback(xhr));
   }
 }

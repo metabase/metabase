@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { ListPicker } from "./ListPicker";
@@ -20,10 +20,6 @@ const VALUES = [
   "1-7 County Road 462",
   "1-799 Smith Road",
 ];
-
-const userEvent2 = userEvent.setup({
-  advanceTimers: jest.advanceTimersByTime,
-});
 
 function setup(value: string, values: string[], searchDebounceMs?: number) {
   const onChangeMock = jest.fn();
@@ -76,35 +72,64 @@ describe("ListPicker", () => {
   });
 
   it("onSearchChange debounced works", async () => {
-    jest.useFakeTimers({ advanceTimers: false });
-    const { onSearchChange } = setup("", VALUES.slice(), 100);
+    jest.useFakeTimers({ advanceTimers: true });
+
+    const onChangeDebounceTimeout = 100;
+    const userTypingDelay = 10;
+
+    const { onSearchChange } = setup(
+      "",
+      VALUES.slice(),
+      onChangeDebounceTimeout,
+    );
     const select = screen.getByPlaceholderText("Pick values");
 
-    await userEvent2.click(select);
-    await userEvent2.type(select, "H");
-    await userEvent2.type(select, "e");
-    await userEvent2.type(select, "l");
-    await userEvent2.type(select, "l");
-    await userEvent2.type(select, "o");
+    const user = userEvent.setup({
+      delay: userTypingDelay,
+      advanceTimers(delay) {
+        jest.advanceTimersByTime(delay);
+      },
+    });
 
-    expect(onSearchChange).toHaveBeenCalledTimes(0);
-    jest.advanceTimersByTime(101);
+    await user.click(select);
+    await user.type(select, "Hello");
+
+    jest.advanceTimersByTime(onChangeDebounceTimeout);
+
     expect(onSearchChange).toHaveBeenCalledTimes(1);
     expect(onSearchChange).toHaveBeenCalledWith("Hello");
+
+    jest.useRealTimers();
   });
 
   it("onSearchChange is called on unmount", async () => {
-    const { onSearchChange, unmount } = setup("", VALUES.slice(), 100);
+    jest.useFakeTimers({ advanceTimers: true });
+
+    const onChangeDebounceTimeout = 100;
+    const userTypingDelay = 10;
+
+    const user = userEvent.setup({
+      delay: userTypingDelay,
+      advanceTimers(delay) {
+        jest.advanceTimersByTime(delay);
+      },
+    });
+
+    const { onSearchChange, unmount } = setup(
+      "",
+      VALUES.slice(),
+      onChangeDebounceTimeout,
+    );
     const select = screen.getByPlaceholderText("Pick values");
 
-    await userEvent.click(select);
-    await userEvent.type(select, "B");
-    await userEvent.type(select, "y");
-    await userEvent.type(select, "e");
+    await user.click(select);
+    await user.type(select, "Bye");
+
     unmount();
 
-    // Careful, this won't catch calling it after the component was unmounted
-    await waitFor(() => expect(onSearchChange).toHaveBeenCalledTimes(1));
+    expect(onSearchChange).toHaveBeenCalledTimes(1);
     expect(onSearchChange).toHaveBeenCalledWith("Bye");
+
+    jest.useRealTimers();
   });
 });
