@@ -272,7 +272,7 @@ export default class AccordionList extends Component {
   };
 
   checkSectionHasItemsMatchingSearch = (section, searchFilter) => {
-    return section.items.filter(searchFilter).length > 0;
+    return section.items?.filter(searchFilter).length > 0;
   };
 
   getFirstSelectedItemCursor = () => {
