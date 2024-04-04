@@ -1,5 +1,9 @@
 import type { CardId } from "./card";
-import type { Collection, RegularCollectionId } from "./collection";
+import type {
+  Collection,
+  CollectionId,
+  RegularCollectionId,
+} from "./collection";
 import type { UserInfo } from "./user";
 
 export type TimelineId = number;
@@ -49,6 +53,23 @@ export interface TimelineEventData {
   archived: boolean;
   source?: TimelineEventSource;
   question_id?: CardId;
+}
+
+export interface GetTimelineRequest {
+  id: TimelineId;
+  include?: "events";
+  archived?: boolean;
+  start?: string;
+  end?: string;
+}
+
+export interface CreateTimelineRequest {
+  name: string;
+  default?: boolean;
+  description?: string;
+  icon?: TimelineIcon;
+  collection_id?: CollectionId;
+  archived?: boolean;
 }
 
 export interface CreateTimelineEventRequest {
