@@ -7,6 +7,7 @@ import type {
 } from "echarts/types/src/coord/axisCommonTypes";
 import type { CartesianAxisOption } from "echarts/types/src/coord/cartesian/AxisModel";
 
+import { parseNumberValue } from "metabase/lib/number";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   BaseCartesianChartModel,
@@ -20,6 +21,7 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
+import { isNumber } from "metabase-lib/v1/types/utils/isa";
 
 import type { ChartMeasurements } from "../chart-measurements/types";
 import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
@@ -323,6 +325,7 @@ export const buildCategoricalDimensionAxis = (
 ): CategoryAxisBaseOption => {
   const {
     xAxisModel: { formatter },
+    dimensionModel: { column },
   } = chartModel;
 
   return {
@@ -337,6 +340,11 @@ export const buildCategoricalDimensionAxis = (
       ...getDimensionTicksDefaultOption(settings, renderingContext),
       ...getHistogramTicksOptions(chartModel, settings, chartMeasurements),
       formatter: (value: string) => {
+        const numberValue = parseNumberValue(value);
+        if (isNumber(column) && numberValue !== null) {
+          return ` ${formatter(numberValue)} `;
+        }
+
         return ` ${formatter(value)} `; // spaces force padding between ticks
       },
     },
