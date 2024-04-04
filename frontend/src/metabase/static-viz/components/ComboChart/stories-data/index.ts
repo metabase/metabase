@@ -27,6 +27,7 @@ import barStackedPowYAxisNegatives from "./bar-stacked-pow-y-axis-negatives.json
 import barStackedPowYAxis from "./bar-stacked-pow-y-axis.json";
 import barStackedTotalFormattedValues from "./bar-stacked-total-formatted-values.json";
 import barTwoAxesStackedWithNegativeValues from "./bar-two-axes-stacked-with-negative-values.json";
+import barTwoDaysOfWeek from "./bar-two-days-of-week.json";
 import barsBreakoutSortedWithNegativeValuesPowerYAxis from "./bars-breakout-sorted-with-negative-values-power-y-axis.json";
 import combinedBarTimeSeriesDifferentGranularityWithBreakout from "./combined-bar-timeseries-different-granularity-with-breakout.json";
 import comboBarsBecomeStackedInStaticViz38827 from "./combo-becomes-stacked-in-static-viz-38827.json";
@@ -146,4 +147,5 @@ export const data = {
   logYScaleCustomYAxisRange,
   powYScaleCustomYAxisRange,
   barRelativeDatetimeOrdinalScale,
+  barTwoDaysOfWeek,
 };

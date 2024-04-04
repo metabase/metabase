@@ -535,6 +535,13 @@ BarRelativeDatetimeOrdinalScale.args = {
   renderingContext,
 };
 
+export const BarTwoDaysOfWeek = Template.bind({});
+BarTwoDaysOfWeek.args = {
+  rawSeries: data.barTwoDaysOfWeek as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
