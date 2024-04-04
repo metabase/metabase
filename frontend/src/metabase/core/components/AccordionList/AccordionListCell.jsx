@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import ListSearchField from "metabase/components/ListSearchField";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { Icon, Box } from "metabase/ui";
@@ -69,7 +70,7 @@ export const AccordionListCell = ({
       content = (
         <div
           className={cx(
-            "List-section-header",
+            ListS.ListSectionHeader,
             CS.px2,
             CS.py2,
             CS.flex,

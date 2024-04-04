@@ -1,9 +1,9 @@
-:global(.List-section-header .Icon),
+.ListSectionHeader :global(.Icon),
 :global(.List-item .List-item-arrow .Icon) {
   color: var(--color-text-dark);
 }
 
-:global(.List-section-header:hover .Icon) {
+.ListSectionHeader:hover :global(.Icon) {
   color: inherit;
 }
 
@@ -11,7 +11,7 @@
   color: var(--color-text-light);
 }
 
-:global(.List-section-header) {
+.ListSectionHeader {
   color: var(--color-text-dark);
   border: 2px solid transparent;
 
@@ -25,17 +25,21 @@
 }
 
 /* these crazy rules are needed to get currentColor to propagate to the right elements in the right states */
-:global(.List-section--togglable .List-section-header:hover),
-:global(.List-section--togglable .List-section-header:hover .Icon),
-:global(.List-section--togglable
-    .List-section-header:hover
-    .List-section-title),
-:global(.List-section--expanded .List-section-header),
-:global(.List-section--expanded .List-section-header .List-section-icon .Icon) {
+:global(.List-section--togglable) .ListSectionHeader:hover,
+:global(.List-section--togglable) .ListSectionHeader:hover :global(.Icon),
+:global(.List-section--togglable)
+  .ListSectionHeader:hover
+  :global(.List-section-title),
+:global(.List-section--expanded) .ListSectionHeader,
+:global(.List-section--expanded)
+  .ListSectionHeader
+  :global(.List-section-icon .Icon) {
   color: currentColor;
 }
 
-:global(.List-section--expanded .List-section-header .List-section-title) {
+:global(.List-section--expanded)
+  .ListSectionHeader
+  :global(.List-section-title) {
   color: var(--color-text-dark);
 }
 

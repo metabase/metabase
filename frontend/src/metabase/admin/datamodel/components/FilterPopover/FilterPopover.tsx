@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
@@ -232,7 +233,7 @@ export function FilterPopover({
           >
             <div
               className={cx(
-                "List-section-header",
+                ListS.ListSectionHeader,
                 CS.mx2,
                 CS.py2,
                 CS.flex,
