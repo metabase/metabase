@@ -4,12 +4,12 @@ export const productFeedbackApi = Api.injectEndpoints({
   endpoints: builder => ({
     sendProductFeedback: builder.mutation<
       void,
-      { comments: string; email?: string }
+      { comments: string; email?: string; source: string }
     >({
-      query: ({ comments, email }) => ({
+      query: ({ comments, email, source }) => ({
         method: "POST",
-        url: `/api/product-feedback`,
-        body: { comments, email },
+        url: `/api/util/product-feedback`,
+        body: { comments, email, source },
       }),
     }),
   }),
