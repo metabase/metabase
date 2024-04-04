@@ -7,11 +7,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.ordered-hierarchy :as ordered-hierarchy :refer [make-hierarchy]]))
 
-;;;; +------------------+
-;;;; | Schema detection |
-;;;; +------------------+
-
-;; Upload value-types form a DAG (directed acyclic graph) where each type can be relaxed into any of its ancestors.
+;; Upload value-types form a directed acyclic graph where each type can be relaxed into any of its ancestors.
 ;; We parse each value in the CSV file to the most-specific possible type for each column.
 
 ;; The most-specific possible type for a column is the closest common ancestor of the types for each value in the
