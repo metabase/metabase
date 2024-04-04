@@ -194,7 +194,7 @@ export const AccordionListCell = ({
               </h4>
             )}
             {description && (
-              <p className={cx("List-item-description", CS.ml1, CS.textWrap)}>
+              <p className={cx(ListS.ListItemDescription, CS.ml1, CS.textWrap)}>
                 {description}
               </p>
             )}

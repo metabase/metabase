@@ -75,19 +75,19 @@
 }
 
 /* LIST ITEM DESCRIPTION */
-:global(.List-item-description) {
+.ListItemDescription {
   margin-top: 0.25em;
   margin-bottom: 0;
   color: var(--color-text-medium);
 }
 
-.ListItemDisabled :global(.List-item-description) {
+.ListItemDisabled .ListItemDescription {
   color: var(--color-text-dark);
 }
 
-.ListItemCursor:not(.ListItemDisabled) :global(.List-item-description),
-.ListItem:not(.ListItemDisabled):hover :global(.List-item-description),
-.ListItemSelected:not(.ListItemDisabled) :global(.List-item-description) {
+.ListItemCursor:not(.ListItemDisabled) .ListItemDescription,
+.ListItem:not(.ListItemDisabled):hover .ListItemDescription,
+.ListItemSelected:not(.ListItemDisabled) .ListItemDescription {
   color: rgba(255, 255, 255, 0.5);
 }
 
