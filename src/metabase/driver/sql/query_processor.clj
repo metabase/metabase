@@ -687,6 +687,10 @@
    (->honeysql driver mbql-expr)
    (->honeysql driver power)])
 
+;;; NOCOMMIT -- this needs to be a driver method of some type.
+
+;;; NOCOMMIT -- we need to document the new `:window-functions` feature.
+
 (defn- window-function-order-by-strategy [driver]
   (case driver
     (:postgres :athena :mysql :presto-jdbc :redshift :sqlserver)
@@ -704,8 +708,7 @@
     ))
 
 (defn- format-rows-unbounded-preceding [_clause _args]
-  ["ROWS UNBOUNDED PRECEDING"
-   #_"RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW"])
+  ["ROWS UNBOUNDED PRECEDING"])
 
 (sql/register-clause!
  ::rows-unbounded-preceding
