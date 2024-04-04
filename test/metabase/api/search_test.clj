@@ -113,9 +113,7 @@
     (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
     (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
                  :database_id true :creator_id true :creator_common_name "Rasta Toucan" :dataset_query (update (mt/query venues) :type name))
-    (merge
-     (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
-     (table-search-results))
+    (make-result "metric test metric", :model "metric", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil :display "table")
     (merge
      (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
      (table-search-results))]))
@@ -163,8 +161,8 @@
                    Card        dataset        (assoc (coll-data-map "dataset %s dataset" coll)
                                                      :type :model)
                    Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
-                   LegacyMetric      metric         (assoc (data-map "metric %s metric")
-                                                     :table_id (mt/id :checkins))
+                   Card        metric         (assoc (coll-data-map "metric %s metric" coll)
+                                                     :type :metric)
                    Segment     segment        (data-map "segment %s segment")]
       (f {:action     action
           :collection coll
@@ -1094,14 +1092,14 @@
        :model/Card       {lucky-model-id :id}  {:name search-term :type :model}
        :model/Dashboard  {rasta-dash-id :id}   {:name search-term}
        :model/Dashboard  {lucky-dash-id :id}   {:name search-term}
-       :model/LegacyMetric     {rasta-metric-id :id} {:name search-term :table_id (mt/id :checkins)}
-       :model/LegacyMetric     {lucky-metric-id :id} {:name search-term :table_id (mt/id :checkins)}]
+       :model/Card       {rasta-metric-id :id} {:name search-term :type :metric}
+       :model/Card       {lucky-metric-id :id} {:name search-term :type :metric}]
       (let [rasta-user-id (mt/user->id :rasta)
             lucky-user-id (mt/user->id :lucky)]
         (doseq [[model id user-id] [[:model/Card rasta-card-id rasta-user-id] [:model/Card rasta-model-id rasta-user-id]
-                                    [:model/Dashboard rasta-dash-id rasta-user-id] [:model/LegacyMetric rasta-metric-id rasta-user-id]
+                                    [:model/Dashboard rasta-dash-id rasta-user-id] [:model/Card rasta-metric-id rasta-user-id]
                                     [:model/Card lucky-card-id lucky-user-id] [:model/Card lucky-model-id lucky-user-id]
-                                    [:model/Dashboard lucky-dash-id lucky-user-id] [:model/LegacyMetric lucky-metric-id lucky-user-id]]]
+                                    [:model/Dashboard lucky-dash-id lucky-user-id] [:model/Card lucky-metric-id lucky-user-id]]]
           (revision/push-revision!
            {:entity       model
             :id           id
@@ -1388,8 +1386,8 @@
                                                 :type       :model}
          :model/Card       {model-old :id}     {:name       search-term
                                                 :type       :model}
-         :model/LegacyMetric {metric-new :id}    {:name       search-term :table_id (mt/id :checkins)}
-         :model/LegacyMetric {metric-old :id}    {:name       search-term :table_id (mt/id :checkins)}
+         :model/Card       {metric-new :id}    {:name       search-term :type :metric}
+         :model/Card       {metric-old :id}    {:name       search-term :type :metric}
          :model/Action     {action-new :id}    {:name       search-term
                                                 :model_id   model-new
                                                 :type       :http
