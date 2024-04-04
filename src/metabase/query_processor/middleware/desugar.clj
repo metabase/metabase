@@ -27,15 +27,14 @@
               ::desugar-added-base-type true))))
 
 (defn- remove-desugar-added-base-types
-  "Add base type to fields with id that are missing it. It is necessary for correct function
-   of [[metabase.legacy-mbql.util/desugar-is-empty-and-not-empty]]."
   [query]
   (lib.util.match/replace query
     (field-clause :guard (fn [clause]
                            (and (mbql.preds/Field? clause)
                                 (integer? (second clause))
                                 (get-in clause [2 ::desugar-added-base-type]))))
-    (update field-clause 2 dissoc :base-type ::desugar-added-base-type)))
+    (update field-clause 2 (comp not-empty
+                                 #(dissoc % :base-type ::desugar-added-base-type)))))
 
 (defn- desugar*
   [query]
