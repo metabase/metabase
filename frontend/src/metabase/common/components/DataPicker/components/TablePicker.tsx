@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import {
   skipToken,
@@ -98,20 +98,6 @@ export const TablePicker = ({ value, onChange }: Props) => {
     },
     [setTableId, onChange],
   );
-
-  useEffect(() => {
-    if (databases?.data.length === 1) {
-      const [database] = databases.data;
-      setDbId(database.id);
-    }
-  }, [databases]);
-
-  useEffect(() => {
-    if (schemas?.length === 1) {
-      const [schema] = schemas;
-      setSchemaName(schema);
-    }
-  }, [schemas]);
 
   return (
     <AutoScrollBox

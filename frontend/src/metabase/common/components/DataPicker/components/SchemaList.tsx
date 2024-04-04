@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import type { SchemaName } from "metabase-types/api";
 
 import { ItemList, ListBox } from "../../EntityPicker";
+import { useAutoSelectOnlyItem } from "../hooks";
 import type { NotebookDataPickerFolderItem } from "../types";
 import { getSchemaDisplayName } from "../utils";
 
@@ -33,7 +34,9 @@ export const SchemaList = ({
     }));
   }, [schemas]);
 
-  if (!isLoading && !error && items && items.length === 1) {
+  const hasOnly1Item = useAutoSelectOnlyItem(items, onClick);
+
+  if (!isLoading && !error && hasOnly1Item) {
     return null;
   }
 
