@@ -316,7 +316,7 @@
     "build": "yarn build:cljs && yarn build:js",
     "build-embedding-sdk": "yarn && yarn build-release:cljs && yarn build-release:sdk && yarn embedding-sdk:fixup-types-imports",
     "build-embedding-sdk:pure": "WEBPACK_BUNDLE=development webpack --config webpack.embedding-sdk.config.js",
-    "build-embedding-sdk:watch": "yarn build-embedding-sdk:pure --watch",
+    "build-embedding-sdk:watch": "yarn embedding-sdk:generate-package && yarn build-embedding-sdk:pure --watch",
     "build-hot": "rm -f target/cljs_dev/cljs.core.js && yarn concurrently -n 'cljs,js' -c 'yellow,green' 'yarn build-hot:cljs' 'yarn build-hot:js-wait'",
     "build-hot:cljs": "yarn && shadow-cljs watch app",
     "build-hot:js": "yarn && NODE_OPTIONS=--max-old-space-size=8196 WEBPACK_BUNDLE=hot webpack serve --host 0.0.0.0",
