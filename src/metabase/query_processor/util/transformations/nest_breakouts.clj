@@ -29,9 +29,7 @@
 
 (mu/defn ^:private new-first-stage :- ::lib.schema/stage
   "Remove breakouts, aggregations, order bys, and limit. Add `:fields` to return the things needed by the second stage."
-  [;; query :- ::lib.schema/query
-   ;; path  :- ::lib.walk/stage-path
-   stage :- ::lib.schema/stage]
+  [stage :- ::lib.schema/stage]
   (-> stage
       (dissoc :breakout :aggregation :order-by :limit :lib/stage-metadata)
       (assoc :fields (mapv
