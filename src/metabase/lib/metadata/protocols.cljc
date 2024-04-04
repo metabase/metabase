@@ -40,6 +40,7 @@
     match [[metabase.lib.metadata/CardMetadata]. Currently just used for display name purposes if you have a Card as a
     source query.")
 
+
   (metric [metadata-provider metric-id]
     "Return metadata for a particular capital-M Metric, i.e. something from the `metric` table in the application
     database. Metadata should match [[metabase.lib.metadata/MetricMetadata]].")
