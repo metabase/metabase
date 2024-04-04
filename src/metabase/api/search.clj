@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
+   [metabase.api.table :as api.table]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection]
@@ -451,6 +452,9 @@
                             (map #(if (t2/instance-of? :model/Collection %)
                                     (t2/hydrate % :effective_location)
                                     (assoc % :effective_location nil)))
+                            (map #(if (t2/instance-of? :model/Table %)
+                                   (update % :table_schema api.table/format-schema-for-response)
+                                   %))
                             (filter (partial check-permissions-for-model (:archived? search-ctx)))
                             ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
                             ;; needed
