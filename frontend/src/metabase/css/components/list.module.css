@@ -25,11 +25,9 @@
 }
 
 /* these crazy rules are needed to get currentColor to propagate to the right elements in the right states */
-:global(.List-section--togglable) .ListSectionHeader:hover,
-:global(.List-section--togglable) .ListSectionHeader:hover :global(.Icon),
-:global(.List-section--togglable)
-  .ListSectionHeader:hover
-  :global(.List-section-title),
+.ListSectionToggleAble .ListSectionHeader:hover,
+.ListSectionToggleAble .ListSectionHeader:hover :global(.Icon),
+.ListSectionToggleAble .ListSectionHeader:hover :global(.List-section-title),
 :global(.List-section--expanded) .ListSectionHeader,
 :global(.List-section--expanded)
   .ListSectionHeader

@@ -228,7 +228,7 @@ export function FilterPopover({
         {showCustom && (
           <div
             style={{ color: color("filter") }}
-            className="List-section List-section--togglable"
+            className={cx("List-section", ListS.ListSectionToggleAble)}
             onClick={() => setEditingFilter(true)}
           >
             <div
