@@ -36,6 +36,7 @@ describe("issue 23103", () => {
 
     cy.button("Save changes").click();
     cy.wait("@updateModel");
+    cy.button("Saving…").should("not.exist");
 
     cy.findAllByTestId("header-cell").contains("Category").trigger("mouseover");
 
