@@ -2,6 +2,7 @@ import type { TransitionEventHandler, SyntheticEvent } from "react";
 import { useEffect, useState, forwardRef } from "react";
 import type { ResizeCallbackData, ResizableBoxProps } from "react-resizable";
 import { ResizableBox } from "react-resizable";
+import { useWindowSize } from "react-use";
 
 import { darken } from "metabase/lib/colors";
 import { useSelector, useDispatch } from "metabase/lib/redux";
@@ -26,19 +27,7 @@ export const NotebookContainer = ({
   ...props
 }: NotebookContainerProps) => {
   const [shouldShowNotebook, setShouldShowNotebook] = useState(isOpen);
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-    };
-
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, [windowWidth]);
+  const { width: windowWidth } = useWindowSize();
 
   useEffect(() => {
     isOpen && setShouldShowNotebook(isOpen);
