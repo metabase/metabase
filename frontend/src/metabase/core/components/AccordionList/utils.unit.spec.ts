@@ -63,7 +63,7 @@ describe("getNextCursor", () => {
         { sectionIndex: 0, itemIndex: null },
         sections,
         sectionIsExpanded,
-        canSelectSection,
+        cannotSelectSection,
         filterAll,
       ),
     ).toStrictEqual({ sectionIndex: 0, itemIndex: 0 });
