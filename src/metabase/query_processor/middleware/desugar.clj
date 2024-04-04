@@ -22,7 +22,20 @@
           metadata (lib.metadata/field (qp.store/metadata-provider) id)
           {:keys [base-type]} metadata]
       (assert (some? base-type))
-      (update field-clause 2 assoc :base-type base-type))))
+      (update field-clause 2 assoc
+              :base-type base-type
+              ::desugar-added-base-type true))))
+
+(defn- remove-desugar-added-base-types
+  "Add base type to fields with id that are missing it. It is necessary for correct function
+   of [[metabase.legacy-mbql.util/desugar-is-empty-and-not-empty]]."
+  [query]
+  (lib.util.match/replace query
+    (field-clause :guard (fn [clause]
+                           (and (mbql.preds/Field? clause)
+                                (integer? (second clause))
+                                (get-in clause [2 ::desugar-added-base-type]))))
+    (update field-clause 2 dissoc :base-type ::desugar-added-base-type)))
 
 (defn- desugar*
   [query]
@@ -41,4 +54,6 @@
   `inside` with lower-level clauses like `between`. This is done to minimize the number of MBQL clauses individual
   drivers need to support. Clauses replaced by this middleware are marked `^:sugar` in the MBQL schema."
   [query]
-  (m/update-existing query :query (comp desugar* add-missing-field-base-types)))
+  (m/update-existing query :query (comp remove-desugar-added-base-types
+                                        desugar*
+                                        add-missing-field-base-types)))
