@@ -189,7 +189,7 @@ export const AccordionListCell = ({
           )}
           <div className="List-item-content">
             {name && (
-              <h4 className={cx("List-item-title", CS.ml1, CS.textWrap)}>
+              <h4 className={cx(ListS.ListItemTitle, CS.ml1, CS.textWrap)}>
                 {name}
               </h4>
             )}

@@ -60,17 +60,17 @@
 }
 
 /* LIST ITEM TITLE */
-:global(.List-item-title) {
+.ListItemTitle {
   color: var(--color-text-dark);
 }
 
-.ListItemDisabled :global(.List-item-title) {
+.ListItemDisabled .ListItemTitle {
   color: var(--color-text-light);
 }
 
-.ListItemCursor:not(.ListItemDisabled) :global(.List-item-title),
-.ListItem:not(.ListItemDisabled):hover :global(.List-item-title),
-.ListItemSelected:not(.ListItemDisabled) :global(.List-item-title) {
+.ListItemCursor:not(.ListItemDisabled) .ListItemTitle,
+.ListItem:not(.ListItemDisabled):hover .ListItemTitle,
+.ListItemSelected:not(.ListItemDisabled) .ListItemTitle {
   color: white;
 }
 

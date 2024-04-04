@@ -38,7 +38,7 @@ export const DimensionPicker = ({
           >
             <a
               className={cx(
-                "List-item-title",
+                ListS.ListItemTitle,
                 CS.full,
                 CS.px2,
                 CS.py1,
