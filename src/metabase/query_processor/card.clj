@@ -33,7 +33,7 @@
 (defenterprise granular-cache-strategy
   "Returns cache strategy for a card. On EE, this checks the hierarchy for the card, dashboard, or
    database (in that order). Returns nil on OSS."
-  metabase-enterprise.caching.strategies
+  metabase-enterprise.cache.strategies
   [_card _dashboard-id])
 
 (defn- cache-strategy

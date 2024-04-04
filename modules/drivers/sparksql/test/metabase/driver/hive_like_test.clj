@@ -1,6 +1,7 @@
 (ns metabase.driver.hive-like-test
-  (:require [clojure.test :refer :all]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]))
 
 (deftest ^:parallel database-type->base-type-test
   (testing "make sure the various types we use for running tests are actually mapped to the correct DB type"

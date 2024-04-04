@@ -5,6 +5,7 @@ import { createRef, Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { color } from "metabase/lib/colors";
 import { getColorsForValues } from "metabase/lib/colors/charts";
@@ -49,7 +50,7 @@ export default class PieChart extends Component {
   constructor(props) {
     super(props);
 
-    this.state = { width: 0, height: 0 };
+    this.state = { width: 0, height: 0, showChartDetail: true };
 
     this.chartContainer = createRef();
     this.chartDetail = createRef();
@@ -278,13 +279,12 @@ export default class PieChart extends Component {
         return;
       }
 
-      if (
-        groupElement.getBoundingClientRect().width < 120 ||
-        !settings["pie.show_total"]
-      ) {
-        detailElement.classList.add("hide");
-      } else {
-        detailElement.classList.remove("hide");
+      const showChartDetail =
+        groupElement.getBoundingClientRect().width >= 120 &&
+        settings["pie.show_total"];
+
+      if (showChartDetail !== this.state.showChartDetail) {
+        this.setState({ showChartDetail });
       }
     });
 
@@ -539,22 +539,26 @@ export default class PieChart extends Component {
       >
         <div>
           <div ref={this.chartDetail} className={styles.Detail}>
-            <div
-              data-testid="detail-value"
-              className={cx(
-                styles.Value,
-                DashboardS.fullscreenNormalText,
-                DashboardS.fullscreenNightText,
-                EmbedFrameS.fullscreenNightText,
-              )}
-            >
-              {value}
-            </div>
-            <div className={styles.Title}>{title}</div>
+            {this.state.showChartDetail && (
+              <>
+                <div
+                  data-testid="detail-value"
+                  className={cx(
+                    styles.Value,
+                    DashboardS.fullscreenNormalText,
+                    DashboardS.fullscreenNightText,
+                    EmbedFrameS.fullscreenNightText,
+                  )}
+                >
+                  {value}
+                </div>
+                <div className={styles.Title}>{title}</div>
+              </>
+            )}
           </div>
           <div
             ref={this.chartContainer}
-            className={cx(styles.Chart, "layout-centered")}
+            className={cx(styles.Chart, CS.layoutCentered)}
           >
             <svg
               data-testid="pie-chart"
@@ -593,7 +597,7 @@ export default class PieChart extends Component {
                       }
                       onMouseLeave={() => onHoverChange?.(null)}
                       className={cx({
-                        "cursor-pointer": isClickable,
+                        [CS.cursorPointer]: isClickable,
                       })}
                       onClick={e => handleSliceClick(e, index)}
                       data-testid="slice"

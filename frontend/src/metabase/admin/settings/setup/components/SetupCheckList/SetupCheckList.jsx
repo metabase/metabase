@@ -1,10 +1,12 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import MetabaseSettings from "metabase/lib/settings";
@@ -29,7 +31,9 @@ const TaskList = ({ tasks }) => (
 );
 
 const TaskSectionHeader = ({ name }) => (
-  <h4 className="text-medium text-bold text-uppercase pb2">{name}</h4>
+  <h4 className={cx("text-medium", CS.textBold, CS.textUppercase, "pb2")}>
+    {name}
+  </h4>
 );
 
 const TaskSection = ({ name, tasks }) => (
@@ -49,7 +53,13 @@ const TaskDescription = ({ description }) => (
 
 const CompletionBadge = ({ completed }) => (
   <div
-    className="mr2 flex align-center justify-center flex-no-shrink"
+    className={cx(
+      CS.mr2,
+      CS.flex,
+      CS.alignCenter,
+      CS.justifyCenter,
+      CS.flexNoShrink,
+    )}
     style={{
       borderWidth: 1,
       borderStyle: "solid",

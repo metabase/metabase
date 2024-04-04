@@ -10,6 +10,9 @@ import { setupTableEndpoints } from "./table";
 
 export function setupDatabaseEndpoints(db: Database) {
   fetchMock.get(`path:/api/database/${db.id}`, db);
+  fetchMock.post(`path:/api/database/${db.id}/sync_schema`, {});
+  fetchMock.post(`path:/api/database/${db.id}/rescan_values`, {});
+  fetchMock.post(`path:/api/database/${db.id}/discard_values`, {});
   setupSchemaEndpoints(db);
   setupDatabaseIdFieldsEndpoints(db);
   db.tables?.forEach(table => setupTableEndpoints(table));
@@ -21,7 +24,7 @@ export function setupDatabaseEndpoints(db: Database) {
   });
 }
 
-export function setupDatabaseUsageInfo(
+export function setupDatabaseUsageInfoEndpoint(
   db: Database,
   usageInfo: DatabaseUsageInfo,
 ) {
@@ -29,25 +32,34 @@ export function setupDatabaseUsageInfo(
 }
 
 export function setupDatabasesEndpoints(
-  dbs: Database[],
+  databases: Database[],
   { hasSavedQuestions = true } = {},
   query: object = { saved: true },
 ) {
+  const databasesWithSavedQuestions = hasSavedQuestions
+    ? [...databases, SAVED_QUESTIONS_DATABASE]
+    : databases;
   fetchMock.get(
     {
       url: "path:/api/database",
       query,
       overwriteRoutes: false,
     },
-    hasSavedQuestions ? [...dbs, SAVED_QUESTIONS_DATABASE] : dbs,
+    {
+      data: databasesWithSavedQuestions,
+      total: databasesWithSavedQuestions.length,
+    },
   );
-  fetchMock.get({ url: "path:/api/database", overwriteRoutes: false }, dbs);
+  fetchMock.get(
+    { url: "path:/api/database", overwriteRoutes: false },
+    { data: databases, total: databases.length },
+  );
   fetchMock.post("path:/api/database", async url => {
     const lastCall = fetchMock.lastCall(url);
     return await lastCall?.request?.json();
   });
 
-  dbs.forEach(db => setupDatabaseEndpoints(db));
+  databases.forEach(db => setupDatabaseEndpoints(db));
 }
 
 export const setupSchemaEndpoints = (db: Database) => {

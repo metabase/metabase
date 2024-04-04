@@ -9,6 +9,10 @@ title: Driver interface changelog
 - The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to
   use these namespaces in your driver, but if you did, please update them.
 
+- The multimethod `metabase.driver/truncate!` has been added. This method is used to delete a table's rows in the most
+  efficient way possible. This is currently only required for drivers that support the `:uploads` feature, and has
+  a default implementation for JDBC-based drivers.
+
 ## Metabase 0.49.1
 
 - Another driver feature has been added: `describe-fields`. If a driver opts-in to supporting this feature, The
@@ -147,7 +151,7 @@ title: Driver interface changelog
 
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in
   schemas (also known as namespaces) or not. Most databases have schemas so this feature is on by default.
-  An implemention of the multimethod `metabase.driver/database-supports?` for `:schemas` is required only if the
+  An implementation of the multimethod `metabase.driver/database-supports?` for `:schemas` is required only if the
   database doesn't store tables in schemas.
 
 - Another driver feature has been added: `:uploads`. The `:uploads` feature signals whether the database supports

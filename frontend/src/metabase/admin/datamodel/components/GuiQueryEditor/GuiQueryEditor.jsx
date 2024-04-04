@@ -54,19 +54,27 @@ export class GuiQueryEditor extends Component {
   };
 
   renderAdd(text, onClick, targetRefName) {
-    const className =
-      "text-light text-bold flex align-center text-medium-hover cursor-pointer no-decoration transition-color";
+    const className = cx(
+      CS.textLight,
+      CS.textBold,
+      CS.flex,
+      CS.alignCenter,
+      "text-medium-hover",
+      CS.cursorPointer,
+      CS.noDecoration,
+      CS.transitionColor,
+    );
     if (onClick) {
       return (
         <a className={className} onClick={onClick}>
-          {text && <span className="mr1">{text}</span>}
+          {text && <span className={CS.mr1}>{text}</span>}
           {this.renderAddIcon(targetRefName)}
         </a>
       );
     } else {
       return (
         <span className={className}>
-          {text && <span className="mr1">{text}</span>}
+          {text && <span className={CS.mr1}>{text}</span>}
           {this.renderAddIcon(targetRefName)}
         </span>
       );
@@ -134,12 +142,12 @@ export class GuiQueryEditor extends Component {
         className={cx(QueryBuilderS.QuerySection, { [CS.disabled]: !enabled })}
       >
         <div className={QueryBuilderS.QueryFilters}>{filterList}</div>
-        <div className="mx2">
+        <div className={CS.mx2}>
           <PopoverWithTrigger
             id="FilterPopover"
             ref={this.filterPopover}
             triggerElement={addFilterButton}
-            triggerClasses="flex align-center"
+            triggerClasses={cx(CS.flex, CS.alignCenter)}
             horizontalAttachments={["left", "center"]}
             autoWidth
           >
@@ -210,7 +218,7 @@ export class GuiQueryEditor extends Component {
           aggregations[index + 1].length > 0
         ) {
           aggregationList.push(
-            <span key={"and" + index} className="text-bold">{t`and`}</span>,
+            <span key={"and" + index} className={CS.textBold}>{t`and`}</span>,
           );
         }
       }
@@ -219,7 +227,9 @@ export class GuiQueryEditor extends Component {
       // TODO: move this into AggregationWidget?
       return (
         <div className={cx(QueryBuilderS.QuerySection, CS.disabled)}>
-          <a className="QueryOption p1 flex align-center">{t`Raw data`}</a>
+          <a
+            className={cx("QueryOption", CS.p1, CS.flex, CS.alignCenter)}
+          >{t`Raw data`}</a>
         </div>
       );
     }
@@ -255,7 +265,16 @@ export class GuiQueryEditor extends Component {
             }
           />
         ) : (
-          <span className="flex align-center px2 py2 text-bold text-grey">
+          <span
+            className={cx(
+              CS.flex,
+              CS.alignCenter,
+              CS.px2,
+              CS.py2,
+              CS.textBold,
+              "text-grey",
+            )}
+          >
             {legacyQuery.table() && legacyQuery.table().displayName()}
           </span>
         )}

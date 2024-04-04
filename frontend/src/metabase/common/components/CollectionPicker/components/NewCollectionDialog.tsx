@@ -56,6 +56,7 @@ export const NewCollectionDialog = ({
           padding: "1rem",
         },
       }}
+      zIndex={400} // needs to be above the EntityPickerModal at 400
     >
       <FormProvider
         initialValues={{ name: "" }}

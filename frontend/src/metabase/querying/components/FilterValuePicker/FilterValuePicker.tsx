@@ -1,8 +1,9 @@
+import { skipToken } from "@reduxjs/toolkit/query/react";
 import type { FocusEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useFieldValuesQuery } from "metabase/common/hooks";
+import { useGetFieldValuesQuery } from "metabase/api";
 import { checkNotNull } from "metabase/lib/types";
 import { Center, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -52,10 +53,10 @@ function FilterValuePicker({
     [query, column],
   );
 
-  const { data: fieldData, isLoading } = useFieldValuesQuery({
-    id: fieldInfo.fieldId ?? undefined,
-    enabled: canLoadFieldValues(fieldInfo),
-  });
+  const { data: fieldData, isLoading } = useGetFieldValuesQuery(
+    fieldInfo.fieldId ?? skipToken,
+    { skip: !canLoadFieldValues(fieldInfo) },
+  );
 
   if (isLoading) {
     return (

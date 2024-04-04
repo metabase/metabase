@@ -9,6 +9,7 @@ export const SearchItemList = ({
   selectedItem,
   isFolder,
   isCurrentLevel,
+  shouldDisableItem,
 }: CollectionItemListProps) => {
   const { data, error, isLoading } = useSearchListQuery<CollectionPickerItem>({
     query,
@@ -23,6 +24,7 @@ export const SearchItemList = ({
       selectedItem={selectedItem}
       isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
+      shouldDisableItem={shouldDisableItem}
     />
   );
 };

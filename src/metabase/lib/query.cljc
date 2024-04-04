@@ -64,21 +64,11 @@
   (and (mc/validate ::lib.schema/query query)
        (boolean (can-run-method query))))
 
-(defmulti can-save-method
-  "Returns whether the query can be saved based on first stage :lib/type."
-  (fn [query]
-    (:lib/type (lib.util/query-stage query 0))))
-
-(defmethod can-save-method :default
-  [_query]
-  true)
-
 (mu/defn can-save :- :boolean
   "Returns whether the query can be saved."
   [query :- ::lib.schema/query]
   (and (lib.metadata/editable? query)
-       (can-run query)
-       (boolean (can-save-method query))))
+       (can-run query)))
 
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."

@@ -71,7 +71,7 @@
 
 (defenterprise fetch-cache-stmt
   "Returns prepared statement for a given strategy and query hash - on EE. Returns `::oss` on OSS."
-  metabase-enterprise.caching.strategies
+  metabase-enterprise.cache.strategies
   [strategy hash conn]
   (when (= :ttl (:type strategy))
     (fetch-cache-stmt-ttl strategy hash conn)))

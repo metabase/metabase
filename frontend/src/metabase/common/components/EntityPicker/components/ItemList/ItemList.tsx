@@ -2,9 +2,9 @@ import type React from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
+import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
 import { Box, Center, Flex, Icon, NavLink } from "metabase/ui";
 
@@ -26,6 +26,7 @@ interface ItemListProps<
   selectedItem: Item | null;
   isFolder: (item: Item) => boolean;
   isCurrentLevel: boolean;
+  shouldDisableItem?: (item: Item) => boolean;
 }
 
 export const ItemList = <
@@ -40,6 +41,7 @@ export const ItemList = <
   selectedItem,
   isFolder,
   isCurrentLevel,
+  shouldDisableItem,
 }: ItemListProps<Id, Model, Item>) => {
   const activeItemIndex = useMemo(() => {
     if (!items) {
@@ -68,11 +70,7 @@ export const ItemList = <
     return (
       <Flex justify="center" align="center" direction="column" h="100%">
         <EmptyState
-          illustrationElement={
-            <Box aria-label={t`empty`}>
-              <img src={NoResults} />
-            </Box>
-          }
+          illustrationElement={<NoObjectError aria-label={t`empty`} />}
         />
       </Flex>
     );
@@ -87,6 +85,7 @@ export const ItemList = <
       {items.map((item: Item) => (
         <div key={`${item.model}-${item.id}`}>
           <NavLink
+            disabled={shouldDisableItem?.(item)}
             rightSection={
               isFolder(item) ? <Icon name="chevronright" size={10} /> : null
             }

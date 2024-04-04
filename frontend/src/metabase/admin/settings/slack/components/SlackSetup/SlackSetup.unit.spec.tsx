@@ -6,16 +6,16 @@ import SlackSetup from "./SlackSetup";
 const FormMock = () => <div />;
 
 describe("SlackSetup", () => {
-  it("should toggle setup sections", () => {
+  it("should toggle setup sections", async () => {
     render(<SlackSetup Form={FormMock} />);
     expect(screen.getByText("Install to workspace")).toBeInTheDocument();
 
-    userEvent.click(
+    await userEvent.click(
       screen.getByText("1. Click the button below and create your Slack App"),
     );
     expect(screen.queryByText("Install to workspace")).not.toBeInTheDocument();
 
-    userEvent.click(
+    await userEvent.click(
       screen.getByText("1. Click the button below and create your Slack App"),
     );
     expect(screen.getByText("Install to workspace")).toBeInTheDocument();

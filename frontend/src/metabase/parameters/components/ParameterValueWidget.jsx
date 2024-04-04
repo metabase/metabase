@@ -12,6 +12,7 @@ import { DateSingleWidget } from "metabase/components/DateSingleWidget";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { TextWidget } from "metabase/components/TextWidget";
 import { Sortable } from "metabase/core/components/Sortable";
+import CS from "metabase/css/core/index.css";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 import { WidgetStatusIcon } from "metabase/parameters/components/WidgetStatusIcon";
 import { NumberInputWidget } from "metabase/parameters/components/widgets/NumberInputWidget";
@@ -195,7 +196,7 @@ class ParameterValueWidget extends Component {
           {showTypeIcon && (
             <Icon
               name={parameterTypeIcon}
-              className="flex-align-left mr1 flex-no-shrink"
+              className={cx(CS.mr1, CS.flexNoShrink)}
               size={16}
             />
           )}
@@ -231,11 +232,11 @@ class ParameterValueWidget extends Component {
             {showTypeIcon && (
               <Icon
                 name={parameterTypeIcon}
-                className="flex-align-left mr1 flex-no-shrink"
+                className={cx(CS.mr1, CS.flexNoShrink)}
                 size={16}
               />
             )}
-            <div className="mr1 text-nowrap">
+            <div className={cx("mr1", CS.textNoWrap)}>
               <FormattedParameterValue
                 parameter={parameter}
                 value={value}

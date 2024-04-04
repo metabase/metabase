@@ -49,7 +49,13 @@ export default class DeleteModalWithConfirm extends Component {
             {confirmItems.map((item, index) => (
               <li
                 key={index}
-                className="pb2 mb2 border-row-divider flex align-center"
+                className={cx(
+                  CS.pb2,
+                  CS.mb2,
+                  CS.borderRowDivider,
+                  CS.flex,
+                  CS.alignCenter,
+                )}
               >
                 <CheckBox
                   label={<CheckboxLabel>{item}</CheckboxLabel>}

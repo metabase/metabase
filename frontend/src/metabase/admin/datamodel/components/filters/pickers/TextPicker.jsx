@@ -72,7 +72,16 @@ export default class TextPicker extends Component {
 
     return (
       <div data-testid={testId ?? "text-picker"}>
-        <div className="FilterInput px1 pt1 relative flex align-center">
+        <div
+          className={cx(
+            "FilterInput",
+            CS.px1,
+            CS.pt1,
+            CS.relative,
+            CS.flex,
+            CS.alignCenter,
+          )}
+        >
           {!!prefix && (
             <span
               data-testid="input-prefix"
@@ -117,7 +126,7 @@ export default class TextPicker extends Component {
         </div>
 
         {multi ? (
-          <div className="p1 text-small">
+          <div className={cx("p1", CS.textSmall)}>
             {t`You can enter multiple values separated by commas`}
           </div>
         ) : null}

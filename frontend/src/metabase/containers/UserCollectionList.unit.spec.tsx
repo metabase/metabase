@@ -34,7 +34,7 @@ describe("UserCollectionList", () => {
     expect(await screen.findByText("1 - 27")).toBeInTheDocument();
 
     expect(await screen.findByTestId("previous-page-btn")).toBeDisabled();
-    userEvent.click(await screen.findByTestId("next-page-btn"));
+    await userEvent.click(await screen.findByTestId("next-page-btn"));
 
     expect(await screen.findByText("28 - 54")).toBeInTheDocument();
 

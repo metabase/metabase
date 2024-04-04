@@ -196,17 +196,19 @@ export class AlertEducationalScreen extends Component {
     const { onProceed } = this.props;
 
     return (
-      <div className="pt2 pb4 ml-auto mr-auto text-centered">
+      <div className={cx("pt2", "pb4", "ml-auto", "mr-auto", CS.textCentered)}>
         <div className="pt4">
           <h1 className="mb1 text-dark">{t`The wide world of alerts`}</h1>
-          <h3 className="mb4 text-normal text-dark">{t`There are a few different kinds of alerts you can get`}</h3>
+          <h3
+            className={cx("mb4", CS.textNormal, "text-dark")}
+          >{t`There are a few different kinds of alerts you can get`}</h3>
         </div>
         {
           // @mazameli: needed to do some negative margin spacing to match the designs
         }
-        <div className="text-normal pt3">
+        <div className={cx(CS.textNormal, "pt3")}>
           <div
-            className="relative flex align-center pr4"
+            className={cx(CS.relative, CS.flex, CS.alignCenter, CS.pr4)}
             style={{ marginLeft: -80 }}
           >
             <img
@@ -217,14 +219,20 @@ export class AlertEducationalScreen extends Component {
               "
             />
             <p
-              className="ml2 text-left"
+              className={cx("ml2", CS.textLeft)}
               style={textStyle}
             >{jt`When a raw data question ${(
               <strong>{t`returns any results`}</strong>
             )}`}</p>
           </div>
           <div
-            className="relative flex align-center flex-reverse pl4"
+            className={cx(
+              CS.relative,
+              CS.flex,
+              CS.alignCenter,
+              CS.flexReverse,
+              CS.pl4,
+            )}
             style={{ marginTop: -50, marginRight: -80 }}
           >
             <img
@@ -235,14 +243,14 @@ export class AlertEducationalScreen extends Component {
               "
             />
             <p
-              className="mr2 text-right"
+              className={cx("mr2", CS.textRight)}
               style={textStyle}
             >{jt`When a line or bar ${(
               <strong>{t`crosses a goal line`}</strong>
             )}`}</p>
           </div>
           <div
-            className="relative flex align-center"
+            className={cx(CS.relative, CS.flex, CS.alignCenter)}
             style={{ marginTop: -60, marginLeft: -55 }}
           >
             <img
@@ -253,7 +261,7 @@ export class AlertEducationalScreen extends Component {
               "
             />
             <p
-              className="ml2 text-left"
+              className={cx("ml2", CS.textLeft)}
               style={textStyle}
             >{jt`When a progress bar ${(
               <strong>{t`reaches its goal`}</strong>
@@ -399,9 +407,11 @@ export class DeleteAlertSection extends Component {
           style={{ marginTop: "-12px" }}
         >{jt`Danger Zone`}</h3>
         <div className="ml1">
-          <h4 className="text-bold mb1">{jt`Delete this alert`}</h4>
-          <div className="flex">
-            <p className="h4 pr2">{jt`Stop delivery and delete this alert. There's no undo, so be careful.`}</p>
+          <h4 className={cx(CS.textBold, "mb1")}>{jt`Delete this alert`}</h4>
+          <div className={CS.flex}>
+            <p
+              className={cx(CS.h4, CS.pr2)}
+            >{jt`Stop delivery and delete this alert. There's no undo, so be careful.`}</p>
             <ModalWithTrigger
               ref={ref => (this.deleteModal = ref)}
               as={Button}
@@ -409,7 +419,7 @@ export class DeleteAlertSection extends Component {
                 ButtonsS.ButtonDanger,
                 CS.flexAlignRight,
                 CS.flexNoShrink,
-                "align-self-end",
+                CS.alignSelfEnd,
               )}
               triggerElement={t`Delete this alert`}
             >
@@ -429,7 +439,7 @@ export class DeleteAlertSection extends Component {
 }
 
 const AlertModalTitle = ({ text }) => (
-  <div className="ml-auto mr-auto my4 pb2 text-centered">
+  <div className={cx("ml-auto", "mr-auto", "my4", "pb2", CS.textCentered)}>
     <img
       className="mb3"
       src="app/assets/img/alerts/alert-bell-confetti-illustration.png"

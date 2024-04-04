@@ -1,18 +1,22 @@
 (ns metabase.sync.interface
   "Schemas and constants used by the sync code."
   (:require
+   [clojure.string :as str]
    [malli.util :as mut]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::DatabaseMetadataTable
-  [:map
-   [:name           ::lib.schema.common/non-blank-string]
-   [:schema         [:maybe ::lib.schema.common/non-blank-string]]
-   [:require-filter {:optional true} :boolean]
+  [:map {:closed true}
+   [:name                                     ::lib.schema.common/non-blank-string]
+   [:schema                                   [:maybe ::lib.schema.common/non-blank-string]]
+   ;; for databases that store an estimated row count in system tables (e.g: postgres)
+   [:estimated_row_count     {:optional true} [:maybe :int]]
+   ;; for databases that support forcing query to include a filter (e.g: partitioned table on bigquery)
+   [:database_require_filter {:optional true} [:maybe :boolean]]
    ;; `:description` in this case should be a column/remark on the Table, if there is one.
-   [:description    {:optional true} [:maybe :string]]])
+   [:description             {:optional true} [:maybe :string]]])
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."

@@ -13,6 +13,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 import CheckBox from "metabase/core/components/CheckBox";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Swapper from "metabase/core/components/Swapper";
+import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { Icon } from "metabase/ui";
 
@@ -74,8 +75,8 @@ function EntityIconCheckBox({
 function EntityItemName({ name, variant }) {
   return (
     <h3
-      className={cx("overflow-hidden", {
-        "text-list": variant === "list",
+      className={cx(CS.overflowHidden, {
+        [CS.textList]: variant === "list",
       })}
     >
       <Ellipsified>{name}</Ellipsified>
@@ -216,7 +217,7 @@ function EntityItemMenu({
       <EntityMenu
         triggerAriaLabel={t`Actions`}
         className={className}
-        closedClassNames="hover-child hover-child--smooth"
+        closedClassNames={cx(CS.hoverChild, CS.hoverChildSmooth)}
         triggerIcon="ellipsis"
         items={actions}
       />
@@ -246,7 +247,7 @@ const EntityItem = ({
 
   return (
     <EntityItemWrapper
-      className={cx("hover-parent hover--visibility", {
+      className={cx(CS.hoverParent, CS.hoverVisibility, {
         "bg-light-hover": variant === "list",
       })}
       variant={variant}
@@ -263,7 +264,7 @@ const EntityItem = ({
         onToggleSelected={onToggleSelected}
       />
 
-      <div className="overflow-hidden">
+      <div className={CS.overflowHidden}>
         <EntityItemName name={name} />
         <div>{extraInfo && extraInfo}</div>
       </div>

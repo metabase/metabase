@@ -33,6 +33,7 @@ interface CollectionPickerProps {
   onItemSelect: (item: CollectionPickerItem) => void;
   initialValue?: Partial<CollectionPickerItem>;
   options?: CollectionPickerOptions;
+  shouldDisableItem?: (item: CollectionPickerItem) => boolean;
 }
 
 export const CollectionPickerInner = (
@@ -40,6 +41,7 @@ export const CollectionPickerInner = (
     onItemSelect,
     initialValue,
     options = defaultOptions,
+    shouldDisableItem,
   }: CollectionPickerProps,
   ref: Ref<unknown>,
 ) => {
@@ -65,14 +67,23 @@ export const CollectionPickerInner = (
 
   const onFolderSelect = useCallback(
     ({ folder }: { folder: CollectionPickerItem }) => {
+      const isUserPersonalCollection = folder?.id === userPersonalCollectionId;
+      const isUserSubfolder =
+        path?.[1]?.query?.collection === "personal" &&
+        !isUserPersonalCollection;
+
       const newPath = getStateFromIdPath({
-        idPath: getCollectionIdPath(folder, userPersonalCollectionId),
+        idPath: getCollectionIdPath(
+          folder,
+          userPersonalCollectionId,
+          isUserSubfolder,
+        ),
         namespace: options.namespace,
       });
       setPath(newPath);
       onItemSelect(folder);
     },
-    [setPath, onItemSelect, options.namespace, userPersonalCollectionId],
+    [setPath, onItemSelect, options.namespace, userPersonalCollectionId, path],
   );
 
   // Exposing onFolderSelect so that parent can select newly created
@@ -125,6 +136,7 @@ export const CollectionPickerInner = (
     <NestedItemPicker
       itemName={t`collection`}
       isFolder={isFolder}
+      shouldDisableItem={shouldDisableItem}
       options={options}
       generateKey={generateKey}
       onFolderSelect={onFolderSelect}

@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { ChangeEvent } from "react";
 
 import { CopyButton } from "metabase/components/CopyButton";
@@ -38,7 +39,7 @@ export const CodeSample = ({
   return (
     <div className={className} data-testid={dataTestId}>
       {(title || languageOptions.length > 1) && (
-        <div className="flex align-center">
+        <div className={cx(CS.flex, CS.alignCenter)}>
           {title && <h4>{title}</h4>}
           {languageOptions.length > 1 ? (
             <Select
@@ -60,7 +61,16 @@ export const CodeSample = ({
           ) : null}
         </div>
       )}
-      <div className="bordered rounded shadowed relative mt2">
+      <div
+        className={cx(
+          CS.bordered,
+          CS.rounded,
+          CS.shadowed,
+          CS.relative,
+          CS.mt2,
+          CS.overflowHidden,
+        )}
+      >
         <AceEditor
           className={CS.z1}
           value={source}
