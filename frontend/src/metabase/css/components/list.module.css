@@ -53,9 +53,9 @@
   outline: 2px solid var(--color-focus);
 }
 
-.ListItemCursor:global(:not(.List-item--disabled)),
-.ListItem:global(:not(.List-item--disabled):hover),
-:global(.List-item--selected:not(.List-item--disabled)) {
+.ListItemCursor:not(.ListItemDisabled),
+.ListItem:not(.ListItemDisabled):hover,
+:global(.List-item--selected):not(.ListItemDisabled) {
   background-color: currentColor;
 }
 
@@ -64,13 +64,13 @@
   color: var(--color-text-dark);
 }
 
-:global(.List-item--disabled .List-item-title) {
+.ListItemDisabled :global(.List-item-title) {
   color: var(--color-text-light);
 }
 
-.ListItemCursor:global(:not(.List-item--disabled) .List-item-title),
-.ListItem:global(:not(.List-item--disabled):hover .List-item-title),
-:global(.List-item--selected:not(.List-item--disabled) .List-item-title) {
+.ListItemCursor:not(.ListItemDisabled) :global(.List-item-title),
+.ListItem:not(.ListItemDisabled):hover :global(.List-item-title),
+:global(.List-item--selected):not(.ListItemDisabled) :global(.List-item-title) {
   color: white;
 }
 
@@ -81,25 +81,26 @@
   color: var(--color-text-medium);
 }
 
-:global(.List-item--disabled .List-item-description) {
+.ListItemDisabled :global(.List-item-description) {
   color: var(--color-text-dark);
 }
 
-.ListItemCursor:global(:not(.List-item--disabled) .List-item-description),
-.ListItem:global(:not(.List-item--disabled):hover .List-item-description),
-:global(.List-item--selected:not(.List-item--disabled) .List-item-description) {
+.ListItemCursor:not(.ListItemDisabled) :global(.List-item-description),
+.ListItem:not(.ListItemDisabled):hover :global(.List-item-description),
+:global(.List-item--selected):not(.ListItemDisabled)
+  :global(.List-item-description) {
   color: rgba(255, 255, 255, 0.5);
 }
 
 /* LIST ITEM ICON */
-.ListItemCursor:global(:not(.List-item--disabled) .Icon),
-.ListItem:global(:not(.List-item--disabled):hover .Icon),
-:global(.List-item--selected:not(.List-item--disabled) .Icon) {
+.ListItemCursor:not(.ListItemDisabled) :global(.Icon),
+.ListItem:not(.ListItemDisabled):hover :global(.Icon),
+:global(.List-item--selected):not(.ListItemDisabled) :global(.Icon) {
   color: white !important;
 }
 
 /* Moved from `query_builder.module.css` to make migration easier */
-.ListItem:global(:not(.List-item--disabled):hover) .FieldListGroupingTrigger,
+.ListItem:not(.ListItemDisabled):hover .FieldListGroupingTrigger,
 :global(.List-item--selected) .FieldListGroupingTrigger {
   visibility: visible;
 }
