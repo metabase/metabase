@@ -8,7 +8,10 @@ import {
   getCardSeriesModels,
   getDimensionModel,
 } from "metabase/visualizations/echarts/cartesian/model/series";
-import type { BaseCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import type {
+  BaseCartesianChartModel,
+  ShowWarning,
+} from "metabase/visualizations/echarts/cartesian/model/types";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type {
   ComputedVisualizationSettings,
@@ -29,6 +32,7 @@ export const getWaterfallChartModel = (
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
+  showWarning?: ShowWarning,
 ): BaseCartesianChartModel => {
   // Waterfall chart support one card only
   const [singleRawSeries] = rawSeries;
@@ -46,7 +50,7 @@ export const getWaterfallChartModel = (
     renderingContext,
   );
 
-  let dataset = getJoinedCardsDataset(rawSeries, cardsColumns);
+  let dataset = getJoinedCardsDataset(rawSeries, cardsColumns, showWarning);
   dataset = sortDataset(dataset, settings["graph.x_axis.scale"]);
 
   const xAxisModel = getWaterfallXAxisModel(
