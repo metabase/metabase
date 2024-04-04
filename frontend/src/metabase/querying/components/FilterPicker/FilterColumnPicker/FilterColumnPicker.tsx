@@ -33,7 +33,6 @@ type Section = {
   name: string;
   items: (Lib.ColumnMetadata | Lib.SegmentMetadata)[];
   icon?: IconName;
-  alwaysVisible?: boolean;
 };
 
 const CUSTOM_EXPRESSION_SECTION: Section = {
@@ -42,7 +41,6 @@ const CUSTOM_EXPRESSION_SECTION: Section = {
   name: t`Custom Expression`,
   items: [],
   icon: "filter",
-  alwaysVisible: true,
 };
 
 export const isSegmentListItem = (

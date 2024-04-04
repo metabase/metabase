@@ -418,7 +418,7 @@ export default class AccordionList extends Component {
           !searchable ||
           !(hideEmptySectionsInSearch || globalSearch) ||
           this.checkSectionHasItemsMatchingSearch(section, searchFilter) ||
-          section.alwaysVisible
+          section.type === "action"
         ) {
           if (section.type === "action") {
             rows.push({
