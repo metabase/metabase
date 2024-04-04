@@ -147,7 +147,7 @@
   "Run through our DB migration process and make sure DB is fully prepared"
   [db-type       :- :keyword
    data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
-   auto-migrate? :- [:maybe :boolean]]
+   auto-migrate? :- :boolean]
   (log/info (trs "Running Database Migrations..."))
   (migrate! db-type data-source (if auto-migrate? :up :print))
   (log/info (trs "Database Migrations Current ... ") (u/emoji "✅")))
@@ -160,7 +160,7 @@
   use [[metabase.db/setup-db!]] instead, which can be called more than once without issue and is thread-safe."
   [db-type                :- :keyword
    data-source            :- (ms/InstanceOfClass javax.sql.DataSource)
-   auto-migrate?          :- [:maybe :boolean]
+   auto-migrate?          :- :boolean
    create-sample-content? :- :boolean]
   (u/profile (trs "Database setup")
     (u/with-us-locale
