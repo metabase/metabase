@@ -247,6 +247,25 @@
                  (mt/formatted-rows [->local-date int 2.0 2.0]
                    (qp/process-query query)))))))))
 
+(deftest ^:parallel expressions-inside-cumulative-aggregations-test
+  (testing "Expressions inside of cumulative aggregations should work correctly"
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
+      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            orders            (lib.metadata/table metadata-provider (mt/id :orders))
+            orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
+            orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
+            query             (-> (lib/query metadata-provider orders)
+                                  (lib/breakout (lib/with-temporal-bucket orders-created-at :month))
+                                  (lib/aggregate (lib/cum-sum (lib/+ orders-total 1)))
+                                  (lib/limit 3)
+                                  (assoc-in [:middleware :format-rows?] false))]
+        (mt/with-native-query-testing-context query
+          (is (= [[#t "2016-04-01" 53.76]
+                  [#t "2016-05-01" 1338.49]
+                  [#t "2016-06-01" 3448.41]]
+                 (mt/formatted-rows [->local-date 2.0]
+                   (qp/process-query query)))))))))
+
 (deftest ^:parallel mixed-cumulative-and-non-cumulative-aggregations-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions)
     (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))

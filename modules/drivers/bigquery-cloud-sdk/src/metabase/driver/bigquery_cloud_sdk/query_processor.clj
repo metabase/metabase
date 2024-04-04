@@ -23,7 +23,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.query-processor.util.transformations.nest-cumulative-aggregations :as qp.util.transformations.nest-cumulative-aggregations]
+   [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -958,12 +958,12 @@
   [_driver _semantic_type expr]
   (h2x/->time expr))
 
-(mu/defn ^:private nest-cumulative-aggregations :- mbql.s/MBQLQuery
+(mu/defn ^:private nest-breakouts-in-stages-with-cumulative-aggregation :- mbql.s/MBQLQuery
   [inner-query :- mbql.s/MBQLQuery]
   (let [metadata-provider (qp.store/metadata-provider)
         database-id       (u/the-id (lib.metadata/database (qp.store/metadata-provider)))]
     (-> (lib.query/query-from-legacy-inner-query metadata-provider database-id inner-query)
-        qp.util.transformations.nest-cumulative-aggregations/nest-cumulative-aggregations
+        qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-cumulative-aggregation
         lib.convert/->legacy-MBQL
         :query)))
 
@@ -973,5 +973,5 @@
         has-cumulative-aggregations? (lib.util.match/match (:aggregation inner-query)
                                        #{:cum-sum :cum-count})
         inner-query                  (cond-> inner-query
-                                       has-cumulative-aggregations? nest-cumulative-aggregations)]
+                                       has-cumulative-aggregations? nest-breakouts-in-stages-with-cumulative-aggregation)]
     (parent-method driver inner-query)))
