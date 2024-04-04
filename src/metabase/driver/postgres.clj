@@ -74,6 +74,7 @@
   [_driver _feat db]
   (driver.common/json-unfolding-default db))
 
+
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
