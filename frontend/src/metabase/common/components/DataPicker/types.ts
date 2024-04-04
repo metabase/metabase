@@ -45,7 +45,7 @@ export type ModelItem = {
 export type TablePickerValue = {
   id: TableId;
   db_id: DatabaseId;
-  schema: SchemaName;
+  schema?: SchemaName;
 };
 
 export type NotebookDataPickerFolderItem =

@@ -37,7 +37,7 @@ export const tablePickerValueFromTable = (
   return {
     db_id: table.db_id,
     id: table.id,
-    schema: table.schema ?? "",
+    schema: table.schema,
   };
 };
 
@@ -47,7 +47,7 @@ const tablePickerValueFromTableEntity = (
   return {
     db_id: table.db_id,
     id: table.id,
-    schema: table.schema_name ?? table.schema?.name ?? "",
+    schema: table.schema_name ?? table.schema?.name,
   };
 };
 
@@ -66,7 +66,7 @@ export const getDbItem = (
 };
 
 export const getSchemaItem = (
-  schemaName: SchemaName | undefined | null,
+  schemaName: SchemaName | undefined,
 ): NotebookDataPickerFolderItem | null => {
   if (typeof schemaName === "undefined") {
     return null;
@@ -74,7 +74,7 @@ export const getSchemaItem = (
 
   const name = getSchemaDisplayName(schemaName);
 
-  return { model: "schema", id: schemaName ?? "", name };
+  return { model: "schema", id: schemaName, name };
 };
 
 export const getTableItem = (
@@ -91,10 +91,8 @@ export const getTableItem = (
   return { model: "table", id: tableId, name };
 };
 
-export const getSchemaDisplayName = (
-  schemaName: SchemaName | undefined | null,
-) => {
-  if (!schemaName) {
+export const getSchemaDisplayName = (schemaName: SchemaName | undefined) => {
+  if (typeof schemaName === "undefined") {
     return "";
   }
 
