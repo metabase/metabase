@@ -244,7 +244,7 @@ export function FilterPopover({
             >
               <span
                 className={cx(
-                  "List-section-icon",
+                  ListS.ListSectionIcon,
                   CS.mr1,
                   CS.flex,
                   CS.alignCenter,

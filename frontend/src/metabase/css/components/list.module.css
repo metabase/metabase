@@ -29,7 +29,7 @@
 .ListSectionToggleAble .ListSectionHeader:hover :global(.Icon),
 .ListSectionToggleAble .ListSectionHeader:hover .ListSectionTitle,
 .ListSectionExpanded .ListSectionHeader,
-.ListSectionExpanded .ListSectionHeader :global(.List-section-icon .Icon) {
+.ListSectionExpanded .ListSectionHeader .ListSectionIcon :global(.Icon) {
   color: currentColor;
 }
 

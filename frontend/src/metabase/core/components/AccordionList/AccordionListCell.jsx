@@ -92,7 +92,7 @@ export const AccordionListCell = ({
                 CS.mr1,
                 CS.flex,
                 CS.alignCenter,
-                "List-section-icon",
+                ListS.ListSectionIcon,
               )}
             >
               {icon}
