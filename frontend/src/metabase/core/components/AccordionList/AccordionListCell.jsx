@@ -226,7 +226,7 @@ export const AccordionListCell = ({
       style={style}
       aria-expanded={sectionIsExpanded}
       className={cx("List-section", section.className, {
-        "List-section--expanded": sectionIsExpanded(sectionIndex),
+        [ListS.ListSectionExpanded]: sectionIsExpanded(sectionIndex),
         [ListS.ListSectionToggleAble]: canToggleSections,
       })}
     >

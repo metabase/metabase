@@ -28,14 +28,12 @@
 .ListSectionToggleAble .ListSectionHeader:hover,
 .ListSectionToggleAble .ListSectionHeader:hover :global(.Icon),
 .ListSectionToggleAble .ListSectionHeader:hover .ListSectionTitle,
-:global(.List-section--expanded) .ListSectionHeader,
-:global(.List-section--expanded)
-  .ListSectionHeader
-  :global(.List-section-icon .Icon) {
+.ListSectionExpanded .ListSectionHeader,
+.ListSectionExpanded .ListSectionHeader :global(.List-section-icon .Icon) {
   color: currentColor;
 }
 
-:global(.List-section--expanded) .ListSectionHeader .ListSectionTitle {
+.ListSectionExpanded .ListSectionHeader .ListSectionTitle {
   color: var(--color-text-dark);
 }
 
