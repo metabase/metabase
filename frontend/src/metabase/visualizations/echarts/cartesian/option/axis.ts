@@ -275,6 +275,7 @@ export const buildNumericDimensionAxis = (
           max: () => max + axisPadding,
         }
       : {}),
+    minInterval: interval,
     maxInterval: ticksMaxInterval,
   };
 };
