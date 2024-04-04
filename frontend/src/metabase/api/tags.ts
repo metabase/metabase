@@ -8,6 +8,8 @@ export const TAG_TYPES = [
   "schema",
   "segment",
   "table",
+  "timeline",
+  "timeline-event",
 ] as const;
 
 export type TagType = typeof TAG_TYPES[number];

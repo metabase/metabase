@@ -10,3 +10,4 @@ export * from "./metric";
 export * from "./segment";
 export * from "./session";
 export * from "./table";
+export * from "./timeline-event";
