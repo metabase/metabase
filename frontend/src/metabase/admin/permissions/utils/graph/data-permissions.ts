@@ -38,7 +38,7 @@ function getPermissionPath(
   return [groupId, databaseId, permission, "schemas", ...(nestedPath || [])];
 }
 
-const elludedDefaultValues: Record<DataPermission, DataPermissionValue> = {
+const omittedDefaultValues: Record<DataPermission, DataPermissionValue> = {
   [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
   [DataPermission.CREATE_QUERIES]: DataPermissionValue.NO,
   [DataPermission.DOWNLOAD]: DataPermissionValue.NONE,
@@ -46,10 +46,10 @@ const elludedDefaultValues: Record<DataPermission, DataPermissionValue> = {
   [DataPermission.DETAILS]: DataPermissionValue.NO,
 };
 
-function getElludedPermissionValue(
+function getOmittedPermissionValue(
   permission: DataPermission,
 ): DataPermissionValue {
-  return elludedDefaultValues[permission] ?? DataPermissionValue.NO;
+  return omittedDefaultValues[permission] ?? DataPermissionValue.NO;
 }
 
 interface GetPermissionParams {
@@ -74,7 +74,7 @@ const getPermission = ({
   if (isControlledType && typeof value === "object") {
     return DataPermissionValue.CONTROLLED;
   }
-  return value ? value : getElludedPermissionValue(permission);
+  return value ? value : getOmittedPermissionValue(permission);
 };
 
 export function updatePermission(

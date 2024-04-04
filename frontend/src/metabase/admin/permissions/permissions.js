@@ -21,16 +21,15 @@ import {
   handleActions,
   combineReducers,
 } from "metabase/lib/redux";
-import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
+import {
+  PLUGIN_DATA_PERMISSIONS,
+  PLUGIN_ADVANCED_PERMISSIONS,
+} from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { CollectionsApi, PermissionsApi } from "metabase/services";
 
 import { trackPermissionChange } from "./analytics";
-import {
-  DataPermissionType,
-  DataPermissionValue,
-  DataPermission,
-} from "./types";
+import { DataPermissionType, DataPermission } from "./types";
 import { isDatabaseEntityId } from "./utils/data-entity-id";
 
 const INITIALIZE_DATA_PERMISSIONS =
@@ -93,47 +92,42 @@ export const loadCollectionPermissions = createThunkAction(
   },
 );
 
-export const GRANULATE_DATABASE_TABLE_PERMISSIONS =
-  "metabase/admin/permissions/GRANULATE_DATABASE_TABLE_PERMISSIONS";
-export const granulateDatabasePermissions = createThunkAction(
-  GRANULATE_DATABASE_TABLE_PERMISSIONS,
-  (groupId, entityId, permission, value, defaultValue) =>
-    async (dispatch, getState) => {
-      // NOTE: table data may not be loaded at this point, which results in downstreams
-      // functions within updateDataPermission not having all the table ids, so the
-      // migration of db level permission onto the db schemas/tables will generate
-      // an incorrect graph. by loading here we assure that later functions will have
-      // the context they need
-      await dispatch(
-        Tables.actions.fetchList({
-          dbId: entityId.databaseId,
-          include_hidden: true,
-          remove_inactive: true,
-        }),
+export const LIMIT_DATABASE_PERMISSION =
+  "metabase/admin/permissions/LIMIT_DATABASE_PERMISSION";
+export const limitDatabasePermission = createThunkAction(
+  LIMIT_DATABASE_PERMISSION,
+  (groupId, entityId, accessPermissionValue) => dispatch => {
+    const newValue =
+      PLUGIN_ADVANCED_PERMISSIONS.getDatabaseLimitedAccessPermission(
+        accessPermissionValue,
       );
 
-      // HACK: when an entity becomes controlled, updatePermission fn in metabase/admin/permissions/utils/graph.ts
-      // will set child entities to the current value of the parent entity. In some cases, the current
-      // value is one that we don't allow the child entity to become (e.g. we don't allow you to have native
-      // query creation permissions for some tables but not others, as we don't parse SQL to ensure users aren't
-      // accessing tables they shouldn't be). As a consequence, we quickly update the entity's value which will
-      // serve as the default when we proceed with the actual update.
-      if (value === DataPermissionValue.CONTROLLED) {
-        dispatch(
-          updateDataPermission({
-            groupId,
-            permission,
-            value: defaultValue,
-            entityId,
-            skipTracking: true,
-          }),
-        );
-      }
+    if (newValue) {
+      dispatch(
+        updateDataPermission({
+          groupId,
+          permission: {
+            type: DataPermissionType.ACCESS,
+            permission: DataPermission.VIEW_DATA,
+          },
+          value: newValue,
+          entityId,
+          skipTracking: true,
+        }),
+      );
+    }
 
-      dispatch(updateDataPermission({ groupId, permission, value, entityId }));
+    dispatch(navigateToGranularPermissions(groupId, entityId));
+  },
+);
 
-      dispatch(push(getGroupFocusPermissionsUrl(groupId, entityId)));
-    },
+export const NAVIGATE_TO_GRANULAR_PERMISSIONS =
+  "metabase/admin/permissions/NAVIGATE_TO_GRANULAR_PERMISSIONS";
+export const navigateToGranularPermissions = createThunkAction(
+  NAVIGATE_TO_GRANULAR_PERMISSIONS,
+  (groupId, entityId) => dispatch => {
+    dispatch(push(getGroupFocusPermissionsUrl(groupId, entityId)));
+  },
 );
 
 export const UPDATE_DATA_PERMISSION =
@@ -330,7 +324,7 @@ const dataPermissions = handleActions(
           );
         }
 
-        restrictNativeQueryPermissionsIfNeeded(
+        state = restrictNativeQueryPermissionsIfNeeded(
           state,
           groupId,
           entityId,

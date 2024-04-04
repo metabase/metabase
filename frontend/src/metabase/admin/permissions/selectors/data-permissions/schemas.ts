@@ -13,13 +13,16 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
-import { granulateDatabasePermissions } from "../../permissions";
-import type { DatabaseEntityId, PermissionSectionConfig } from "../../types";
 import {
+  limitDatabasePermission,
+  navigateToGranularPermissions,
+} from "../../permissions";
+import type {
+  DatabaseEntityId,
+  PermissionSectionConfig,
   DataPermissionValue,
-  DataPermission,
-  DataPermissionType,
 } from "../../types";
+import { DataPermission, DataPermissionType } from "../../types";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
@@ -71,16 +74,25 @@ const buildAccessPermission = (
     groupId,
   );
 
+  const baseOptions = [
+    DATA_PERMISSION_OPTIONS.unrestricted,
+    DATA_PERMISSION_OPTIONS.controlled,
+  ];
   const options = PLUGIN_ADVANCED_PERMISSIONS.addDatabasePermissionOptions(
     _.compact([
-      DATA_PERMISSION_OPTIONS.unrestricted,
-      DATA_PERMISSION_OPTIONS.controlled,
+      ...baseOptions,
       originalAccessPermissionValue ===
         DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated.value &&
         DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated,
     ]),
     database,
   );
+
+  // remove granular in the cases we can't provide configurability for schemas/tables
+  const shouldRemoveGranularOption = _.isEqual(options, baseOptions);
+  if (shouldRemoveGranularOption) {
+    options.pop();
+  }
 
   return {
     permission: DataPermission.VIEW_DATA,
@@ -93,17 +105,8 @@ const buildAccessPermission = (
     confirmations: accessPermissionConfirmations,
     options,
     postActions: {
-      controlled: (_, __, ___, accessPermissionValue) =>
-        granulateDatabasePermissions(
-          groupId,
-          entityId,
-          {
-            type: DataPermissionType.ACCESS,
-            permission: DataPermission.VIEW_DATA,
-          },
-          accessPermissionValue,
-          DataPermissionValue.UNRESTRICTED,
-        ),
+      controlled: () =>
+        limitDatabasePermission(groupId, entityId, accessPermissionValue),
       ...PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
     },
     actions: PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
@@ -117,7 +120,6 @@ const buildNativePermission = (
   permissions: GroupsPermissions,
   defaultGroup: Group,
   accessPermissionValue: DataPermissionValue,
-  database: Database,
 ): PermissionSectionConfig => {
   const value = getSchemasPermission(
     permissions,
@@ -172,26 +174,7 @@ const buildNativePermission = (
       DATA_PERMISSION_OPTIONS.no,
     ],
     postActions: {
-      controlled: (_, __, ___, newValue) => {
-        const isMultiSchemaDb = database.schemaNames().length > 1;
-
-        const defaultValue =
-          !isMultiSchemaDb &&
-          value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
-            ? DataPermissionValue.QUERY_BUILDER
-            : value;
-
-        return granulateDatabasePermissions(
-          groupId,
-          entityId,
-          {
-            type: DataPermissionType.NATIVE,
-            permission: DataPermission.CREATE_QUERIES,
-          },
-          newValue,
-          defaultValue,
-        );
-      },
+      controlled: () => navigateToGranularPermissions(groupId, entityId),
     },
   };
 };
@@ -222,7 +205,6 @@ export const buildSchemasPermissions = (
     permissions,
     defaultGroup,
     accessPermission.value,
-    database,
   );
 
   return [

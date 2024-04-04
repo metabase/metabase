@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
@@ -14,14 +13,13 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
-import { granulateDatabasePermissions } from "../../permissions";
+import { navigateToGranularPermissions } from "../../permissions";
 import type { PermissionSectionConfig, SchemaEntityId } from "../../types";
 import {
   DataPermissionValue,
   DataPermission,
   DataPermissionType,
 } from "../../types";
-import { getGroupFocusPermissionsUrl } from "../../utils/urls";
 import {
   getControlledDatabaseWarningModal,
   getPermissionWarning,
@@ -103,7 +101,7 @@ const buildAccessPermission = (
     warning,
     confirmations,
     postActions: {
-      controlled: () => push(getGroupFocusPermissionsUrl(groupId, entityId)),
+      controlled: () => navigateToGranularPermissions(groupId, entityId),
     },
     options,
   };
@@ -119,7 +117,7 @@ const buildNativePermission = (
   const dbValue = getSchemasPermission(
     permissions,
     groupId,
-    entityId,
+    { databaseId: entityId.databaseId },
     DataPermission.CREATE_QUERIES,
   );
 
@@ -150,19 +148,7 @@ const buildNativePermission = (
       DATA_PERMISSION_OPTIONS.no,
     ]),
     postActions: {
-      controlled: (_, __, ___, newValue) =>
-        granulateDatabasePermissions(
-          groupId,
-          entityId,
-          {
-            type: DataPermissionType.NATIVE,
-            permission: DataPermission.CREATE_QUERIES,
-          },
-          newValue,
-          value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
-            ? DataPermissionValue.QUERY_BUILDER
-            : value,
-        ),
+      controlled: () => navigateToGranularPermissions(groupId, entityId),
     },
   };
 };
