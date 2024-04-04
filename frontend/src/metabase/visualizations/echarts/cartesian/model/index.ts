@@ -110,6 +110,7 @@ export const getCartesianChartModel = (
     dataset,
     settings,
     renderingContext,
+    showWarning,
   );
   const yAxisScaleTransforms = getAxisTransforms(
     settings["graph.y_axis.scale"],
