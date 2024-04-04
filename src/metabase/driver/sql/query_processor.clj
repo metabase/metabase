@@ -692,13 +692,6 @@
   [_driver _feature _database]
   true)
 
-(defn- window-function-order-by-strategy [driver]
-  (if (driver/database-supports? driver
-                                 :sql/window-functions.order-by-output-column-numbers
-                                 (lib.metadata/database (qp.store/metadata-provider)))
-    ::over-order-by-strategy.use-output-column-numbers
-    ::over-order-by-strategy.copy-expressions))
-
 (defn- format-rows-unbounded-preceding [_clause _args]
   ["ROWS UNBOUNDED PRECEDING"])
 
@@ -740,9 +733,11 @@
      ::rows-unbounded-preceding []}]])
 
 (defn- cumulative-aggregation-window-function [driver expr]
-  (let [over-rows-with-order-by (case (window-function-order-by-strategy driver)
-                                  ::over-order-by-strategy.copy-expressions          over-rows-with-order-by-copying-expressions
-                                  ::over-order-by-strategy.use-output-column-numbers over-rows-with-order-by-output-column-numbers)]
+  (let [over-rows-with-order-by (if (driver/database-supports? driver
+                                                               :sql/window-functions.order-by-output-column-numbers
+                                                               (lib.metadata/database (qp.store/metadata-provider)))
+                                  over-rows-with-order-by-output-column-numbers
+                                  over-rows-with-order-by-copying-expressions)]
     (over-rows-with-order-by driver expr)))
 
 ;;;    cum-count()
