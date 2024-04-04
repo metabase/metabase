@@ -164,7 +164,7 @@ export const AccordionListCell = ({
           {
             "List-item--selected": isSelected,
             "List-item--disabled": !isClickable,
-            "List-item--cursor": hasCursor,
+            [ListS.ListItemCursor]: hasCursor,
             [CS.mb1]: isLastItem,
           },
           getItemClassName(item, itemIndex),

@@ -49,11 +49,11 @@
   margin-bottom: 2px;
 }
 
-:global(.List-item--cursor) {
+.ListItemCursor {
   outline: 2px solid var(--color-focus);
 }
 
-:global(.List-item--cursor:not(.List-item--disabled)),
+.ListItemCursor:global(:not(.List-item--disabled)),
 .ListItem:global(:not(.List-item--disabled):hover),
 :global(.List-item--selected:not(.List-item--disabled)) {
   background-color: currentColor;
@@ -68,7 +68,7 @@
   color: var(--color-text-light);
 }
 
-:global(.List-item--cursor:not(.List-item--disabled) .List-item-title),
+.ListItemCursor:global(:not(.List-item--disabled) .List-item-title),
 .ListItem:global(:not(.List-item--disabled):hover .List-item-title),
 :global(.List-item--selected:not(.List-item--disabled) .List-item-title) {
   color: white;
@@ -85,14 +85,14 @@
   color: var(--color-text-dark);
 }
 
-:global(.List-item--cursor:not(.List-item--disabled) .List-item-description),
+.ListItemCursor:global(:not(.List-item--disabled) .List-item-description),
 .ListItem:global(:not(.List-item--disabled):hover .List-item-description),
 :global(.List-item--selected:not(.List-item--disabled) .List-item-description) {
   color: rgba(255, 255, 255, 0.5);
 }
 
 /* LIST ITEM ICON */
-:global(.List-item--cursor:not(.List-item--disabled) .Icon),
+.ListItemCursor:global(:not(.List-item--disabled) .Icon),
 .ListItem:global(:not(.List-item--disabled):hover .Icon),
 :global(.List-item--selected:not(.List-item--disabled) .Icon) {
   color: white !important;
