@@ -53,8 +53,7 @@
                               :now                                    true
                               :convert-timezone                       true
                               :connection-impersonation               true
-                              :connection-impersonation-requires-role true
-                              ::sql.qp/order-by-select-position       true}]
+                              :connection-impersonation-requires-role true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake

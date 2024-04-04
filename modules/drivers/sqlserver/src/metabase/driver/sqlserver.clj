@@ -33,13 +33,14 @@
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
-(doseq [[feature supported?] {:regex                                  false
-                              :case-sensitivity-string-filter-options false
-                              :now                                    true
-                              :datetime-diff                          true
-                              :convert-timezone                       true
-                              :test/jvm-timezone-setting              false
-                              :index-info                             true}]
+(doseq [[feature supported?] {:case-sensitivity-string-filter-options              false
+                              :convert-timezone                                    true
+                              :datetime-diff                                       true
+                              :index-info                                          true
+                              :now                                                 true
+                              :regex                                               false
+                              :sql/window-functions.order-by-output-column-numbers false
+                              :test/jvm-timezone-setting                           false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
