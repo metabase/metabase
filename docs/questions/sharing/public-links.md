@@ -57,7 +57,7 @@ Metabase's automatic [drill-through](https://www.metabase.com/learn/questions/dr
 You can simulate drill-through on a public dashboard by setting up a [custom click behavior](../../dashboards/interactive.md) that sends people from one public link to another public link.
 
 1. Create a second dashboard to act as the destination dashboard.
-2. [Enable sharing](#enable-sharing-on-your-saved-question-or-dashboard) on the destination dashboard.
+2. [Enable sharing](#create-a-public-link-for-a-dashboard) on the destination dashboard.
 3. Copy the destination dashboard's public link.
 4. On your primary dashboard, create a [custom destination](../../dashboards/interactive.md#custom-destinations) with type "URL".
 5. Set the custom destination to the destination dashboard's public link.
