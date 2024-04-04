@@ -33,7 +33,7 @@ export const SchemaList = ({
     }));
   }, [schemas]);
 
-  if (!isLoading && !error && items && items.length <= 1) {
+  if (!isLoading && !error && items && items.length === 1) {
     return null;
   }
 

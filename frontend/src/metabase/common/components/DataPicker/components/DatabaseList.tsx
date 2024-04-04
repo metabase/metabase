@@ -32,7 +32,7 @@ export const DatabaseList = ({
     }));
   }, [databases]);
 
-  if (!isLoading && !error && items && items.length <= 1) {
+  if (!isLoading && !error && items && items.length === 1) {
     return null;
   }
 
