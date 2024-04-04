@@ -73,7 +73,6 @@
     (log/info (trs "Loading sample database"))
     (let [details (try-to-extract-sample-database!)
           db (if (t2/exists? Database :is_sample true)
-               ;; the sample database can be inserted during DB setup, but we need to update its details
                (t2/select-one Database (first (t2/update-returning-pks! Database :is_sample true {:details details})))
                (first (t2/insert-returning-instances! Database
                                                       :name      sample-database-name
