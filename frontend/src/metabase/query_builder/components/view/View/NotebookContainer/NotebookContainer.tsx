@@ -12,8 +12,6 @@ import { NativeQueryPreviewSidebar } from "metabase/query_builder/components/vie
 import { getUiControls } from "metabase/query_builder/selectors";
 import { Flex, Box, rem } from "metabase/ui";
 
-import NC from "./NotebookContainer.module.css";
-
 // There must exist some transition time, no matter how short,
 // because we need to trigger the 'onTransitionEnd' in the component
 const delayBeforeNotRenderingNotebook = 10;
@@ -89,23 +87,29 @@ export const NotebookContainer = ({
 
   return (
     <Flex
-      className={NC.notebookContainer}
+      pos="absolute"
+      inset={0}
       bg={color("white")}
       opacity={isOpen ? 1 : 0}
       style={{
         transform: transformStyle,
         transition: `transform ${delayBeforeNotRenderingNotebook}ms, opacity ${delayBeforeNotRenderingNotebook}ms`,
+        zIndex: 2,
+        overflowY: "hidden",
       }}
       onTransitionEnd={handleTransitionEnd}
     >
       {shouldShowNotebook && (
-        <Box className={NC.main} miw={{ lg: minNotebookWidth }}>
+        <Box
+          miw={{ lg: minNotebookWidth }}
+          style={{ flex: 1, overflowY: "auto" }}
+        >
           <Notebook {...props} />
         </Box>
       )}
 
       {isNativePreviewSidebarOpen && windowWidth < 1280 && (
-        <Box className={NC.sqlPreview}>
+        <Box pos="absolute" inset={0}>
           <NativeQueryPreviewSidebar />
         </Box>
       )}
@@ -119,7 +123,7 @@ export const NotebookContainer = ({
           resizeHandles={["w"]}
           handle={<Handle />}
           onResizeStop={handleResizeStop}
-          className={NC.sqlSidebar}
+          style={{ borderLeft: `1px solid ${color("border")}` }}
         >
           <NativeQueryPreviewSidebar />
         </ResizableBox>
