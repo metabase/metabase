@@ -14,7 +14,9 @@
                   :model/Card base-card {:dataset_query (mt/mbql-query orders
                                                                        {:filter      [:> $orders.product_id 1]
                                                                         :breakout    [!month.orders.created_at
-                                                                                      [:field (mt/id :orders :quantity) {:binning {:num-bins 50 :strategy :num-bins}}]]
+                                                                                      [:field (mt/id :orders :quantity) {:binning {:num-bins  50
+                                                                                                                                   :strategy :num-bins
+                                                                                                                                   :bin-width 10}}]]
                                                                         :aggregation [:sum $orders.tax]
                                                                         :expressions {"exp" [:+ $orders.total 1]}
                                                                         :joins       [{:fields       "all",
@@ -24,40 +26,45 @@
                   :model/Card card      {:dataset_query (mt/mbql-query
                                                          nil
                                                          {:source-table (format "card__%d" (:id base-card))
-                                                          :aggregation  [:sum [:field "sum" {:base-type :type/Integer}]]
-                                                          :filter       [:between $orders.created_at "2019-01-01" "2019-12-31"]})}]
+                                                          ;; these clause against "sum" columns shouldn't be returned
+                                                          :aggregation  [:avg [:field "sum" {:base-type :type/Integer}]]
+                                                          :breakout     [:field "sum" {:base-type :type/Integer}]
+                                                          :expression   {"avg" [:avg [:field "sum" {:base-type :type/Integer}]]}
+                                                          :filter       [:and
+                                                                         [:> [:field "sum" {:base-type :type/Integer}] 1]
+                                                                         [:between $orders.created_at "2019-01-01" "2019-12-31"]]})}]
      (mt/with-metadata-provider (mt/id)
        (let [query (:dataset_query card)
              pmbql (->> query
                         (lib/query (qp.store/metadata-provider))
                         fetch-source-query/resolve-source-cards)]
          (is (= #{;; from join-card
-                  {:used_in                :filter
-                   :field_id               (mt/id :products :category)
-                   :filter_op              :=
-                   :filter_args            ["Gizmo"]}
+                  {:used_in                    :filter
+                   :field_id                   (mt/id :products :category)
+                   :filter_op                  :=}
                   ;; from base-card
-                  {:used_in                :filter
-                   :field_id               (mt/id :orders :product_id)
-                   :filter_op              :>
-                   :filter_args            [1]}
-                  {:used_in                :breakout
-                   :field_id               (mt/id :orders :created_at)
-                   :breakout_temporal_unit :month,
-                   :breakout_binning       nil}
-                  {:used_in                :breakout
-                   :field_id               (mt/id :orders :quantity)
-                   :breakout_temporal_unit nil
-                   :breakout_binning       {:strategy :num-bins
-                                            :num-bins 50}}
-                  {:used_in                :aggregation
-                   :field_id               (mt/id :orders :tax)
-                   :aggregation_function   :sum}
-                  {:used_in                :expression
-                   :field_id               (mt/id :orders :total)}
+                  {:used_in                    :filter
+                   :field_id                   (mt/id :orders :product_id)
+                   :filter_op                  :>}
+                  {:used_in                    :breakout
+                   :field_id                   (mt/id :orders :created_at)
+                   :breakout_temporal_unit     :month
+                   :breakout_binning_strategy  nil
+                   :breakout_binning_bin_width nil
+                   :breakout_binning_num_bins  nil}
+                  {:used_in                    :breakout
+                   :field_id                   (mt/id :orders :quantity)
+                   :breakout_temporal_unit     nil
+                   :breakout_binning_strategy  :num-bins
+                   :breakout_binning_bin_width 10
+                   :breakout_binning_num_bins  50}
+                  {:used_in                    :aggregation
+                   :field_id                   (mt/id :orders :tax)
+                   :aggregation_function       :sum}
+                  {:used_in                    :expression
+                   :field_id                   (mt/id :orders :total)}
                   ;; from top level card
-                  {:used_in                :filter
-                   :field_id               (mt/id :orders :created_at)
-                   :filter_op              :between
-                   :filter_args            ["2019-01-01" "2019-12-31"]}}
+                  {:used_in                    :filter
+                   :field_id                   (mt/id :orders :created_at)
+                   :filter_op                  :between}}
                 (set (field-usage/pmbql->field-usages pmbql)))))))))

@@ -6140,12 +6140,6 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  name: filter_args
-                  remarks: fitler's argument that applied to the field
-                  type: ${text.type}
-                  constraints:
-                    nullable: true
-              - column:
                   name: aggregation_function
                   remarks: the aggregation function that field applied to
                   type: varchar(25)
@@ -6158,9 +6152,21 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  name: breakout_binning
-                  remarks: binning options of the breakout
-                  type: varchar(256)
+                  name: breakout_binning_strategy
+                  remarks: the strategy of breakout
+                  type: varchar(25)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: breakout_binning_num_bins
+                  remarks: The numbin option of breakout
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: breakout_binning_bin_width
+                  remarks: The numbin option of breakout
+                  type: int
                   constraints:
                     nullable: true
               - column:

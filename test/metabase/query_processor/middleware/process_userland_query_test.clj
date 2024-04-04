@@ -175,23 +175,28 @@
 
 (deftest save-field-usage-test
   (testing "execute a query will save field usages"
-    (let [random-category (mt/random-name)]
-      (qp.store/with-metadata-provider (mt/id)
-        (doseq [query-type [:mbql :mlv2]]
+    (qp.store/with-metadata-provider (mt/id)
+      (doseq [query-type [:mbql :mlv2]]
+        (let [;; randomize the binning so we can use it as the identifier for fieldusage down below
+              random-binning  (rand-int 13371337)
+              breakout-clause [:field (mt/id :products :price) {:binning {:num-bins  random-binning
+                                                                          :strategy  :num-bins
+                                                                          :bin-width random-binning}}]]
           (testing (format "with source card is a %s query" query-type)
             (mt/with-model-cleanup [:model/FieldUsage]
-              (mt/with-temp [:model/Card card {:dataset_query (cond->> (mt/mbql-query products {:filter [:= $products.category random-category]})
+              (mt/with-temp [:model/Card card {:dataset_query (cond->> (mt/mbql-query products {:breakout [breakout-clause]})
                                                                 (= :mlv2 query-type)
-                                                                (lib/query
-                                                                 (qp.store/metadata-provider)))}]
+                                                                (lib/query (qp.store/metadata-provider)))}]
                 (binding [process-userland-query/*save-execution-metadata-async* false]
                   (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card)))
-                  (is (=? [{:breakout_binning       nil
-                            :filter_op              :=
-                            :breakout_temporal_unit nil
-                            :used_in :filter
-                            :filter_args            [random-category]
-                            :aggregation_function   nil
-                            :field_id               (mt/id :products :category)
-                            :query_execution_id     (mt/malli=? pos-int?)}]
-                          (t2/select :model/FieldUsage :filter_args [:like (format "%%%s%%" random-category)]))))))))))))
+                  (is (=? [{:filter_op                  nil
+                            :breakout_temporal_unit     nil
+                            :breakout_binning_strategy  :num-bins
+                            :breakout_binning_bin_width random-binning
+                            :breakout_binning_num_bins  random-binning
+                            :used_in                    :breakout
+                            :aggregation_function       nil
+                            :field_id                   (mt/id :products :price)
+                            :query_execution_id         (mt/malli=? pos-int?)}]
+                          (t2/select :model/FieldUsage :breakout_binning_num_bins random-binning
+                                     :breakout_binning_bin_width random-binning))))))))))))

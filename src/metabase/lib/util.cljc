@@ -563,6 +563,6 @@
                    [:lib/type :type "lib/type" "type"]))))
 
 (mu/defn referenced-field-ids :- [:maybe [:sequential ::lib.schema.id/field]]
-  "Find all the integer field IDs in `coll`, Which can arbitrarily be anything that is part of MLv2 query schema."
-  [clause]
-  (lib.util.match/match clause [:field _ (id :guard int?)] id))
+  "Find all the integer field IDs in ``, Which can arbitrarily be anything that is part of MLv2 query schema."
+  [coll]
+  (lib.util.match/match coll [:field _ (id :guard int?)] id))
