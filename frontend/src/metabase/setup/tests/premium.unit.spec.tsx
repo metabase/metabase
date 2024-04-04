@@ -28,7 +28,7 @@ const setupPremium = (opts?: SetupOpts) => {
 describe("setup (EE, hosting and embedding feature)", () => {
   it("default step order should be correct, without the commercial step", async () => {
     await setupPremium();
-    skipWelcomeScreen();
+    await skipWelcomeScreen();
     expectSectionToHaveLabel("What's your preferred language?", "1");
     expectSectionToHaveLabel("What should we call you?", "2");
     expectSectionToHaveLabel("What will you use Metabase for?", "3");
@@ -40,7 +40,7 @@ describe("setup (EE, hosting and embedding feature)", () => {
 
   it("should not render the license activation step", async () => {
     await setupPremium();
-    skipWelcomeScreen();
+    await skipWelcomeScreen();
     expect(
       screen.queryByText("Activate your commercial license"),
     ).not.toBeInTheDocument();

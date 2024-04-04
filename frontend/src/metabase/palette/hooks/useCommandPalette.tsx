@@ -20,7 +20,6 @@ import {
   getSettings,
 } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Icon } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
 export type PalettePageId = "root" | "admin_settings";
@@ -44,7 +43,7 @@ export const useCommandPalette = ({
     isLoading: isSearchLoading,
   } = useSearchListQuery<SearchResult>({
     enabled: !!debouncedSearchText,
-    query: { q: debouncedSearchText, limit: 5 },
+    query: { q: debouncedSearchText, limit: 20 },
     reload: true,
   });
 
@@ -69,7 +68,7 @@ export const useCommandPalette = ({
           : t`View documentation`,
         section: "docs",
         keywords: query, // Always match the query string
-        icon: () => <Icon name="document" />,
+        icon: "document",
         perform: () => {
           if (query) {
             window.open(getDocsSearchUrl({ query }));
@@ -98,37 +97,39 @@ export const useCommandPalette = ({
         keywords: query,
         section: "search",
       });
-    } else if (searchError) {
-      ret.push({
-        id: "search-error",
-        name: t`Could not load search results`,
-        section: "search",
-      });
-    } else if (debouncedSearchText) {
-      if (searchResults?.length) {
-        ret.push(
-          ...searchResults.map(result => {
-            const wrappedResult = Search.wrapEntity(result, dispatch);
-            return {
-              id: `search-result-${result.id}`,
-              name: result.name,
-              icon: <Icon {...wrappedResult.getIcon()} />,
-              section: "search",
-              perform: () => {
-                dispatch(closeModal());
-                dispatch(push(wrappedResult.getUrl()));
-              },
-            };
-          }),
-        );
-      } else {
+    } else {
+      if (searchError) {
         ret.push({
-          id: "no-search-results",
-          name: t`No results for “${query}”`,
-          keywords: query,
+          id: "search-error",
+          name: t`Could not load search results`,
           section: "search",
-          perform: () => {}, // will simply close the command palette. It's possible we can remove this item
         });
+      } else if (debouncedSearchText) {
+        if (searchResults?.length) {
+          ret.push(
+            ...searchResults.map(result => {
+              const wrappedResult = Search.wrapEntity(result, dispatch);
+              return {
+                id: `search-result-${result.id}`,
+                name: result.name,
+                icon: wrappedResult.getIcon().name,
+                section: "search",
+                perform: () => {
+                  dispatch(closeModal());
+                  dispatch(push(wrappedResult.getUrl()));
+                },
+              };
+            }),
+          );
+        } else {
+          ret.push({
+            id: "no-search-results",
+            name: t`No results for “${debouncedSearchText}”`,
+            keywords: debouncedSearchText,
+            section: "search",
+            perform: () => {}, // will simply close the command palette. It's possible we can remove this item
+          });
+        }
       }
     }
     return ret;
@@ -149,7 +150,7 @@ export const useCommandPalette = ({
       ret.push({
         id: `recent-item-${getName(item)}`,
         name: getName(item),
-        icon: <Icon name={getIcon(item).name} />,
+        icon: getIcon(item).name,
         section: "recent",
         perform: () => {
           dispatch(push(Urls.modelToUrl(item) ?? ""));
@@ -160,13 +161,16 @@ export const useCommandPalette = ({
     return ret;
   }, [dispatch, recentItems]);
 
-  useRegisterActions(recentItemsActions, [recentItemsActions]);
+  useRegisterActions(hasQuery ? [] : recentItemsActions, [
+    recentItemsActions,
+    hasQuery,
+  ]);
 
   const adminActions = useMemo<KBarAction[]>(() => {
     return adminPaths.map(adminPath => ({
       id: `admin-page-${adminPath.key}`,
-      name: `Admin - ${adminPath.name}`,
-      icon: <Icon name="link" />,
+      name: `${adminPath.name}`,
+      icon: "gear",
       perform: () => dispatch(push(adminPath.path)),
       section: "admin",
     }));
@@ -184,7 +188,7 @@ export const useCommandPalette = ({
       .map(([slug, section]) => ({
         id: `admin-settings-${slug}`,
         name: `Settings - ${section.name}`,
-        icon: <Icon name="link" />,
+        icon: "gear",
         perform: () => dispatch(push(`/admin/settings/${slug}`)),
         section: "admin",
       }));

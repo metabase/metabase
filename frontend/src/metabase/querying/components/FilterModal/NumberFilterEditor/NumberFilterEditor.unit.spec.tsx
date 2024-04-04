@@ -4,7 +4,7 @@ import { setupFieldValuesEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
-import type { FieldValuesResult } from "metabase-types/api";
+import type { GetFieldValuesResponse } from "metabase-types/api";
 import { createMockFieldValues } from "metabase-types/api/mocks";
 import { ORDERS } from "metabase-types/api/mocks/presets";
 
@@ -15,7 +15,7 @@ interface SetupOpts {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
-  fieldValues?: FieldValuesResult;
+  fieldValues?: GetFieldValuesResponse;
 }
 
 function setup({ query, stageIndex, column, filter, fieldValues }: SetupOpts) {
@@ -68,9 +68,9 @@ describe("StringFilterEditor", () => {
         }),
       });
 
-      userEvent.click(screen.getByText("between"));
-      userEvent.click(await screen.findByText("Equal to"));
-      userEvent.click(await screen.findByText("2"));
+      await userEvent.click(screen.getByText("between"));
+      await userEvent.click(await screen.findByText("Equal to"));
+      await userEvent.click(await screen.findByText("2"));
 
       expect(getNextFilterName()).toBe("Quantity is equal to 2");
     });
@@ -82,16 +82,16 @@ describe("StringFilterEditor", () => {
         column,
       });
 
-      userEvent.click(screen.getByText("between"));
-      userEvent.click(await screen.findByText("Equal to"));
-      userEvent.type(screen.getByPlaceholderText("Enter a number"), "15");
-      userEvent.tab();
+      await userEvent.click(screen.getByText("between"));
+      await userEvent.click(await screen.findByText("Equal to"));
+      await userEvent.type(screen.getByPlaceholderText("Enter a number"), "15");
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe("Total is equal to 15");
       expect(onInput).toHaveBeenCalled();
     });
 
-    it("should handle primary keys", () => {
+    it("should handle primary keys", async () => {
       const { getNextFilterName } = setup({
         query,
         stageIndex,
@@ -99,12 +99,12 @@ describe("StringFilterEditor", () => {
       });
       expect(screen.getByText("is")).toBeInTheDocument();
 
-      userEvent.type(screen.getByPlaceholderText("Enter an ID"), "15");
-      userEvent.tab();
+      await userEvent.type(screen.getByPlaceholderText("Enter an ID"), "15");
+      await userEvent.tab();
       expect(getNextFilterName()).toBe("ID is 15");
     });
 
-    it("should handle foreign keys", () => {
+    it("should handle foreign keys", async () => {
       const { getNextFilterName } = setup({
         query,
         stageIndex,
@@ -112,8 +112,8 @@ describe("StringFilterEditor", () => {
       });
       expect(screen.getByText("is")).toBeInTheDocument();
 
-      userEvent.type(screen.getByPlaceholderText("Enter an ID"), "15");
-      userEvent.tab();
+      await userEvent.type(screen.getByPlaceholderText("Enter an ID"), "15");
+      await userEvent.tab();
       expect(getNextFilterName()).toBe("Product ID is 15");
     });
 
@@ -124,10 +124,10 @@ describe("StringFilterEditor", () => {
         column,
       });
 
-      userEvent.click(screen.getByText("between"));
-      userEvent.click(await screen.findByText("Less than"));
-      userEvent.type(screen.getByPlaceholderText("Enter a number"), "20");
-      userEvent.tab();
+      await userEvent.click(screen.getByText("between"));
+      await userEvent.click(await screen.findByText("Less than"));
+      await userEvent.type(screen.getByPlaceholderText("Enter a number"), "20");
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe("Total is less than 20");
       expect(onInput).toHaveBeenCalled();
@@ -140,9 +140,9 @@ describe("StringFilterEditor", () => {
         column,
       });
 
-      userEvent.type(screen.getByPlaceholderText("Min"), "10");
-      userEvent.type(screen.getByPlaceholderText("Max"), "20");
-      userEvent.tab();
+      await userEvent.type(screen.getByPlaceholderText("Min"), "10");
+      await userEvent.type(screen.getByPlaceholderText("Max"), "20");
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe("Total is between 10 and 20");
       expect(onInput).toHaveBeenCalled();
@@ -155,8 +155,8 @@ describe("StringFilterEditor", () => {
         column,
       });
 
-      userEvent.click(screen.getByText("between"));
-      userEvent.click(await screen.findByText("Is empty"));
+      await userEvent.click(screen.getByText("between"));
+      await userEvent.click(await screen.findByText("Is empty"));
 
       expect(getNextFilterName()).toBe("Total is empty");
     });
@@ -168,12 +168,12 @@ describe("StringFilterEditor", () => {
         column,
       });
 
-      userEvent.click(screen.getByText("between"));
-      userEvent.click(await screen.findByText("Greater than"));
+      await userEvent.click(screen.getByText("between"));
+      await userEvent.click(await screen.findByText("Greater than"));
       expect(getNextFilterName()).toBeNull();
 
-      userEvent.type(screen.getByPlaceholderText("Enter a number"), "10");
-      userEvent.clear(screen.getByPlaceholderText("Enter a number"));
+      await userEvent.type(screen.getByPlaceholderText("Enter a number"), "10");
+      await userEvent.clear(screen.getByPlaceholderText("Enter a number"));
       expect(getNextFilterName()).toBeNull();
     });
 
@@ -184,8 +184,8 @@ describe("StringFilterEditor", () => {
         column,
       });
 
-      userEvent.type(screen.getByPlaceholderText("Min"), "10");
-      userEvent.tab();
+      await userEvent.type(screen.getByPlaceholderText("Min"), "10");
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe("Total is greater than or equal to 10");
       expect(onInput).toHaveBeenCalled();
@@ -217,14 +217,14 @@ describe("StringFilterEditor", () => {
       expect(screen.getByRole("checkbox", { name: "2" })).toBeChecked();
       expect(screen.getByRole("checkbox", { name: "3" })).not.toBeChecked();
 
-      userEvent.click(screen.getByRole("checkbox", { name: "3" }));
+      await userEvent.click(screen.getByRole("checkbox", { name: "3" }));
       expect(screen.getByRole("checkbox", { name: "1" })).not.toBeChecked();
       expect(screen.getByRole("checkbox", { name: "2" })).toBeChecked();
       expect(screen.getByRole("checkbox", { name: "3" })).toBeChecked();
       expect(getNextFilterName()).toBe("Quantity is equal to 2 selections");
     });
 
-    it("should handle non-searchable values", () => {
+    it("should handle non-searchable values", async () => {
       const { query, stageIndex, column, filter } = createQueryWithFilter({
         tableName: "ORDERS",
         columnName: "TOTAL",
@@ -239,13 +239,13 @@ describe("StringFilterEditor", () => {
       });
       expect(screen.getByDisplayValue("10")).toBeInTheDocument();
 
-      userEvent.type(screen.getByLabelText("Filter value"), "20");
-      userEvent.tab();
+      await userEvent.type(screen.getByLabelText("Filter value"), "20");
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe("Total is equal to 2 selections");
     });
 
-    it("should update a filter with one value", () => {
+    it("should update a filter with one value", async () => {
       const { query, stageIndex, column, filter } = createQueryWithFilter({
         tableName: "ORDERS",
         columnName: "TOTAL",
@@ -259,14 +259,14 @@ describe("StringFilterEditor", () => {
         filter,
       });
 
-      userEvent.clear(screen.getByDisplayValue("10"));
-      userEvent.type(screen.getByPlaceholderText("Enter a number"), "20");
-      userEvent.tab();
+      await userEvent.clear(screen.getByDisplayValue("10"));
+      await userEvent.type(screen.getByPlaceholderText("Enter a number"), "20");
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe("Total is greater than 20");
     });
 
-    it("should update a filter with two values", () => {
+    it("should update a filter with two values", async () => {
       const { query, stageIndex, column, filter } = createQueryWithFilter({
         tableName: "ORDERS",
         columnName: "TOTAL",
@@ -280,11 +280,11 @@ describe("StringFilterEditor", () => {
         filter,
       });
 
-      userEvent.clear(screen.getByDisplayValue("10"));
-      userEvent.type(screen.getByPlaceholderText("Min"), "15");
-      userEvent.clear(screen.getByDisplayValue("20"));
-      userEvent.type(screen.getByPlaceholderText("Max"), "25");
-      userEvent.tab();
+      await userEvent.clear(screen.getByDisplayValue("10"));
+      await userEvent.type(screen.getByPlaceholderText("Min"), "15");
+      await userEvent.clear(screen.getByDisplayValue("20"));
+      await userEvent.type(screen.getByPlaceholderText("Max"), "25");
+      await userEvent.tab();
 
       expect(getNextFilterName()).toBe("Total is between 15 and 25");
     });
@@ -303,8 +303,8 @@ describe("StringFilterEditor", () => {
         filter,
       });
 
-      userEvent.click(screen.getByText("is empty"));
-      userEvent.click(await screen.findByText("Not empty"));
+      await userEvent.click(screen.getByText("is empty"));
+      await userEvent.click(await screen.findByText("Not empty"));
 
       expect(getNextFilterName()).toBe("Total is not empty");
     });

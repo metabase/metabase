@@ -16,10 +16,12 @@
   (testing "quick-filter is avaiable for cell clicks on non-PK/FK columns"
     (canned/canned-test
       :drill-thru/quick-filter
-      (fn [_test-case context {:keys [click column-type]}]
+      (fn [_test-case {:keys [column dimensions] :as _context} {:keys [click column-kind column-type]}]
         (and (= click :cell)
              (not (#{:pk :fk} column-type))
-             (not (lib.types.isa/structured? (:column context))))))))
+             (not (lib.types.isa/structured? column))
+             (or (not= column-kind :aggregation)
+                 (seq dimensions)))))))
 
 (deftest ^:parallel returns-quick-filter-test-1
   (lib.drill-thru.tu/test-returns-drill

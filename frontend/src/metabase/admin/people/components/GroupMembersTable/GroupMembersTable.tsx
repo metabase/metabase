@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useListApiKeyQuery } from "metabase/api";
+import { useListApiKeysQuery } from "metabase/api";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -60,7 +60,7 @@ function GroupMembersTable({
   onPreviousPage,
   reload,
 }: GroupMembersTableProps) {
-  const { isLoading, data: apiKeys } = useListApiKeyQuery();
+  const { isLoading, data: apiKeys } = useListApiKeysQuery();
   const groupApiKeys = useMemo(() => {
     return apiKeys?.filter(apiKey => apiKey.group.id === group.id) ?? [];
   }, [apiKeys, group.id]);
@@ -191,7 +191,7 @@ const UserRow = ({
 
   return (
     <tr>
-      <td className="text-bold">{getName(user)}</td>
+      <td className={CS.textBold}>{getName(user)}</td>
       {canEditMembership(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell && (
         <PLUGIN_GROUP_MANAGERS.UserTypeCell
           isManager={groupMembership.is_group_manager}
@@ -202,7 +202,7 @@ const UserRow = ({
       <td>{user.email}</td>
       {canRemove ? (
         <td
-          className="text-right cursor-pointer"
+          className={cx(CS.textRight, CS.cursorPointer)}
           onClick={() => onMembershipRemove(groupMembership?.membership_id)}
         >
           <Icon name="close" className="text-light" size={16} />
@@ -232,7 +232,7 @@ const ApiKeyRow = ({ apiKey }: { apiKey: ApiKey }) => {
         <Text weight="bold" color="text-medium">{t`API Key`}</Text>
       </td>
       <td>{/* api keys don't have real emails */}</td>
-      <td className="text-right">
+      <td className={CS.textRight}>
         <Link to="/admin/settings/authentication/api-keys">
           <Tooltip label={t`Manage API keys`} position="left">
             <Icon name="link" size={16} />

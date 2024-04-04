@@ -21,7 +21,7 @@ import {
 describe("setup (OSS)", () => {
   it("default step order should be correct", async () => {
     await setup();
-    skipWelcomeScreen();
+    await skipWelcomeScreen();
     expectSectionToHaveLabel("What's your preferred language?", "1");
     expectSectionToHaveLabel("What should we call you?", "2");
     expectSectionToHaveLabel("What will you use Metabase for?", "3");
@@ -33,35 +33,35 @@ describe("setup (OSS)", () => {
 
   it("should keep steps in order through the whole setup", async () => {
     await setup();
-    skipWelcomeScreen();
+    await skipWelcomeScreen();
     expectSectionsToHaveLabelsInOrder({ from: 0 });
 
-    skipLanguageStep();
+    await skipLanguageStep();
     expectSectionsToHaveLabelsInOrder({ from: 1 });
 
     await submitUserInfoStep();
     expectSectionsToHaveLabelsInOrder({ from: 2 });
 
-    clickNextStep(); // Usage question
+    await clickNextStep(); // Usage question
     expectSectionsToHaveLabelsInOrder({ from: 3 });
 
-    userEvent.click(screen.getByText("I'll add my data later"));
+    await userEvent.click(screen.getByText("I'll add my data later"));
     expectSectionsToHaveLabelsInOrder({ from: 4 });
   });
 
   describe("Usage question", () => {
     async function setupForUsageQuestion() {
       await setup();
-      skipWelcomeScreen();
-      skipLanguageStep();
+      await skipWelcomeScreen();
+      await skipLanguageStep();
       await submitUserInfoStep();
     }
 
     describe("when selecting 'Self service'", () => {
       it("should keep the 'Add your data' step", async () => {
         await setupForUsageQuestion();
-        selectUsageReason("self-service-analytics");
-        clickNextStep();
+        await selectUsageReason("self-service-analytics");
+        await clickNextStep();
 
         expect(screen.getByText("Add your data")).toBeInTheDocument();
 
@@ -78,8 +78,8 @@ describe("setup (OSS)", () => {
     describe("when selecting 'Embedding'", () => {
       it("should hide the 'Add your data' step", async () => {
         await setupForUsageQuestion();
-        selectUsageReason("embedding");
-        clickNextStep();
+        await selectUsageReason("embedding");
+        await clickNextStep();
 
         expect(screen.queryByText("Add your data")).not.toBeInTheDocument();
 
@@ -95,8 +95,8 @@ describe("setup (OSS)", () => {
     describe("when selecting 'A bit of both'", () => {
       it("should keep the 'Add your data' step", async () => {
         await setupForUsageQuestion();
-        selectUsageReason("both");
-        clickNextStep();
+        await selectUsageReason("both");
+        await clickNextStep();
 
         expect(screen.getByText("Add your data")).toBeInTheDocument();
 
@@ -113,8 +113,8 @@ describe("setup (OSS)", () => {
     describe("when selecting 'Not sure yet'", () => {
       it("should keep the 'Add your data' step", async () => {
         await setupForUsageQuestion();
-        selectUsageReason("not-sure");
-        clickNextStep();
+        await selectUsageReason("not-sure");
+        await clickNextStep();
 
         expect(screen.getByText("Add your data")).toBeInTheDocument();
 
@@ -132,14 +132,14 @@ describe("setup (OSS)", () => {
   describe("embedding homepage flags", () => {
     it("should set the correct flags when interested in embedding", async () => {
       await setup();
-      skipWelcomeScreen();
-      skipLanguageStep();
+      await skipWelcomeScreen();
+      await skipLanguageStep();
       await submitUserInfoStep();
 
-      selectUsageReason("embedding");
-      clickNextStep();
+      await selectUsageReason("embedding");
+      await clickNextStep();
 
-      screen.getByText("Finish").click();
+      await screen.getByText("Finish").click();
 
       expect(await getLastSettingsPutPayload()).toEqual({
         "embedding-homepage": "visible",
@@ -151,16 +151,16 @@ describe("setup (OSS)", () => {
 
     it("should not set 'embedding-homepage' when not interested in embedding", async () => {
       await setup();
-      skipWelcomeScreen();
-      skipLanguageStep();
+      await skipWelcomeScreen();
+      await skipLanguageStep();
       await submitUserInfoStep();
 
-      selectUsageReason("self-service-analytics");
-      clickNextStep();
+      await selectUsageReason("self-service-analytics");
+      await clickNextStep();
 
-      screen.getByText("I'll add my data later").click();
+      await screen.getByText("I'll add my data later").click();
 
-      screen.getByText("Finish").click();
+      await screen.getByText("Finish").click();
 
       const flags = await getLastSettingsPutPayload();
 
@@ -179,14 +179,14 @@ describe("setup (OSS)", () => {
           }),
         ],
       });
-      skipWelcomeScreen();
-      skipLanguageStep();
+      await skipWelcomeScreen();
+      await skipLanguageStep();
       await submitUserInfoStep();
 
-      selectUsageReason("embedding");
-      clickNextStep();
+      await selectUsageReason("embedding");
+      await clickNextStep();
 
-      screen.getByText("Finish").click();
+      await screen.getByText("Finish").click();
 
       const flags = await getLastSettingsPutPayload();
 

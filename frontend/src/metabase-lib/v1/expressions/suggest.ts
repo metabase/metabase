@@ -153,6 +153,7 @@ export function suggest({
           })),
       );
     }
+    suggestions = _.sortBy(suggestions, "text");
   }
 
   if (_.last(matchPrefix) !== "]") {
@@ -198,7 +199,7 @@ export function suggest({
     }
 
     if (startRule === "aggregation") {
-      const metrics = Lib.availableMetrics(query);
+      const metrics = Lib.availableMetrics(query, stageIndex);
 
       if (metrics) {
         suggestions.push(
@@ -246,11 +247,9 @@ export function suggest({
 
   suggestions = suggestions.filter(suggestion => suggestion.range);
 
-  // deduplicate suggestions and sort by type then name
+  // deduplicate suggestions
   suggestions = _.chain(suggestions)
     .uniq(suggestion => suggestion.text)
-    .sortBy("text")
-    .sortBy("order")
     .value();
 
   // the only suggested function equals the prefix match?

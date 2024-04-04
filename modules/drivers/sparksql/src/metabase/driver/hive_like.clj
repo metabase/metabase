@@ -92,7 +92,7 @@
 (defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str expr)))
 
-(defmethod sql.qp/date [:hive-like :default]         [_ _ expr] (h2x/->timestamp expr))
+(defmethod sql.qp/date [:hive-like :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:hive-like :minute]          [_ _ expr] (trunc-with-format "yyyy-MM-dd HH:mm" (h2x/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :minute-of-hour]  [_ _ expr] [:minute (h2x/->timestamp expr)])
 (defmethod sql.qp/date [:hive-like :hour]            [_ _ expr] (trunc-with-format "yyyy-MM-dd HH" (h2x/->timestamp expr)))
@@ -260,6 +260,9 @@
   (sql-jdbc.execute/set-parameter driver ps i (t/local-date-time t (t/local-time 0))))
 
 ;; TIMEZONE FIXME — not sure what timezone the results actually come back as
+;;
+;; Also, pretty sure Spark SQL doesn't have a TIME type anyway.
+;; https://spark.apache.org/docs/latest/sql-ref-datatypes.html
 (defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/TIME]
   [_ ^ResultSet rs _rsmeta ^Integer i]
   (fn []
@@ -269,8 +272,8 @@
 (defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/DATE]
   [_ ^ResultSet rs _rsmeta ^Integer i]
   (fn []
-    (when-let [t (.getDate rs i)]
-      (t/zoned-date-time (t/local-date t) (t/local-time 0) (t/zone-id "UTC")))))
+    (when-let [s (.getString rs i)]
+      (u.date/parse s))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/TIMESTAMP]
   [_ ^ResultSet rs _rsmeta ^Integer i]

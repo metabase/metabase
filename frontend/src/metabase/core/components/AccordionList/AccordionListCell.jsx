@@ -50,7 +50,14 @@ export const AccordionListCell = ({
     if (alwaysExpanded) {
       content = (
         <div
-          className="pt2 mb1 mx2 h5 text-uppercase text-bold"
+          className={cx(
+            CS.pt2,
+            CS.mb1,
+            CS.mx2,
+            CS.h5,
+            CS.textUppercase,
+            CS.textBold,
+          )}
           style={{ color: color }}
         >
           {section.name}
@@ -67,8 +74,7 @@ export const AccordionListCell = ({
             CS.py2,
             CS.flex,
             CS.alignCenter,
-            "hover-parent",
-            "hover--opacity",
+            CS.hoverParent,
             {
               "List-section-header--cursor": hasCursor,
               [CS.cursorPointer]: canToggleSections,
@@ -91,14 +97,16 @@ export const AccordionListCell = ({
               {icon}
             </span>
           )}
-          {name && <h3 className="List-section-title text-wrap">{name}</h3>}
+          {name && (
+            <h3 className={cx("List-section-title", CS.textWrap)}>{name}</h3>
+          )}
           {showSpinner(section) && (
             <Box ml="0.5rem">
               <LoadingSpinner size={16} borderWidth={2} />
             </Box>
           )}
           {sections.length > 1 && section.items && section.items.length > 0 && (
-            <span className={cx(CS.flexAlignRight, CS.ml1, "hover-child")}>
+            <span className={cx(CS.flexAlignRight, CS.ml1, CS.hoverChild)}>
               <Icon
                 name={
                   sectionIsExpanded(sectionIndex) ? "chevronup" : "chevrondown"
@@ -179,9 +187,13 @@ export const AccordionListCell = ({
             </span>
           )}
           <div className="List-item-content">
-            {name && <h4 className="List-item-title ml1 text-wrap">{name}</h4>}
+            {name && (
+              <h4 className={cx("List-item-title", CS.ml1, CS.textWrap)}>
+                {name}
+              </h4>
+            )}
             {description && (
-              <p className="List-item-description ml1 text-wrap">
+              <p className={cx("List-item-description", CS.ml1, CS.textWrap)}>
                 {description}
               </p>
             )}

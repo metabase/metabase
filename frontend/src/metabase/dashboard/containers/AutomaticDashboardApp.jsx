@@ -79,7 +79,10 @@ class AutomaticDashboardAppInner extends Component {
     triggerToast(
       <div className={cx(CS.flex, CS.alignCenter)}>
         {t`Your dashboard was saved`}
-        <Link className="link text-bold ml1" to={Urls.dashboard(newDashboard)}>
+        <Link
+          className={cx(CS.link, CS.textBold, "ml1")}
+          to={Urls.dashboard(newDashboard)}
+        >
           {t`See it`}
         </Link>
       </div>,
@@ -114,7 +117,7 @@ class AutomaticDashboardAppInner extends Component {
 
     return (
       <div
-        className={cx("relative AutomaticDashboard", {
+        className={cx(CS.relative, "AutomaticDashboard", {
           "AutomaticDashboard--withSidebar": hasSidebar,
         })}
       >
@@ -132,7 +135,7 @@ class AutomaticDashboardAppInner extends Component {
                   <div className={cx(CS.flex, CS.alignCenter, CS.py2)}>
                     <XrayIcon name="bolt" size={24} />
                     <div>
-                      <h2 className="text-wrap mr2">
+                      <h2 className={cx(CS.textWrap, "mr2")}>
                         {dashboard && <TransientTitle dashboard={dashboard} />}
                       </h2>
                     </div>
@@ -140,7 +143,7 @@ class AutomaticDashboardAppInner extends Component {
                       <Button className="ml-auto" disabled>{t`Saved`}</Button>
                     ) : (
                       <ActionButton
-                        className="ml-auto text-nowrap"
+                        className={cx("ml-auto", CS.textNoWrap)}
                         success
                         borderless
                         actionFn={this.save}
@@ -253,7 +256,7 @@ const SuggestionsList = ({ suggestions, section }) => (
             <ItemLink
               key={itemIndex}
               to={item.url}
-              className="hover-parent hover--visibility"
+              className={cx(CS.hoverParent, CS.hoverVisibility)}
             >
               <Card className="p2" hoverable>
                 <ItemContent>
@@ -262,8 +265,8 @@ const SuggestionsList = ({ suggestions, section }) => (
                     color={color("accent4")}
                     className="mr1"
                   />
-                  <h4 className="text-wrap">{item.title}</h4>
-                  <ItemDescription className="hover-child">
+                  <h4 className={CS.textWrap}>{item.title}</h4>
+                  <ItemDescription className={CS.hoverChild}>
                     <Tooltip tooltip={item.description}>
                       <Icon name="info_outline" color={color("bg-dark")} />
                     </Tooltip>

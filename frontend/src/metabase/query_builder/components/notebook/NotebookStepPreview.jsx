@@ -6,6 +6,7 @@ import _ from "underscore";
 
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { Icon } from "metabase/ui";
@@ -53,12 +54,17 @@ const NotebookStepPreview = ({ step, onClose }) => {
   return (
     <PreviewRoot data-testid="preview-root">
       <PreviewHeader>
-        <span className="text-bold">{t`Preview`}</span>
+        <span className={CS.textBold}>{t`Preview`}</span>
         <PreviewIconContainer>
           <Icon
             name="close"
             onClick={onClose}
-            className="text-light text-medium-hover cursor-pointer ml1"
+            className={cx(
+              CS.textLight,
+              "text-medium-hover",
+              CS.cursorPointer,
+              CS.ml1,
+            )}
           />
         </PreviewIconContainer>
       </PreviewHeader>

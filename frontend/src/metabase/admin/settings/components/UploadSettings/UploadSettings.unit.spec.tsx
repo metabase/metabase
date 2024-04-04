@@ -115,7 +115,7 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should populate a dropdown of actions-enabled DBs", async () => {
     setup();
-    userEvent.click(await screen.findByText("Select a database"));
+    await userEvent.click(await screen.findByText("Select a database"));
 
     expect(await screen.findByText("Db Uno")).toBeInTheDocument();
     expect(await screen.findByText("Db Dos")).toBeInTheDocument();
@@ -125,13 +125,13 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should populate a dropdown of schema for schema-enabled DBs", async () => {
     setup();
-    userEvent.click(await screen.findByText("Select a database"));
+    await userEvent.click(await screen.findByText("Select a database"));
 
     const dbItem = await screen.findByText("Db Uno");
-    userEvent.click(dbItem);
+    await userEvent.click(dbItem);
 
     const schemaDropdown = await screen.findByText("Select a schema");
-    userEvent.click(schemaDropdown);
+    await userEvent.click(schemaDropdown);
 
     expect(await screen.findByText("public")).toBeInTheDocument();
     expect(await screen.findByText("uploads")).toBeInTheDocument();
@@ -140,19 +140,19 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should be able to submit a db + schema combination selection", async () => {
     const { updateSpy } = setup();
-    userEvent.click(await screen.findByText("Select a database"));
+    await userEvent.click(await screen.findByText("Select a database"));
 
     const dbItem = await screen.findByText("Db Uno");
-    userEvent.click(dbItem);
+    await userEvent.click(dbItem);
 
     const schemaDropdown = await screen.findByText("Select a schema");
-    userEvent.click(schemaDropdown);
+    await userEvent.click(schemaDropdown);
 
     const schemaItem = await screen.findByText("uploads");
 
-    userEvent.click(schemaItem);
+    await userEvent.click(schemaItem);
 
-    userEvent.click(
+    await userEvent.click(
       await screen.findByRole("button", { name: "Enable uploads" }),
     );
 
@@ -166,17 +166,17 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should be able to submit a table prefix for databases without schema", async () => {
     const { updateSpy } = setup();
-    userEvent.click(await screen.findByText("Select a database"));
+    await userEvent.click(await screen.findByText("Select a database"));
 
     const dbItem = await screen.findByText("Db Dos");
-    userEvent.click(dbItem);
+    await userEvent.click(dbItem);
 
     const prefixInput = await screen.findByPlaceholderText("upload_");
 
-    userEvent.clear(prefixInput);
-    userEvent.type(prefixInput, "my_prefix_");
+    await userEvent.clear(prefixInput);
+    await userEvent.type(prefixInput, "my_prefix_");
 
-    userEvent.click(
+    await userEvent.click(
       await screen.findByRole("button", { name: "Enable uploads" }),
     );
 
@@ -190,22 +190,22 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should be able to submit a table prefix for databases with schema", async () => {
     const { updateSpy } = setup();
-    userEvent.click(await screen.findByText("Select a database"));
+    await userEvent.click(await screen.findByText("Select a database"));
 
     const dbItem = await screen.findByText("Db Uno");
-    userEvent.click(dbItem);
+    await userEvent.click(dbItem);
 
     const schemaDropdown = await screen.findByText("Select a schema");
-    userEvent.click(schemaDropdown);
+    await userEvent.click(schemaDropdown);
 
     const schemaItem = await screen.findByText("uploads");
-    userEvent.click(schemaItem);
+    await userEvent.click(schemaItem);
 
     const prefixInput = await screen.findByPlaceholderText("upload_");
-    userEvent.clear(prefixInput);
-    userEvent.type(prefixInput, "my_prefix_");
+    await userEvent.clear(prefixInput);
+    await userEvent.type(prefixInput, "my_prefix_");
 
-    userEvent.click(
+    await userEvent.click(
       await screen.findByRole("button", { name: "Enable uploads" }),
     );
 
@@ -219,17 +219,17 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should call update methods on saveStatusRef", async () => {
     const { savingSpy, savedSpy } = setup();
-    userEvent.click(await screen.findByText("Select a database"));
+    await userEvent.click(await screen.findByText("Select a database"));
 
     const dbItem = await screen.findByText("Db Dos");
-    userEvent.click(dbItem);
+    await userEvent.click(dbItem);
 
     const prefixInput = await screen.findByPlaceholderText("upload_");
 
-    userEvent.clear(prefixInput);
-    userEvent.type(prefixInput, "my_prefix_");
+    await userEvent.clear(prefixInput);
+    await userEvent.type(prefixInput, "my_prefix_");
 
-    userEvent.click(
+    await userEvent.click(
       await screen.findByRole("button", { name: "Enable uploads" }),
     );
 
@@ -240,12 +240,12 @@ describe("Admin > Settings > UploadSetting", () => {
   it("should show an error if enabling fails", async () => {
     const { updateSpy } = setup();
     updateSpy.mockImplementation(() => Promise.reject(new Error("Oh no!")));
-    userEvent.click(await screen.findByText("Select a database"));
+    await userEvent.click(await screen.findByText("Select a database"));
 
     const dbItem = await screen.findByText("Db Dos");
-    userEvent.click(dbItem);
+    await userEvent.click(dbItem);
 
-    userEvent.click(
+    await userEvent.click(
       await screen.findByRole("button", { name: "Enable uploads" }),
     );
 
@@ -268,7 +268,7 @@ describe("Admin > Settings > UploadSetting", () => {
         uploads_table_prefix: null,
       },
     });
-    userEvent.click(
+    await userEvent.click(
       await screen.findByRole("button", { name: "Disable uploads" }),
     );
 
@@ -290,7 +290,7 @@ describe("Admin > Settings > UploadSetting", () => {
       },
     });
     updateSpy.mockImplementation(() => Promise.reject(new Error("Oh no!")));
-    userEvent.click(
+    await userEvent.click(
       await screen.findByRole("button", { name: "Disable uploads" }),
     );
 
@@ -362,10 +362,10 @@ describe("Admin > Settings > UploadSetting", () => {
         uploads_table_prefix: null,
       },
     });
-    userEvent.click(await screen.findByText("Db Dos"));
+    await userEvent.click(await screen.findByText("Db Dos"));
 
     const dbItem = await screen.findByText("Db Uno");
-    userEvent.click(dbItem);
+    await userEvent.click(dbItem);
 
     expect(
       screen.queryByRole("button", { name: "Enable uploads" }),
@@ -377,12 +377,12 @@ describe("Admin > Settings > UploadSetting", () => {
     expect(updateButton).toBeDisabled(); // because no schema is selected
 
     const schemaDropdown = await screen.findByText("Select a schema");
-    userEvent.click(schemaDropdown);
+    await userEvent.click(schemaDropdown);
 
     const schemaItem = await screen.findByText("uploads");
-    userEvent.click(schemaItem);
+    await userEvent.click(schemaItem);
 
-    userEvent.click(
+    await userEvent.click(
       await screen.findByRole("button", { name: "Update settings" }),
     );
 
@@ -404,10 +404,10 @@ describe("Admin > Settings > UploadSetting", () => {
 
     it("should show disabled enable button when no schema is selected", async () => {
       setup();
-      userEvent.click(await screen.findByText("Select a database"));
+      await userEvent.click(await screen.findByText("Select a database"));
 
       const dbItem = await screen.findByText("Db Uno");
-      userEvent.click(dbItem);
+      await userEvent.click(dbItem);
 
       expect(
         await screen.findByRole("button", { name: "Enable uploads" }),
@@ -430,10 +430,10 @@ describe("Admin > Settings > UploadSetting", () => {
 
     it("should enable the enable button when a schemaless db is selected", async () => {
       setup();
-      userEvent.click(await screen.findByText("Select a database"));
+      await userEvent.click(await screen.findByText("Select a database"));
 
       const dbItem = await screen.findByText("Db Dos");
-      userEvent.click(dbItem);
+      await userEvent.click(dbItem);
 
       expect(
         await screen.findByRole("button", { name: "Enable uploads" }),
@@ -449,10 +449,10 @@ describe("Admin > Settings > UploadSetting", () => {
           uploads_table_prefix: null,
         },
       });
-      userEvent.click(await screen.findByText("Db Dos"));
+      await userEvent.click(await screen.findByText("Db Dos"));
 
       const dbItem = await screen.findByText("Db Uno");
-      userEvent.click(dbItem);
+      await userEvent.click(dbItem);
 
       expect(
         screen.queryByRole("button", { name: "Enable uploads" }),
@@ -467,10 +467,10 @@ describe("Admin > Settings > UploadSetting", () => {
       expect(updateButton).toBeDisabled(); // because no schema is selected
 
       const schemaDropdown = await screen.findByText("Select a schema");
-      userEvent.click(schemaDropdown);
+      await userEvent.click(schemaDropdown);
 
       const schemaItem = await screen.findByText("uploads");
-      userEvent.click(schemaItem);
+      await userEvent.click(schemaItem);
 
       expect(updateButton).toBeEnabled(); // now that a schema is selected
     });
@@ -486,8 +486,8 @@ describe("Admin > Settings > UploadSetting", () => {
       });
 
       const prefixInput = await screen.findByPlaceholderText("upload_");
-      userEvent.clear(prefixInput);
-      userEvent.type(prefixInput, "my_prefix_");
+      await userEvent.clear(prefixInput);
+      await userEvent.type(prefixInput, "my_prefix_");
 
       expect(
         await screen.findByRole("button", { name: "Update settings" }),
@@ -508,13 +508,13 @@ describe("Admin > Settings > UploadSetting", () => {
       );
 
       const prefixInput = await screen.findByPlaceholderText("upload_");
-      userEvent.clear(prefixInput);
-      userEvent.type(prefixInput, "my_prefix_");
+      await userEvent.clear(prefixInput);
+      await userEvent.type(prefixInput, "my_prefix_");
 
       const updateButton = await screen.findByRole("button", {
         name: "Update settings",
       });
-      userEvent.click(updateButton);
+      await userEvent.click(updateButton);
       expect(await screen.findByTestId("loading-spinner")).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Update settings" }),
@@ -535,20 +535,20 @@ describe("Admin > Settings > UploadSetting", () => {
       );
 
       const prefixInput = await screen.findByPlaceholderText("upload_");
-      userEvent.clear(prefixInput);
-      userEvent.type(prefixInput, "my_prefix_");
+      await userEvent.clear(prefixInput);
+      await userEvent.type(prefixInput, "my_prefix_");
 
       const updateButton = await screen.findByRole("button", {
         name: "Update settings",
       });
-      userEvent.click(updateButton);
+      await userEvent.click(updateButton);
       expect(await screen.findByTestId("loading-spinner")).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Update settings" }),
       ).not.toBeInTheDocument();
 
-      userEvent.clear(prefixInput);
-      userEvent.type(prefixInput, "_2");
+      await userEvent.clear(prefixInput);
+      await userEvent.type(prefixInput, "_2");
       expect(
         screen.getByRole("button", { name: "Update settings" }),
       ).toBeInTheDocument();
@@ -557,9 +557,9 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should show a warning for h2 databases", async () => {
     setup();
-    userEvent.click(await screen.findByText("Select a database"));
+    await userEvent.click(await screen.findByText("Select a database"));
 
-    userEvent.click(await screen.findByText("Db Cinco")); // h2
+    await userEvent.click(await screen.findByText("Db Cinco")); // h2
 
     expect(
       screen.getByText(/uploads to the Sample Database are for testing only/i),

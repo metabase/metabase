@@ -3,6 +3,7 @@ import cx from "classnames";
 import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { usePrevious } from "react-use";
+import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import BulkActions from "metabase/collections/components/BulkActions";
@@ -18,6 +19,8 @@ import Search from "metabase/entities/search";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { useDispatch } from "metabase/lib/redux";
+import { addUndo } from "metabase/redux/undo";
 
 import { ModelUploadModal } from "../ModelUploadModal";
 import UploadOverlay from "../UploadOverlay";
@@ -77,10 +80,16 @@ export function CollectionContentView({
   };
 
   const handleUploadFile = useCallback(
-    ({ collectionId, tableId, modelId }) => {
+    ({ collectionId, tableId, modelId, uploadMode }) => {
       if (uploadedFile && (collectionId || tableId)) {
         closeModelUploadModal();
-        uploadFile({ file: uploadedFile, collectionId, tableId, modelId });
+        uploadFile({
+          file: uploadedFile,
+          collectionId,
+          tableId,
+          modelId,
+          uploadMode,
+        });
       }
     },
     [uploadFile, uploadedFile, closeModelUploadModal],
@@ -108,7 +117,19 @@ export function CollectionContentView({
     setIsBookmarked(shouldBeBookmarked);
   }, [bookmarks, collectionId]);
 
+  const dispatch = useDispatch();
+
   const onDrop = acceptedFiles => {
+    if (!acceptedFiles.length) {
+      dispatch(
+        addUndo({
+          message: t`Invalid file type`,
+          toastColor: "error",
+          icon: "warning",
+        }),
+      );
+      return;
+    }
     saveFile(acceptedFiles[0]);
   };
 
@@ -117,7 +138,7 @@ export function CollectionContentView({
     maxFiles: 1,
     noClick: true,
     noDragEventsBubbling: true,
-    accept: { "text/csv": [".csv"] },
+    accept: { "text/csv": [".csv"], "text/tab-separated-values": [".tsv"] },
   });
 
   const handleBulkArchive = useCallback(async () => {
