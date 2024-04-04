@@ -29,7 +29,7 @@ Metabase will export the raw results of a question without applying any of the [
 
 ## Exporting data via a public link
 
-You can also create a [public link](../sharing/public-links.md) that people can use to download data in a specific format.
+You can also create a [public link](../sharing/public-links.md#public-link-to-export-question-results-in-csv-xlsx-json) that people can use to download data in a specific format, as well as [raw, unformatted question results](public-links.md#exporting-unformatted-question-results).
 
 ## Exporting question data via alerts
 
