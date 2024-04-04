@@ -8,13 +8,13 @@ redirect_from:
 
 # Public sharing
 
-You can create and share public links (URLs) for questions and dashboards. The public URL will display static (view-only) results of your question or dashboard, so visitors won't be able to drill-down into the underlying data on their own.
+You can create and share public links (URLs) for questions and dashboards. You can view them as standalone destinations (URLs) or as embedded iframes in another page or app. In both cases, the public item will display static (view-only) results of your question or dashboard, so visitors won't be able to drill-down into the underlying data on their own.
 
 ## Create a public link for a question
 
 ![Create a public link for a question](../images/create-a-public-link.png)
 
-You can find the **Sharing** icon at the bottom right corner of a question. You can create a link to view the question as is, or to [export the question results](#public-link-to-export-question-results-in-csv-xlsx-json).
+You can find the **Sharing** icon at the bottom right corner of a question. You can create a link to view the question as is, or to [export the results of a question](#public-link-to-export-question-results-in-csv-xlsx-json).
 
 ## Create a public link for a dashboard
 
@@ -54,7 +54,7 @@ See docs for the [export format endpoint](https://www.metabase.com/docs/latest/a
 
 Metabase's automatic [drill-through](https://www.metabase.com/learn/questions/drill-through) won't work on public dashboards because public links don't give people access to your raw data.
 
-You can simulate drill-through on a public dashboard by setting up a [custom click behaviour](../../dashboards/interactive.md) that sends people from one public link to another public link.
+You can simulate drill-through on a public dashboard by setting up a [custom click behavior](../../dashboards/interactive.md) that sends people from one public link to another public link.
 
 1. Create a second dashboard to act as the destination dashboard.
 2. [Enable sharing](#enable-sharing-on-your-saved-question-or-dashboard) on the destination dashboard.
@@ -72,12 +72,15 @@ For example, if you have a primary public dashboard that displays **Invoices** d
 
 ## Public embeds
 
-If you want to embed your question or dashboard in a simple web page or blog post:
+![Public embed](../images/public-embed.png)
 
-1. Click on the **Sharing and embedding** icon for your question or dashboard.
-2. Click the toggle to [enable sharing](#enable-sharing-on-your-saved-question-or-dashboard).
-3. Copy the **Public embed** iframe snippet.
-4. Paste the iframe snippet in your destination of choice.
+If you want to embed your question or dashboard as an iframe in a simple web page or app:
+
+1. Click on the **Sharing** icon for your question or dashboard.
+2. Click **Embed**.
+3. Click **Public embed**.
+4. Copy the iframe snippet Metabase generates for you.
+5. Paste the iframe snippet in your destination of choice.
 
 To customize the appearance of your question or dashboard, you can update the link in the `src` attribute with [public embed parameters](#public-embed-parameters).
 
@@ -160,11 +163,9 @@ Note that the name of the filter in the URL should be specified in lower case, a
 /dashboard/42?filter_for_user_zip_code=02116
 ```
 
-## Deactivating public links
-
-You can When in **Admin settings** > **Settings** > **Public sharing**, you can view shared questions, dashboards, and action forms. To deactivate a public link, click the **X** in the **Revoke link** column for that item.
-
 ## Disable public sharing in Metabase
+
+Public sharing is enabled by default.
 
 ![Enable public sharing](../images/enable-public-sharing.png)
 
@@ -176,6 +177,27 @@ To disable public sharing:
 4. Toggle off **Public sharing**.
 
 Once toggled on, the **Public sharing** section will display Metabase questions, dashboards, and actions with active public links.
+
+If you disable public sharing, then re-enable public sharing, all your previously generated public links will still work (as long as you didn't deactivate them).
+
+## Deactivating public links and embeds
+
+### Individual question or dashboard links and embeds
+
+1. Visit the question or dashboard.
+2. Click on **Sharing** icon.
+3. Select **Public link** or **Embed**.
+4. Click **Remove public link**.
+
+## Deactivating multiple public links and embeds
+
+Admins can view and deactivate all public links for a Metabase.
+
+1. Click on the **gear** icon in the upper right.
+2. Select **Admin settings**.
+3. Go to the **Settings** tab.
+4. Go to the **Public sharing** tab in the left sidebar.
+5. For each item you want to deactivate, click on the **X** to revoke its public link.
 
 ## Further reading
 
