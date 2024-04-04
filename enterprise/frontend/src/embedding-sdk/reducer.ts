@@ -6,6 +6,12 @@ import {
 } from "metabase/lib/redux/typed-utils";
 import type { State } from "metabase-types/store";
 
+const initialState = {
+  token: null,
+  loading: false,
+  error: null,
+};
+
 export const getSessionToken = (state: State) =>
   state.plugins.embeddingSessionToken;
 
@@ -17,15 +23,19 @@ export const getOrRefreshSession = createThunkAction(
     const state = getSessionToken(getState());
     const token = state?.token;
 
+    console.log(!state?.loading, !token || token.exp * 1000 < Date.now());
+
     if (!state?.loading && (!token || token.exp * 1000 < Date.now())) {
       _dispatch(refreshTokenAsync(url));
     }
 
-    return getState().plugins.embeddingSessionToken?.token;
+    console.log(getState().plugins.embeddingSessionToken);
+
+    return getState().plugins.embeddingSessionToken;
   },
 );
-
 const REFRESH_TOKEN = "metabase/public/REFRESH_TOKEN";
+
 export const refreshTokenAsync = createAsyncThunk(
   REFRESH_TOKEN,
   async (url: string) => {
@@ -33,15 +43,11 @@ export const refreshTokenAsync = createAsyncThunk(
       method: "GET",
       credentials: "include",
     });
-    return await response.json();
+    const res = await response.json()
+    console.log(res);
+    return res
   },
 );
-
-const initialState = {
-  token: null,
-  loading: false,
-  error: null,
-};
 
 const tokenReducer = createReducer(initialState, builder =>
   builder
@@ -49,7 +55,8 @@ const tokenReducer = createReducer(initialState, builder =>
       state.loading = true;
     })
     .addCase(refreshTokenAsync.fulfilled, (state, action) => {
-      state.token = action.payload;
+      console.log(state, action);
+      state.token = action;
       state.loading = false;
     })
     .addCase(refreshTokenAsync.rejected, (state, action) => {

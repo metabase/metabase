@@ -38,11 +38,12 @@ export const useInitData = ({
   }, []);
 
   useEffect(() => {
-    console.log("useInitData, useEffect", { config, store });
+    console.log("useInitData, useEffect", { config, store, state: store.getState() });
 
     if (config.authType === "jwt") {
       const updateToken = () => {
         const currentState = store.getState();
+        console.log(currentState, getSessionToken(currentState));
         setSessionToken(getSessionToken(currentState));
       };
 
