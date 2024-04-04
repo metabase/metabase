@@ -34,6 +34,7 @@ import {
   getYAxisAutoRangeDefault,
   isStackingValueValid,
   isXAxisScaleValid,
+  getDefaultLegendIsReversed,
   STACKABLE_DISPLAY_TYPES,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import {
@@ -320,6 +321,14 @@ export const STACKABLE_SETTINGS = {
     },
     getHidden: (series, settings) => settings["stackable.stack_type"] == null,
     readDependencies: ["stackable.stack_type", "series"],
+  },
+};
+
+export const LEGEND_SETTINGS = {
+  "legend.is_reversed": {
+    getDefault: (_series, settings) => getDefaultLegendIsReversed(settings),
+    hidden: true,
+    readDependencies: ["stackable.stack_display"],
   },
 };
 

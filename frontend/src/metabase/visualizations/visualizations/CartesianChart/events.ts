@@ -122,7 +122,9 @@ export const getEventDimensions = (
     });
   }
 
-  return dimensions;
+  return dimensions.filter(
+    dimension => dimension.column.source !== "query-transform",
+  );
 };
 
 export const getEventColumnsData = (
@@ -401,7 +403,7 @@ export const getBrushData = (
   );
 
   if (range) {
-    const column = rawSeries[0].data.cols[0];
+    const column = chartModel.dimensionModel.column;
     const card = rawSeries[0].card;
     const question = new Question(card, {}); // FIXME: pass metadata
     const query = question.query();

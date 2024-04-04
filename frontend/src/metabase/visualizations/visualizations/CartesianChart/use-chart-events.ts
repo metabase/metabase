@@ -3,7 +3,10 @@ import type { LineSeriesOption } from "echarts/types/dist/echarts";
 import type * as React from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
-import { ORIGINAL_INDEX_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import {
+  GOAL_LINE_SERIES_ID,
+  ORIGINAL_INDEX_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
   BaseCartesianChartModel,
   ChartDataset,
@@ -92,7 +95,7 @@ export const useChartEvents = (
             return;
           }
 
-          if (event.name === "goal-line") {
+          if (event.seriesId === GOAL_LINE_SERIES_ID) {
             const eventData = getGoalLineHoverData(settings, event);
 
             onHoverChange?.(eventData);

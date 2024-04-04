@@ -1,11 +1,13 @@
 import type React from "react";
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type {
   ComputedVisualizationSettings,
   VisualizationProps,
   RenderingContext,
+  OnChangeCardAndRun,
+  OnChangeCardAndRunOpts,
 } from "metabase/visualizations/types";
 import type { RawSeries } from "metabase-types/api";
 
@@ -28,7 +30,8 @@ export const TransformedVisualization = ({
   transformSeries,
   renderingContext,
 }: TransformedVisualizationProps) => {
-  const { rawSeries, settings, ...restProps } = originalProps;
+  const { rawSeries, settings, onChangeCardAndRun, ...restProps } =
+    originalProps;
 
   const transformedSeries = useMemo(() => {
     return transformSeries(rawSeries, settings, renderingContext);
@@ -38,11 +41,40 @@ export const TransformedVisualization = ({
     return getComputedSettingsForSeries(transformedSeries);
   }, [transformedSeries]);
 
+  const handleChangeCardCandRun: OnChangeCardAndRun = useCallback(
+    options => {
+      const cards = rawSeries.map(series => series.card);
+      const previousCard =
+        options.previousCard != null
+          ? cards.find(c => c.id === options.previousCard?.id)
+          : undefined;
+      const nextCard = cards.find(c => c.id === options.nextCard.id);
+
+      if (!nextCard) {
+        throw new Error(
+          `Could not find a matching card for ${JSON.stringify(
+            options.nextCard,
+          )}`,
+        );
+      }
+
+      const transformedOptions: OnChangeCardAndRunOpts = {
+        ...options,
+        nextCard,
+        previousCard,
+      };
+
+      onChangeCardAndRun(transformedOptions);
+    },
+    [onChangeCardAndRun, rawSeries],
+  );
+
   return (
     <VisualizationComponent
       {...restProps}
       rawSeries={transformedSeries}
       settings={transformedSettings}
+      onChangeCardAndRun={handleChangeCardCandRun}
     />
   );
 };

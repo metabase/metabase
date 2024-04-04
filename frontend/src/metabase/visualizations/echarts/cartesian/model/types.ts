@@ -202,3 +202,5 @@ export type CartesianChartModel = BaseCartesianChartModel & {
   insights: Insight[];
   bubbleSizeDomain: Extent | null;
 };
+
+export type ShowWarning = (warning: string) => void;
