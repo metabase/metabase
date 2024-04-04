@@ -13,7 +13,8 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest ^:parallel and-test
   (mt/test-drivers (mt/normal-drivers)
@@ -796,19 +797,27 @@
               query             (-> (lib/query metadata-provider checkins)
                                     (lib/filter (lib/= checkins-date "2014-05-08"))
                                     (lib/order-by checkins-id)
-                                    (lib/with-fields [checkins-id checkins-date]))]
-          (mt/with-native-query-testing-context query
-            (let [preprocessed (qp.preprocess/preprocess query)]
-              (testing "Preprocessing should give us a [:= field date] filter, not [:between field datetime datetime]"
+                                    (lib/with-fields [checkins-id checkins-date]))
+              preprocessed      (qp.preprocess/preprocess query)]
+          ;; skip this test for drivers that don't create checkins.date as a `DATETIME` (or equivalent), since we can't
+          ;; really expect DateTime-specific stuff to work correctly. MongoDB is one example, since BSON only has the
+          ;; one `org.bson.BsonDateTime` type, and checkins.date is created as a `:type/Instant`
+          (when (isa? (:base-type checkins-date) :type/Date)
+            (testing (format "\nCheckins.date type info:\n%s"
+                             (u/pprint-to-str
+                              (select-keys checkins-date [:base-type :effective-type :database-type])))
+              (testing "\nPreprocessing should give us a [:= field date] filter, not [:between field datetime datetime]"
                 (is (=? {:query {:filter [:=
                                           [:field (mt/id :checkins :date) {:base-type :type/Date, :temporal-unit :default}]
                                           [:absolute-datetime #t "2014-05-08" :default]]}}
-                        preprocessed))))
-            (testing "Results: should return correct rows"
-              (let [results (qp/process-query query)]
-                (is (= [[629 "2014-05-08"]
-                        [733 "2014-05-08"]
-                        [813 "2014-05-08"]]
-                       ;; WRONG => [[991 "2014-05-09T00:00:00-07:00"]]
-                       (mt/formatted-rows [int str]
-                         results)))))))))))
+                        preprocessed)))
+              (testing (format "\nPreprocessed =\n%s" (u/pprint-to-str preprocessed))
+                (mt/with-native-query-testing-context query
+                  (testing "Results: should return correct rows"
+                    (let [results (qp/process-query query)]
+                      (is (= [[629 "2014-05-08"]
+                              [733 "2014-05-08"]
+                              [813 "2014-05-08"]]
+                             ;; WRONG => [[991 "2014-05-09T00:00:00-07:00"]]
+                             (mt/formatted-rows [int str]
+                               results))))))))))))))

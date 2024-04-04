@@ -85,7 +85,8 @@
 
 :global(.text-dark),
 .text-dark,
-:global(.text-dark-hover:hover) {
+:global(.text-dark-hover:hover),
+.textDark {
   color: var(--color-text-dark);
 }
 

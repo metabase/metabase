@@ -73,7 +73,7 @@
     (testing "Make sure standard deviations fail for drivers that don't support it"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"standard-deviation-aggregations is not supported by this driver"
+           #"standard-deviation-aggregations is not supported by sqlite driver"
            (mt/run-mbql-query venues
              {:aggregation [[:stddev $latitude]]}))))))
 

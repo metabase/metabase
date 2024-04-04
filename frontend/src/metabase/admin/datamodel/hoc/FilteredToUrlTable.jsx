@@ -6,6 +6,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { FieldSet } from "metabase/components/FieldSet";
+import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Icon } from "metabase/ui";
@@ -64,12 +65,30 @@ class TableSelectorInner extends Component {
             setSourceTableFn={setTableId}
             triggerElement={
               tableId == null ? (
-                <span className="flex align-center justify-between flex-full text-medium text-bold">
+                <span
+                  className={cx(
+                    CS.flex,
+                    CS.alignCenter,
+                    CS.justifyBetween,
+                    CS.flexFull,
+                    CS.textMedium,
+                    CS.textBold,
+                  )}
+                >
                   {t`Filter by table`}
                   <Icon name="chevrondown" size={12} />
                 </span>
               ) : (
-                <span className="flex align-center justify-between flex-full text-brand text-bold">
+                <span
+                  className={cx(
+                    CS.flex,
+                    CS.alignCenter,
+                    CS.justifyBetween,
+                    CS.flexFull,
+                    CS.textBrand,
+                    CS.textBold,
+                  )}
+                >
                   {table && table.displayName()}
                   <Icon
                     name="close"

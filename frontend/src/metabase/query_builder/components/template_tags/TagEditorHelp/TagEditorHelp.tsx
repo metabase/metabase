@@ -1,8 +1,10 @@
+import cx from "classnames";
 import { t, jt } from "ttag";
 
 import Code from "metabase/components/Code";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { uuid } from "metabase/lib/utils";
@@ -257,7 +259,7 @@ export const TagEditorHelp = ({
   }
 
   return (
-    <div className="px3 text-spaced">
+    <div className={cx("px3", CS.textSpaced)}>
       <h4>{t`What's this for?`}</h4>
       <p>
         {t`Variables in native queries let you dynamically replace values in your queries using filter widgets or through the URL.`}
@@ -312,7 +314,7 @@ export const TagEditorHelp = ({
       />
 
       {showMetabaseLinks && (
-        <p className="pt2 link">
+        <p className={cx("pt2", CS.link)}>
           <ExternalLink
             href={MetabaseSettings.docsUrl(
               "questions/native-editor/sql-parameters",

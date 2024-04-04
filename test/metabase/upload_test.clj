@@ -10,6 +10,7 @@
    [java-time.api :as t]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Field]]
@@ -98,6 +99,10 @@
   "Exectute the body with local_infile off"
   [& body]
   `(do-with-mysql-local-infile-off (fn [] ~@body)))
+
+(defn- format-schema [schema-name]
+  (when (driver/database-supports? driver/*driver* :schemas nil)
+    (ddl.i/format-name driver/*driver* schema-name)))
 
 (defn sync-upload-test-table!
   "Creates a table in the app db and syncs it synchronously, setting is_upload=true. Returns the table instance.
@@ -475,7 +480,7 @@
     (mt/with-current-user user-id
       (let [db                (t2/select-one :model/Database db-id)
             schema-name       (if (contains? args :schema-name)
-                                (:schema-name args)
+                                (format-schema (:schema-name args))
                                 (sql.tx/session-schema driver/*driver*))
             file              (csv-file-with
                                ["id, name"
@@ -564,54 +569,66 @@
   [table]
   (mt/rows (query-table table)))
 
+(def ^:private example-files
+  {:comma      ["id    ,nulls,string ,bool ,number       ,date      ,datetime"
+                "2\t   ,,          a ,true ,1.1\t        ,2022-01-01,2022-01-01T00:00:00"
+                "\" 3\",,           b,false,\"$ 1,000.1\",2022-02-01,2022-02-01T00:00:00"]
+
+   :semi-colon ["id    ;nulls;string ;bool ;number       ;date      ;datetime"
+                "2\t   ;;          a ;true ;1.1\t        ;2022-01-01;2022-01-01T00:00:00"
+                "\" 3\";;           b;false;\"$ 1,000.1\";2022-02-01;2022-02-01T00:00:00"]
+
+   :tab        ["id    \tnulls\tstring \tbool \tnumber       \tdate      \tdatetime"
+                "2   \t\t          a \ttrue \t1.1        \t2022-01-01\t2022-01-01T00:00:00"
+                "\" 3\"\t\t           b\tfalse\t\"$ 1,000.1\"\t2022-02-01\t2022-02-01T00:00:00"]})
+
 (deftest create-from-csv-test
-  (testing "Upload a CSV file"
-    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-      (with-mysql-local-infile-on-and-off
-        (with-upload-table!
-          [table (let [table-name (mt/random-name)]
-                   (@#'upload/create-from-csv!
-                    driver/*driver*
-                    (mt/id)
-                    table-name
-                    (csv-file-with ["id    ,nulls,string ,bool ,number       ,date      ,datetime"
-                                    "2\t   ,,          a ,true ,1.1\t        ,2022-01-01,2022-01-01T00:00:00"
-                                    "\" 3\",,           b,false,\"$ 1,000.1\",2022-02-01,2022-02-01T00:00:00"]))
-                   (sync-upload-test-table! :database (mt/db) :table-name table-name))]
-          (testing "Table and Fields exist after sync"
-            (is (=? {:name          #"(?i)_mb_row_id"
-                     :semantic_type (if (= driver/*driver* :redshift)
-                                        ;; TODO: there is a bug in the redshift driver where the semantic_type is not set
-                                        ;; to type/PK even if the column is a PK
-                                      :type/Category
-                                      :type/PK)
-                     :base_type     :type/BigInteger}
-                    (t2/select-one Field :database_position 0 :table_id (:id table))))
-            (is (=? {:name          #"(?i)id"
-                     :semantic_type :type/PK
-                     :base_type     :type/BigInteger}
-                    (t2/select-one Field :database_position 1 :table_id (:id table))))
-            (is (=? {:name      #"(?i)nulls"
-                     :base_type :type/Text}
-                    (t2/select-one Field :database_position 2 :table_id (:id table))))
-            (is (=? {:name      #"(?i)string"
-                     :base_type :type/Text}
-                    (t2/select-one Field :database_position 3 :table_id (:id table))))
-            (is (=? {:name      #"(?i)bool"
-                     :base_type :type/Boolean}
-                    (t2/select-one Field :database_position 4 :table_id (:id table))))
-            (is (=? {:name      #"(?i)number"
-                     :base_type :type/Float}
-                    (t2/select-one Field :database_position 5 :table_id (:id table))))
-            (is (=? {:name      #"(?i)date"
-                     :base_type :type/Date}
-                    (t2/select-one Field :database_position 6 :table_id (:id table))))
-            (is (=? {:name      #"(?i)datetime"
-                     :base_type :type/DateTime}
-                    (t2/select-one Field :database_position 7 :table_id (:id table))))
-            (testing "Check the data was uploaded into the table"
-              (is (= 2
-                     (count (rows-for-table table)))))))))))
+  (doseq [[separator lines] example-files]
+    (testing (format "Upload a CSV file with %s separators." separator)
+      (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+        (with-mysql-local-infile-on-and-off
+         (with-upload-table!
+           [table (let [table-name (mt/random-name)]
+                    (@#'upload/create-from-csv!
+                     driver/*driver*
+                     (mt/id)
+                     table-name
+                     (csv-file-with lines))
+                    (sync-upload-test-table! :database (mt/db) :table-name table-name))]
+           (testing "Table and Fields exist after sync"
+             (is (=? {:name          #"(?i)_mb_row_id"
+                      :semantic_type (if (= driver/*driver* :redshift)
+                                       ;; TODO: there is a bug in the redshift driver where the semantic_type is not set
+                                       ;; to type/PK even if the column is a PK
+                                       :type/Category
+                                       :type/PK)
+                      :base_type     :type/BigInteger}
+                     (t2/select-one Field :database_position 0 :table_id (:id table))))
+             (is (=? {:name          #"(?i)id"
+                      :semantic_type :type/PK
+                      :base_type     :type/BigInteger}
+                     (t2/select-one Field :database_position 1 :table_id (:id table))))
+             (is (=? {:name      #"(?i)nulls"
+                      :base_type :type/Text}
+                     (t2/select-one Field :database_position 2 :table_id (:id table))))
+             (is (=? {:name      #"(?i)string"
+                      :base_type :type/Text}
+                     (t2/select-one Field :database_position 3 :table_id (:id table))))
+             (is (=? {:name      #"(?i)bool"
+                      :base_type :type/Boolean}
+                     (t2/select-one Field :database_position 4 :table_id (:id table))))
+             (is (=? {:name      #"(?i)number"
+                      :base_type :type/Float}
+                     (t2/select-one Field :database_position 5 :table_id (:id table))))
+             (is (=? {:name      #"(?i)date"
+                      :base_type :type/Date}
+                     (t2/select-one Field :database_position 6 :table_id (:id table))))
+             (is (=? {:name      #"(?i)datetime"
+                      :base_type :type/DateTime}
+                     (t2/select-one Field :database_position 7 :table_id (:id table))))
+             (testing "Check the data was uploaded into the table"
+               (is (= 2
+                      (count (rows-for-table table))))))))))))
 
 (deftest create-from-csv-date-test
   (testing "Upload a CSV file with a datetime column"
@@ -642,8 +659,8 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (mt/with-dynamic-redefs [driver/db-default-timezone (constantly "Z")
-                      upload/current-database    (constantly (mt/db))]
-          (let [table-name (mt/random-name)
+                                 upload/current-database    (constantly (mt/db))]
+          (let [table-name     (mt/random-name)
                 datetime-pairs [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
                                 ["2022-01-01T12:00:00-07:00" "2022-01-01T19:00:00Z"]
                                 ["2022-01-01T12:00:00-07:30" "2022-01-01T19:30:00Z"]
@@ -1045,11 +1062,26 @@
                           first
                           :value))))))))
 
-(defn append-csv!
-  "Wraps [[upload/append-csv!]] setting [[upload/*sync-synchronously?*]] to `true` for test purposes."
-  [& args]
+(defn- update-csv-synchronously!
+  "Wraps [[upload/upload-csv!]] setting [[upload/*sync-synchronously?*]] to `true` for test purposes."
+  [options]
   (binding [upload/*sync-synchronously?* true]
-    (apply upload/append-csv! args)))
+    (upload/update-csv! options)))
+
+(defn- update-csv!
+  "Shorthand for synchronously updating a CSV"
+  [action options]
+  (update-csv-synchronously! (assoc options :action action)))
+
+(defn- append-csv!
+  "Shorthand for synchronously appending to a CSV"
+  [options]
+  (update-csv! ::upload/append options))
+
+(defn- replace-csv!
+  "Shorthand for synchronously replacing a CSV"
+  [options]
+  (update-csv! ::upload/replace options))
 
 (deftest create-csv-upload!-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
@@ -1126,9 +1158,8 @@
                 (:name new-field)
                 (:display_name new-field))))))))
 
-(deftest csv-upload-snowplow-test
-  ;; Just test with h2 because snowplow should be independent of the driver
-  (mt/test-driver :h2
+(deftest ^:mb/once csv-upload-snowplow-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (snowplow-test/with-fake-snowplow-collector
       (with-upload-table! [_table (card->table (upload-example-csv!))]
         (testing "Successfully creating a CSV Upload publishes statistics to Snowplow"
@@ -1155,9 +1186,8 @@
                     :user-id (str (mt/user->id :rasta))}
                    (last (snowplow-test/pop-event-data-and-user-id!))))))))))
 
-(deftest csv-upload-audit-log-test
-  ;; Just test with h2 because these events are independent of the driver
-  (mt/test-driver :h2
+(deftest ^:mb/once csv-upload-audit-log-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-premium-features #{:audit-app}
       (with-upload-table!
        [_table (card->table (upload-example-csv!))]
@@ -1166,7 +1196,7 @@
                 :model    "Table"
                 :model_id pos?
                 :details  {:db-id       pos?
-                           :schema-name "PUBLIC"
+                           :schema-name (format-schema "public")
                            :table-name  string?
                            :model-id    pos?
                            :stats       {:num-rows          2
@@ -1176,9 +1206,8 @@
                                          :upload-seconds    pos?}}}
                (last-audit-event :upload-create)))))))
 
-(deftest create-csv-upload!-failure-test
-  ;; Just test with postgres because failure should be independent of the driver
-  (mt/test-driver :postgres
+(deftest ^:mb/once create-csv-upload!-failure-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-empty-db
       (testing "Uploads must be enabled"
         (doseq [uploads-enabled-value [false nil]]
@@ -1195,7 +1224,7 @@
         (mt/with-dynamic-redefs [driver/database-supports? (constantly false)]
           (is (thrown-with-msg?
                 java.lang.Exception
-                #"^Uploads are not supported on Postgres databases\."
+                #"^Uploads are not supported on \w+ databases\."
                 (upload-example-csv! :schema-name "public", :table-prefix "uploaded_magic_")))))
       (testing "User must have write permissions on the collection"
         (mt/with-non-admin-groups-no-root-collection-perms
@@ -1209,8 +1238,8 @@
                    (= :schema-filters (keyword (:type conn-prop))))
                  (driver/connection-properties driver))))
 
-(deftest create-csv-upload!-schema-does-not-sync-test
-  ;; Just test with postgres because failure should be independent of the driver
+(deftest ^:mb/once create-csv-upload!-schema-does-not-sync-test
+  ;; We only need to test this for a single driver, and the way this test has been written is coupled to Postgres
   (mt/test-driver :postgres
     (mt/with-empty-db
       (let [driver             (driver.u/database->driver (mt/db))
@@ -1223,6 +1252,7 @@
                                                                  patterns-type-prop "public"))})
         (testing "Upload should fail if table can't be found after sync, for example because of schema filters"
           (try (upload-example-csv! {:schema-name "public"})
+               (is (false? :should-not-be-reached))
                (catch Exception e
                  (is (= {:status-code 422}
                         (ex-data e)))
@@ -1232,7 +1262,7 @@
           (is (false? (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
                         (-> (jdbc/query (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                                         ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public')"])
-                            first :exists)))))))))
+                            first vals first)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           append-csv!                                                          |
@@ -1273,9 +1303,9 @@
      (~macro-fn ~@body)
      ~@body))
 
-(defn append-csv-with-defaults!
+(defn update-csv-with-defaults!
   "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden."
-  [& {:keys [uploads-enabled user-id file table-id is-upload]
+  [action & {:keys [uploads-enabled user-id file table-id is-upload]
       :or {uploads-enabled true
            user-id         (mt/user->id :crowberto)
            file            (csv-file-with
@@ -1291,14 +1321,18 @@
                           (create-upload-table!))
               table-id (or table-id (:id new-table))]
           (t2/update! :model/Table table-id {:is_upload is-upload})
-          (try (append-csv! {:table-id table-id
-                             :file     file})
+          (try (update-csv! action {:table-id table-id, :file file})
                (finally
                  ;; Drop the table in the testdb if a new one was created.
                  (when new-table
                    (driver/drop-table! driver/*driver*
                                        (mt/id)
                                        (#'upload/table-identifier new-table))))))))))
+
+(defn append-csv-with-defaults!
+  "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden."
+  [& {:as options}]
+  (update-csv-with-defaults! ::upload/append options))
 
 (defn catch-ex-info* [f]
   (try
@@ -1547,9 +1581,8 @@
                    (rows-for-table table))))
           (io/delete-file file))))))
 
-(deftest csv-append-snowplow-test
-  ;; Just test with h2 because snowplow should be independent of the driver
-  (mt/test-driver :h2
+(deftest ^:mb/once csv-append-snowplow-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (snowplow-test/with-fake-snowplow-collector
 
      (with-upload-table! [table (create-upload-table!)]
@@ -1587,9 +1620,8 @@
                    :user-id (str (mt/user->id :crowberto))}
                   (last (snowplow-test/pop-event-data-and-user-id!))))))))))
 
-(deftest csv-append-audit-log-test
-  ;; Just test with h2 because these events are independent of the driver
-  (mt/test-driver :h2
+(deftest ^:mb/once csv-append-audit-log-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-premium-features #{:audit-app}
       (with-upload-table! [table (create-upload-table!)]
         (let [csv-rows ["name" "Luke Skywalker"]
@@ -1601,7 +1633,7 @@
                    :model    "Table"
                    :model_id (:id table)
                    :details  {:db-id       pos?
-                              :schema-name "PUBLIC"
+                              :schema-name (format-schema "public")
                               :table-name  string?
                               :stats       {:num-rows          1
                                             :num-columns       1
@@ -1895,6 +1927,25 @@
                    [2 1.0 1.0]]
                   (rows-for-table table)))))))))
 
+(deftest create-from-csv-int-and-non-integral-float-test
+  (testing "Creation should handle a mix of int and float values in any order"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+       (with-upload-table!
+         [table (let [table-name (mt/random-name)]
+                  (@#'upload/create-from-csv!
+                   driver/*driver*
+                   (mt/id)
+                   table-name
+                   (csv-file-with ["float-1,float-2"
+                                   "1,   1.1"
+                                   "1.1, 1"]))
+                  (sync-upload-test-table! :database (mt/db) :table-name table-name))]
+         (testing "Check the data was uploaded into the table correctly"
+           (is (= [[1 1.0 1.1]
+                   [2 1.1 1.0]]
+                  (rows-for-table table)))))))))
+
 (deftest append-from-csv-int-and-float-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "Append should handle a mix of int and float-or-int values being appended to an int column"
@@ -1914,6 +1965,30 @@
                   [2 1 1]
                   [3 1 1]]
                  (rows-for-table table)))
+
+          (io/delete-file file))))))
+
+(deftest replace-from-csv-int-and-float-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "Append should handle a mix of int and float-or-int values being appended to an int column"
+      (with-upload-table! [table (create-upload-table!
+                                  :col->upload-type (ordered-map/ordered-map
+                                                     :_mb_row_id ::upload/auto-incrementing-int-pk
+                                                     :number_1 ::upload/int
+                                                     :number_2 ::upload/int)
+                                  :rows [[1, 1]])]
+
+        (let [csv-rows ["number-1, number-2"
+                        "1.0, 1"
+                        "1  , 1.0"]
+              file     (csv-file-with csv-rows (mt/random-name))]
+          (is (some? (replace-csv! {:file file, :table-id (:id table)})))
+          (let [table-rows (rows-for-table table)
+                ;; Some drivers may reset the primary key on truncate, so we only test that they are ascending
+                first-pk   (ffirst table-rows)]
+            (is (= [[first-pk 1 1]
+                    [(inc first-pk) 1 1]]
+                   table-rows)))
 
           (io/delete-file file))))))
 

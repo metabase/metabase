@@ -400,35 +400,45 @@
   (mt/test-driver :redshift
     (testing "`table-privileges` should return the correct data for current_user and role privileges"
       (mt/with-temp [Database database {:engine :redshift :details (tx/dbdef->connection-details :redshift nil nil)}]
-        (let [schema-name     (redshift.test/unique-session-schema)
-              username        (str (sql.tu.unique-prefix/unique-prefix) "privilege_rows_test_role")
-              db-name         (:name database)
-              table-name      (tx/db-qualified-table-name db-name "table")
-              qual-tbl-name   (format "\"%s\".\"%s\"" schema-name table-name)
-              view-nm         (tx/db-qualified-table-name db-name "view")
-              qual-view-name  (format "\"%s\".\"%s\"" schema-name view-nm)
-              mview-name      (tx/db-qualified-table-name db-name "mview")
-              qual-mview-name (format "\"%s\".\"%s\"" schema-name mview-name)
-              conn-spec       (sql-jdbc.conn/db->pooled-connection-spec database)
-              get-privileges  (fn []
-                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
-                                  [spec [:redshift (assoc (:details database) :user username)]]
-                                  (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                    (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
+        (let [schema-name                  (redshift.test/unique-session-schema)
+              username                     (str (sql.tu.unique-prefix/unique-prefix) "privilege_rows_test_role")
+              db-name                      (:name database)
+              table-name                   (tx/db-qualified-table-name db-name "table")
+              qual-tbl-name                (format "\"%s\".\"%s\"" schema-name table-name)
+              table-partial-select-name    (tx/db-qualified-table-name db-name "tbl_sel")
+              qual-tbl-partial-select-name (format "\"%s\".\"%s\"" schema-name table-partial-select-name)
+              table-partial-update-name    (tx/db-qualified-table-name db-name "tbl_upd")
+              qual-tbl-partial-update-name (format "\"%s\".\"%s\"" schema-name table-partial-update-name)
+              view-nm                      (tx/db-qualified-table-name db-name "view")
+              qual-view-name               (format "\"%s\".\"%s\"" schema-name view-nm)
+              mview-name                   (tx/db-qualified-table-name db-name "mview")
+              qual-mview-name              (format "\"%s\".\"%s\"" schema-name mview-name)
+              conn-spec                    (sql-jdbc.conn/db->pooled-connection-spec database)
+              get-privileges               (fn []
+                                             (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                                               [spec [:redshift (assoc (:details database) :user username)]]
+                                               (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
+                                                 (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
           (try
            (execute! (format
                       (str
                        "CREATE TABLE %1$s (id INTEGER);\n"
                        "CREATE VIEW %2$s AS SELECT * from %1$s;\n"
                        "CREATE MATERIALIZED VIEW %3$s AS SELECT * from %1$s;\n"
-                       "CREATE USER \"%4$s\" WITH PASSWORD '%5$s';\n"
-                       "GRANT SELECT ON %1$s TO \"%4$s\";\n"
-                       "GRANT UPDATE ON %1$s TO \"%4$s\";\n"
-                       "GRANT SELECT ON %2$s TO \"%4$s\";\n"
-                       "GRANT SELECT ON %3$s TO \"%4$s\";")
+                       "CREATE TABLE %4$s (id INTEGER);\n"
+                       "CREATE TABLE %5$s (id INTEGER);\n"
+                       "CREATE USER \"%6$s\" WITH PASSWORD '%7$s';\n"
+                       "GRANT SELECT ON %1$s TO \"%6$s\";\n"
+                       "GRANT UPDATE ON %1$s TO \"%6$s\";\n"
+                       "GRANT SELECT ON %2$s TO \"%6$s\";\n"
+                       "GRANT SELECT ON %3$s TO \"%6$s\";\n"
+                       "GRANT SELECT (id) ON %4$s TO \"%6$s\";\n"
+                       "GRANT UPDATE (id) ON %5$s TO \"%6$s\";")
                       qual-tbl-name
                       qual-view-name
                       qual-mview-name
+                      qual-tbl-partial-select-name
+                      qual-tbl-partial-update-name
                       username
                       (get-in database [:details :password])))
            (testing "check that without USAGE privileges on the schema, nothing is returned"
@@ -436,40 +446,41 @@
                     (get-privileges))))
            (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
              (jdbc/execute! conn-spec (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\";" schema-name username))
-             (is (= #{{:role   nil
-                       :schema schema-name
-                       :table  table-name
-                       :update true
-                       :select true
-                       :insert false
-                       :delete false}
-                      {:role   nil
-                       :schema schema-name
-                       :table  view-nm
-                       :update false
-                       :select true
-                       :insert false
-                       :delete false}
-                      {:role   nil
-                       :schema schema-name
-                       :table  mview-name
-                       :select true
-                       :update false
-                       :insert false
-                       :delete false}}
+             (is (= (into #{} (map #(merge {:schema schema-name
+                                            :role   nil
+                                            :select false
+                                            :update false
+                                            :insert false
+                                            :delete false}
+                                           %)
+                                   [{:table  table-name
+                                     :update true
+                                     :select true}
+                                    {:table  table-partial-select-name
+                                     :select true}
+                                    {:table  table-partial-update-name
+                                     :update true}
+                                    {:table  view-nm
+                                     :select true}
+                                    {:table  mview-name
+                                     :select true}]))
                     (get-privileges))))
            (finally
             (execute! (format
-                         (str
-                          "DROP TABLE IF EXISTS %2$s CASCADE;\n"
-                          "DROP VIEW IF EXISTS %3$s CASCADE;\n"
-                          "DROP MATERIALIZED VIEW IF EXISTS %4$s CASCADE;\n"
-                          "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%1$s\" FROM \"%5$s\";\n"
-                          "REVOKE ALL PRIVILEGES ON SCHEMA \"%1$s\" FROM \"%5$s\";\n"
-                          "REVOKE USAGE ON SCHEMA \"%1$s\" FROM \"%5$s\";\n"
-                          "DROP USER IF EXISTS \"%5$s\";")
-                         schema-name
-                         qual-tbl-name
-                         qual-view-name
-                         qual-mview-name
-                         username)))))))))
+                       (str
+                        "DROP TABLE IF EXISTS %2$s CASCADE;\n"
+                        "DROP VIEW IF EXISTS %3$s CASCADE;\n"
+                        "DROP MATERIALIZED VIEW IF EXISTS %4$s CASCADE;\n"
+                        "DROP TABLE IF EXISTS %5$s CASCADE;\n"
+                        "DROP TABLE IF EXISTS %6$s CASCADE;\n"
+                        "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%1$s\" FROM \"%7$s\";\n"
+                        "REVOKE ALL PRIVILEGES ON SCHEMA \"%1$s\" FROM \"%7$s\";\n"
+                        "REVOKE USAGE ON SCHEMA \"%1$s\" FROM \"%7$s\";\n"
+                        "DROP USER IF EXISTS \"%7$s\";")
+                       schema-name
+                       qual-tbl-name
+                       qual-view-name
+                       qual-mview-name
+                       qual-tbl-partial-select-name
+                       qual-tbl-partial-update-name
+                       username)))))))))

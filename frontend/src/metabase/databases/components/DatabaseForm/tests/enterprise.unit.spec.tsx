@@ -13,9 +13,9 @@ const setupEnterprise = (opts?: SetupOpts) => {
 };
 
 describe("DatabaseForm", () => {
-  it("should not allow to configure cache ttl", () => {
+  it("should not allow to configure cache ttl", async () => {
     setupEnterprise({ isCachingEnabled: true });
-    userEvent.click(screen.getByText("Show advanced options"));
+    await userEvent.click(screen.getByText("Show advanced options"));
     expect(
       screen.getByText("Choose when syncs and scans happen"),
     ).toBeInTheDocument();

@@ -8,7 +8,7 @@ export function popover() {
 }
 
 export function mantinePopover() {
-  const MANTINE_POPOVER = "[data-popover=mantine-popover]";
+  const MANTINE_POPOVER = "[data-element-id=mantine-popover]";
   return cy.get(MANTINE_POPOVER).should("be.visible");
 }
 
@@ -216,5 +216,5 @@ export const undoToastList = () => {
 };
 
 export function dashboardCards() {
-  return cy.get("#Dashboard-Cards-Container");
+  return cy.get("[data-element-id=dashboard-cards-container]");
 }

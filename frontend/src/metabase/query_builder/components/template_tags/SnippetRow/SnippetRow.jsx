@@ -29,7 +29,18 @@ class SnippetRowInner extends Component {
         )}
       >
         <div
-          className="cursor-pointer bg-light-hover text-bold flex align-center justify-between py2 px3 hover-parent hover--display"
+          className={cx(
+            CS.cursorPointer,
+            "bg-light-hover",
+            CS.textBold,
+            CS.flex,
+            CS.alignCenter,
+            CS.justifyBetween,
+            CS.py2,
+            CS.px3,
+            CS.hoverParent,
+            CS.hoverDisplay,
+          )}
           onClick={() => this.setState({ isOpen: !isOpen })}
         >
           <SnippetContent
@@ -42,23 +53,35 @@ class SnippetRowInner extends Component {
                   }
             }
           >
-            <Icon name="snippet" className="hover-child--hidden text-light" />
+            <Icon
+              name="snippet"
+              className={cx(CS.hoverChildHidden, "text-light")}
+            />
             <Icon
               name={insertSnippet ? "arrow_left_to_line" : "snippet"}
-              className="hover-child"
+              className={CS.hoverChild}
             />
-            <span className="flex-full ml1">{snippet.name}</span>
+            <span className={cx(CS.flexFull, CS.ml1)}>{snippet.name}</span>
           </SnippetContent>
           <Icon
             name={isOpen ? "chevronup" : "chevrondown"}
-            className={cx({ "hover-child": !isOpen })}
+            className={cx({ [CS.hoverChild]: !isOpen })}
           />
         </div>
         {isOpen && (
           <div className="px3 pb2 pt1">
             {description && <p className="text-medium mt0">{description}</p>}
             <pre
-              className="bg-light bordered rounded p1 text-monospace text-small text-pre-wrap overflow-auto"
+              className={cx(
+                "bg-light",
+                CS.bordered,
+                CS.rounded,
+                CS.p1,
+                CS.textMonospace,
+                CS.textSmall,
+                CS.textPreWrap,
+                CS.overflowAuto,
+              )}
               style={{ maxHeight: 320 }}
             >
               {content}

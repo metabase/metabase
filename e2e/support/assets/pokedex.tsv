@@ -1,0 +1,203 @@
+Id	No	Name	Type1	Type2
+1	1	Bulbasaur	Grass	Poison
+2	2	Ivysaur	Grass	Poison
+3	3	Venusaur	Grass	Poison
+4	3	Mega Venusaur	Grass	Poison
+5	4	Charmander	Fire	
+6	5	Charmeleon	Fire	
+7	6	Charizard	Fire	Flying
+8	6	Mega Charizard X	Fire	Dragon
+9	6	Mega Charizard Y	Fire	Flying
+10	7	Squirtle	Water	
+11	8	Wartortle	Water	
+12	9	Blastoise	Water	
+13	9	Mega Blastoise	Water	
+14	10	Caterpie	Bug	
+15	11	Metapod	Bug	
+16	12	Butterfree	Bug	Flying
+17	13	Weedle	Bug	Poison
+18	14	Kakuna	Bug	Poison
+19	15	Beedrill	Bug	Poison
+20	15	Mega Beedrill	Bug	Poison
+21	16	Pidgey	Normal	Flying
+22	17	Pidgeotto	Normal	Flying
+23	18	Pidgeot	Normal	Flying
+24	18	Mega Pidgeot	Normal	Flying
+25	19	Rattata	Normal	
+26	19	Alolan Rattata	Dark	Normal
+27	20	Raticate	Normal	
+28	20	Alolan Raticate	Dark	Normal
+29	21	Spearow	Normal	Flying
+30	22	Fearow	Normal	Flying
+31	23	Ekans	Poison	
+32	24	Arbok	Poison	
+33	25	Pikachu	Electric	
+34	26	Raichu	Electric	
+35	26	Alolan Raichu	Electric	Psychic
+36	27	Sandshrew	Ground	
+37	27	Alolan Sandshrew	Ice	Steel
+38	28	Sandslash	Ground	
+39	28	Alolan Sandslash	Ice	Steel
+40	29	Nidoran F	Poison	
+41	30	Nidorina	Poison	
+42	31	Nidoqueen	Poison	Ground
+43	32	Nidoran M	Poison	
+44	33	Nidorino	Poison	
+45	34	Nidoking	Poison	Ground
+46	35	Clefairy	Fairy	
+47	36	Clefable	Fairy	
+48	37	Vulpix	Fire	
+49	37	Alolan Vulpix	Ice	
+50	38	Ninetales	Fire	
+51	38	Alolan Ninetales	Ice	Fairy
+52	39	Jigglypuff	Normal	Fairy
+53	40	Wigglytuff	Normal	Fairy
+54	41	Zubat	Poison	Flying
+55	42	Golbat	Poison	Flying
+56	43	Oddish	Grass	Poison
+57	44	Gloom	Grass	Poison
+58	45	Vileplume	Grass	Poison
+59	46	Paras	Bug	Grass
+60	47	Parasect	Bug	Grass
+61	48	Venonat	Bug	Poison
+62	49	Venomoth	Bug	Poison
+63	50	Diglett	Ground	
+64	50	Alolan Diglett	Ground	Steel
+65	51	Dugtrio	Ground	
+66	51	Alolan Dugtrio	Ground	Steel
+67	52	Meowth	Normal	
+68	52	Alolan Meowth	Dark	
+69	52	Galarian Meowth	Steel	
+70	53	Persian	Normal	
+71	53	Alolan Persian	Dark	
+72	54	Psyduck	Water	
+73	55	Golduck	Water	
+74	56	Mankey	Fighting	
+75	57	Primeape	Fighting	
+76	58	Growlithe	Fire	
+77	58	Hisuian Growlithe	Fire	Rock
+78	59	Arcanine	Fire	
+79	59	Hisuian Arcanine	Fire	Rock
+80	60	Poliwag	Water	
+81	61	Poliwhirl	Water	
+82	62	Poliwrath	Water	Fighting
+83	63	Abra	Psychic	
+84	64	Kadabra	Psychic	
+85	65	Alakazam	Psychic	
+86	65	Mega Alakazam	Psychic	
+87	66	Machop	Fighting	
+88	67	Machoke	Fighting	
+89	68	Machamp	Fighting	
+90	69	Bellsprout	Grass	Poison
+91	70	Weepinbell	Grass	Poison
+92	71	Victreebel	Grass	Poison
+93	72	Tentacool	Water	Poison
+94	73	Tentacruel	Water	Poison
+95	74	Geodude	Rock	Ground
+96	74	Alolan Geodude	Rock	Electric
+97	75	Graveler	Rock	Ground
+98	75	Alolan Graveler	Rock	Electric
+99	76	Golem	Rock	Ground
+100	76	Alolan Golem	Rock	Electric
+101	77	Ponyta	Fire	
+102	77	Galarian Ponyta	Psychic	
+103	78	Rapidash	Fire	
+104	78	Galarian Rapidash	Psychic	Fairy
+105	79	Slowpoke	Water	Psychic
+106	79	Galarian Slowpoke	Psychic	
+107	80	Slowbro	Water	Psychic
+108	80	Galarian Slowbro	Poison	Psychic
+109	80	Mega Slowbro	Water	Psychic
+110	81	Magnemite	Electric	Steel
+111	82	Magneton	Electric	Steel
+112	83	Farfetch'd	Normal	Flying
+113	83	Galarian Farfetch'd	Fighting	
+114	84	Doduo	Normal	Flying
+115	85	Dodrio	Normal	Flying
+116	86	Seel	Water	
+117	87	Dewgong	Water	Ice
+118	88	Grimer	Poison	
+119	88	Alolan Grimer	Poison	Dark
+120	89	Muk	Poison	
+121	89	Alolan Muk	Poison	Dark
+122	90	Shellder	Water	
+123	91	Cloyster	Water	Ice
+124	92	Gastly	Ghost	Poison
+125	93	Haunter	Ghost	Poison
+126	94	Gengar	Ghost	Poison
+127	94	Mega Gengar	Ghost	Poison
+128	95	Onix	Rock	Ground
+129	96	Drowzee	Psychic	
+130	97	Hypno	Psychic	
+131	98	Krabby	Water	
+132	99	Kingler	Water	
+133	100	Voltorb	Electric	
+134	100	Hisuian Voltorb	Electric	Grass
+135	101	Electrode	Electric	
+136	101	Hisuian Electrode	Electric	Grass
+137	102	Exeggcute	Grass	Psychic
+138	103	Exeggutor	Grass	Psychic
+139	103	Alolan Exeggutor	Grass	Dragon
+140	104	Cubone	Ground	
+141	105	Marowak	Ground	
+142	105	Alolan Marowak	Fire	Ghost
+143	106	Hitmonlee	Fighting	
+144	107	Hitmonchan	Fighting	
+145	108	Lickitung	Normal	
+146	109	Koffing	Poison	
+147	110	Weezing	Poison	
+148	110	Galarian Weezing	Poison	Fairy
+149	111	Rhyhorn	Ground	Rock
+150	112	Rhydon	Ground	Rock
+151	113	Chansey	Normal	
+152	114	Tangela	Grass	
+153	115	Kangaskhan	Normal	
+154	115	Mega Kangaskhan	Normal	
+155	116	Horsea	Water	
+156	117	Seadra	Water	
+157	118	Goldeen	Water	
+158	119	Seaking	Water	
+159	120	Staryu	Water	
+160	121	Starmie	Water	Psychic
+161	122	Mr. Mime	Psychic	Fairy
+162	122	Galarian Mr. Mime	Ice	Psychic
+163	123	Scyther	Bug	Flying
+164	124	Jynx	Ice	Psychic
+165	125	Electabuzz	Electric	
+166	126	Magmar	Fire	
+167	127	Pinsir	Bug	
+168	127	Mega Pinsir	Bug	Flying
+169	128	Tauros	Fighting	
+170	128	Paldean Tauros	Fighting	Fire
+171	128	Paldean Tauros	Fighting	Water
+172	128	Tauros	Normal	
+173	129	Magikarp	Water	
+174	130	Gyarados	Water	Flying
+175	130	Mega Gyarados	Water	Dark
+176	131	Lapras	Water	Ice
+177	132	Ditto	Normal	
+178	133	Eevee	Normal	
+179	134	Vaporeon	Water	
+180	135	Jolteon	Electric	
+181	136	Flareon	Fire	
+182	137	Porygon	Normal	
+183	138	Omanyte	Rock	Water
+184	139	Omastar	Rock	Water
+185	140	Kabuto	Rock	Water
+186	141	Kabutops	Rock	Water
+187	142	Aerodactyl	Rock	Flying
+188	142	Mega Aerodactyl	Rock	Flying
+189	143	Snorlax	Normal	
+190	144	Articuno	Ice	Flying
+191	144	Galarian Articuno	Psychic	Flying
+192	145	Zapdos	Electric	Flying
+193	145	Galarian Zapdos	Fighting	Flying
+194	146	Moltres	Fire	Flying
+195	146	Galarian Moltres	Dark	Flying
+196	147	Dratini	Dragon	
+197	148	Dragonair	Dragon	
+198	149	Dragonite	Dragon	Flying
+199	150	Mewtwo	Psychic	
+200	150	Mega Mewtwo X	Psychic	Fighting
+201	150	Mega Mewtwo Y	Psychic	
+202	151	Mew	Psychic	

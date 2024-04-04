@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import MetabaseSettings from "metabase/lib/settings";
 import { Select } from "metabase/ui";
 import type { TemplateTag } from "metabase-types/api";
@@ -65,7 +66,7 @@ export function FilterWidgetTypeSelect({
               "the-field-filter-variable-type",
             )}
             target="_blank"
-            className="link"
+            className={CS.link}
           >
             {t`Learn more`}
           </Link>

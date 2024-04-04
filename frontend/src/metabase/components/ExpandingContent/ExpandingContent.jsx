@@ -2,6 +2,7 @@
 import cx from "classnames";
 import { Component } from "react";
 
+import CS from "metabase/css/core/index.css";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
 class ExpandingContent extends Component {
@@ -67,7 +68,7 @@ class ExpandingContent extends Component {
           maxHeight: !animateHeight || isOpen ? maxHeight : 0,
           opacity: !animateOpacity || isOpen ? 1 : 0,
         }}
-        className={cx({ "overflow-hidden": !isOpen })}
+        className={cx({ [CS.overflowHidden]: !isOpen })}
       >
         {children}
       </div>

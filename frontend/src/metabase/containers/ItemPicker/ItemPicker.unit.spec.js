@@ -193,7 +193,7 @@ describe("ItemPicker", () => {
     await openCollectionWait(COLLECTION.REGULAR.name);
     let header = within(getItemPickerHeader());
 
-    userEvent.click(header.getByText(/Our analytics/i));
+    await userEvent.click(header.getByText(/Our analytics/i));
 
     header = within(getItemPickerHeader());
     const list = within(getItemPickerList());
@@ -210,7 +210,7 @@ describe("ItemPicker", () => {
   it("calls onChange when selecting an item", async () => {
     const { onChange } = await setup();
 
-    userEvent.click(screen.getByText(DASHBOARD.REGULAR.name));
+    await userEvent.click(screen.getByText(DASHBOARD.REGULAR.name));
 
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining(DASHBOARD.REGULAR),
@@ -220,7 +220,7 @@ describe("ItemPicker", () => {
 
   it("doesn't call onChange if it's not a collection picker", async () => {
     const { onChange } = await setup();
-    userEvent.click(screen.getByText(COLLECTION.REGULAR.name));
+    await userEvent.click(screen.getByText(COLLECTION.REGULAR.name));
     expect(onChange).not.toHaveBeenCalled();
   });
 
@@ -229,7 +229,7 @@ describe("ItemPicker", () => {
       collections: [...Object.values(COLLECTION), COLLECTION_OTHER_USERS],
     });
 
-    userEvent.click(screen.getByText(/All personal collections/i));
+    await userEvent.click(screen.getByText(/All personal collections/i));
 
     const list = within(getItemPickerList());
     expect(list.getByText(COLLECTION_OTHER_USERS.name)).toBeInTheDocument();
@@ -321,8 +321,8 @@ describe("ItemPicker", () => {
     it("should show search results", async () => {
       await setup();
 
-      userEvent.click(screen.getByRole("img", { name: /search/ }));
-      userEvent.type(screen.getByPlaceholderText("Search"), "das{enter}");
+      await userEvent.click(screen.getByRole("img", { name: /search/ }));
+      await userEvent.type(screen.getByPlaceholderText("Search"), "das{enter}");
 
       expect(
         await screen.findByText(/^regular dashboard$/i),
@@ -337,8 +337,8 @@ describe("ItemPicker", () => {
           !isPersonalCollectionOrChild(collection, allCollections),
       });
 
-      userEvent.click(screen.getByRole("img", { name: /search/ }));
-      userEvent.type(screen.getByPlaceholderText("Search"), "das{enter}");
+      await userEvent.click(screen.getByRole("img", { name: /search/ }));
+      await userEvent.type(screen.getByPlaceholderText("Search"), "das{enter}");
 
       expect(
         await screen.findByText(/^regular dashboard$/i),

@@ -714,6 +714,7 @@
   "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the
   driver-specific configuration for the Connection and Statement/PreparedStatement. This is slightly different from [[execute-reducible-query]]
   in that it is not intended to be used as part of middleware. Keywordizes column names. "
+  {:added "0.49.0", :arglists '([db [sql & params]])}
   [db [sql & params]]
   (let [driver (:engine db)]
     (reify clojure.lang.IReduceInit
@@ -726,7 +727,7 @@
            (with-open [stmt          (statement-or-prepared-statement driver conn sql params nil)
                        ^ResultSet rs (try
                                        (let [max-rows 0] ; 0 means no limit
-                                         (execute-statement-or-prepared-statement! driver stmt max-rows params sql))
+                                          (execute-statement-or-prepared-statement! driver stmt max-rows params sql))
                                        (catch Throwable e
                                          (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                                                          {:driver driver
@@ -735,7 +736,6 @@
                                                          e))))]
              ;; TODO - we should probably be using [[reducible-rows]] instead to convert to the correct types
              (reduce rf init (jdbc/reducible-result-set rs {})))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Actions Stuff                                                  |

@@ -11,10 +11,9 @@
 
   Requirements:
 
-  - Not empty `dimensions`, i.e. at least 1 breakout in the query
+  - Either: A single-row aggregation, or not empty `dimensions`, i.e. at least 1 breakout in the query
 
   Query transformation:
-
 
   - Drop all query stages where there are no aggregation clauses until the last one.
 
@@ -67,12 +66,16 @@
   ;; So dimensions is exactly what we want.
   ;; It returns the table name and row count, since that's used for pluralization of the name.
 
+  ;; Clicking on a single-row aggregation, there's no dimensions, but we should support underlying records.
+
   ;; Clicking on a chart legend for eg. COUNT(Orders) by Products.CATEGORY and Orders.CREATED_AT has a context like:
   ;; - column is nil
   ;; - value is nil
   ;; - dimensions holds only the legend's column, eg. Products.CATEGORY.
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             (not-empty dimensions)
+             ;; Underlying records requires an aggregation. Either we clicked the aggregation, or there are dimensions.
+             (or (= (:lib/source column) :source/aggregations)
+                 (not-empty dimensions))
              ;; Either we need both column and value (cell/map/data point click) or neither (chart legend click).
              (or (and column (some? value))
                  (and (nil? column) (nil? value)))

@@ -16,6 +16,7 @@ import Radio from "metabase/core/components/Radio";
 import Select, { Option } from "metabase/core/components/Select";
 import { Sortable, SortableList } from "metabase/core/components/Sortable";
 import Toggle from "metabase/core/components/Toggle";
+import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getAccentColors,
@@ -257,9 +258,9 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
     onClick={onClick}
     data-testid="formatting-rule-preview"
   >
-    <div className="p1 border-bottom relative bg-light">
-      <div className="px1 flex align-center relative">
-        <span className="h4 flex-auto text-dark text-wrap">
+    <div className={cx(CS.p1, CS.borderBottom, CS.relative, "bg-light")}>
+      <div className={cx(CS.px1, CS.flex, CS.alignCenter, CS.relative)}>
+        <span className={cx(CS.h4, CS.flexAuto, CS.textDark, CS.textWrap)}>
           {rule.columns.length > 0 ? (
             rule.columns
               .map(
@@ -283,10 +284,10 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
         />
       </div>
     </div>
-    <div className="p2 flex align-center">
+    <div className={cx(CS.p2, CS.flex, CS.alignCenter)}>
       <RuleBackground
         rule={rule}
-        className={cx("mr2 flex-no-shrink rounded", {
+        className={cx(CS.mr2, CS.flexNoShrink, CS.rounded, {
           bordered: rule.type === "range",
         })}
         style={{ width: 40, height: 40 }}
@@ -318,7 +319,7 @@ const RuleDescription = ({ rule }) => {
         ? t`Cells in this column will be tinted based on their values.`
         : rule.type === "single"
         ? jt`When a cell in these columns ${(
-            <span className="text-bold">
+            <span className={CS.textBold}>
               {ALL_OPERATOR_NAMES[rule.operator]}
               {getValueForDescription(rule)}
             </span>

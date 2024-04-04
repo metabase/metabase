@@ -91,7 +91,7 @@ function ErrorDetailDisplay(props) {
           <td align="right" className="m0 mt1 text-medium">
             {idx === 0 && formatColumn(resCols[nameToResCol.dash_name_str])}
           </td>
-          <td className="text-bold">
+          <td className={CS.textBold}>
             {formatValue(x, { column: resCols[nameToResCol.dash_name_str] })}
           </td>
         </tr>
@@ -114,7 +114,15 @@ function ErrorDetailDisplay(props) {
       </h2>,
       <div
         key="error_str"
-        className="half rounded p2 text-dark text-monospace text-small bg-light"
+        className={cx(
+          CS.half,
+          CS.rounded,
+          CS.p2,
+          CS.textDark,
+          CS.textMonospace,
+          CS.textSmall,
+          "bg-light",
+        )}
       >
         {resRow[nameToResCol.error_str]}
       </div>,

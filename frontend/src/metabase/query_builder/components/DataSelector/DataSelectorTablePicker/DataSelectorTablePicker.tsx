@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
@@ -7,6 +8,7 @@ import {
 } from "metabase/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import AccordionList from "metabase/core/components/AccordionList";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import MetabaseSettings from "metabase/lib/settings";
 import { isSyncCompleted } from "metabase/lib/syncing";
@@ -162,7 +164,7 @@ const LinkToDocsOnReferencingSavedQuestionsInQueries = () => (
         "questions/native-editor/referencing-saved-questions-in-queries",
       )}
       target="_blank"
-      className="block link"
+      className={cx(CS.block, CS.link)}
     >
       {t`Learn more about nested queries`}
     </ExternalLink>

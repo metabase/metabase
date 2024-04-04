@@ -98,7 +98,7 @@ export const BetweenPicker = ({
           onClear={handleEndDateClear}
         />
       </DateContainer>
-      <div className="Calendar--noContext">
+      <div>
         <Calendar
           isRangePicker
           primaryColor={primaryColor}
@@ -106,6 +106,7 @@ export const BetweenPicker = ({
           selected={startValue && moment(startValue)}
           selectedEnd={endValue && moment(endValue)}
           onChangeDate={handleDateClick}
+          noContext
         />
       </div>
     </div>

@@ -105,9 +105,14 @@ const setup = () => {
 describe("table settings", () => {
   it("should allow you to update a column name", async () => {
     setup();
-    userEvent.click(await screen.findByTestId("Category-settings-button"));
-    userEvent.type(await screen.findByDisplayValue("Category"), " Updated");
-    userEvent.click(await screen.findByText("Count"));
+    await userEvent.click(
+      await screen.findByTestId("Category-settings-button"),
+    );
+    await userEvent.type(
+      await screen.findByDisplayValue("Category"),
+      " Updated",
+    );
+    await userEvent.click(await screen.findByText("Count"));
     expect(await screen.findByText("Category Updated")).toBeInTheDocument();
   });
 });

@@ -1,4 +1,5 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import { assoc, assocIn } from "icepick";
 import PropTypes from "prop-types";
 import { Component } from "react";
@@ -9,6 +10,7 @@ import ActionButton from "metabase/components/ActionButton";
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 import SchedulePicker from "metabase/containers/SchedulePicker";
 import Toggle from "metabase/core/components/Toggle";
+import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { channelIsValid, createChannel } from "metabase/lib/pulse";
 import SlackChannelField from "metabase/sharing/components/SlackChannelField";
@@ -163,11 +165,13 @@ export default class PulseEditChannels extends Component {
     return (
       <li key={index} className="py2">
         {channelSpec.error && (
-          <div className="pb2 text-bold text-error">{channelSpec.error}</div>
+          <div className={cx(CS.pb2, CS.textBold, "text-error")}>
+            {channelSpec.error}
+          </div>
         )}
         {channelSpec.recipients && (
           <div>
-            <div className="h4 text-bold mb1">
+            <div className={cx(CS.h4, CS.textBold, CS.mb1)}>
               {this.props.emailRecipientText || t`To:`}
             </div>
             <RecipientPicker
@@ -249,8 +253,10 @@ export default class PulseEditChannels extends Component {
         this.renderChannel(channel, index, channelSpec),
       );
     return (
-      <li key={channelSpec.type} className="border-row-divider">
-        <div className="flex align-center p3 border-row-divider">
+      <li key={channelSpec.type} className={CS.borderRowDivider}>
+        <div
+          className={cx(CS.flex, CS.alignCenter, CS.p3, CS.borderRowDivider)}
+        >
           {CHANNEL_ICONS[channelSpec.type] && (
             <Icon
               className="mr1 text-light"
@@ -260,7 +266,7 @@ export default class PulseEditChannels extends Component {
           )}
           <h2>{channelSpec.name}</h2>
           <Toggle
-            className="flex-align-right"
+            className={CS.flexAlignRight}
             value={channels.length > 0}
             onChange={this.toggleChannel.bind(this, channelSpec.type)}
           />
@@ -268,7 +274,7 @@ export default class PulseEditChannels extends Component {
         {channels.length > 0 && channelSpec.configured ? (
           <ul className="bg-light px3">{channels}</ul>
         ) : channels.length > 0 && !channelSpec.configured ? (
-          <div className="p4 text-centered">
+          <div className={cx(CS.p4, CS.textCentered)}>
             <h3 className="mb2">{t`${channelSpec.name} needs to be set up by an administrator.`}</h3>
             <ChannelSetupMessage user={user} channels={[channelSpec.name]} />
           </div>
