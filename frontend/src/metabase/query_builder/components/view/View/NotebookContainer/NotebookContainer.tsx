@@ -105,11 +105,7 @@ export const NotebookContainer = ({
       )}
 
       {isNativePreviewSidebarOpen && windowWidth < 1280 && (
-        <Box
-          component="aside"
-          className={NC.sqlPreview}
-          data-testid="native-query-preview-sidebar"
-        >
+        <Box className={NC.sqlPreview}>
           <NativeQueryPreviewSidebar />
         </Box>
       )}
@@ -123,15 +119,9 @@ export const NotebookContainer = ({
           resizeHandles={["w"]}
           handle={<Handle />}
           onResizeStop={handleResizeStop}
+          className={NC.sqlSidebar}
         >
-          <Box
-            component="aside"
-            h="100%"
-            className={NC.sqlSidebar}
-            data-testid="native-query-preview-sidebar"
-          >
-            <NativeQueryPreviewSidebar />
-          </Box>
+          <NativeQueryPreviewSidebar />
         </ResizableBox>
       )}
     </Flex>
