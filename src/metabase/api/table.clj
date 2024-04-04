@@ -332,6 +332,8 @@
         (m/dissoc-in [:db :details])
         (assoc-dimension-options db)
         format-fields-for-response
+        ;; for `nil` schemas return the empty string
+        (update :schema #(if (nil? %) "" %))
         (update :fields (partial filter (fn [{visibility-type :visibility_type}]
                                           (case (keyword visibility-type)
                                             :hidden    include-hidden-fields?
