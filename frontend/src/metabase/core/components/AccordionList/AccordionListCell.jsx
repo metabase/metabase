@@ -208,7 +208,7 @@ export const AccordionListCell = ({
         {extra}
         {showItemArrows && (
           <div
-            className={cx("List-item-arrow", CS.flex, CS.alignCenter, CS.px1)}
+            className={cx(ListS.ListItemArrow, CS.flex, CS.alignCenter, CS.px1)}
           >
             <Icon name="chevronright" size={8} />
           </div>
