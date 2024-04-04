@@ -308,6 +308,7 @@ export const PLUGIN_CACHING = {
   DatabaseCacheTimeField: PluginPlaceholder as any,
   StrategyFormLauncherPanel: PluginPlaceholder as any,
   GranularControlsExplanation: PluginPlaceholder as any,
+  InvalidateNowButton: PluginPlaceholder as any,
   isEnabled: () => false,
   hasQuestionCacheSection: (_question: Question) => false,
   canOverrideRootStrategy: false,

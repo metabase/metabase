@@ -14,37 +14,47 @@ import {
   useFormContext,
 } from "metabase/forms";
 import { color } from "metabase/lib/colors";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import {
+  Box,
   Button,
+  FixedSizeIcon,
   Group,
   Icon,
-  Loader,
   Radio,
   Stack,
   Text,
   Title,
   Tooltip,
 } from "metabase/ui";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { Strategy, StrategyType } from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
 
 import { useRecentlyTrue } from "../hooks/useRecentlyTrue";
 import { rootId, Strategies, strategyValidationSchema } from "../strategies";
 
+import { LoaderInButton } from "./StrategyForm.styled";
+
 export const StrategyForm = ({
   targetId,
+  targetDatabase,
   setIsDirty,
   saveStrategy,
   savedStrategy,
+  shouldAllowInvalidation,
 }: {
   targetId: number | null;
+  targetDatabase: Database | undefined;
   setIsDirty: (isDirty: boolean) => void;
   saveStrategy: (values: Strategy) => Promise<void>;
   savedStrategy?: Strategy;
+  shouldAllowInvalidation: boolean;
 }) => {
   const defaultStrategy: Strategy = {
     type: targetId === rootId ? "nocache" : "inherit",
   };
+
   return (
     <FormProvider<Strategy>
       key={targetId}
@@ -53,17 +63,26 @@ export const StrategyForm = ({
       onSubmit={saveStrategy}
       enableReinitialize
     >
-      <StrategyFormBody targetId={targetId} setIsDirty={setIsDirty} />
+      <StrategyFormBody
+        targetId={targetId}
+        targetDatabase={targetDatabase}
+        setIsDirty={setIsDirty}
+        shouldAllowInvalidation={shouldAllowInvalidation}
+      />
     </FormProvider>
   );
 };
 
 const StrategyFormBody = ({
   targetId,
+  targetDatabase,
   setIsDirty,
+  shouldAllowInvalidation,
 }: {
   targetId: number | null;
+  targetDatabase: Database | undefined;
   setIsDirty: (isDirty: boolean) => void;
+  shouldAllowInvalidation: boolean;
 }) => {
   const { dirty, values, setFieldValue } = useFormikContext<Strategy>();
   const { setStatus } = useFormContext();
@@ -90,43 +109,82 @@ const StrategyFormBody = ({
   }, [selectedStrategyType, values, setFieldValue]);
 
   return (
-    <Form
-      h="100%"
+    <div
       style={{
+        height: "100%",
+        position: "relative",
         display: "flex",
         flexDirection: "column",
-        justifyContent: "space-between",
       }}
     >
-      <Stack p="lg" spacing="xl" maw="27.5rem">
-        <StrategySelector targetId={targetId} />
-        {selectedStrategyType === "ttl" && (
-          <>
-            <Field
-              title={t`Minimum query duration`}
-              subtitle={t`Metabase will cache all saved questions with an average query execution time greater than this many milliseconds.`}
-            >
-              <PositiveNumberInput strategyType="ttl" name="min_duration_ms" />
-            </Field>
-            <Field
-              title={t`Cache time-to-live (TTL) multiplier`}
-              subtitle={<MultiplierFieldSubtitle />}
-            >
-              <PositiveNumberInput strategyType="ttl" name="multiplier" />
-            </Field>
-          </>
-        )}
-        {selectedStrategyType === "duration" && (
-          <>
-            <Field title={t`Cache results for this many hours`}>
-              <PositiveNumberInput strategyType="duration" name="duration" />
-            </Field>
-            <input type="hidden" name="unit" />
-          </>
-        )}
-      </Stack>
-      <FormButtons />
-    </Form>
+      {targetDatabase && (
+        <Box lh="1rem" px="lg" py="xs" color="text-medium">
+          <Group spacing="lg">
+            <Group spacing="sm">
+              <FixedSizeIcon name="database" color="inherit" />
+              <Text fw="bold" py="1rem">
+                {targetDatabase.displayName()}
+              </Text>
+            </Group>
+            {shouldAllowInvalidation && targetId && (
+              <PLUGIN_CACHING.InvalidateNowButton targetId={targetId} />
+            )}
+          </Group>
+        </Box>
+      )}
+      <Form
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flexGrow: 1,
+          overflow: "auto",
+        }}
+      >
+        <Box
+          style={{
+            borderTop: `1px solid ${color("border")}`,
+            borderBottom: `1px solid ${color("border")}`,
+            overflow: "auto",
+            flexGrow: 1,
+          }}
+        >
+          <Stack maw="27.5rem" p="lg" spacing="xl">
+            <StrategySelector targetId={targetId} />
+            {selectedStrategyType === "ttl" && (
+              <>
+                <Field
+                  title={t`Minimum query duration`}
+                  subtitle={t`Metabase will cache all saved questions with an average query execution time greater than this many milliseconds.`}
+                >
+                  <PositiveNumberInput
+                    strategyType="ttl"
+                    name="min_duration_ms"
+                  />
+                </Field>
+                <Field
+                  title={t`Cache time-to-live (TTL) multiplier`}
+                  subtitle={<MultiplierFieldSubtitle />}
+                >
+                  <PositiveNumberInput strategyType="ttl" name="multiplier" />
+                </Field>
+              </>
+            )}
+            {selectedStrategyType === "duration" && (
+              <>
+                <Field title={t`Cache results for this many hours`}>
+                  <PositiveNumberInput
+                    strategyType="duration"
+                    name="duration"
+                  />
+                </Field>
+                <input type="hidden" name="unit" />
+              </>
+            )}
+          </Stack>
+        </Box>
+        <FormButtons />
+      </Form>
+    </div>
   );
 };
 
@@ -144,29 +202,21 @@ export const FormButtons = () => {
   }
 
   return (
-    <Group
-      style={{
-        position: "sticky",
-        bottom: 0,
-        borderTop: `1px solid ${color("border")}`,
-      }}
-      p="1rem"
-      bg={color("white")}
-      spacing="md"
-    >
+    <Group p="md" px="lg" spacing="md" bg="white">
       <Button
         disabled={!dirty || isFormPending}
         type="reset"
       >{t`Discard changes`}</Button>
       <FormSubmitButton
         miw="10rem"
+        h="40px"
         label={t`Save changes`}
         successLabel={
           <Group spacing="xs">
             <Icon name="check" /> {t`Saved`}
           </Group>
         }
-        activeLabel={<Loader size="xs" />}
+        activeLabel={<LoaderInButton size=".8rem" />}
         variant="filled"
         data-testid="strategy-form-submit-button"
       />
@@ -184,7 +234,10 @@ const StrategySelector = ({ targetId }: { targetId: number | null }) => {
     <section>
       <FormRadioGroup
         label={
-          <Text lh="1rem">{t`When should cached query results be invalidated?`}</Text>
+          <Text
+            lh="1rem"
+            color="text-medium"
+          >{t`When should cached query results be invalidated?`}</Text>
         }
         name="type"
       >

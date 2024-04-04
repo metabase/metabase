@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { InjectedRouter, Route } from "react-router";
 import { withRouter } from "react-router";
 import { t } from "ttag";
@@ -101,6 +101,8 @@ const StrategyEditorForDatabases_Base = ({
     }
   }, [canOverrideRootStrategy, targetId]);
 
+  const targetDatabase = databases.find(db => db.id === targetId);
+
   const saveStrategy = useCallback(
     async (values: Strategy) => {
       if (targetId === null) {
@@ -152,6 +154,25 @@ const StrategyEditorForDatabases_Base = ({
 
   const showSpinner = useDelayedLoadingSpinner();
 
+  const shouldAllowInvalidation = useMemo(() => {
+    if (targetId === null) {
+      return false;
+    }
+    if (targetId === rootId) {
+      return false;
+    }
+    if (savedStrategy?.type === "nocache") {
+      return false;
+    }
+    const inheritingRootStrategy = ["inherit", undefined].includes(
+      savedStrategy?.type,
+    );
+    const rootConfig = findWhere(configs, { model_id: rootId });
+    const inheritingDoNotCache =
+      inheritingRootStrategy && !rootConfig?.strategy;
+    return !inheritingDoNotCache;
+  }, [configs, savedStrategy?.type, targetId]);
+
   if (error || loading) {
     return showSpinner ? (
       <LoadingAndErrorWrapper error={error} loading={loading} />
@@ -197,9 +218,11 @@ const StrategyEditorForDatabases_Base = ({
           {targetId !== null && (
             <StrategyForm
               targetId={targetId}
+              targetDatabase={targetDatabase}
               setIsDirty={setIsStrategyFormDirty}
               saveStrategy={saveStrategy}
               savedStrategy={savedStrategy}
+              shouldAllowInvalidation={shouldAllowInvalidation}
             />
           )}
         </Panel>
