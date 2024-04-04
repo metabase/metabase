@@ -1,12 +1,13 @@
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import {
   describeEE,
   modal,
+  setTokenFeatures,
   popover,
   modifyPermission,
   assertPermissionTable,
   restore,
 } from "e2e/support/helpers";
-import { USER_GROUPS } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
@@ -19,6 +20,7 @@ describeEE(
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
     });
 
     it("'no self service' should only be an option if it is the current value in the permissions graph", () => {
@@ -52,6 +54,9 @@ describeEE(
           "Sample Database",
           "No self-service (Deprecated)",
           "Query builder and native",
+          "No",
+          "No",
+          "No",
         ],
       ]);
 
@@ -93,6 +98,9 @@ describeEE(
           "Sample Database",
           "No self-service (Deprecated)",
           "Query builder only",
+          "No",
+          "No",
+          "No",
         ],
       ]);
     });
