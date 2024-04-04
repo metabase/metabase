@@ -1,6 +1,7 @@
 import type {
   CreateTimelineRequest,
   GetTimelineRequest,
+  ListCollectionTimelinesRequest,
   ListTimelinesRequest,
   Timeline,
   TimelineId,
@@ -20,7 +21,21 @@ export const timelineApi = Api.injectEndpoints({
       }),
       providesTags: (timelines = []) => [
         listTag("timeline"),
-        ...(timelines.map(({ id }) => idTag("timeline", id)) ?? []),
+        ...timelines.map(({ id }) => idTag("timeline", id)),
+      ],
+    }),
+    listCollectionTimelines: builder.query<
+      Timeline[],
+      ListCollectionTimelinesRequest
+    >({
+      query: ({ id, ...body }) => ({
+        method: "GET",
+        url: `/api/collection/${id}/timelines`,
+        body,
+      }),
+      providesTags: (timelines = []) => [
+        listTag("timeline"),
+        ...timelines.map(({ id }) => idTag("timeline", id)),
       ],
     }),
     getTimeline: builder.query<Timeline, GetTimelineRequest>({
