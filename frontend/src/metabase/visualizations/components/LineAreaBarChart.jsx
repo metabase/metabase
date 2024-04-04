@@ -266,6 +266,7 @@ export default class LineAreaBarChart extends Component {
 
     return (
       <LineAreaBarChartRoot
+        data-element-id="line-area-bar-chart"
         className={cx(
           DashboardS.LineAreaBarChart,
           LineAreaBarChartS.LineAreaBarChart,
