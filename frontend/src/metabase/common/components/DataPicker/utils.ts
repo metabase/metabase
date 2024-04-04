@@ -44,10 +44,13 @@ export const tablePickerValueFromTable = (
 const tablePickerValueFromTableEntity = (
   table: TableEntity,
 ): TablePickerValue => {
+  // In DBs without schemas, API will use an empty string to indicate the default, virtual schema
+  const NO_SCHEMA_FALLBACK = "";
+
   return {
     db_id: table.db_id,
     id: table.id,
-    schema: table.schema_name ?? table.schema?.name,
+    schema: table.schema_name ?? table.schema?.name ?? NO_SCHEMA_FALLBACK,
   };
 };
 
