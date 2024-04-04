@@ -116,6 +116,15 @@ describe("AccordionList", () => {
     expect(screen.getByRole("button", { name: /Action/ })).toBeInTheDocument();
   });
 
+  it("should an empty section when no results are found with globalSearch", () => {
+    render(<AccordionList sections={SECTIONS} searchable globalSearch />);
+
+    const SEARCH_FIELD = screen.getByPlaceholderText("Find...");
+    fireEvent.change(SEARCH_FIELD, { target: { value: "Quu" } });
+
+    expect(screen.getByText("Didn't find any results")).toBeInTheDocument();
+  });
+
   describe("with the `renderItemWrapper` prop", () => {
     it("should be able to wrap the list items in components like popovers", async () => {
       const renderItemWrapper = (itemContent, item) => {

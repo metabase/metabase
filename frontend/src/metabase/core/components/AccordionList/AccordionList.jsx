@@ -498,6 +498,18 @@ export default class AccordionList extends Component {
     }
 
     if (globalSearch) {
+      const isSearching = searchText.length > 0;
+      const isEmpty = rows.filter(x => x.type === "item").length === 0;
+
+      if (isSearching && isEmpty) {
+        rows.unshift({
+          type: "no-results",
+          section: {},
+          sectionIndex: 0,
+          isLastSection: false,
+        });
+      }
+
       rows.unshift({
         type: "search",
         section: {},
