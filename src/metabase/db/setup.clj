@@ -30,7 +30,7 @@
 (set! *warn-on-reflection* true)
 
 (comment
-  ;; load our custom migrations (here in case `custom-migrations` is removed from requires)
+  ;; load our custom migrations
   custom-migrations/keep-me
   ;; needed so the `:h2` dialect gets registered with Honey SQL
   metabase.util.honey-sql-2/keep-me)

@@ -12,8 +12,7 @@
    :is_full_sync true,
    :updated_at #t "2024-04-03T17:44:20.241895Z",
    :cache_ttl nil,
-   :details
-   "{}",
+   :details "{}",
    :is_sample true,
    :id 1,
    :is_on_demand false,

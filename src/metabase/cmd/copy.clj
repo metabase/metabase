@@ -195,8 +195,9 @@
        0
        results))))
 
-(defn- assert-db-empty
-  "Make sure [target] application DB has no users before we start copying data."
+(defn- assert-has-no-users
+  "Make sure [target] application DB has no users set up before we start copying data. This is a safety check to make
+   sure we're not accidentally copying data into an existing application DB."
   [data-source]
   ;; check that there are no Users yet
   (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} ["SELECT count(*) AS cnt FROM core_user where not id = ?;"
@@ -390,7 +391,7 @@
     (mdb.setup/setup-db! target-db-type target-data-source true false))
   ;; make sure target DB is empty
   (step (trs "Testing if target {0} database is already populated..." (name target-db-type))
-    (assert-db-empty target-data-source))
+    (assert-has-no-users target-data-source))
   ;; clear any rows created by the Liquibase migrations.
   (step (trs "Clearing default entries created by Liquibase migrations...")
     (clear-existing-rows! target-db-type target-data-source))

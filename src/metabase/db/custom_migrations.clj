@@ -1139,7 +1139,10 @@
 
 (define-migration CreateSampleContent
   (when *create-sample-content*
-    (when (and (config/load-sample-content?) (no-user?) (no-db?))
+    (when (and (config/load-sample-content?)
+               (not (config/config-bool :mb-enable-test-endpoints)) ; skip sample content for e2e tests to avoid coupling the tests to the contents
+               (no-user?)
+               (no-db?))
       (let [table-name->raw-rows (load-edn "resources/sample-content.edn")
             replace-temporals (fn [v]
                                 (if (isa? (type v) java.time.temporal.Temporal)

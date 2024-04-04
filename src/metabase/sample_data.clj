@@ -15,7 +15,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^String sample-database-name "Sample Database")
+(def ^:private ^String sample-database-name     "Sample Database")
 (def ^:private ^String sample-database-filename "sample-database.db.mv.db")
 
 ;; Reuse the plugins directory for the destination to extract the sample database because it's pretty much guaranteed
@@ -71,17 +71,17 @@
   []
   (try
     (log/info (trs "Loading sample database"))
-    (let [details (try-to-extract-sample-database!)]
+    (let [details (try-to-extract-sample-database!)
+          db (if (t2/exists? Database :is_sample true)
+               ;; the sample database can be inserted during DB setup, but we need to update its details
+               (t2/select-one Database (first (t2/update-returning-pks! Database :is_sample true {:details details})))
+               (first (t2/insert-returning-instances! Database
+                                                      :name      sample-database-name
+                                                      :details   details
+                                                      :engine    :h2
+                                                      :is_sample true)))]
       (log/debug "Syncing Sample Database...")
-      (let [db (if (t2/exists? Database :is_sample true)
-                 ;; the sample database can be inserted during DB setup, but we need to update its details
-                 (t2/select-one Database (first (t2/update-returning-pks! Database :is_sample true {:details details})))
-                 (first (t2/insert-returning-instances! Database
-                                                        :name      sample-database-name
-                                                        :details   details
-                                                        :engine    :h2
-                                                        :is_sample true)))]
-        (sync/sync-database! db)))
+      (sync/sync-database! db))
     (log/debug "Finished adding Sample Database.")
     (catch Throwable e
       (log/error e (trs "Failed to load sample database")))))
