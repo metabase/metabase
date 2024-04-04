@@ -2,8 +2,9 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import TokenField, { parseNumberValue } from "metabase/components/TokenField";
+import TokenField from "metabase/components/TokenField";
 import NumericInput from "metabase/core/components/NumericInput";
+import { parseNumberValue } from "metabase/lib/number";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import {
   WidgetRoot,
