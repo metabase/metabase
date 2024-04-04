@@ -21,9 +21,11 @@ import type {
   Datum,
   XAxisModel,
   NumericAxisScaleTransforms,
+  ShowWarning,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
+import { unaggregatedDataWarning } from "metabase/visualizations/lib/warnings";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -91,8 +93,8 @@ export const getDatasetKey = (
  * @param {DatasetColumn[]} columns - The columns of the raw dataset.
  * @param {RowValue[]} row - The raw row of values.
  * @param {number} cardId - The ID of the card.
- * @param dimensionIndex — Index of the dimension column of a card
- * @param {number} breakoutIndex - The breakout column index for charts with two dimension columns selected.
+ * @param {number} dimensionIndex — Index of the dimension column of a card
+ * @param {number | undefined} breakoutIndex - The breakout column index for charts with two dimension columns selected.
  */
 const aggregateColumnValuesForDatum = (
   datum: Record<DataKey, RowValue>,
@@ -100,7 +102,8 @@ const aggregateColumnValuesForDatum = (
   row: RowValue[],
   cardId: number,
   dimensionIndex: number,
-  breakoutIndex?: number,
+  breakoutIndex: number | undefined,
+  showWarning?: ShowWarning,
 ): void => {
   columns.forEach((column, columnIndex) => {
     const rowValue = row[columnIndex];
@@ -113,6 +116,10 @@ const aggregateColumnValuesForDatum = (
 
     // The dimension values should not be aggregated, only metrics
     if (isMetric(column) && !isDimensionColumn) {
+      if (seriesKey in datum) {
+        showWarning?.(unaggregatedDataWarning(columns[dimensionIndex]).text);
+      }
+
       datum[seriesKey] = sumMetric(datum[seriesKey], rowValue);
     } else if (!(seriesKey in datum)) {
       datum[seriesKey] = rowValue;
@@ -131,6 +138,7 @@ const aggregateColumnValuesForDatum = (
 export const getJoinedCardsDataset = (
   rawSeries: RawSeries,
   cardsColumns: CartesianChartColumns[],
+  showWarning?: ShowWarning,
 ): ChartDataset => {
   if (rawSeries.length === 0 || cardsColumns.length === 0) {
     return [];
@@ -168,6 +176,7 @@ export const getJoinedCardsDataset = (
         card.id,
         dimensionIndex,
         breakoutIndex,
+        showWarning,
       );
     }
   });
