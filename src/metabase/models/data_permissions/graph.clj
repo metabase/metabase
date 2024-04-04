@@ -344,6 +344,10 @@
       (:unrestricted :impersonated)
       (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
 
+      ;; Support setting legacy-no-self-service for testing purposes, though the UI shouldn't allow it normally
+      :legacy-no-self-service
+      (data-perms/set-database-permission! group-id db-id :perms/view-data :legacy-no-self-service)
+
       :blocked
       (do
         (when-not (premium-features/has-feature? :advanced-permissions)
