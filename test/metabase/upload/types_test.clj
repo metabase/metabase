@@ -244,7 +244,6 @@
         (is (= (upload-types/concretize nil value-type)
                (upload-types/concretize existing-type value-type)))))))
 
-
 (defn- re-namespace
   "Replace the namespace in any namespaced keyword with this test namespace, return all other values unchanged."
   [x]

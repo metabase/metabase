@@ -1599,7 +1599,9 @@
   (mt/test-drivers (filter (fn [driver]
                              ;; use of varchar(255) is not universal for all drivers, so only test drivers that
                              ;; have different database types for varchar(255) and text
-                             (apply not= (map (partial driver/upload-type->database-type driver) [vchar-type text-type])))
+                             (apply not= (->> [vchar-type text-type]
+                                              (map #(keyword "metabase.upload" (name %)))
+                                              (map (partial driver/upload-type->database-type driver)))))
                            (mt/normal-drivers-with-feature :uploads))
     (with-mysql-local-infile-off
       (testing "Append fails if the CSV file contains string values that are too long for the column"
