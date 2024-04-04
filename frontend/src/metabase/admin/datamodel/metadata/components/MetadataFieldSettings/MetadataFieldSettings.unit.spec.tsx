@@ -15,6 +15,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
   Database,
@@ -28,6 +29,7 @@ import {
   createMockFieldValues,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS_ID,
   createOrdersDiscountField,
   createOrdersIdField,
   createOrdersProductIdField,
@@ -39,7 +41,6 @@ import {
   createProductsTable,
   createReviewsTable,
   createSampleDatabase,
-  ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
 
 import { getMetadataRoutes } from "../../routes";
@@ -153,7 +154,9 @@ describe("MetadataFieldSettings", () => {
   describe("breadcrumbs", () => {
     it("should allow to navigate to and from field settings for a single-schema database", async () => {
       await setup();
-      expect(screen.queryByText(ORDERS_TABLE.schema)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(checkNotNull(ORDERS_TABLE.schema)),
+      ).not.toBeInTheDocument();
 
       await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
       await waitForLoaderToBeRemoved();
@@ -183,7 +186,9 @@ describe("MetadataFieldSettings", () => {
       await waitForLoaderToBeRemoved();
       expect(screen.getByText("General")).toBeInTheDocument();
 
-      await userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
+      await userEvent.click(
+        screen.getByText(checkNotNull(PEOPLE_TABLE_MULTI_SCHEMA.schema)),
+      );
       await userEvent.click(
         screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       );
@@ -192,7 +197,9 @@ describe("MetadataFieldSettings", () => {
       expect(screen.getByText("General")).toBeInTheDocument();
 
       await userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
-      await userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
+      await userEvent.click(
+        screen.getByText(checkNotNull(PEOPLE_TABLE_MULTI_SCHEMA.schema)),
+      );
       await userEvent.click(
         screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       );
