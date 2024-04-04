@@ -3,8 +3,11 @@ import { t } from "ttag";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_EMBEDDING,
+  PLUGIN_REDUCERS,
 } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+
+import { tokenReducer } from "../../embedding-sdk/reducer";
 
 import { EmbeddingAppOriginDescription } from "./components/EmbeddingAppOriginDescription";
 import {
@@ -16,6 +19,8 @@ const SLUG = "embedding-in-other-applications/full-app";
 
 if (hasPremiumFeature("embedding")) {
   PLUGIN_EMBEDDING.isEnabled = () => true;
+
+  PLUGIN_REDUCERS.embeddingSessionToken = tokenReducer;
 
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => {
     return {

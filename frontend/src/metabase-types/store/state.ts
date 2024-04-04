@@ -1,3 +1,4 @@
+import type { EmbeddingSessionTokenState } from "embedding-sdk/types";
 import type { RouterState } from "react-router-redux";
 
 import type { User } from "metabase-types/api";
@@ -17,6 +18,7 @@ import type { SetupState } from "./setup";
 import type { FileUploadState } from "./upload";
 
 type modalName = null | "collection" | "dashboard" | "action";
+
 export interface State {
   admin: AdminState;
   app: AppState;
@@ -34,6 +36,9 @@ export interface State {
   setup: SetupState;
   upload: FileUploadState;
   modal: modalName;
+  plugins: {
+    embeddingSessionToken: null | EmbeddingSessionTokenState;
+  };
 }
 
 export type Dispatch<T = any> = (action: T) => void;

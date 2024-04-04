@@ -9,15 +9,19 @@ import type { SDKConfigType } from "../../types";
 import { SdkContentWrapper } from "./SdkContentWrapper";
 
 interface AppInitializeControllerProps {
+  store: any;
   children: React.ReactNode;
   config: SDKConfigType;
 }
 
 export const AppInitializeController = ({
+  store,
   config,
   children,
 }: AppInitializeControllerProps) => {
+  console.log("AppInitializeController", { store, config, children });
   const { isLoggedIn, isInitialized } = useInitData({
+    store,
     config,
   });
 
