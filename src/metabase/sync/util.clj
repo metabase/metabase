@@ -177,7 +177,7 @@
 (def ^:dynamic *log-exceptions-and-continue?*
   "Whether to log exceptions during a sync step and proceed with the rest of the sync process. This is the default
   behavior. You can disable this for debugging or test purposes."
-  true)
+  false)
 
 (defn do-with-error-handling
   "Internal implementation of [[with-error-handling]]; use that instead of calling this directly."
@@ -464,7 +464,7 @@
                              (do
                                (log/warn e (format "Error running step ''%s'' for %s" step-name (name-for-logging database)))
                                {:throwable e})
-                             (throw (ex-info (format "Error in sync step %s: %s" step-name (ex-message e)) {} e)))))))
+                             (throw e))))))
         end-time   (t/zoned-date-time)]
     [step-name (assoc results
                       :start-time start-time
