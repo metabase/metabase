@@ -799,7 +799,7 @@
                            (assoc :type :metric))
           invalid-card (-> card-name
                            (card-with-name-and-query
-                            (-> query (lib/breakout (first (lib/breakoutable-columns query)))))
+                             (-> query (lib/aggregate (lib/sum (lib.metadata/field query (mt/id :venues :id))))))
                            (assoc :type :metric))]
       (mt/with-full-data-perms-for-all-users!
         (mt/with-model-cleanup [:model/Card]
@@ -814,13 +814,13 @@
                                       (merge
                                        (mt/with-temp-defaults :model/Card)
                                        updated-card)))
-              (testing "Update fails if there is a breakout"
+              (testing "Update fails if there are multiple aggregations"
                 (let [response (mt/user-http-request :rasta :put 400 (str "card/" card-id)
                                                      (merge
                                                       (mt/with-temp-defaults :model/Card)
                                                       invalid-card))]
                   (is (= "Card of type metric is invalid, cannot be saved." response))))))
-          (testing "Creation fails if there is a breakout"
+          (testing "Creation fails if there are multiple aggregations"
             (let [response (mt/user-http-request :rasta :post 400 "card"
                                                  (merge
                                                   (mt/with-temp-defaults :model/Card)
