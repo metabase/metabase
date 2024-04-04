@@ -26,3 +26,7 @@ export const measureText: TextMeasurer = (text: string, style: FontStyle) => {
 
 export const measureTextWidth = (text: string, style: FontStyle) =>
   measureText(text, style).width;
+
+// Temporary here to debug
+// https://github.com/metabase/metabase/issues/40206
+measureTextWidth.canvas = canvas;
