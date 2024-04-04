@@ -72,15 +72,15 @@
           non-admin-groups (conj non-magic-groups all-users-group)]
       ;; Data access permissions
       (if (= (:db_id table) config/audit-db-id)
-        ;; Tables in audit DB should start out with no-self-service in all groups
         (do
-         (data-perms/set-new-table-permissions! non-admin-groups table :perms/create-queries :no)
-         (data-perms/set-new-table-permissions! non-admin-groups table :perms/data-access :no-self-service))
+         ;; Tables in audit DB should start out with no query access in all groups
+         (data-perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
+         (data-perms/set-new-table-permissions! non-admin-groups table :perms/create-queries :no))
         (do
+          ;; Normal tables start out with unrestricted data access in all groups, but query access only in All Users
+          (data-perms/set-new-table-permissions! (conj non-magic-groups all-users-group) table :perms/view-data :unrestricted)
           (data-perms/set-new-table-permissions! [all-users-group] table :perms/create-queries :query-builder)
-          (data-perms/set-new-table-permissions! non-magic-groups table :perms/create-queries :no)
-          (data-perms/set-new-table-permissions! [all-users-group] table :perms/data-access :unrestricted)
-          (data-perms/set-new-table-permissions! non-magic-groups table :perms/data-access :no-self-service)))
+          (data-perms/set-new-table-permissions! non-magic-groups table :perms/create-queries :no)))
       ;; Download permissions
       (data-perms/set-new-table-permissions! [all-users-group] table :perms/download-results :one-million-rows)
       (data-perms/set-new-table-permissions! non-magic-groups table :perms/download-results :no)

@@ -6117,6 +6117,16 @@ databaseChangeLog:
                   remarks: The estimated row count
 
   - changeSet:
+      id: v50.2024-03-24T19:34:11
+      author: noahmoss
+      comment: Clean up deprecated view-data and native-query-editing permissions
+      rollback: # handled by the rollbacks for `v50.2024-02-26T22:15:54` and `v50.2024-02-26T22:15:55`
+      changes:
+        - sql:
+            sql: >
+              DELETE FROM data_permissions where perm_type = 'perms/data-access' OR perm_type = 'perms/native-query-editing';
+
+  - changeSet:
       id: v50.2024-03-25T14:53:00
       author: tsmacdonald
       comment: Add query_field.direct_reference

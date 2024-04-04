@@ -808,13 +808,11 @@ describeEE("scenarios > admin > permissions", () => {
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
         [SAMPLE_DB_ID]: {
-          data: { schemas: "block" },
           "view-data": "blocked",
         },
       },
       [COLLECTION_GROUP]: {
         [SAMPLE_DB_ID]: {
-          data: { schemas: "block" },
           "view-data": "blocked",
         },
       },
@@ -834,13 +832,11 @@ describeEE("scenarios > admin > permissions", () => {
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
         [SAMPLE_DB_ID]: {
-          data: { schemas: "block" },
           "view-data": "blocked",
         },
       },
       [COLLECTION_GROUP]: {
         [SAMPLE_DB_ID]: {
-          data: { schemas: "block" },
           "view-data": "blocked",
         },
       },
