@@ -1,18 +1,17 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitForLoaderToBeRemoved } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 
 import {
+  setup,
+  SAMPLE_DATABASE,
   EMPTY_DATABASE,
   MULTI_SCHEMA_DATABASE,
-  SAMPLE_DATABASE,
   SAMPLE_TABLE,
   SAMPLE_TABLE_2,
   SAMPLE_TABLE_3,
   SAMPLE_TABLE_4,
-  setup,
 } from "./common";
 
 describe("DataPicker — picking raw data", () => {
@@ -132,7 +131,7 @@ describe("DataPicker — picking raw data", () => {
   describe("given a multiple-schema database", () => {
     it("respects initial value", async () => {
       const table = SAMPLE_TABLE_3;
-      const schema = checkNotNull(table.schema);
+      const schema = table.schema;
 
       await setup({
         hasMultiSchemaDatabase: true,
@@ -161,8 +160,8 @@ describe("DataPicker — picking raw data", () => {
 
     it("resets selected tables on schema change", async () => {
       const schema1Table = SAMPLE_TABLE_3;
-      const schema1 = checkNotNull(SAMPLE_TABLE_3.schema);
-      const schema2 = checkNotNull(SAMPLE_TABLE_4.schema);
+      const schema1 = SAMPLE_TABLE_3.schema;
+      const schema2 = SAMPLE_TABLE_4.schema;
 
       const { onChange } = await setup({ hasMultiSchemaDatabase: true });
 

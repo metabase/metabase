@@ -12,7 +12,6 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
 import type { Database } from "metabase-types/api";
 import {
   createOrdersTable,
@@ -123,9 +122,7 @@ describe("MetadataTableSettings", () => {
     it("should allow to navigate to and from table settings in a multi-schema database", async () => {
       await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
-      await userEvent.click(
-        screen.getByText(checkNotNull(PEOPLE_TABLE_MULTI_SCHEMA.schema)),
-      );
+      await userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
       await userEvent.click(
         await screen.findByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       );
@@ -135,18 +132,14 @@ describe("MetadataTableSettings", () => {
       await userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
       expect(await screen.findByText("2 schemas")).toBeInTheDocument();
 
-      await userEvent.click(
-        screen.getByText(checkNotNull(PEOPLE_TABLE_MULTI_SCHEMA.schema)),
-      );
+      await userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
       await userEvent.click(
         screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       );
       await userEvent.click(screen.getByLabelText("Settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      await userEvent.click(
-        screen.getByText(checkNotNull(PEOPLE_TABLE_MULTI_SCHEMA.schema)),
-      );
+      await userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
       expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
 
       await userEvent.click(

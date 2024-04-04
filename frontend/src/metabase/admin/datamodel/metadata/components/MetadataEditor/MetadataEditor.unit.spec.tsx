@@ -11,7 +11,6 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
 import type { Database } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -165,9 +164,7 @@ describe("MetadataEditor", () => {
 
       expect(screen.getByText(SAMPLE_DB.name)).toBeInTheDocument();
       expect(screen.getByText(ORDERS_TABLE.display_name)).toBeInTheDocument();
-      expect(
-        screen.queryByText(checkNotNull(ORDERS_TABLE.schema)),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(ORDERS_TABLE.schema)).not.toBeInTheDocument();
     });
 
     it("should allow to search for a table", async () => {
@@ -415,10 +412,10 @@ describe("MetadataEditor", () => {
 
       expect(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name)).toBeInTheDocument();
       expect(
-        screen.getByText(checkNotNull(PEOPLE_TABLE_MULTI_SCHEMA.schema)),
+        screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(checkNotNull(REVIEWS_TABLE_MULTI_SCHEMA.schema)),
+        screen.getByText(REVIEWS_TABLE_MULTI_SCHEMA.schema),
       ).toBeInTheDocument();
       expect(
         screen.queryByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
@@ -428,28 +425,24 @@ describe("MetadataEditor", () => {
     it("should allow to search for a schema", async () => {
       await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
-      const searchValue = checkNotNull(
-        PEOPLE_TABLE_MULTI_SCHEMA.schema,
-      ).substring(0, 3);
+      const searchValue = PEOPLE_TABLE_MULTI_SCHEMA.schema.substring(0, 3);
       await userEvent.type(
         screen.getByPlaceholderText("Find a schema"),
         searchValue,
       );
 
       expect(
-        screen.getByText(checkNotNull(PEOPLE_TABLE_MULTI_SCHEMA.schema)),
+        screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema),
       ).toBeInTheDocument();
       expect(
-        screen.queryByText(checkNotNull(REVIEWS_TABLE_MULTI_SCHEMA.schema)),
+        screen.queryByText(REVIEWS_TABLE_MULTI_SCHEMA.schema),
       ).not.toBeInTheDocument();
     });
 
     it("should allow to search for a table", async () => {
       await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
-      await userEvent.click(
-        screen.getByText(checkNotNull(PEOPLE_TABLE_MULTI_SCHEMA.schema)),
-      );
+      await userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
       expect(
         await screen.findByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       ).toBeInTheDocument();
@@ -459,10 +452,10 @@ describe("MetadataEditor", () => {
 
       await userEvent.click(screen.getByText("Schemas"));
       expect(
-        screen.getByText(checkNotNull(PEOPLE_TABLE_MULTI_SCHEMA.schema)),
+        screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(checkNotNull(REVIEWS_TABLE_MULTI_SCHEMA.schema)),
+        screen.getByText(REVIEWS_TABLE_MULTI_SCHEMA.schema),
       ).toBeInTheDocument();
     });
   });
@@ -477,7 +470,7 @@ describe("MetadataEditor", () => {
       await userEvent.click(screen.getByText(SAMPLE_DB.name));
       await userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
       await userEvent.click(
-        await screen.findByText(checkNotNull(PEOPLE_TABLE_MULTI_SCHEMA.schema)),
+        await screen.findByText(PEOPLE_TABLE_MULTI_SCHEMA.schema),
       );
       expect(
         await screen.findByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),

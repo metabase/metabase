@@ -2,7 +2,6 @@ import fetchMock from "fetch-mock";
 import _ from "underscore";
 
 import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
-import { checkNotNull } from "metabase/lib/types";
 import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
 import type { Database, DatabaseUsageInfo } from "metabase-types/api";
 
@@ -64,9 +63,7 @@ export function setupDatabasesEndpoints(
 }
 
 export const setupSchemaEndpoints = (db: Database) => {
-  const schemas = _.groupBy(db.tables ?? [], table =>
-    checkNotNull(table.schema),
-  );
+  const schemas = _.groupBy(db.tables ?? [], table => table.schema);
   const schemaNames = Object.keys(schemas);
   fetchMock.get(`path:/api/database/${db.id}/schemas`, schemaNames);
   fetchMock.get(`path:/api/database/${db.id}/syncable_schemas`, schemaNames);
