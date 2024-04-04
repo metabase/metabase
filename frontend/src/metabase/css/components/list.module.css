@@ -99,3 +99,9 @@
 :global(.List-item--selected:not(.List-item--disabled) .Icon) {
   color: white !important;
 }
+
+/* Moved from `query_builder.module.css` to make migration easier */
+:global(.List-item:not(.List-item--disabled):hover) .FieldListGroupingTrigger,
+:global(.List-item--selected) .FieldListGroupingTrigger {
+  visibility: visible;
+}
