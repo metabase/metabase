@@ -85,6 +85,13 @@
      (new-second-stage query path stage first-stage)]))
 
 (mu/defn nest-breakouts-in-stages-with-cumulative-aggregation :- ::lib.schema/query
+  "Some picky databases like BigQuery don't let you use anything inside `ORDER BY` in `OVER` expressions except for
+  plain column identifiers that also appear in the `GROUP BY` clause... no inline temporal bucketing or things like
+  that.
+
+  This query transformation takes queries with cumulative aggregations and breakouts in the same stage and then adds a
+  new prior stage that does all of the breakout-column calculations so the original stage can just use raw column
+  identifiers. See #40982 for more info."
   [query :- ::lib.schema/query]
   (lib.walk/walk-stages
    query
