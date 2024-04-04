@@ -1133,8 +1133,9 @@
   (nil? (t2/query-one {:select [:*] :from :metabase_database})))
 
 (def ^:dynamic *create-sample-content*
-  "If true, we skip creating sample content. This is bound to false sometimes in load-from-h2, during serialization load, and in
-   some tests because the sample content makes tests slow enough to cause timeouts."
+  "If true, we create sample content in the `CreateSampleContent` migration. This is bound to false sometimes in
+   load-from-h2, during serialization load, and in some tests because the sample content makes tests slow enough to
+   cause timeouts."
   true)
 
 (define-migration CreateSampleContent

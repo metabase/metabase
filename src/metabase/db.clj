@@ -54,7 +54,9 @@
 (defn setup-db!
   "Do general preparation of database by validating that we can connect. Caller can specify if we should run any pending
   database migrations. If DB is already set up, this function will no-op. Thread-safe.
-  Callers must decide whether or not to create sample content during migrations."
+  Callers must explicitly decide whether or not to create sample content during migrations with the
+  `create-sample-content?` keyword argument. This should usually be `true` but is `false` for load-from-h2,
+  serialization imports, and in some tests because the sample content makes tests slow enough to cause timeouts."
   [& {:keys [create-sample-content?]}]
   {:pre [(some? create-sample-content?)]}
   (when-not (db-is-set-up?)

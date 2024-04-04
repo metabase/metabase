@@ -153,8 +153,6 @@
   (log/info (trs "Database Migrations Current ... ") (u/emoji "✅")))
 
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
-;;
-;; TODO -- consider whether this should be done automatically the first time someone calls `getConnection`
 (mu/defn setup-db!
   "Connects to db and runs migrations. Don't use this directly, unless you know what you're doing;
   use [[metabase.db/setup-db!]] instead, which can be called more than once without issue and is thread-safe."
