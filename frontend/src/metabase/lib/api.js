@@ -31,6 +31,8 @@ const DEFAULT_OPTIONS = {
 
 export class Api extends EventEmitter {
   basename = "";
+  apiKey = "";
+  sessionToken = "";
 
   GET;
   POST;
@@ -87,6 +89,15 @@ export class Api extends EventEmitter {
 
         if (options.formData && options.fetch) {
           delete headers["Content-Type"];
+        }
+
+        if (this.apiKey) {
+          headers["X-Api-Key"] = this.apiKey;
+        }
+
+        if (this.sessionToken) {
+          // eslint-disable-next-line no-literal-metabase-strings -- not a UI string
+          headers["X-Metabase-Session"] = this.sessionToken;
         }
 
         if (isWithinIframe()) {

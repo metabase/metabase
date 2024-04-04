@@ -97,7 +97,7 @@ const DataSelectorTablePicker = ({
       table ? <Icon name="table" /> : null;
 
     const renderItemExtra = ({ table }: { table: Table }) =>
-      table && <TableInfoIcon table={table} position="right" showIfEmpty />;
+      table && <TableInfoIcon table={table} position="right" />;
 
     const renderItemWrapper = (content: ReactNode) => (
       <HoverParent>{content}</HoverParent>
@@ -164,7 +164,7 @@ const LinkToDocsOnReferencingSavedQuestionsInQueries = () => (
         "questions/native-editor/referencing-saved-questions-in-queries",
       )}
       target="_blank"
-      className={cx("block", CS.link)}
+      className={cx(CS.block, CS.link)}
     >
       {t`Learn more about nested queries`}
     </ExternalLink>

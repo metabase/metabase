@@ -226,10 +226,10 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }) => (
           .filter(map => !map.builtin)
           .map(map => (
             <tr key={map.id}>
-              <td className="cursor-pointer" onClick={() => onEditMap(map)}>
+              <td className={CS.cursorPointer} onClick={() => onEditMap(map)}>
                 {map.name}
               </td>
-              <td className="cursor-pointer" onClick={() => onEditMap(map)}>
+              <td className={CS.cursorPointer} onClick={() => onEditMap(map)}>
                 <Ellipsified style={{ maxWidth: 600 }}>{map.url}</Ellipsified>
               </td>
               <td className={AdminS.TableActions}>
@@ -278,7 +278,7 @@ const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
           <div>
             <div style={{ textAlign: "left" }}>{name}</div>
             <div
-              className="mt1 h6"
+              className={cx(CS.mt1, CS.h6)}
               style={{
                 maxWidth: 250,
                 whiteSpace: "nowrap",
@@ -303,7 +303,9 @@ const SettingContainer = ({
 }) => (
   <div className={className}>
     {name && (
-      <div className="text-medium text-bold text-uppercase my1">{name}</div>
+      <div className={cx("text-medium", CS.textBold, CS.textUppercase, "my1")}>
+        {name}
+      </div>
     )}
     {description && <div className="text-medium my1">{description}</div>}
     {children}

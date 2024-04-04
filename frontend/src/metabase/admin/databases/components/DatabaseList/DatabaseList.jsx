@@ -11,7 +11,7 @@ import FormMessage from "metabase/components/form/FormMessage";
 import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import DatabaseSyncModal from "metabase/databases/containers/DatabaseSyncModal";
+import { DatabaseSyncModal } from "metabase/databases/components/DatabaseSyncModal";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
@@ -120,7 +120,7 @@ export default class DatabaseList extends Component {
                             )}
                             <Link
                               to={"/admin/databases/" + database.id}
-                              className={cx("text-bold", CS.link)}
+                              className={cx(CS.textBold, CS.link)}
                             >
                               {database.name}
                             </Link>
@@ -148,7 +148,7 @@ export default class DatabaseList extends Component {
           {!hasSampleDatabase && isAdmin ? (
             <div className="pt4">
               <span
-                className={cx("p2 text-italic", {
+                className={cx("p2", CS.textItalic, {
                   [CS.borderTop]: databases && databases.length > 0,
                 })}
               >

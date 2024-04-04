@@ -8,6 +8,8 @@ import { Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
+import { trackNotebookNativePreviewShown } from "../../../../../analytics";
+
 import { SqlButton } from "./ToggleNativeQueryPreview.styled";
 
 const BUTTON_TOOLTIP = {
@@ -37,12 +39,15 @@ export const ToggleNativeQueryPreview = ({
     ? BUTTON_TOOLTIP_CLOSE[engineType]
     : BUTTON_TOOLTIP[engineType];
 
-  const handleClick = () =>
+  const handleClick = () => {
     dispatch(
       setUIControls({
         isNativePreviewSidebarOpen: !isNativePreviewSidebarOpen,
       }),
     );
+
+    trackNotebookNativePreviewShown(!isNativePreviewSidebarOpen);
+  };
 
   return (
     <Tooltip label={tooltip} position="top">

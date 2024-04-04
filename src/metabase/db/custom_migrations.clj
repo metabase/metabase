@@ -18,6 +18,7 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
+   [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
@@ -31,7 +32,8 @@
    (liquibase.change Change)
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
    (liquibase.exception ValidationErrors)
-   (liquibase.util BooleanUtil)))
+   (liquibase.util BooleanUtil)
+   (org.mindrot.jbcrypt BCrypt)))
 
 (set! *warn-on-reflection* true)
 
@@ -1067,3 +1069,56 @@
       (run! rollback! (t2/reducible-query {:select [:*]
                                            :from   [:revision]
                                            :where  [:= :model "Card"]})))))
+
+(defn- hash-bcrypt
+  "Hashes a given plaintext password using bcrypt.  Should be used to hash
+   passwords included in stored user credentials that are to be later verified
+   using `bcrypt-credential-fn`."
+  [password]
+  (BCrypt/hashpw password (BCrypt/gensalt)))
+
+(defn- internal-user-exists? []
+  (pos? (first (vals (t2/query-one {:select [:%count.*] :from :core_user :where [:= :id config/internal-mb-user-id]})))))
+
+(define-migration CreateInternalUser
+  ;; the internal user may have been created in a previous version for Metabase Analytics, so don't add it again if it
+  ;; exists already.
+  (when (not (internal-user-exists?))
+    (let [salt     (str (random-uuid))
+          password (hash-bcrypt (str salt (random-uuid)))
+          user     {;; we insert the internal user ID directly because it's
+                    ;; deliberately high enough to not conflict with any other
+                    :id               config/internal-mb-user-id
+                    :password_salt    salt
+                    :password         password
+                    :email            "internal@metabase.com"
+                    :first_name       "Metabase"
+                    :locale           nil
+                    :last_login       nil
+                    :is_active        false
+                    :settings         nil
+                    :type             "internal"
+                    :is_qbnewb        true
+                    :updated_at       nil
+                    :reset_triggered  nil
+                    :is_superuser     false
+                    :login_attributes nil
+                    :reset_token      nil
+                    :last_name        "Internal"
+                    :date_joined      :%now
+                    :sso_source       nil
+                    :is_datasetnewb   true}]
+      (t2/query {:insert-into :core_user :values [user]}))
+    (let [all-users-id (first (vals (t2/query-one {:select [:id] :from :permissions_group :where [:= :name "All Users"]})))
+          perms-group  {:user_id config/internal-mb-user-id :group_id all-users-id}]
+      (t2/query {:insert-into :permissions_group_membership :values [perms-group]}))))
+
+;; This was renamed to TruncateAuditTables, so we need to delete the old job & trigger
+(define-migration DeleteTruncateAuditLogTask
+  (classloader/the-classloader)
+  (set-jdbc-backend-properties!)
+  (let [scheduler (qs/initialize)]
+    (qs/start scheduler)
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.truncate-audit-log.trigger"))
+    (qs/delete-job scheduler (jobs/key "metabase.task.truncate-audit-log.job"))
+    (qs/shutdown scheduler)))

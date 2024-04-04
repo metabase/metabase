@@ -68,8 +68,8 @@ describe("SegmentFilterEditor", () => {
       segmentItems: getSegmentItems(defaultQuery, stageIndex),
     });
 
-    userEvent.click(screen.getByPlaceholderText("Filter segments"));
-    userEvent.click(await screen.findByText(SEGMENT2.name));
+    await userEvent.click(screen.getByPlaceholderText("Filter segments"));
+    await userEvent.click(await screen.findByText(SEGMENT2.name));
 
     const nextSegmentItems = getNextSegmentItems();
     expect(nextSegmentItems).toHaveLength(1);
@@ -88,7 +88,10 @@ describe("SegmentFilterEditor", () => {
     expect(screen.getByText(SEGMENT1.name)).toBeInTheDocument();
     expect(screen.queryByText(SEGMENT2.name)).not.toBeInTheDocument();
 
-    userEvent.type(screen.getByLabelText("Filter segments"), "{backspace}");
+    await userEvent.type(
+      screen.getByLabelText("Filter segments"),
+      "{backspace}",
+    );
     const nextSegmentItems = getNextSegmentItems();
     expect(nextSegmentItems).toHaveLength(0);
   });

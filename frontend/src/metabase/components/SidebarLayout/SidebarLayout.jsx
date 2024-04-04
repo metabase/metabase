@@ -1,6 +1,9 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { cloneElement, Children } from "react";
+
+import CS from "metabase/css/core/index.css";
 
 const SidebarLayout = ({ className, style, sidebar, children }) => (
   <div
@@ -11,7 +14,12 @@ const SidebarLayout = ({ className, style, sidebar, children }) => (
       sidebar,
       {
         style: { flexShrink: 0, alignSelf: "stretch" },
-        className: "scroll-y scroll-show scroll--light scroll-show--hover",
+        className: cx(
+          CS.scrollY,
+          CS.scrollShow,
+          CS.scrollLight,
+          CS.scrollShowHover,
+        ),
       },
       sidebar.props.children,
     )}

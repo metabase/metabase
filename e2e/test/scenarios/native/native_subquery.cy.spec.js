@@ -6,6 +6,7 @@ import {
   visitQuestion,
   startNewNativeQuestion,
   runNativeQuery,
+  entityPickerModal,
 } from "e2e/support/helpers";
 
 import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
@@ -76,8 +77,10 @@ describe("scenarios > question > native subquery", () => {
         cy.visit(`/question/${questionId2}`);
         openQuestionActions();
         cy.findByTestId("move-button").click();
-        cy.findByText("My personal collection").click();
-        cy.findByText("Move").click();
+        entityPickerModal().within(() => {
+          cy.findByText("Bobby Tables's Personal Collection").click();
+          cy.button("Move").click();
+        });
 
         openNativeEditor();
         cy.reload(); // Refresh the state, so previously created questions need to be loaded again.
@@ -290,11 +293,8 @@ describe("scenarios > question > native subquery", () => {
         cy.intercept("GET", `/api/card/${nestedQuestionId}`).as("loadQuestion");
 
         startNewNativeQuestion();
-        SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`, {
-          delay: 100,
-        });
+        SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`);
         cy.wait("@loadQuestion");
-
         cy.findByTestId("sidebar-header-title").should(
           "have.text",
           questionDetails.name,
