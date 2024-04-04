@@ -564,15 +564,15 @@
 (defmethod driver/upload-type->database-type :h2
   [_driver upload-type]
   (case upload-type
-    :metabase.upload.types/varchar-255              [:varchar]
-    :metabase.upload.types/text                     [:varchar]
-    :metabase.upload.types/int                      [:bigint]
-    :metabase.upload.types/auto-incrementing-int-pk [:bigint :generated-always :as :identity]
-    :metabase.upload.types/float                    [(keyword "DOUBLE PRECISION")]
-    :metabase.upload.types/boolean                  [:boolean]
-    :metabase.upload.types/date                     [:date]
-    :metabase.upload.types/datetime                 [:timestamp]
-    :metabase.upload.types/offset-datetime          [:timestamp-with-time-zone]))
+    :metabase.upload/varchar-255              [:varchar]
+    :metabase.upload/text                     [:varchar]
+    :metabase.upload/int                      [:bigint]
+    :metabase.upload/auto-incrementing-int-pk [:bigint :generated-always :as :identity]
+    :metabase.upload/float                    [(keyword "DOUBLE PRECISION")]
+    :metabase.upload/boolean                  [:boolean]
+    :metabase.upload/date                     [:date]
+    :metabase.upload/datetime                 [:timestamp]
+    :metabase.upload/offset-datetime          [:timestamp-with-time-zone]))
 
 (defmethod driver/create-auto-pk-with-append-csv? :h2 [_driver] true)
 

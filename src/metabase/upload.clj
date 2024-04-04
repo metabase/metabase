@@ -111,12 +111,8 @@
 (mu/defn ^:private database-type
   [driver
    column-type :- (into [:enum] upload-types/column-types)]
-  (try
-    (driver/upload-type->database-type driver column-type)
-    (catch IllegalArgumentException _
-      ;; TODO: we can remove this workaround in a future version (52?)
-      (let [legacy-type (keyword "metabase.upload" (name column-type))]
-        (driver/upload-type->database-type driver legacy-type)))))
+  (let [external-type (keyword "metabase.upload" (name column-type))]
+    (driver/upload-type->database-type driver external-type)))
 
 (defn- column-definitions
   "Returns a map of column-name -> column-definition from a map of column-name -> upload-type."

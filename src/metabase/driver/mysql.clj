@@ -29,7 +29,6 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.upload :as upload]
-   [metabase.upload.types :as upload-types]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs]]
@@ -671,15 +670,15 @@
 (defmethod driver/upload-type->database-type :mysql
   [_driver upload-type]
   (case upload-type
-    ::upload-types/varchar-255              [[:varchar 255]]
-    ::upload-types/text                     [:text]
-    ::upload-types/int                      [:bigint]
-    ::upload-types/auto-incrementing-int-pk [:bigint :not-null :auto-increment]
-    ::upload-types/float                    [:double]
-    ::upload-types/boolean                  [:boolean]
-    ::upload-types/date                     [:date]
-    ::upload-types/datetime                 [:datetime]
-    ::upload-types/offset-datetime          [:timestamp]))
+    ::upload/varchar-255              [[:varchar 255]]
+    ::upload/text                     [:text]
+    ::upload/int                      [:bigint]
+    ::upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment]
+    ::upload/float                    [:double]
+    ::upload/boolean                  [:boolean]
+    ::upload/date                     [:date]
+    ::upload/datetime                 [:datetime]
+    ::upload/offset-datetime          [:timestamp]))
 
 (defmethod driver/create-auto-pk-with-append-csv? :mysql [_driver] true)
 
