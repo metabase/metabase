@@ -5,9 +5,8 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import "./LineAreaBarChart.module.css";
-
 import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
@@ -23,6 +22,7 @@ import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import CardRenderer from "./CardRenderer";
+import LineAreaBarChartS from "./LineAreaBarChart.module.css";
 import {
   LineAreaBarChartRoot,
   ChartLegendCaption,
@@ -262,7 +262,8 @@ export default class LineAreaBarChart extends Component {
     return (
       <LineAreaBarChartRoot
         className={cx(
-          "LineAreaBarChart",
+          DashboardS.LineAreaBarChart,
+          LineAreaBarChartS.LineAreaBarChart,
           this.getHoverClasses(),
           this.props.className,
         )}
