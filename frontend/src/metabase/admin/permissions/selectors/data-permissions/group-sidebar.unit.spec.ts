@@ -53,12 +53,6 @@ describe("getGroupsDataPermissionEditor", () => {
         label: "Can view",
         value: DataPermissionValue.UNRESTRICTED,
       },
-      {
-        icon: "permissions_limited",
-        iconColor: "warning",
-        label: "Granular",
-        value: DataPermissionValue.CONTROLLED,
-      },
     ]);
 
     expect(nativeQueryPermission.value).toEqual(
