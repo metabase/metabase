@@ -100,7 +100,9 @@ if (hasPremiumFeature("advanced_permissions")) {
   PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled = (value, subject) => {
     return (
       ["tables", "fields"].includes(subject) &&
-      DataPermissionValue.IMPERSONATED === value
+      [DataPermissionValue.BLOCKED, DataPermissionValue.IMPERSONATED].includes(
+        value,
+      )
     );
   };
 
