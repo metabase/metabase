@@ -231,5 +231,9 @@ export const createMockSettings = (
   "embedding-homepage": "hidden",
   "setup-embedding-autoenabled": false,
   "setup-license-active-at-setup": false,
+  "notebook-native-preview-preferences": {
+    sidebar_shown: false,
+    sidebar_width: null,
+  },
   ...opts,
 });

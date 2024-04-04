@@ -307,6 +307,10 @@ export interface UserSettings {
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
   "last-used-native-database-id"?: number | null;
+  "notebook-native-preview-preferences": {
+    sidebar_shown: boolean;
+    sidebar_width: number | null;
+  };
 }
 
 export type Settings = InstanceSettings &
