@@ -51,6 +51,11 @@ export interface TimelineEventData {
   question_id?: CardId;
 }
 
+export interface ListTimelinesRequest {
+  include?: "events";
+  archived?: boolean;
+}
+
 export interface GetTimelineRequest {
   id: TimelineId;
   include?: "events";

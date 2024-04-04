@@ -10,16 +10,6 @@ import { idTag, invalidateTags, listTag, tag } from "./tags";
 
 export const timelineEventApi = Api.injectEndpoints({
   endpoints: builder => ({
-    listTimelineEvents: builder.query<TimelineEvent[], void>({
-      query: () => ({
-        method: "GET",
-        url: "/api/timeline-event",
-      }),
-      providesTags: (timelineEvents = []) => [
-        listTag("timeline-event"),
-        ...(timelineEvents.map(({ id }) => idTag("timeline-event", id)) ?? []),
-      ],
-    }),
     getTimelineEvent: builder.query<TimelineEvent, TimelineEventId>({
       query: id => ({
         method: "GET",
@@ -34,11 +24,14 @@ export const timelineEventApi = Api.injectEndpoints({
     >({
       query: body => ({
         method: "POST",
-        url: "/api/timelineEvent",
+        url: "/api/timeline-event",
         body,
       }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("timeline-event"), tag("timeline")]),
+      invalidatesTags: (event, error) =>
+        invalidateTags(error, [
+          listTag("timeline-event"),
+          ...(event ? [idTag("timeline", event.timeline_id)] : []),
+        ]),
     }),
     updateTimelineEvent: builder.mutation<
       TimelineEvent,
@@ -46,14 +39,14 @@ export const timelineEventApi = Api.injectEndpoints({
     >({
       query: ({ id, ...body }) => ({
         method: "PUT",
-        url: `/api/timelineEvent/${id}`,
+        url: `/api/timeline-event/${id}`,
         body,
       }),
-      invalidatesTags: (_, error, { id }) =>
+      invalidatesTags: (event, error, { id }) =>
         invalidateTags(error, [
           listTag("timeline-event"),
           idTag("timeline-event", id),
-          tag("timeline"),
+          ...(event ? [idTag("timeline", event.timeline_id)] : []),
         ]),
     }),
     deleteTimelineEvent: builder.mutation<TimelineEvent, TimelineEventId>({
@@ -72,7 +65,6 @@ export const timelineEventApi = Api.injectEndpoints({
 });
 
 export const {
-  useListTimelineEventsQuery,
   useGetTimelineEventQuery,
   useCreateTimelineEventMutation,
   useUpdateTimelineEventMutation,
