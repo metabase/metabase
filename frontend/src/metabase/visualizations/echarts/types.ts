@@ -15,3 +15,10 @@ export type EChartsSeriesMouseEvent = ElementEvent & {
 export type EChartsSeriesBrushEndEvent = EChartsSeriesMouseEvent & {
   areas: BrushAreaParam[];
 };
+
+export type EChartsCartesianCoordinateSystem = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};

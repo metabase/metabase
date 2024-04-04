@@ -528,6 +528,13 @@ TimezoneTicksPlacement.args = {
   renderingContext,
 };
 
+export const BarRelativeDatetimeOrdinalScale = Template.bind({});
+BarRelativeDatetimeOrdinalScale.args = {
+  rawSeries: data.barRelativeDatetimeOrdinalScale as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,

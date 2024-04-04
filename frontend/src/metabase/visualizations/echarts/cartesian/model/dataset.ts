@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
 
 import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
@@ -21,9 +20,15 @@ import type {
   Datum,
   XAxisModel,
   NumericAxisScaleTransforms,
+  ShowWarning,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
+import {
+  invalidDateWarning,
+  nullDimensionWarning,
+  unaggregatedDataWarning,
+} from "metabase/visualizations/lib/warnings";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -33,6 +38,8 @@ import type {
   SingleSeries,
   XAxisScale,
 } from "metabase-types/api";
+
+import { tryGetDate } from "../utils/timeseries";
 
 import { isCategoryAxis, isNumericAxis, isTimeSeriesAxis } from "./guards";
 import { signedLog, signedSquareRoot } from "./transforms";
@@ -91,8 +98,8 @@ export const getDatasetKey = (
  * @param {DatasetColumn[]} columns - The columns of the raw dataset.
  * @param {RowValue[]} row - The raw row of values.
  * @param {number} cardId - The ID of the card.
- * @param dimensionIndex — Index of the dimension column of a card
- * @param {number} breakoutIndex - The breakout column index for charts with two dimension columns selected.
+ * @param {number} dimensionIndex — Index of the dimension column of a card
+ * @param {number | undefined} breakoutIndex - The breakout column index for charts with two dimension columns selected.
  */
 const aggregateColumnValuesForDatum = (
   datum: Record<DataKey, RowValue>,
@@ -100,7 +107,8 @@ const aggregateColumnValuesForDatum = (
   row: RowValue[],
   cardId: number,
   dimensionIndex: number,
-  breakoutIndex?: number,
+  breakoutIndex: number | undefined,
+  showWarning?: ShowWarning,
 ): void => {
   columns.forEach((column, columnIndex) => {
     const rowValue = row[columnIndex];
@@ -113,6 +121,10 @@ const aggregateColumnValuesForDatum = (
 
     // The dimension values should not be aggregated, only metrics
     if (isMetric(column) && !isDimensionColumn) {
+      if (seriesKey in datum) {
+        showWarning?.(unaggregatedDataWarning(columns[dimensionIndex]).text);
+      }
+
       datum[seriesKey] = sumMetric(datum[seriesKey], rowValue);
     } else if (!(seriesKey in datum)) {
       datum[seriesKey] = rowValue;
@@ -131,6 +143,7 @@ const aggregateColumnValuesForDatum = (
 export const getJoinedCardsDataset = (
   rawSeries: RawSeries,
   cardsColumns: CartesianChartColumns[],
+  showWarning?: ShowWarning,
 ): ChartDataset => {
   if (rawSeries.length === 0 || cardsColumns.length === 0) {
     return [];
@@ -168,6 +181,7 @@ export const getJoinedCardsDataset = (
         card.id,
         dimensionIndex,
         breakoutIndex,
+        showWarning,
       );
     }
   });
@@ -407,12 +421,15 @@ function getStackedDataLabelTransform(
   };
 }
 
-function filterNullDimensionValues(dataset: ChartDataset) {
-  // TODO show warning message
+export function filterNullDimensionValues(
+  dataset: ChartDataset,
+  showWarning?: ShowWarning,
+) {
   const filteredDataset: ChartDataset = [];
 
   dataset.forEach((datum, originalIndex) => {
     if (datum[X_AXIS_DATA_KEY] == null) {
+      showWarning?.(nullDimensionWarning().text);
       return;
     }
     filteredDataset.push({
@@ -507,6 +524,8 @@ function getHistogramDataset(
  * @param {ChartDataset} dataset The dataset to be transformed.
  * @param {SeriesModel[]} seriesModels Array of series models.
  * @param {ComputedVisualizationSettings} settings Computed visualization settings.
+ * @param {ShowWarning | undefined} showWarning Displays a warning icon and message in the query builder.
+ *
  * @returns {ChartDataset} A transformed dataset.
  */
 export const applyVisualizationSettingsDataTransformations = (
@@ -515,6 +534,7 @@ export const applyVisualizationSettingsDataTransformations = (
   seriesModels: SeriesModel[],
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
+  showWarning?: ShowWarning,
 ) => {
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
 
@@ -523,7 +543,7 @@ export const applyVisualizationSettingsDataTransformations = (
     xAxisModel.axisType === "time" ||
     xAxisModel.isHistogram
   ) {
-    dataset = filterNullDimensionValues(dataset);
+    dataset = filterNullDimensionValues(dataset, showWarning);
   }
 
   if (settings["graph.y_axis.scale"] === "log") {
@@ -573,27 +593,33 @@ export const applyVisualizationSettingsDataTransformations = (
 
 export const sortDataset = (
   dataset: ChartDataset,
-  xAxisScale?: XAxisScale,
+  xAxisScale: XAxisScale | undefined,
+  showWarning?: ShowWarning,
 ): ChartDataset => {
+  if (xAxisScale === "ordinal") {
+    return dataset;
+  }
+
   if (xAxisScale === "timeseries") {
     return sortByDimension(dataset, (left, right) => {
-      if (typeof left === "string" && typeof right === "string") {
-        return dayjs(left).valueOf() - dayjs(right).valueOf();
+      const leftDate = tryGetDate(left);
+      const rightDate = tryGetDate(right);
+
+      if (leftDate == null || rightDate == null) {
+        showWarning?.(invalidDateWarning(leftDate == null ? left : right).text);
+        return 0;
       }
-      return 0;
+
+      return leftDate.valueOf() - rightDate.valueOf();
     });
   }
 
-  if (xAxisScale !== "ordinal") {
-    return sortByDimension(dataset, (left, right) => {
-      if (typeof left === "number" && typeof right === "number") {
-        return left - right;
-      }
-      return 0;
-    });
-  }
-
-  return dataset;
+  return sortByDimension(dataset, (left, right) => {
+    if (typeof left === "number" && typeof right === "number") {
+      return left - right;
+    }
+    return 0;
+  });
 };
 
 /**
