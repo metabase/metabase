@@ -8,6 +8,7 @@
   overflow: hidden;
 }
 
+/* `.dc-chart` is a global class from dc.js */
 .LineAreaBarChart :global(.dc-chart .grid-line.horizontal) {
   stroke: var(--color-text-medium) !important;
   opacity: 1 !important;
@@ -107,8 +108,9 @@
 }
 
 /* highlight single series bar and row charts */
-.LineAreaBarChart:global(.mute-0 .dc-chart rect.bar:hover),
-.LineAreaBarChart:global(.mute-0 .dc-chart g.row:hover) {
+/* Renamed from `.mute-0`, since it sounded too generic */
+.LineAreaBarChart.LineAreaBarChartMute0 :global(.dc-chart rect.bar:hover),
+.LineAreaBarChart.LineAreaBarChartMute0 :global(.dc-chart g.row:hover) {
   opacity: 1 !important;
 }
 
@@ -191,13 +193,17 @@
 
 /* :global .mute-* selectors dynamically generated in LineAreaBarChart.js */
 
-.LineAreaBarChart:global(.mute-yl .dc-chart .axis.y),
-.LineAreaBarChart:global(.mute-yl .dc-chart .y-axis-label.y-label) {
+/* Renamed from `.mute-yl`, since it sounded too generic */
+.LineAreaBarChart.LineAreaBarChartMuteYl :global(.dc-chart .axis.y),
+.LineAreaBarChart.LineAreaBarChartMuteYl
+  :global(.dc-chart .y-axis-label.y-label) {
   opacity: 0;
 }
 
-.LineAreaBarChart:global(.mute-yr .dc-chart .axis.yr),
-.LineAreaBarChart:global(.mute-yr .dc-chart .y-axis-label.yr-label) {
+/* Renamed from `.mute-yr`, since it sounded too generic */
+.LineAreaBarChart.LineAreaBarChartMuteYr :global(.dc-chart .axis.yr),
+.LineAreaBarChart.LineAreaBarChartMuteYr
+  :global(.dc-chart .y-axis-label.yr-label) {
   opacity: 0;
 }
 

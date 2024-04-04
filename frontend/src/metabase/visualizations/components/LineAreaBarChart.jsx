@@ -92,12 +92,17 @@ export default class LineAreaBarChart extends Component {
     if (hovered && hovered.index != null) {
       const seriesClasses = _.range(0, MAX_SERIES)
         .filter(n => n !== hovered.index)
-        .map(n => "mute-" + n);
+        .map(n => {
+          if (n === 0) {
+            return LineAreaBarChartS.LineAreaBarChartMute0;
+          }
+          return "mute-" + n;
+        });
       const axisClasses =
         hovered.axisIndex === 0
-          ? "mute-yr"
+          ? LineAreaBarChartS.LineAreaBarChartMuteYr
           : hovered.axisIndex === 1
-          ? "mute-yl"
+          ? LineAreaBarChartS.LineAreaBarChartMuteYl
           : null;
       return seriesClasses.concat(axisClasses);
     } else {
