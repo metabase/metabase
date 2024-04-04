@@ -46,7 +46,7 @@ export default createEntity({
 
         const { data, ...rest } = await entityCompatibleQuery(
           {
-            collectionId: collection,
+            id: collection,
             archived,
             models,
             namespace,

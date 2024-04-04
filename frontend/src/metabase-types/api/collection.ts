@@ -121,6 +121,8 @@ export interface ListCollectionItemsRequest {
   models?: CollectionItemModel | CollectionItemModel[];
   archived?: boolean;
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
+  limit?: number;
+  offset?: number;
   sort_column?: "name" | "last_edited_at" | "last_edited_by" | "model";
   sort_direction?: "asc" | "desc";
 }
