@@ -11,10 +11,24 @@
 
 #?(:clj (set! *warn-on-reflection* true))
 
+(def metadata-types
+  [:enum
+   :metadata/database :metadata/table :metadata/column
+   :metadata/card :metadata/metric :metadata/segment])
+
 (defn- get-in-cache [cache ks]
   (when-some [cached-value (get-in @cache ks)]
     (when-not (= cached-value ::nil)
       cached-value)))
+
+(mu/defn get-all-in-cache
+  "Get all cached items by type."
+  [cache
+   metadata-type :- metadata-types]
+  (case metadata-type
+    :metabase/database
+    (get-in-cache cache [:metabase/database])
+    (vals (get @cache metadata-type))))
 
 (defn- store-in-cache! [cache ks value]
   (let [value (if (some? value) value ::nil)]
@@ -32,7 +46,7 @@
 
 (mu/defn ^:private store-metadata!
   [cache
-   metadata-type :- [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/metric :metadata/segment]
+   metadata-type :- metadata-types
    id            :- pos-int?
    metadata      :- [:multi
                      {:dispatch :lib/type}
@@ -104,14 +118,16 @@
   (setting  [_this setting]    (lib.metadata.protocols/setting metadata-provider setting))
 
   lib.metadata.protocols/CachedMetadataProvider
-  (cached-database [_this]                           (get-in-cache    cache [:metadata/database]))
-  (cached-metadata [_this metadata-type id]          (get-in-cache    cache [metadata-type id]))
-  (store-database! [_this database-metadata]         (store-database! cache database-metadata))
-  (store-metadata! [_this metadata-type id metadata] (store-metadata! cache metadata-type id metadata))
+  (cached-database [_this]                           (get-in-cache     cache [:metadata/database]))
+  (cached-metadata [_this metadata-type]             (get-all-in-cache cache metadata-type))
+  (cached-metadata [_this metadata-type id]          (get-in-cache     cache [metadata-type id]))
+  (store-database! [_this database-metadata]         (store-database!  cache database-metadata))
+  (store-metadata! [_this metadata-type id metadata] (store-metadata!  cache metadata-type id metadata))
 
   ;; these only work if the underlying metadata provider is also a [[BulkMetadataProvider]].
   lib.metadata.protocols/BulkMetadataProvider
   (bulk-metadata [_this metadata-type ids]
+    (def cache @cache)
     (bulk-metadata cache metadata-provider metadata-type ids))
 
   #?(:clj Object :cljs IEquiv)

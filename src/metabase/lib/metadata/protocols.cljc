@@ -46,7 +46,7 @@
 
   (segment [metadata-provider segment-id]
     "Return metadata for a particular captial-S Segment, i.e. something from the `segment` table in the application
-    database. Metadata should match [[metabase.lib.metadata/SegmentMetadata]]." )
+    database. Metadata should match [[metabase.lib.metadata/SegmentMetadata]].")
 
   ;; these methods are only needed for using the methods BUILDING queries, so they're sort of optional I guess? Things
   ;; like the Query Processor, which is only manipulating already-built queries, shouldn't need to use these methods.
@@ -97,8 +97,10 @@
   of it."
   (cached-database [cached-metadata-provider]
     "Get cached metadata for the query's Database.")
-  (cached-metadata [cached-metadata-provider metadata-type id]
-    "Get cached metadata of a specific type, e.g. `:metadata/table`.")
+  (cached-metadata
+   [cached-metadata-provider metadata-type]
+   [cached-metadata-provider metadata-type id]
+   "Get cached metadata(s) of a specific type, e.g. `:metadata/table`.")
   (store-database! [cached-metadata-provider database-metadata]
     "Store metadata for the query's Database.")
   (store-metadata! [cached-metadata-provider metadata-type id metadata]
