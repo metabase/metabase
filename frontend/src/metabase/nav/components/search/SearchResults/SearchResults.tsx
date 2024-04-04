@@ -86,7 +86,7 @@ export const SearchResults = ({
     q?: string;
     limit: number;
     models?: SearchModelType[];
-    context?: string;
+    context?: "search-bar" | "search-app";
   } & SearchFilters = {
     q: debouncedSearchText,
     limit: DEFAULT_SEARCH_LIMIT,

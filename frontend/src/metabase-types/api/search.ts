@@ -119,12 +119,16 @@ export interface SearchRequest {
   models?: SearchModelType | SearchModelType[];
   filter_items_in_personal_collection?: "only" | "exclude";
   context?: "search-bar" | "search-app";
-  created_at?: string;
-  created_by?: UserId[];
-  last_edited_at?: string;
+  created_at?: string | null;
+  created_by?: UserId[] | null;
+  last_edited_at?: string | null;
   last_edited_by?: UserId[];
-  search_native_query?: boolean;
-  verified?: boolean;
+  search_native_query?: boolean | null;
+  verified?: boolean | null;
   limit?: number;
   offset?: number;
+
+  // this should be in ListCollectionItemsRequest but legacy code expects them here
+  collection?: CollectionId;
+  namespace?: "snippets";
 }
