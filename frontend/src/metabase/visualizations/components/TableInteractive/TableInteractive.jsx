@@ -1168,7 +1168,7 @@ export default _.compose(
 
 const DetailShortcut = forwardRef((_props, ref) => (
   <div
-    className="TableInteractive-cellWrapper cursor-pointer"
+    className={cx("TableInteractive-cellWrapper", CS.cursorPointer)}
     ref={ref}
     style={{
       position: "absolute",
