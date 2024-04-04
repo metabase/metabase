@@ -52,6 +52,8 @@
   `inside` with lower-level clauses like `between`. This is done to minimize the number of MBQL clauses individual
   drivers need to support. Clauses replaced by this middleware are marked `^:sugar` in the MBQL schema."
   [query]
+  ;; Base types are added to field options for integer id fields that are missing those. Then original desugar
+  ;; is performed. Later those base types (added for desugaring purposes [expanding is-empty, not-empty]) are removed.
   (m/update-existing query :query (comp remove-desugar-added-base-types
                                         desugar*
                                         add-missing-field-base-types)))
