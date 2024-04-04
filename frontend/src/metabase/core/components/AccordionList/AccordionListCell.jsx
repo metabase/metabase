@@ -162,7 +162,7 @@ export const AccordionListCell = ({
           CS.flex,
           CS.mx1,
           {
-            "List-item--selected": isSelected,
+            [ListS.ListItemSelected]: isSelected,
             [ListS.ListItemDisabled]: !isClickable,
             [ListS.ListItemCursor]: hasCursor,
             [CS.mb1]: isLastItem,

@@ -55,7 +55,7 @@
 
 .ListItemCursor:not(.ListItemDisabled),
 .ListItem:not(.ListItemDisabled):hover,
-:global(.List-item--selected):not(.ListItemDisabled) {
+.ListItemSelected:not(.ListItemDisabled) {
   background-color: currentColor;
 }
 
@@ -70,7 +70,7 @@
 
 .ListItemCursor:not(.ListItemDisabled) :global(.List-item-title),
 .ListItem:not(.ListItemDisabled):hover :global(.List-item-title),
-:global(.List-item--selected):not(.ListItemDisabled) :global(.List-item-title) {
+.ListItemSelected:not(.ListItemDisabled) :global(.List-item-title) {
   color: white;
 }
 
@@ -87,20 +87,19 @@
 
 .ListItemCursor:not(.ListItemDisabled) :global(.List-item-description),
 .ListItem:not(.ListItemDisabled):hover :global(.List-item-description),
-:global(.List-item--selected):not(.ListItemDisabled)
-  :global(.List-item-description) {
+.ListItemSelected:not(.ListItemDisabled) :global(.List-item-description) {
   color: rgba(255, 255, 255, 0.5);
 }
 
 /* LIST ITEM ICON */
 .ListItemCursor:not(.ListItemDisabled) :global(.Icon),
 .ListItem:not(.ListItemDisabled):hover :global(.Icon),
-:global(.List-item--selected):not(.ListItemDisabled) :global(.Icon) {
+.ListItemSelected:not(.ListItemDisabled) :global(.Icon) {
   color: white !important;
 }
 
 /* Moved from `query_builder.module.css` to make migration easier */
 .ListItem:not(.ListItemDisabled):hover .FieldListGroupingTrigger,
-:global(.List-item--selected) .FieldListGroupingTrigger {
+.ListItemSelected .FieldListGroupingTrigger {
   visibility: visible;
 }
