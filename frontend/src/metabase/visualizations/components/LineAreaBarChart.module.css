@@ -1,4 +1,6 @@
-.LineAreaBarChart :global(.renderer) {
+.LineAreaBarChart
+/* Renamed from `.renderer`, since it sounded too generic */
+.LineAreaBarChartRenderer {
   margin-top: -5px;
   margin-left: -0.5em;
   margin-right: -0.5em;

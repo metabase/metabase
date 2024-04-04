@@ -297,7 +297,10 @@ export default class LineAreaBarChart extends Component {
             {...this.props}
             series={orderedSeries}
             settings={this.getSettings()}
-            className={cx("renderer", CS.flexFull)}
+            className={cx(
+              LineAreaBarChartS.LineAreaBarChartRenderer,
+              CS.flexFull,
+            )}
             maxSeries={MAX_SERIES}
             renderer={this.constructor.renderer}
           />
