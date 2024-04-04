@@ -6,6 +6,14 @@ export type TimelineId = number;
 export type TimelineEventId = number;
 export type TimelineEventSource = "question" | "collections" | "api";
 
+export type TimelineIcon =
+  | "star"
+  | "cake"
+  | "mail"
+  | "warning"
+  | "bell"
+  | "cloud";
+
 export interface Timeline extends TimelineData {
   id: TimelineId;
   collection?: Collection;
@@ -17,7 +25,7 @@ export interface TimelineData {
   collection_id: RegularCollectionId | null;
   name: string;
   description: string | null;
-  icon: string;
+  icon: TimelineIcon;
   default: boolean;
   archived: boolean;
 }
@@ -34,11 +42,38 @@ export interface TimelineEventData {
   timeline_id?: TimelineId;
   name: string;
   description: string | null;
-  icon: string;
+  icon: TimelineIcon;
   timestamp: string;
   timezone: string;
   time_matters: boolean;
   archived: boolean;
   source?: TimelineEventSource;
   question_id?: CardId;
+}
+
+export interface CreateTimelineEventRequest {
+  name: string;
+  description?: string;
+  timestamp: string;
+  time_matters?: boolean;
+  timezone: string;
+  icon?: TimelineIcon;
+  timeline_id: TimelineId;
+  source?: TimelineEventSource;
+  question_id?: CardId;
+  archived?: boolean;
+}
+
+export interface UpdateTimelineEventRequest {
+  id: TimelineEventId;
+  name?: string;
+  description?: string;
+  timestamp?: string;
+  time_matters?: boolean;
+  timezone?: string;
+  icon?: TimelineIcon;
+  timeline_id?: TimelineId;
+  source?: TimelineEventSource;
+  question_id?: CardId;
+  archived?: boolean;
 }
