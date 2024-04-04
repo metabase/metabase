@@ -1,9 +1,0 @@
-<html><head></head><body style="margin: 0;"><h1><pre>Constraints</pre></h1><div><div><p>Additional constraints added to a query limiting the maximum number of rows that can be returned. Mostly useful
-because native queries don't support the MBQL <code>:limit</code> clause. For MBQL queries, if <code>:limit</code> is set, it will
-override these values.</p>
-</div><div><div>Must satisfy all of these:<ul><li><div>A map with the following keys:<table><thead><tr><th>Key</th><th>Schema</th></tr></thead><tbody><tr style="border: 1px solid black;"><td style="border: 1px solid black; background: #cccccc;"><pre>max-results</pre><i>Optional.</i></td><td style="border: 1px solid black;"><div><p>Maximum number of results to allow for a query with aggregations. If <code>max-results-bare-rows</code> is unset, this
-applies to all queries</p>
-</div><div><a href="metabase.lib.schema.common__int_greater_than_or_equal_to_zero.html"><pre>int-greater-than-or-equal-to-zero</pre></a></div></td></tr><tr style="border: 1px solid black;"><td style="border: 1px solid black; background: #cccccc;"><pre>max-results-bare-rows</pre><i>Optional.</i></td><td style="border: 1px solid black;"><div><p>Maximum number of results to allow for a query with no aggregations. If set, this should be LOWER than
-<code>:max-results</code>.</p>
-</div><div><a href="metabase.lib.schema.common__int_greater_than_or_equal_to_zero.html"><pre>int-greater-than-or-equal-to-zero</pre></a></div></td></tr></tbody></table></div></li><li><div><div><p>max-results-bare-rows must be less or equal to than max-results</p>
-</div><div><div></div></div></div></li></ul></div></div></div></body></html>

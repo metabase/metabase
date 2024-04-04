@@ -1,9 +1,0 @@
-<html><head></head><body style="margin: 0;"><h1><p>Saved Questions Virtual Database ID</p>
-</h1><div><div><p>The ID used to signify that a database is 'virtual' rather than physical.</p>
-<p>A fake integer ID is used so as to minimize the number of changes that need to be made on the frontend -- by using
-something that would otherwise be a legal ID, <em>nothing</em> need change there, and the frontend can query against this
-'database' none the wiser. (This integer ID is negative which means it will never conflict with a <em>real</em> database
-ID.)</p>
-<p>This ID acts as a sort of flag. The relevant places in the middleware can check whether the DB we're querying is
-this 'virtual' database and take the appropriate actions.</p>
-</div><div><div>Must equal <code>-1337</code></div></div></div></body></html>

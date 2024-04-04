@@ -1,8 +1,0 @@
-<html><head></head><body style="margin: 0;"><h1><pre>check-query-does-not-have-source-metadata</pre></h1><div><div><p><code>:source-metadata</code> is added to queries when <code>card__id</code> source queries are resolved. It contains info about the
-columns in the source query.</p>
-<p>Where this is added was changed in Metabase 0.33.0 -- previously, when <code>card__id</code> source queries were resolved, the
-middleware would add <code>:source-metadata</code> to the top-level; to support joins against source queries, this has been
-changed so it is always added at the same level the resolved <code>:source-query</code> is added.</p>
-<p>This should automatically be fixed by <code>normalize</code>; if we encounter it, it means some middleware is not functioning
-properly.</p>
-</div><div><div></div></div></div></body></html>
