@@ -328,7 +328,7 @@ export const LEGEND_SETTINGS = {
   "legend.is_reversed": {
     getDefault: (_series, settings) => getDefaultLegendIsReversed(settings),
     hidden: true,
-    readDependencies: ["stackable.stack_display", "stackable.stack_type"],
+    readDependencies: ["stackable.stack_display"],
   },
 };
 
@@ -341,7 +341,7 @@ export const TOOLTIP_SETTINGS = {
       return shouldShowComparisonTooltip ? "series_comparison" : "default";
     },
     hidden: true,
-    readDependencies: ["stackable.stack_display", "stackable.stack_type"],
+    readDependencies: ["stackable.stack_display"],
   },
 };
 
