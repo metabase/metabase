@@ -201,7 +201,7 @@
                       {:query (qp.persistence/persisted-info-native-query
                                (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                                persisted-info)})
-                    (qp.compile/compile query)))))
+                    (qp.compile/compile (assoc-in query [:middleware :disable-max-results?] true))))))
       (catch ExceptionInfo e
         (throw (ex-info
                 (tru "The sub-query from referenced question #{0} failed with the following error: {1}"
