@@ -49,7 +49,7 @@ describe("command palette", () => {
       // Since the command palette list is virtualized, we will search for a few
       // to ensure they're reachable
       commandPaletteSearch().clear().type("People");
-      cy.findByRole("option", { name: /Admin - People/ }).should("exist");
+      cy.findByRole("option", { name: /People/ }).should("exist");
 
       commandPaletteSearch().clear().type("Uploads");
       cy.findByRole("option", { name: /Settings - Uploads/ }).should("exist");

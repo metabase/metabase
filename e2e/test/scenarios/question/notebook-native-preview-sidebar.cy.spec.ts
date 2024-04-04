@@ -16,6 +16,12 @@ import {
   createQuestion,
   saveSavedQuestion,
   withDatabase,
+  describeWithSnowplow,
+  resetSnowplow,
+  enableTracking,
+  expectGoodSnowplowEvent,
+  expectGoodSnowplowEvents,
+  expectNoBadSnowplowEvents,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -307,6 +313,45 @@ describe(
       cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
       cy.findByTestId("selected-table").should("have.text", "Products");
       cy.get(".cellData").should("contain", "Small Marble Shoes");
+    });
+  },
+);
+
+describeWithSnowplow(
+  "scenarios > notebook > native query preview sidebar tracking events",
+  () => {
+    beforeEach(() => {
+      resetSnowplow();
+      restore();
+      cy.signInAsAdmin();
+      enableTracking();
+    });
+
+    afterEach(() => {
+      expectNoBadSnowplowEvents();
+    });
+
+    it("should track `notebook_native_preview_shown|hidden` events", () => {
+      cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
+      openReviewsTable({ mode: "notebook", limit: 1 });
+      expectGoodSnowplowEvents(1); // page view
+
+      cy.findByLabelText("View the SQL").click();
+      cy.wait("@nativeDataset");
+      cy.findByTestId("native-query-preview-sidebar").should("exist");
+
+      expectGoodSnowplowEvent({
+        event: "notebook_native_preview_shown",
+      });
+
+      cy.findByLabelText("Hide the SQL").click();
+      cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+
+      expectGoodSnowplowEvent({
+        event: "notebook_native_preview_hidden",
+      });
+
+      expectGoodSnowplowEvents(3);
     });
   },
 );

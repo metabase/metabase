@@ -9,8 +9,8 @@
      :value [3 5]}"
   (:require
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.models.params :as params]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
@@ -60,7 +60,7 @@
   `:type qp.error-type/invalid-parameter` if arity is incorrect."
   [{param-type :type [a b :as param-value] :value [_ field :as _target] :target options :options :as _param}]
   (verify-type-and-arity field param-type param-value)
-  (let [field' (params/wrap-field-id-if-needed field)]
+  (let [field' (mbql.u/wrap-field-id-if-needed field)]
     (case (operator-arity param-type)
       :binary
       (cond-> [(keyword (name param-type)) field' a b]
