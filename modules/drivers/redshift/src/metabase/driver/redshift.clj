@@ -455,11 +455,26 @@
           "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.tablename || '\"',  'INSERT') as insert,"
           "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.tablename || '\"',  'DELETE') as delete"
           " from pg_catalog.pg_tables t"
-          " where t.schemaname !~ '^pg_'"
-          "   and t.schemaname <> 'information_schema'"
+          " where t.schemaname !~ '^information_schema|catalog_history|pg_'"
+          "   and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
+          "), view_privileges as ("
+          " select"
+          "   NULL as role,"
+          "   t.schemaname as schema,"
+          "   t.viewname as table,"
+          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\".\"' || t.viewname || '\"',  'SELECT')"
+          "     OR pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.viewname || '\"',  'SELECT') as select,"
+          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.viewname || '\"',  'UPDATE')"
+          "     OR pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.viewname || '\"',  'UPDATE') as update,"
+          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.viewname || '\"',  'INSERT') as insert,"
+          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.viewname || '\"',  'DELETE') as delete"
+          " from pg_catalog.pg_views t"
+          " where t.schemaname !~ '^information_schema|catalog_history|pg_'"
+          "   and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
           ")"
-          "select t.*"
-          "from table_privileges t"]))
+          "select * from table_privileges"
+          "union"
+          "select * from view_privileges"]))
        (filter #(or (:select %) (:update %) (:delete %) (:update %)))))
 
 
