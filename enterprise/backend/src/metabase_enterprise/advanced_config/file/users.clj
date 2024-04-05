@@ -6,7 +6,6 @@
    [metabase.models.user :refer [User]]
    [metabase.setup :as setup]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -37,15 +36,16 @@
   [user]
   (if-let [existing-user-id (t2/select-one-pk User :email (:email user))]
     (do
-      (log/info (u/colorize :blue (trs "Updating User with email {0}" (pr-str (:email user)))))
+      (log/info (u/format-color :blue "Updating User with email %s" (pr-str (:email user))))
       (t2/update! User existing-user-id user))
     ;; create a new user. If they are the first non-internal User, force them to be an admin.
     (let [user (cond-> user
                  (not (setup/has-user-setup)) (assoc :is_superuser true))]
-      (log/info (u/colorize :green (trs "Creating the first User for this instance. The first user is always created as an admin.")))
-      (log/info (u/colorize :green (trs "Creating new User {0} with email {1}"
-                                        (pr-str (str (:first_name user) \space (:last_name user)))
-                                        (pr-str (:email user)))))
+      (log/info (u/colorize :green "Creating the first User for this instance. The first user is always created as an admin."))
+      (log/info (u/format-color :green
+                                "Creating new User %s with email %s"
+                                (pr-str (str (:first_name user) \space (:last_name user)))
+                                (pr-str (:email user))))
       (t2/insert! User user))))
 
 (defmethod advanced-config.file.i/initialize-section! :users

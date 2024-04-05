@@ -34,7 +34,7 @@
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -360,7 +360,7 @@
                           (= (count distinct-values)
                              metadata-queries/absolute-max-distinct-values-limit))})
     (catch Throwable e
-      (log/error e (trs "Error fetching field values"))
+      (log/error e "Error fetching field values")
       nil)))
 
 (defn- delete-duplicates-and-return-latest!
@@ -415,9 +415,11 @@
            (or has_more_values
                (> (count values) auto-list-cardinality-threshold)))
       (do
-        (log/info (trs "Field {0} was previously automatically set to show a list widget, but now has {1} values."
-                       field-name (count values))
-                  (trs "Switching Field to use a search widget instead."))
+        (log/infof
+         (str "Field %s was previously automatically set to show a list widget, but now has %s values."
+              " Switching Field to use a search widget instead.")
+         field-name
+         (count values))
         (t2/update! 'Field (u/the-id field) {:has_field_values nil})
         (clear-field-values-for-field! field)
         ::fv-deleted)
@@ -425,28 +427,28 @@
       (and (= (:values field-values) values)
            (= (:has_more_values field-values) has_more_values))
       (do
-        (log/debug (trs "FieldValues for Field {0} remain unchanged. Skipping..." field-name))
+        (log/debugf "FieldValues for Field %s remain unchanged. Skipping..." field-name)
         ::fv-skipped)
 
       ;; if the FieldValues object already exists then update values in it
       (and field-values unwrapped-values)
       (do
-       (log/debug (trs "Storing updated FieldValues for Field {0}..." field-name))
-       (t2/update! FieldValues (u/the-id field-values)
-                   (m/remove-vals nil?
-                                  {:has_more_values       has_more_values
-                                   :values                values
-                                   :human_readable_values (fixup-human-readable-values field-values values)}))
-       ::fv-updated)
+        (log/debugf "Storing updated FieldValues for Field %s..." field-name)
+        (t2/update! FieldValues (u/the-id field-values)
+                    (m/remove-vals nil?
+                                   {:has_more_values       has_more_values
+                                    :values                values
+                                    :human_readable_values (fixup-human-readable-values field-values values)}))
+        ::fv-updated)
 
       ;; if FieldValues object doesn't exist create one
       unwrapped-values
       (do
-        (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
+        (log/debugf "Storing FieldValues for Field %s..." field-name)
         (mdb.query/select-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
-          (constantly {:has_more_values       has_more_values
-                       :values                values
-                       :human_readable_values human-readable-values}))
+                                     (constantly {:has_more_values       has_more_values
+                                                  :values                values
+                                                  :human_readable_values human-readable-values}))
         ::fv-created)
 
       ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
@@ -505,13 +507,12 @@
                  (filter field-should-have-field-values?
                          (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
                                      :semantic_type :visibility_type :table_id :has_field_values]
-                           :id [:in field-ids])))
+                                    :id [:in field-ids])))
         table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))]
     (doseq [{table-id :table_id, :as field} fields]
       (when (table-id->is-on-demand? table-id)
-        (log/debug
-         (trs "Field {0} ''{1}'' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
-                 (u/the-id field) (:name field)))
+        (log/debugf "Field %s '%s' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
+                    (u/the-id field) (:name field))
         (create-or-update-full-field-values! field)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -679,7 +679,7 @@
           (try
             (canonicalize-mbql-clause form)
             (catch #?(:clj Throwable :cljs js/Error) e
-              (log/error (i18n/tru "Invalid clause:") form)
+              (log/error "Invalid clause:" form)
               (throw (ex-info (i18n/tru "Invalid MBQL clause: {0}" (ex-message e))
                               {:clause form}
                               e))))]

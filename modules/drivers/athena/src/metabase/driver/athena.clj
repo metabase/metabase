@@ -19,7 +19,6 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
    (java.sql Connection DatabaseMetaData)
@@ -132,7 +131,7 @@
           (u.date/parse s)
           ;; better to catch and log the error here than to barf completely, right?
           (catch Throwable e
-            (log/error e (trs "Error parsing timestamp with time zone string {0}: {1}" (pr-str s) (ex-message e)))
+            (log/errorf e "Error parsing timestamp with time zone string %s: %s" (pr-str s) (ex-message e))
             nil))))
 
     ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc java.sql.Types/VARCHAR]) driver rs rsmeta i)))
@@ -290,8 +289,8 @@
   "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
   [driver database-type]
   (or (sql-jdbc.sync/database-type->base-type driver (keyword database-type))
-      (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*."
-                            database-type))
+      (do (log/warnf "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*."
+                     database-type)
           :type/*)))
 
 (defn- run-query
@@ -357,7 +356,7 @@
           (describe-table-fields-with-nested-fields database schema table-name)
           (describe-table-fields-without-nested-fields driver columns))))
     (catch Throwable e
-      (log/error e (trs "Error retreiving fields for DB {0}.{1}" schema table-name))
+      (log/errorf e "Error retreiving fields for DB %s.%s" schema table-name)
       (throw e))))
 
 ;; Becuse describe-table-fields might fail, we catch the error here and return an empty set of columns

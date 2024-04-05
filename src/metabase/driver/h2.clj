@@ -557,7 +557,7 @@
       (let [details (ssh/include-ssh-tunnel! db-details)
             db      (:db details)]
         (assoc details :db (str/replace-first db (str (:orig-port details)) (str (:tunnel-entrance-port details)))))
-      (do (log/error (tru "SSH tunnel can only be established for H2 connections using the TCP protocol"))
+      (do (log/error "SSH tunnel can only be established for H2 connections using the TCP protocol")
           db-details))
     db-details))
 
