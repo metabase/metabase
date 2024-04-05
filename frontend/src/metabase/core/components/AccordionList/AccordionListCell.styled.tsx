@@ -22,7 +22,7 @@ export const Content = styled.div<{ isClickable: boolean }>`
   cursor: ${props => (props.isClickable ? "pointer" : "default")};
   min-width: 0;
 
-  .List-item-content {
+  [data-element-id="list-item"]-content {
     min-width: 0;
     flex-shrink: 1;
   }

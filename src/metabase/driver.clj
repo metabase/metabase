@@ -14,7 +14,7 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [potemkin :as p]
    [toucan2.core :as t2]))
@@ -35,7 +35,7 @@
     (try
       (notify-database-updated driver database)
       (catch Throwable e
-        (log/error e (trs "Failed to notify {0} Database {1} updated" driver id))))))
+        (log/errorf e "Failed to notify %s Database %s updated" driver id)))))
 
 (defn- short-timezone-name [timezone-id]
   (let [^java.time.ZoneId zone (if (seq timezone-id)

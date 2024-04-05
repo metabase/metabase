@@ -160,11 +160,21 @@
     [:not-null field] [:!= field nil]))
 
 (defn desugar-is-empty-and-not-empty
-  "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively."
+  "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively.
+
+   If `:not-empty` is called on `:metabase.lib.schema.expression/emptyable` type, expand check for empty string. For
+   non-`emptyable` types act as `:is-null`. If field has nil base type it is considered not emptyable expansion wise."
   [m]
   (lib.util.match/replace m
-    [:is-empty field]  [:or  [:=  field nil] [:=  field ""]]
-    [:not-empty field] [:and [:!= field nil] [:!= field ""]]))
+    [:is-empty field]
+    (if (isa? (get-in field [2 :base-type]) :metabase.lib.schema.expression/emptyable)
+      [:or [:= field nil] [:= field ""]]
+      [:= field nil])
+
+    [:not-empty field]
+    (if (isa? (get-in field [2 :base-type]) :metabase.lib.schema.expression/emptyable)
+      [:and [:!= field nil] [:!= field ""]]
+      [:!= field nil])))
 
 (defn- replace-field-or-expression
   "Replace a field or expression inside :time-interval"
@@ -725,8 +735,7 @@
           (mbql.s/valid-temporal-unit-for-base-type? base-type unit))
     (assoc-field-options clause :temporal-unit unit)
     (do
-      (log/warn (i18n/tru "{0} is not a valid temporal unit for {1}; not adding to clause {2}"
-                          unit base-type (pr-str clause)))
+      (log/warnf "%s is not a valid temporal unit for %s; not adding to clause %s" unit base-type (pr-str clause))
       clause)))
 
 (defn remove-namespaced-options

@@ -52,7 +52,7 @@ export default class QuestionAlertWidget extends Component {
         <span onClick={this.open} ref={this.rootRef}>
           <Icon
             name="bell"
-            className={cx(className, "text-brand cursor-pointer")}
+            className={cx(className, CS.textBrand, CS.cursorPointer)}
           />
           <Popover
             target={this.rootRef.current}

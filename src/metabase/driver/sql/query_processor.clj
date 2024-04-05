@@ -21,7 +21,7 @@
    [metabase.query-processor.util.nest-query :as nest-query]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -1443,11 +1443,9 @@
      (format-honeysql-2 dialect honeysql-form)
      (catch Throwable e
        (try
-         (log/error e
-                    (u/format-color 'red
-                                    (str (deferred-tru "Invalid HoneySQL form: {0}" (ex-message e))
-                                         "\n"
-                                         (u/pprint-to-str honeysql-form))))
+         (log/error e (u/format-color :red
+                                      "Invalid HoneySQL form: %s\n%s"
+                                      (ex-message e) (u/pprint-to-str honeysql-form)))
          (finally
            (throw (ex-info (tru "Error compiling HoneySQL form: {0}" (ex-message e))
                            {:dialect dialect

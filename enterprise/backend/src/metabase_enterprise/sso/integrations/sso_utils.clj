@@ -60,7 +60,7 @@
   [user :- UserAttributes]
   (try
     (u/prog1 (first (t2/insert-returning-instances! User (merge user {:password (str (random-uuid))})))
-      (log/info (trs "New SSO user created: {0} ({1})" (:common_name <>) (:email <>)))
+      (log/infof "New SSO user created: %s (%s)" (:common_name <>) (:email <>))
       ;; publish user-invited event for audit logging
       (events/publish-event! :event/user-invited {:object (assoc <> :sso_source (:sso_source user))})
       ;; send an email to everyone including the site admin if that's set

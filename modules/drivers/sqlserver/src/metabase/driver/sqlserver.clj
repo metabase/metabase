@@ -22,7 +22,6 @@
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
    (java.sql Connection ResultSet Time)
@@ -47,7 +46,7 @@
   [_ _ db]
   (let [major-version (get-in db [:dbms_version :semantic-version 0] 0)]
     (when (zero? major-version)
-      (log/warn (trs "Unable to determine sqlserver's dbms major version. Fallback to 0.")))
+      (log/warn "Unable to determine sqlserver's dbms major version. Fallback to 0."))
     (>= major-version 16)))
 
 (defmethod driver/db-start-of-week :sqlserver
@@ -602,8 +601,11 @@
                          ;; just use MLv2 metadata or type calculation functions instead.
                          (or (when-let [field-database-type (h2x/database-type (sql.qp/->honeysql driver field))]
                                (when (#{"datetime" "datetime2" "datetimeoffset" "smalldatetime"} field-database-type)
-                                 (map (fn [expr]
-                                        [::cast expr field-database-type]))))
+                                 (map (fn [[_type val :as expr]]
+                                        ;; Do not cast nil arguments to enable transformation to IS NULL.
+                                        (if (some? val)
+                                          [::cast expr field-database-type]
+                                          expr)))))
                              identity)
                          args)]
         ((get-method sql.qp/->honeysql [:sql-jdbc op]) driver clause)))))
@@ -716,7 +718,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
+          (log/debug e "Error setting statement fetch direction to FETCH_FORWARD")))
       stmt
       (catch Throwable e
         (.close stmt)

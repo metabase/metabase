@@ -17,7 +17,6 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
    (java.sql ResultSet ResultSetMetaData Types)))
@@ -245,7 +244,7 @@
   (try (set (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                         ["SELECT TABLE_SCHEMA AS \"schema\", TABLE_NAME AS \"name\" FROM V_CATALOG.VIEWS;"]))
        (catch Throwable e
-         (log/error e (trs "Failed to fetch materialized views for this database")))))
+         (log/error e "Failed to fetch materialized views for this database"))))
 
 (defmethod driver/describe-database :vertica
   [driver database]
