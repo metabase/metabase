@@ -74,7 +74,7 @@ describe("ConnectedTables", () => {
   });
 
   it("should limit the number of connected tables to 8", () => {
-    const fks = new Array(20).fill(0).map((_, idx) =>
+    const fks = Array.from({length: 20}).map((_, idx) =>
       createMockForeignKey({
         origin_id: idx,
         origin: createMockField({
