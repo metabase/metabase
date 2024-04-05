@@ -499,7 +499,7 @@ export default class AccordionList extends Component {
 
     if (globalSearch) {
       const isSearching = searchText.length > 0;
-      const isEmpty = rows.filter(x => x.type === "item").length === 0;
+      const isEmpty = rows.filter(row => row.type === "item").length === 0;
 
       if (isSearching && isEmpty) {
         rows.unshift({
