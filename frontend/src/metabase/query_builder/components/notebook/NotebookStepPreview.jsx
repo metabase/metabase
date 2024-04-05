@@ -81,7 +81,7 @@ const NotebookStepPreview = ({ step, onClose }) => {
 };
 
 export const VisualizationPreview = ({ rawSeries, result, error }) => {
-  const err = coerceError(error || result?.error);
+  const err = getErrorMessage(error || result?.error);
 
   return (
     <Visualization
@@ -102,7 +102,7 @@ function getPreviewHeightForResult(result) {
   return rowCount * 36 + 36 + 2;
 }
 
-function coerceError(err) {
+function getErrorMessage(err) {
   if (!err) {
     return null;
   }
