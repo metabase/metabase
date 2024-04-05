@@ -10,6 +10,7 @@ import type {
 } from "metabase/components/Modal/utils";
 import { getModalContent, modalSizes } from "metabase/components/Modal/utils";
 import SandboxedPortal from "metabase/components/SandboxedPortal";
+import ModalS from "metabase/css/components/modal.module.css";
 import CS from "metabase/css/core/index.css";
 import { FocusTrap } from "metabase/ui";
 
@@ -40,7 +41,7 @@ export class WindowModal extends Component<WindowModalProps> {
     super(props);
 
     this._modalElement = document.createElement("div");
-    this._modalElement.className = "ModalContainer";
+    this._modalElement.className = ModalS.ModalContainer;
 
     if (props.zIndex != null) {
       this._modalElement.style.zIndex = String(props.zIndex);

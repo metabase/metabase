@@ -1,4 +1,4 @@
-:global(.ModalContainer) {
+.ModalContainer {
   z-index: 4;
 }
 
