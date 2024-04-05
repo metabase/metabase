@@ -31,6 +31,7 @@ export type Suggestion = {
   order: number;
   range?: [number, number];
   column?: Lib.ColumnMetadata;
+  helpText?: HelpText;
 };
 
 const suggestionText = (func: MBQLClauseFunctionConfig) => {
@@ -268,6 +269,23 @@ export function suggest({
       }
     }
   }
+
+  // add help text to the suggestion if possible
+  suggestions = suggestions.map(suggestion => {
+    if (!database || suggestion.type !== "functions") {
+      return suggestion;
+    }
+
+    const name = getMBQLName(suggestion.name);
+    if (!name) {
+      return suggestion;
+    }
+
+    return {
+      ...suggestion,
+      helpText: getHelpText(name, database, reportTimezone),
+    };
+  });
 
   return { suggestions };
 }
