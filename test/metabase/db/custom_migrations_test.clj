@@ -80,12 +80,15 @@
                               (triggers/with-schedule
                                 (cron/cron-schedule "0 0 12 * * ? *")))]
                  (task/schedule-task! job trigger)
+                 (println "<HERE>")
                  (testing "before the migration, the job and trigger exist"
                    (is (some? (qs/get-job (@#'task/scheduler) (jobs/key abandonment-emails-job-key))))
                    (is (some? (qs/get-trigger (@#'task/scheduler) (triggers/key abandonment-emails-trigger-key)))))
                  ;; stop the scheduler because the scheduler won't be started when migrations start
                  (task/stop-scheduler!)
+                 (println "<HERE 2>")
                  (migrate!)
+                 (println "<HERE 3>")
                  ;; check the job and trigger are deleted
                  (task/start-scheduler!)
                  (testing "after the migration, the job and trigger are deleted"

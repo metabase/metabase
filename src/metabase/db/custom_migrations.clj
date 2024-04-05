@@ -22,8 +22,10 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
+   [metabase.task.scheduler :as task.scheduler]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute])
   (:import
@@ -182,10 +184,12 @@
 (define-migration DeleteAbandonmentEmailTask
   (classloader/the-classloader)
   (set-jdbc-backend-properties!)
-  (let [scheduler (qs/initialize)]
+  (let [scheduler (task.scheduler/new-quartz-scheduler-for-open-connection)]
+    (println "scheduler:" scheduler) ; NOCOMMIT
     (qs/start scheduler)
     (qs/delete-trigger scheduler (triggers/key "metabase.task.abandonment-emails.trigger"))
     (qs/delete-job scheduler (jobs/key "metabase.task.abandonment-emails.job"))
+    (println "JOB=>" (qs/get-job scheduler (jobs/key "metabase.task.abandonment-emails.job")))
     (qs/shutdown scheduler)))
 
 (define-migration FillJSONUnfoldingDefault
@@ -1117,7 +1121,7 @@
 (define-migration DeleteTruncateAuditLogTask
   (classloader/the-classloader)
   (set-jdbc-backend-properties!)
-  (let [scheduler (qs/initialize)]
+  (let [scheduler (task.scheduler/new-quartz-scheduler-for-open-connection)]
     (qs/start scheduler)
     (qs/delete-trigger scheduler (triggers/key "metabase.task.truncate-audit-log.trigger"))
     (qs/delete-job scheduler (jobs/key "metabase.task.truncate-audit-log.job"))

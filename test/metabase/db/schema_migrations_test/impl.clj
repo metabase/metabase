@@ -108,7 +108,7 @@
             (parse-double (format "%d.%d" (* (parse-long major-version) 100) unix-timestamp))))
         (throw (ex-info (format "Invalid migration ID: %s" id) {:id id})))))
 
-(deftest migration->number-test
+(deftest ^:parallel migration->number-test
   (is (= 356
          (migration->number 356)
          (migration->number "356")))
@@ -137,7 +137,7 @@
        (<= id end)
        (< id end)))))
 
-(deftest migration-id-in-range?-test
+(deftest ^:parallel migration-id-in-range?-test
   (testing "legacy IDs"
     (is (migration-id-in-range? 1 2 3))
     (is (migration-id-in-range? 1 2 3 {:inclusive-end? false}))
@@ -171,30 +171,48 @@
     (is (migration-id-in-range? 1 "v42.00-015" "v43.00-014"))
     (is (not (migration-id-in-range? 1 "v43.00-014" "v42.00-015")))))
 
-(defn run-migrations-in-range!
+(defn- app-db-that-disallows-new-connections
+  "Migrations MUST NOT fetch any additional connections for the app DB. We need to do everything with the current
+  connection so everything is done inside a single transaction.
+
+  Also in some situations we have the app DB writeLock enabled, disallowing new connections from being fetched --
+  see [[metabase.api.testing]] for example; we do not want that to hang indefinitely."
+  []
+  (let [error       (UnsupportedOperationException.
+                     (format "Attempted to fetch additional connections while running DB migrations! See %s for why you must not do this."
+                             `app-db-that-disallows-new-connections))
+        data-source (reify javax.sql.DataSource
+                      (getConnection [_this]
+                        (throw error))
+                      (getConnection [_this _user _password]
+                        (throw error)))]
+    (assoc mdb.connection/*application-db* :data-source data-source)))
+
+(defn- run-migrations-in-range!
   "Run Liquibase migrations from our migrations YAML file in the range of `start-id` -> `end-id` (inclusive) against a
   DB with `jdbc-spec`."
   {:added "0.41.0", :arglists '([conn [start-id end-id]]
                                 [conn [start-id end-id] {:keys [inclusive-end?], :or {inclusive-end? true}}])}
   [^java.sql.Connection conn [start-id end-id] & [range-options]]
   (liquibase/with-liquibase [liquibase conn]
-    (let [database (.getDatabase liquibase)
-          change-set-filters [(reify ChangeSetFilter
-                                (accepts [this change-set]
-                                  (let [id      (.getId change-set)
-                                        accept? (boolean (migration-id-in-range? start-id id end-id range-options))]
-                                    (log/tracef "Migration %s in range [%s ↔ %s] %s ? => %s"
-                                                id start-id end-id
-                                                (if (:inclusive-end? range-options) "(inclusive)" "(exclusive)")
-                                                accept?)
-                                    (ChangeSetFilterResult. accept? "decision according to range" (class this)))))]
-          change-log-service (.getChangeLogService (ChangeLogHistoryServiceFactory/getInstance) database)]
-      (liquibase/with-scope-locked liquibase
+    (binding [mdb.connection/*application-db* (app-db-that-disallows-new-connections)]
+      (let [database (.getDatabase liquibase)
+            change-set-filters [(reify ChangeSetFilter
+                                  (accepts [this change-set]
+                                    (let [id      (.getId change-set)
+                                          accept? (boolean (migration-id-in-range? start-id id end-id range-options))]
+                                      (log/tracef "Migration %s in range [%s ↔ %s] %s ? => %s"
+                                                  id start-id end-id
+                                                  (if (:inclusive-end? range-options) "(inclusive)" "(exclusive)")
+                                                  accept?)
+                                      (ChangeSetFilterResult. accept? "decision according to range" (class this)))))]
+            change-log-service (.getChangeLogService (ChangeLogHistoryServiceFactory/getInstance) database)]
+        (liquibase/with-scope-locked liquibase
        ;; Calling .listUnrunChangeSets has the side effect of creating the Liquibase tables
        ;; and initializing checksums so that they match the ones generated in production.
-       (.listUnrunChangeSets liquibase nil (LabelExpression.))
-       (.generateDeploymentId change-log-service)
-       (liquibase/update-with-change-log liquibase {:change-set-filters change-set-filters})))))
+          (.listUnrunChangeSets liquibase nil (LabelExpression.))
+          (.generateDeploymentId change-log-service)
+          (liquibase/update-with-change-log liquibase {:change-set-filters change-set-filters}))))))
 
 (defn- test-migrations-for-driver! [driver [start-id end-id] f]
   (log/debug (u/format-color 'yellow "Testing migrations for driver %s..." driver))
@@ -219,14 +237,14 @@
                (case direction
                  :up
                  (do
-                  (log/debugf "Finding and running migrations between %s and %s (inclusive)" start-id (or end-id "end"))
-                  (run-migrations-in-range! conn [start-id end-id]))
+                   (log/debugf "Finding and running migrations between %s and %s (inclusive)" start-id (or end-id "end"))
+                   (run-migrations-in-range! conn [start-id end-id]))
 
                  :down
                  (do
-                  (assert (int? version), "Downgrade requires a version")
-                  (mdb/migrate! driver (mdb/data-source) :down version)))))]
-     (f migrate)))
+                   (assert (int? version) "Downgrade requires a version")
+                   (mdb/migrate! driver (mdb/data-source) :down version)))))]
+      (f migrate)))
   (log/debug (u/format-color 'green "Done testing migrations for driver %s." driver)))
 
 (defn do-test-migrations!
