@@ -118,15 +118,15 @@
   [{user-id :id, superuser? :is_superuser, :as user}]
   (u/prog1 user
     (let [current-version (:tag config/mb-version-info)]
-      (log/info (trs "Setting User {0}''s last_acknowledged_version to {1}, the current version" user-id current-version))
+      (log/infof "Setting User %s's last_acknowledged_version to %s, the current version" user-id current-version)
       ;; Can't use mw.session/with-current-user due to circular require
       (binding [api/*current-user-id*       user-id
                 setting/*user-local-values* (delay (atom (user-local-settings user)))]
         (setting/set! :last-acknowledged-version current-version)))
     ;; add the newly created user to the magic perms groups.
-    (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
+    (log/infof "Adding User %s to All Users permissions group..." user-id)
     (when superuser?
-      (log/info (trs "Adding User {0} to All Users permissions group..." user-id)))
+      (log/infof "Adding User %s to All Users permissions group..." user-id))
     (let [groups (filter some? [(perms-group/all-users)
                                 (when superuser? (perms-group/admin))])]
       (binding [perms-group-membership/*allow-changing-all-users-group-members* true]

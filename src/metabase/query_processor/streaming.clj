@@ -16,7 +16,8 @@
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.io OutputStream)
-   (metabase.async.streaming_response StreamingResponse)))
+   (metabase.async.streaming_response StreamingResponse)
+   (org.eclipse.jetty.io EofException)))
 
 (set! *warn-on-reflection* true)
 
@@ -116,7 +117,7 @@
           row-count                   (volatile! 0)]
       (fn
         ([]
-         (log/tracef "Writing initial metadata to results writer.")
+         (log/trace "Writing initial metadata to results writer.")
          (qp.si/begin! results-writer
                        {:data (assoc initial-metadata :ordered-cols ordered-cols)}
                        viz-settings')
@@ -128,7 +129,7 @@
                 :status :completed))
 
         ([metadata row]
-         (log/tracef "Writing one row to results writer.")
+         (log/trace "Writing one row to results writer.")
          (qp.si/write-row! results-writer row (dec (vswap! row-count inc)) ordered-cols viz-settings')
          metadata)))))
 
@@ -139,7 +140,10 @@
     (fn result [result]
       (when (= (:status result) :completed)
         (log/debug "Finished writing results; closing results writer.")
-        (qp.si/finish! results-writer result)
+        (try
+          (qp.si/finish! results-writer result)
+          (catch EofException e
+            (log/error e "Client closed connection prematurely")))
         (u/ignore-exceptions
           (.flush os)
           (.close os)))

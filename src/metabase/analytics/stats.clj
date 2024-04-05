@@ -22,7 +22,6 @@
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -437,7 +436,7 @@
   (try
      (http/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
      (catch Throwable e
-       (log/error e (trs "Sending usage stats FAILED")))))
+       (log/error e "Sending usage stats FAILED"))))
 
 
 (defn phone-home-stats!

@@ -4,7 +4,6 @@ import {
   describeEE,
   entityPickerModal,
   main,
-  mantinePopover,
   modal,
   popover,
   restore,
@@ -156,7 +155,7 @@ describeEE("formatting > whitelabel", () => {
           cy.findByRole("searchbox", {
             name: "Login and unsubscribe pages",
           }).click();
-          mantinePopover().findByText("Custom").click();
+          popover().findByText("Custom").click();
           /**
            * Clicking "Choose File" doesn't actually open the file browser on Cypress,
            * so I need to use `selectFile` with the file input instead.
@@ -178,7 +177,7 @@ describeEE("formatting > whitelabel", () => {
           cy.findByRole("searchbox", {
             name: "Login and unsubscribe pages",
           }).click();
-          mantinePopover().findByText("Custom").click();
+          popover().findByText("Custom").click();
           cy.log("test uploading a corrupted file");
           cy.findByTestId("login-page-illustration-setting").within(() => {
             cy.findByTestId("file-input").selectFile(
@@ -230,7 +229,7 @@ describeEE("formatting > whitelabel", () => {
           cy.findByTestId("login-page-illustration-setting")
             .findByRole("searchbox", { name: "Login and unsubscribe pages" })
             .click();
-          mantinePopover().findByText("Custom").click();
+          popover().findByText("Custom").click();
           cy.findByTestId("login-page-illustration-setting").within(() => {
             cy.findByTestId("file-input").selectFile(
               {
@@ -270,7 +269,7 @@ describeEE("formatting > whitelabel", () => {
           cy.findByRole("searchbox", {
             name: "Login and unsubscribe pages",
           }).click();
-          mantinePopover().findByText("No illustration").click();
+          popover().findByText("No illustration").click();
 
           cy.signOut();
           cy.visit("/");
@@ -291,7 +290,7 @@ describeEE("formatting > whitelabel", () => {
           );
 
           cy.findByRole("searchbox", { name: "Landing page" }).click();
-          mantinePopover().findByText("Custom").click();
+          popover().findByText("Custom").click();
 
           cy.findByTestId("landing-page-illustration-setting").within(() => {
             cy.findByTestId("file-input").selectFile(
@@ -321,7 +320,7 @@ describeEE("formatting > whitelabel", () => {
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
           cy.findByLabelText("Landing page").click();
-          mantinePopover().findByText("No illustration").click();
+          popover().findByText("No illustration").click();
 
           cy.visit("/");
           cy.findByTestId("landing-page-illustration").should("not.exist");
@@ -339,7 +338,7 @@ describeEE("formatting > whitelabel", () => {
           cy.findByRole("searchbox", {
             name: "When calculations return no results",
           }).click();
-          mantinePopover().findByText("Custom").click();
+          popover().findByText("Custom").click();
 
           cy.findByTestId("no-data-illustration-setting").within(() => {
             cy.findByTestId("file-input").selectFile(
@@ -398,7 +397,7 @@ describeEE("formatting > whitelabel", () => {
           cy.findByRole("searchbox", {
             name: "When calculations return no results",
           }).click();
-          mantinePopover().findByText("No illustration").click();
+          popover().findByText("No illustration").click();
 
           visitDashboard("@dashboardId");
           cy.findByAltText("No results").should("not.exist");
@@ -421,7 +420,7 @@ describeEE("formatting > whitelabel", () => {
           cy.findByRole("searchbox", {
             name: "When no objects can be found",
           }).click();
-          mantinePopover().findByText("Custom").click();
+          popover().findByText("Custom").click();
 
           cy.findByTestId("no-object-illustration-setting").within(() => {
             cy.findByTestId("file-input").selectFile(
@@ -474,7 +473,7 @@ describeEE("formatting > whitelabel", () => {
           cy.findByRole("searchbox", {
             name: "When no objects can be found",
           }).click();
-          mantinePopover().findByText("No illustration").click();
+          popover().findByText("No illustration").click();
 
           cy.findByRole("navigation").findByText("Exit admin").click();
           appBar().findByText("New").click();

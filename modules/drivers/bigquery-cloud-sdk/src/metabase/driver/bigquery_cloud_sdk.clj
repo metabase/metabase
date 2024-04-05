@@ -21,7 +21,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -93,7 +93,7 @@
   ;; check whether we can connect by seeing whether listing datasets succeeds
   (let [[success? datasets] (try [true (list-datasets details)]
                                  (catch Exception e
-                                   (log/errorf e (trs "Exception caught in :bigquery-cloud-sdk can-connect?"))
+                                   (log/error e "Exception caught in :bigquery-cloud-sdk can-connect?")
                                    [false nil]))]
     (cond
       (not success?)
@@ -242,9 +242,8 @@
                        method      (get-method bigquery.qp/parse-result-of-type column-type)]
                    (when (= method default-parser)
                      (let [column-name (.getName field)]
-                       (log/warn (trs "Warning: missing type mapping for parsing BigQuery results column {0} of type {1}."
-                                      column-name
-                                      column-type))))
+                       (log/warnf "Warning: missing type mapping for parsing BigQuery results column %s of type %s."
+                                  column-name column-type)))
                    (partial method column-type column-mode bigquery.common/*bigquery-timezone-id*))))
           (.getFields schema))))
 
@@ -344,7 +343,7 @@
       (when cancel-chan
         (future                       ; this needs to run in a separate thread, because the <!! operation blocks forever
           (when (a/<!! cancel-chan)
-            (log/debugf "Received a message on the cancel channel; attempting to stop the BigQuery query execution")
+            (log/debug "Received a message on the cancel channel; attempting to stop the BigQuery query execution")
             (reset! cancel-requested? true) ; signal the page iteration fn to stop
             (if-not (or (future-cancelled? res-fut) (future-done? res-fut))
               ;; somehow, even the FIRST page hasn't come back yet (i.e. the .query call above), so cancel the future to
@@ -495,8 +494,8 @@
   Returns the passed `database` parameter with the aformentioned changes having been made and persisted."
   [database dataset-id]
   (let [db-id (u/the-id database)]
-    (log/infof (trs "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
-                    (pr-str db-id)))
+    (log/infof "DB %s had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
+               (pr-str db-id))
     (try
       (t2/query-one {:update (t2/table-name :model/Table)
                      :set    {:schema dataset-id}
