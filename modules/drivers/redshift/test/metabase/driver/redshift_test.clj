@@ -6,11 +6,9 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database
     :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
@@ -277,7 +275,7 @@
                 (execute! (str "DROP VIEW IF EXISTS %s;")
                           qual-view-nm)))))))))
 
-(deftest filtered-syncable-schemas-test
+#_(deftest filtered-syncable-schemas-test
   (mt/test-driver :redshift
     (testing "Should filter out schemas for which the user has no perms"
       ;; create a random username and random schema name, and grant the user USAGE permission for it
@@ -320,7 +318,7 @@
                       temp-username
                       random-schema)))))))
 
-(deftest syncable-schemas-test
+#_(deftest syncable-schemas-test
   (mt/test-driver :redshift
     (testing "metabase_cache schemas should be excluded"
       (mt/dataset test-data
@@ -387,7 +385,7 @@
                (qp/process-query
                  (mt/native-query {:query "select interval '5 days'"}))))))))
 
-(deftest table-privileges-test
+#_(deftest table-privileges-test
   (mt/test-driver :redshift
     (testing "`table-privileges` should return the correct data for current_user and role privileges"
       (mt/with-temp [Database database {:engine :redshift :details (tx/dbdef->connection-details :redshift nil nil)}]

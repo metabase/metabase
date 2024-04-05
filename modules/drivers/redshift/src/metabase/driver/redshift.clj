@@ -2,8 +2,6 @@
   "Amazon Redshift Driver."
   (:require
    [cheshire.core :as json]
-   [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver :as driver]
@@ -13,7 +11,6 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.lib.metadata :as lib.metadata]
@@ -53,24 +50,7 @@
   [& args]
   (apply (get-method driver/describe-table :sql-jdbc) args))
 
-(defmethod sql-jdbc.sync/filtered-syncable-schemas :redshift
-  [_driver conn _metadata schema-inclusion-patterns schema-exclusion-patterns]
-  (let [schemas (map :schema_name
-                     (jdbc/query
-                      {:connection conn}
-                      (sql/format
-                       {:select   [:s.schema_name]
-                        :from     [[:pg_catalog.svv_all_schemas :s]]
-                        :where    [:and
-                                   [:raw "has_schema_privilege(s.schema_name, 'USAGE')"]
-                                   [:raw "s.schema_name !~ '^information_schema|catalog_history|pg_|metabase_cache_'"]]}
-                       {:dialect :ansi})))]
-    (eduction
-     (filter (partial driver.s/include-schema? schema-inclusion-patterns schema-exclusion-patterns))
-     schemas)))
-
-(defn- get-tables-sql
-  [schemas table-names]
+(def ^:private get-tables-sql
   ;; Ref: https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java#L1794
   (sql/format
    {:select   [[:t.schema_name :schema]
@@ -80,40 +60,32 @@
     :from     [[:pg_catalog.svv_all_tables :t]]
     :where    [:and ; filter out system tables
                [:raw "t.schema_name !~ '^information_schema|catalog_history|pg_'"]
-               (when schemas [:in :t.schema_name schemas])
-               (when table-names [:in :t.table_name table-names])]
+               [:raw "pg_catalog.has_schema_privilege(t.schema_name, 'USAGE')"]
+               [:case
+                [:= :t.table_type "EXTERNAL TABLE"]
+                true ; for external tables, 'USAGE' on the schema is sufficient for select
+                :else
+                [:or
+                 [:raw "pg_catalog.has_table_privilege(current_user, '\"' || t.schema_name || '\".\"' || t.table_name || '\"',  'SELECT')"]
+                 [:raw "pg_catalog.has_any_column_privilege(current_user, '\"' || t.schema_name || '\"' || '.' || '\"' || t.table_name || '\"',  'SELECT')"]]]]
     :order-by [:schema :name]}
    {:dialect :ansi}))
 
-(defn- get-tables
-  ;; have it as its own method for ease of testing
-  [database schemas tables]
-  (sql-jdbc.execute/reducible-query database (get-tables-sql schemas tables)))
-
-(defn- describe-syncable-tables
-  [{driver :engine :as database}]
-  (reify clojure.lang.IReduceInit
-    (reduce [_ rf init]
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver
-       database
-       nil
-       (fn [^Connection conn]
-         (reduce
-          rf
-          init
-          (when-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
-            (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn driver conn)]
-              (eduction
-               (comp (filter have-select-privilege?)
-                     (map #(dissoc % :type)))
-               (get-tables database syncable-schemas nil))))))))))
+(defn- describe-database-tables
+  [database]
+  (let [[inclusion-patterns
+         exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)
+        syncable? (fn [schema]
+                    (driver.s/include-schema? inclusion-patterns exclusion-patterns schema))]
+    (eduction
+     (comp (filter (comp syncable? :schema))
+           (map #(dissoc % :type)))
+     (sql-jdbc.execute/reducible-query database get-tables-sql))))
 
 (defmethod driver/describe-database :redshift
  [_driver database]
-  ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
-  ;; memory in a set like this
-  {:tables (into #{} (describe-syncable-tables database))})
+  ;; TODO: change this to return a reducible so we don't have to hold 100k tables in memory in a set like this
+  {:tables (into #{} (describe-database-tables database))})
 
 (defmethod sql-jdbc.sync/describe-fks-sql :redshift
   [driver & {:keys [schema-names table-names]}]
@@ -461,7 +433,7 @@
   [driver db-id table-name column-names values]
   ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values))
 
-(defmethod sql-jdbc.sync/current-user-table-privileges :redshift
+#_(defmethod sql-jdbc.sync/current-user-table-privileges :redshift
   [_driver conn-spec & {:as _options}]
   ;; KNOWN LIMITATION: this won't return privileges for external tables, calling has_table_privilege on an external table
   ;; result in an operation not supported error
