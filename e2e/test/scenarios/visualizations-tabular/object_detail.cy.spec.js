@@ -163,11 +163,10 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     createQuestion(questionDetails, { visitQuestion: true });
 
-    cy.get(".cellData").contains("4966277046676").realHover();
-    // cy.findByTestId("detail-shortcut") is flaky
-    cy.get("#gutter-column")
+    cy.get(".cellData").contains("4966277046676").click();
+
+    cy.findByTestId("detail-shortcut")
       .findByRole("button")
-      .realHover()
       .should("be.visible")
       .click();
 
