@@ -32,11 +32,15 @@ function Wrapper(props: WrapperProps) {
   );
 }
 
-function setup() {
+type SetupOpts = {
+  source: string;
+};
+
+function setup(opts: SetupOpts) {
   const query = createQuery({ metadata: METADATA });
   const stageIndex = 0;
   const { suggestions } = suggest({
-    source: "[",
+    source: opts.source,
     query,
     stageIndex,
     metadata: METADATA,
@@ -60,7 +64,17 @@ function setup() {
 
 describe("ExpressionEditorSuggestions", () => {
   test("suggestions items should show column info icon", async () => {
-    setup();
+    setup({ source: "[" });
+
+    await screen.findAllByTestId("expression-suggestions-list-item");
+
+    expect(screen.getAllByLabelText("More info").length).toBeGreaterThanOrEqual(
+      1,
+    );
+  });
+
+  test("suggestions items should show function helptext info icons", async () => {
+    setup({ source: "con" });
 
     await screen.findAllByTestId("expression-suggestions-list-item");
 

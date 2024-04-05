@@ -2,14 +2,21 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component, Fragment } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
-import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+// import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import {
+  HoverParent,
+  // PopoverHoverTarget,
+} from "metabase/components/MetadataInfo/InfoIcon";
+import { Popover } from "metabase/components/MetadataInfo/Popover";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isObscured } from "metabase/lib/dom";
 import { DelayGroup, Icon } from "metabase/ui";
 
+import { ExpressionEditorHelpTextContent } from "./ExpressionEditorHelpText";
 import {
   ExpressionListItem,
   ExpressionList,
@@ -18,6 +25,7 @@ import {
   SuggestionSpanRoot,
   SuggestionTitle,
   QueryColumnInfoIcon,
+  PopoverHoverTarget,
 } from "./ExpressionEditorSuggestions.styled";
 
 const SuggestionSpan = ({ suggestion, isHighlighted }) => {
@@ -133,7 +141,7 @@ function ExpressionEditorSuggestionsListItem({
   isHighlighted,
   onMouseDownCapture,
 }) {
-  const { icon } = suggestion;
+  const { icon, helpText } = suggestion;
   const { normal, highlighted } = colorForIcon(icon);
 
   return (
@@ -158,12 +166,27 @@ function ExpressionEditorSuggestionsListItem({
             data-ignore-outside-clicks
           />
         </SuggestionTitle>
-        <QueryColumnInfoIcon
-          query={query}
-          stageIndex={stageIndex}
-          column={suggestion.column}
-          position="right"
-        />
+        {helpText && (
+          <Popover
+            position="right"
+            content={<ExpressionEditorHelpTextContent helpText={helpText} />}
+            width={450}
+          >
+            <PopoverHoverTarget
+              name="info_filled"
+              hasDescription
+              aria-label={t`More info`}
+            />
+          </Popover>
+        )}
+        {!helpText && (
+          <QueryColumnInfoIcon
+            query={query}
+            stageIndex={stageIndex}
+            column={suggestion.column}
+            position="right"
+          />
+        )}
       </ExpressionListItem>
     </HoverParent>
   );
