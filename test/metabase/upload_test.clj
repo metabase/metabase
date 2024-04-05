@@ -427,11 +427,7 @@
                    :file (csv-file-with lines))]
            (testing "Table and Fields exist after sync"
              (is (=? {:name          #"(?i)_mb_row_id"
-                      :semantic_type (if (= driver/*driver* :redshift)
-                                       ;; TODO: there is a bug in the redshift driver where the semantic_type is not set
-                                       ;; to type/PK even if the column is a PK
-                                       :type/Category
-                                       :type/PK)
+                      :semantic_type :type/PK
                       :base_type     :type/BigInteger}
                      (t2/select-one Field :database_position 0 :table_id (:id table))))
              (is (=? {:name          #"(?i)id"
