@@ -46,6 +46,7 @@ export function EntityPickerSearchInput<
   models: string[];
   searchFilter?: (results: Item[]) => Item[];
 }) {
+  const dispatch = useDispatch();
   useDebouncedEffectWithCleanup(
     () => {
       const cancelled = defer();
@@ -58,7 +59,7 @@ export function EntityPickerSearchInput<
 
         if (searchQuery) {
           Search.api
-            .list({ models, q: searchQuery }, { cancelled: cancelled.promise })
+            .list({ models, q: searchQuery }, dispatch)
             .then((results: SearchResponse<Id, Model, Item>) => {
               if (results.data) {
                 const items = results.data;
@@ -80,7 +81,7 @@ export function EntityPickerSearchInput<
       return [searchFn, cleanup];
     },
     200,
-    [searchQuery, models, searchFilter],
+    [searchQuery, models, searchFilter, dispatch],
   );
 
   return (
