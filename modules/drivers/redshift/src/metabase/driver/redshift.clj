@@ -53,19 +53,21 @@
   [& args]
   (apply (get-method driver/describe-table :sql-jdbc) args))
 
-(defn all-schemas
-  "Get a reducible sequence of all string schema names for the current database from its JDBC database metadata."
-  [conn]
-  (->> (jdbc/query {:connection conn}
-                   "select schema_name from svv_all_schemas where has_schema_privilege(schema_name, 'USAGE') and schema_name !~ '^information_schema|catalog_history|pg_';")
-       (map :schema_name)))
-
 (defmethod sql-jdbc.sync/filtered-syncable-schemas :redshift
   [_driver conn _metadata schema-inclusion-patterns schema-exclusion-patterns]
-  (eduction
-   (remove (fn [schema] (re-find #"^metabase_cache.*" schema)))
-   (filter (partial driver.s/include-schema? schema-inclusion-patterns schema-exclusion-patterns))
-   (all-schemas conn)))
+  (let [schemas (map :schema_name
+                     (jdbc/query
+                      {:connection conn}
+                      (sql/format
+                       {:select   [:s.schema_name]
+                        :from     [[:pg_catalog.svv_all_schemas :s]]
+                        :where    [:and
+                                   [:raw "has_schema_privilege(s.schema_name, 'USAGE')"]
+                                   [:raw "s.schema_name !~ '^information_schema|catalog_history|pg_|metabase_cache_'"]]}
+                       {:dialect :ansi})))]
+    (eduction
+     (filter (partial driver.s/include-schema? schema-inclusion-patterns schema-exclusion-patterns))
+     schemas)))
 
 (defn- get-tables-sql
   [schemas table-names]
@@ -73,11 +75,11 @@
   (sql/format
    {:select   [[:t.schema_name :schema]
                [:t.table_name :name]
+               [:t.table_type :type]
                [:t.remarks :description]]
     :from     [[:pg_catalog.svv_all_tables :t]]
     :where    [:and ; filter out system tables
-               [(keyword "!~") :t.schema_name "^pg_"]
-               [:<> :t.schema_name "information_schema"]
+               [:raw "t.schema_name !~ '^information_schema|catalog_history|pg_'"]
                (when schemas [:in :t.schema_name schemas])
                (when table-names [:in :t.table_name table-names])]
     :order-by [:schema :name]}
