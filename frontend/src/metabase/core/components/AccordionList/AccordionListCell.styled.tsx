@@ -1,10 +1,19 @@
 import styled from "@emotion/styled";
 
-import { alpha } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 
 export interface ListCellItemProps {
   isClickable: boolean;
 }
+
+export const ListCellHeader = styled.div`
+  border: none;
+  border-top: 1px solid ${color("bg-medium")};
+
+  li:first-child & {
+    border-top: none;
+  }
+`;
 
 export const ListCellItem = styled.div<ListCellItemProps>`
   border-color: ${props => props.isClickable && alpha("accent2", 0.2)};

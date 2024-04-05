@@ -13,6 +13,7 @@ import { Icon, Box } from "metabase/ui";
 
 import {
   ListCellItem,
+  ListCellHeader,
   FilterContainer,
   Content,
   IconWrapper,
@@ -71,7 +72,7 @@ export const AccordionListCell = ({
       const icon = renderSectionIcon(section);
       const name = section.name;
       content = (
-        <div
+        <ListCellHeader
           data-element-id="list-section-header"
           className={cx(
             ListS.ListSectionHeader,
@@ -125,14 +126,14 @@ export const AccordionListCell = ({
               />
             </span>
           )}
-        </div>
+        </ListCellHeader>
       );
     }
   } else if (type === "action") {
     const icon = renderSectionIcon(section);
     const name = section.name;
     content = (
-      <div
+      <ListCellHeader
         className={cx(
           "List-section-header",
           CS.px2,
@@ -169,7 +170,7 @@ export const AccordionListCell = ({
         <IconWrapper>
           <Icon name="chevronright" size={12} />
         </IconWrapper>
-      </div>
+      </ListCellHeader>
     );
   } else if (type === "header-hidden") {
     content = <div className={CS.my1} />;
