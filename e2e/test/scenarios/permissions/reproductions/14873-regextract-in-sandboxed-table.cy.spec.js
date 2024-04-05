@@ -21,21 +21,18 @@ describeEE("postgres > user > query", { tags: "@external" }, () => {
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
         [PG_DB_ID]: {
-          data: { schemas: "none", native: "none" },
           "view-data": "blocked",
           "create-queries": "no",
         },
       },
       [DATA_GROUP]: {
         [PG_DB_ID]: {
-          data: { schemas: "all", native: "write" },
           "view-data": "unrestricted",
           "create-queries": "query-builder-and-native",
         },
       },
       [COLLECTION_GROUP]: {
         [PG_DB_ID]: {
-          data: { schemas: "none", native: "none" },
           "view-data": "blocked",
           "create-queries": "no",
         },

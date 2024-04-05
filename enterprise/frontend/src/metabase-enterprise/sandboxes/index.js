@@ -1,6 +1,7 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
@@ -15,7 +16,6 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE,
 } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
@@ -26,7 +26,7 @@ import { getDraftPolicies, hasPolicyChanges } from "./selectors";
 
 const OPTION_SEGMENTED = {
   label: t`Sandboxed`,
-  value: "controlled",
+  value: DataPermissionValue.SANDBOXED,
   icon: "permissions_limited",
   iconColor: "brand",
 };
@@ -70,19 +70,15 @@ if (hasPremiumFeature("sandboxes")) {
     />,
   );
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(OPTION_SEGMENTED);
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS["controlled"].push({
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS[OPTION_SEGMENTED.value].push({
     label: t`Edit sandboxed access`,
     iconColor: "brand",
     icon: "pencil",
     actionCreator: (entityId, groupId, view) =>
       push(getEditSegementedAccessUrl(entityId, groupId, view)),
   });
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION["controlled"] =
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION[OPTION_SEGMENTED.value] =
     getEditSegmentedAccessPostAction;
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE["controlled"] = {
-    read: "all",
-    query: "segmented",
-  };
 
   PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(state => {
     const sandboxes = getDraftPolicies(state);

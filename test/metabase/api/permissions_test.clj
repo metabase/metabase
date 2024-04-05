@@ -146,7 +146,8 @@
       (t2.with-temp/with-temp [Database {db-id :id}]
         (let [graph (mt/user-http-request :crowberto :get 200 "permissions/graph")]
           (is (partial= {:groups {(u/the-id (perms-group/admin))
-                                  {db-id {:data {:native "write" :schemas "all"}}}}}
+                                  {db-id {:view-data "unrestricted"
+                                          :create-queries "query-builder-and-native"}}}}
                         graph)))))
 
     (testing "make sure a non-admin cannot fetch the perms graph from the API"
@@ -157,7 +158,7 @@
     (testing "make sure we can fetch the perms graph from the API"
       (t2.with-temp/with-temp [PermissionsGroup {group-id :id :as group}    {}
                                Database         db                          {}]
-        (data-perms/set-database-permission! group db :perms/data-access :unrestricted)
+        (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
         (let [graph (mt/user-http-request :crowberto :get 200 (format "permissions/graph/group/%s" group-id))]
           (is (mc/validate nat-int? (:revision graph)))
           (is (perm-test-util/validate-graph-api-groups (:groups graph)))
@@ -168,7 +169,7 @@
     (testing "make sure we can fetch the perms graph from the API"
       (t2.with-temp/with-temp [PermissionsGroup group       {}
                                Database         {db-id :id} {}]
-        (data-perms/set-database-permission! group db-id :perms/data-access :unrestricted)
+        (data-perms/set-database-permission! group db-id :perms/view-data :unrestricted)
         (let [graph (mt/user-http-request :crowberto :get 200 (format "permissions/graph/db/%s" db-id))]
           (is (mc/validate nat-int? (:revision graph)))
           (is (perm-test-util/validate-graph-api-groups (:groups graph)))
@@ -177,15 +178,14 @@
 (deftest update-perms-graph-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure we can update the perms graph from the API"
-      (let [db-id (mt/id :venues)]
-        (t2.with-temp/with-temp [PermissionsGroup group]
-          (mt/user-http-request
-           :crowberto :put 200 "permissions/graph"
-           (assoc-in (data-perms.graph/api-graph)
-                     [:groups (u/the-id group) (mt/id) :data :schemas]
-                     {"PUBLIC" {db-id :all}}))
-          (is (= {db-id :all}
-                 (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"]))))))))
+      (t2.with-temp/with-temp [PermissionsGroup group]
+        (mt/user-http-request
+         :crowberto :put 200 "permissions/graph"
+         (assoc-in (data-perms.graph/api-graph)
+                   [:groups (u/the-id group) (mt/id) :view-data]
+                   :unrestricted))
+        (is (= :unrestricted
+               (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) (mt/id) :view-data])))))))
 
 (deftest update-perms-graph-table-specific-perms-test
   (testing "PUT /api/permissions/graph"
@@ -195,10 +195,11 @@
           (mt/user-http-request
            :crowberto :put 200 "permissions/graph"
            (assoc-in (data-perms.graph/api-graph)
-                     [:groups (u/the-id group) (mt/id) :data :schemas]
-                     {"PUBLIC" {(mt/id :venues) :all}}))
-          (is (= {(mt/id :venues) :all}
-                 (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"]))))))))
+                     [:groups (u/the-id group) (mt/id) :create-queries]
+                     {"PUBLIC" {(mt/id :venues) :query-builder
+                                (mt/id :orders) :no}}))
+          (is (= {(mt/id :venues) :query-builder}
+                 (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) (mt/id) :create-queries "PUBLIC"]))))))))
 
 (deftest update-perms-graph-perms-for-new-db-test
   (testing "PUT /api/permissions/graph"
@@ -240,7 +241,7 @@
                                         :crowberto :put 200 url
                                         (assoc-in (data-perms.graph/api-graph)
                                                   ;; Get a new revision number each time
-                                                  [:groups (u/the-id group) db-id :data :schemas] :all)))
+                                                  [:groups (u/the-id group) db-id :view-data] :unrestricted)))
               returned-g     (do-perm-put "permissions/graph")
               returned-g-two (do-perm-put "permissions/graph?skip-graph=false")
               no-returned-g  (do-perm-put "permissions/graph?skip-graph=true")]
@@ -265,27 +266,32 @@
         (mt/user-http-request
          :crowberto :put 200 "permissions/graph"
          (assoc-in (data-perms.graph/api-graph)
-                   [:groups (u/the-id group) (mt/id) :data :schemas] {"PUBLIC" {table-id :all}}))
+                   [:groups (u/the-id group) (mt/id) :view-data] :unrestricted))
         (is (= #{:unrestricted}
                (set (t2/select-fn-set :perm_value :model/DataPermissions
                                       :group_id  (u/the-id group)
-                                      :table_id  table-id
-                                      :perm_type :perms/data-access))))
+                                      :perm_type :perms/view-data))))
         (mt/user-http-request
          :crowberto :put 200 "permissions/graph"
          (assoc-in (data-perms.graph/api-graph)
                    [:groups (u/the-id group) (mt/id)]
-                   {:data {:native "none" :schemas "none"}}))
-        (is (= #{:no-self-service}
+                   {:view-data :unrestricted
+                    :create-queries :no}))
+        (is (= #{:unrestricted}
                (set (t2/select-fn-set :perm_value :model/DataPermissions
                                       :group_id  (u/the-id group)
                                       :db_id     (mt/id)
-                                      :perm_type :perms/data-access))))
+                                      :perm_type :perms/view-data))))
+        (is (= #{:no}
+               (set (t2/select-fn-set :perm_value :model/DataPermissions
+                                      :group_id  (u/the-id group)
+                                      :db_id     (mt/id)
+                                      :perm_type :perms/create-queries))))
         (is (= #{}
                (set (t2/select-fn-set :perm_value :model/DataPermissions
                                       :group_id  (u/the-id group)
                                       :table_id  table-id
-                                      :perm_type :perms/data-access))))))))
+                                      :perm_type :perms/view-data))))))))
 
 (deftest update-perms-graph-error-test
   (testing "PUT /api/permissions/graph"

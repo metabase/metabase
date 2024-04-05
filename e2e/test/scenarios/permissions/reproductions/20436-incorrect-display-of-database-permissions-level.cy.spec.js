@@ -1,21 +1,26 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
-import { restore, popover } from "e2e/support/helpers";
+import {
+  describeEE,
+  restore,
+  popover,
+  setTokenFeatures,
+} from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
 const url = `/admin/permissions/data/group/${ALL_USERS_GROUP}`;
 
-describe("issue 20436", () => {
+describeEE("issue 20436", () => {
   beforeEach(() => {
     cy.intercept("PUT", "/api/permissions/graph").as("updatePermissions");
 
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
         1: {
-          data: { schemas: "all", native: "none" },
           "view-data": "unrestricted",
           "create-queries": "query-builder",
         },
@@ -25,29 +30,30 @@ describe("issue 20436", () => {
 
   it("should display correct permissions on the database level after changes on the table level (metabase#20436)", () => {
     cy.visit(url);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Unrestricted");
 
-    // Go the the view where we can change permissions for individual tables
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sample Database").click();
+    cy.findByTestId("permission-table").within(() => {
+      cy.findByText("Query builder only").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("Granular").click();
+    });
 
     // Change the permission levels for ANY of the tables - it doesn't matter which one
-    changePermissions("Unrestricted", "No self-service");
+    changePermissions("Query builder only", "No");
 
-    cy.button("Change").click();
     saveChanges();
     cy.wait("@updatePermissions");
 
-    // Now turn it back to the "Unrestricted" access
-    changePermissions("No self-service", "Unrestricted");
+    // Now turn it back to previous value
+    changePermissions("No", "Query builder only");
 
     saveChanges();
     cy.wait("@updatePermissions");
 
     cy.visit(url);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Unrestricted");
+    cy.findByText("Query builder only");
   });
 });
 
