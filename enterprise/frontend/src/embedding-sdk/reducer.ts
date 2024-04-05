@@ -4,7 +4,7 @@ import {
   createAsyncThunk,
   createThunkAction,
 } from "metabase/lib/redux/typed-utils";
-import type { State } from "metabase-types/store";
+import type { EnterpriseState, GetEnterpriseState } from "embedding-sdk/types";
 
 const initialState = {
   token: null,
@@ -12,26 +12,20 @@ const initialState = {
   error: null,
 };
 
-export const getSessionToken = (state: State) =>
+export const getSessionToken = (state: EnterpriseState) =>
   state.plugins.embeddingSessionToken;
 
 const GET_OR_REFRESH_SESSION = "metabase/public/GET_OR_REFRESH_SESSION";
 
 export const getOrRefreshSession = createThunkAction(
   GET_OR_REFRESH_SESSION,
-  (url: string) => async (_dispatch, getState) => {
+  (url: string) => async (_dispatch, getState: GetEnterpriseState) => {
     const state = getSessionToken(getState());
     const token = state?.token;
-
-    console.log({state, token})
-
-    console.log(!state?.loading, !token || token.exp * 1000 < Date.now());
 
     if (!state?.loading && (!token || token.exp * 1000 < Date.now())) {
       _dispatch(refreshTokenAsync(url));
     }
-
-    console.log(getState().plugins.embeddingSessionToken);
 
     return getState().plugins.embeddingSessionToken;
   },
@@ -45,30 +39,23 @@ export const refreshTokenAsync = createAsyncThunk(
       method: "GET",
       credentials: "include",
     });
-    const res = await response.json()
-    console.log(res);
-    return res
+    return await response.json();
   },
 );
 
-const tokenReducer = createReducer(initialState, {
-    // @ts-ignore
-    [refreshTokenAsync.pending]: (state, action) => {
-        console.log("action pending", action);
-        state.loading = true;
-    },
-    // @ts-ignore
-    [refreshTokenAsync.fulfilled]: (state, action) => {
-        console.log("action fulfilled", { state, action });
-        state.token = action.payload;
-        state.loading = false;
-    },
-    // @ts-ignore
-    [refreshTokenAsync.rejected]: (state, action) => {
-        console.log("action rejected", action);
-        state.error = action.error;
-        state.loading = false;
-    },
-});
+const tokenReducer = createReducer(initialState, builder =>
+  builder
+    .addCase(refreshTokenAsync.pending, state => {
+      state.loading = true;
+    })
+    .addCase(refreshTokenAsync.fulfilled, (state, action) => {
+      state.token = action.payload;
+      state.loading = false;
+    })
+    .addCase(refreshTokenAsync.rejected, (state, action) => {
+      state.error = action.error;
+      state.loading = false;
+    }),
+);
 
 export { tokenReducer };

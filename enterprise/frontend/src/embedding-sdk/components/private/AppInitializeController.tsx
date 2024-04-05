@@ -1,15 +1,16 @@
+import type { Store } from "@reduxjs/toolkit";
 import type * as React from "react";
 import { t } from "ttag";
 
 import { DEFAULT_FONT } from "../../config";
 import { EmbeddingContext } from "../../context";
 import { useInitData } from "../../hooks";
-import type { SDKConfigType } from "../../types";
+import type { SDKConfigType, EnterpriseState } from "../../types";
 
 import { SdkContentWrapper } from "./SdkContentWrapper";
 
 interface AppInitializeControllerProps {
-  store: any;
+  store: Store<EnterpriseState>;
   children: React.ReactNode;
   config: SDKConfigType;
 }

@@ -1,3 +1,5 @@
+import type { State } from "metabase-types/store";
+
 export type SDKConfigType = {
   metabaseInstanceUrl: string;
   font?: string;
@@ -7,10 +9,18 @@ export type SDKConfigType = {
 };
 
 export type EmbeddingSessionTokenState = {
-    token: {
-        id: string;
-        exp: number;
-    };
-    loading: boolean;
-    error: null | string;
-} | null
+  token: {
+    id: string;
+    exp: number;
+  };
+  loading: boolean;
+  error: null | string;
+} | null;
+
+export interface EnterpriseState extends State {
+  plugins: {
+    embeddingSessionToken: EmbeddingSessionTokenState;
+  };
+}
+
+export type GetEnterpriseState = () => EnterpriseState;

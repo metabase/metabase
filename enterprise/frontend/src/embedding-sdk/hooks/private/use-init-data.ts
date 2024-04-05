@@ -1,3 +1,4 @@
+import type { Store } from "@reduxjs/toolkit";
 import { useEffect, useState } from "react";
 import _ from "underscore";
 
@@ -8,12 +9,16 @@ import { refreshCurrentUser } from "metabase/redux/user";
 import registerVisualizations from "metabase/visualizations/register";
 
 import { getOrRefreshSession, getSessionToken } from "../../reducer";
-import type { EmbeddingSessionTokenState, SDKConfigType } from "../../types";
+import type {
+  EmbeddingSessionTokenState,
+  SDKConfigType,
+  EnterpriseState,
+} from "../../types";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
 
 interface InitDataLoaderParameters {
-  store: any;
+  store: Store<EnterpriseState>;
   config: SDKConfigType;
 }
 
