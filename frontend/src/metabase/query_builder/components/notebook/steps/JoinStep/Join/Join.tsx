@@ -9,6 +9,7 @@ interface JoinProps {
   query: Lib.Query;
   stageIndex: number;
   join: Lib.Join;
+  joinPosition: number;
   color: string;
   isReadOnly: boolean;
   isModelDataSource: boolean;
@@ -20,6 +21,7 @@ export function Join({
   query,
   stageIndex,
   join,
+  joinPosition,
   color,
   isReadOnly,
   isModelDataSource,
@@ -54,6 +56,7 @@ export function Join({
       query={query}
       stageIndex={stageIndex}
       join={join}
+      joinPosition={joinPosition}
       color={color}
       isReadOnly={isReadOnly}
       isModelDataSource={isModelDataSource}

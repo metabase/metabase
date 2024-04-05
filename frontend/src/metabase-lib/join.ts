@@ -201,9 +201,9 @@ export function suggestedJoinConditions(
   query: Query,
   stageIndex: number,
   joinable: Joinable,
-  join?: Join,
+  joinPositon?: number,
 ): JoinCondition[] {
-  return ML.suggested_join_conditions(query, stageIndex, joinable, join);
+  return ML.suggested_join_conditions(query, stageIndex, joinable, joinPositon);
 }
 
 export type JoinFields = ColumnMetadata[] | "all" | "none";

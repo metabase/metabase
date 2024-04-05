@@ -300,7 +300,7 @@ describe("Notebook Editor > Join Step", () => {
     expect(conditions).toHaveLength(1);
     expect(condition.operator.shortName).toBe("=");
     expect(condition.lhsColumn.longDisplayName).toBe("Total");
-    expect(condition.rhsColumn.longDisplayName).toBe("Reviews -> ID");
+    expect(condition.rhsColumn.longDisplayName).toBe("Reviews → ID");
   });
 
   it("should highlight selected LHS column", async () => {
