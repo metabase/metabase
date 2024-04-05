@@ -482,7 +482,7 @@
   :default    false)
 
 (defsetting notebook-native-preview-sidebar-width
-  (deferred-tru "Last used sidebar width for the native query preview in the notebook.")
+  (deferred-tru "Last user set sidebar width for the native query preview in the notebook.")
   :user-local :only
   :visibility :authenticated
   :type       :integer
