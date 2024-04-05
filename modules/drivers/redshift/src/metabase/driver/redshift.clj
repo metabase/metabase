@@ -480,3 +480,10 @@
 (defmethod driver.sql/default-database-role :redshift
   [_ _]
   "DEFAULT")
+
+(defmethod driver/add-columns! :redshift
+  [driver db-id table-name column-definitions & {:as settings}]
+  ;; Redshift doesn't support adding multiple columns at a time, so we break it up into individual ALTER TABLE ADD COLUMN statements
+  (let [f (get-method driver/add-columns! :sql-jdbc)]
+    (doseq [[k v] column-definitions]
+      (f driver db-id table-name {k v} settings))))
