@@ -160,7 +160,6 @@ export const FormButtons = () => {
       >{t`Discard changes`}</Button>
       <FormSubmitButton
         miw="10rem"
-        h="40px"
         label={t`Save changes`}
         successLabel={
           <Group spacing="xs">
