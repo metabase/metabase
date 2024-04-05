@@ -1027,6 +1027,8 @@
            rows             [["Obi-Wan Kenobi"]]}}]
   (let [driver driver/*driver*
         db-id (mt/id)
+        table-name (ddl.i/format-name driver table-name)
+        schema-name (ddl.i/format-name driver schema-name)
         schema+table-name (#'upload/table-identifier {:schema schema-name :name table-name})
         insert-col-names (remove #{upload/auto-pk-column-keyword} (keys col->upload-type))
         col-definitions (#'upload/column-definitions driver col->upload-type)]
@@ -1235,7 +1237,7 @@
         (let [csv-rows ["name"]]
           (with-upload-table!
             [table (create-upload-table!)]
-            (let [file (csv-file-with csv-rows (mt/random-name))]
+            (let [file (csv-file-with csv-rows)]
               (is (= {:row-count 0}
                      (append-csv! {:file     file
                                    :table-id (:id table)})))
@@ -1438,10 +1440,8 @@
                                                      :name vchar-type
                                                      :shame vchar-type)
                                   :rows [["Obi-Wan Kenobi" "No one really knows me"]])]
-
         (let [csv-rows ["shame,name" "Nothing - you can't prove it,Puke Nightstalker"]
               file     (csv-file-with csv-rows (mt/random-name))]
-
           (testing "The new row is inserted with the values correctly reordered"
             (is (= {:row-count 1} (append-csv! {:file file, :table-id (:id table)})))
             (is (= [[1 "Obi-Wan Kenobi" "No one really knows me"]
