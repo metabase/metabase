@@ -11,7 +11,7 @@ import {
   setUIControls,
 } from "metabase/query_builder/actions";
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
-import { NotebookNativePreview } from "metabase/query_builder/components/view/NotebookNativePreview";
+import { NotebookNativePreview } from "metabase/query_builder/components/notebook/NotebookNativePreview";
 import { getUiControls } from "metabase/query_builder/selectors";
 import { Flex, Box, rem } from "metabase/ui";
 
