@@ -300,17 +300,28 @@ class Visualization extends PureComponent {
     objectId,
     settingsSyncOptions,
   }) => {
+    this.props.onChangeCardAndRun({
+      nextCard,
+      previousCard: this.getPreviousCard(seriesIndex),
+      objectId,
+      settingsSyncOptions,
+    });
+  };
+
+  getNewCardUrl = ({ nextCard, seriesIndex, objectId }) => {
+    return this.props.getNewCardUrl({
+      nextCard,
+      previousCard: this.getPreviousCard(seriesIndex),
+      objectId,
+    });
+  };
+
+  getPreviousCard = seriesIndex => {
     const { series, clicked } = this.state;
 
     const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
     const previousCard = series && series[index] && series[index].card;
-
-    this.props.onChangeCardAndRun({
-      nextCard,
-      previousCard,
-      objectId,
-      settingsSyncOptions,
-    });
+    return previousCard;
   };
 
   onRender = ({ yAxisSplit, warnings = [] } = {}) => {
@@ -480,6 +491,11 @@ class Visualization extends PureComponent {
                 icon={headerIcon}
                 actionButtons={extra}
                 width={width}
+                getHref={
+                  this.props.getNewCardUrl && !replacementContent
+                    ? this.getNewCardUrl
+                    : undefined
+                }
                 onChangeCardAndRun={
                   this.props.onChangeCardAndRun && !replacementContent
                     ? this.handleOnChangeCardAndRun
