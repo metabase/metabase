@@ -655,8 +655,8 @@
 (deftest fetch-db-test
   (t2.with-temp/with-temp [Database {db-id :id}]
     (testing "A non-admin without self-service perms for a DB cannot fetch the DB normally"
-      (mt/with-all-users-data-perms-graph! {db-id {:data {:view-data      :unrestricted
-                                                          :create-queries :no}}}
+      (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
+                                                   :create-queries :no}}
         (mt/user-http-request :rasta :get 403 (format "database/%d?exclude_uneditable_details=true" db-id))))
 
     (testing "A non-admin without self-service perms for a DB can fetch the DB if they have DB details permissions"

@@ -92,7 +92,7 @@
           (testing "group has existing data permissions... :block should remove them"
             (mt/with-model-cleanup [Permissions]
               (mt/with-restored-data-perms-for-group! group-id
-                (data-perms/set-database-permission! group-id (mt/id) :perms/data-access :unrestricted)
+                (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
                 (grant! group-id)
                 (is (nil? (test-db-perms group-id)))
                 (is (= #{:blocked}
@@ -104,7 +104,7 @@
                                                   [:= :perm_type (u/qualified-name :perms/view-data)]]})))))))))))
 
 (deftest update-graph-delete-sandboxes-test
-  (testing "When setting `:block` permissions any GTAP rows for that Group/Database should get deleted."
+  (testing "When setting `:blocked` permissions any GTAP rows for that Group/Database should get deleted."
     (mt/with-premium-features #{:sandboxes :advanced-permissions}
       (mt/with-model-cleanup [Permissions]
         (mt/with-temp [PermissionsGroup       {group-id :id} {}
@@ -120,7 +120,7 @@
      (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
      (is (nil? (test-db-perms group-id)))
      (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
-     (is (= {"PUBLIC" {(mt/id :venues) :unrestricted}}
+     (is (= {"PUBLIC" :unrestricted}
             (test-db-perms group-id))))))
 
 (deftest update-graph-disallow-native-query-perms-test

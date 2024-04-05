@@ -4,9 +4,11 @@ import {
 } from "metabase/admin/permissions/constants/messages";
 import { isRestrictivePermission } from "metabase/admin/permissions/utils/graph";
 
+import type { DataPermissionValue } from "../../types";
+
 export const getNativePermissionDisabledTooltip = (
   isAdmin: boolean,
-  accessPermissionValue: string,
+  accessPermissionValue: DataPermissionValue,
 ) => {
   if (isAdmin) {
     return UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;

@@ -77,7 +77,6 @@ const dashboardDetails = {
           cy.updatePermissionsGraph({
             [COLLECTION_GROUP]: {
               1: {
-                data: { schemas: "all", native: "none" },
                 "view-data": "unrestricted",
                 "create-queries": "query-builder",
               },
