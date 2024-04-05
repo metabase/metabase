@@ -1094,3 +1094,7 @@ export const getIsNotebookNativePreviewShown = state =>
 
 export const getNotebookNativePreviewSidebarWidth = state =>
   getSetting(state, "notebook-native-preview-sidebar-width");
+
+export function getIsEmbeddingSdk(state) {
+  return state.embed.isEmbeddingSdk;
+}

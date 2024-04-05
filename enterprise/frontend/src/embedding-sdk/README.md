@@ -13,11 +13,7 @@ Build results are located at `<root>/resources/embedding-sdk`
 Run dev build in watch mode:
 
 ```
-$ yarn build:cljs
-```
-
-```
-$ yarn embedding-sdk:generate-package
+$ yarn build-release:cljs
 ```
 
 ```

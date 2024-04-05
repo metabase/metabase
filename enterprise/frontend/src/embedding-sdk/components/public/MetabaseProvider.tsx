@@ -15,7 +15,11 @@ import { AppInitializeController } from "../private/AppInitializeController";
 import "metabase/css/vendor.css";
 import "metabase/css/index.module.css";
 
-const store = getStore(reducers) as unknown as Store<State, AnyAction>;
+const store = getStore(reducers, null, {
+  embed: {
+    isEmbeddingSdk: true,
+  },
+}) as unknown as Store<State, AnyAction>;
 
 const MetabaseProviderInternal = ({
   children,
