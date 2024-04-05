@@ -176,8 +176,14 @@ const config = (module.exports = {
       // with ie11 point to the minified version
       icepick: __dirname + "/node_modules/icepick/icepick.min",
       // conditionally load either the EE plugins file or a empty file in the CE code tree
-      "ee-plugins": ENTERPRISE_SRC_PATH + "/plugins",
-      "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides"
+      "ee-plugins":
+        process.env.MB_EDITION === "ee"
+          ? ENTERPRISE_SRC_PATH + "/plugins"
+          : SRC_PATH + "/lib/noop",
+      "ee-overrides":
+        process.env.MB_EDITION === "ee"
+          ? ENTERPRISE_SRC_PATH + "/overrides"
+          : SRC_PATH + "/lib/noop",
     },
   },
   cache: useFilesystemCache
@@ -186,7 +192,7 @@ const config = (module.exports = {
         cacheDirectory: path.resolve(
           __dirname,
           "node_modules/.cache/",
-          "webpack-ee",
+          edition === "oss" ? "webpack-oss" : "webpack-ee",
         ),
         buildDependencies: {
           // invalidates the cache on configuration change
