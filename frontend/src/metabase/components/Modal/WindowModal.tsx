@@ -31,7 +31,7 @@ export class WindowModal extends Component<WindowModalProps> {
   _modalElement: HTMLDivElement;
 
   static defaultProps = {
-    className: "Modal",
+    className: ModalS.Modal,
     backdropClassName: "Modal-backdrop",
     enableTransition: true,
     trapFocus: true,

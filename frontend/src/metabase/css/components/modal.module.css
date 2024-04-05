@@ -2,7 +2,7 @@
   z-index: 4;
 }
 
-:global(.Modal) {
+.Modal {
   margin: auto;
   width: 640px;
   box-shadow: 0 0 6px var(--color-shadow);
@@ -14,27 +14,27 @@
  * https://github.com/philipwalton/flexbugs/issues/157
  * Set margin to zero when using Flexbox in `WindowModal` component
  */
-:global(.Modal-backdrop > .Modal) {
+:global(.Modal-backdrop >) .Modal {
   margin: 0;
 }
 
-:global(.Modal.Modal--small) {
+.Modal:global(.Modal--small) {
   width: 480px;
 } /* TODO - why is this one px? */
-:global(.Modal.Modal--medium) {
+.Modal:global(.Modal--medium) {
   width: 65%;
 }
 
-:global(.Modal.Modal--wide) {
+.Modal:global(.Modal--wide) {
   width: 85%;
 }
 
-:global(.Modal.Modal--fit) {
+.Modal:global(.Modal--fit) {
   width: auto;
   max-height: 100%;
 }
 
-:global(.Modal.Modal--tall) {
+.Modal:global(.Modal--tall) {
   min-height: 85%;
 }
 
@@ -78,25 +78,25 @@
 
 /* modal */
 
-:global(.Modal-backdrop.Modal-appear .Modal),
-:global(.Modal-backdrop.Modal-enter .Modal) {
+:global(.Modal-backdrop.Modal-appear) .Modal,
+:global(.Modal-backdrop.Modal-enter) .Modal {
   opacity: 0.01;
   transform: translate(0, 40px);
 }
 
-:global(.Modal-backdrop.Modal-appear-active .Modal),
-:global(.Modal-backdrop.Modal-enter-active .Modal) {
+:global(.Modal-backdrop.Modal-appear-active) .Modal,
+:global(.Modal-backdrop.Modal-enter-active) .Modal {
   transition: opacity 200ms linear 100ms, transform 200ms ease-in-out 100ms;
   opacity: 1;
   transform: translate(0, 0);
 }
 
-:global(.Modal-backdrop.Modal-exit .Modal) {
+:global(.Modal-backdrop.Modal-exit) .Modal {
   opacity: 1;
   transform: translate(0, 0);
 }
 
-:global(.Modal-backdrop.Modal-exit-active .Modal) {
+:global(.Modal-backdrop.Modal-exit-active) .Modal {
   transition: opacity 200ms linear, transform 200ms ease-in-out;
   opacity: 0.01;
   transform: translate(0, -40px);
@@ -106,9 +106,9 @@
   :global(.Modal-backdrop.Modal-appear),
   :global(.Modal-backdrop.Modal-enter),
   :global(.Modal-backdrop.Modal-exit),
-  :global(.Modal-backdrop.Modal-appear .Modal),
-  :global(.Modal-backdrop.Modal-enter .Modal),
-  :global(.Modal-backdrop.Modal-exit .Modal) {
+  :global(.Modal-backdrop.Modal-appear) .Modal,
+  :global(.Modal-backdrop.Modal-enter) .Modal,
+  :global(.Modal-backdrop.Modal-exit) .Modal {
     transition: none;
   }
 }
