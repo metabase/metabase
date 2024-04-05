@@ -6113,9 +6113,9 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.CreateInternalUser"
-  
+
   - changeSet:
-      id: v50.2024-04-05T12:19:0
+      id: v50.2024-04-05T12:19:00
       author: adam-james
       comment: Added 0.50.0 - Per-user Dashboard Parameter values table
       changes:
