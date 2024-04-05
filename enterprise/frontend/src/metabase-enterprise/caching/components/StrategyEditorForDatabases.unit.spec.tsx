@@ -184,11 +184,5 @@ describe("StrategyEditorForDatabases", () => {
       ),
     ).toBeInTheDocument();
   });
-  // TODO: Write this test
-  // it("should show the Invalidate now button when strategy is TTL, Duration, or", async () => {
-  //   const button = await screen.findByRole("button", {
-  //     name: "Invalidate now",
-  //   });
-  //   expect(button).toBeInTheDocument();
-  // });
+  // TODO: Write some tests of the invalidate now button
 });
