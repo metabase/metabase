@@ -179,7 +179,7 @@
     :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -353,9 +353,7 @@
   [permissions]
   (u/prog1 permissions
     (assert-valid permissions)
-    (log/debug (u/colorize 'green (trs "Granting permissions for group {0}: {1}"
-                                       (:group_id permissions)
-                                       (:object permissions))))))
+    (log/debug (u/format-color :green "Granting permissions for group %s: %s" (:group_id permissions) (:object permissions)))))
 
 (t2/define-before-update :model/Permissions
   [_]
@@ -363,9 +361,7 @@
 
 (t2/define-before-delete :model/Permissions
   [permissions]
-  (log/debug (u/colorize 'red (trs "Revoking permissions for group {0}: {1}"
-                                   (:group_id permissions)
-                                   (:object permissions))))
+  (log/debug (u/format-color :red "Revoking permissions for group %s: %s" (:group_id permissions) (:object permissions)))
   (assert-not-admin-group permissions))
 
 
@@ -415,7 +411,7 @@
                                           (distinct (conj (perms.u/->v2-path path) path))))
      ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
      (catch Throwable e
-       (log/error e (u/format-color 'red (tru "Failed to grant permissions")))
+       (log/error e (u/format-color 'red "Failed to grant permissions"))
        ;; if we're running tests, we're doing something wrong here if duplicate permissions are getting assigned,
        ;; mostly likely because tests aren't properly cleaning up after themselves, and possibly causing other tests
        ;; to pass when they shouldn't. Don't allow this during tests

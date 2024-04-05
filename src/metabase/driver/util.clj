@@ -148,7 +148,7 @@
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
       ;; first
       (catch Throwable e
-        (log/errorf e "Failed to connect to Database")
+        (log/error e "Failed to connect to Database")
         (throw (if-let [humanized-message (some->> (.getMessage e)
                                                    (driver/humanize-connection-error-message driver))]
                  (let [error-data (cond
@@ -165,7 +165,7 @@
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)
       (catch Throwable e
-        (log/error e (trs "Failed to connect to database"))
+        (log/error e "Failed to connect to database")
         false))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -296,8 +296,7 @@
   (let [content (or placeholder
                     (try (getter)
                          (catch Throwable e
-                           (log/error e (trs "Error invoking getter for connection property {0}"
-                                             (:name conn-prop))))))]
+                           (log/errorf e "Error invoking getter for connection property %s" (:name conn-prop)))))]
     (when (string? content)
       (-> conn-prop
           (assoc :placeholder content)
@@ -503,7 +502,7 @@
                                  (->> (driver/connection-properties driver)
                                       (connection-props-server->client driver))
                                  (catch Throwable e
-                                   (log/error e (trs "Unable to determine connection properties for driver {0}" driver))))]
+                                   (log/errorf e "Unable to determine connection properties for driver %s" driver)))]
                  :when  props]
              ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
              [driver {:source {:type (driver-source (name driver))

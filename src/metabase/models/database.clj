@@ -89,7 +89,7 @@
     (classloader/require 'metabase.task.sync-databases)
     ((resolve 'metabase.task.sync-databases/check-and-schedule-tasks-for-db!) database)
     (catch Throwable e
-      (log/error e (trs "Error scheduling tasks for DB")))))
+      (log/error e "Error scheduling tasks for DB"))))
 
 ;; TODO - something like NSNotificationCenter in Objective-C would be really really useful here so things that want to
 ;; implement behavior when an object is deleted can do it without having to put code here
@@ -101,7 +101,7 @@
     (classloader/require 'metabase.task.sync-databases)
     ((resolve 'metabase.task.sync-databases/unschedule-tasks-for-db!) database)
     (catch Throwable e
-      (log/error e (trs "Error unscheduling tasks for DB.")))))
+      (log/error e "Error unscheduling tasks for DB."))))
 
 (defn- set-new-database-permissions!
   [database]
@@ -174,9 +174,7 @@
                                     acc))
                                 []
                                 possible-secret-prop-names)]
-        (log/info (trs "Deleting secret ID {0} from app DB because the owning database ({1}) is being deleted"
-                       secret-id
-                       id))
+        (log/infof "Deleting secret ID %s from app DB because the owning database (%s) is being deleted" secret-id id)
         (t2/delete! Secret :id secret-id)))))
 
 (t2/define-before-delete :model/Database
@@ -186,7 +184,7 @@
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
-      (log/error e (trs "Error sending database deletion notification")))))
+      (log/error e "Error sending database deletion notification"))))
 
 (defn- handle-db-details-secret-prop!
   "Helper fn for reducing over a map of all the secret connection-properties, keyed by name. This is side effecting. At
@@ -251,10 +249,9 @@
                        :existing-engine existing-engine
                        :new-engine      new-engine}))
       (u/prog1 (-> database
-                   (cond->
-                     ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
-                     (and (some? (:details database))
-                          (not (driver/database-supports? (or new-engine existing-engine) :nested-field-columns database)))
+                   ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
+                   (cond-> (and (some? (:details database))
+                                (not (driver/database-supports? (or new-engine existing-engine) :nested-field-columns database)))
                      (update :details dissoc :json_unfolding))
                    handle-secrets-changes)
         ;; TODO - this logic would make more sense in post-update if such a method existed
@@ -266,16 +263,17 @@
             (when (not= [new-metadata-schedule new-fieldvalues-schedule]
                         [old-metadata-schedule old-fieldvalues-schedule])
               (log/info
-                (trs "{0} Database ''{1}'' sync/analyze schedules have changed!" existing-engine existing-name)
-                "\n"
-                (trs "Sync metadata was: ''{0}'' is now: ''{1}''" old-metadata-schedule new-metadata-schedule)
-                "\n"
-                (trs "Cache FieldValues was: ''{0}'', is now: ''{1}''" old-fieldvalues-schedule new-fieldvalues-schedule))
-              ;; reschedule the database. Make sure we're passing back the old schedule if one of the two wasn't supplied
+               (format "%s Database '%s' sync/analyze schedules have changed!" existing-engine existing-name)
+               "\n"
+               (format "Sync metadata was: '%s' is now: '%s'" old-metadata-schedule new-metadata-schedule)
+               "\n"
+               (format "Cache FieldValues was: '%s', is now: '%s'" old-fieldvalues-schedule new-fieldvalues-schedule))
+              ;; reschedule the database. Make sure we're passing back the old schedule if one of the two wasn't
+              ;; supplied
               (schedule-tasks!
-                (assoc database
-                       :metadata_sync_schedule      new-metadata-schedule
-                       :cache_field_values_schedule new-fieldvalues-schedule)))))
+               (assoc database
+                      :metadata_sync_schedule      new-metadata-schedule
+                      :cache_field_values_schedule new-fieldvalues-schedule)))))
         ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
         ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
         (when (and (:database-enable-actions (or new-settings existing-settings))

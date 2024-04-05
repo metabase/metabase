@@ -23,7 +23,6 @@
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
@@ -182,7 +181,7 @@
        (try
          (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
          (catch Throwable e
-           (log/debug e (trs "Error setting default holdability for connection")))))
+           (log/debug e "Error setting default holdability for connection"))))
      (f conn))))
 
 (defn- prepare-statement ^PreparedStatement [^Connection conn sql]
@@ -394,7 +393,7 @@
                           (or has-perm?
                               (log/tracef "Ignoring schema %s because no USAGE privilege on it" table-schema))))
                       (catch Throwable e
-                        (log/error e (trs "Error checking schema permissions"))
+                        (log/error e "Error checking schema permissions")
                         false))))
           reducible))))))
 
