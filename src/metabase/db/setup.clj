@@ -176,6 +176,8 @@
       :none nil
       :done (log/info "Migration lock(s) have been released")
       :timed-out (do (log/warn "Releasing liquibase locks on shutdown")
+                     ;; There's an infinitesimal chance that we released the lock and another server took it between
+                     ;; the timeout, and the mutations we now make to these lock tables - but we can't detect that.
                      (liquibase/release-all-locks-if-needed!))))
   :done)
 
