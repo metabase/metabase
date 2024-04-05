@@ -162,10 +162,11 @@
   ;; `:type/Boolean` should fail; we can prove it's the wrong thing to do.
    #{:type/Boolean :type/Text :type/Number :type/Temporal :type/IPAddress :type/MongoBSONID :type/Array :type/*})
 
+(derive :type/Text        ::emptyable)
+(derive :type/MongoBSONID ::emptyable)
+
 (mr/def ::emptyable
-  [:or
-   [:ref ::string]
-   (expression-schema :type/MongoBSONID "expression returning a BSONID")])
+  (expression-schema ::emptyable "expression returning something emptyable (e.g. a string or BSON ID)"))
 
 (mr/def ::equality-comparable
   [:maybe
