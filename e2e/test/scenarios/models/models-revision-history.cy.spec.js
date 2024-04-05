@@ -19,7 +19,7 @@ describe("scenarios > models > revision history", () => {
     cy.wait("@modelQuery" + ORDERS_BY_YEAR_QUESTION_ID);
 
     cy.location("pathname").should("match", /^\/question\/\d+/);
-    cy.get("data-element-id=line-area-bar-chart");
+    cy.get("[data-element-id=line-area-bar-chart]");
 
     revertTo("You edited this");
     cy.wait("@modelQuery" + ORDERS_BY_YEAR_QUESTION_ID);

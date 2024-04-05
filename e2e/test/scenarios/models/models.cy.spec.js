@@ -167,18 +167,18 @@ describe("scenarios > models", () => {
   it("changes model's display to table", () => {
     visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
-    cy.get("data-element-id=line-area-bar-chart");
+    cy.get("[data-element-id=line-area-bar-chart]");
     cy.get(".TableInteractive").should("not.exist");
 
     turnIntoModel();
 
     cy.get(".TableInteractive");
-    cy.get("data-element-id=line-area-bar-chart").should("not.exist");
+    cy.get("[data-element-id=line-area-bar-chart]").should("not.exist");
   });
 
   it("allows to undo turning a question into a model", () => {
     visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-    cy.get("data-element-id=line-area-bar-chart");
+    cy.get("[data-element-id=line-area-bar-chart]");
 
     turnIntoModel();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -186,7 +186,7 @@ describe("scenarios > models", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Undo").click();
 
-    cy.get("data-element-id=line-area-bar-chart");
+    cy.get("[data-element-id=line-area-bar-chart]");
     openQuestionActions();
     assertIsQuestion();
   });
@@ -322,7 +322,7 @@ describe("scenarios > models", () => {
       selectFromDropdown("Created At");
 
       visualize();
-      cy.get("data-element-id=line-area-bar-chart");
+      cy.get("[data-element-id=line-area-bar-chart]");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
 

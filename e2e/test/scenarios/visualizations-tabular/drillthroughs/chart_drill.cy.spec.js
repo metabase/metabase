@@ -48,7 +48,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     queryBuilderMain().within(() => {
       cy.findByLabelText("Legend").findByText("Gadget").should("exist");
-      cy.get("data-element-id=line-area-bar-chart")
+      cy.get("[data-element-id=line-area-bar-chart]")
         .findByText("January 2023")
         .should("exist");
     });
@@ -67,7 +67,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     );
 
     queryBuilderMain().within(() => {
-      cy.get("data-element-id=line-area-bar-chart").findByText("June 2022"); // more granular axis labels
+      cy.get("[data-element-id=line-area-bar-chart]").findByText("June 2022"); // more granular axis labels
 
       // confirm that product category is still broken out
       cy.findByLabelText("Legend").within(() => {
@@ -681,7 +681,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    cy.get("data-element-id=line-area-bar-chart")
+    cy.get("[data-element-id=line-area-bar-chart]")
       .get(".dot")
       .first()
       .click({ force: true });
@@ -728,7 +728,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    cy.get("data-element-id=line-area-bar-chart")
+    cy.get("[data-element-id=line-area-bar-chart]")
       .findAllByTestId("legend-item")
       .first()
       .click();
@@ -738,7 +738,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.findByText("Automatic insights…").should("be.visible");
     });
 
-    cy.get("data-element-id=line-area-bar-chart")
+    cy.get("[data-element-id=line-area-bar-chart]")
       .get(".bar")
       .first()
       .click({ force: true });

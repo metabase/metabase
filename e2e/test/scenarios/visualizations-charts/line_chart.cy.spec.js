@@ -232,7 +232,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.get("data-element-id=line-area-bar-chart")
+    cy.get("[data-element-id=line-area-bar-chart]")
       .get(".trend")
       .should("be.visible");
   });

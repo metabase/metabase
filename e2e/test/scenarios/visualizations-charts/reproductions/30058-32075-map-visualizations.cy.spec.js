@@ -87,7 +87,7 @@ describe("issue 32075", () => {
     visualize();
 
     cy.get("[data-element-id=pin-map]").should("not.exist");
-    cy.get("data-element-id=line-area-bar-chart").should("exist");
+    cy.get("[data-element-id=line-area-bar-chart]").should("exist");
   });
 });
 
