@@ -32,11 +32,13 @@ export const DimensionPicker = ({
           <DimensionListItem
             aria-selected={isSelected}
             key={index}
+            data-element-id="list-item"
             className={cx(ListS.ListItem, {
               [ListS.ListItemSelected]: isSelected,
             })}
           >
             <a
+              data-element-id="list-item-title"
               className={cx(
                 ListS.ListItemTitle,
                 CS.full,

@@ -126,7 +126,7 @@ describe("scenarios > notebook > data source", () => {
 
       startNewQuestion();
       popover().within(() => {
-        cy.get(".List-section-title")
+        cy.get("[data-element-id=list-section-title]")
           .should("have.length", 2)
           .and("contain", "Saved Questions")
           .and("not.contain", "Models");

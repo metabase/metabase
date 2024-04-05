@@ -100,8 +100,8 @@ function checkQuestionSourceDatabasesOrder(question_type) {
   const lastDatabaseIndex = -1;
   const selector =
     question_type === "Native query"
-      ? ".List-item-title"
-      : ".List-section-title";
+      ? "[data-element-id=list-item]-title"
+      : "[data-element-id=list-section-title]";
 
   startNewQuestion();
   popover().within(() => {

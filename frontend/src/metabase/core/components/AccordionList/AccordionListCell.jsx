@@ -69,6 +69,7 @@ export const AccordionListCell = ({
       const name = section.name;
       content = (
         <div
+          data-element-id="list-section-header"
           className={cx(
             ListS.ListSectionHeader,
             CS.px2,
@@ -99,7 +100,12 @@ export const AccordionListCell = ({
             </span>
           )}
           {name && (
-            <h3 className={cx(ListS.ListSectionTitle, CS.textWrap)}>{name}</h3>
+            <h3
+              data-element-id="list-section-title"
+              className={cx(ListS.ListSectionTitle, CS.textWrap)}
+            >
+              {name}
+            </h3>
           )}
           {showSpinner(section) && (
             <Box ml="0.5rem">
@@ -157,6 +163,7 @@ export const AccordionListCell = ({
         aria-selected={isSelected}
         aria-disabled={!isClickable}
         isClickable={isClickable}
+        data-element-id="list-item"
         className={cx(
           ListS.ListItem,
           CS.flex,
@@ -189,7 +196,10 @@ export const AccordionListCell = ({
           )}
           <div className="List-item-content">
             {name && (
-              <h4 className={cx(ListS.ListItemTitle, CS.ml1, CS.textWrap)}>
+              <h4
+                data-element-id="list-item-title"
+                className={cx(ListS.ListItemTitle, CS.ml1, CS.textWrap)}
+              >
                 {name}
               </h4>
             )}
