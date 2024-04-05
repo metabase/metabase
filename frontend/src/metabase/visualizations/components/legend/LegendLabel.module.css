@@ -1,0 +1,14 @@
+.text {
+  color: var(--color-text-dark);
+  font-weight: bold;
+}
+
+.link {
+  &:hover {
+    color: var(--color-brand);
+  }
+
+  &:focus-visible {
+    outline: 0;
+  }
+}
