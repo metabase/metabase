@@ -17,10 +17,10 @@ import {
 
 const SLUG = "embedding-in-other-applications/full-app";
 
+PLUGIN_REDUCERS.embeddingSessionToken = tokenReducer;
+
 if (hasPremiumFeature("embedding")) {
   PLUGIN_EMBEDDING.isEnabled = () => true;
-
-  PLUGIN_REDUCERS.embeddingSessionToken = tokenReducer;
 
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => {
     return {

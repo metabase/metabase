@@ -8,6 +8,7 @@ const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
 
 const mainConfig = require("./webpack.config");
+const path = require("path");
 
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 const BUILD_PATH = __dirname + "/resources/embedding-sdk";
@@ -38,7 +39,7 @@ const CSS_CONFIG = {
 const shouldAnalyzeBundles = process.env.SHOULD_ANALYZE_BUNDLES === "true";
 
 module.exports = env => {
-  let config = {
+  const config = {
     ...mainConfig,
 
     context: SDK_SRC_PATH,
@@ -148,6 +149,14 @@ module.exports = env => {
     "ee-plugins": ENTERPRISE_SRC_PATH + "/plugins",
     "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
   };
+
+  if (config.cache) {
+    config.cache.cacheDirectory = path.resolve(
+      __dirname,
+      "node_modules/.cache/",
+      "webpack-ee",
+    );
+  }
 
   return config;
 };

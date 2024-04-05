@@ -1,6 +1,3 @@
-import "ee-overrides";
-import "ee-plugins";
-
 import type { Store } from "@reduxjs/toolkit";
 import type * as React from "react";
 import { memo } from "react";
