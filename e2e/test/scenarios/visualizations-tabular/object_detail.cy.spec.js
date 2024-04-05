@@ -164,10 +164,10 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     createQuestion(questionDetails, { visitQuestion: true });
 
     cy.get(".cellData").contains("4966277046676").realHover();
-    cy.findByTestId("detail-shortcut")
-      // cypress sometimes messes up where to show this button, so we hover over it second time
-      .realHover()
+    // cy.findByTestId("detail-shortcut") is flaky
+    cy.get("#gutter-column")
       .findByRole("button")
+      .realHover()
       .should("be.visible")
       .click();
 
