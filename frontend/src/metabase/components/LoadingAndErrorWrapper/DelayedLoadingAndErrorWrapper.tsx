@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 
-import LoadingAndErrorWrapper from "./LoadingAndErrorWrapper";
 import { Transition } from "metabase/ui";
+
+import LoadingAndErrorWrapper from "./LoadingAndErrorWrapper";
 
 /**
  * A loading/error display component that waits a bit before appearing
