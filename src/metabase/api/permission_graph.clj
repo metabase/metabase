@@ -62,7 +62,7 @@
 
 (def ^:private SchemaPerms
   [:or
-   [:keyword {:title "schema name"}]
+   [:enum :all :segmented :none :full :limited :unrestricted :legacy-no-self-service :sandboxed :query-builder :no]
    [:map-of Id TablePerms]])
 
 (def ^:private SchemaGraph
@@ -84,6 +84,7 @@
     :unrestricted
     :sandboxed
     :legacy-no-self-service
+    :query-builder-and-native
     :query-builder
     :no]
    SchemaGraph])
