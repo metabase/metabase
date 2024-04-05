@@ -123,7 +123,10 @@ export const NotebookContainer = ({
           resizeHandles={["w"]}
           handle={<Handle />}
           onResizeStop={handleResizeStop}
-          style={{ borderLeft: `1px solid ${color("border")}` }}
+          style={{
+            borderLeft: `1px solid ${color("border")}`,
+            marginInlineStart: "0.25rem",
+          }}
         >
           <NativeQueryPreviewSidebar />
         </ResizableBox>
