@@ -112,8 +112,8 @@
           [username (date-only last-login) (time-only last-login) password-text])))))
 
 (defonce ^{:doc "The main `test-data` dataset, with an additional (all-null) `null_only_date` Field."}
-  test-data-with-null-date-checkins
-  (tx/transformed-dataset-definition "test-data-with-null-date-checkins" test-data
+  test-data-null-date
+  (tx/transformed-dataset-definition "test-data-null-date" test-data
     (tx/transform-dataset-update-table "checkins"
       :table
       (fn [tabledef]

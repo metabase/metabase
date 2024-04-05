@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
 
-import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
-
-export const InfoIcon = styled(QueryColumnInfoIcon)`
+export const InfoIconWrapper = styled.div`
   position: relative;
   left: 0.25rem;
+  width: 2rem;
+  display: flex;
+  align-items: center;
 `;
