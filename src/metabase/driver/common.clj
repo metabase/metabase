@@ -5,7 +5,7 @@
    [metabase.driver :as driver]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
-   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
@@ -271,7 +271,7 @@
     ;; all-NULL columns in DBs like Mongo w/o explicit types
     nil                            :type/*
     (do
-      (log/warn (trs "Don''t know how to map class ''{0}'' to a Field base_type, falling back to :type/*." klass))
+      (log/warnf "Don't know how to map class '%s' to a Field base_type, falling back to :type/*." klass)
       :type/*)))
 
 (def ^:private column-info-sample-size

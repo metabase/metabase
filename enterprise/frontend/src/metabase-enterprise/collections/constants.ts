@@ -25,7 +25,7 @@ export const OFFICIAL_COLLECTION: CollectionAuthorityLevelConfig = {
 export const INSTANCE_ANALYTICS_COLLECTION: CollectionInstanceAnaltyicsConfig =
   {
     type: "instance-analytics",
-    name: t`Instace Analytics`,
+    name: t`Instance Analytics`,
     icon: "audit",
   };
 

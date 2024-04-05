@@ -66,7 +66,7 @@ class TableQuestions extends Component {
       this.props;
 
     return (
-      <div style={style} className="full">
+      <div style={style} className={CS.full}>
         <ReferenceHeader
           name={t`Questions about ${this.props.table.display_name}`}
           type="questions"

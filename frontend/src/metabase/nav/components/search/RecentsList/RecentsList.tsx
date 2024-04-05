@@ -9,8 +9,7 @@ import {
   getItemName,
   getItemUrl,
 } from "metabase/nav/components/search/RecentsList/util";
-import type { IconName } from "metabase/ui";
-import { Paper } from "metabase/ui";
+import { Paper, type IconName } from "metabase/ui";
 import type { RecentItem, UnrestrictedLinkEntity } from "metabase-types/api";
 
 type RecentsListProps = {

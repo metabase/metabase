@@ -163,7 +163,7 @@ const TableTitleSection = ({
   );
 
   return (
-    <div className={cx(CS.bgWhite, CS.flex, "flex-column")}>
+    <div className={cx(CS.bgWhite, CS.flex, CS.flexColumn)}>
       {tab === "columns" ? (
         <>
           <TableNameInput
@@ -224,8 +224,16 @@ const TableVisibilitySection = ({
   );
 
   return (
-    <div className="MetadataTable-header flex align-center py2 text-medium">
-      <span className="mx1 text-uppercase">{t`Visibility`}</span>
+    <div
+      className={cx(
+        "MetadataTable-header",
+        CS.flex,
+        CS.alignCenter,
+        CS.py2,
+        CS.textMedium,
+      )}
+    >
+      <span className={cx(CS.mx1, CS.textUppercase)}>{t`Visibility`}</span>
       <span id="VisibilityTypes">
         <MetadataVisibilityBadge
           isChecked={table.visibility_type == null}
@@ -244,7 +252,9 @@ const TableVisibilitySection = ({
 
         {table.visibility_type && (
           <span id="VisibilitySubTypes" className="border-left mx2">
-            <span className="mx2 text-uppercase text-medium">{t`Why Hide?`}</span>
+            <span
+              className={cx("mx2", CS.textUppercase, "text-medium")}
+            >{t`Why Hide?`}</span>
             <MetadataVisibilityBadge
               isChecked={table.visibility_type === "technical"}
               onClick={handleChangeTechnical}

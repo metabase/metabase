@@ -167,7 +167,7 @@ export default class FunnelNormal extends Component {
                 </Ellipsified>
               </Head>
               <GraphSection
-                className={cx({ "cursor-pointer": isClickable })}
+                className={cx({ [CS.cursorPointer]: isClickable })}
                 index={index}
                 info={info}
                 infos={infos}
@@ -202,7 +202,7 @@ const GraphSection = ({
   className,
 }) => {
   return (
-    <div className="relative full-height">
+    <div className={cx(CS.relative, CS.fullHeight)}>
       <svg
         height="100%"
         width="100%"

@@ -1,7 +1,6 @@
 import {
   dashboardHeader,
   editDashboard,
-  modal,
   openQuestionsSidebar,
   popover,
   restore,
@@ -9,6 +8,7 @@ import {
   rightSidebar,
   toggleDashboardInfoSidebar,
   visitDashboard,
+  entityPickerModal,
 } from "e2e/support/helpers";
 
 const dashboardDetails = {
@@ -81,7 +81,7 @@ describe("issue 16559", () => {
     cy.log("Move dashboard to another collection");
     dashboardHeader().icon("ellipsis").click();
     popover().findByText("Move").click();
-    modal().within(() => {
+    entityPickerModal().within(() => {
       cy.findByText("First collection").click();
       cy.button("Move").click();
     });

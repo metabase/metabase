@@ -135,14 +135,3 @@
 :global(.TableInteractive-gutter) {
   background-color: var(--color-bg-white);
 }
-
-:global(.TableInteractive-detailButton) {
-  color: var(--color-brand);
-  transition: opacity 0.2s ease-in-out;
-  margin: 0 4px;
-  opacity: 0;
-}
-
-:global(.show .TableInteractive-detailButton) {
-  opacity: 1;
-}

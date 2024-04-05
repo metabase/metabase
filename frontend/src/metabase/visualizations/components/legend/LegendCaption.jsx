@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
@@ -63,7 +64,9 @@ const LegendCaption = ({
             }
             maxWidth="22em"
           >
-            <LegendDescriptionIcon className="hover-child hover-child--smooth" />
+            <LegendDescriptionIcon
+              className={cx(CS.hoverChild, CS.hoverChildSmooth)}
+            />
           </Tooltip>
         )}
         {actionButtons && <LegendActions>{actionButtons}</LegendActions>}

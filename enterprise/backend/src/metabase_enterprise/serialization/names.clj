@@ -17,7 +17,6 @@
    [metabase.models.segment :refer [Segment]]
    [metabase.models.table :refer [Table]]
    [metabase.models.user :refer [User]]
-   [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
@@ -309,7 +308,7 @@
   [fully-qualified-name]
   (when fully-qualified-name
     (let [components (->> (str/split fully-qualified-name separator-pattern)
-                          rest ; we start with a /
+                          rest          ; we start with a /
                           partition-name-components
                           (map (fn [[model-name & entity-parts]]
                                  (cond-> {::model-name model-name ::entity-name (last entity-parts)}
@@ -318,7 +317,7 @@
                                                           first ; ns is first/only item after "collections"
                                                           rest  ; strip the starting :
                                                           (apply str)))))))
-          context (loop [acc-context                   {}
+          context (loop [acc-context {}
                          [{::keys [model-name entity-name] :as model-map} & more] components]
                     (let [model-attrs (dissoc model-map ::model-name ::entity-name)
                           new-context (path->context acc-context model-name model-attrs (unescape-name entity-name))]
@@ -329,9 +328,9 @@
            (not (mc/validate [:maybe Context] context))
            (not *suppress-log-name-lookup-exception*))
         (log/warn
-         (ex-info (trs "Can''t resolve {0} in fully qualified name {1}"
-                       (str/join ", " (map name (keys context)))
-                       fully-qualified-name)
+         (ex-info (format "Can't resolve %s in fully qualified name %s"
+                          (str/join ", " (map name (keys context)))
+                          fully-qualified-name)
                   {:fully-qualified-name fully-qualified-name
                    :resolve-name-failed? true
                    :context              context}))

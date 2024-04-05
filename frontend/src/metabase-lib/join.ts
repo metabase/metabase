@@ -238,7 +238,7 @@ export function joinedThing(query: Query, join: Join): Joinable {
 
 export type PickerInfo = {
   databaseId: number;
-  tableId: number;
+  tableId: string;
   cardId?: number;
   isModel?: boolean;
 };

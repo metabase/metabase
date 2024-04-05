@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 import Modal from "metabase/components/Modal";
+import CS from "metabase/css/core/index.css";
 import Actions from "metabase/entities/actions";
 import Search from "metabase/entities/search";
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -41,7 +42,7 @@ export function ActionPicker({
   const actionsByModel = useMemo(() => sortAndGroupActions(actions), [actions]);
 
   return (
-    <div className="scroll-y">
+    <div className={CS.scrollY}>
       {sortedModels.map(model => (
         <ModelActionPicker
           key={model.id}

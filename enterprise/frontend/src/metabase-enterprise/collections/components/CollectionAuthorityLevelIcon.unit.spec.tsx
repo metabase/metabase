@@ -49,31 +49,31 @@ describe("CollectionAuthorityLevelIcon", () => {
       expect(queryOfficialIcon()).toBeInTheDocument();
     });
 
-    it(`displays a tooltip by default`, () => {
+    it(`displays a tooltip by default`, async () => {
       renderOfficialCollection();
-      userEvent.hover(queryOfficialIcon());
+      await userEvent.hover(queryOfficialIcon());
       expect(screen.getByRole("tooltip")).toHaveTextContent(
         "Official collection",
       );
     });
 
-    it(`can display different tooltip`, () => {
+    it(`can display different tooltip`, async () => {
       renderOfficialCollection({ tooltip: "belonging" });
-      userEvent.hover(queryOfficialIcon());
+      await userEvent.hover(queryOfficialIcon());
       expect(screen.getByRole("tooltip")).toHaveTextContent(
         "Belongs to an Official collection",
       );
     });
 
-    it(`can display custom tooltip text`, () => {
+    it(`can display custom tooltip text`, async () => {
       renderOfficialCollection({ tooltip: "Hello" });
-      userEvent.hover(queryOfficialIcon());
+      await userEvent.hover(queryOfficialIcon());
       expect(screen.getByRole("tooltip")).toHaveTextContent("Hello");
     });
 
-    it(`can hide tooltip`, () => {
+    it(`can hide tooltip`, async () => {
       renderOfficialCollection({ tooltip: null });
-      userEvent.hover(queryOfficialIcon());
+      await userEvent.hover(queryOfficialIcon());
       expect(screen.queryByLabelText("tooltip")).not.toBeInTheDocument();
     });
   });

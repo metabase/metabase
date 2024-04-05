@@ -1,9 +1,11 @@
 /* eslint-disable react/prop-types */
 import styled from "@emotion/styled";
+import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import {
   OptionItemDescription,
   OptionItemRoot,
@@ -65,10 +67,14 @@ export class ParametersPopover extends Component {
 export const ParameterOptionsSection = ({ section, onClick }) => (
   <OptionItemRoot onClick={onClick}>
     <OptionItemTitle
-      className="text-bold flex align-center"
+      className={cx(CS.textBold, CS.flex, CS.alignCenter)}
       style={{ marginBottom: 4 }}
     >
-      <Icon size="16" name={getParameterIconName(section.id)} className="mr1" />
+      <Icon
+        size="16"
+        name={getParameterIconName(section.id)}
+        className={CS.mr1}
+      />
       {section.name}
     </OptionItemTitle>
     <OptionItemDescription>{section.description}</OptionItemDescription>
@@ -92,7 +98,7 @@ export const ParameterOptionsSectionsPane = ({ sections, onSelectSection }) => (
 
 export const ParameterOptionItem = ({ option, onClick }) => (
   <OptionItemRoot onClick={onClick}>
-    <OptionItemTitle className="text-bold" style={{ marginBottom: 4 }}>
+    <OptionItemTitle className={CS.textBold} style={{ marginBottom: 4 }}>
       {option.menuName || option.name}
     </OptionItemTitle>
     <OptionItemDescription>{option.description}</OptionItemDescription>

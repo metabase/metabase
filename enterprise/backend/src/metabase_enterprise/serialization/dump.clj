@@ -3,8 +3,7 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
-   [metabase-enterprise.serialization.names
-    :refer [fully-qualified-name name-for-logging safe-name]]
+   [metabase-enterprise.serialization.names :refer [fully-qualified-name name-for-logging safe-name]]
    [metabase-enterprise.serialization.serialize :as serialize]
    [metabase.config :as config]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -18,7 +17,6 @@
    [metabase.models.setting :as setting]
    [metabase.models.table :refer [Table]]
    [metabase.models.user :refer [User]]
-   [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
@@ -94,7 +92,7 @@
     (try
       (spit-entity! path entity)
       (catch Throwable e
-        (log/error e (trs "Error dumping {0}" (name-for-logging entity))))))
+        (log/errorf e "Error dumping %s" (name-for-logging entity)))))
   (spit-yaml! (str path "/manifest.yaml")
              {:serialization-version serialize/serialization-protocol-version
               :metabase-version      config/mb-version-info}))

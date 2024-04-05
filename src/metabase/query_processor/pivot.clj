@@ -15,7 +15,7 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -177,7 +177,7 @@
                       (seq info) (qp/userland-query info))]
           (qp/process-query query rff))
         (catch Throwable e
-          (log/error e (trs "Error processing additional pivot table query"))
+          (log/error e "Error processing additional pivot table query")
           (throw e))))))
 
 (mu/defn ^:private process-queries-append-results

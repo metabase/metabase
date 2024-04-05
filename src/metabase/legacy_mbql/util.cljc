@@ -160,11 +160,21 @@
     [:not-null field] [:!= field nil]))
 
 (defn desugar-is-empty-and-not-empty
-  "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively."
+  "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively.
+
+   If `:not-empty` is called on `:metabase.lib.schema.expression/emptyable` type, expand check for empty string. For
+   non-`emptyable` types act as `:is-null`. If field has nil base type it is considered not emptyable expansion wise."
   [m]
   (lib.util.match/replace m
-    [:is-empty field]  [:or  [:=  field nil] [:=  field ""]]
-    [:not-empty field] [:and [:!= field nil] [:!= field ""]]))
+    [:is-empty field]
+    (if (isa? (get-in field [2 :base-type]) :metabase.lib.schema.expression/emptyable)
+      [:or [:= field nil] [:= field ""]]
+      [:= field nil])
+
+    [:not-empty field]
+    (if (isa? (get-in field [2 :base-type]) :metabase.lib.schema.expression/emptyable)
+      [:and [:!= field nil] [:!= field ""]]
+      [:!= field nil])))
 
 (defn- replace-field-or-expression
   "Replace a field or expression inside :time-interval"
@@ -389,11 +399,13 @@
 (mu/defn add-order-by-clause :- mbql.s/MBQLQuery
   "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
   already being used in another order-by clause, this function does nothing."
-  [inner-query                                        :- mbql.s/MBQLQuery
-   [_ [_ id-or-name :as _field], :as order-by-clause] :- mbql.s/OrderBy]
-  (let [existing-fields (set (for [[_ [_ id-or-name]] (:order-by inner-query)]
-                               id-or-name))]
-    (if (existing-fields id-or-name)
+  [inner-query                           :- mbql.s/MBQLQuery
+   [_dir orderable, :as order-by-clause] :- mbql.s/OrderBy]
+  (let [existing-orderables (into #{}
+                                  (map (fn [[_dir orderable]]
+                                         orderable))
+                                  (:order-by inner-query))]
+    (if (existing-orderables orderable)
       ;; Field already referenced, nothing to do
       inner-query
       ;; otherwise add new clause at the end
@@ -567,6 +579,7 @@
                 (assert (not= candidate original)
                         (str "unique-alias-fn must return a different string than its input. Input: "
                              (pr-str candidate)))
+                (swap! id+original->unique assoc [id name-key] candidate)
                 (recur id candidate))))))))))
 
 (mu/defn uniquify-names :- [:and
@@ -622,7 +635,6 @@
 
   Most often, `aggregation->name-fn` will be something like `annotate/aggregation-name`, but for purposes of keeping
   the `metabase.legacy-mbql` module seperate from the `metabase.query-processor` code we'll let you pass that in yourself."
-  {:style/indent 1}
   [aggregation->name-fn :- fn?
    aggregations         :- [:sequential mbql.s/Aggregation]]
   (lib.util.match/replace aggregations
@@ -638,7 +650,6 @@
 (mu/defn pre-alias-and-uniquify-aggregations :- UniquelyNamedAggregations
   "Wrap every aggregation clause in a `:named` clause with a unique name. Combines `pre-alias-aggregations` with
   `uniquify-named-aggregations`."
-  {:style/indent 1}
   [aggregation->name-fn :- fn?
    aggregations         :- [:sequential mbql.s/Aggregation]]
   (-> (pre-alias-aggregations aggregation->name-fn aggregations)
@@ -724,8 +735,7 @@
           (mbql.s/valid-temporal-unit-for-base-type? base-type unit))
     (assoc-field-options clause :temporal-unit unit)
     (do
-      (log/warn (i18n/tru "{0} is not a valid temporal unit for {1}; not adding to clause {2}"
-                          unit base-type (pr-str clause)))
+      (log/warnf "%s is not a valid temporal unit for %s; not adding to clause %s" unit base-type (pr-str clause))
       clause)))
 
 (defn remove-namespaced-options
@@ -762,3 +772,33 @@
           (sequential? form) (recur (onto-stack (map-indexed vector form)) matches)
           :else              (recur stack                                  matches)))
       matches)))
+
+(defn wrap-field-id-if-needed
+  "Wrap a raw Field ID in a `:field` clause if needed."
+  [field-id-or-form]
+  (cond
+    (mbql-clause? field-id-or-form)
+    field-id-or-form
+
+    (integer? field-id-or-form)
+    [:field field-id-or-form nil]
+
+    :else
+    field-id-or-form))
+
+(mu/defn unwrap-field-clause :- [:maybe mbql.s/field]
+  "Unwrap something that contains a `:field` clause, such as a template tag.
+  Also handles unwrapped integers for legacy compatibility.
+
+    (unwrap-field-clause [:field 100 nil]) ; -> [:field 100 nil]"
+  [field-form]
+  (if (integer? field-form)
+    [:field field-form nil]
+    (lib.util.match/match-one field-form :field)))
+
+(mu/defn unwrap-field-or-expression-clause :- mbql.s/Field
+  "Unwrap a `:field` clause or expression clause, such as a template tag. Also handles unwrapped integers for
+  legacy compatibility."
+  [field-or-ref-form]
+  (or (unwrap-field-clause field-or-ref-form)
+      (lib.util.match/match-one field-or-ref-form :expression)))

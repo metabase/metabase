@@ -1,5 +1,7 @@
 import cx from "classnames";
 
+import CS from "metabase/css/core/index.css";
+
 import { PreviewPaneContainer } from "./PreviewPane.styled";
 
 /**
@@ -17,11 +19,11 @@ export function PreviewPane({ className, previewUrl, isTransparent, hidden }) {
     <PreviewPaneContainer
       hidden={hidden}
       isTransparent={isTransparent}
-      className={cx(className, "flex relative")}
+      className={cx(className, CS.flex, CS.relative)}
     >
       <iframe
         data-testid="embed-preview-iframe"
-        className="flex-full"
+        className={CS.flexFull}
         src={previewUrl}
         frameBorder={0}
       />

@@ -98,7 +98,8 @@
                         :id
                         (collection/permissions-set->visible-collection-ids permissions-set))]
                ;; Order NULL collection types first so that audit collections are last
-               :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
+               :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+                          [[[:case [:= :type nil] 0 :else 1]] :asc]
                           [:%lower.name :asc]]})
    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
@@ -421,7 +422,7 @@
     (->> (map #(assoc %2 :dataset_query %1) queries-parsed rows)
          upload/model-hydrate-based-on-upload
          (map #(assoc %2 :dataset_query %1) queries-before)
-         (post-process-collection-children collection :card))))
+         (post-process-collection-children :card collection))))
 
 (defmethod collection-children-query :card
   [_ collection options]
@@ -712,7 +713,8 @@
   treatment of nulls in the different app db types."
   [sort-info db-type]
   ;; always put "Metabase Analytics" last
-  (into [[[[:case [:= :collection_type nil] 0 :else 1]] :asc]]
+  (into [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+         [[[:case [:= :collection_type nil] 0 :else 1]] :asc]]
         (case sort-info
           nil                     [[:%lower.name :asc]]
           [:name :asc]            [[:%lower.name :asc]]

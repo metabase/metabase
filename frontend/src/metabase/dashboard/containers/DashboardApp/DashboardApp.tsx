@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { Location } from "history";
 import type { ReactNode } from "react";
 import { useCallback, useEffect } from "react";
@@ -9,6 +10,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
+import CS from "metabase/css/core/index.css";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import Dashboards from "metabase/entities/dashboards";
 import favicon from "metabase/hoc/Favicon";
@@ -244,7 +246,7 @@ const DashboardApp = (props: DashboardAppProps) => {
   });
 
   return (
-    <div className="shrink-below-content-size full-height">
+    <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
       <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
 
       <Dashboard

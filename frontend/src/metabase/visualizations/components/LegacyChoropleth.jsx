@@ -41,11 +41,12 @@ const LegacyChoropleth = ({
       >
         {() => (
           <svg
-            className="flex-full m1"
+            className={cx(CS.flexFull, CS.m1)}
             viewBox={`${minX} ${minY} ${width} ${height}`}
           >
             {geoJson.features.map((feature, index) => (
               <path
+                data-testid="choropleth-feature"
                 key={index}
                 d={geo(feature, index)}
                 stroke="white"
@@ -58,7 +59,7 @@ const LegacyChoropleth = ({
                   })
                 }
                 onMouseLeave={() => onHoverFeature(null)}
-                className={cx({ "cursor-pointer": !!onClickFeature })}
+                className={cx({ [CS.cursorPointer]: !!onClickFeature })}
                 onClick={
                   onClickFeature
                     ? e =>

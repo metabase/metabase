@@ -10,6 +10,7 @@ import type {
 } from "metabase/components/Modal/utils";
 import { getModalContent, modalSizes } from "metabase/components/Modal/utils";
 import SandboxedPortal from "metabase/components/SandboxedPortal";
+import CS from "metabase/css/core/index.css";
 import { FocusTrap } from "metabase/ui";
 
 export type WindowModalProps = BaseModalProps & {
@@ -58,6 +59,7 @@ export class WindowModal extends Component<WindowModalProps> {
       this.props.onClose();
     }
   };
+
   _modalComponent() {
     const className = cx(
       this.props.className,
@@ -73,7 +75,7 @@ export class WindowModal extends Component<WindowModalProps> {
       >
         <FocusTrap active={this.props.trapFocus}>
           <div
-            className={cx(className, "relative bg-white rounded")}
+            className={cx(className, CS.relative, CS.bgWhite, CS.rounded)}
             role="dialog"
           >
             {getModalContent({
@@ -98,8 +100,16 @@ export class WindowModal extends Component<WindowModalProps> {
       enableTransition,
       "data-testid": dataTestId,
     } = this.props;
-    const backdropClassnames =
-      "flex justify-center align-center fixed top left bottom right";
+    const backdropClassnames = cx(
+      CS.flex,
+      CS.justifyCenter,
+      CS.alignCenter,
+      CS.fixed,
+      CS.top,
+      CS.left,
+      CS.bottom,
+      CS.right,
+    );
 
     return (
       <SandboxedPortal
