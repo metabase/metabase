@@ -17,6 +17,8 @@ export interface ActivityModelObject {
   moderated_status?: string;
   name: string;
   collection_id?: CollectionId;
+  collection_name?: string;
+  database_name?: string;
   db_id?: DatabaseId;
 }
 

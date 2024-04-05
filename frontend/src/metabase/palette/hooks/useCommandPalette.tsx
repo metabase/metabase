@@ -120,9 +120,9 @@ export const useCommandPalette = ({
                 dispatch(push(wrappedResult.getUrl()));
               },
               extra: {
-                parentCollection: result.collection.id,
+                parentCollection: result.collection.name,
                 isVerified: result.moderated_status === "verified",
-                databaseId: result.database_id,
+                database: result.database_name,
               },
             };
           }),
@@ -160,9 +160,9 @@ export const useCommandPalette = ({
           dispatch(push(Urls.modelToUrl(item) ?? ""));
         },
         extra: {
-          parentCollection: item.model_object.collection_id,
+          parentCollection: item.model_object.collection_name,
           isVerified: item.model_object.moderated_status === "verified",
-          databaseId: item.model_object.db_id,
+          database: item.model_object.database_name,
         },
       });
     });

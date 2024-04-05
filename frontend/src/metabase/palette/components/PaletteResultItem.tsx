@@ -5,9 +5,6 @@ import { Flex, Text, Icon, Box, type IconName } from "metabase/ui";
 
 import type { PaletteAction } from "../types";
 
-import { CollectionBreadcrumbs } from "./CollectionBreadcrumbs";
-import { DatabaseBreadcrumbs } from "./DatabaseBreadcrumb";
-
 interface PaletteResultItemProps {
   item: PaletteAction;
   active: boolean;
@@ -15,6 +12,9 @@ interface PaletteResultItemProps {
 
 export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
   const iconColor = active ? color("brand-light") : color("text-light");
+
+  const parentName =
+    item.extra?.parentCollection || item.extra?.database || null;
 
   return (
     <Flex
@@ -51,7 +51,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
             flexGrow: 1,
             flexBasis: 0,
             textOverflow: "ellipsis",
-            overflowX: "hidden",
+            overflow: "hidden",
             whiteSpace: "nowrap",
           }}
         >
@@ -68,17 +68,15 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
               }}
             />
           )}
-          {item.extra?.parentCollection && (
-            <CollectionBreadcrumbs
-              collectionId={item.extra.parentCollection}
-              color={iconColor}
-            />
-          )}
-          {item.extra?.databaseId && (
-            <DatabaseBreadcrumbs
-              databaseId={item.extra.databaseId}
-              color={iconColor}
-            />
+          {parentName && (
+            <Text
+              component="span"
+              ml="0.25rem"
+              c={iconColor}
+              fz="0.75rem"
+              lh="1rem"
+              fw="normal"
+            >{`— ${parentName}`}</Text>
           )}
         </Box>
       </Flex>
