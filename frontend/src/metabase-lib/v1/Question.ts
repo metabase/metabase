@@ -518,7 +518,7 @@ class Question {
     dashboardId,
     dashcardId,
   }:
-    | { dashboardId: number; dashcardId: number }
+    | { dashboardId: DashboardId; dashcardId: number }
     | { dashboardId: undefined; dashcardId: undefined }): Question {
     const card = chain(this.card())
       .assoc("dashboardId", dashboardId)

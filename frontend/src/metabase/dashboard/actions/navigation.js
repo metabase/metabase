@@ -10,6 +10,8 @@ import * as ML_Urls from "metabase-lib/v1/urls";
 
 import { getDashboardId } from "../selectors";
 
+import { getNewCardUrl } from "./utils";
+
 export const EDIT_QUESTION = "metabase/dashboard/EDIT_QUESTION";
 export const editQuestion = createThunkAction(
   EDIT_QUESTION,
@@ -46,8 +48,9 @@ export const navigateToNewCardFromDashboard = createThunkAction(
     (dispatch, getState) => {
       const state = getState();
       const { dashboardId } = state.dashboard;
+      const metadata = getMetadata(state);
 
-      const url = getNewCardUrl(state, {
+      const url = getNewCardUrl(metadata, state.dashboard, {
         nextCard,
         previousCard,
         dashcard,
@@ -58,56 +61,3 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       return { dashboardId };
     },
 );
-
-export const getNewCardUrl = (
-  state,
-  { nextCard, previousCard, dashcard, objectId },
-) => {
-  const metadata = getMetadata(state);
-  const { dashboardId, dashboards, parameterValues } = state.dashboard;
-  const dashboard = dashboards[dashboardId];
-  const cardAfterClick = getCardAfterVisualizationClick(nextCard, previousCard);
-
-  let question = new Question(cardAfterClick, metadata);
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
-  if (isEditable) {
-    question = question
-      .setDisplay(cardAfterClick.display || previousCard.display)
-      .setSettings(dashcard.card.visualization_settings)
-      .lockDisplay();
-  } else {
-    question = question.setCard(dashcard.card).setDashboardProps({
-      dashboardId: dashboard.id,
-      dashcardId: dashcard.id,
-    });
-  }
-
-  const parametersMappedToCard = getParametersMappedToDashcard(
-    dashboard,
-    dashcard,
-  );
-
-  // When drilling from a native model, the drill can return a new question
-  // querying a table for which we don't have any metadata for
-  // When building a question URL, it'll usually clean the query and
-  // strip clauses referencing fields from tables without metadata
-  const previousQuestion = new Question(previousCard, metadata);
-  const { isNative: isPreviousNative } = Lib.queryDisplayInfo(
-    previousQuestion.query(),
-  );
-
-  const isDrillingFromNativeModel =
-    previousQuestion.type() === "model" && isPreviousNative;
-
-  const url = ML_Urls.getUrlWithParameters(
-    question,
-    parametersMappedToCard,
-    parameterValues,
-    {
-      clean: !isDrillingFromNativeModel,
-      objectId,
-    },
-  );
-
-  return url;
-};

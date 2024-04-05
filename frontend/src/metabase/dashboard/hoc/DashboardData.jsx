@@ -5,6 +5,7 @@ import { push } from "react-router-redux";
 import _ from "underscore";
 
 import * as dashboardActions from "metabase/dashboard/actions";
+import { getNewCardUrl } from "metabase/dashboard/actions";
 import {
   getDashboardComplete,
   getCardData,
@@ -15,9 +16,12 @@ import {
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
 import { setErrorPage } from "metabase/redux/app";
+import { getMetadata } from "metabase/selectors/metadata";
 
 const mapStateToProps = (state, props) => {
   return {
+    metadata: getMetadata(state),
+    dashboardState: state.dashboard,
     dashboard: getDashboardComplete(state, props),
     dashcardData: getCardData(state, props),
     selectedTabId: getSelectedTabId(state),
@@ -115,11 +119,19 @@ export const DashboardData = ComposedComponent =>
         }
       }
 
+      getNewCardUrl = () => {
+        const { metadata, dashboardState } = this.props;
+        return options => getNewCardUrl(metadata, dashboardState, options);
+      };
+
       render() {
         const { navigateToNewCardFromDashboard, ...props } = this.props;
+
         return (
           <ComposedComponent
             {...props}
+            // if noLink is provided, don't include getNewCardUrl
+            getNewCardUrl={this.props.noLink ? null : this.getNewCardUrl}
             // if noLink is provided, don't include navigateToNewCardFromDashboard
             navigateToNewCardFromDashboard={
               this.props.noLink ? null : navigateToNewCardFromDashboard

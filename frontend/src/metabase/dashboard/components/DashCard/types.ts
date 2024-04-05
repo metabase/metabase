@@ -12,3 +12,7 @@ export type NavigateToNewCardFromDashboardOpts = {
 export type DashCardOnChangeCardAndRunHandler = (
   opts: Omit<NavigateToNewCardFromDashboardOpts, "dashcard">,
 ) => void;
+
+export type DashCardGetNewCardUrlHandler = (
+  opts: Omit<NavigateToNewCardFromDashboardOpts, "dashcard">,
+) => string;

@@ -51,7 +51,7 @@ import type {
 
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
 import { DashCard } from "./DashCard/DashCard";
-import type { DashCardOnChangeCardAndRunHandler } from "./DashCard/types";
+import type { DashCardGetNewCardUrlHandler, DashCardOnChangeCardAndRunHandler } from "./DashCard/types";
 import {
   DashboardCardContainer,
   DashboardGridContainer,
@@ -131,6 +131,7 @@ interface DashboardGridProps {
   ) => void;
 
   onChangeLocation: (location: LocationDescriptor) => void;
+  getNewCardUrl: DashCardGetNewCardUrlHandler;
   navigateToNewCardFromDashboard: DashCardOnChangeCardAndRunHandler;
 
   showClickBehaviorSidebar: (dashcardId: DashCardId | null) => void;
@@ -527,6 +528,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
           dc.id,
         )}
         mode={this.props.mode}
+        getNewCardUrl={this.props.getNewCardUrl}
         navigateToNewCardFromDashboard={
           this.props.navigateToNewCardFromDashboard
         }

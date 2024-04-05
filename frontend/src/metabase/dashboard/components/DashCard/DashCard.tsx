@@ -42,6 +42,7 @@ import type {
   CardSlownessStatus,
   NavigateToNewCardFromDashboardOpts,
   DashCardOnChangeCardAndRunHandler,
+  DashCardGetNewCardUrlHandler,
 } from "./types";
 
 function preventDragging(event: React.SyntheticEvent) {
@@ -75,6 +76,7 @@ export interface DashCardProps {
   onReplaceCard: () => void;
   onRemove: () => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
+  getNewCardUrl?: (opts: NavigateToNewCardFromDashboardOpts) => string;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
@@ -106,6 +108,7 @@ function DashCardInner({
   onAddSeries,
   onReplaceCard,
   onRemove,
+  getNewCardUrl,
   navigateToNewCardFromDashboard,
   markNewCardSeen,
   showClickBehaviorSidebar,
@@ -236,26 +239,37 @@ function DashCardInner({
     showClickBehaviorSidebar(dashcard.id);
   }, [dashcard.id, showClickBehaviorSidebar]);
 
-  const changeCardAndRunHandler = useMemo(() => {
-    if (!navigateToNewCardFromDashboard) {
-      return null;
-    }
+  const changeCardAndRunHandler =
+    useMemo<DashCardOnChangeCardAndRunHandler | null>(() => {
+      if (!navigateToNewCardFromDashboard) {
+        return null;
+      }
 
-    const handler: DashCardOnChangeCardAndRunHandler = ({
-      nextCard,
-      previousCard,
-      objectId,
-    }) => {
-      navigateToNewCardFromDashboard({
-        nextCard,
-        previousCard,
-        dashcard,
-        objectId,
-      });
-    };
+      return ({ nextCard, previousCard, objectId }) => {
+        navigateToNewCardFromDashboard({
+          nextCard,
+          previousCard,
+          dashcard,
+          objectId,
+        });
+      };
+    }, [dashcard, navigateToNewCardFromDashboard]);
 
-    return handler;
-  }, [dashcard, navigateToNewCardFromDashboard]);
+  const getNewCardUrlHandler =
+    useMemo<DashCardGetNewCardUrlHandler | null>(() => {
+      if (!getNewCardUrl) {
+        return null;
+      }
+
+      return ({ nextCard, previousCard, objectId }) => {
+        return getNewCardUrl({
+          nextCard,
+          previousCard,
+          dashcard,
+          objectId,
+        });
+      };
+    }, [dashcard, getNewCardUrl]);
 
   return (
     <ErrorBoundary>
@@ -306,6 +320,7 @@ function DashCardInner({
           parameterValuesBySlug={parameterValuesBySlug}
           metadata={metadata}
           mode={mode}
+          getNewCardUrl={getNewCardUrlHandler}
           gridSize={gridSize}
           gridItemWidth={gridItemWidth}
           totalNumGridCols={totalNumGridCols}

@@ -212,10 +212,9 @@ function buildFieldFilterUiParameter(
 }
 
 export function getParametersMappedToDashcard(
-  dashboard: Dashboard,
+  parameters: Dashboard["parameters"],
   dashcard: QuestionDashboardCard,
 ): ParameterWithTarget[] {
-  const { parameters } = dashboard;
   const { parameter_mappings } = dashcard;
   return (parameters || [])
     .map(parameter => {

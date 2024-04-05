@@ -494,7 +494,7 @@ class Visualization extends PureComponent {
                 getHref={
                   this.props.getNewCardUrl && !replacementContent
                     ? this.getNewCardUrl
-                    : undefined
+                    : null
                 }
                 onChangeCardAndRun={
                   this.props.onChangeCardAndRun && !replacementContent

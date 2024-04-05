@@ -39,6 +39,7 @@ import { DashCardMenuConnected } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import type {
   CardSlownessStatus,
+  DashCardGetNewCardUrlHandler,
   DashCardOnChangeCardAndRunHandler,
 } from "./types";
 import { shouldShowParameterMapper } from "./utils";
@@ -79,6 +80,8 @@ interface DashCardVisualizationProps {
   error?: { message?: string; icon?: IconName };
   headerIcon?: IconProps;
 
+  getNewCardUrl: DashCardGetNewCardUrlHandler | null;
+
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
   onChangeCardAndRun: DashCardOnChangeCardAndRunHandler | null;
   showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
@@ -109,6 +112,7 @@ export function DashCardVisualization({
   expectedDuration,
   error,
   headerIcon,
+  getNewCardUrl,
   isAction,
   isSlow,
   isPreviewing,
@@ -248,6 +252,7 @@ export function DashCardVisualization({
       gridSize={gridSize}
       totalNumGridCols={totalNumGridCols}
       headerIcon={headerIcon}
+      getNewCardUrl={getNewCardUrl}
       expectedDuration={expectedDuration}
       error={error?.message}
       errorIcon={error?.icon}
