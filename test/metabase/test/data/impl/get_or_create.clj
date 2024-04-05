@@ -107,7 +107,7 @@
 (defonce ^:private reference-sync-durations
   (delay (edn/read-string (slurp "test_resources/sync-durations.edn"))))
 
-(defn- sync-newly-created-database! [driver {:keys [database-name], :as database-definition} connection-details db]
+(defn- sync-newly-created-database! [driver {:keys [database-name], :as database-definition} _connection-details db]
   (assert (= (humanization/humanization-strategy) :simple)
           "Humanization strategy is not set to the default value of :simple! Metadata will be broken!")
   (try
@@ -126,12 +126,7 @@
             (catch Throwable e
               (log/error e "Error adding extra metadata"))))))
     (catch Throwable e
-      (let [message (format "Failed to sync test database %s: %s" (pr-str database-name) (ex-message e))
-            e       (ex-info message
-                             {:driver             driver
-                              :database-name      database-name
-                              :connection-details connection-details}
-                             e)]
+      (let [message (format "Failed to sync test database %s: %s" (pr-str database-name) (ex-message e))]
         (log/error e message)
         (t2/delete! Database :id (u/the-id db))
         (throw e)))))
