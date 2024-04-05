@@ -74,6 +74,7 @@ export const AccordionListCell = ({
       content = (
         <ListCellHeader
           data-element-id="list-section-header"
+          borderBottom={section.type === "back"}
           className={cx(
             ListS.ListSectionHeader,
             CS.px2,
