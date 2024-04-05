@@ -70,7 +70,8 @@
     }
   },
   "required": [
-    "event"
+    "event",
+    "question_id"
   ],
   "additionalProperties": true
 }
