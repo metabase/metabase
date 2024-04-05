@@ -22,6 +22,8 @@ import type {
   TicksDimensions,
 } from "./types";
 
+const roundToHundredth = (value: number) => Math.ceil(value * 100) / 100;
+
 const getYAxisTicksWidth = (
   axisModel: YAxisModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
@@ -61,14 +63,22 @@ const getYAxisTicksWidth = (
     value => value > -5 && value < 5,
   );
 
-  const measuredValues = valuesToMeasure.map(value => {
-    const formattedValue = axisModel.formatter(
-      areDecimalTicksExpected ? value : Math.round(value),
-    );
+  const measuredValues = valuesToMeasure.map(rawValue => {
+    const colSettings = settings.column?.(axisModel.column) ?? {};
+
+    let value = rawValue;
+    if (colSettings.number_style === "percent") {
+      value = roundToHundredth(rawValue);
+    } else if (areDecimalTicksExpected) {
+      value = Math.round(rawValue);
+    }
+
+    const formattedValue = axisModel.formatter(value);
     return measureText(formattedValue, fontStyle);
   });
 
-  return Math.max(...measuredValues);
+  const ret = Math.max(...measuredValues);
+  return ret;
 };
 
 const getXAxisTicksWidth = (
