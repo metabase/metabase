@@ -119,7 +119,7 @@
                @released
                (deliver locked? (liquibase/holding-lock? liquibase))))
             @locked
-            (liquibase/release-all-locks-if-needed!)
+            (liquibase/release-concurrent-locks! conn)
             (deliver released true)
             (testing "The lock is released before the migration finishes"
               (is (not @locked?)))))))))

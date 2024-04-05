@@ -169,7 +169,7 @@
 
 (defn release-migration-locks!
   "Wait up to `timeout-seconds` for the current process to release all migration locks, otherwise force release them."
-  [timeout-seconds]
+  [data-source timeout-seconds]
   (let [sleep-ms   100
         timeout-ms (* 1000 timeout-seconds)]
     (case (liquibase/wait-for-all-locks sleep-ms timeout-ms)
@@ -178,7 +178,7 @@
       :timed-out (do (log/warn "Releasing liquibase locks on shutdown")
                      ;; There's an infinitesimal chance that we released the lock and another server took it between
                      ;; the timeout, and the mutations we now make to these lock tables - but we can't detect that.
-                     (liquibase/release-all-locks-if-needed!))))
+                     (liquibase/release-concurrent-locks! data-source))))
   :done)
 
 ;;;; Toucan Setup.

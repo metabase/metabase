@@ -255,11 +255,20 @@
       (do (log/info "Waiting for migration lock(s) to be released")
           (wait-until done? sleep-ms timeout-ms)))))
 
-(defn release-all-locks-if-needed!
-  "Release all locks held by this process."
-  []
-  (doseq [liquibase (locked-instances)]
-    (release-lock-if-needed! liquibase)))
+(defn- liquibase->url [^Liquibase liquibase]
+  ;; Need to this cast to get access to the metadata. We currently only use JDBC app databases.
+  (let [conn ^JdbcConnection (.getConnection (-> liquibase (.getDatabase)))]
+    (-> conn .getMetaData .getURL)))
+
+(defn release-concurrent-locks!
+  "Release any locks held by this process corresponding to the same database."
+  [conn-or-data-source]
+  (when-let [instances (not-empty (locked-instances))]
+    (with-liquibase [liquibase conn-or-data-source]
+      (let [url (liquibase->url liquibase)]
+        (doseq [instance instances]
+          (when (= url (liquibase->url instance))
+            (release-lock-if-needed! liquibase)))))))
 
 (def ^:private ^:dynamic *lock-depth* 0)
 

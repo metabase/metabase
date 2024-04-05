@@ -74,7 +74,7 @@
   [timeout-seconds]
   (if (db-is-set-up?)
     :done
-    (mdb.setup/release-migration-locks! timeout-seconds)))
+    (mdb.setup/release-migration-locks! (data-source) timeout-seconds)))
 
 (defn memoize-for-application-db
   "Like [[clojure.core/memoize]], but only memoizes for the current application database; memoized values will be
