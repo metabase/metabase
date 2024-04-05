@@ -233,12 +233,11 @@
   (.hasChangeLogLock (lock-service liquibase)))
 
 (defn- wait-until [done? ^long sleep-ms timeout-ms]
-  (let [deadline   (+ (System/nanoTime) (* 1e6 timeout-ms))
-        timed-out? #(>= (System/nanoTime) deadline)]
+  (let [deadline (+ (System/nanoTime) (* 1e6 timeout-ms))]
     (loop []
       (if (done?)
         :done
-        (if (timed-out?)
+        (if (>= (System/nanoTime) deadline)
           :timed-out
           (do (Thread/sleep sleep-ms)
               (recur)))))))
