@@ -31,13 +31,13 @@ export const NotebookContainer = ({
     isOpen && setShouldShowNotebook(isOpen);
   }, [isOpen]);
 
-  const { isShowingNotebookNativePreview, nativePreviewSidebarWidth } =
+  const { isShowingNotebookNativePreview, notebookNativePreviewSidebarWidth } =
     useSelector(getUiControls);
 
   const minNotebookWidth = 640;
   const minSidebarWidth = 428;
   const maxSidebarWidth = windowWidth - minNotebookWidth;
-  const sidebarWidth = nativePreviewSidebarWidth || minSidebarWidth;
+  const sidebarWidth = notebookNativePreviewSidebarWidth || minSidebarWidth;
 
   const handleTransitionEnd: TransitionEventHandler<HTMLDivElement> = (
     event,
@@ -52,7 +52,9 @@ export const NotebookContainer = ({
     _event: SyntheticEvent,
     data: ResizeCallbackData,
   ) => {
-    dispatch(setUIControls({ nativePreviewSidebarWidth: data.size.width }));
+    dispatch(
+      setUIControls({ notebookNativePreviewSidebarWidth: data.size.width }),
+    );
   };
 
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
