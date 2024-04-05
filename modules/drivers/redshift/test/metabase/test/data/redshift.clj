@@ -229,5 +229,7 @@
     (original-describe-database driver database)))
 
 (defmethod ddl.i/format-name :redshift
-  [_ s]
+  [_driver s]
+  ;; Redshift is case-insensitive for identifiers and returns them in lower-case by default from system tables, even if
+  ;; you create the tables with upper-case characters.
   (u/lower-case-en s))
