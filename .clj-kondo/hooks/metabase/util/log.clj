@@ -42,15 +42,12 @@
                              :message "this looks like an i18n format string. Don't use identifiers like {0} in logging."
                              :type :metabase/validate-logging))))
 
-(defn- format-string-specifier-count [format-string]
-  (count (re-seq #"%(?![%n])" format-string)))
-
 ;;; log only
 
 (defn- check-not-format-string
   "Make sure we're not using something like log/trace with a format string."
   [{[f] :children, :as node} string-node]
-  (when (pos? (format-string-specifier-count (api/sexpr string-node)))
+  (when (pos? (hooks.common/format-string-specifier-count (api/sexpr string-node)))
     (api/reg-finding! (assoc (meta node)
                              :message (format "%s used with a format string, use %s instead."
                                               (api/sexpr f)
@@ -91,7 +88,7 @@
 (defn- check-format-string-arg-count
   "Make sure the number of args passed to something like tracef match the number of format string specifiers."
   [{[f] :children, :as node} format-string args]
-  (let [expected-arg-count (format-string-specifier-count (api/sexpr format-string))
+  (let [expected-arg-count (hooks.common/format-string-specifier-count (api/sexpr format-string))
         actual-arg-count   (count args)]
     (when (zero? expected-arg-count)
       (api/reg-finding! (assoc (meta node)

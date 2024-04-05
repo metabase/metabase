@@ -381,3 +381,22 @@
     ;; some symbols like `*count/Integer` aren't resolvable.
     (catch Exception _
       nil)))
+
+(defn format-string-specifier-count
+  "Number of things like `%s` in a format string, not counting newlines (`%n`) or escaped percent signs (`%%`). For
+  checking the number of args to something that takes a format string."
+  [format-string]
+  (count (re-seq #"(?<!%)%(?![%n])" format-string)))
+
+(comment
+  ;; should be 1
+  (format-string-specifier-count "%s %%")
+
+  ;; should be 2
+  (format-string-specifier-count "%s %%%n%s")
+
+  ;; should be 0
+  (format-string-specifier-count "%n%%%%")
+
+  ;; should be 1
+  (format-string-specifier-count "%-02d"))
