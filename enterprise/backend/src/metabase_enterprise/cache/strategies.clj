@@ -99,9 +99,10 @@
 (defmethod fetch-cache-stmt-ee* :duration [strategy query-hash conn]
   (if-not (and (:duration strategy) (:unit strategy))
     (log/debugf "Caching strategy %s should have :duration and :unit" (pr-str strategy))
-    (let [duration  (t/duration (:duration strategy) (keyword (:unit strategy)))
-          timestamp (t/minus (t/offset-date-time) duration)]
-      (backend.db/prepare-statement conn query-hash (t/max timestamp (:invalidated-at strategy))))))
+    (let [duration       (t/duration (:duration strategy) (keyword (:unit strategy)))
+          duration-ago   (t/minus (t/offset-date-time) duration)
+          invalidated-at (t/max duration-ago (:invalidated-at strategy))]
+      (backend.db/prepare-statement conn query-hash invalidated-at))))
 
 (defmethod fetch-cache-stmt-ee* :schedule [{:keys [invalidated-at] :as strategy} query-hash conn]
   (if-not invalidated-at

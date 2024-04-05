@@ -63,9 +63,10 @@
   ^PreparedStatement [strategy query-hash ^Connection conn]
   (if-not (:avg-execution-ms strategy)
     (log/debugf "Caching strategy %s needs :avg-execution-ms to work" (pr-str strategy))
-    (let [max-age-ms (* (:multiplier strategy)
-                        (:avg-execution-ms strategy))]
-      (prepare-statement conn query-hash (t/max (ms-ago max-age-ms) (:invalidated-at strategy))))))
+    (let [max-age-ms     (* (:multiplier strategy)
+                        (:avg-execution-ms strategy))
+          invalidated-at (t/max (ms-ago max-age-ms) (:invalidated-at strategy))]
+      (prepare-statement conn query-hash invalidated-at))))
 
 (defenterprise fetch-cache-stmt
   "Returns prepared statement for a given strategy and query hash - on EE. Returns `::oss` on OSS."
