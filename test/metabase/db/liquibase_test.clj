@@ -98,14 +98,14 @@
               (liquibase/with-scope-locked liquibase
                 (is (= :timed-out (liquibase/wait-for-all-locks sleep-ms timeout-ms)))))
             (testing "Will return successfully if the lock is released while we are waiting"
-              (let [timeout-ms 200
-                    lock-latch (CountDownLatch. 1)
+              (let [timeout-ms    200
+                    lock-latch    (CountDownLatch. 1)
                     release-latch (CountDownLatch. 1)
-                    result (future (.await lock-latch)
-                                   (liquibase/wait-for-all-locks sleep-ms timeout-ms))
-                    _ (future (.await lock-latch)
-                              (Thread/sleep 50)
-                              (.countDown release-latch))]
+                    result        (future (.await lock-latch)
+                                          (liquibase/wait-for-all-locks sleep-ms timeout-ms))
+                    _             (future (.await lock-latch)
+                                          (Thread/sleep 50)
+                                          (.countDown release-latch))]
                 (liquibase/with-scope-locked liquibase
                   (.countDown lock-latch)
                   (.await release-latch))
