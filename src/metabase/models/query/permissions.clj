@@ -45,17 +45,17 @@
 ;; Is calculating permissions for queries complicated? Some would say so. Refer to this handy flow chart to see how
 ;; things get calculated.
 ;;
-;;                         perms-set
-;;                             |
-;;                             |
-;;                             |
-;;      native query? <--------+------- > mbql query?
-;;            ↓                               ↓
-;; {:perms/native-query-editing :yes}     legacy-mbql-required-perms
-;;                                            |
-;;                     no source card  <------+----> has source card
-;;                             ↓                          ↓
-;;       {:perms/view-data {table-id :unrestricted}} source-card-read-perms
+;;                                  perms-set
+;;                                      |
+;;                                      |
+;;                                      |
+;;               native query? <--------+---------> mbql query?
+;;                     ↓                                     ↓
+;;    {:perms/create-queries :query-builder-and-native}  legacy-mbql-required-perms
+;;                                                           |
+;;                                  no source card  <--------+------> has source card
+;;                                          ↓                            ↓
+;;                    {:perms/view-data {table-id :unrestricted}}  source-card-read-perms
 ;;
 
 (mu/defn query->source-table-ids :- [:set [:or [:= ::native] ::lib.schema.id/table]]
@@ -139,7 +139,7 @@
 
 (defn required-perms
   "Returns a map representing the permissions requried to run `query`. The map has the optional keys
-  :paths (containing legacy permission paths), :perms/data-access, and :perms/native-query-editing."
+  :paths (containing legacy permission paths), :perms/view-data, and :perms/create-queries."
   [query & {:as perms-opts}]
   (if (empty? query)
     {}
@@ -170,7 +170,7 @@
     (when (= (:perms/create-queries required-perms) :query-builder-and-native)
       (or (= (:perms/create-queries gtap-perms) :query-builder-and-native)
           (= (data-perms/full-db-permission-for-user api/*current-user-id* :perms/create-queries db-id) :query-builder-and-native)
-          (throw (perms-exception {db-id {:perms/native-query-editing :yes}}))))
+          (throw (perms-exception {db-id {:perms/create-queries :query-builder-and-native}}))))
     (when (= (:perms/view-data required-perms) :unrestricted)
       (or (= (:perms/view-data gtap-perms) :unrestricted)
           (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id* :perms/view-data db-id))

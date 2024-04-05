@@ -131,9 +131,7 @@
                                       (when-not audit? [:not [:= :t.db_id config/audit-db-id]])]})]
     ;; Incorporate each sandbox policy into the permissions graph.
     (reduce (fn [acc {:keys [group_id table_id db_id schema]}]
-              (-> acc
-                (merge-sandbox-into-graph group_id table_id db_id schema [:data :schemas] {:query :segmented, :read :all})
-                (merge-sandbox-into-graph group_id table_id db_id schema [:view-data] :sandboxed)))
+              (merge-sandbox-into-graph acc group_id table_id db_id schema [:view-data] :sandboxed))
             graph
             sandboxes)))
 
@@ -198,7 +196,9 @@
 (t2/define-before-insert :model/GroupTableAccessPolicy
   [{:keys [table_id group_id], :as gtap}]
   (let [db-id (database/table-id->database-id table_id)]
-    (data-perms/set-database-permission! group_id db-id :perms/native-query-editing :no))
+    ;; Remove native query access to the DB when saving a sandbox
+    (when (= (data-perms/table-permission-for-group group_id :perms/create-queries db-id table_id) :query-builder-and-native)
+      (data-perms/set-database-permission! group_id db-id :perms/create-queries :query-builder)))
   (u/prog1 gtap
     (check-columns-match-table gtap)))
 
