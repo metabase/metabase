@@ -23,6 +23,8 @@ export const getOrRefreshSession = createThunkAction(
     const state = getSessionToken(getState());
     const token = state?.token;
 
+    console.log({state, token})
+
     console.log(!state?.loading, !token || token.exp * 1000 < Date.now());
 
     if (!state?.loading && (!token || token.exp * 1000 < Date.now())) {
@@ -49,21 +51,24 @@ export const refreshTokenAsync = createAsyncThunk(
   },
 );
 
-const tokenReducer = createReducer(initialState, builder =>
-  builder
-    .addCase(refreshTokenAsync.pending, state => {
-      state.loading = true;
-    })
-    .addCase(refreshTokenAsync.fulfilled, (state, action) => {
-      console.log(state, action);
-      state.token = action;
-      state.loading = false;
-    })
-    .addCase(refreshTokenAsync.rejected, (state, action) => {
-      // @ts-ignore
-      state.error = action.error;
-      state.loading = false;
-    }),
-);
+const tokenReducer = createReducer(initialState, {
+    // @ts-ignore
+    [refreshTokenAsync.pending]: (state, action) => {
+        console.log("action pending", action);
+        state.loading = true;
+    },
+    // @ts-ignore
+    [refreshTokenAsync.fulfilled]: (state, action) => {
+        console.log("action fulfilled", { state, action });
+        state.token = action.payload;
+        state.loading = false;
+    },
+    // @ts-ignore
+    [refreshTokenAsync.rejected]: (state, action) => {
+        console.log("action rejected", action);
+        state.error = action.error;
+        state.loading = false;
+    },
+});
 
 export { tokenReducer };

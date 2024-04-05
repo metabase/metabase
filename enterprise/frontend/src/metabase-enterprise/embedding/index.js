@@ -17,6 +17,8 @@ import {
 
 const SLUG = "embedding-in-other-applications/full-app";
 
+console.log(SLUG, "populating the embedding stuff")
+
 PLUGIN_REDUCERS.embeddingSessionToken = tokenReducer;
 
 if (hasPremiumFeature("embedding")) {

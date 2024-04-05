@@ -38,7 +38,15 @@ export const useInitData = ({
   }, []);
 
   useEffect(() => {
-    console.log("useInitData, useEffect", { config, store, state: store.getState() });
+    console.log(sessionToken);
+  }, [sessionToken]);
+
+  useEffect(() => {
+    console.log("useInitData, useEffect", {
+      config,
+      store,
+      state: store.getState(),
+    });
 
     if (config.authType === "jwt") {
       const updateToken = () => {

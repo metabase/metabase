@@ -15,6 +15,8 @@ import { AppInitializeController } from "../private/AppInitializeController";
 import "metabase/css/vendor.css";
 import "metabase/css/index.module.css";
 
+console.log({ reducers });
+
 const store = getStore(reducers) as unknown as Store<State, AnyAction>;
 
 const MetabaseProviderInternal = ({
@@ -24,6 +26,9 @@ const MetabaseProviderInternal = ({
   children: React.ReactNode;
   config: SDKConfigType;
 }): React.JSX.Element => {
+
+  console.log("MetabaseProviderInternal", store, store.getState());
+
   return (
     <Provider store={store}>
       <EmotionCacheProvider>
