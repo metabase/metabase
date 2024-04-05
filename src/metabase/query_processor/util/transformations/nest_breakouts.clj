@@ -1,5 +1,6 @@
 (ns metabase.query-processor.util.transformations.nest-breakouts
   (:require
+   [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
@@ -19,7 +20,10 @@
 
 (mu/defn ^:private fields-used-in-breakouts-aggregations-or-expressions :- [:set [:or :mbql.clause/field :mbql.clause/expression]]
   [stage :- ::lib.schema/stage]
-  (into #{}
+  ;; use an ordered set so we preserve the order we saw things when we walked the query so the fields we return are
+  ;; determinate. Otherwise tests using this are liable to be flaky because results can change because test metadata has
+  ;; randomly generated IDs
+  (into (ordered-set/ordered-set)
         (m/distinct-by (fn [[tag opts id-or-name]]
                          [tag
                           (select-keys opts [:join-alias :temporal-unit :bucketing])
