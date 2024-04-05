@@ -196,15 +196,15 @@
               (invalidate-cards database dashboard question)
               (invalidate-cache-configs database dashboard question))]
     (case [(= include :overrides) (pos? cnt)]
-      [false false] {:status 400
+      [true false]  {:status 404
+                     :body   {:message (tru "Could not find any cached questions for the given database, dashboard, or questions ids.")}}
+      [true true]   {:status 200
+                     :body   {:message (tru "Invalidated cache for {0} question(s)." cnt)
+                              :count   cnt}}
+      [false false] {:status 404
                      :body   {:message (tru "Could not find a cache configuration to invalidate.")}}
       [false true]  {:status 200
-                     :body   {:message (tru "Updated {0} cache configuration(s)." cnt)
-                              :count   cnt}}
-      [true false]  {:status 400
-                     :body   {:message (tru "You have to provide correct database, dashboard or question ids to invalidate cache.")}}
-      [true true]   {:status 200
-                     :body   {:message (tru "Marked {0} questions for cache invalidation." cnt)
+                     :body   {:message (tru "Invalidated {0} cache configuration(s)." cnt)
                               :count   cnt}})))
 
 (api/define-routes)

@@ -44,7 +44,7 @@
     param))
 
 (defn- fix-schema ;; TODO: unify this with `fix-type` somehow?
-  "`fix-type` counterpart, but for requestBody"
+  "Fix type of request body to make it more understandable to Rapidoc."
   [{:keys [required] :as schema}]
   (let [not-required (atom #{})]
     (-> schema
@@ -110,8 +110,11 @@
   (let [{:keys [method] :as data} (meta handler-var)
         params                    (schema->params full-path (:args data) (:schema data))
         non-body-param?           (set (map :name params))
-        body                      (when (not= method :get)
-                                    (into [:map] (remove #(non-body-param? (first %)) (rest (:schema data)))))
+        body-params               (when (not= method :get)
+                                    (remove #(non-body-param? (first %)) (rest (:schema data))))
+        body-schema               (when (seq body-params)
+                                    (fix-schema
+                                     (json-schema-transform (into [:map] body-params))))
         ctype                     (if (:multipart (meta handler-var))
                                     "multipart/form-data"
                                     "application/json")]
@@ -120,9 +123,8 @@
                      :description (or (:orig-doc data)
                                       (:doc data))
                      :parameters params}
-              tag  (assoc :tags [tag])
-              body (assoc :requestBody {:content {ctype {:schema (fix-schema
-                                                                  (json-schema-transform body))}}}))}))
+              tag         (assoc :tags [tag])
+              body-schema (assoc :requestBody {:content {ctype {:schema body-schema}}}))}))
 
 (defn openapi-object
   "Generate base object for OpenAPI (/paths and /components/schemas)
