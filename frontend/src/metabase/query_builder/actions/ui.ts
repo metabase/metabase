@@ -4,6 +4,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { UserApi } from "metabase/services";
+import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
 
 import { updateUrl } from "./navigation";
 import { cancelQuery } from "./querying";
@@ -16,10 +17,10 @@ export const resetUIControls = createAction(RESET_UI_CONTROLS);
 
 export const setQueryBuilderMode =
   (
-    queryBuilderMode,
+    queryBuilderMode: QueryBuilderMode,
     { shouldUpdateUrl = true, datasetEditorTab = "query" } = {},
   ) =>
-  async dispatch => {
+  async (dispatch: Dispatch) => {
     await dispatch(
       setUIControls({
         queryBuilderMode,
@@ -61,10 +62,10 @@ export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
 
 export const CLOSE_QB_NEWB_MODAL = "metabase/qb/CLOSE_QB_NEWB_MODAL";
 export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
-  return async (dispatch, getState) => {
+  return async (_dispatch, getState) => {
     // persist the fact that this user has seen the NewbModal
     const { currentUser } = getState();
-    await UserApi.update_qbnewb({ id: currentUser.id });
+    await UserApi.update_qbnewb({ id: currentUser?.id });
     MetabaseAnalytics.trackStructEvent("QueryBuilder", "Close Newb Modal");
   };
 });
@@ -79,19 +80,13 @@ export const navigateBackToDashboard = createAction(NAVIGATE_BACK_TO_DASHBOARD);
 export const CLOSE_QB = "metabase/qb/CLOSE_QB";
 export const closeQB = createAction(CLOSE_QB);
 
-/**
- * @param {boolean} isShown
- */
-export const setNotebookNativePreviewState = isShown =>
+export const setNotebookNativePreviewState = (isShown: boolean) =>
   updateUserSetting({
     key: "notebook-native-preview-shown",
     value: isShown,
   });
 
-/**
- * @param {number} width
- */
-export const setNotebookNativePreviewSidebarWidth = width =>
+export const setNotebookNativePreviewSidebarWidth = (width: number) =>
   updateUserSetting({
     key: "notebook-native-preview-sidebar-width",
     value: width,
