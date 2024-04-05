@@ -60,7 +60,7 @@
   [:as {{:keys [comments source email]} :body}]
   {comments ms/NonBlankString
    source ms/NonBlankString
-   email [:maybe :string]}
+   email [:maybe ms/NonBlankString]}
   (send-product-feedback comments source email))
 
 (api/define-routes)
