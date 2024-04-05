@@ -499,7 +499,7 @@
   (when (seq field->new-type)
     (apply driver/alter-columns! driver (:id database) (table-identifier table)
            (field->db-type driver field->new-type)
-            args)))
+           args)))
 
 (defn- update-with-csv! [database table file & {:keys [replace-rows?]}]
   (try
