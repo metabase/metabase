@@ -79,8 +79,7 @@
   [query card-type]
   (or (not= card-type :metric)
       (let [last-stage (lib.util/query-stage query -1)]
-        (and (empty? (:breakout last-stage))
-             (= (-> last-stage :aggregation count) 1)))))
+        (= (-> last-stage :aggregation count) 1))))
 
 (mu/defn can-save :- :boolean
   "Returns whether `query` for a card of `card-type` can be saved."

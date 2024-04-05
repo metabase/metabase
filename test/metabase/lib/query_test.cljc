@@ -201,4 +201,7 @@
                           (lib/aggregate (lib/count)))
       false :metric   (-> lib.tu/venues-query
                           (lib/aggregate (lib/count))
+                          (lib/aggregate (lib/sum (meta/field-metadata :venues :id))))
+      true  :metric   (-> lib.tu/venues-query
+                          (lib/aggregate (lib/count))
                           (lib/breakout (first (lib/breakoutable-columns lib.tu/venues-query)))))))
