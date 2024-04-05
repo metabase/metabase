@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import LoadingAndErrorWrapper from "./LoadingAndErrorWrapper";
+import { Transition } from "metabase/ui";
 
 /**
  * A loading/error display component that waits a bit before appearing
@@ -27,9 +28,18 @@ export const DelayedLoadingAndErrorWrapper = ({
   if (!showWrapper) {
     return null;
   }
-  if (!error && !loading) {
-    return null;
-  }
-
-  return <LoadingAndErrorWrapper error={error} loading={loading} />;
+  return (
+    <Transition
+      mounted={!!(error || loading)}
+      transition="fade"
+      duration={200}
+      timingFunction="ease"
+    >
+      {styles => (
+        <div style={styles}>
+          <LoadingAndErrorWrapper error={error} loading={loading} />
+        </div>
+      )}
+    </Transition>
+  );
 };
