@@ -24,8 +24,6 @@ export const useInitData = ({
   isLoggedIn: boolean;
   isInitialized: boolean;
 } => {
-  console.log("useInitData", { store, config });
-
   const dispatch = useDispatch();
 
   const [isInitialized, setIsInitialized] = useState(false);
@@ -38,20 +36,9 @@ export const useInitData = ({
   }, []);
 
   useEffect(() => {
-    console.log(sessionToken);
-  }, [sessionToken]);
-
-  useEffect(() => {
-    console.log("useInitData, useEffect", {
-      config,
-      store,
-      state: store.getState(),
-    });
-
     if (config.authType === "jwt") {
       const updateToken = () => {
         const currentState = store.getState();
-        console.log(currentState, getSessionToken(currentState));
         setSessionToken(getSessionToken(currentState));
       };
 
@@ -69,7 +56,6 @@ export const useInitData = ({
   }, []);
 
   useEffect(() => {
-    console.log("useInitData, useEffect", { config, store });
     api.basename = config.metabaseInstanceUrl;
 
     if (config.authType === "jwt") {

@@ -16,8 +16,6 @@ import { reducer as setup } from "metabase/setup/reducers";
 
 import commonReducers from "./reducers-common";
 
-console.log(PLUGIN_REDUCERS)
-
 export default {
   ...commonReducers,
 

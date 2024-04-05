@@ -7,8 +7,6 @@ import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 MetabaseSettings.docsTag = () => "latest";
 PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
 
-console.log("Loading plugins...")
-
 import "./shared";
 
 // PLUGINS:

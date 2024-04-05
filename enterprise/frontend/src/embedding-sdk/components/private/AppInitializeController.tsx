@@ -19,7 +19,6 @@ export const AppInitializeController = ({
   config,
   children,
 }: AppInitializeControllerProps) => {
-  console.log("AppInitializeController", { store, config, children });
   const { isLoggedIn, isInitialized } = useInitData({
     store,
     config,
