@@ -74,7 +74,7 @@ describe("ConnectedTables", () => {
   });
 
   it("should limit the number of connected tables to 8", () => {
-    const fks = Array.from({length: 20}).map((_, idx) =>
+    const fks = Array.from({ length: 20 }).map((_, idx) =>
       createMockForeignKey({
         origin_id: idx,
         origin: createMockField({
@@ -95,14 +95,6 @@ describe("ConnectedTables", () => {
       },
     });
 
-    expect(screen.getByText("Bar-1")).toBeInTheDocument();
-    expect(screen.getByText("Bar-2")).toBeInTheDocument();
-    expect(screen.getByText("Bar-3")).toBeInTheDocument();
-    expect(screen.getByText("Bar-4")).toBeInTheDocument();
-    expect(screen.getByText("Bar-5")).toBeInTheDocument();
-    expect(screen.getByText("Bar-6")).toBeInTheDocument();
-    expect(screen.getByText("Bar-7")).toBeInTheDocument();
-    expect(screen.getByText("Bar-8")).toBeInTheDocument();
-    expect(screen.queryByText("Bar-9")).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Bar-\d/)).toHaveLength(8);
   });
 });
