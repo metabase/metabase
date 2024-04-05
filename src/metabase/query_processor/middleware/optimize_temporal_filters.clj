@@ -9,7 +9,6 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
@@ -200,7 +199,7 @@
               ;; if for some reason `optimize-filter` doesn't return an optimized filter clause, log and error and use
               ;; the original. `can-optimize-filter?` shouldn't have said we could optimize this filter in the first
               ;; place
-              (log/error (trs "Error optimizing temporal filter clause") (pr-str &match)))))
+              (log/error "Error optimizing temporal filter clause" (pr-str &match)))))
         &match)))
 
 (defn optimize-temporal-filters

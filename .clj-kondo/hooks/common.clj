@@ -1,6 +1,7 @@
 (ns hooks.common
-  (:require [clj-kondo.hooks-api :as hooks]
-            [clojure.pprint]))
+  (:require
+   [clj-kondo.hooks-api :as hooks]
+   [clojure.pprint]))
 
 (defn with-macro-meta
   "When introducing internal nodes (let, defn, etc) it is important to provide a meta of an existing token
@@ -369,3 +370,14 @@
                                       arg])
                   body))]
     {:node node*}))
+
+(defn node->qualified-symbol [node]
+  (try
+    (when (hooks/token-node? node)
+      (let [sexpr (hooks/sexpr node)]
+        (when (symbol? sexpr)
+          (when-let [resolved (hooks/resolve {:name sexpr})]
+            (symbol (name (:ns resolved)) (name (:name resolved)))))))
+    ;; some symbols like `*count/Integer` aren't resolvable.
+    (catch Exception _
+      nil)))

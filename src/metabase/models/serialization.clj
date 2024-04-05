@@ -24,7 +24,6 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
@@ -338,7 +337,7 @@
 
 (defn- log-and-extract-one
   [model opts instance]
-  (log/info (trs "Extracting {0} {1}" model (:id instance)))
+  (log/infof "Extracting %s %s" model (:id instance))
   (extract-one model opts instance))
 
 (defmethod extract-all :default [model opts]

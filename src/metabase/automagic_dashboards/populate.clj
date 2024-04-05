@@ -10,7 +10,6 @@
    [metabase.models.collection :as collection]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.util :as qp.util]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -323,10 +322,10 @@
                                      ;; Height doesn't need to be precise, just some
                                      ;; safe upper bound.
                                      (make-grid grid-width (* n grid-width))]))]
-     (log/debug (trs "Adding {0} cards to dashboard {1}:\n{2}"
-                     (count cards)
-                     title
-                     (str/join "; " (map :title cards))))
+     (log/debugf "Adding %s cards to dashboard %s:\n%s"
+                 (count cards)
+                 title
+                 (str/join "; " (map :title cards)))
      (cond-> (update dashboard :dashcards (partial sort-by (juxt :row :col)))
        (not-empty filters) (filters/add-filters filters max-filters)))))
 

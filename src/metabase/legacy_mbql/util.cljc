@@ -734,8 +734,7 @@
           (mbql.s/valid-temporal-unit-for-base-type? base-type unit))
     (assoc-field-options clause :temporal-unit unit)
     (do
-      (log/warn (i18n/tru "{0} is not a valid temporal unit for {1}; not adding to clause {2}"
-                          unit base-type (pr-str clause)))
+      (log/warnf "%s is not a valid temporal unit for %s; not adding to clause %s" unit base-type (pr-str clause))
       clause)))
 
 (defn remove-namespaced-options

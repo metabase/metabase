@@ -29,7 +29,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [potemkin :as p])
@@ -214,16 +214,16 @@
     (when-let [format-string (sql-jdbc.execute.old/set-timezone-sql driver)]
       (try
         (let [sql (format format-string (str \' timezone-id \'))]
-          (log/debug (trs "Setting {0} database timezone with statement: {1}" driver (pr-str sql)))
+          (log/debugf "Setting %s database timezone with statement: %s" driver (pr-str sql))
           (try
             (.setReadOnly conn false)
             (catch Throwable e
-              (log/debug e (trs "Error setting connection to readwrite"))))
+              (log/debug e "Error setting connection to readwrite")))
           (with-open [stmt (.createStatement conn)]
             (.execute stmt sql)
             (log/tracef "Successfully set timezone for %s database to %s" driver timezone-id)))
         (catch Throwable e
-          (log/error e (trs "Failed to set timezone ''{0}'' for {1} database" timezone-id driver)))))))
+          (log/errorf e "Failed to set timezone '%s' for %s database" timezone-id driver))))))
 
 (defenterprise set-role-if-supported!
   "OSS no-op implementation of `set-role-if-supported!`."
@@ -247,7 +247,7 @@
           (try
             (.setTransactionIsolation conn level)
             (catch Throwable e
-              (log/debug e (trs "Error setting transaction isolation level for {0} database to {1}" (name driver) level-name)))))
+              (log/debugf e "Error setting transaction isolation level for %s database to %s" (name driver) level-name))))
 
         (seq more)
         (recur more)))))
@@ -281,10 +281,10 @@
                               driver)]
       ;; use the deprecated impl for `connection-with-timezone` if one exists.
       (do
-        (log/warn (trs "{0} is deprecated in Metabase 0.47.0. Implement {1} instead."
-                       #_{:clj-kondo/ignore [:deprecated-var]}
-                       `connection-with-timezone
-                       `do-with-connection-with-options))
+        (log/warnf "%s is deprecated in Metabase 0.47.0. Implement %s instead."
+                   #_{:clj-kondo/ignore [:deprecated-var]}
+                   'connection-with-timezone
+                   'do-with-connection-with-options)
         ;; for compatibility, make sure we pass it an actual Database instance.
         (let [database (if (integer? db-or-id-or-spec)
                          (qp.store/with-metadata-provider db-or-id-or-spec
@@ -374,7 +374,7 @@
       (log/trace (pr-str '(.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)))
       (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
       (catch Throwable e
-        (log/debug e (trs "Error setting default holdability for connection"))))))
+        (log/debug e "Error setting default holdability for connection")))))
 
 (defmethod do-with-connection-with-options :sql-jdbc
   [driver db-or-id-or-spec options f]
@@ -474,12 +474,12 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e (trs "Error setting prepared statement fetch direction to FETCH_FORWARD"))))
+          (log/debug e "Error setting prepared statement fetch direction to FETCH_FORWARD")))
       (try
         (when (zero? (.getFetchSize stmt))
           (.setFetchSize stmt (sql-jdbc-fetch-size)))
         (catch Throwable e
-          (log/debug e (trs "Error setting prepared statement fetch size to fetch-size"))))
+          (log/debug e "Error setting prepared statement fetch size to fetch-size")))
       (set-parameters! driver stmt params)
       stmt
       (catch Throwable e
@@ -501,12 +501,12 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
+          (log/debug e "Error setting statement fetch direction to FETCH_FORWARD")))
       (try
         (when (zero? (.getFetchSize stmt))
           (.setFetchSize stmt (sql-jdbc-fetch-size)))
         (catch Throwable e
-          (log/debug e (trs "Error setting statement fetch size to fetch-size"))))
+          (log/debug e "Error setting statement fetch size to fetch-size")))
       stmt
       (catch Throwable e
         (.close stmt)
@@ -518,7 +518,7 @@
   (when canceled-chan
     (a/go
       (when (a/<! canceled-chan)
-        (log/debug (trs "Query canceled, calling Statement.cancel()"))
+        (log/debug "Query canceled, calling Statement.cancel()")
         (u/ignore-exceptions
           (.cancel stmt))))))
 
