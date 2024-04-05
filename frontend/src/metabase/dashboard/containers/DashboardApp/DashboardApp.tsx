@@ -11,6 +11,7 @@ import _ from "underscore";
 
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import CS from "metabase/css/core/index.css";
+import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import Dashboards from "metabase/entities/dashboards";
 import favicon from "metabase/hoc/Favicon";
@@ -35,16 +36,24 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
-  Dashboard as IDashboard,
-  DashboardId,
+  Card,
   DashCardDataMap,
   DashCardId,
+  DashboardId,
   DatabaseId,
+  Dashboard as IDashboard,
   Parameter,
   ParameterId,
   ParameterValueOrArray,
+  QuestionDashboardCard,
 } from "metabase-types/api";
-import type { SelectedTabId, State, StoreDashcard } from "metabase-types/store";
+import type {
+  DashboardSidebarState,
+  DashboardState,
+  SelectedTabId,
+  State,
+  StoreDashcard,
+} from "metabase-types/store";
 
 import * as dashboardActions from "../../actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
@@ -56,9 +65,10 @@ import {
   getDocumentTitle,
   getDraftParameterValues,
   getEditingParameter,
+  getEmbeddedParameterVisibility,
   getFavicon,
-  getIsAdditionalInfoVisible,
   getIsAddParameterPopoverOpen,
+  getIsAdditionalInfoVisible,
   getIsAutoApplyFilters,
   getIsDirty,
   getIsEditing,
@@ -69,12 +79,11 @@ import {
   getIsRunning,
   getIsSharing,
   getLoadingStartTime,
-  getParameters,
   getParameterValues,
+  getParameters,
   getSelectedTabId,
   getSidebar,
   getSlowCards,
-  getEmbeddedParameterVisibility,
 } from "../../selectors";
 
 type OwnProps = {
@@ -102,10 +111,11 @@ type StateProps = {
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   draftParameterValues: Record<ParameterId, ParameterValueOrArray | null>;
   metadata: Metadata;
+  dashboardState: DashboardState;
   loadingStartTime: number | null;
   clickBehaviorSidebarDashcard: StoreDashcard | null;
   isAddParameterPopoverOpen: boolean;
-  sidebar: State["dashboard"]["sidebar"];
+  sidebar: DashboardSidebarState;
   pageFavicon: string | null;
   documentTitle: string | undefined;
   isRunning: boolean;
@@ -150,6 +160,7 @@ const mapStateToProps = (state: State): StateProps => {
     draftParameterValues: getDraftParameterValues(state),
 
     metadata,
+    dashboardState: state.dashboard,
     loadingStartTime: getLoadingStartTime(state),
     clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
     isAddParameterPopoverOpen: getIsAddParameterPopoverOpen(state),
@@ -178,8 +189,16 @@ const mapDispatchToProps = {
 };
 
 const DashboardApp = (props: DashboardAppProps) => {
-  const { dashboard, isRunning, isLoadingComplete, isEditing, isDirty, route } =
-    props;
+  const {
+    dashboard,
+    dashboardState,
+    isRunning,
+    isLoadingComplete,
+    isEditing,
+    isDirty,
+    metadata,
+    route,
+  } = props;
 
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
@@ -245,6 +264,16 @@ const DashboardApp = (props: DashboardAppProps) => {
     onTimeout,
   });
 
+  const getNewCardUrlHandler = useCallback(
+    (options: {
+      nextCard: Card;
+      previousCard: Card;
+      dashcard: QuestionDashboardCard;
+      objectId: number | string;
+    }) => getNewCardUrl(metadata, dashboardState, options),
+    [metadata, dashboardState],
+  );
+
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
       <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
@@ -253,6 +282,7 @@ const DashboardApp = (props: DashboardAppProps) => {
         dashboardId={getDashboardId(props)}
         editingOnLoad={editingOnLoad}
         addCardOnLoad={addCardOnLoad}
+        getNewCardUrl={getNewCardUrlHandler}
         {...props}
       />
       {/* For rendering modal urls */}
