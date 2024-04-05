@@ -273,7 +273,7 @@
 (defmethod driver/describe-database :postgres
   [_driver database]
   ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
-  ;; memrory in a set like this
+  ;; memory in a set like this
   {:tables (into #{} (describe-syncable-tables database))})
 
 ;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same

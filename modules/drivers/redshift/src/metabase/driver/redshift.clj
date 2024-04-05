@@ -110,7 +110,7 @@
 (defmethod driver/describe-database :redshift
  [_driver database]
   ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
-  ;; memrory in a set like this
+  ;; memory in a set like this
   {:tables (into #{} (describe-syncable-tables database))})
 
 (defmethod sql-jdbc.sync/describe-fks-sql :redshift
