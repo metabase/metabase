@@ -11,11 +11,11 @@ import type {
   Dashboard,
   QuestionDashboardCard,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import type { DashboardState } from "metabase-types/store";
 
 export const getNewCardUrl = (
   metadata: Metadata,
-  dashboardState: State["dashboard"],
+  dashboardState: DashboardState,
   {
     nextCard,
     previousCard,
