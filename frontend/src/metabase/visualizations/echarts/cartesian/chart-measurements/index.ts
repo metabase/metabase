@@ -13,7 +13,7 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 
-import { isTimeSeriesAxis } from "../model/guards";
+import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
 
 import type {
   ChartBoundsCoords,
@@ -153,33 +153,56 @@ const checkHeight = (
   );
 };
 
-const X_LABEL_ROTATE_90_THRESHOLD = 2;
-const X_LABEL_ROTATE_45_THRESHOLD = 15;
+const X_LABEL_ROTATE_45_THRESHOLD_FACTOR = 2.1;
+const X_LABEL_ROTATE_90_THRESHOLD_FACTOR = 1.2;
 
 const getAutoAxisEnabledSetting = (
-  minXTickSpacing: number,
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  boundaryWidth: number,
   maxXTickWidth: number,
   outerHeight: number,
-  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
 ): ComputedVisualizationSettings["graph.x_axis.axis_enabled"] => {
-  const autoSelectSetting =
+  const shouldAutoSelectSetting =
     settings["graph.x_axis.axis_enabled"] === true &&
     settings["graph.x_axis.scale"] === "ordinal";
-  if (!autoSelectSetting) {
+
+  if (!shouldAutoSelectSetting) {
     return settings["graph.x_axis.axis_enabled"];
   }
 
-  if (minXTickSpacing < X_LABEL_ROTATE_90_THRESHOLD) {
-    return checkHeight(maxXTickWidth, outerHeight, "rotate-90")
-      ? "rotate-90"
-      : false;
+  const dimensionWidth = getDimensionWidth(chartModel, boundaryWidth);
+  const shouldRotate = areHorizontalXAxisTicksOverlapping(
+    chartModel.transformedDataset,
+    dimensionWidth,
+    chartModel.xAxisModel.formatter,
+    renderingContext,
+  );
+
+  if (!shouldRotate) {
+    return true;
   }
-  if (minXTickSpacing < X_LABEL_ROTATE_45_THRESHOLD) {
+
+  if (
+    dimensionWidth >=
+    CHART_STYLE.axisTicks.size * X_LABEL_ROTATE_45_THRESHOLD_FACTOR
+  ) {
     return checkHeight(maxXTickWidth, outerHeight, "rotate-45")
       ? "rotate-45"
       : false;
   }
-  return true;
+
+  if (
+    dimensionWidth >=
+    CHART_STYLE.axisTicks.size * X_LABEL_ROTATE_90_THRESHOLD_FACTOR
+  ) {
+    return checkHeight(maxXTickWidth, outerHeight, "rotate-90")
+      ? "rotate-90"
+      : false;
+  }
+
+  return false;
 };
 
 export const getTicksDimensions = (
@@ -243,19 +266,13 @@ export const getTicksDimensions = (
       ),
     );
 
-    const minXTickSpacing = getMinXTickSpacing(
-      chartModel.dataset,
+    axisEnabledSetting = getAutoAxisEnabledSetting(
+      chartModel,
       settings,
       currentBoundaryWidth,
-      chartModel.xAxisModel.formatter,
-      renderingContext,
-    );
-
-    axisEnabledSetting = getAutoAxisEnabledSetting(
-      minXTickSpacing,
       maxXTickWidth,
       outerHeight,
-      settings,
+      renderingContext,
     );
 
     const { firstXTickWidth, lastXTickWidth } = getXAxisTicksWidth(
@@ -326,8 +343,7 @@ export const getChartPadding = (
     currentBoundaryWidth -= yAxisNameTotalWidth;
   }
 
-  const dimensionWidth =
-    currentBoundaryWidth / chartModel.transformedDataset.length;
+  const dimensionWidth = getDimensionWidth(chartModel, currentBoundaryWidth);
 
   const firstTickOverflow = Math.min(
     ticksDimensions.firstXTickWidth / 2 -
@@ -381,33 +397,37 @@ export const getChartBounds = (
   };
 };
 
-const getMinXTickSpacing = (
-  dataset: ChartDataset,
-  settings: ComputedVisualizationSettings,
+const getDimensionWidth = (
+  chartModel: BaseCartesianChartModel,
   boundaryWidth: number,
+) => {
+  const { xAxisModel } = chartModel;
+  const xValuesCount =
+    isTimeSeriesAxis(xAxisModel) || isNumericAxis(xAxisModel)
+      ? xAxisModel.intervalsCount + 1
+      : xAxisModel.valuesCount;
+
+  return boundaryWidth / xValuesCount;
+};
+
+const HORIZONTAL_TICKS_GAP = 6;
+
+const areHorizontalXAxisTicksOverlapping = (
+  dataset: ChartDataset,
+  dimensionWidth: number,
   formatter: AxisFormatter,
   { measureText, fontFamily }: RenderingContext,
 ) => {
-  const autoSelectAxisEnabled = settings["graph.x_axis.axis_enabled"] === true;
-  // If the user has specified a rotation setting, we use it instead of auto
-  // computing a rotation. In this case we do not need to compute the spacing
-  // between x-axis ticks.
-  if (!autoSelectAxisEnabled) {
-    return 0;
-  }
-  const dimensionWidth = boundaryWidth / dataset.length;
   const fontStyle = {
     ...CHART_STYLE.axisTicks,
     family: fontFamily,
   };
 
-  let minXTickSpacing = Infinity;
-  dataset.forEach((datum, index) => {
+  return dataset.some((datum, index) => {
     if (index === 0) {
       return;
     }
     const prevDatum = dataset[index - 1];
-
     const leftTickWidth = measureText(
       formatter(datum[X_AXIS_DATA_KEY]),
       fontStyle,
@@ -417,11 +437,11 @@ const getMinXTickSpacing = (
       fontStyle,
     );
 
-    const tickSpacing = dimensionWidth - leftTickWidth / 2 - rightTickWidth / 2;
-    minXTickSpacing = Math.min(minXTickSpacing, tickSpacing);
+    return (
+      leftTickWidth / 2 + rightTickWidth / 2 + HORIZONTAL_TICKS_GAP >
+      dimensionWidth
+    );
   });
-
-  return minXTickSpacing;
 };
 
 export const getChartMeasurements = (
