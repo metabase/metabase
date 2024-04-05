@@ -84,7 +84,6 @@
     :unrestricted
     :sandboxed
     :legacy-no-self-service
-    :query-builder-and-native
     :query-builder
     :no]
    SchemaGraph])
