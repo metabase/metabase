@@ -1,6 +1,4 @@
-.LineAreaBarChart
-/* Renamed from `.renderer`, since it sounded too generic */
-.LineAreaBarChartRenderer {
+.LineAreaBarChart .LineAreaBarChartRenderer {
   margin-top: -5px;
   margin-left: -0.5em;
   margin-right: -0.5em;
@@ -108,7 +106,6 @@
 }
 
 /* highlight single series bar and row charts */
-/* Renamed from `.mute-0`, since it sounded too generic */
 .LineAreaBarChart.LineAreaBarChartMute0 :global(.dc-chart rect.bar:hover),
 .LineAreaBarChart.LineAreaBarChartMute0 :global(.dc-chart g.row:hover) {
   opacity: 1 !important;
@@ -193,14 +190,12 @@
 
 /* :global .mute-* selectors dynamically generated in LineAreaBarChart.js */
 
-/* Renamed from `.mute-yl`, since it sounded too generic */
 .LineAreaBarChart.LineAreaBarChartMuteYl :global(.dc-chart .axis.y),
 .LineAreaBarChart.LineAreaBarChartMuteYl
   :global(.dc-chart .y-axis-label.y-label) {
   opacity: 0;
 }
 
-/* Renamed from `.mute-yr`, since it sounded too generic */
 .LineAreaBarChart.LineAreaBarChartMuteYr :global(.dc-chart .axis.yr),
 .LineAreaBarChart.LineAreaBarChartMuteYr
   :global(.dc-chart .y-axis-label.yr-label) {
