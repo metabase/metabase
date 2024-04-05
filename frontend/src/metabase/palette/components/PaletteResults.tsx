@@ -1,6 +1,6 @@
 import { useKBar, useMatches, KBarResults } from "kbar";
-import { useState } from "react";
-import { useDebounce } from "react-use";
+import { useState, useMemo } from "react";
+import { useDebounce, useKeyPressEvent } from "react-use";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
@@ -9,14 +9,16 @@ import { Flex, Box } from "metabase/ui";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
 import type { PaletteAction } from "../types";
-import { processResults } from "../utils";
+import { processResults, findClosesestActionIndex } from "../utils";
 
 import { PaletteResultItem } from "./PaletteResultItem";
 
 export const PaletteResults = () => {
   // Used for finding actions within the list
-  const { search: query } = useKBar(state => ({ search: state.searchQuery }));
-  const trimmedQuery = query.trim();
+  const { searchQuery, query } = useKBar(state => ({
+    searchQuery: state.searchQuery,
+  }));
+  const trimmedQuery = searchQuery.trim();
 
   // Used for finding objects across the Metabase instance
   const [debouncedSearchText, setDebouncedSearchText] = useState(trimmedQuery);
@@ -36,12 +38,31 @@ export const PaletteResults = () => {
 
   const { results } = useMatches();
 
-  const processedResults = processResults(results);
+  const processedResults = useMemo(() => processResults(results), [results]);
+
+  useKeyPressEvent("End", () => {
+    const lastIndex = processedResults.length - 1;
+    query.setActiveIndex(lastIndex);
+  });
+
+  useKeyPressEvent("Home", () => {
+    query.setActiveIndex(1);
+  });
+
+  useKeyPressEvent("PageDown", () => {
+    query.setActiveIndex(i => findClosesestActionIndex(processedResults, i, 4));
+  });
+
+  useKeyPressEvent("PageUp", () => {
+    query.setActiveIndex(i =>
+      findClosesestActionIndex(processedResults, i, -4),
+    );
+  });
 
   return (
     <Flex align="stretch" direction="column" p="0.75rem 0">
       <KBarResults
-        items={processedResults}
+        items={processedResults} // items needs to be a stable reference, otherwise the activeIndex will constantly be hijacked
         maxHeight={530}
         onRender={({
           item,
