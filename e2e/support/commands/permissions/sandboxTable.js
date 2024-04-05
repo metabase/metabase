@@ -25,7 +25,7 @@ Cypress.Commands.add(
           [db_id]: {
             "view-data": {
               [schema]: {
-                [table_id]: "segmented",
+                [table_id]: "sandboxed",
               },
             },
             "create-queries": "query-builder",

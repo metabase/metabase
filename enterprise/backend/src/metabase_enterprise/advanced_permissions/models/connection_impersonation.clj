@@ -30,9 +30,7 @@
                                             (when group-id [:= :group_id group-id])
                                             (when-not audit-db? [:not [:= :db_id config/audit-db-id]])]})]
      (reduce (fn [acc {:keys [db_id group_id]}]
-               (-> acc
-                  (assoc-in [group_id db_id :view-data] :impersonated)
-                  (assoc-in [group_id db_id :data] {:schemas :impersonated})))
+                (assoc-in acc [group_id db_id :view-data] :impersonated))
              {}
              impersonations))))
 

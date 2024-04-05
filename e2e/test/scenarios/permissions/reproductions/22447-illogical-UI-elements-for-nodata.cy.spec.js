@@ -63,10 +63,10 @@ describe("UI elements that make no sense for users without data permissions (met
     setTokenFeatures("all");
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "block" }, "view-data": "blocked" },
+        [SAMPLE_DB_ID]: { "view-data": "blocked" },
       },
       [COLLECTION_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "block" }, "view-data": "blocked" },
+        [SAMPLE_DB_ID]: { "view-data": "blocked" },
       },
     });
 

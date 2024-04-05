@@ -43,14 +43,13 @@
 
 
 (def Permissions
-  "Permissions which apply to individual databases or tables"
+  "Permissions which apply to individual databases or tables."
+  ;; `legacy-no-self-service` is a deprecated permission which behaves the same as `:unrestricted` but does not override
+  ;; `:blocked` in other groups
   {:perms/view-data             {:model :model/Table :values [:unrestricted :legacy-no-self-service :blocked]}
-   :perms/data-access           {:model :model/Table :values [:unrestricted :no-self-service :block]}
+   :perms/create-queries        {:model :model/Table :values [:query-builder-and-native :query-builder :no]}
    :perms/download-results      {:model :model/Table :values [:one-million-rows :ten-thousand-rows :no]}
    :perms/manage-table-metadata {:model :model/Table :values [:yes :no]}
-   :perms/create-queries        {:model :model/Table :values [:query-builder-and-native :query-builder :no]}
-
-   :perms/native-query-editing  {:model :model/Database :values [:yes :no]}
    :perms/manage-database       {:model :model/Database :values [:yes :no]}})
 
 (def PermissionType
@@ -175,16 +174,6 @@
       :blocked
       (first (filter perm-values ordered-values)))))
 
-(defmethod coalesce :perms/data-access
-  [perm-type perm-values]
-  (let [perm-values    (set perm-values)
-        ordered-values (-> Permissions perm-type :values)]
-    (if (and (perm-values :block)
-             (not (perm-values :unrestricted)))
-      ;; Block in one group overrides no-self-service in another, but not unrestricted
-      :block
-      (first (filter perm-values ordered-values)))))
-
 (defn coalesce-most-restrictive
   "In some cases (fetching schema permissions) we need to coalesce permissions using the most restrictive option."
   [perm-type perm-values]
@@ -199,10 +188,7 @@
 
 (mu/defn database-permission-for-user :- PermissionValue
   "Returns the effective permission value for a given user, permission type, and database ID. If the user has
-  multiple permissions for the given type in different groups, they are coalesced into a single value.
-
-  For permissions which can be set at the table-level or the database-level, this function will return the database-level
-  permission if the user has it."
+  multiple permissions for the given type in different groups, they are coalesced into a single value."
   [user-id perm-type database-id]
   (when (not= :model/Database (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is a table-level permission." perm-type)
@@ -248,7 +234,7 @@
   "Returns the effective permission value for a given *group*, permission type, and database ID"
   [group-id perm-type database-id]
   (when (not= :model/Database (model-by-perm-type perm-type))
-    (throw (ex-info (tru "Permission type {0} is not a data-level permission." perm-type)
+    (throw (ex-info (tru "Permission type {0} is not a database-level permission." perm-type)
                     {perm-type (Permissions perm-type)})))
   (let [perm-values (t2/select-fn-set :value
                                       :model/DataPermissions
@@ -624,9 +610,6 @@
                                           :db_id      db-id})
       (when (= [:perms/view-data :blocked] [perm-type value])
         (set-database-permission! group-or-id db-or-id :perms/create-queries :no)
-        (set-database-permission! group-or-id db-or-id :perms/download-results :no))
-      (when (= [:perms/data-access :block] [perm-type value])
-        (set-database-permission! group-or-id db-or-id :perms/native-query-editing :no)
         (set-database-permission! group-or-id db-or-id :perms/download-results :no)))))
 
 (mu/defn set-table-permissions!
@@ -646,7 +629,7 @@
     (throw (ex-info (tru "Permission type {0} cannot be set on tables." perm-type)
                     {perm-type (Permissions perm-type)})))
   (let [values (set (vals table-perms))]
-    (when (values :block)
+    (when (values :blocked)
       (throw (ex-info (tru "Block permissions must be set at the database-level only.")
                       {})))
     ;; if `table-perms` is empty, there's nothing to do
@@ -689,12 +672,10 @@
                                            {:perm_type   perm-type
                                             :group_id    group-id
                                             :perm_value  (case existing-db-perm-value
-                                                           ;; `:query-builder-and-native` can only be set at the
-                                                           ;; database level. So if we're setting a particular table
-                                                           ;; to something other than `:query-builder-and-native` when
-                                                           ;; the *database* had that permission, the db-level
-                                                           ;; permission needs to be dropped to `:query-builder`.
+                                                           ;; If the previous database-level permission can't be set at
+                                                           ;; the table-level, we need to provide a new default
                                                            :query-builder-and-native :query-builder
+                                                           :blocked                  :unrestricted
                                                            existing-db-perm-value)
                                             :db_id       db-id
                                             :table_id    (:id table)
@@ -756,7 +737,7 @@
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} cannot be set on tables." perm-type)
                     {perm-type (Permissions perm-type)})))
-  (when (= value :block)
+  (when (= value :blocked)
     (throw (ex-info (tru "Block permissions must be set at the database-level only.")
                     {})))
   (when (seq groups-or-ids)
