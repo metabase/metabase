@@ -43,15 +43,16 @@
 (driver/register! :presto-jdbc, :parent #{:sql-jdbc
                                           ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(doseq [[feature supported?] {:set-timezone                    true
-                              :basic-aggregations              true
-                              :standard-deviation-aggregations true
-                              :expressions                     true
-                              :native-parameters               true
-                              :expression-aggregations         true
-                              :binning                         true
-                              :foreign-keys                    true
-                              :now                             true}]
+(doseq [[feature supported?] {:basic-aggregations                                  true
+                              :binning                                             true
+                              :expression-aggregations                             true
+                              :expressions                                         true
+                              :foreign-keys                                        true
+                              :native-parameters                                   true
+                              :now                                                 true
+                              :set-timezone                                        true
+                              :sql/window-functions.order-by-output-column-numbers false
+                              :standard-deviation-aggregations                     true}]
   (defmethod driver/database-supports? [:presto-jdbc feature] [_driver _feature _db] supported?))
 
 ;;; Presto API helpers
