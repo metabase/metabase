@@ -5,7 +5,7 @@ import { push } from "react-router-redux";
 import _ from "underscore";
 
 import * as dashboardActions from "metabase/dashboard/actions";
-import { getNewCardUrl } from "metabase/dashboard/actions";
+import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import {
   getDashboardComplete,
   getCardData,
@@ -119,13 +119,14 @@ export const DashboardData = ComposedComponent =>
         }
       }
 
-      getNewCardUrl = () => {
+      getNewCardUrl = options => {
         const { metadata, dashboardState } = this.props;
-        return options => getNewCardUrl(metadata, dashboardState, options);
+        return getNewCardUrl(metadata, dashboardState, options);
       };
 
       render() {
-        const { navigateToNewCardFromDashboard, ...props } = this.props;
+        const { navigateToNewCardFromDashboard, getNewCardUrl, ...props } =
+          this.props;
 
         return (
           <ComposedComponent
