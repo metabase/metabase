@@ -5,7 +5,8 @@
     [clojure.string :as str]
     [environ.core :refer [env]]
     [metabase.config :as config]
-    [metabase.util :as u]))
+    [metabase.util :as u]
+    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -14,7 +15,6 @@
     (if (or config/is-dev? config/is-test?)
       (str/replace (or (env :mb-product-feedback-dev-server-url) "") #"/$" "")
    "https://store-api.metabase.com"))
-
 
 (def ^:private ^:const send-feedback-timeout-ms (u/seconds->ms 10))
 
@@ -25,14 +25,18 @@
 (defn- send-product-feedback*
   [comments source email]
   (try
-    (http/get product-feeback-url {:body
-     (json/encode {:comments comments
-                   :source   source
-                   :email    email})})
+    (http/post product-feeback-url
+     {:content-type :json
+      :body (json/encode {:comments comments
+                          :source   source
+                          :email    email})})
     {:status "success"}
-    (catch Exception e {:error_code        "connection-error"
-                        :error_details     (.getMessage e)
-                        :feedback_endpoint product-feeback-url})))
+    (catch Exception e
+      (log/error e)
+      {:status            "failed"
+       :error_code        "connection-error"
+       :error_details     (.getMessage e)
+       :feedback_endpoint product-feeback-url})))
 
 (defn send-product-feedback
   "Send product feedback from the app"
@@ -43,5 +47,6 @@
       result
       (do
         (future-cancel fut)
-        {:error_code        "timed-out"
+        {:status            "failed"
+         :error_code        "timed-out"
          :feedback_endpoint product-feeback-url}))))

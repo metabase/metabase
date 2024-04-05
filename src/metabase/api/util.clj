@@ -59,8 +59,8 @@
   "Send feedback about metabase"
   [:as {{:keys [comments source email]} :body}]
   {comments ms/NonBlankString
-   source ms/NonBlankString}
+   source ms/NonBlankString
+   email [:maybe :string]}
   (send-product-feedback comments source email))
-  ;; { :comments comments :source source :email email})
 
-  (api/define-routes)
+(api/define-routes)

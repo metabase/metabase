@@ -9,14 +9,15 @@
 
 (deftest send-product-feedback-test
   (with-redefs [product-feeback-url "http://test.example.org/api/v1/crm/product-feedback"]
-    (testing "On network errors"
+    (testing "Should return an error if the request fails"
       (binding [http/request (fn [& _]
                                (throw (Exception. "network issues")))]
-        (is (= {:error_code        "connection-error",
+        (is (= {:status            "failed"
+                :error_code        "connection-error",
                 :error_details     "network issues",
                 :feedback_endpoint "http://test.example.org/api/v1/crm/product-feedback"}
                (#'product-feedback/send-product-feedback "some feedback" "some-source" "some-email@example.org")))))
-    (testing "Should proxy the endpoint"
+    (testing "Should forward the data to the cloud endpoint"
       (http-fake/with-fake-routes
         {"http://test.example.org/api/v1/crm/product-feedback"
          (fn [request]
