@@ -11,7 +11,7 @@ import {
   setUIControls,
 } from "metabase/query_builder/actions";
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
-import { NativeQueryPreviewSidebar } from "metabase/query_builder/components/view/NativeQueryPreviewSidebar";
+import { NotebookNativePreview } from "metabase/query_builder/components/view/NotebookNativePreview";
 import { getUiControls } from "metabase/query_builder/selectors";
 import { Flex, Box, rem } from "metabase/ui";
 
@@ -118,7 +118,7 @@ export const NotebookContainer = ({
 
       {isShowingNotebookNativePreview && windowWidth < windowBreakpoint && (
         <Box pos="absolute" inset={0}>
-          <NativeQueryPreviewSidebar />
+          <NotebookNativePreview />
         </Box>
       )}
 
@@ -136,7 +136,7 @@ export const NotebookContainer = ({
             marginInlineStart: "0.25rem",
           }}
         >
-          <NativeQueryPreviewSidebar />
+          <NotebookNativePreview />
         </ResizableBox>
       )}
     </Flex>
