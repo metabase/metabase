@@ -39,12 +39,17 @@ declare const SegmentMetadata: unique symbol;
 export type SegmentMetadata = unknown & { _opaque: typeof SegmentMetadata };
 
 declare const LegacyMetricMetadata: unique symbol;
-export type LegacyMetricMetadata = unknown & { _opaque: typeof LegacyMetricMetadata };
+export type LegacyMetricMetadata = unknown & {
+  _opaque: typeof LegacyMetricMetadata;
+};
 
 declare const AggregationClause: unique symbol;
 export type AggregationClause = unknown & { _opaque: typeof AggregationClause };
 
-export type Aggregable = AggregationClause | LegacyMetricMetadata | ExpressionClause;
+export type Aggregable =
+  | AggregationClause
+  | LegacyMetricMetadata
+  | ExpressionClause;
 
 declare const AggregationOperator: unique symbol;
 export type AggregationOperator = unknown & {
@@ -219,7 +224,7 @@ export type AggregationOperatorDisplayInfo = {
   selected?: boolean;
 };
 
-export type MetricDisplayInfo = {
+export type LegacyMetricDisplayInfo = {
   name: string;
   displayName: string;
   longDisplayName: string;

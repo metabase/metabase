@@ -28,9 +28,9 @@ import type {
   JoinConditionOperatorDisplayInfo,
   JoinStrategy,
   JoinStrategyDisplayInfo,
+  LegacyMetricDisplayInfo,
   LegacyMetricMetadata,
   MetadataProvider,
-  MetricDisplayInfo,
   OrderByClause,
   OrderByClauseDisplayInfo,
   Query,
@@ -116,7 +116,7 @@ declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   metric: LegacyMetricMetadata,
-): MetricDisplayInfo;
+): LegacyMetricDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
