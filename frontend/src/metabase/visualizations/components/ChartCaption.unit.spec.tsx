@@ -46,6 +46,7 @@ const getSeries = ({ card }: { card?: Card } = {}): Series => {
 const setup = (props: Partial<Props> = {}) => {
   const {
     series = getSeries(),
+    getHref = () => "",
     onChangeCardAndRun = _.noop,
     settings = {},
     width = 200,
@@ -54,6 +55,7 @@ const setup = (props: Partial<Props> = {}) => {
   render(
     <ChartCaption
       series={series}
+      getHref={getHref}
       onChangeCardAndRun={onChangeCardAndRun}
       settings={settings}
       width={width}

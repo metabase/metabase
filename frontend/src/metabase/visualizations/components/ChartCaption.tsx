@@ -3,6 +3,7 @@ import { useCallback } from "react";
 
 import type { IconProps } from "metabase/ui";
 import type {
+  Card,
   Series,
   TransformedSeries,
   VisualizationSettings,
@@ -16,6 +17,7 @@ interface ChartCaptionProps {
   icon?: IconProps;
   actionButtons?: ReactNode;
   width: number;
+  getHref: (options: { nextCard: Card; seriesIndex: 0 }) => string;
   onChangeCardAndRun: (data: Record<string, unknown>) => void;
 }
 
@@ -26,6 +28,7 @@ const ChartCaption = ({
   actionButtons,
   onChangeCardAndRun,
   width,
+  getHref,
 }: ChartCaptionProps) => {
   const title = settings["card.title"] ?? series[0].card.name;
   const description = settings["card.description"];
@@ -45,6 +48,11 @@ const ChartCaption = ({
     <ChartCaptionRoot
       title={title}
       description={description}
+      href={
+        canSelectTitle && getHref
+          ? getHref({ nextCard: card, seriesIndex: 0 })
+          : undefined
+      }
       icon={icon}
       actionButtons={actionButtons}
       onSelectTitle={canSelectTitle ? handleSelectTitle : undefined}
