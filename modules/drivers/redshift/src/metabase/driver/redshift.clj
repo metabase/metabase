@@ -458,8 +458,28 @@
           " where t.schemaname !~ '^information_schema|catalog_history|pg_'"
           "   and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
           ")"
-          "select * from table_privileges"
-]))
+          "select * from table_privileges"]))
+       (concat (jdbc/query
+                conn-spec
+                (str/join
+                 "\n"
+                 ["with table_privileges as ("
+                  " select"
+                  "   NULL as role,"
+                  "   t.schemaname as schema,"
+                  "   t.viewname as table,"
+                         ;; if `has_table_privilege` is true `has_any_column_privilege` is false and vice versa, so we have to check both.
+                  "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\".\"' || t.viewname || '\"',  'SELECT')"
+                  "     OR pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.viewname || '\"',  'SELECT') as select,"
+                  "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.viewname || '\"',  'UPDATE')"
+                  "     OR pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.viewname || '\"',  'UPDATE') as update,"
+                  "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.viewname || '\"',  'INSERT') as insert,"
+                  "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.viewname || '\"',  'DELETE') as delete"
+                  " from pg_catalog.pg_views t"
+                  " where t.schemaname !~ '^information_schema|catalog_history|pg_'"
+                  "   and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
+                  ")"
+                  "select * from table_privileges"])))
        (filter #(or (:select %) (:update %) (:delete %) (:update %)))))
 
 
