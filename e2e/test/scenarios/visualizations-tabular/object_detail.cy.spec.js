@@ -163,7 +163,10 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     createQuestion(questionDetails, { visitQuestion: true });
 
-    cy.get(".cellData").contains("4966277046676").realHover();
+    cy.get(".cellData")
+      .contains("4966277046676")
+      .realHover()
+      .trigger("mousemove", { clientX: 1 });
     cy.findByTestId("detail-shortcut")
       .findByRole("button")
       .should("be.visible")
