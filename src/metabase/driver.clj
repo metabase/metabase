@@ -589,7 +589,10 @@
     :describe-fields
 
     ;; Does the driver support fingerprint the fields. Default is true
-    :fingerprint})
+    :fingerprint
+
+    ;; Does this driver support window functions like cumulative count and cumulative sum? (default: false)
+    :window-functions})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -609,8 +612,11 @@
     (database-supports? :mongo :set-timezone mongo-db) ; -> true"
   {:arglists '([driver feature database]), :added "0.41.0"}
   (fn [driver feature _database]
-    (when-not (features feature)
-      (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
+    ;; only make sure unqualified keywords are explicitly defined in [[features]].
+    (when (simple-keyword? feature)
+      (when-not (features feature)
+        (throw (ex-info (tru "Invalid driver feature: {0}" feature)
+                        {:feature feature}))))
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
 

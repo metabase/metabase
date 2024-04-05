@@ -332,33 +332,3 @@
                   {:aggregation [[:aggregation-options [:sum $rating] {:name "MyCE"}]]
                    :breakout    [$category]
                    :order-by    [[:asc [:aggregation 0]]]}))))))))
-
-;;; this is a repo for #15118, which is not fixed yet.
-
-#_(deftest ^:parallel multiple-cumulative-sums-test
-   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
-     (testing "The results of divide or multiply two CumulativeSum should be correct (#15118)"
-       (mt/dataset test-data
-         (is (= [["2016-01-01T00:00:00Z" 3236  2458.0  5694.0   1]
-                 ["2017-01-01T00:00:00Z" 17587 14995.0 32582.0  2]
-                 ["2018-01-01T00:00:00Z" 40381 35366.5 75747.5  3]
-                 ["2019-01-01T00:00:00Z" 65835 58002.7 123837.7 4]
-                 ["2020-01-01T00:00:00Z" 69540 64923.0 134463.0 5]]
-                (mt/formatted-rows [identity int 2.0 2.0 int]
-                  (mt/run-mbql-query orders
-                    {:aggregation
-                     [[:aggregation-options [:cum-sum $quantity] {:display-name "C1"}]
-                      [:aggregation-options
-                       [:cum-sum $product_id->products.rating]
-                       {:display-name "C2"}]
-                      [:aggregation-options
-                       [:+
-                        [:cum-sum $quantity]
-                        [:cum-sum $product_id->products.rating]]
-                       {:display-name "C3"}]
-                      [:aggregation-options
-                       [:*
-                        [:cum-sum $quantity]
-                        [:cum-sum $product_id->products.rating]]
-                       {:display-name "C4"}]]
-                     :breakout [!year.created_at]}))))))))

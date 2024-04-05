@@ -32,13 +32,14 @@
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
-(doseq [[feature supported?] {:regex                                  false
-                              :case-sensitivity-string-filter-options false
-                              :now                                    true
-                              :datetime-diff                          true
-                              :convert-timezone                       true
-                              :test/jvm-timezone-setting              false
-                              :index-info                             true}]
+(doseq [[feature supported?] {:case-sensitivity-string-filter-options              false
+                              :convert-timezone                                    true
+                              :datetime-diff                                       true
+                              :index-info                                          true
+                              :now                                                 true
+                              :regex                                               false
+                              :sql/window-functions.order-by-output-column-numbers false
+                              :test/jvm-timezone-setting                           false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
@@ -448,7 +449,9 @@
       ;; For the GROUP BY, we replace the unoptimized fields with the optimized ones, e.g.
       ;;
       ;;    GROUP BY year(field), month(field)
-      (apply sql.helpers/group-by new-hsql (mapv (partial sql.qp/->honeysql driver) optimized)))))
+      (apply sql.helpers/group-by new-hsql (mapv (partial sql.qp/->honeysql driver) optimized))
+      ;; remove duplicate group by clauses (from the optimize breakout clauses stuff)
+      (update new-hsql :group-by distinct))))
 
 (defn- optimize-order-by-subclauses
   "Optimize `:order-by` `subclauses` using [[optimized-temporal-buckets]], if possible."
@@ -468,7 +471,9 @@
   ;; year(), month(), and day() can make use of indexes while DateFromParts() cannot.
   (let [query         (update query :order-by optimize-order-by-subclauses)
         parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :order-by])]
-    (parent-method driver :order-by honeysql-form query)))
+    (-> (parent-method driver :order-by honeysql-form query)
+        ;; order bys have to be distinct in SQL Server!!!!!!!1
+        (update :order-by distinct))))
 
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]
