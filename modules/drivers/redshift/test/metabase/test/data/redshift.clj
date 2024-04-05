@@ -13,6 +13,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
@@ -226,3 +227,7 @@
                                              (= (:name %) "extsales")))
                                 tables))))
     (original-describe-database driver database)))
+
+(defmethod ddl.i/format-name :redshift
+  [_ s]
+  (u/lower-case-en s))
