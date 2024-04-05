@@ -156,6 +156,14 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
                    (and (saml-identity-provider-uri)
                         (saml-identity-provider-certificate)))))
 
+(defsetting saml-slo-logout-enabled?
+  (deferred-tru "Should Metabase send SAML logout requests to the IdP")
+  :type    :boolean
+  :default false
+  :export? false
+  :feature :sso-saml
+  :setter  :none)
+
 (defsetting saml-enabled
   (deferred-tru "Is SAML authentication configured and enabled?")
   :type    :boolean

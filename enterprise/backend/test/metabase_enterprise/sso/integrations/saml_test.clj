@@ -698,4 +698,25 @@
                                (saml/str->base64 default-redirect-uri))
                               (assoc-in [:request-options :cookies mw.session/metabase-session-cookie :value] session-id))]
           (client :post "/auth/sso/logout" req-options)
-          (is (not (t2/exists? :model/Session :id session-id))))))))
+          (is (not (t2/exists? :model/Session :id session-id)))))))
+  (testing "Conditionally invoke the SLO logout"
+    (doseq [slo-enabled? [true false]]
+      (mt/with-temporary-setting-values [saml-slo-logout-enabled? slo-enabled?
+                                         saml-identity-provider-uri "http://test.com/endpoint"]
+        (let [session-id (str (random-uuid))]
+          (with-redefs [sso-settings/saml-enabled (constantly true)]
+            (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
+                           :model/Session _ {:user_id (:id user) :id session-id}]
+              (is (t2/exists? :model/Session :id session-id))
+              (let [req-options (-> (saml-post-request-options
+                                     (saml-test-response)
+                                     (saml/str->base64 default-redirect-uri))
+                                    (assoc-in [:request-options :cookies mw.session/metabase-session-cookie :value] session-id))
+
+                    {logout-url :saml-logout-url :as _response} (client :post "/auth/sso/logout" req-options)]
+                (if slo-enabled?
+                  (do
+                    (is (string? logout-url))
+                    (is (re-find #"^http://test.com/endpoint\?SAMLRequest=.*" logout-url)))
+                  (is (nil? logout-url)))
+                (is (not (t2/exists? :model/Session :id session-id)))))))))))

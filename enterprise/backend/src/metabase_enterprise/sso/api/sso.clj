@@ -84,6 +84,7 @@
       (t2/delete! :model/Session :id metabase-session-id)
       {:saml-logout-url
        (when (and (sso-settings/saml-enabled)
+                  (sso-settings/saml-slo-logout-enabled?)
                   (= sso_source "saml"))
          (saml/logout-redirect-location
           :idp-url (sso-settings/saml-identity-provider-uri)
