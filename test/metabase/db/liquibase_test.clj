@@ -12,8 +12,7 @@
    [metabase.test :as mt]
    [metabase.util.yaml :as u.yaml]
    [next.jdbc :as next.jdbc]
-   [toucan2.core :as t2])
-  (:import (java.util.concurrent CountDownLatch)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -98,15 +97,12 @@
               (liquibase/with-scope-locked liquibase
                 (is (= :timed-out (liquibase/wait-for-all-locks sleep-ms timeout-ms)))))
             (testing "Will return successfully if the lock is released while we are waiting"
-              (let [timeout-ms    200
-                    lock-latch    (CountDownLatch. 1)
-                    release-latch (CountDownLatch. 1)
-                    result        (future (.await lock-latch)
-                                          (liquibase/wait-for-all-locks sleep-ms timeout-ms))
-                    _             (future (.await lock-latch)
-                                          (Thread/sleep 50)
-                                          (.countDown release-latch))]
-                (liquibase/with-scope-locked liquibase
-                  (.countDown lock-latch)
-                  (.await release-latch))
-                (is (= :done @result))))))))))
+              (let [migrate-ms 100
+                    timeout-ms 200
+                    locked     (promise)]
+                (future
+                 (liquibase/with-scope-locked liquibase
+                   (deliver locked true)
+                   (Thread/sleep migrate-ms)))
+                @locked
+                (is (= :done (liquibase/wait-for-all-locks sleep-ms timeout-ms)))))))))))

@@ -248,12 +248,13 @@
 
 (defn wait-for-all-locks
   "Wait up to a maximum of `timeout-seconds` for the given Liquibase instance to release the migration lock."
-  [sleep-ms timeout-seconds]
+  [sleep-ms timeout-ms]
+  (log/warn (locked-instances))
   (let [done? #(empty? (locked-instances))]
     (if (done?)
       :none
       (do (log/info "Waiting for migration lock(s) to be released")
-          (wait-until done? sleep-ms (* timeout-seconds 1000))))))
+          (wait-until done? sleep-ms timeout-ms)))))
 
 (defn release-all-locks-if-needed!
   "Release all locks held by this process."
