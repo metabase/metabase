@@ -5,7 +5,7 @@ import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-conten
 import type { HoverCardProps } from "metabase/ui";
 import { HoverCard, useDelayGroup } from "metabase/ui";
 
-export const POPOVER_DELAY: [number, number] = [1000, 300];
+export const POPOVER_DELAY: [number, number] = [250, 150];
 export const POPOVER_TRANSITION_DURATION = 150;
 
 import { WidthBound, Dropdown, Target } from "./Popover.styled";
@@ -19,6 +19,7 @@ export type PopoverProps = Pick<
   "children" | "position" | "disabled"
 > & {
   delay?: [number, number];
+  width?: number;
   content: ReactNode;
 };
 
@@ -27,6 +28,7 @@ export function Popover({
   disabled,
   delay = POPOVER_DELAY,
   content,
+  width,
   children,
 }: PopoverProps) {
   const group = useDelayGroup();
@@ -65,6 +67,7 @@ export function Popover({
         {/* to avoid the card from disappearing */}
         <Target />
         <WidthBound
+          width={width}
           ref={node => {
             setupCloseHandler(node, () => setIsOpen(false));
           }}
