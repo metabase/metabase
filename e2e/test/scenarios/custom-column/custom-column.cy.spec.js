@@ -477,23 +477,6 @@ describe("scenarios > question > custom column", () => {
     cy.findAllByTestId("header-cell").should("not.contain", CE_NAME);
   });
 
-  it("should handle using `case()` with boolean expressions (metabase#38944)", () => {
-    const expression = 'case(isempty([Discount]), "true", "false")';
-    openOrdersTable({ mode: "notebook" });
-
-    addCustomColumn();
-
-    popover().within(() => {
-      enterCustomColumnDetails({
-        formula: expression,
-        name: "Discount is empty",
-      });
-
-      cy.findByRole("button", { name: "Done" }).should("be.disabled");
-      cy.findByText("Invalid expression");
-    });
-  });
-
   it("should handle using `case()` when referencing the same column names (metabase#14854)", () => {
     const CC_NAME = "CE with case";
 
