@@ -196,7 +196,8 @@
         {:status 400
          :body   {:message (tru "You have to provide correct database, dashboard or question ids to invalidate cache.")}}
 
-        (let [cnt (cache.i/purge-old-entries! cache/*backend* :hash hashes)]
+        (let [cnt (apply + (for [part (partition-all 1000 hashes)]
+                             (cache.i/purge-old-entries! cache/*backend* :hash part)))]
           {:message (tru "Invalidated {0} cache entries." cnt)
            :count   cnt})))))
 
