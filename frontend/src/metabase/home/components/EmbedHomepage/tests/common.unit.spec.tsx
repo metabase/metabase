@@ -92,37 +92,35 @@ describe("EmbedHomepage (OSS)", () => {
   });
 
   describe("Feedback modal", () => {
-    // should ask for feedback when dismissing because of issues
-    it("should ask for feedback when dismissing because of issues", () => {
+    it("should ask for feedback when dismissing because of issues", async () => {
       setup();
-      userEvent.hover(screen.getByText("Hide these"));
+      await userEvent.hover(screen.getByText("Hide these"));
 
-      userEvent.click(screen.getByText("I ran into issues"));
+      await userEvent.click(screen.getByText("I ran into issues"));
 
       expect(
         screen.getByText("How can we improve embedding?"),
       ).toBeInTheDocument();
     });
 
-    it("should not dismiss the homepage when the user cancels the feedback modal", () => {
+    it("should not dismiss the homepage when the user cancels the feedback modal", async () => {
       setup();
-      userEvent.hover(screen.getByText("Hide these"));
+      await userEvent.hover(screen.getByText("Hide these"));
 
-      userEvent.click(screen.getByText("I ran into issues"));
+      await userEvent.click(screen.getByText("I ran into issues"));
 
-      userEvent.click(screen.getByText("Cancel"));
+      await userEvent.click(screen.getByText("Cancel"));
 
       expect(getLastHomepageSettingSettingCall()).toBeUndefined();
     });
 
-    // should dismiss when submitting feedback - even if empty
     it("should dismiss when submitting feedback - even if empty", async () => {
       setup();
-      userEvent.hover(screen.getByText("Hide these"));
+      await userEvent.hover(screen.getByText("Hide these"));
 
-      userEvent.click(screen.getByText("I ran into issues"));
+      await userEvent.click(screen.getByText("I ran into issues"));
 
-      userEvent.click(screen.getByText("Skip"));
+      await userEvent.click(screen.getByText("Skip"));
 
       const lastCall = getLastHomepageSettingSettingCall();
 
@@ -130,31 +128,33 @@ describe("EmbedHomepage (OSS)", () => {
       expect(body).toEqual({ value: "dismiss-run-into-issues" });
     });
 
-    // should send feedback when submitting the modal
     it("should send feedback when submitting the modal", async () => {
       setup();
-      userEvent.hover(screen.getByText("Hide these"));
+      await userEvent.hover(screen.getByText("Hide these"));
 
-      userEvent.click(screen.getByText("I ran into issues"));
+      await userEvent.click(screen.getByText("I ran into issues"));
 
-      userEvent.type(
+      await userEvent.type(
         screen.getByLabelText("Feedback"),
         "I had an issue with X",
       );
-      userEvent.type(screen.getByLabelText("Email"), "user@example.org");
 
-      userEvent.click(screen.getByText("Send"));
+      await userEvent.type(screen.getByLabelText("Email"), "user@example.org");
 
-      // dismisses the embeddimg homepage
+      await userEvent.click(screen.getByText("Send"));
+
       const lastCall = getLastHomepageSettingSettingCall();
       const body = await lastCall?.request?.json();
       expect(body).toEqual({ value: "dismiss-run-into-issues" });
 
-      // feedback call
-      const feedbackCall = fetchMock.lastCall("path:/api/product-feedback", {
-        method: "POST",
-      });
+      const feedbackCall = fetchMock.lastCall(
+        "path:/api/util/product-feedback",
+        {
+          method: "POST",
+        },
+      );
       expect(feedbackCall).not.toBeUndefined();
+
       const feedbackBody = await feedbackCall?.request?.json();
 
       expect(feedbackBody).toMatchObject({
