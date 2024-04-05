@@ -11,8 +11,8 @@ import type {
   BreakoutClauseDisplayInfo,
   Bucket,
   BucketDisplayInfo,
-  CardMetadata,
   CardDisplayInfo,
+  CardMetadata,
   Clause,
   ClauseDisplayInfo,
   ColumnDisplayInfo,
@@ -28,8 +28,8 @@ import type {
   JoinConditionOperatorDisplayInfo,
   JoinStrategy,
   JoinStrategyDisplayInfo,
+  LegacyMetricMetadata,
   MetadataProvider,
-  MetricMetadata,
   MetricDisplayInfo,
   OrderByClause,
   OrderByClauseDisplayInfo,
@@ -115,7 +115,7 @@ declare function DisplayInfoFn(
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
-  metric: MetricMetadata,
+  metric: LegacyMetricMetadata,
 ): MetricDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,

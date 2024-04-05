@@ -7,7 +7,7 @@ import type {
   ColumnMetadata,
   Join,
   MetadataProvider,
-  MetricMetadata,
+  LegacyMetricMetadata,
   Query,
   SegmentMetadata,
   TableMetadata,
@@ -76,7 +76,7 @@ export function replaceClause(
   query: Query,
   stageIndex: number,
   targetClause: Clause | Join,
-  newClause: Clause | ColumnMetadata | MetricMetadata | SegmentMetadata | Join,
+  newClause: Clause | ColumnMetadata | LegacyMetricMetadata | SegmentMetadata | Join,
 ): Query {
   return ML.replace_clause(query, stageIndex, targetClause, newClause);
 }

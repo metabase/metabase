@@ -36,7 +36,7 @@ type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
 };
 
 type MetricListItem = Lib.MetricDisplayInfo & {
-  metric: Lib.MetricMetadata;
+  metric: Lib.LegacyMetricMetadata;
 };
 
 type ListItem = OperatorListItem | MetricListItem;
@@ -327,7 +327,7 @@ function getOperatorListItem(
 function getMetricListItem(
   query: Lib.Query,
   stageIndex: number,
-  metric: Lib.MetricMetadata,
+  metric: Lib.LegacyMetricMetadata,
 ): MetricListItem {
   const metricInfo = Lib.displayInfo(query, stageIndex, metric);
   return {
