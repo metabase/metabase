@@ -63,12 +63,13 @@
 (defn- delete-gtaps-for-group-database! [{:keys [group-id database-id], :as context} changes]
   (log/debugf "Deleting unneeded GTAPs for Group %d for Database %d. Graph changes: %s"
               group-id database-id (pr-str changes))
-  (if (#{:unrestricted :blocked :impersonated} changes)
+  (if (#{:unrestricted :legacy-no-self-service :blocked :impersonated} changes)
     (do
       (log/debugf "Group %d %s for Database %d, deleting all GTAPs for this DB"
                   group-id
                   (case changes
                     :unrestricted "now has full data perms"
+                    :legacy-no-self-service "now has full data perms"
                     :blocked      "is now BLOCKED from all non-data-perms access"
                     :impersonated "is now using connection impersonation")
                   database-id)
