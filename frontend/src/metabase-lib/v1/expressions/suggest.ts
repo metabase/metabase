@@ -70,13 +70,13 @@ export function suggest({
 
   const partialSource = source.slice(0, targetOffset);
   const matchPrefix = partialMatch(partialSource);
+  const database = getDatabase(query, metadata);
 
   if (!matchPrefix || _.last(matchPrefix) === "]") {
     // no keystroke to match? show help text for the enclosing function
     const functionDisplayName = enclosingFunction(partialSource);
     if (functionDisplayName) {
       const name = getMBQLName(functionDisplayName);
-      const database = getDatabase(query, metadata);
 
       if (name && database) {
         const helpText = getHelpText(name, database, reportTimezone);
@@ -112,7 +112,6 @@ export function suggest({
     },
   );
 
-  const database = getDatabase(query, metadata);
   if (_.first(matchPrefix) !== "[") {
     suggestions.push({
       type: "functions",
@@ -258,7 +257,6 @@ export function suggest({
     const { icon } = suggestions[0];
     if (icon === "function") {
       const name = getMBQLName(matchPrefix);
-      const database = getDatabase(query, metadata);
 
       if (name && database) {
         const helpText = getHelpText(name, database, reportTimezone);
