@@ -4,6 +4,8 @@
 }
 
 .link {
+  cursor: pointer;
+
   &:hover {
     color: var(--color-brand);
   }
