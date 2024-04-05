@@ -1,12 +1,16 @@
 /* eslint-disable */
-import { createReducer } from "@reduxjs/toolkit";
+import { createReducer, SerializedError } from "@reduxjs/toolkit";
 import {
   createAsyncThunk,
   createThunkAction,
 } from "metabase/lib/redux/typed-utils";
-import type { EnterpriseState, GetEnterpriseState } from "embedding-sdk/types";
+import type {
+  EmbeddingSessionTokenState,
+  EnterpriseState,
+  GetEnterpriseState,
+} from "embedding-sdk/types";
 
-const initialState = {
+const initialState: EmbeddingSessionTokenState = {
   token: null,
   loading: false,
   error: null,
@@ -15,7 +19,8 @@ const initialState = {
 export const getSessionToken = (state: EnterpriseState) =>
   state.plugins.embeddingSessionToken;
 
-const GET_OR_REFRESH_SESSION = "metabase/public/GET_OR_REFRESH_SESSION";
+const GET_OR_REFRESH_SESSION =
+  "metabase-enterprise/embeddingSessionToken/GET_OR_REFRESH_SESSION";
 
 export const getOrRefreshSession = createThunkAction(
   GET_OR_REFRESH_SESSION,
@@ -30,7 +35,7 @@ export const getOrRefreshSession = createThunkAction(
     return getState().plugins.embeddingSessionToken;
   },
 );
-const REFRESH_TOKEN = "metabase/public/REFRESH_TOKEN";
+const REFRESH_TOKEN = "metabase-enterprise/embeddingSessionToken/REFRESH_TOKEN";
 
 export const refreshTokenAsync = createAsyncThunk(
   REFRESH_TOKEN,
@@ -53,6 +58,7 @@ const tokenReducer = createReducer(initialState, builder =>
       state.loading = false;
     })
     .addCase(refreshTokenAsync.rejected, (state, action) => {
+      state.token = null;
       state.error = action.error;
       state.loading = false;
     }),

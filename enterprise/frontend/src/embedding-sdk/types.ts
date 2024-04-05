@@ -1,21 +1,30 @@
+import type { SerializedError } from "@reduxjs/toolkit";
+
 import type { State } from "metabase-types/store";
+
+type SDKAuthType =
+  | {
+      authType: "apiKey";
+      apiKey: string;
+    }
+  | {
+      authType: "jwt";
+      jwtProviderUri: string;
+    };
 
 export type SDKConfigType = {
   metabaseInstanceUrl: string;
   font?: string;
-  authType: "apiKey" | "jwt";
-  apiKey: string;
-  jwtProviderUri: string;
-};
+} & SDKAuthType;
 
 export type EmbeddingSessionTokenState = {
   token: {
     id: string;
     exp: number;
-  };
+  } | null;
   loading: boolean;
-  error: null | string;
-} | null;
+  error: SerializedError | null;
+};
 
 export interface EnterpriseState extends State {
   plugins: {
