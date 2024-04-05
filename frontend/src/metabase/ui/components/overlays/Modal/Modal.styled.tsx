@@ -17,7 +17,7 @@ export const getModalOverrides = (): MantineThemeOverride["components"] => ({
       },
     }),
     defaultProps: {
-      p: DEFAULT_MODAL_SPACING,
+      padding: DEFAULT_MODAL_SPACING,
     },
   },
   ModalRoot: {
@@ -27,6 +27,7 @@ export const getModalOverrides = (): MantineThemeOverride["components"] => ({
       shadow: "md",
       radius: "sm",
       withinPortal: true,
+      padding: DEFAULT_MODAL_SPACING,
     },
   },
   ModalHeader: {
