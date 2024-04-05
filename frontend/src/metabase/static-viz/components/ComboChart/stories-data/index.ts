@@ -18,6 +18,7 @@ import barHistogramXScale from "./bar-histogram-x-scale.json";
 import barLinearXScale from "./bar-linear-x-scale.json";
 import barLogYScaleStackedNegative from "./bar-log-y-scale-stacked-negative.json";
 import barLogYScaleStacked from "./bar-log-y-scale-stacked.json";
+import barOrdinalXScaleAutoRotatedLabels from "./bar-ordinal-x-scale-auto-rotated-labels.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import barRelativeDatetimeOrdinalScale from "./bar-relative-datetime-ordinal-scale.json";
 import barStackDisplayOverridesSeriesDisplays from "./bar-stack-display-overrides-series-displays.json";
@@ -93,6 +94,7 @@ export const data = {
   barHistogramStackedNormalized,
   barHistogramUnaggregatedDimension,
   barOrdinalXScale,
+  barOrdinalXScaleAutoRotatedLabels,
   barTwoAxesStackedWithNegativeValues,
   barBreakoutWithLineSeriesStackedRightAxisOnly,
   barStackedTotalFormattedValues,

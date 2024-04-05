@@ -320,7 +320,7 @@ export const buildTimeSeriesDimensionAxis = (
 
 export const buildCategoricalDimensionAxis = (
   chartModel: BaseCartesianChartModel,
-  settings: ComputedVisualizationSettings,
+  originalSettings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
 ): CategoryAxisBaseOption => {
@@ -328,6 +328,12 @@ export const buildCategoricalDimensionAxis = (
     xAxisModel: { formatter },
     dimensionModel: { column },
   } = chartModel;
+
+  const autoAxisEnabled = chartMeasurements.axisEnabledSetting;
+  const settings: ComputedVisualizationSettings = {
+    ...originalSettings,
+    "graph.x_axis.axis_enabled": autoAxisEnabled,
+  };
 
   return {
     ...getCommonDimensionAxisOptions(
@@ -340,6 +346,7 @@ export const buildCategoricalDimensionAxis = (
       margin: CHART_STYLE.axisTicksMarginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
       ...getHistogramTicksOptions(chartModel, settings, chartMeasurements),
+      interval: () => true,
       formatter: (value: string) => {
         const numberValue = parseNumberValue(value);
         if (isNumericBaseType(column) && numberValue !== null) {
