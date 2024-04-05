@@ -92,7 +92,8 @@
      metabot-get-prompt-templates-url
      metabot-prompt-generator-token-limit
      multi-setting-read-only
-     notebook-native-preview-preferences
+     notebook-native-preview-shown
+     notebook-native-preview-sidebar-width
      notification-link-base-url
      num-metabot-choices
      openai-api-key

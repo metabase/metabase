@@ -474,13 +474,19 @@
   :default    false
   :audit      :never)
 
-(defsetting notebook-native-preview-preferences
-  (deferred-tru "User preferences for the native query preview in the notebook.")
+(defsetting notebook-native-preview-shown
+  (deferred-tru "User preference for the state of the native query preview in the notebook.")
   :user-local :only
   :visibility :authenticated
-  :type       :json
-  :default    {:sidebar_shown false
-               :sidebar_width nil})
+  :type       :boolean
+  :default    false)
+
+(defsetting notebook-native-preview-sidebar-width
+  (deferred-tru "Last used sidebar width for the native query preview in the notebook.")
+  :user-local :only
+  :visibility :authenticated
+  :type       :integer
+  :default    nil)
 
 ;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
 
