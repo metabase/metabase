@@ -223,7 +223,8 @@
   [s {:keys [unit], :as info} & {:keys [parse-datetime-strings?]
                                  :or   {parse-datetime-strings? true}}]
   (if (and unit
-           parse-datetime-strings?)
+           parse-datetime-strings?
+           (seq s))
     (let [effective-type ((some-fn :effective_type :base_type) info)]
       (parse-temporal-string-literal effective-type s unit))
     [:value s info]))

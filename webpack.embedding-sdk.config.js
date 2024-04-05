@@ -18,8 +18,6 @@ const BUILD_PATH = __dirname + "/resources/embedding-sdk";
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const isDevMode = WEBPACK_BUNDLE !== "production";
 
-// TODO: add package.json generation to CI
-
 // TODO: Reuse babel and css configs from webpack.config.js
 // Babel:
 const BABEL_CONFIG = {
@@ -79,16 +77,12 @@ module.exports = env => {
           ],
         },
 
-        ...(isDevMode
-          ? [
-              {
-                test: /\.js$/,
-                exclude: /node_modules/,
-                enforce: "pre",
-                use: ["source-map-loader"],
-              },
-            ]
-          : []),
+        {
+          test: /\.js$/,
+          exclude: /node_modules/,
+          enforce: "pre",
+          use: ["source-map-loader"],
+        },
 
         {
           test: /\.svg/,
@@ -140,11 +134,12 @@ module.exports = env => {
       new webpack.ProvidePlugin({
         process: "process/browser.js",
       }),
+
       new ForkTsCheckerWebpackPlugin({
         async: isDevMode,
         typescript: {
           configFile: path.resolve(__dirname, "./tsconfig.sdk.json"),
-          // mode: "write-dts", // TODO: enable this to add types generation (but we also need a separate step to bundle types into a single module)
+          mode: "write-dts",
           memoryLimit: 4096,
         },
       }),

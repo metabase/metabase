@@ -413,7 +413,7 @@ describe("DataSelector", () => {
 
     expect(
       screen.getByText("Sample Database", {
-        selector: ".List-item--selected h4",
+        selector: "[data-element-id=list-item] h4",
       }),
     ).toBeInTheDocument();
   });

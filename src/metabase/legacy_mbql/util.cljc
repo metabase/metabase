@@ -160,11 +160,21 @@
     [:not-null field] [:!= field nil]))
 
 (defn desugar-is-empty-and-not-empty
-  "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively."
+  "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively.
+
+   If `:not-empty` is called on `:metabase.lib.schema.expression/emptyable` type, expand check for empty string. For
+   non-`emptyable` types act as `:is-null`. If field has nil base type it is considered not emptyable expansion wise."
   [m]
   (lib.util.match/replace m
-    [:is-empty field]  [:or  [:=  field nil] [:=  field ""]]
-    [:not-empty field] [:and [:!= field nil] [:!= field ""]]))
+    [:is-empty field]
+    (if (isa? (get-in field [2 :base-type]) :metabase.lib.schema.expression/emptyable)
+      [:or [:= field nil] [:= field ""]]
+      [:= field nil])
+
+    [:not-empty field]
+    (if (isa? (get-in field [2 :base-type]) :metabase.lib.schema.expression/emptyable)
+      [:and [:!= field nil] [:!= field ""]]
+      [:!= field nil])))
 
 (defn- replace-field-or-expression
   "Replace a field or expression inside :time-interval"
@@ -762,3 +772,33 @@
           (sequential? form) (recur (onto-stack (map-indexed vector form)) matches)
           :else              (recur stack                                  matches)))
       matches)))
+
+(defn wrap-field-id-if-needed
+  "Wrap a raw Field ID in a `:field` clause if needed."
+  [field-id-or-form]
+  (cond
+    (mbql-clause? field-id-or-form)
+    field-id-or-form
+
+    (integer? field-id-or-form)
+    [:field field-id-or-form nil]
+
+    :else
+    field-id-or-form))
+
+(mu/defn unwrap-field-clause :- [:maybe mbql.s/field]
+  "Unwrap something that contains a `:field` clause, such as a template tag.
+  Also handles unwrapped integers for legacy compatibility.
+
+    (unwrap-field-clause [:field 100 nil]) ; -> [:field 100 nil]"
+  [field-form]
+  (if (integer? field-form)
+    [:field field-form nil]
+    (lib.util.match/match-one field-form :field)))
+
+(mu/defn unwrap-field-or-expression-clause :- mbql.s/Field
+  "Unwrap a `:field` clause or expression clause, such as a template tag. Also handles unwrapped integers for
+  legacy compatibility."
+  [field-or-ref-form]
+  (or (unwrap-field-clause field-or-ref-form)
+      (lib.util.match/match-one field-or-ref-form :expression)))

@@ -5,13 +5,13 @@ import type {
 import { useEntityListQuery } from "metabase/common/hooks/entity-framework/use-entity-list-query";
 import Questions from "metabase/entities/questions";
 import type Question from "metabase-lib/v1/Question";
-import type { CardListQuery } from "metabase-types/api";
+import type { ListCardsRequest } from "metabase-types/api";
 
 /**
  * @deprecated use "metabase/api" instead
  */
 export const useQuestionListQuery = (
-  props: UseEntityListQueryProps<CardListQuery> = {},
+  props: UseEntityListQueryProps<ListCardsRequest> = {},
 ): UseEntityListQueryResult<Question> => {
   return useEntityListQuery(props, {
     fetchList: Questions.actions.fetchList,

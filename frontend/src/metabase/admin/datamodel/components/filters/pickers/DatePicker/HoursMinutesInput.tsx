@@ -76,7 +76,12 @@ const HoursMinutesInput = ({
     )}
     {onClear && (
       <Icon
-        className="text-light cursor-pointer text-medium-hover ml-auto"
+        className={cx(
+          CS.textLight,
+          CS.cursorPointer,
+          "text-medium-hover",
+          CS.mlAuto,
+        )}
         name="close"
         onClick={onClear}
       />

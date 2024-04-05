@@ -1,15 +1,10 @@
 // various Metabase-specific "scoping" functions like inside popover/modal/navbar/main/sidebar content area
 export const POPOVER_ELEMENT =
-  ".popover[data-state~='visible'],[data-position]:not(.emotion-HoverCard-dropdown)";
+  ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
 
 export function popover() {
   cy.get(POPOVER_ELEMENT).should("be.visible");
   return cy.get(POPOVER_ELEMENT);
-}
-
-export function mantinePopover() {
-  const MANTINE_POPOVER = "[data-popover=mantine-popover]";
-  return cy.get(MANTINE_POPOVER).should("be.visible");
 }
 
 const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']:visible";
@@ -216,5 +211,5 @@ export const undoToastList = () => {
 };
 
 export function dashboardCards() {
-  return cy.get("#Dashboard-Cards-Container");
+  return cy.get("[data-element-id=dashboard-cards-container]");
 }

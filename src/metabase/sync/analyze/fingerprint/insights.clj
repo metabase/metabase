@@ -7,7 +7,6 @@
    [kixi.stats.protocols :as p]
    [medley.core :as m]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.sync.util :as sync-util]
@@ -224,7 +223,7 @@
                      :col            (:name number-col)
                      :unit           unit))))))
       (format "Error generating timeseries insight keyed by: %s"
-              (sync-util/name-for-logging (mi/instance Field datetime))))))
+              (sync-util/name-for-logging (mi/instance :model/Field datetime))))))
 
 (defn insights
   "Based on the shape of returned data construct a transducer to statistically analyize data."
