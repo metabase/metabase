@@ -12,7 +12,8 @@
    [metabase.test :as mt]
    [metabase.util.yaml :as u.yaml]
    [next.jdbc :as next.jdbc]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (java.util.concurrent CountDownLatch)))
 
 (set! *warn-on-reflection* true)
 
@@ -81,3 +82,31 @@
                (set/union
                 (set (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" driver/*driver*))
                 (set (liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*)))))))))
+
+(deftest wait-for-all-locks-test
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (mt/with-temp-empty-app-db [conn driver/*driver*]
+      ;; fake a db where we ran all the migrations, including the legacy ones
+      (with-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
+        ;; We don't need a long time for tests, keep it zippy.
+        (let [sleep-ms   5
+              timeout-ms 10]
+          (liquibase/with-liquibase [liquibase conn]
+            (testing "Will not wait if no locks are taken"
+              (is (= :none (liquibase/wait-for-all-locks sleep-ms timeout-ms))))
+            (testing "Will timeout if a lock is not released"
+              (liquibase/with-scope-locked liquibase
+                (is (= :timed-out (liquibase/wait-for-all-locks sleep-ms timeout-ms)))))
+            (testing "Will return successfully if the lock is released while we are waiting"
+              (let [timeout-ms 200
+                    lock-latch (CountDownLatch. 1)
+                    release-latch (CountDownLatch. 1)
+                    result (future (.await lock-latch)
+                                   (liquibase/wait-for-all-locks sleep-ms timeout-ms))
+                    _ (future (.await lock-latch)
+                              (Thread/sleep 50)
+                              (.countDown release-latch))]
+                (liquibase/with-scope-locked liquibase
+                  (.countDown lock-latch)
+                  (.await release-latch))
+                (is (= :done @result))))))))))

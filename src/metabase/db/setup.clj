@@ -167,6 +167,18 @@
          (run-schema-migrations! data-source auto-migrate?))))
   :done)
 
+(defn release-migration-locks!
+  "Wait up to `timeout-seconds` for the current process to release all migration locks, otherwise force release them."
+  [timeout-seconds]
+  (let [sleep-ms   100
+        timeout-ms (* 1000 timeout-seconds)]
+    (case (liquibase/wait-for-all-locks sleep-ms timeout-ms)
+      :none nil
+      :done (log/info "Migration lock(s) have been released")
+      :timed-out (do (log/warn "Releasing liquibase locks on shutdown")
+                     (liquibase/release-all-locks-if-needed!))))
+  :done)
+
 ;;;; Toucan Setup.
 
 ;;; Done at namespace load time these days.
