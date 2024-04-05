@@ -144,7 +144,7 @@ module.exports = env => {
   };
 
   config.resolve.alias = {
-    ...mainConfig.response.alias,
+    ...mainConfig.resolve.alias,
     "ee-plugins": ENTERPRISE_SRC_PATH + "/plugins",
     "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
   };
