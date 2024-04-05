@@ -31,7 +31,7 @@ export const NotebookContainer = ({
     isOpen && setShouldShowNotebook(isOpen);
   }, [isOpen]);
 
-  const { isNativePreviewSidebarOpen, nativePreviewSidebarWidth } =
+  const { isShowingNotebookNativePreview, nativePreviewSidebarWidth } =
     useSelector(getUiControls);
 
   const minNotebookWidth = 640;
@@ -108,13 +108,13 @@ export const NotebookContainer = ({
         </Box>
       )}
 
-      {isNativePreviewSidebarOpen && windowWidth < 1280 && (
+      {isShowingNotebookNativePreview && windowWidth < 1280 && (
         <Box pos="absolute" inset={0}>
           <NativeQueryPreviewSidebar />
         </Box>
       )}
 
-      {isNativePreviewSidebarOpen && windowWidth >= 1280 && (
+      {isShowingNotebookNativePreview && windowWidth >= 1280 && (
         <ResizableBox
           width={sidebarWidth}
           minConstraints={[minSidebarWidth, 0]}
