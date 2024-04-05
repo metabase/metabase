@@ -87,7 +87,7 @@
 
 (mu/defn ^:private update-database-metadata!
   "If there is a version in the db-metadata update the DB to have that in the DB model"
-  [database    :- (mi/InstanceOf :model/Database)
+  [database    :- i/DatabaseInstance
    db-metadata :- i/DatabaseMetadata]
   (log/infof "Found new version for DB: %s" (:version db-metadata))
   (t2/update! Database (u/the-id database)
@@ -127,7 +127,7 @@
 
 (mu/defn ^:private create-or-reactivate-tables!
   "Create `new-tables` for database, or if they already exist, mark them as active."
-  [database :- (mi/InstanceOf :model/Database)
+  [database :- i/DatabaseInstance
    new-tables :- [:set i/DatabaseMetadataTable]]
   (doseq [table new-tables]
     (log/info "Found new table:"
@@ -137,7 +137,7 @@
 
 (mu/defn ^:private retire-tables!
   "Mark any `old-tables` belonging to `database` as inactive."
-  [database   :- (mi/InstanceOf :model/Database)
+  [database   :- i/DatabaseInstance
    old-tables :- [:set [:map
                         [:name ::lib.schema.common/non-blank-string]
                         [:schema [:maybe ::lib.schema.common/non-blank-string]]]]]
@@ -195,7 +195,7 @@
 
 (mu/defn ^:private db->our-metadata :- [:set (ms/InstanceOf :model/Table)]
   "Return information about what Tables we have for this DB in the Metabase application DB."
-  [database :- (mi/InstanceOf :model/Database)]
+  [database :- i/DatabaseInstance]
   (set (t2/select [:model/Table :id :name :schema :description :database_require_filter :estimated_row_count]
                   :db_id  (u/the-id database)
                   :active true)))
@@ -204,10 +204,10 @@
   "Sync the Tables recorded in the Metabase application database with the ones obtained by calling `database`'s driver's
   implementation of `describe-database`.
   Also syncs the database metadata taken from describe-database if there is any"
-  ([database :- (mi/InstanceOf :model/Database)]
+  ([database :- i/DatabaseInstance]
    (sync-tables-and-database! database (fetch-metadata/db-metadata database)))
 
-  ([database :- (mi/InstanceOf :model/Database) db-metadata]
+  ([database :- i/DatabaseInstance db-metadata]
    ;; determine what's changed between what info we have and what's in the DB
    (let [db-tables               (table-set db-metadata)
          name+schema             #(select-keys % [:name :schema])

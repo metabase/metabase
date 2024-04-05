@@ -41,7 +41,6 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -61,7 +60,7 @@
 (mu/defn ^:private sync-and-update! :- ms/IntGreaterThanOrEqualToZero
   "Sync Field instances (i.e., rows in the Field table in the Metabase application DB) for a Table, and update metadata
   properties (e.g. base type and comment/remark) as needed. Returns number of Fields synced."
-  [table       :- (mi/InstanceOf :model/Table)
+  [table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
   (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
      ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
@@ -71,7 +70,7 @@
 
 (mu/defn sync-fields-for-db!
   "Sync the Fields in the Metabase application database for a specific `table`."
-  [database :- (mi/InstanceOf :model/Database)]
+  [database :- i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
     (let [schema-names    (sync-util/db->sync-schemas database)
           fields-metadata (fetch-metadata/fields-metadata database :schema-names schema-names)]
@@ -99,11 +98,11 @@
 
 (mu/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific `table`."
-  ([table :- (mi/InstanceOf :model/Table)]
+  ([table :- i/TableInstance]
    (sync-fields-for-table! (table/database table) table))
 
-  ([database :- (mi/InstanceOf :model/Database)
-    table    :- (mi/InstanceOf :model/Table)]
+  ([database :- i/DatabaseInstance
+    table    :- i/TableInstance]
    (sync-util/with-error-handling (format "Error syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
      (let [db-metadata (fields.our-metadata/db-metadata database table)]
        {:total-fields   (count db-metadata)
@@ -114,7 +113,7 @@
                            [:updated-fields ms/IntGreaterThanOrEqualToZero]
                            [:total-fields   ms/IntGreaterThanOrEqualToZero]]]
   "Sync the Fields in the Metabase application database for all the Tables in a `database`."
-  [database :- (mi/InstanceOf :model/Database)]
+  [database :- i/DatabaseInstance]
   (if (driver/database-supports? (driver.u/database->driver database) :describe-fields database)
     (sync-fields-for-db! database)
     (->> (sync-util/db->sync-tables database)

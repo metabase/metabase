@@ -2,7 +2,6 @@
   "Schemas and functions shared by different `metabase.sync.sync-metadata.fields.*` namespaces."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -43,7 +42,7 @@
   "Return a 'name for logging' for a map that conforms to the `TableMetadataField` schema.
 
       (field-metadata-name-for-logging table field-metadata) ; -> \"Table 'venues' Field 'name'\""
-  [table :- (mi/InstanceOf :model/Table) field-metadata :- TableMetadataFieldWithOptionalID]
+  [table :- i/TableInstance field-metadata :- TableMetadataFieldWithOptionalID]
   (format "%s %s '%s'" (sync-util/name-for-logging table) "Field" (:name field-metadata)))
 
 (defn canonical-name

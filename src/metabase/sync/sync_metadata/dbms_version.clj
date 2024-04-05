@@ -3,7 +3,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.database :refer [Database]]
-   [metabase.models.interface :as mi]
+   [metabase.sync.interface :as i]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -15,7 +15,7 @@
 
 (mu/defn sync-dbms-version! :- [:maybe DBMSVersion]
   "Get the DBMS version as provided by the driver and save it in the Database."
-  [database :- (mi/InstanceOf :model/Database)]
+  [database :- i/DatabaseInstance]
   (let [driver  (driver.u/database->driver database)
         version (driver/dbms-version driver database)]
     (when (not= version (:dbms_version database))

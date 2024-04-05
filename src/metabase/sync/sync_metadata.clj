@@ -7,9 +7,9 @@
    3.  Sync FKs    (`metabase.sync.sync-metadata.fks`)
    4.  Sync Metabase Metadata table (`metabase.sync.sync-metadata.metabase-metadata`)"
   (:require
-   [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
+   [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.fks :as sync-fks]
@@ -64,7 +64,7 @@
 
 (mu/defn sync-db-metadata!
   "Sync the metadata for a Metabase `database`. This makes sure child Table & Field objects are synchronized."
-  [database :- (mi/InstanceOf :model/Database)]
+  [database :- i/DatabaseInstance]
   (sync-util/sync-operation :sync-metadata database (format "Sync metadata for %s" (sync-util/name-for-logging database))
     (let [db-metadata (fetch-metadata/db-metadata database)]
       (u/prog1 (sync-util/run-sync-operation "sync" database (make-sync-steps db-metadata))
@@ -74,7 +74,7 @@
 
 (mu/defn sync-table-metadata!
   "Sync the metadata for an individual `table` -- make sure Fields and FKs are up-to-date."
-  [table :- (mi/InstanceOf :model/Table)]
+  [table :- i/TableInstance]
   (let [database (table/database table)]
     (sync-fields/sync-fields-for-table! database table)
     (sync-fks/sync-fks-for-table! database table)

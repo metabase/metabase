@@ -116,6 +116,47 @@
   "Schema for an entry in the expected output of [[metabase.driver/describe-fks]]."
   [:ref ::FKMetadataEntry])
 
+;; These schemas are provided purely as conveniences since adding `:import` statements to get the corresponding
+;; classes from the model namespaces also requires a `:require`, which `clj-refactor` seems more than happy to strip
+;; out from the ns declaration when running `cljr-clean-ns`. Plus as a bonus in the future we could add additional
+;; validations to these, e.g. requiring that a Field have a base_type
+
+(mr/def ::no-kebab-case-keys
+  [:fn
+   {:error/message "Map should not contain any kebab-case keys"}
+   (fn [m]
+     (every? (fn [k]
+               (not (str/includes? k "-")))
+             (keys m)))])
+
+(mr/def ::DatabaseInstance
+  [:and
+   (ms/InstanceOf :model/Database)
+   ::no-kebab-case-keys])
+
+(def DatabaseInstance
+  "Schema for a valid instance of a Metabase Database."
+  [:ref ::DatabaseInstance])
+
+(mr/def ::TableInstance
+  [:and
+   (ms/InstanceOf :model/Table)
+   ::no-kebab-case-keys])
+
+(def TableInstance
+  "Schema for a valid instance of a Metabase Table."
+  [:ref ::TableInstance])
+
+(mr/def ::FieldInstance
+  [:and
+   [:and
+    (ms/InstanceOf :model/Field)
+    ::no-kebab-case-keys]])
+
+(def FieldInstance
+  "Schema for a valid instance of a Metabase Field."
+  [:ref ::FieldInstance])
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             FINGERPRINT VERSIONING                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+

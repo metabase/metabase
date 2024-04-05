@@ -11,7 +11,6 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.field :as field :refer [Field]]
-   [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync.interface :as i]
@@ -28,7 +27,7 @@
   metadata-queries/keep-me-for-default-table-row-sample)
 
 (mu/defn ^:private save-fingerprint!
-  [field       :- (mi/InstanceOf :model/Field)
+  [field       :- i/FieldInstance
    fingerprint :- [:maybe fingerprint/Fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
   ;; All Fields who get new fingerprints should get marked as having the latest fingerprint version, but we'll
@@ -61,8 +60,8 @@
   1234)
 
 (mu/defn ^:private fingerprint-table!
-  [table  :- (mi/InstanceOf :model/Table)
-   fields :- [:maybe [:sequential (mi/InstanceOf :model/Field)]]]
+  [table  :- i/TableInstance
+   fields :- [:maybe [:sequential i/FieldInstance]]]
   (let [rff (fn [_metadata]
               (redux/post-complete
                (fingerprinters/fingerprint-fields fields)
@@ -176,7 +175,7 @@
    {:where (cond-> fields-to-fingerprint-base-clause
              (not *refingerprint?*) (conj (cons :or (versions-clauses))))})
 
-  ([table :- (mi/InstanceOf :model/Table)]
+  ([table :- i/TableInstance]
    (sql.helpers/where (honeysql-for-fields-that-need-fingerprint-updating)
                       [:= :table_id (u/the-id table)])))
 
@@ -184,17 +183,17 @@
 ;;; |                                      FINGERPRINTING ALL FIELDS IN A TABLE                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private fields-to-fingerprint :- [:maybe [:sequential (mi/InstanceOf :model/Field)]]
+(mu/defn ^:private fields-to-fingerprint :- [:maybe [:sequential i/FieldInstance]]
   "Return a sequences of Fields belonging to `table` for which we should generate (and save) fingerprints.
    This should include NEW fields that are active and visible."
-  [table :- (mi/InstanceOf :model/Table)]
+  [table :- i/TableInstance]
   (seq (t2/select Field
                   (honeysql-for-fields-that-need-fingerprint-updating table))))
 
 ;; TODO - `fingerprint-fields!` and `fingerprint-table!` should probably have their names switched
 (mu/defn fingerprint-fields!
   "Generate and save fingerprints for all the Fields in `table` that have not been previously analyzed."
-  [table :- (mi/InstanceOf :model/Table)]
+  [table :- i/TableInstance]
   (if-let [fields (fields-to-fingerprint table)]
     (let [stats (sync-util/with-error-handling
                   (format "Error fingerprinting %s" (sync-util/name-for-logging table))
@@ -205,18 +204,17 @@
     (empty-stats-map 0)))
 
 (def ^:private LogProgressFn
-  [:=> [:cat :string [:schema (mi/InstanceOf :model/Table)]] :any])
+  [:=> [:cat :string [:schema i/TableInstance]] :any])
 
 (mu/defn ^:private fingerprint-fields-for-db!*
   "Invokes `fingerprint-fields!` on every table in `database`"
-  ([database        :- (mi/InstanceOf :model/Database)
-    tables          :- [:maybe [:sequential (mi/InstanceOf :model/Table)]]
+  ([database        :- i/DatabaseInstance
+    tables          :- [:maybe [:sequential i/TableInstance]]
     log-progress-fn :- LogProgressFn]
    (fingerprint-fields-for-db!* database tables log-progress-fn (constantly true)))
 
-  ;; TODO: Maybe the driver should have a function to tell you if it supports fingerprinting?
-  ([database        :- (mi/InstanceOf :model/Database)
-    tables          :- [:maybe [:sequential (mi/InstanceOf :model/Table)]]
+  ([database        :- i/DatabaseInstance
+    tables          :- [:maybe [:sequential i/TableInstance]]
     log-progress-fn :- LogProgressFn
     continue?       :- [:=> [:cat ::FingerprintStats] :any]]
    (qp.store/with-metadata-provider (u/the-id database)
@@ -231,8 +229,8 @@
 
 (mu/defn fingerprint-fields-for-db!
   "Invokes [[fingerprint-fields!]] on every table in `database`"
-  [database        :- (mi/InstanceOf :model/Database)
-   tables          :- [:maybe [:sequential (mi/InstanceOf :model/Table)]]
+  [database        :- i/DatabaseInstance
+   tables          :- [:maybe [:sequential i/TableInstance]]
    log-progress-fn :- LogProgressFn]
   (if (driver/database-supports? (:engine database) :fingerprint database)
     (fingerprint-fields-for-db!* database tables log-progress-fn)
@@ -245,8 +243,8 @@
 
 (mu/defn refingerprint-fields-for-db!
   "Invokes [[fingeprint-fields!]] on every table in `database` up to some limit."
-  [database        :- (mi/InstanceOf :model/Database)
-   tables          :- [:maybe [:sequential (mi/InstanceOf :model/Table)]]
+  [database        :- i/DatabaseInstance
+   tables          :- [:maybe [:sequential i/TableInstance]]
    log-progress-fn :- LogProgressFn]
   (binding [*refingerprint?* true]
     (fingerprint-fields-for-db!* database
@@ -259,6 +257,6 @@
 
 (mu/defn refingerprint-field
   "Refingerprint a field"
-  [field :- (mi/InstanceOf :model/Field)]
+  [field :- i/FieldInstance]
   (let [table (field/table field)]
     (fingerprint-table! table [field])))

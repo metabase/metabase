@@ -12,11 +12,11 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.models.field :as field]
-   [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.field-values :as field-values]
+   [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.util.malli :as mu]
@@ -45,7 +45,7 @@
   ([database]
    (sync-database! database nil))
 
-  ([database                         :- (mi/InstanceOf :model/Database)
+  ([database                         :- i/DatabaseInstance
     {:keys [scan], :or {scan :full}} :- [:maybe [:map
                                                  [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
    (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
@@ -57,7 +57,7 @@
 (mu/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of
   tables, caller should check if can connect."
-  [table :- (mi/InstanceOf :model/Table)]
+  [table :- i/TableInstance]
   (doto table
     sync-metadata/sync-table-metadata!
     analyze/analyze-table!
@@ -67,7 +67,7 @@
 (mu/defn refingerprint-field!
   "Refingerprint a field, usually after its type changes. Checks if can connect to database, returning
   `:sync/no-connection` if not."
-  [field :- (mi/InstanceOf :model/Field)]
+  [field :- i/FieldInstance]
   (let [table    (field/table field)
         database (table/database table)]
     ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the

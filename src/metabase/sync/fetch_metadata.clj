@@ -6,19 +6,18 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.util :as driver.u]
-   [metabase.models.interface :as mi]
    [metabase.sync.interface :as i]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]))
 
 (mu/defn db-metadata :- i/DatabaseMetadata
   "Get basic Metadata about a `database` and its Tables. Doesn't include information about the Fields."
-  [database :- (mi/InstanceOf :model/Database)]
+  [database :- i/DatabaseInstance]
   (driver/describe-database (driver.u/database->driver database) database))
 
 (mu/defn fields-metadata
   "Effectively a wrapper for [[metabase.driver/describe-fields]] that also validates the output against the schema."
-  [database :- (mi/InstanceOf :model/Database) & {:as args}]
+  [database :- i/DatabaseInstance & {:as args}]
   (cond->> (driver/describe-fields (driver.u/database->driver database) database args)
     ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
     (mu.fn/instrument-ns? *ns*)
@@ -26,15 +25,15 @@
 
 (mu/defn table-fields-metadata :- [:set i/TableMetadataField]
   "Get more detailed information about a `table` belonging to `database`. Includes information about the Fields."
-  [database :- (mi/InstanceOf :model/Database)
-   table    :- (mi/InstanceOf :model/Table)]
+  [database :- i/DatabaseInstance
+   table    :- i/TableInstance]
   (if (driver/database-supports? (driver.u/database->driver database) :describe-fields database)
     (set (fields-metadata database :table-names [(:name table)] :schema-names [(:schema table)]))
     (:fields (driver/describe-table (driver.u/database->driver database) database table))))
 
 (mu/defn fk-metadata
   "Effectively a wrapper for [[metabase.driver/describe-fks]] that also validates the output against the schema."
-  [database :- (mi/InstanceOf :model/Database) & {:as args}]
+  [database :- i/DatabaseInstance & {:as args}]
   (cond->> (driver/describe-fks (driver.u/database->driver database) database args)
     ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
     (mu.fn/instrument-ns? *ns*)
@@ -42,8 +41,8 @@
 
 (mu/defn table-fk-metadata :- [:maybe [:sequential i/FKMetadataEntry]]
   "Get information about the foreign keys belonging to `table`."
-  [database :- (mi/InstanceOf :model/Database)
-   table    :- (mi/InstanceOf :model/Table)]
+  [database :- i/DatabaseInstance
+   table    :- i/TableInstance]
   (let [driver (driver.u/database->driver database)]
     (when (driver/database-supports? driver :foreign-keys database)
       (if (driver/database-supports? driver :describe-fks database)
@@ -59,14 +58,14 @@
 
 (mu/defn nfc-metadata :- [:maybe [:set i/TableMetadataField]]
   "Get information about the nested field column fields within `table`."
-  [database :- (mi/InstanceOf :model/Database)
-   table    :- (mi/InstanceOf :model/Table)]
+  [database :- i/DatabaseInstance
+   table    :- i/TableInstance]
   (let [driver (driver.u/database->driver database)]
     (when (driver/database-supports? driver :nested-field-columns database)
       (sql-jdbc.sync/describe-nested-field-columns driver database table))))
 
 (mu/defn index-metadata :- [:maybe i/TableIndexMetadata]
   "Get information about the indexes belonging to `table`."
-  [database :- (mi/InstanceOf :model/Database)
-   table    :- (mi/InstanceOf :model/Table)]
+  [database :- i/DatabaseInstance
+   table    :- i/TableInstance]
   (driver/describe-table-indexes (driver.u/database->driver database) database table))
