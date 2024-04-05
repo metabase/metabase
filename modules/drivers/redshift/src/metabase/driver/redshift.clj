@@ -15,6 +15,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sync :as driver.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.public-settings :as public-settings]
@@ -51,6 +52,20 @@
 (defmethod driver/describe-table :redshift
   [& args]
   (apply (get-method driver/describe-table :sql-jdbc) args))
+
+(defn all-schemas
+  "Get a reducible sequence of all string schema names for the current database from its JDBC database metadata."
+  [conn]
+  (->> (jdbc/query {:connection conn}
+                   "select schema_name from svv_all_schemas where has_schema_privilege(schema_name, 'USAGE') and schema_name !~ '^information_schema|catalog_history|pg_';")
+       (map :schema_name)))
+
+(defmethod sql-jdbc.sync/filtered-syncable-schemas :redshift
+  [_driver conn _metadata schema-inclusion-patterns schema-exclusion-patterns]
+  (eduction
+   (remove (fn [schema] (re-find #"^metabase_cache.*" schema)))
+   (filter (partial driver.s/include-schema? schema-inclusion-patterns schema-exclusion-patterns))
+   (all-schemas conn)))
 
 (defn- get-tables-sql
   [schemas table-names]
@@ -416,37 +431,6 @@
        " */ "
        (qp.util/default-query->remark query)))
 
-(defn- reducible-schemas-with-usage-permissions
-  "Takes something `reducible` that returns a collection of string schema names (e.g. an `Eduction`) and returns an
-  `IReduceInit` that filters out schemas for which the DB user has no schema privileges."
-  [^Connection conn reducible]
-  (reify clojure.lang.IReduceInit
-    (reduce [_ rf init]
-      (with-open [stmt (prepare-statement conn "SELECT HAS_SCHEMA_PRIVILEGE(?, 'USAGE');")]
-        (reduce
-         rf
-         init
-         (eduction
-          (filter (fn [^String table-schema]
-                    (try
-                      (with-open [rs (.executeQuery (doto stmt (.setString 1 table-schema)))]
-                        (let [has-perm? (and (.next rs)
-                                             (.getBoolean rs 1))]
-                          (or has-perm?
-                              (log/tracef "Ignoring schema %s because no USAGE privilege on it" table-schema))))
-                      (catch Throwable e
-                        (log/error e (trs "Error checking schema permissions"))
-                        false))))
-          reducible))))))
-
-(defmethod sql-jdbc.sync/filtered-syncable-schemas :redshift
-  [driver conn metadata schema-inclusion-patterns schema-exclusion-patterns]
-  (let [parent-method (get-method sql-jdbc.sync/filtered-syncable-schemas :sql-jdbc)]
-    (reducible-schemas-with-usage-permissions conn (parent-method driver
-                                                                  conn
-                                                                  metadata
-                                                                  schema-inclusion-patterns
-                                                                  schema-exclusion-patterns))))
 
 (defmethod sql-jdbc.execute/set-parameter [:redshift java.time.ZonedDateTime]
   [driver ps i t]
