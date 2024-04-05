@@ -163,6 +163,8 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     createQuestion(questionDetails, { visitQuestion: true });
 
+    // there should be a hover instead of click
+    // but realHover is flaky
     cy.get(".cellData").contains("4966277046676").click();
 
     cy.findByTestId("detail-shortcut")
