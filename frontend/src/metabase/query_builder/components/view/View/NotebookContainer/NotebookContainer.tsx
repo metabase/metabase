@@ -6,7 +6,10 @@ import { useWindowSize } from "react-use";
 
 import { color, darken } from "metabase/lib/colors";
 import { useSelector, useDispatch } from "metabase/lib/redux";
-import { setUIControls } from "metabase/query_builder/actions";
+import {
+  setNotebookNativePreviewSidebarWidth,
+  setUIControls,
+} from "metabase/query_builder/actions";
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
 import { NativeQueryPreviewSidebar } from "metabase/query_builder/components/view/NativeQueryPreviewSidebar";
 import { getUiControls } from "metabase/query_builder/selectors";
@@ -52,9 +55,10 @@ export const NotebookContainer = ({
     _event: SyntheticEvent,
     data: ResizeCallbackData,
   ) => {
-    dispatch(
-      setUIControls({ notebookNativePreviewSidebarWidth: data.size.width }),
-    );
+    const { width } = data.size;
+
+    dispatch(setUIControls({ notebookNativePreviewSidebarWidth: width }));
+    dispatch(setNotebookNativePreviewSidebarWidth(width));
   };
 
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";

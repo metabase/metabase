@@ -2,7 +2,10 @@ import { t } from "ttag";
 
 import { getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { setUIControls } from "metabase/query_builder/actions";
+import {
+  setNotebookNativePreviewState,
+  setUIControls,
+} from "metabase/query_builder/actions";
 import { getUiControls } from "metabase/query_builder/selectors";
 import { Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -45,6 +48,8 @@ export const ToggleNativeQueryPreview = ({
         isShowingNotebookNativePreview: !isShowingNotebookNativePreview,
       }),
     );
+
+    dispatch(setNotebookNativePreviewState(!isShowingNotebookNativePreview));
 
     trackNotebookNativePreviewShown(question, !isShowingNotebookNativePreview);
   };
