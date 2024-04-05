@@ -3,9 +3,9 @@
   (:require
    [clojure.string :as str]
    [metabase.analyze.fingerprint :as fingerprint]
+   [metabase.analyze.schema :as analyze.schema]
    [metabase.config :as config]
    [metabase.driver.util :as driver.u]
-   [metabase.models.interface :as mi]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -184,9 +184,9 @@
    [(prefix-or-postfix "companies")    :entity/CompanyTable]
    [(prefix-or-postfix "vendor")       :entity/CompanyTable]])
 
-(mu/defn infer-entity-type :- (mi/InstanceOf :model/Table)
+(mu/defn infer-entity-type :- analyze.schema/Table
   "Classifer that infers the semantic type of a `table` based on its name."
-  [table :- (mi/InstanceOf :model/Table)]
+  [table :- analyze.schema/Table]
   (let [table-name (-> table :name u/lower-case-en)]
     (assoc table :entity_type (or (some (fn [[pattern type]]
                                           (when (re-find pattern table-name)

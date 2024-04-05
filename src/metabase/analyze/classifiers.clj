@@ -22,7 +22,7 @@
    [metabase.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
    [metabase.analyze.classifiers.text-fingerprint :as classifiers.text-fingerprint]
    [metabase.analyze.fingerprint :as fingerprint]
-   [metabase.models.interface :as mi]
+   [metabase.analyze.schema :as analyze.schema]
    [metabase.sync.util :as sync-util]
    [metabase.util.malli :as mu]))
 
@@ -42,11 +42,11 @@
    #'classifiers.no-preview-display/infer-no-preview-display
    #'classifiers.text-fingerprint/infer-semantic-type])
 
-(mu/defn run-classifiers :- (mi/InstanceOf :model/Field)
+(mu/defn run-classifiers :- analyze.schema/Field
   "Run all the available `classifiers` against `field` and `fingerprint`, and return the resulting `field` with
   changes decided upon by the classifiers. The original field can be accessed in the metadata at
   `:sync.classify/original`."
-  [field       :- (mi/InstanceOf :model/Field)
+  [field       :- analyze.schema/Field
    fingerprint :- [:maybe fingerprint/Fingerprint]]
   (reduce (fn [field classifier]
             (or (sync-util/with-error-handling (format "Error running classifier on %s"

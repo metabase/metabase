@@ -3,7 +3,7 @@
    These tests only run against Fields that *don't* have existing semantic types."
   (:require
    [metabase.analyze.fingerprint :as fingerprint]
-   [metabase.models.interface :as mi]
+   [metabase.analyze.schema :as analyze.schema]
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -55,10 +55,10 @@
         (and original
              (nil? (:semantic_type original))))))
 
-(mu/defn infer-semantic-type :- [:maybe (mi/InstanceOf :model/Field)]
+(mu/defn infer-semantic-type :- [:maybe analyze.schema/Field]
   "Do classification for `:type/Text` Fields with a valid `TextFingerprint`.
    Currently this only checks the various recorded percentages, but this is subject to change in the future."
-  [field       :- (mi/InstanceOf :model/Field)
+  [field       :- analyze.schema/Field
    fingerprint :- [:maybe fingerprint/Fingerprint]]
   (when (and (isa? (:base_type field) :type/Text)
              (can-edit-semantic-type? field))

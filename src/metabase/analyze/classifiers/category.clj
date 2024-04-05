@@ -12,9 +12,9 @@
   both a Category and a `list` Field."
   (:require
    [metabase.analyze.fingerprint :as fingerprint]
+   [metabase.analyze.schema :as analyze.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.field-values :as field-values]
-   [metabase.models.interface :as mi]
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -31,7 +31,7 @@
 
 (mu/defn ^:private field-should-be-category? :- [:maybe :boolean]
   [fingerprint :- [:maybe fingerprint/Fingerprint]
-   field       :- (mi/InstanceOf :model/Field)]
+   field       :- analyze.schema/Field]
   (let [distinct-count (get-in fingerprint [:global :distinct-count])
         nil%           (get-in fingerprint [:global :nil%])]
     ;; Only mark a Field as a Category if it doesn't already have a semantic type.
@@ -60,9 +60,9 @@
                          field-values/auto-list-cardinality-threshold))
       true)))
 
-(mu/defn infer-is-category-or-list :- [:maybe (mi/InstanceOf :model/Field)]
+(mu/defn infer-is-category-or-list :- [:maybe analyze.schema/Field]
   "Classifier that attempts to determine whether `field` ought to be marked as a Category based on its distinct count."
-  [field       :- (mi/InstanceOf :model/Field)
+  [field       :- analyze.schema/Field
    fingerprint :- [:maybe fingerprint/Fingerprint]]
   (when (and fingerprint
              (not (cannot-be-category-or-list? field)))

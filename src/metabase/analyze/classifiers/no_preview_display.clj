@@ -4,7 +4,7 @@
    still shown in a single-row object detail page.)"
   (:require
    [metabase.analyze.fingerprint :as fingerprint]
-   [metabase.models.interface :as mi]
+   [metabase.analyze.schema :as analyze.schema]
    [metabase.util.malli :as mu]))
 
 (def ^:private ^:const ^Long average-length-no-preview-threshold
@@ -19,10 +19,10 @@
                (get-in [:type :type/Text :average-length])
                (> average-length-no-preview-threshold))))
 
-(mu/defn infer-no-preview-display :- [:maybe (mi/InstanceOf :model/Field)]
+(mu/defn infer-no-preview-display :- [:maybe analyze.schema/Field]
   "Classifier that determines whether `field` should be marked 'No Preview Display'. If `field` is textual and its
   average length is too great, mark it so it isn't displayed in the UI."
-  [field       :- (mi/InstanceOf :model/Field)
+  [field       :- analyze.schema/Field
    fingerprint :- [:maybe fingerprint/Fingerprint]]
   (when (long-plain-text-field? field fingerprint)
     (assoc field :preview_display false)))
