@@ -754,14 +754,15 @@
             (upload-test/with-upload-table!
               [table-b (upload-test/create-upload-table! :schema-name schema-name)]
               (let [db-id       (u/the-id (mt/db))
-                    append-csv! #(upload-test/append-csv-with-defaults!
+                    append-csv! #(upload-test/update-csv-with-defaults!
+                                  action
                                   :table-id (:id table-a)
                                   :user-id (mt/user->id :rasta))]
                 (doseq [[schema-perms          can-append? test-string]
-                        [[:query-builder                 true        "Data permissions on schema should succeed"]
-                         [:no                            false       "No permissions on schema should fail"]
-                         [{(:id table-a) :query-builder} true        "Data permissions on table should succeed"]
-                         [{(:id table-b) :query-builder} false       "Data permissions only on another table in the same schema should fail"]]]
+                        [[:query-builder                 true  "Data permissions on schema should succeed"]
+                         [:no                            false "No permissions on schema should fail"]
+                         [{(:id table-a) :query-builder} true  "Data permissions on table should succeed"]
+                         [{(:id table-b) :query-builder} false "Data permissions only on another table in the same schema should fail"]]]
                   (testing test-string
                     (mt/with-all-users-data-perms-graph! {db-id {:view-data :unrestricted
                                                                  :create-queries {schema-name schema-perms}}}
