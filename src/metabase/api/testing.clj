@@ -88,7 +88,7 @@
   ;; a bunch of time initializing Liquibase and checking for unrun migrations for every test when we don't need to. --
   ;; Cam
   (when config/is-dev?
-    (mdb/migrate! (mdb/db-type) (mdb/app-db) :up)))
+    (mdb/migrate! (mdb/app-db) :up)))
 
 (defn- restore-snapshot! [snapshot-name]
   (assert-h2 (mdb/app-db))
