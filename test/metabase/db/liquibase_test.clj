@@ -85,24 +85,41 @@
 (deftest wait-for-all-locks-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
-      ;; fake a db where we ran all the migrations, including the legacy ones
-      (with-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
-        ;; We don't need a long time for tests, keep it zippy.
-        (let [sleep-ms   5
-              timeout-ms 10]
-          (liquibase/with-liquibase [liquibase conn]
-            (testing "Will not wait if no locks are taken"
-              (is (= :none (liquibase/wait-for-all-locks sleep-ms timeout-ms))))
-            (testing "Will timeout if a lock is not released"
-              (liquibase/with-scope-locked liquibase
-                (is (= :timed-out (liquibase/wait-for-all-locks sleep-ms timeout-ms)))))
-            (testing "Will return successfully if the lock is released while we are waiting"
-              (let [migrate-ms 100
-                    timeout-ms 200
-                    locked     (promise)]
-                (future
-                 (liquibase/with-scope-locked liquibase
-                   (deliver locked true)
-                   (Thread/sleep migrate-ms)))
-                @locked
-                (is (= :done (liquibase/wait-for-all-locks sleep-ms timeout-ms)))))))))))
+      ;; We don't need a long time for tests, keep it zippy.
+      (let [sleep-ms   5
+            timeout-ms 10]
+        (liquibase/with-liquibase [liquibase conn]
+          (testing "Will not wait if no locks are taken"
+            (is (= :none (liquibase/wait-for-all-locks sleep-ms timeout-ms))))
+          (testing "Will timeout if a lock is not released"
+            (liquibase/with-scope-locked liquibase
+              (is (= :timed-out (liquibase/wait-for-all-locks sleep-ms timeout-ms)))))
+          (testing "Will return successfully if the lock is released while we are waiting"
+            (let [migrate-ms 100
+                  timeout-ms 200
+                  locked     (promise)]
+              (future
+               (liquibase/with-scope-locked liquibase
+                 (deliver locked true)
+                 (Thread/sleep migrate-ms)))
+              @locked
+              (is (= :done (liquibase/wait-for-all-locks sleep-ms timeout-ms))))))))))
+
+(deftest release-all-locks-if-needed!-test
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (mt/with-temp-empty-app-db [conn driver/*driver*]
+      (liquibase/with-liquibase [liquibase conn]
+        (testing "When we release the locks from outside the migration...\n"
+          (let [locked   (promise)
+                released (promise)
+                locked?  (promise)]
+            (future
+             (liquibase/with-scope-locked liquibase
+               (deliver locked true)
+               @released
+               (deliver locked? (liquibase/holding-lock? liquibase))))
+            @locked
+            (liquibase/release-all-locks-if-needed!)
+            (deliver released true)
+            (testing "The lock is released before the migration finishes"
+              (is (not @locked?)))))))))
