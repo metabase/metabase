@@ -1046,8 +1046,7 @@
            file            (csv-file-with
                             ["name"
                              "Luke Skywalker"
-                             "Darth Vader"]
-                            (mt/random-name))
+                             "Darth Vader"])
            is-upload       true}}]
   (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
     (mt/with-current-user user-id
@@ -1124,7 +1123,7 @@
         (testing "The CSV file must not be empty"
           (is (= {:message "The CSV file is missing columns that are in the table:\n- name",
                   :data    {:status-code 422}}
-                 (catch-ex-info (update-csv-with-defaults! action :file (csv-file-with [] (mt/random-name)))))))
+                 (catch-ex-info (update-csv-with-defaults! action :file (csv-file-with []))))))
         (testing "Uploads must be supported"
           (mt/with-dynamic-redefs [driver/database-supports? (constantly false)]
             (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
@@ -1145,7 +1144,7 @@
                                                                :id int-type
                                                                :name vchar-type)
                                             :rows             [[10 "Obi-Wan Kenobi"]]})]
-              (let [file (csv-file-with csv-rows (mt/random-name))]
+              (let [file (csv-file-with csv-rows)]
                 (is (some? (update-csv! action {:file file, :table-id (:id table)})))
                 (testing "Check the data was uploaded into the table correctly"
                   (is (=? (updated-contents action
@@ -1198,7 +1197,7 @@
                                            :name vchar-type)
                         :rows             [[1, "some_text"]]})]
 
-               (let [file (csv-file-with csv-rows (mt/random-name))]
+               (let [file (csv-file-with csv-rows)]
                  (when error-message
                    (is (= {:message error-message
                            :data    {:status-code 422}}
@@ -1237,7 +1236,7 @@
                            :rows [[1000000,1.0,"some_text",false,#t "2020-01-01",#t "2020-01-01T00:00:00",#t "2020-01-01T00:00:00"]]})]
                   (let [csv-rows ["biginteger,float,text,boolean,date,datetime,offset_datetime"
                                   "2000000,2.0,some_text,true,2020-02-02,2020-02-02T02:02:02,2020-02-02T02:02:02+02:00"]
-                        file  (csv-file-with csv-rows (mt/random-name))]
+                        file  (csv-file-with csv-rows)]
                     (is (some? (update-csv! action {:file file, :table-id (:id table)})))
                     (testing "Check the data was uploaded into the table correctly"
                       (is (=? (updated-contents action
@@ -1255,7 +1254,7 @@
             (let [csv-rows ["name"]]
               (with-upload-table!
                 [table (create-upload-table!)]
-                (let [file (csv-file-with csv-rows (mt/random-name))]
+                (let [file (csv-file-with csv-rows)]
                   (is (= {:row-count 0}
                          (update-csv! action {:file file, :table-id (:id table)})))
                   (testing "Check the data was not uploaded into the table"
@@ -1273,7 +1272,7 @@
                                                              :name vchar-type)
                                           :rows             [["Obi-Wan Kenobi"]]})]
             (let [csv-rows ["_MB-row ID,name" "1000,Luke Skywalker"]
-                  file     (csv-file-with csv-rows (mt/random-name))]
+                  file     (csv-file-with csv-rows)]
               (is (= {:row-count 1}
                      (update-csv! action {:file file, :table-id (:id table)})))
               ;; Only create auto-pk columns for drivers that supported uploads before auto-pk columns
@@ -1319,7 +1318,7 @@
                                                              :bool_column bool-type)
                                           :rows [[true]]})]
             (let [csv-rows    ["bool_column" "not a bool"]
-                  file        (csv-file-with csv-rows (mt/random-name))
+                  file        (csv-file-with csv-rows)
                   get-auto-pk (fn []
                                 (t2/select-one :model/Field :table_id (:id table) :name upload/auto-pk-column-name))]
               (is (nil? (get-auto-pk)))
@@ -1404,7 +1403,7 @@
         (mt/with-premium-features #{:audit-app}
           (with-upload-table! [table (create-upload-table!)]
             (let [csv-rows ["name" "Luke Skywalker"]
-                  file     (csv-file-with csv-rows (mt/random-name))]
+                  file     (csv-file-with csv-rows)]
               (update-csv! action {:file file, :table-id (:id table)})
 
               (is (=? {:topic    :upload-append
@@ -1444,7 +1443,7 @@
           (testing "with duplicate normalized _mb_row_id columns in the CSV file"
             (with-upload-table! [table (create-upload-table!)]
               (let [csv-rows ["_mb_row_id,name,-MB-ROW-ID" "1000,Luke Skywalker,1001"]
-                    file     (csv-file-with csv-rows (mt/random-name))]
+                    file     (csv-file-with csv-rows)]
                 (is (= {:row-count 1}
                        (update-csv! action {:file file, :table-id (:id table)})))
                 (testing "Check the data was uploaded into the table, but the _mb_row_id was ignored"
@@ -1483,7 +1482,7 @@
                                       :rows [["Obi-Wan Kenobi" "No one really knows me"]])]
 
             (let [csv-rows ["shame,name" "Nothing - you can't prove it,Puke Nightstalker"]
-                  file     (csv-file-with csv-rows (mt/random-name))]
+                  file     (csv-file-with csv-rows)]
 
               (testing "The new row is inserted with the values correctly reordered"
                 (is (= {:row-count 1} (update-csv! action {:file file, :table-id (:id table)})))
@@ -1502,7 +1501,7 @@
            (with-upload-table! [table (create-upload-table!)]
              ;; Reorder as well for good measure
              (let [csv-rows ["game,name" "Witticisms,Fluke Skytalker"]
-                   file     (csv-file-with csv-rows (mt/random-name))]
+                   file     (csv-file-with csv-rows)]
                (testing "The new row is inserted with the values correctly reordered"
                  (is (= {:row-count 1} (update-csv! action {:file file, :table-id (:id table)})))
                  (is (=? (updated-contents action
@@ -1558,7 +1557,7 @@
                                  :rows             [[valid "Obi-Wan Kenobi"]]})]
                         (let [;; The CSV contains 50 valid rows and 1 invalid row
                               csv-rows `["test_column,name" ~@(repeat 50 (str valid ",Darth Vadar")) ~(str invalid ",Luke Skywalker")]
-                              file  (csv-file-with csv-rows (mt/random-name))]
+                              file  (csv-file-with csv-rows)]
                           (testing "\nShould return an appropriate error message"
                             (is (= {:message msg
                                     :data    {:status-code 422}}
@@ -1595,7 +1594,7 @@
                                                                  :test_column vchar-type)
                                               :rows             [["valid"]]})]
                 (let [csv-rows `["test_column" ~@(repeat 50 "valid too") ~(apply str (repeat 256 "x"))]
-                      file  (csv-file-with csv-rows (mt/random-name))]
+                      file  (csv-file-with csv-rows)]
                   (testing "\nShould return an appropriate error message"
                     (is (=? {;; the error message is different for different drivers, but postgres and mysql have "too long" in the message
                              :message #"[\s\S]*too long[\s\S]*"
@@ -1627,7 +1626,7 @@
                                                                      :test_column upload-type)
                                                   :rows             []})]
                     (let [csv-rows ["test_column" uncoerced]
-                          file (csv-file-with csv-rows (mt/random-name))]
+                          file (csv-file-with csv-rows)]
                       (testing "\nAppend should succeed"
                         (is (= {:row-count 1}
                                (update-csv! action {:file file, :table-id (:id table)}))))
@@ -1659,7 +1658,7 @@
                                                                    :test_column upload-type)
                                                 :rows             []})]
                   (let [csv-rows ["test_column" uncoerced]
-                        file     (csv-file-with csv-rows (mt/random-name))
+                        file     (csv-file-with csv-rows)
                         update!  (fn []
                                    (update-csv! action {:file file, :table-id (:id table)}))]
                     (if (contains? args :coerced)
@@ -1721,7 +1720,7 @@
             (let [csv-rows ["number-1, number-2"
                             "1.0, 1"
                             "1  , 1.0"]
-                  file     (csv-file-with csv-rows (mt/random-name))]
+                  file     (csv-file-with csv-rows)]
               (is (some? (update-csv! action {:file file, :table-id (:id table)})))
               (is (=? (updated-contents action
                                         [[1 1 1]]
