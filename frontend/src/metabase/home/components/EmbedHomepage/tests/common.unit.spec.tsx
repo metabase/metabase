@@ -129,9 +129,10 @@ describe("EmbedHomepage (OSS)", () => {
 
       const feedbackBody = await feedbackCall?.request?.json();
 
-      expect(feedbackBody).toMatchObject({
+      expect(feedbackBody).toEqual({
         comments: "I had an issue with X",
         email: "user@example.org",
+        source: "embedding-homepage-dismiss",
       });
     });
   });
