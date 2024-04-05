@@ -1,15 +1,7 @@
 import styled from "@emotion/styled";
-import type React from "react";
 
 import { color } from "metabase/lib/colors";
-import type { BoxProps } from "metabase/ui";
 import { Box } from "metabase/ui";
-
-export const HorizontalScrollBox = styled(Box)<
-  BoxProps & React.HTMLProps<HTMLDivElement>
->`
-  overflow-x: auto;
-`;
 
 export const ListBox = styled(Box)`
   border-right: 1px solid ${color("border")};

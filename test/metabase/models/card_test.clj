@@ -5,13 +5,9 @@
    [clojure.test :refer :all]
    [java-time :as t]
    [metabase.config :as config]
-   [metabase.models
-    :refer [Collection
-            Dashboard
-            DashboardCard
-            NativeQuerySnippet
-            ParameterCard
-            Revision]]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.card :as card]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
@@ -27,11 +23,11 @@
 
 (deftest dashboard-count-test
   (testing "Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in"
-    (t2.with-temp/with-temp [:model/Card   {card-id :id} {}
-                             Dashboard     dash-1        {}
-                             Dashboard     dash-2        {}]
+    (t2.with-temp/with-temp [:model/Card      {card-id :id} {}
+                             :model/Dashboard dash-1        {}
+                             :model/Dashboard dash-2        {}]
       (letfn [(add-card-to-dash! [dash]
-                (t2/insert! DashboardCard
+                (t2/insert! :model/DashboardCard
                             {:card_id      card-id
                              :dashboard_id (u/the-id dash)
                              :row          0
@@ -67,24 +63,24 @@
       (t2.with-temp/with-temp [:model/Card card]
         (is (zero? (hydrated-count card)))))
     (testing "With one"
-      (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {}
-                               Dashboard   _                      {:parameters [(card-params card-id)]}]
+      (t2.with-temp/with-temp [:model/Card      {card-id :id :as card} {}
+                               :model/Dashboard _                      {:parameters [(card-params card-id)]}]
         (is (= 1 (hydrated-count card)))))
     (testing "With several"
-      (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {}
-                               Dashboard   _                      {:parameters [(card-params card-id)]}
-                               Dashboard   _                      {:parameters [(card-params card-id)]}
-                               Dashboard   _                      {:parameters [(card-params card-id)]}]
+      (t2.with-temp/with-temp [:model/Card      {card-id :id :as card} {}
+                               :model/Dashboard _                      {:parameters [(card-params card-id)]}
+                               :model/Dashboard _                      {:parameters [(card-params card-id)]}
+                               :model/Dashboard _                      {:parameters [(card-params card-id)]}]
         (is (= 3 (hydrated-count card)))))))
 
 (deftest remove-from-dashboards-when-archiving-test
   (testing "Test that when somebody archives a Card, it is removed from any Dashboards it belongs to"
-    (t2.with-temp/with-temp [Dashboard     dashboard {}
-                             :model/Card   card      {}
-                             DashboardCard _dashcard {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]
+    (t2.with-temp/with-temp [:model/Dashboard     dashboard {}
+                             :model/Card          card      {}
+                             :model/DashboardCard _         {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]
       (t2/update! :model/Card (u/the-id card) {:archived true})
       (is (= 0
-             (t2/count DashboardCard :dashboard_id (u/the-id dashboard)))))))
+             (t2/count :model/DashboardCard :dashboard_id (u/the-id dashboard)))))))
 
 (deftest public-sharing-test
   (testing "test that a Card's :public_uuid comes back if public sharing is enabled..."
@@ -231,7 +227,7 @@
                        (card-with-source-table (str "card__" (u/the-id card-c)))))))))
 
 (deftest validate-collection-namespace-test
-  (t2.with-temp/with-temp [Collection {collection-id :id} {:namespace "currency"}]
+  (t2.with-temp/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to create a Card in a non-normal Collection"
       (let [card-name (mt/random-name)]
         (try
@@ -243,7 +239,7 @@
             (t2/delete! :model/Card :name card-name)))))))
 
 (deftest validate-collection-namespace-test-2
-  (t2.with-temp/with-temp [Collection {collection-id :id} {:namespace "currency"}]
+  (t2.with-temp/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to move a Card to a non-normal Collection"
       (t2.with-temp/with-temp [:model/Card {card-id :id}]
         (is (thrown-with-msg?
@@ -378,11 +374,11 @@
 (deftest ^:parallel template-tag-parameters-test
   (testing "Card with a Field filter parameter"
     (mt/with-temp [:model/Card card {:dataset_query (qp.card-test/field-filter-query)}]
-      (is (= [{:id "_DATE_",
-               :type :date/all-options,
-               :target [:dimension [:template-tag "date"]],
-               :name "Check-In Date",
-               :slug "date",
+      (is (= [{:id "_DATE_"
+               :type :date/all-options
+               :target [:dimension [:template-tag "date"]]
+               :name "Check-In Date"
+               :slug "date"
                :default nil
                :required false}]
              (card/template-tag-parameters card))))))
@@ -390,11 +386,11 @@
 (deftest ^:parallel template-tag-parameters-test-2
   (testing "Card with a non-Field-filter parameter"
     (mt/with-temp [:model/Card card {:dataset_query (qp.card-test/non-field-filter-query)}]
-      (is (= [{:id "_ID_",
-               :type :number/=,
-               :target [:variable [:template-tag "id"]],
-               :name "Order ID",
-               :slug "id",
+      (is (= [{:id "_ID_"
+               :type :number/=
+               :target [:variable [:template-tag "id"]]
+               :name "Order ID"
+               :slug "id"
                :default "1"
                :required true}]
              (card/template-tag-parameters card))))))
@@ -402,11 +398,11 @@
 (deftest ^:parallel template-tag-parameters-test-3
   (testing "Should ignore native query snippets and source card IDs"
     (mt/with-temp [:model/Card card {:dataset_query (qp.card-test/non-parameter-template-tag-query)}]
-      (is (= [{:id "_ID_",
-               :type :number/=,
-               :target [:variable [:template-tag "id"]],
-               :name "Order ID",
-               :slug "id",
+      (is (= [{:id "_ID_"
+               :type :number/=
+               :target [:variable [:template-tag "id"]]
+               :name "Order ID"
+               :slug "id"
                :default "1"
                :required true}]
              (card/template-tag-parameters card))))))
@@ -504,15 +500,15 @@
     (t2.with-temp/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
                                                                               :card_id      1
                                                                               :target       [:dimension [:field-id 1]]}]}]
-      (is (= [{:parameter_id "22486e00",
-               :card_id      1,
+      (is (= [{:parameter_id "22486e00"
+               :card_id      1
                :target       [:dimension [:field 1 nil]]}]
              (t2/select-one-fn :parameter_mappings :model/Card :id card-id))))))
 
 (deftest identity-hash-test
   (testing "Card hashes are composed of the name and the collection's hash"
     (let [now #t "2022-09-01T12:34:56"]
-      (mt/with-temp [Collection  coll {:name "field-db" :location "/" :created_at now}
+      (mt/with-temp [:model/Collection  coll {:name "field-db" :location "/" :created_at now}
                      :model/Card card {:name "the card" :collection_id (:id coll) :created_at now}]
         (is (= "5199edf0"
                (serdes/raw-hash ["the card" (serdes/identity-hash coll) now])
@@ -533,7 +529,7 @@
                   :parameterized_object_type :card
                   :parameterized_object_id   card-id
                   :parameter_id              "_CATEGORY_NAME_"}]
-                (t2/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id)))
+                (t2/select :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id)))
 
         (testing "update values_source_config.card_id will update ParameterCard"
           (t2/update! :model/Card card-id {:parameters [(merge default-params
@@ -543,12 +539,12 @@
                     :parameterized_object_type :card
                     :parameterized_object_id   card-id
                     :parameter_id              "_CATEGORY_NAME_"}]
-                  (t2/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))
+                  (t2/select :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))
 
         (testing "delete the card will delete ParameterCard"
           (t2/delete! :model/Card :id card-id)
           (is (= []
-                 (t2/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))))))
+                 (t2/select :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))))))
 
 (deftest parameter-card-test-2
   (let [default-params {:name       "Category Name"
@@ -572,32 +568,32 @@
                   :parameterized_object_type :card
                   :parameterized_object_id   card-id-2
                   :parameter_id              "_CATEGORY_NAME_"}]
-                (t2/select 'ParameterCard :card_id source-card-id {:order-by [[:parameterized_object_id :asc]]})))
+                (t2/select :model/ParameterCard :card_id source-card-id {:order-by [[:parameterized_object_id :asc]]})))
         (t2/delete! :model/Card :id source-card-id)
         (is (= []
-               (t2/select 'ParameterCard :card_id source-card-id)))))))
+               (t2/select :model/ParameterCard :card_id source-card-id)))))))
 
 (deftest cleanup-parameter-on-card-changes-test
   (mt/dataset test-data
     (mt/with-temp
-      [:model/Card {source-card-id :id} (merge (mt/card-with-source-metadata-for-query
-                                                (mt/mbql-query products {:fields [(mt/$ids $products.title)
-                                                                                  (mt/$ids $products.category)]
-                                                                         :limit 5}))
-                                               {:database_id (mt/id)
-                                                :table_id    (mt/id :products)})
-       :model/Card card                 {:parameters [{:name                  "Param 1"
-                                                       :id                    "param_1"
-                                                       :type                  "category"
-                                                       :values_source_type    "card"
-                                                       :values_source_config {:card_id source-card-id
-                                                                              :value_field (mt/$ids $products.title)}}]}
-       Dashboard   dashboard            {:parameters [{:name       "Param 2"
-                                                       :id         "param_2"
-                                                       :type       "category"
-                                                       :values_source_type    "card"
-                                                       :values_source_config {:card_id source-card-id
-                                                                              :value_field (mt/$ids $products.category)}}]}]
+      [:model/Card        {source-card-id :id} (merge (mt/card-with-source-metadata-for-query
+                                                       (mt/mbql-query products {:fields [(mt/$ids $products.title)
+                                                                                         (mt/$ids $products.category)]
+                                                                                :limit 5}))
+                                                      {:database_id (mt/id)
+                                                       :table_id    (mt/id :products)})
+       :model/Card        card                 {:parameters [{:name                  "Param 1"
+                                                              :id                    "param_1"
+                                                              :type                  "category"
+                                                              :values_source_type    "card"
+                                                              :values_source_config {:card_id source-card-id
+                                                                                     :value_field (mt/$ids $products.title)}}]}
+       :model/Dashboard   dashboard            {:parameters [{:name       "Param 2"
+                                                              :id         "param_2"
+                                                              :type       "category"
+                                                              :values_source_type    "card"
+                                                              :values_source_config {:card_id source-card-id
+                                                                                     :value_field (mt/$ids $products.category)}}]}]
       ;; check if we had parametercard to starts with
       (is (=? [{:card_id                   source-card-id
                 :parameter_id              "param_1"
@@ -607,7 +603,7 @@
                 :parameter_id              "param_2"
                 :parameterized_object_type :dashboard
                 :parameterized_object_id   (:id dashboard)}]
-              (t2/select ParameterCard :card_id source-card-id {:order-by [[:parameter_id :asc]]})))
+              (t2/select :model/ParameterCard :card_id source-card-id {:order-by [[:parameter_id :asc]]})))
       ;; update card with removing the products.category
       (testing "on update result_metadata"
         (t2/update! :model/Card source-card-id
@@ -620,13 +616,13 @@
                     :parameter_id              "param_1"
                     :parameterized_object_type :card
                     :parameterized_object_id   (:id card)}]
-                  (t2/select ParameterCard :card_id source-card-id))))
+                  (t2/select :model/ParameterCard :card_id source-card-id))))
 
         (testing "update the dashboard parameter and remove values_config of dashboard"
           (is (=? [{:id   "param_2"
                     :name "Param 2"
                     :type :category}]
-                  (t2/select-one-fn :parameters Dashboard :id (:id dashboard))))
+                  (t2/select-one-fn :parameters :model/Dashboard :id (:id dashboard))))
 
           (testing "but no changes with parameter on card"
             (is (=? [{:name                 "Param 1"
@@ -641,7 +637,7 @@
         (t2/update! :model/Card source-card-id {:archived true})
 
         (testing "ParameterCard for card is removed"
-          (is (=? [] (t2/select ParameterCard :card_id source-card-id))))
+          (is (=? [] (t2/select :model/ParameterCard :card_id source-card-id))))
 
         (testing "update the dashboard parameter and remove values_config of card"
           (is (=? [{:id   "param_1"
@@ -665,14 +661,15 @@
 
 (deftest ^:parallel descendants-test-3
   (testing "cards that has a native template tag"
-    (mt/with-temp [NativeQuerySnippet snippet {:name "category" :content "category = 'Gizmo'"}
-                   :model/Card        card    {:name          "Business Card"
-                                               :dataset_query {:native
-                                                               {:template-tags {:snippet {:name         "snippet"
-                                                                                          :type         :snippet
-                                                                                          :snippet-name "snippet"
-                                                                                          :snippet-id   (:id snippet)}}
-                                                                :query "select * from products where {{snippet}}"}}}]
+    (mt/with-temp [:model/NativeQuerySnippet snippet {:name "category" :content "category = 'Gizmo'"}
+                   :model/Card               card
+                   {:name          "Business Card"
+                    :dataset_query {:native
+                                    {:template-tags {:snippet {:name         "snippet"
+                                                               :type         :snippet
+                                                               :snippet-name "snippet"
+                                                               :snippet-id   (:id snippet)}}
+                                     :query "select * from products where {{snippet}}"}}}]
       (is (= #{["NativeQuerySnippet" (:id snippet)]}
              (serdes/descendants "Card" (:id card)))))))
 
@@ -757,8 +754,8 @@
 
 (deftest ^:parallel diff-cards-str-update-collection--test
   (t2.with-temp/with-temp
-    [Collection {coll-id-1 :id} {:name "Old collection"}
-     Collection {coll-id-2 :id} {:name "New collection"}]
+    [:model/Collection {coll-id-1 :id} {:name "Old collection"}
+     :model/Collection {coll-id-2 :id} {:name "New collection"}]
     (are [x y expected] (= expected
                            (u/build-sentence (revision/diff-strings :model/Card x y)))
 
@@ -791,9 +788,9 @@
 
 (deftest record-revision-and-description-completeness-test
   (t2.with-temp/with-temp
-    [:model/Database  db    {:name "random db"}
-     :model/Card      card  {:name                "A Card"
-                             :description          "An important card"
+    [:model/Database   db   {:name "random db"}
+     :model/Card       card {:name                "A Card"
+                             :description         "An important card"
                              :collection_position 0
                              :cache_ttl           1000
                              :archived            false
@@ -801,7 +798,7 @@
                                                     :slug       "category_name"
                                                     :id         "_CATEGORY_NAME_"
                                                     :type       "category"}]}
-     Collection       coll {:name "A collection"}]
+     :model/Collection coll {:name "A collection"}]
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (let [columns     (disj (set/difference (set (keys card)) (set @#'card/excluded-columns-for-card-revision))
                               ;; we only record result metadata for models, so we'll test that seperately
@@ -832,12 +829,12 @@
                 changes {col (update-col col (get card col))}]
             ;; we'll automatically delete old revisions if we have more than [[revision/max-revisions]]
             ;; revisions for an instance, so let's clear everything to make it easier to test
-            (t2/delete! Revision :model "Card" :model_id (:id card))
+            (t2/delete! :model/Revision :model "Card" :model_id (:id card))
             (t2/update! :model/Card (:id card) changes)
             (create-card-revision! (:id card) false)
 
             (testing (format "we should track when %s changes" col)
-              (is (= 1 (t2/count Revision :model "Card" :model_id (:id card)))))
+              (is (= 1 (t2/count :model/Revision :model "Card" :model_id (:id card)))))
 
             (when-not (#{;; these columns are expected to not have a description because it's always
                          ;; comes with a dataset_query changes
@@ -847,10 +844,10 @@
                          :made_public_by_id} col)
               (testing (format "we should have a revision description for %s" col)
                 (is (some? (u/build-sentence
-                             (revision/diff-strings
-                               Dashboard
-                               before
-                               changes))))))))))))
+                            (revision/diff-strings
+                             :model/Dashboard
+                             before
+                             changes))))))))))))
 
 (deftest record-revision-and-description-completeness-test-2
   ;; test tracking result_metadata for models
@@ -864,12 +861,12 @@
         (create-card-revision! (:id card) false)
 
         (testing "we should track when :result_metadata changes on model"
-          (is (= 1 (t2/count Revision :model "Card" :model_id (:id card)))))
+          (is (= 1 (t2/count :model/Revision :model "Card" :model_id (:id card)))))
 
         (testing "we should have a revision description for :result_metadata on model"
           (is (some? (u/build-sentence
                       (revision/diff-strings
-                       Dashboard
+                       :model/Dashboard
                        before
                        changes)))))))))
 
@@ -952,3 +949,46 @@
                                    :running_time 100}]
       (is (= 75 (-> card (t2/hydrate :average_query_time) :average_query_time int)))
       (is (= now (-> card (t2/hydrate :last_query_start) :last_query_start))))))
+
+(deftest save-mlv2-card-test
+  (testing "App DB CRUD should work for a Card with an MLv2 query (#39024)"
+    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          venues            (lib.metadata/table metadata-provider (mt/id :venues))
+          query             (lib/query metadata-provider venues)]
+      (mt/with-temp [:model/Card card {:dataset_query query}]
+        (testing "Save to app DB: table_id and database_id should get populated"
+          (is (=? {:dataset_query {:lib/type     :mbql/query
+                                   :database     (mt/id)
+                                   :stages       [{:lib/type :mbql.stage/mbql, :source-table (mt/id :venues)}]
+                                   :lib/metadata metadata-provider}
+                   :table_id      (mt/id :venues)
+                   :database_id   (mt/id)}
+                  card)))
+        (testing "Save to app DB: Check MLv2 query was serialized to app DB in a sane way. Metadata provider should be removed"
+          (is (= {"lib/type" "mbql/query"
+                  "database" (mt/id)
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" (mt/id :venues)}]}
+                 (json/parse-string (t2/select-one-fn :dataset_query (t2/table-name :model/Card) :id (u/the-id card))))))
+        (testing "fetch from app DB"
+          (is (=? {:dataset_query {:lib/type     :mbql/query
+                                   :database     (mt/id)
+                                   :stages       [{:lib/type :mbql.stage/mbql, :source-table (mt/id :venues)}]
+                                   :lib/metadata (lib.metadata.jvm/application-database-metadata-provider (mt/id))}
+                   :query_type    :query
+                   :table_id      (mt/id :venues)
+                   :database_id   (mt/id)}
+                  (t2/select-one :model/Card :id (u/the-id card)))))
+        (testing "Update query: change table to ORDERS; query and table_id should reflect that"
+          (let [orders (lib.metadata/table metadata-provider (mt/id :orders))]
+            (is (= 1
+                   (t2/update! :model/Card :id (u/the-id card)
+                               {:dataset_query (lib/query metadata-provider orders)})))
+            (is (=? {:dataset_query {:lib/type     :mbql/query
+                                     :database     (mt/id)
+                                     :stages       [{:lib/type :mbql.stage/mbql, :source-table (mt/id :orders)}]
+                                     :lib/metadata (lib.metadata.jvm/application-database-metadata-provider (mt/id))}
+                     :query_type    :query
+                     :table_id      (mt/id :orders)
+                     :database_id   (mt/id)}
+                    (t2/select-one :model/Card :id (u/the-id card))))))))))

@@ -5,6 +5,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/lib/formatting";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
@@ -232,14 +233,14 @@ export default class Funnel extends Component {
 
     const { actionButtons, className, onChangeCardAndRun, series } = this.props;
 
-    let component = <FunnelNormal {...this.props} className="flex-full" />;
+    let component = <FunnelNormal {...this.props} className={CS.flexFull} />;
 
     if (settings["funnel.type"] === "bar") {
       component = <FunnelBar {...this.props} />;
     }
 
     return (
-      <div className={cx(className, "flex flex-column p1")}>
+      <div className={cx(className, CS.flex, CS.flexColumn, CS.p1)}>
         {hasTitle && (
           <ChartCaption
             series={series}

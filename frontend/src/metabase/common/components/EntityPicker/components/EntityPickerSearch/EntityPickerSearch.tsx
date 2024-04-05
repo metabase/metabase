@@ -1,18 +1,19 @@
 import { t } from "ttag";
 
-import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
+import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import Search from "metabase/entities/search";
 import { useDebouncedEffectWithCleanup } from "metabase/hooks/use-debounced-effect";
 import { defer } from "metabase/lib/promise";
 import { useDispatch } from "metabase/lib/redux";
 import { SearchLoadingSpinner } from "metabase/nav/components/search/SearchResults";
 import type { WrappedResult } from "metabase/search/types";
-import { Stack, Tabs, TextInput, Icon, Box, Flex } from "metabase/ui";
+import { Box, Flex, Icon, Stack, Tabs, TextInput } from "metabase/ui";
 import type {
-  SearchResult as SearchResultType,
-  SearchResults as SearchResultsType,
+  SearchModelType,
+  SearchResultId,
+  SearchResults,
 } from "metabase-types/api";
 
 import type { TypeWithModel } from "../../types";
@@ -20,9 +21,19 @@ import type { TypeWithModel } from "../../types";
 import { EntityPickerSearchResult } from "./EntityPickerSearch.styled";
 import { getSearchTabText } from "./utils";
 
-const defaultSearchFilter = (results: SearchResultType[]) => results;
+const defaultSearchFilter = <
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>(
+  results: Item[],
+) => results;
 
-export function EntityPickerSearchInput({
+export function EntityPickerSearchInput<
+  Id extends SearchResultId,
+  Model extends SearchModelType,
+  Item extends TypeWithModel<Id, Model>,
+>({
   searchQuery,
   setSearchQuery,
   setSearchResults,
@@ -31,9 +42,9 @@ export function EntityPickerSearchInput({
 }: {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  setSearchResults: (results: SearchResultType[] | null) => void;
+  setSearchResults: (results: Item[] | null) => void;
   models: string[];
-  searchFilter?: (results: SearchResultType[]) => SearchResultType[];
+  searchFilter?: (results: Item[]) => Item[];
 }) {
   useDebouncedEffectWithCleanup(
     () => {
@@ -48,9 +59,10 @@ export function EntityPickerSearchInput({
         if (searchQuery) {
           Search.api
             .list({ models, q: searchQuery }, { cancelled: cancelled.promise })
-            .then((results: SearchResultsType) => {
+            .then((results: SearchResults<Id, Model, Item>) => {
               if (results.data) {
-                const filteredResults = searchFilter(results.data);
+                const items = results.data;
+                const filteredResults = searchFilter(items);
                 setSearchResults(filteredResults);
               } else {
                 setSearchResults(null);
@@ -84,14 +96,18 @@ export function EntityPickerSearchInput({
   );
 }
 
-export const EntityPickerSearchResults = <TItem extends TypeWithModel>({
+export const EntityPickerSearchResults = <
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>({
   searchResults,
   onItemSelect,
   selectedItem,
 }: {
-  searchResults: SearchResultType[] | null;
-  onItemSelect: (item: TItem) => void;
-  selectedItem: TItem | null;
+  searchResults: Item[] | null;
+  onItemSelect: (item: Item) => void;
+  selectedItem: Item | null;
 }) => {
   const dispatch = useDispatch();
 
@@ -109,7 +125,7 @@ export const EntityPickerSearchResults = <TItem extends TypeWithModel>({
                 key={item.model + item.id}
                 result={Search.wrapEntity(item, dispatch)}
                 onClick={(item: WrappedResult) => {
-                  onItemSelect(item as unknown as TItem);
+                  onItemSelect(item as unknown as Item);
                 }}
                 isSelected={
                   selectedItem?.id === item.id &&
@@ -124,11 +140,7 @@ export const EntityPickerSearchResults = <TItem extends TypeWithModel>({
           <EmptyState
             title={t`Didn't find anything`}
             message={t`There weren't any results for your search.`}
-            illustrationElement={
-              <Box mb={"-2.5rem"}>
-                <img src={NoResults} />
-              </Box>
-            }
+            illustrationElement={<NoObjectError mb="-1.5rem" />}
           />
         </Flex>
       )}
@@ -136,11 +148,15 @@ export const EntityPickerSearchResults = <TItem extends TypeWithModel>({
   );
 };
 
-export const EntityPickerSearchTab = ({
+export const EntityPickerSearchTab = <
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>({
   searchResults,
   searchQuery,
 }: {
-  searchResults: SearchResultType[] | null;
+  searchResults: Item[] | null;
   searchQuery: string;
 }) => (
   <Tabs.Tab key="search" value="search" icon={<Icon name="search" />}>

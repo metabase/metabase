@@ -44,7 +44,6 @@ const COLLECTION_CARD = createMockCollectionItem({
 
 const DASHBOARD = createMockDashboard({
   id: 1,
-  collection_id: null,
   collection: ROOT_COLLECTION,
 });
 
@@ -98,7 +97,7 @@ describe("QuestionPickerModal", () => {
   it("should select a question from the root collection", async () => {
     const { onSelect, onClose } = await setup();
 
-    userEvent.click(screen.getByText(ROOT_CARD.name));
+    await userEvent.click(screen.getByText(ROOT_CARD.name));
 
     expect(onSelect).toHaveBeenCalledWith(ROOT_CARD.id);
     expect(onClose).toHaveBeenCalled();
@@ -107,8 +106,8 @@ describe("QuestionPickerModal", () => {
   it("should select a question from a nested collection", async () => {
     const { onSelect, onClose } = await setup();
 
-    userEvent.click(screen.getByText(COLLECTION.name));
-    userEvent.click(await screen.findByText(COLLECTION_CARD.name));
+    await userEvent.click(screen.getByText(COLLECTION.name));
+    await userEvent.click(await screen.findByText(COLLECTION_CARD.name));
 
     expect(onSelect).toHaveBeenCalledWith(COLLECTION_CARD.id);
     expect(onClose).toHaveBeenCalled();
@@ -118,7 +117,7 @@ describe("QuestionPickerModal", () => {
     const { onSelect, onClose } = await setup();
     expect(screen.getByText(ROOT_CARD.name)).toBeInTheDocument();
 
-    userEvent.type(screen.getByPlaceholderText(/Search/), "Popular");
+    await userEvent.type(screen.getByPlaceholderText(/Search/), "Popular");
     act(() => jest.runAllTimers());
 
     expect(await screen.findByText(COLLECTION_CARD.name)).toBeInTheDocument();
@@ -126,7 +125,7 @@ describe("QuestionPickerModal", () => {
     expect(screen.queryByText(ROOT_COLLECTION.name)).not.toBeInTheDocument();
     expect(screen.queryByText(COLLECTION.name)).not.toBeInTheDocument();
 
-    userEvent.click(screen.getByText(COLLECTION_CARD.name));
+    await userEvent.click(screen.getByText(COLLECTION_CARD.name));
 
     expect(onSelect).toHaveBeenCalledWith(COLLECTION_CARD.id);
     expect(onClose).toHaveBeenCalled();
@@ -136,7 +135,7 @@ describe("QuestionPickerModal", () => {
     await setup();
     expect(screen.getByText(ROOT_CARD.name)).toBeInTheDocument();
 
-    userEvent.type(screen.getByPlaceholderText(/Search/), "No match");
+    await userEvent.type(screen.getByPlaceholderText(/Search/), "No match");
     act(() => jest.runAllTimers());
 
     expect(await screen.findByText("Nothing here")).toBeInTheDocument();
@@ -149,7 +148,7 @@ describe("QuestionPickerModal", () => {
   it("should close", async () => {
     const { onSelect, onClose } = await setup();
 
-    userEvent.click(screen.getByLabelText("Close"));
+    await userEvent.click(screen.getByLabelText("Close"));
 
     expect(onClose).toHaveBeenCalled();
     expect(onSelect).not.toHaveBeenCalled();

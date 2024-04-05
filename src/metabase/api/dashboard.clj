@@ -13,10 +13,11 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.action :as action]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection]
@@ -441,7 +442,7 @@
 
 (defn- param-target->field-id [target query]
   (when-let [field-clause (params/param-target->field-clause target {:dataset_query query})]
-    (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)))
+    (lib.util.match/match-one field-clause [:field (id :guard integer?) _] id)))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
 (mu/defn ^:private check-parameter-mapping-permissions
@@ -938,7 +939,7 @@
                field-id  (or
                           ;; Get the field id from the field-clause if it contains it. This is the common case
                           ;; for mbql queries.
-                          (mbql.u/match-one dimension [:field (id :guard integer?) _] id)
+                          (lib.util.match/match-one dimension [:field (id :guard integer?) _] id)
                           ;; Attempt to get the field clause from the model metadata corresponding to the field.
                           ;; This is the common case for native queries in which mappings from original columns
                           ;; have been performed using model metadata.
@@ -1159,12 +1160,13 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  [dashboard-id dashcard-id card-id export-format :as {{:keys [parameters], :as request-parameters} :params}]
+  [dashboard-id dashcard-id card-id export-format :as {{:keys [parameters format_rows], :as request-parameters} :params}]
   {dashboard-id  ms/PositiveInt
    dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
    parameters    [:maybe ms/JSONString]
-   export-format api.dataset/ExportFormat}
+   export-format api.dataset/ExportFormat
+   format_rows   [:maybe :boolean]}
   (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              request-parameters
@@ -1181,7 +1183,7 @@
               :middleware    {:process-viz-settings?  true
                               :skip-results-metadata? true
                               :ignore-cached-results? true
-                              :format-rows?           false
+                              :format-rows?           format_rows
                               :js-int-to-string?      false}})))
 
 (api/defendpoint POST "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"

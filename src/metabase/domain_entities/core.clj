@@ -3,7 +3,8 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.domain-entities.specs :refer [domain-entity-specs MBQL]]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table :refer [Table]]
@@ -54,7 +55,7 @@
   [bindings :- Bindings
    source   :- SourceName
    obj]
-  (mbql.u/replace obj
+  (lib.util.match/replace obj
     [:dimension dimension] (->> dimension
                                 (get-dimension-binding bindings source)
                                 (resolve-dimension-clauses bindings source))))
@@ -91,7 +92,7 @@
   (into (empty entities) ; this way we don't care if we're dealing with a map or a vec
         (for [entity entities
               :when (every? (get-in bindings [source :dimensions])
-                            (mbql.u/match entity [:dimension dimension] dimension))]
+                            (lib.util.match/match entity [:dimension dimension] dimension))]
           (resolve-dimension-clauses bindings source entity))))
 
 (defn- instantiate-domain-entity

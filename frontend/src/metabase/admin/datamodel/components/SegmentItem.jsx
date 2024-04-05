@@ -1,7 +1,9 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
 import ObjectActionSelect from "./ObjectActionSelect";
@@ -17,14 +19,16 @@ export default class SegmentItem extends Component {
 
     return (
       <tr className="mt1 mb3">
-        <td className="px1 py1 text-wrap">
-          <span className="flex align-center">
+        <td className={cx("px1 py1", CS.textWrap)}>
+          <span className={cx(CS.flex, CS.alignCenter)}>
             <Icon name="segment" className="mr1 text-medium" />
-            <span className="text-dark text-bold">{segment.name}</span>
+            <span className={cx("text-dark", CS.textBold)}>{segment.name}</span>
           </span>
         </td>
-        <td className="px1 py1 text-wrap">{segment.definition_description}</td>
-        <td className="px1 py1 text-centered">
+        <td className={cx("px1 py1", CS.textWrap)}>
+          {segment.definition_description}
+        </td>
+        <td className={cx("px1 py1", CS.textCentered)}>
           <ObjectActionSelect
             object={segment}
             objectType="segment"

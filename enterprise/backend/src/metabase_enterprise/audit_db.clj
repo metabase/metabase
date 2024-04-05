@@ -3,7 +3,6 @@
    [babashka.fs :as fs]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.db :as mdb]
    [metabase.models.database :refer [Database]]
@@ -19,6 +18,8 @@
   (:import
    (java.util.jar JarEntry JarFile)
    (java.nio.file Path)))
+
+(def ^:private audit-installed? (atom false))
 
 (set! *warn-on-reflection* true)
 
@@ -83,25 +84,30 @@
   "Default Dashboard Overview (this is a dashboard) entity id."
   "bJEYb0o5CXlfWFcIztDwJ")
 
-(defn entity-id->object
+(def ^{:arglists '([audit-installed? model entity-id])
+       :private  true} memoized-select-audit-entity*
+  (mdb/memoize-for-application-db
+   (fn [audit-installed? model entity-id]
+     (when audit-installed?
+       (t2/select-one model :entity_id entity-id)))))
+
+(defn memoized-select-audit-entity
   "Returns the object from entity id and model. Memoizes from entity id.
   Should only be used for audit/pre-loaded objects."
   [model entity-id]
-  ((mdb/memoize-for-application-db
-    (fn [entity-id]
-      (t2/select-one model :entity_id entity-id))) entity-id))
+  (memoized-select-audit-entity* @audit-installed? model entity-id))
 
 (defenterprise default-custom-reports-collection
   "Default custom reports collection."
   :feature :none
   []
-  (entity-id->object :model/Collection default-custom-reports-entity-id))
+  (memoized-select-audit-entity :model/Collection default-custom-reports-entity-id))
 
 (defenterprise default-audit-collection
   "Default audit collection (instance analytics) collection."
   :feature :none
   []
-  (entity-id->object :model/Collection default-audit-collection-entity-id))
+  (memoized-select-audit-entity :model/Collection default-audit-collection-entity-id))
 
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
@@ -137,7 +143,7 @@
                      :from [(t2/table-name :model/Table)]
                      :where [:= :db_id audit-db-id]}]}
                   {:name [:lower :name]}))
-    (log/infof "Adjusted Audit DB for loading Analytics Content")))
+    (log/info "Adjusted Audit DB for loading Analytics Content")))
 
 (defn- adjust-audit-db-to-host!
   [{audit-db-id :id :keys [engine]}]
@@ -244,7 +250,6 @@
 (defn- maybe-load-analytics-content!
   [audit-db]
   (when analytics-dir-resource
-    (ee.internal-user/ensure-internal-user-exists!)
     (adjust-audit-db-to-source! audit-db)
     (ia-content->plugins (plugins/plugins-dir))
     (let [[last-checksum current-checksum] (get-last-and-current-checksum)]
@@ -289,4 +294,6 @@
    (let [audit-db (t2/select-one :model/Database :is_audit true)]
        ;; prevent sync while loading
      ((sync-util/with-duplicate-ops-prevented :sync-database audit-db
-        (fn [] (maybe-load-analytics-content! audit-db)))))))
+        (fn []
+          (maybe-load-analytics-content! audit-db)
+          (reset! audit-installed? true)))))))

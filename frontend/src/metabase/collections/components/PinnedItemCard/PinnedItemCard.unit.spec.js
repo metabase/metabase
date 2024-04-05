@@ -102,7 +102,7 @@ describe("PinnedItemCard", () => {
 
   it("should show an action menu when user clicks on the menu icon in the card", async () => {
     setup();
-    userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(getIcon("ellipsis"));
     expect(await screen.findByText("Unpin")).toBeInTheDocument();
   });
 
@@ -159,10 +159,10 @@ describe("PinnedItemCard", () => {
       expect(screen.getByText(MARKDOWN_AS_TEXT)).toBeInTheDocument();
     });
 
-    it("should show description tooltip with markdown formatting on hover", () => {
+    it("should show description tooltip with markdown formatting on hover", async () => {
       setup({ item: getCollectionItem({ description: MARKDOWN }) });
 
-      userEvent.hover(screen.getByText(MARKDOWN_AS_TEXT));
+      await userEvent.hover(screen.getByText(MARKDOWN_AS_TEXT));
 
       expect(screen.getByRole("tooltip")).toHaveTextContent(MARKDOWN_AS_TEXT);
     });

@@ -5,7 +5,7 @@
    (:clj
     [(:require
       [clojure.string :as str]
-      [metabase.mbql.normalize :as mbql.normalize]
+      [metabase.legacy-mbql.normalize :as mbql.normalize]
       [metabase.shared.util.i18n :refer [trs trsn]]
       [metabase.util.date-2 :as u.date]
       [metabase.util.date-2.parse.builder :as b]
@@ -16,7 +16,7 @@
     [(:require
       ["moment" :as moment]
       [clojure.string :as str]
-      [metabase.mbql.normalize :as mbql.normalize]
+      [metabase.legacy-mbql.normalize :as mbql.normalize]
       [metabase.shared.util.i18n :refer [trs trsn]])]))
 
 ;; Without this comment, the namespace-checker linter incorrectly detects moment as unused

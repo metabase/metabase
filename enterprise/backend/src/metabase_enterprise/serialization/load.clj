@@ -11,8 +11,9 @@
    [metabase-enterprise.serialization.upsert :refer [maybe-upsert-many!]]
    [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -146,7 +147,7 @@
 
 (defn- mbql-fully-qualified-names->ids*
   [entity]
-  (mbql.u/replace entity
+  (lib.util.match/replace entity
     ;; handle legacy `:field-id` forms encoded prior to 0.39.0
     ;; and also *current* expresion forms used in parameter mapping dimensions
     ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
@@ -596,14 +597,14 @@
   (try
     (-> (fully-qualified-name->context fully-qualified-name) :card)
     (catch Throwable e
-      (log/warn e (trs "Could not find context for fully qualified card name {0}" fully-qualified-name)))))
+      (log/warnf e "Could not find context for fully qualified card name %s" fully-qualified-name))))
 
 (defn- resolve-snippet
   [fully-qualified-name]
   (try
     (-> (fully-qualified-name->context fully-qualified-name) :snippet)
     (catch Throwable e
-      (log/debug e (trs "Could not find context for fully qualified snippet name {0}" fully-qualified-name)))))
+      (log/debugf e "Could not find context for fully qualified snippet name %s" fully-qualified-name))))
 
 (defn- resolve-native
   [card]

@@ -8,6 +8,7 @@
    [metabase.api.api-key :as api.api-key]
    [metabase.api.automagic-dashboards :as api.magic]
    [metabase.api.bookmark :as api.bookmark]
+   [metabase.api.cache :as api.cache]
    [metabase.api.card :as api.card]
    [metabase.api.collection :as api.collection]
    [metabase.api.common :as api :refer [defroutes context]]
@@ -87,7 +88,7 @@
       "/"               (-> (respond "index.html")
                             ;; Better would be to append this to our CSP, but there is no good way right now and it's
                             ;; just a single page. Necessary for rapidoc to work, script injects styles in runtime.
-                            (assoc-in [:headers "Content-Security-Policy"] "style-src 'unsafe-inline'"))
+                            (assoc-in [:headers "Content-Security-Policy"] "script-src 'self' 'unsafe-inline'"))
       "/rapidoc-min.js" (respond "rapidoc-min.js")
       "/openapi.json"   (merge
                          (api/openapi-object (resolve 'metabase.api.routes/routes))
@@ -133,6 +134,7 @@
   (context "/search"               [] (+auth api.search/routes))
   (context "/segment"              [] (+auth api.segment/routes))
   (context "/session"              [] api.session/routes)
+  (context "/cache"                [] (+auth api.cache/routes))
   (context "/setting"              [] (+auth api.setting/routes))
   (context "/setup"                [] api.setup/routes)
   (context "/slack"                [] (+auth api.slack/routes))

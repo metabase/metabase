@@ -161,7 +161,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
           `parameter-form-section-${actionParameter1.id}`,
         );
 
-        userEvent.click(within(formSection).getByTestId("select-button"));
+        await userEvent.click(within(formSection).getByTestId("select-button"));
 
         const popover = await screen.findByRole("grid");
 
@@ -211,7 +211,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
           `parameter-form-section-${actionParameter1.id}`,
         );
 
-        userEvent.click(within(formSection).getByTestId("select-button"));
+        await userEvent.click(within(formSection).getByTestId("select-button"));
 
         const popover = await screen.findByRole("grid");
 
@@ -270,7 +270,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
         `parameter-form-section-${actionParameter1.id}`,
       );
 
-      userEvent.click(within(formSection).getByTestId("select-button"));
+      await userEvent.click(within(formSection).getByTestId("select-button"));
 
       const popover = await screen.findByRole("grid");
 
@@ -311,7 +311,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
           `parameter-form-section-${actionParameter1.id}`,
         );
 
-        userEvent.click(within(formSection).getByTestId("select-button"));
+        await userEvent.click(within(formSection).getByTestId("select-button"));
 
         const popover = await screen.findByRole("grid");
 
@@ -347,7 +347,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
           `parameter-form-section-${actionParameter1.id}`,
         );
 
-        userEvent.click(within(formSection).getByTestId("select-button"));
+        await userEvent.click(within(formSection).getByTestId("select-button"));
 
         const popover = await screen.findByRole("grid");
 
@@ -437,7 +437,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
 
     expect(screen.queryByText("Action Uno")).not.toBeInTheDocument();
 
-    userEvent.click(modelExpander);
+    await userEvent.click(modelExpander);
 
     await screen.findByText("Action Uno");
     expect(screen.getByText("Action Uno")).toBeInTheDocument();
@@ -487,10 +487,10 @@ describe("ActionViz > ActionDashcardSettings", () => {
     ).toBeInTheDocument();
   });
 
-  it("can close the modal with the done button", () => {
+  it("can close the modal with the done button", async () => {
     const { closeSpy } = setup();
 
-    userEvent.click(screen.getByRole("button", { name: "Done" }));
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(closeSpy).toHaveBeenCalledTimes(1);
   });
 });

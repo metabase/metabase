@@ -11,6 +11,9 @@ import { BookmarkApi } from "metabase/services";
 
 const REORDER_ACTION = `metabase/entities/bookmarks/REORDER_ACTION`;
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Bookmarks = createEntity({
   name: "bookmarks",
   nameOne: "bookmark",

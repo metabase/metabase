@@ -228,6 +228,14 @@ interface AdminSettings {
   "version-info": VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
+  "embedding-homepage":
+    | "visible"
+    | "hidden"
+    | "dismissed-done"
+    | "dismissed-run-into-issues"
+    | "dismissed-not-interested-now";
+  "setup-embedding-autoenabled": boolean;
+  "setup-license-active-at-setup": boolean;
 }
 
 interface SettingsManagerSettings {
@@ -283,7 +291,6 @@ interface PublicSettings {
   "report-timezone-short": string;
   "session-cookies": boolean | null;
   "setup-token": string | null;
-  "show-lighthouse-illustration": boolean;
   "show-metabase-links": boolean;
   "show-metabot": boolean;
   "site-locale": string;

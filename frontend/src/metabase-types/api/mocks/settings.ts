@@ -205,7 +205,6 @@ export const createMockSettings = (
   "show-homepage-data": false,
   "show-homepage-pin-message": false,
   "show-homepage-xrays": false,
-  "show-lighthouse-illustration": true,
   "show-metabase-links": true,
   "show-metabot": true,
   "site-locale": "en",
@@ -229,5 +228,8 @@ export const createMockSettings = (
   "user-visibility": null,
   "last-acknowledged-version": "v1",
   "last-used-native-database-id": 1,
+  "embedding-homepage": "hidden",
+  "setup-embedding-autoenabled": false,
+  "setup-license-active-at-setup": false,
   ...opts,
 });

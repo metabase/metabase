@@ -6,7 +6,7 @@
    [java-time.api :as t]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.search :as api.search]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models
     :refer [Action Card CardBookmark Collection Dashboard DashboardBookmark
             DashboardCard Database LegacyMetric PermissionsGroup
@@ -42,6 +42,8 @@
 
 (def ^:private default-search-row
   {:archived                   false
+   :effective_location         nil
+   :location                   nil
    :bookmark                   nil
    :collection                 default-collection
    :collection_authority_level nil
@@ -100,6 +102,8 @@
                                             :model "collection"
                                             ;; TODO the default-collection data for this doesn't make sense:
                                             :collection (assoc default-collection :id true :name true)
+                                            :effective_location "/"
+                                            :location "/"
                                             :updated_at false
                                             :can_write true))
 

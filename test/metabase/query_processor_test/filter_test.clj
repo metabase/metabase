@@ -4,11 +4,17 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest ^:parallel and-test
   (mt/test-drivers (mt/normal-drivers)
@@ -759,6 +765,49 @@
                    (mt/formatted-rows [int]
                      (mt/run-mbql-query airport {:aggregation [:count], :filter [:not-empty $code]}))))))))))
 
+(deftest ^:parallel is-empty-not-empty-with-not-emptyable-args-test
+  (mt/test-drivers
+   ;; TODO: Investigate how to make the test work with Athena!
+   (disj (mt/normal-drivers) :athena)
+   (mt/dataset
+    test-data-null-date
+    (testing ":is-empty works with not emptyable type argument (#40883)"
+      (is (= [[1 1]]
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query
+               checkins
+               {:expressions {"caseExpr" [:case
+                                          [[[:is-empty [:field %null_only_date {:base-type :type/Date}]] 1]]
+                                          {:default 0}]}
+                :fields [$id [:expression "caseExpr"]]
+                :order-by [[$id :asc]]
+                :limit 1})))))
+    (testing ":not-empty works with not emptyable type argument (#40883)"
+      (is (= [[1 0]]
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query
+               checkins
+               {:expressions {"caseExpr" [:case
+                                          [[[:not-empty [:field %null_only_date {:base-type :type/Date}]] 1]]
+                                          {:default 0}]}
+                :fields [$id [:expression "caseExpr"]]
+                :order-by [[$id :asc]]
+                :limit 1})))))
+    (testing (str "nil base-type arg of :not-empty should behave as not emptyable")
+      (is (= [[1 1]]
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query
+               checkins
+               {:expressions {"caseExpr" [:case
+                                          [[[:is-empty [:field %null_only_date nil]] 1]]
+                                          {:default 0}]}
+                :fields [$id [:expression "caseExpr"]]
+                :order-by [[$id :asc]]
+                :limit 1}))))))))
+
 (deftest ^:parallel order-by-nulls-test
   (testing "Check that we can sort by numeric columns that contain NULLs (#6615)"
     (mt/dataset daily-bird-counts
@@ -777,3 +826,41 @@
                 (mt/run-mbql-query bird-count
                   {:order-by [[:asc $count] [:asc $id]]
                    :limit    3}))))))))
+
+(deftest filter-on-specific-date-test
+  (testing "Filtering on a specific date should work correctly regardless of report timezone/DB timezone support (#39769)"
+    (mt/test-drivers (mt/normal-drivers)
+      (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+        (let [metadata-provider (lib.tu/merged-mock-metadata-provider
+                                 (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                 {:database {:timezone "US/Pacific"}})
+              checkins          (lib.metadata/table metadata-provider (mt/id :checkins))
+              checkins-id       (lib.metadata/field metadata-provider (mt/id :checkins :id))
+              checkins-date     (lib.metadata/field metadata-provider (mt/id :checkins :date))
+              query             (-> (lib/query metadata-provider checkins)
+                                    (lib/filter (lib/= checkins-date "2014-05-08"))
+                                    (lib/order-by checkins-id)
+                                    (lib/with-fields [checkins-id checkins-date]))
+              preprocessed      (qp.preprocess/preprocess query)]
+          ;; skip this test for drivers that don't create checkins.date as a `DATETIME` (or equivalent), since we can't
+          ;; really expect DateTime-specific stuff to work correctly. MongoDB is one example, since BSON only has the
+          ;; one `org.bson.BsonDateTime` type, and checkins.date is created as a `:type/Instant`
+          (when (isa? (:base-type checkins-date) :type/Date)
+            (testing (format "\nCheckins.date type info:\n%s"
+                             (u/pprint-to-str
+                              (select-keys checkins-date [:base-type :effective-type :database-type])))
+              (testing "\nPreprocessing should give us a [:= field date] filter, not [:between field datetime datetime]"
+                (is (=? {:query {:filter [:=
+                                          [:field (mt/id :checkins :date) {:base-type :type/Date, :temporal-unit :default}]
+                                          [:absolute-datetime #t "2014-05-08" :default]]}}
+                        preprocessed)))
+              (testing (format "\nPreprocessed =\n%s" (u/pprint-to-str preprocessed))
+                (mt/with-native-query-testing-context query
+                  (testing "Results: should return correct rows"
+                    (let [results (qp/process-query query)]
+                      (is (= [[629 "2014-05-08T00:00:00-07:00"]
+                              [733 "2014-05-08T00:00:00-07:00"]
+                              [813 "2014-05-08T00:00:00-07:00"]]
+                             ;; WRONG => [[991 "2014-05-09T00:00:00-07:00"]]
+                             (mt/formatted-rows [int str]
+                               results))))))))))))))

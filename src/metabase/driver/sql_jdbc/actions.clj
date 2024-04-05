@@ -10,16 +10,16 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.schema :as mbql.s]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
@@ -62,7 +62,7 @@
      ;; Catch errors in parse-sql-error and log them so more errors in the future don't break the entire action.
      ;; We'll still get the original unparsed error message.
      (catch Throwable new-e
-       (log/error new-e (trs "Error parsing SQL error message {0}: {1}" (pr-str (ex-message e)) (ex-message new-e)))
+       (log/errorf new-e "Error parsing SQL error message %s: %s" (pr-str (ex-message e)) (ex-message new-e))
        nil))))
 
 (defn- do-with-auto-parse-sql-error

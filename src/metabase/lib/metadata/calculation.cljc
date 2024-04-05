@@ -265,7 +265,7 @@
     (try
       (describe-query query)
       (catch #?(:clj Throwable :cljs js/Error) e
-        (log/error e (i18n/tru "Error calculating display name for query: {0}" (ex-message e)))
+        (log/errorf e "Error calculating display name for query: %s" (ex-message e))
         nil))))
 
 (defmulti display-info-method

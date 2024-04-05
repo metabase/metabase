@@ -11,10 +11,10 @@
   (:require
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.mbql.schema :as mbql.s]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -121,9 +121,20 @@
   (let [matching-params  (tag-params tag params)
         tag-opts         (:options tag)
         normalize-params (fn [params]
-                           ;; remove `:target` which is no longer needed after this point, and add any tag options
-                           (let [params (map #(cond-> (dissoc % :target)
-                                                (seq tag-opts) (assoc :options tag-opts))
+                           ;; remove `:target` which is no longer needed after this point
+                           ;; and add any tag options that are compatible with the new type
+                           (let [params (map (fn [param]
+                                               (let [tag-opts (if (and (contains? tag-opts :case-sensitive)
+                                                                       (not (contains? #{:string/contains
+                                                                                         :string/does-not-contain
+                                                                                         :string/ends-with
+                                                                                         :string/starts-with}
+                                                                                       (:type param))))
+                                                                (dissoc tag-opts :case-sensitive)
+                                                                tag-opts)]
+                                                 (cond-> (dissoc param :target)
+                                                   (seq tag-opts)
+                                                   (assoc :options tag-opts))))
                                              params)]
                              (if (= (count params) 1)
                                (first params)

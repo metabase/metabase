@@ -3,6 +3,7 @@
   (:require
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.expression :as lib.expression]
@@ -13,8 +14,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -64,20 +64,11 @@
   (and (mc/validate ::lib.schema/query query)
        (boolean (can-run-method query))))
 
-(defmulti can-save-method
-  "Returns whether the query can be saved based on first stage :lib/type."
-  (fn [query]
-    (:lib/type (lib.util/query-stage query 0))))
-
-(defmethod can-save-method :default
-  [_query]
-  true)
-
 (mu/defn can-save :- :boolean
   "Returns whether the query can be saved."
   [query :- ::lib.schema/query]
-  (and (can-run query)
-       (boolean (can-save-method query))))
+  (and (lib.metadata/editable? query)
+       (can-run query)))
 
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."
@@ -147,7 +138,7 @@
         :stages
         (into []
               (map (fn [[stage-number stage]]
-                     (mbql.u/replace stage
+                     (lib.util.match/replace stage
                        [:field
                         (opts :guard (every-pred map? (complement (some-fn :base-type :effective-type))))
                         (field-id :guard (every-pred number? pos?))]

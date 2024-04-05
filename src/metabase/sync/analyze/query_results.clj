@@ -4,12 +4,11 @@
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
   (:require
-   [metabase.lib.schema.expression.temporal
-    :as lib.schema.expression.temporal]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.predicates :as mbql.preds]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.predicates :as mbql.preds]
-   [metabase.mbql.schema :as mbql.s]
    [metabase.sync.analyze.classifiers.name :as classifiers.name]
    [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.sync.analyze.fingerprint.insights :as insights]

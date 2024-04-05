@@ -7,7 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models :refer [Card Database Field FieldValues Table]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
@@ -153,7 +153,7 @@
                 options)
     (m/map-keys #(Long/parseLong %) options)
     ;; since we're comparing API responses, need to de-keywordize the `:field` clauses
-    (mbql.u/replace options :field (mt/obj->json->obj &match))))
+    (lib.util.match/replace options :field (mt/obj->json->obj &match))))
 
 (defn- query-metadata-defaults []
   (-> (table-defaults)
@@ -898,7 +898,10 @@
 ;;; |                                          POST /api/table/:id/append-csv                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn append-csv-via-api!
+(defn- append-csv! [options]
+  (@#'api.table/update-csv! (assoc options :action :metabase.upload/append)))
+
+(defn- append-csv-via-api!
   "Upload a small CSV file to the given collection ID. Default args can be overridden"
   []
   (mt/with-current-user (mt/user->id :rasta)
@@ -906,8 +909,8 @@
       (let [file  (upload-test/csv-file-with ["name" "Luke Skywalker" "Darth Vader"] (mt/random-name))
             table (upload-test/create-upload-table!)]
         (mt/with-current-user (mt/user->id :crowberto)
-          (@#'api.table/append-csv! {:id   (:id table)
-                                     :file file}))))))
+          (append-csv! {:table-id (:id table)
+                        :file     file}))))))
 
 (deftest append-csv-test
   (mt/test-driver :h2
@@ -931,6 +934,50 @@
                 table (upload-test/create-upload-table!)]
             (is (.exists file) "File should exist before append-csv!")
             (mt/with-current-user (mt/user->id :crowberto)
-              (@#'api.table/append-csv! {:id   (:id table)
-                                         :file file}))
+              (append-csv! {:table-id (:id table)
+                            :file     file}))
             (is (not (.exists file)) "File should be deleted after append-csv!")))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          POST /api/table/:id/replace-csv                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- replace-csv! [options]
+  (@#'api.table/update-csv! (assoc options :action :metabase.upload/replace)))
+
+(defn- replace-csv-via-api!
+  "Upload a small CSV file to the given collection ID. Default args can be overridden"
+  []
+  (mt/with-current-user (mt/user->id :rasta)
+                        (mt/with-empty-db
+                         (let [file  (upload-test/csv-file-with ["name" "Luke Skywalker" "Darth Vader"] (mt/random-name))
+                               table (upload-test/create-upload-table!)]
+                           (mt/with-current-user (mt/user->id :crowberto)
+                             (replace-csv! {:table-id (:id table)
+                                            :file     file}))))))
+
+(deftest replace-csv-test
+  (mt/test-driver :h2
+    (mt/with-empty-db
+     (testing "Happy path"
+       (mt/with-temporary-setting-values [uploads-enabled true]
+         (is (= {:status 200, :body nil}
+                (replace-csv-via-api!)))))
+     (testing "Failure paths return an appropriate status code and a message in the body"
+       (mt/with-temporary-setting-values [uploads-enabled false]
+         (is (= {:status 422, :body {:message "Uploads are not enabled."}}
+                (replace-csv-via-api!))))))))
+
+(deftest replace-csv-deletes-file-test
+  (testing "File gets deleted after replacing"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/with-empty-db
+         (let [filename (mt/random-name)
+               file     (upload-test/csv-file-with ["name" "Luke Skywalker" "Darth Vader"] filename)
+               table    (upload-test/create-upload-table!)]
+           (is (.exists file) "File should exist before replace-csv!")
+           (mt/with-current-user (mt/user->id :crowberto)
+             (replace-csv! {:table-id (:id table)
+                            :file     file}))
+           (is (not (.exists file)) "File should be deleted after replace-csv!")))))))

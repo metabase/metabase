@@ -9,9 +9,9 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.params.custom-values :as custom-values]
@@ -27,7 +27,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -43,7 +43,7 @@
   well."
   [outer-query]
   (when-let [source-card-id (qp.util/query->source-card-id outer-query)]
-    (log/info (trs "Source query for this query is Card {0}" (pr-str source-card-id)))
+    (log/infof "Source query for this query is Card %s" (pr-str source-card-id))
     (api/read-check Card source-card-id)
     source-card-id))
 
@@ -125,9 +125,11 @@
 
 (api/defendpoint POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
-  [export-format :as {{:keys [query visualization_settings] :or {visualization_settings "{}"}} :params}]
+  [export-format :as {{:keys [query visualization_settings format_rows]
+                       :or   {visualization_settings "{}"}} :params}]
   {query                  ms/JSONString
    visualization_settings ms/JSONString
+   format_rows            [:maybe :boolean]
    export-format          (into [:enum] export-formats)}
   (let [query        (json/parse-string query keyword)
         viz-settings (-> (json/parse-string visualization_settings viz-setting-key-fn)
@@ -140,7 +142,7 @@
                                                   (dissoc :add-default-userland-constraints? :js-int-to-string?)
                                                   (assoc :process-viz-settings? true
                                                          :skip-results-metadata? true
-                                                         :format-rows? false))))]
+                                                         :format-rows? format_rows))))]
     (run-streaming-query
      (qp/userland-query query)
      :export-format export-format

@@ -12,8 +12,8 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models :refer [Card Collection Field Table]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
@@ -165,7 +165,7 @@
 
 ;; TODO -- #19754 adds [[mt/remove-source-metadata]] that can be used here (once it gets merged)
 (defn- remove-metadata [m]
-  (mbql.u/replace m
+  (lib.util.match/replace m
     (_ :guard (every-pred map? :source-metadata))
     (remove-metadata (dissoc &match :source-metadata))))
 
@@ -185,7 +185,9 @@
                    :query {:source-query {:source-table                  $$checkins
                                           :fields                        [$id !default.$date $user_id $venue_id]
                                           :filter                        [:and
-                                                                          [:>= !default.date [:absolute-datetime #t "2014-01-02T00:00Z[UTC]" :default]]
+                                                                          [:> !default.date [:absolute-datetime
+                                                                                             #t "2014-01-01"
+                                                                                             :default]]
                                                                           [:=
                                                                            $user_id
                                                                            [:value 5 {:base_type         :type/Integer

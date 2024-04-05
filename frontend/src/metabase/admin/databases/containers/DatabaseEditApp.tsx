@@ -33,10 +33,7 @@ import {
   initializeDatabase,
   saveDatabase,
   updateDatabase,
-  syncDatabaseSchema,
   dismissSyncSpinner,
-  rescanDatabaseFields,
-  discardSavedFieldValues,
   deleteDatabase,
   selectEngine,
 } from "../database";
@@ -55,10 +52,7 @@ interface DatabaseEditAppProps {
   params: { databaseId: DatabaseId };
   reset: () => void;
   initializeDatabase: (databaseId: DatabaseId) => void;
-  syncDatabaseSchema: (databaseId: DatabaseId) => Promise<void>;
   dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
-  rescanDatabaseFields: (databaseId: DatabaseId) => Promise<void>;
-  discardSavedFieldValues: (databaseId: DatabaseId) => Promise<void>;
   deleteDatabase: (
     databaseId: DatabaseId,
     isDetailView: boolean,
@@ -92,10 +86,7 @@ const mapDispatchToProps = {
   initializeDatabase,
   saveDatabase,
   updateDatabase,
-  syncDatabaseSchema,
   dismissSyncSpinner,
-  rescanDatabaseFields,
-  discardSavedFieldValues,
   deleteDatabase,
   selectEngine,
   onChangeLocation: push,
@@ -115,10 +106,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
     database,
     deleteDatabase,
     updateDatabase,
-    discardSavedFieldValues,
     initializeError,
-    rescanDatabaseFields,
-    syncDatabaseSchema,
     dismissSyncSpinner,
     isAdmin,
     isModelPersistenceEnabled,
@@ -202,9 +190,6 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
             isModelPersistenceEnabled={isModelPersistenceEnabled}
             updateDatabase={updateDatabase}
             deleteDatabase={deleteDatabase}
-            discardSavedFieldValues={discardSavedFieldValues}
-            rescanDatabaseFields={rescanDatabaseFields}
-            syncDatabaseSchema={syncDatabaseSchema}
             dismissSyncSpinner={dismissSyncSpinner}
           />
         )}

@@ -152,6 +152,14 @@
    card-id               :- ::lib.schema.id/card]
   (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id))
 
+(mu/defn card-or-throw :- ::lib.schema.metadata/card
+  "Like [[card]], but throws if the Card is not found."
+  [metadata-providerable :- MetadataProviderable
+   card-id               :- ::lib.schema.id/card]
+  (or (card metadata-providerable card-id)
+      (throw (ex-info (i18n/tru "Card {0} does not exist, or belongs to a different Database." (pr-str card-id) )
+                      {:card-id card-id}))))
+
 (mu/defn segment :- [:maybe SegmentMetadata]
   "Get metadata for the Segment with `segment-id`, if it can be found."
   [metadata-providerable :- MetadataProviderable

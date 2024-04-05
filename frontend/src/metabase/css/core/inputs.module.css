@@ -39,10 +39,6 @@
   cursor: not-allowed;
 }
 
-.noFocus:focus {
-  outline: 0;
-}
-
 /* prevent safari from forcing type="search" styles - metabase#5225 */
 .input[type="search"] {
   -webkit-appearance: none;

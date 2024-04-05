@@ -5,13 +5,12 @@
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.events :as events]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models :refer [LegacyMetric  LegacyMetricImportantField Table]]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
    [metabase.related :as related]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -128,8 +127,7 @@
   [id revision_message]
   {id               ms/PositiveInt
    revision_message ms/NonBlankString}
-  (log/warn
-   (trs "DELETE /api/legacy-metric/:id is deprecated. Instead, change its `archived` value via PUT /api/legacy-metric/:id."))
+  (log/warn "DELETE /api/legacy-metric/:id is deprecated. Instead, change its `archived` value via PUT /api/legacy-metric/:id.")
   (write-check-and-update-metric! id {:archived true, :revision_message revision_message})
   api/generic-204-no-content)
 

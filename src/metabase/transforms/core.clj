@@ -7,9 +7,9 @@
    [metabase.domain-entities.specs
     :refer [domain-entity-specs DomainEntitySpec]]
    [metabase.driver :as driver]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table :refer [Table]]
@@ -34,7 +34,7 @@
 
 (defn- mbql-reference->col-name
   [field-clause]
-  (mbql.u/match-one field-clause
+  (lib.util.match/match-one field-clause
     [:field (field-name :guard string?) _]
     field-name
 

@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -12,7 +13,6 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.util :as mbql.u]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
@@ -83,7 +83,7 @@
             query       (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
         (lib/describe-top-level-key query :filters))
       (catch Throwable e
-        (log/error e (tru "Error calculating Segment description: {0}" (ex-message e)))
+        (log/errorf e "Error calculating Segment description: %s" (ex-message e))
         nil))))
 
 (mu/defn ^:private warmed-metadata-provider :- lib.metadata/MetadataProvider

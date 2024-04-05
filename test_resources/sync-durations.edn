@@ -20,7 +20,7 @@
  "table_with_updated_desc_db"        35456200
  "test-data"                         1138090600
  "test-data-self-referencing-user"   37713700
- "test-data-with-null-date-checkins" 84524900
+ "test-data-null-date"               84524900
  "test-data-with-time"               40431800
  "test-data-with-timezones"          60335800
  "toucan-microsecond-incidents"      51240600

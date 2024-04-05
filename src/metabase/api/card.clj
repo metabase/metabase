@@ -12,13 +12,12 @@
    [metabase.api.field :as api.field]
    [metabase.driver :as driver]
    [metabase.events :as events]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.models
-    :refer [Card CardBookmark Collection Database PersistedInfo Table]]
+   [metabase.lib.util.match :as lib.util.match]
+   [metabase.models :refer [Card CardBookmark Collection Database PersistedInfo Table]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
@@ -136,7 +135,9 @@
                                                     :from   [[(t2/table-name :model/QueryField) :qf]]
                                                     :join   [[(t2/table-name :model/Field) :f] [:= :f.id :qf.field_id]
                                                              [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
-                                                    :where  [:= :f.active false]}))
+                                                    :where  [:and
+                                                             [:= :f.active false]
+                                                             [:= :qf.direct_reference true]]}))
         card-ids              (keys card-id->query-fields)
         add-query-fields      (fn [{:keys [id] :as card}]
                                 (assoc card :query_fields (card-id->query-fields id)))]
@@ -548,7 +549,7 @@
                    hydrate-card-details
                    (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
         (when timed-out?
-          (log/info (trs "Metadata not available soon enough. Saving card {0} and asynchronously updating metadata" id))
+          (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
           (card/schedule-metadata-saving result-metadata-chan <>))))))
 
 
@@ -671,9 +672,10 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  [card-id export-format :as {{:keys [parameters]} :params}]
+  [card-id export-format :as {{:keys [parameters format_rows]} :params}]
   {card-id       ms/PositiveInt
    parameters    [:maybe ms/JSONString]
+   format_rows   [:maybe :boolean]
    export-format (into [:enum] api.dataset/export-formats)}
   (qp.card/process-query-for-card
    card-id export-format
@@ -683,7 +685,7 @@
    :middleware  {:process-viz-settings?  true
                  :skip-results-metadata? true
                  :ignore-cached-results? true
-                 :format-rows?           false
+                 :format-rows?           format_rows
                  :js-int-to-string?      false}))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
@@ -809,7 +811,7 @@
   chain-filter issues or dashcards to worry about."
   [card param query]
   (when-let [field-clause (params/param-target->field-clause (:target param) card)]
-    (when-let [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
+    (when-let [field-id (lib.util.match/match-one field-clause [:field (id :guard integer?) _] id)]
       (api.field/search-values-from-field-id field-id query))))
 
 (mu/defn param-values

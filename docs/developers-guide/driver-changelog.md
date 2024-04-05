@@ -4,6 +4,70 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.50.0
+
+- The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to
+  use these namespaces in your driver, but if you did, please update them.
+
+- The multimethod `metabase.driver/truncate!` has been added. This method is used to delete a table's rows in the most
+  efficient way possible. This is currently only required for drivers that support the `:uploads` feature, and has
+  a default implementation for JDBC-based drivers.
+
+- New feature `:window-functions` has been added. Drivers that implement this method are expected to implement the
+  cumulative sum (`:cum-sum`) and cumulative count (`:cum-count`) aggregation clauses in their native query language.
+  For non-SQL drivers (drivers not based on our `:sql` or `:sql-jdbc` drivers), this feature flag is set to `false` by
+  default; the old (broken) post-processing implementations of cumulative aggregations will continue to be used. (See
+  issues [#13634](https://github.com/metabase/metabase/issues/13634) and
+  [#15118](https://github.com/metabase/metabase/issues/15118) for more information on why the old implementation is
+  broken.)
+
+  Non-SQL drivers should be updated to implement cumulative aggregations natively if possible.
+
+  SQL drivers that support ordering by output column numbers in `OVER` `ORDER BY` expressions, e.g.
+
+  ```sql
+  SELECT
+    sum(sum(my_column) OVER (ORDER BY 1 ROWS UNBOUNDED PRECEDING) AS cumulative_sum
+    date_trunc(my_timestamp, 'month') AS my_timestamp_month
+  FROM
+    my_table
+  GROUP BY
+    date_trunc(my_timestamp, 'month')
+  ORDER BY
+    date_trunc(my_timestamp, 'month')
+  ```
+
+  will work without any changes; this is the new default behavior for drivers based on the `:sql` or `:sql-jdbc`
+  drivers.
+
+  For databases that do not support ordering by output column numbers (e.g. MySQL/MariaDB), you can mark your driver
+  as not supporting the `:sql/window-functions.order-by-output-column-numbers` feature flag, e.g.
+
+  ```clj
+  (defmethod driver/database-supports? [:my-driver :sql/window-functions.order-by-output-column-numbers]
+    [_driver _feature _database]
+    false)
+   ```
+
+  In this case, the `:sql` driver will instead generate something like
+
+  ```sql
+  SELECT
+    sum(sum(my_column) OVER (ORDER BY date_trunc(my_timestamp, 'month') ROWS UNBOUNDED PRECEDING) AS cumulative_sum
+    date_trunc(my_timestamp, 'month') AS my_timestamp_month
+  FROM
+    my_table
+  GROUP BY
+    date_trunc(my_timestamp, 'month')
+  ORDER BY
+    date_trunc(my_timestamp, 'month')
+  ```
+
+  If neither of these strategies work for you, you might need to do something more complicated -- see
+  [#40982](https://github.com/metabase/metabase/pull/40982) for an example of complex query transformations to get
+  fussy BigQuery working. (More on this soon.) If all else fails, you can always specify that your driver does not
+  support `:window-functions`, and it will fall back to using the old broken implementation.
+
 ## Metabase 0.49.1
 
 - Another driver feature has been added: `describe-fields`. If a driver opts-in to supporting this feature, The
@@ -142,7 +206,7 @@ title: Driver interface changelog
 
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in
   schemas (also known as namespaces) or not. Most databases have schemas so this feature is on by default.
-  An implemention of the multimethod `metabase.driver/database-supports?` for `:schemas` is required only if the
+  An implementation of the multimethod `metabase.driver/database-supports?` for `:schemas` is required only if the
   database doesn't store tables in schemas.
 
 - Another driver feature has been added: `:uploads`. The `:uploads` feature signals whether the database supports

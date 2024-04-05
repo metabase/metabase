@@ -10,8 +10,8 @@
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.mongo.query-processor :as mongo.qp]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.util :as u]
@@ -208,7 +208,7 @@
     x
     (u/prog1 (substitute param->value (params.parse/parse x false))
       (when-not (= x <>)
-        (log/debug (tru "Substituted {0} -> {1}" (pr-str x) (pr-str <>)))))))
+        (log/debugf "Substituted %s -> %s" (pr-str x) (pr-str <>))))))
 
 (defn substitute-native-parameters
   "Implementation of [[metabase.driver/substitute-native-parameters]] for MongoDB."

@@ -50,11 +50,12 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -104,7 +105,7 @@
   `:qp/refs`. This removes `:source-field` if it is present -- don't use the output of this for anything but internal
   key/distinct comparison purposes."
   [clause]
-  (mbql.u/match-one clause
+  (lib.util.match/match-one clause
     ;; optimization: don't need to rewrite a `:field` clause without any options
     [:field _ nil]
     &match
@@ -145,7 +146,7 @@
      [breakout
       (map-indexed
        (fn [i ag]
-         (mbql.u/replace ag
+         (lib.util.match/replace ag
            [:aggregation-options wrapped opts]
            [:aggregation i]
 
@@ -196,7 +197,7 @@
                        :query  inner-query})))))
 
 (defn- exports [query]
-  (into #{} (mbql.u/match (dissoc query :source-query :source-metadata :joins)
+  (into #{} (lib.util.match/match (dissoc query :source-query :source-metadata :joins)
               [(_ :guard #{:field :expression :aggregation-options}) _ (_ :guard (every-pred map? ::position))])))
 
 (defn- join-with-alias [{:keys [joins]} join-alias]
@@ -254,7 +255,12 @@
           (when (string? field-name)
             (when-let [column (m/find-first #(= (:name %) field-name) source-metadata)]
               (let [signature (field-signature (:field_ref column))]
-                (m/find-first #(= (field-signature %) signature) field-exports))))))))
+                (or ;; First try to match with the join alias.
+                    (m/find-first #(= (field-signature %) signature) field-exports)
+                    ;; Then just the names, but if the match is ambiguous, warn and return nil.
+                    (let [matches (filter #(= (second %) field-name) field-exports)]
+                      (when (= (count matches) 1)
+                        (first matches)))))))))))
 
 (defn- matching-field-in-join-at-this-level
   "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause
@@ -444,7 +450,7 @@
 (defn- add-alias-info* [inner-query]
   (assert (not (:strategy inner-query)) "add-alias-info* should not be called on a join") ; not user-facing
   (let [unique-alias-fn (make-unique-alias-fn)]
-    (-> (mbql.u/replace inner-query
+    (-> (lib.util.match/replace inner-query
           ;; don't rewrite anything inside any source queries or source metadata.
           (_ :guard (constantly (some (partial contains? (set &parents))
                                       [:source-query :source-metadata])))

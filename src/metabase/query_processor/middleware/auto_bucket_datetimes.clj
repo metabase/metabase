@@ -5,9 +5,10 @@
   (:require
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.mbql.predicates :as mbql.preds]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.predicates :as mbql.preds]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -100,7 +101,7 @@
   ([inner-query field-id->type-info clause-to-rewrite]
    (let [datetime-but-not-time? (comp date-or-datetime-field? field-id->type-info)]
      (letfn [(wrap-fields [x]
-               (mbql.u/replace x
+               (lib.util.match/replace x
                  ;; don't replace anything that's already bucketed or otherwise is not subject to autobucketing
                  (_ :guard should-not-be-autobucketed?)
                  &match
@@ -115,7 +116,7 @@
   [{breakouts :breakout, filter-clause :filter, :as inner-query}]
   ;; find any breakouts or filters in the query that are just plain `[:field-id ...]` clauses (unwrapped by any other
   ;; clause)
-  (if-let [unbucketed-fields (mbql.u/match (cons filter-clause breakouts)
+  (if-let [unbucketed-fields (lib.util.match/match (cons filter-clause breakouts)
                                (_ :guard should-not-be-autobucketed?) nil
                                :field                                 &match)]
     ;; if we found some unbucketed breakouts/filters, fetch the Fields & type info that are referred to by those

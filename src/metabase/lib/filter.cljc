@@ -1,10 +1,9 @@
 (ns metabase.lib.filter
-  (:refer-clojure
-   :exclude
-   [filter and or not = < <= > >= not-empty case])
+  (:refer-clojure :exclude [filter and or not = < <= > >= not-empty case])
   (:require
    [inflections.core :as inflections]
    [medley.core :as m]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -23,8 +22,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
@@ -88,7 +86,7 @@
                            :temporal-unit
                            lib.temporal-bucket/describe-temporal-unit
                            u/lower-case-en)]
-    (mbql.u/match-one expr
+    (lib.util.match/match-one expr
       [:= _ (a :guard numeric?) b]
       (i18n/tru "{0} is equal to {1}" (->display-name a) (->display-name b))
 
@@ -148,7 +146,7 @@
   (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
         ->temporal-name #(shared.ut/format-unit % nil)
         temporal? #(lib.util/original-isa? % :type/Temporal)]
-    (mbql.u/match-one expr
+    (lib.util.match/match-one expr
       [:< _ (x :guard temporal?) (y :guard string?)]
       (i18n/tru "{0} is before {1}"                   (->display-name x) (->temporal-name y))
 
@@ -198,7 +196,7 @@
                                        (update 1 dissoc :temporal-unit)
                                        ->display-name)
         temporal? #(lib.util/original-isa? % :type/Temporal)]
-    (mbql.u/match-one expr
+    (lib.util.match/match-one expr
       [:between _ (x :guard temporal?) (y :guard string?) (z :guard string?)]
       (i18n/tru "{0} is {1}"
                 (->unbucketed-display-name x)
@@ -245,8 +243,8 @@
       :not-null  (i18n/tru "{0} is not empty" expr)
       :is-empty  (i18n/tru "{0} is empty"     expr)
       :not-empty (i18n/tru "{0} is not empty" expr)
-      ;; TODO -- This description is sorta wack, we should use [[metabase.mbql.util/negate-filter-clause]] to negate
-      ;; `expr` and then generate a description. That would require porting that stuff to pMBQL tho.
+      ;; TODO -- This description is sorta wack, we should use [[metabase.legacy-mbql.util/negate-filter-clause]] to
+      ;; negate `expr` and then generate a description. That would require porting that stuff to pMBQL tho.
       :not       (i18n/tru "not {0}" expr))))
 
 (defmethod lib.metadata.calculation/display-name-method :time-interval

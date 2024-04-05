@@ -3,17 +3,14 @@ import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 import type {
-  Card,
   DatasetColumn,
+  FieldId,
   FieldReference,
   ModelCacheRefreshStatus,
   TableColumnOrderSetting,
   TemplateTag,
-  StructuredDatasetQuery,
-  FieldId,
 } from "metabase-types/api";
 
 type FieldMetadata = {
@@ -113,28 +110,22 @@ export function checkCanBeModel(question: Question) {
     .every(isSupportedTemplateTagForModel);
 }
 
-export function isAdHocModelQuestionCard(card: Card, originalCard?: Card) {
-  if (!originalCard || isNative(card)) {
-    return false;
-  }
-
-  const isModel = card.type === "model" || originalCard.type === "model";
-  const isSameCard = card.id === originalCard.id;
-  const { query } = card.dataset_query as StructuredDatasetQuery;
-  const isSelfReferencing =
-    query["source-table"] === getQuestionVirtualTableId(originalCard.id);
-
-  return isModel && isSameCard && isSelfReferencing;
-}
-
 export function isAdHocModelQuestion(
-  question: Question,
+  question?: Question,
   originalQuestion?: Question,
 ) {
-  if (!originalQuestion) {
+  if (!question || !originalQuestion) {
     return false;
   }
-  return isAdHocModelQuestionCard(question.card(), originalQuestion.card());
+
+  const isModel =
+    question.type() === "model" || originalQuestion.type() === "model";
+  const isSameQuestion = question.id() === originalQuestion.id();
+  const isSelfReferencing =
+    Lib.sourceTableOrCardId(question.query()) ===
+    getQuestionVirtualTableId(originalQuestion.id());
+
+  return isModel && isSameQuestion && isSelfReferencing;
 }
 
 export function checkCanRefreshModelCache(

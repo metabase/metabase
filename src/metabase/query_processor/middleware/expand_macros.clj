@@ -13,8 +13,8 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
-   [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -42,7 +42,7 @@
     (lib.walk/walk-stages
      query
      (fn [_query _path stage]
-       (mbql.u/match stage
+       (lib.util.match/match stage
          [macro-type _opts (id :guard pos-int?)]
          (conj! ids id))))
     (not-empty (persistent! ids))))
@@ -110,7 +110,7 @@
    stage             :- ::lib.schema/stage
    id->legacy-metric :- ::id->legacy-macro]
   (let [new-filters (atom [])
-        stage'      (mbql.u/replace-in stage [:aggregation]
+        stage'      (lib.util.match/replace-in stage [:aggregation]
                       [:metric opts-from-ref (id :guard pos-int?)]
                       (let [legacy-metric  (get id->legacy-metric id)
                             aggregation    (-> (legacy-metric-aggregation legacy-metric)
@@ -135,7 +135,7 @@
   [_macro-type        :- [:= :segment]
    stage              :- ::lib.schema/stage
    id->legacy-segment :- ::id->legacy-macro]
-  (-> (mbql.u/replace stage
+  (-> (lib.util.match/replace stage
         [:segment _opts (id :guard pos-int?)]
         (let [legacy-segment (get id->legacy-segment id)
               filter-clauses (legacy-macro-filters legacy-segment)]
@@ -190,5 +190,5 @@
      (if-not (= query' query)
        (recur query' (inc recursion-depth))
        (do
-         (log/tracef "No more legacy Metrics/Segments to expand.")
+         (log/trace "No more legacy Metrics/Segments to expand.")
          query')))))

@@ -3,6 +3,7 @@ import { t, jt } from "ttag";
 
 import Text from "metabase/components/type/Text";
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -34,19 +35,20 @@ export function NewPulseSidebar({
         <ChannelCard
           flat
           className={cx("mt1 mb3", {
-            "hover-parent hover--inherit": emailConfigured,
+            [cx(CS.hoverParent, CS.hoverInherit)]: emailConfigured,
           })}
           isConfigured={emailConfigured}
           onClick={onNewEmailPulse}
         >
           <div className="px3 pt3 pb2">
-            <div className="flex align-center">
+            <div className={cx(CS.flex, CS.alignCenter)}>
               <Icon
                 name="mail"
                 className={cx(
                   "mr1",
                   {
-                    "text-brand hover-child hover--inherit": emailConfigured,
+                    [cx("text-brand", CS.hoverChild, CS.hoverInherit)]:
+                      emailConfigured,
                   },
                   { "text-light": !emailConfigured },
                 )}
@@ -57,12 +59,16 @@ export function NewPulseSidebar({
             </div>
             <Text
               className={cx("text-medium", {
-                "hover-child hover--inherit": emailConfigured,
+                [cx(CS.hoverChild, CS.hoverInherit)]: emailConfigured,
               })}
             >
               {!emailConfigured &&
                 jt`You'll need to ${(
-                  <Link key="link" to="/admin/settings/email" className="link">
+                  <Link
+                    key="link"
+                    to="/admin/settings/email"
+                    className={CS.link}
+                  >
                     {t`set up email`}
                   </Link>
                 )} first.`}
@@ -74,19 +80,19 @@ export function NewPulseSidebar({
         <ChannelCard
           flat
           className={cx({
-            "hover-parent hover--inherit": slackConfigured,
+            [cx(CS.hoverParent, CS.hoverInherit)]: slackConfigured,
           })}
           isConfigured={slackConfigured}
           onClick={onNewSlackPulse}
         >
           <div className="px3 pt3 pb2">
-            <div className="flex align-center mb1">
+            <div className={cx(CS.flex, CS.alignCenter, CS.mb1)}>
               <Icon
                 name={slackConfigured ? "slack_colorized" : "slack"}
                 size={16}
                 className={cx("mr1", {
                   "text-light": !slackConfigured,
-                  "hover-child hover--inherit": slackConfigured,
+                  [cx(CS.hoverChild, CS.hoverInherit)]: slackConfigured,
                 })}
               />
               <h3
@@ -95,12 +101,16 @@ export function NewPulseSidebar({
             </div>
             <Text
               className={cx("text-medium", {
-                "hover-child hover--inherit": slackConfigured,
+                [cx(CS.hoverChild, CS.hoverInherit)]: slackConfigured,
               })}
             >
               {!slackConfigured &&
                 jt`First, you'll have to ${(
-                  <Link key="link" to="/admin/settings/slack" className="link">
+                  <Link
+                    key="link"
+                    to="/admin/settings/slack"
+                    className={CS.link}
+                  >
                     {t`configure Slack`}
                   </Link>
                 )}.`}

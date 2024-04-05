@@ -190,7 +190,7 @@ const EditSandboxingModal = ({
           </div>
         )}
 
-        <div className="flex align-center justify-end">
+        <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd)}>
           <Button onClick={onCancel}>{t`Cancel`}</Button>
           <ActionButton
             error={error}
@@ -203,7 +203,7 @@ const EditSandboxingModal = ({
           </ActionButton>
         </div>
         {error && (
-          <div className="flex align-center my2 text-error">
+          <div className={cx(CS.flex, CS.alignCenter, CS.my2, CS.textError)}>
             {typeof error === "string"
               ? error
               : // @ts-expect-error provide correct type for error
@@ -224,8 +224,8 @@ interface SummaryRowProps {
 }
 
 const SummaryRow = ({ icon, content }: SummaryRowProps) => (
-  <div className="flex align-center">
-    <Icon className="p1" name={icon} />
+  <div className={cx(CS.flex, CS.alignCenter)}>
+    <Icon className={CS.p1} name={icon} />
     <span>{content}</span>
   </div>
 );
@@ -237,7 +237,9 @@ interface PolicySummaryProps {
 const PolicySummary = ({ policy }: PolicySummaryProps) => {
   return (
     <div>
-      <div className="px1 pb2 text-uppercase text-small text-grey-4">
+      <div
+        className={cx("px1 pb2", CS.textUppercase, CS.textSmall, "text-grey-4")}
+      >
         {t`Summary`}
       </div>
       <SummaryRow
@@ -281,14 +283,14 @@ const PolicySummary = ({ policy }: PolicySummaryProps) => {
                 ? jt`where ${(
                     <TargetName key="target" policy={policy} target={target} />
                   )} equals ${(
-                    <span key="attr" className="text-code">
+                    <span key="attr" className={CS.textCode}>
                       {attribute}
                     </span>
                   )}`
                 : jt`and ${(
                     <TargetName key="target" policy={policy} target={target} />
                   )} equals ${(
-                    <span key="attr" className="text-code">
+                    <span key="attr" className={CS.textCode}>
                       {attribute}
                     </span>
                   )}`

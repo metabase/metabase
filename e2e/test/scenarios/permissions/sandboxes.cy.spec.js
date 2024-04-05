@@ -23,6 +23,7 @@ import {
   startNewQuestion,
   sendEmailAndAssert,
   setTokenFeatures,
+  selectFilterOperator,
 } from "e2e/support/helpers";
 
 const {
@@ -156,11 +157,8 @@ describeEE("formatting > sandboxes", () => {
         cy.log("Add filter to a question");
         cy.icon("notebook").click();
         filter({ mode: "notebook" });
-        popover().within(() => {
-          cy.findByText("Total").click({ force: true });
-          cy.findByDisplayValue("Equal to").click();
-        });
-        cy.findByRole("listbox").findByText("Greater than").click();
+        popover().findByText("Total").click();
+        selectFilterOperator("Greater than");
         popover().within(() => {
           cy.findByPlaceholderText("Enter a number").type("100");
           cy.button("Add filter").click();
@@ -228,13 +226,15 @@ describeEE("formatting > sandboxes", () => {
 
       popover().within(() => {
         // Collapse "Order/s/" in order to bring "User" into view (trick to get around virtualization - credits: @flamber)
-        cy.get(".List-section-header")
+        cy.get("[data-element-id=list-section-header]")
           .contains(/Orders?/)
           .click();
 
-        cy.get(".List-section-header").contains("User").click();
+        cy.get("[data-element-id=list-section-header]")
+          .contains("User")
+          .click();
 
-        cy.get(".List-item").contains("ID").click();
+        cy.get("[data-element-id=list-item]").contains("ID").click();
       });
 
       visualize();

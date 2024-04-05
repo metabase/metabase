@@ -9,7 +9,7 @@
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -32,7 +32,7 @@
   {::account              "1-0-1"
    ::browse_data          "1-0-0"
    ::invite               "1-0-1"
-   ::csvupload            "1-0-1"
+   ::csvupload            "1-0-3"
    ::dashboard            "1-1-4"
    ::database             "1-0-1"
    ::instance             "1-1-2"
@@ -249,4 +249,4 @@
             ^SelfDescribing event (.build builder)]
         (track-event-impl! (tracker) event))
       (catch Throwable e
-        (log/error e (trs "Error sending Snowplow analytics event {0}" event-kw))))))
+        (log/errorf e "Error sending Snowplow analytics event %s" event-kw)))))
