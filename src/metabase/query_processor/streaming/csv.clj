@@ -3,9 +3,11 @@
    [clojure.data.csv :as csv]
    [java-time.api :as t]
    [metabase.formatter :as formatter]
+   [metabase.query-processor.middleware.pivot-export :as pivot-export]
+   [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.shared.models.visualization-settings :as mb.viz]
+   #_[metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util.date-2 :as u.date])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
@@ -27,30 +29,39 @@
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]
   (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
-        ordered-formatters (volatile! nil)]
+        ordered-formatters (volatile! nil)
+        rows!              (volatile! [])
+        pivot-options      (atom nil)]
     (reify qp.si/StreamingResultsWriter
-      (begin! [_ {{:keys [ordered-cols results_timezone format-rows?]
+      (begin! [_ {{:keys [ordered-cols results_timezone format-rows? query]
                    :or   {format-rows? true}} :data} viz-settings]
-        (let [col-names (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings))]
-          (vreset! ordered-formatters
-                   (if format-rows?
-                     (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)
-                     (vec (repeat (count ordered-cols) identity))))
-          (csv/write-csv writer [col-names])
-          (.flush writer)))
+        (when-let [opts (qp.pivot/pivot-options query viz-settings)]
+          (reset! pivot-options opts))
+        #_(let [col-names (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings))])
+        (vreset! ordered-formatters
+                 (if format-rows?
+                   (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)
+                   (vec (repeat (count ordered-cols) identity))))
+        #_(csv/write-csv writer [col-names])
+        (.flush writer))
 
       (write-row! [_ row _row-num _ {:keys [output-order]}]
         (let [ordered-row (if output-order
                             (let [row-v (into [] row)]
                               (for [i output-order] (row-v i)))
-                            row)]
-          (csv/write-csv writer [(map (fn [formatter r]
-                                        (formatter (common/format-value r)))
-                                      @ordered-formatters ordered-row)])
-          (.flush writer)))
+                            row)
+              xf-row      (mapv (fn [formatter r]
+                                  (formatter (common/format-value r)))
+                                @ordered-formatters ordered-row)]
+          (vswap! rows! conj xf-row)
+          #_(csv/write-csv writer xf-row)
+          #_(.flush writer)))
 
       (finish! [_ _]
         ;; TODO -- not sure we need to flush both
+        (let [pivot-table-rows (pivot-export/pivot-builder @rows! @pivot-options)]
+          (doseq [xf-row pivot-table-rows]
+            (csv/write-csv writer [xf-row])))
         (.flush writer)
         (.flush os)
         (.close writer)))))
