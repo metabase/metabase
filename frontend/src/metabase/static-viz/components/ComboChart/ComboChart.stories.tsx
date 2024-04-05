@@ -176,6 +176,13 @@ BarOrdinalXScale.args = {
   renderingContext,
 };
 
+export const BarOrdinalXScaleAutoRotatedLabels = Template.bind({});
+BarOrdinalXScaleAutoRotatedLabels.args = {
+  rawSeries: data.barOrdinalXScaleAutoRotatedLabels as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const BarStackedTotalFormattedValues = Template.bind({});
 BarStackedTotalFormattedValues.args = {
   rawSeries: data.barStackedTotalFormattedValues as any,
