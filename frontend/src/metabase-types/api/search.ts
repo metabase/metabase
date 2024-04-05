@@ -18,7 +18,7 @@ export type EnabledSearchModelType =
   | "indexed-entity";
 
 export type SearchModelType =
-  | ("segment" | "metric" | "pulse" | "snippet")
+  | ("segment" | "metric" | "snippet")
   | EnabledSearchModelType;
 
 export interface SearchScore {

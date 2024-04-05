@@ -72,7 +72,6 @@ export type CollectionItemModel =
   | "card"
   | "dataset"
   | "dashboard"
-  | "pulse"
   | "snippet"
   | "collection"
   | "indexed-entity";
