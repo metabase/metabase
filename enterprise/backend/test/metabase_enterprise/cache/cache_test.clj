@@ -120,72 +120,66 @@
     (mt/with-model-cleanup [:model/CacheConfig
                             [:model/QueryCache :updated_at]]
       (mt/with-premium-features #{:cache-granular-controls :audit-app}
-        (mt/with-temp [:model/Dashboard     dash {}
-                       :model/Card          card {:database_id   (mt/id)
-                                                  :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]]
-                                                                                        :limit    5})}
-                       :model/Card          card2 {:database_id   (mt/id)
-                                                   :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]]
-                                                                                         :limit    5})}
-                       :model/DashboardCard _    {:dashboard_id (:id dash)
-                                                  :card_id      (:id card)}
-                       :model/CacheConfig   _    {:model          "database"
-                                                  :model_id       (mt/id)
-                                                  :strategy       "schedule"
-                                                  :config         {:schedule "0 * * * * ?"}
-                                                  :invalidated_at (t/offset-date-time)}
-                       :model/CacheConfig _      {:model          "dashboard"
-                                                  :model_id       (:id dash)
-                                                  :strategy       "schedule"
-                                                  :config         {:schedule "0 * * * * ?"}
-                                                  :invalidated_at (t/offset-date-time)}]
+        (mt/with-temp [:model/Dashboard     dash           {}
+                       :model/Card          {card1-id :id} {:database_id   (mt/id)
+                                                            :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]]
+                                                                                                  :limit    5})}
+                       :model/Card          {card2-id :id} {:database_id   (mt/id)
+                                                            :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]]
+                                                                                                  :limit    5})}
+                       :model/DashboardCard _              {:dashboard_id (:id dash)
+                                                            :card_id      card1-id}
+                       :model/CacheConfig   _              {:model          "database"
+                                                            :model_id       (mt/id)
+                                                            :strategy       "schedule"
+                                                            :config         {:schedule "0 * * * * ?"}
+                                                            :invalidated_at (t/offset-date-time)}
+                       :model/CacheConfig   _              {:model          "dashboard"
+                                                            :model_id       (:id dash)
+                                                            :strategy       "schedule"
+                                                            :config         {:schedule "0 * * * * ?"}
+                                                            :invalidated_at (t/offset-date-time)}]
+          (let [run-query! (fn [card-id & params]
+                             (-> (apply mt/user-http-request :crowberto :post 202 (format "card/%d/query" card-id) params)
+                                 (select-keys [:cached])))
+                invalidate! (fn [status & args]
+                              (apply mt/user-http-request :crowberto :post status "cache/invalidate" args))]
 
-          (is (=? {:data [{:model "database" :model_id (mt/id)}]}
-                  (mt/user-http-request :crowberto :get 200 "cache/"
-                                        :model "database")))
+            (is (=? {:data [{:model "database" :model_id (mt/id)}]}
+                    (mt/user-http-request :crowberto :get 200 "cache/"
+                                          :model "database")))
 
-          (testing "making a query will cache it"
-            (is (=? {:cached false :data some?}
-                    (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card)))))
-            (is (=? {:cached true :data some?}
-                    (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card)))))
-            (is (=? {:cached true :data some?}
-                    (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card2))))))
+            (testing "making a query will cache it"
+              (is (=? {:cached false :data some?}
+                      (run-query! card1-id)))
+              (is (=? {:cached true :data some?}
+                      (run-query! card1-id)))
+              (is (=? {:cached true :data some?}
+                      (run-query! card2-id))))
 
-          (testing "invalidation drops cache only for affected card"
-            (is (=? {:count 1}
-                    (mt/user-http-request :crowberto :post 200 "cache/invalidate"
-                                          :question (:id card2) :include :overrides)))
-            (is (=? {:cached true :data some?}
-                    (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card)))))
-            (is (=? {:cached false :data some?}
-                    (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card2))))))
+            (testing "invalidation drops cache only for affected card"
+              (is (=? {:count 1}
+                      (invalidate! 200 :question card2-id :include :overrides)))
+              (is (=? {:cached true :data some?}
+                      (run-query! card1-id)))
+              (is (=? {:cached false :data some?}
+                      (run-query! card2-id))))
 
-          (testing "but invalidating a whole config drops cache for all affected cards"
-            (is (=? {:count 1}
-                    (mt/user-http-request :crowberto :post 200 "cache/invalidate"
-                                          :database (mt/id))))
-            (is (=? {:cached false :data some?}
-                    (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card)))))
-            ;; we need to drop it again so that new cache is not being used
-            (is (=? {:count 1}
-                    (mt/user-http-request :crowberto :post 200 "cache/invalidate"
-                                          :database (mt/id))))
-            (is (=? {:cached false :data some?}
-                    (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card2))))))
+            (testing "but invalidating a whole config drops cache for any affected card"
+              (doseq [card-id [card1-id card2-id]]
+                (is (=? {:count 1}
+                        (invalidate! 200 :database (mt/id))))
+                (is (=? {:cached false :data some?}
+                        (run-query! card-id {:ignore_cache true})))))
 
-          (testing "when invalidating database config with no overrides, dashboard-related queries will still have it"
-            (is (=? {:count 1}
-                    (mt/user-http-request :crowberto :post 200 "cache/invalidate"
-                                          :database (mt/id))))
-            (is (=? {:cached true :data some?}
-                    (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card))
-                                          {:dashboard_id (:id dash)}))))
+            (testing "when invalidating database config with no overrides, dashboard-related queries will still have it"
+              (is (=? {:count 1}
+                      (invalidate! 200 :database (mt/id))))
+              (is (=? {:cached true :data some?}
+                      (run-query! card1-id {:dashboard_id (:id dash)}))))
 
-          (testing "but with overrides - will go through every card and mark cache invalidated"
-            (is (=? {:count 2}
-                    (mt/user-http-request :crowberto :post 200 "cache/invalidate"
-                                          :include :overrides :database (mt/id))))
-            (is (=? {:cached false :data some?}
-                    (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card))
-                                          {:dashboard_id (:id dash)})))))))))
+            (testing "but with overrides - will go through every card and mark cache invalidated"
+              (is (=? {:count 2}
+                      (invalidate! 200 :include :overrides :database (mt/id))))
+              (is (=? {:cached false :data some?}
+                      (run-query! card1-id {:dashboard_id (:id dash)}))))))))))

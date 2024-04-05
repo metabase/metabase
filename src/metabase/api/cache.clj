@@ -150,47 +150,61 @@
                              nil)))
   nil)
 
+(defn- invalidate-cache-configs [database dashboard question]
+  (let [conditions (for [[k vs] [[:database database]
+                                 [:dashboard dashboard]
+                                 [:question question]]
+                         v      vs]
+                     [:and [:= :model (name k)] [:= :model_id v]])]
+    (if (empty? conditions)
+      0
+      ;; using JVM date rather than DB time since it's what are used in cache tasks
+      (t2/query-one {:update (t2/table-name CacheConfig)
+                     :set    {:invalidated_at (t/offset-date-time)}
+                     :where  (into [:or] conditions)}))))
+
+(defn- invalidate-cards [database dashboard question]
+  (let [card-ids (concat
+                  question
+                  (when (seq database)
+                    (t2/select-fn-vec :id [:model/Card :id] :database_id [:in database]))
+                  (when (seq dashboard)
+                    (t2/select-fn-vec :card_id [:model/DashboardCard :card_id] :dashboard_id [:in dashboard])))]
+    (if (empty? card-ids)
+      0
+      (t2/update! Card :id [:in card-ids]
+                  {:cache_invalidated_at (t/offset-date-time)}))))
+
 (api/defendpoint POST "/invalidate"
-  "Invalidate cache entries"
+  "Invalidate cache entries.
+
+  Use it like `/api/cache/invalidate?database=1&dashboard=15` (any number of database/dashboard/question can be
+  supplied).
+
+  `&include=overrides` controls whenever you want to invalidate cache for a specific cache configuration without
+  touching all nested configurations, or you want your invalidation to trickle down to every card."
   [include database dashboard question]
-  {include   [:maybe [:= :overrides]]
-   database  [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
-   dashboard [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
-   question  [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]}
+  {include   [:maybe {:description "All cache configuration overrides should invalidate cache too"} [:= :overrides]]
+   database  [:maybe {:description "A database id"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
+   dashboard [:maybe {:description "A dashboard id"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
+   question  [:maybe {:description "A question id"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]}
 
   (when-not (premium-features/enable-cache-granular-controls?)
     (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
 
-  (if-not (= include :overrides)
-    (let [conditions (for [[k vs] [[:database database]
-                                   [:dashboard dashboard]
-                                   [:question question]]
-                           v      vs]
-                       [:and [:= :model (name k)] [:= :model_id v]])
-          cnt        (when (seq conditions)
-                       ;; using JVM date rather than DB time since it's what are used in cache tasks
-                       (t2/query-one {:update (t2/table-name CacheConfig)
-                                      :set    {:invalidated_at (t/offset-date-time)}
-                                      :where  (into [:or] conditions)}))]
-      (if-not (and cnt (pos? cnt))
-        {:status 400
-         :body   {:message (tru "Could not find a cache configuration to invalidate.")}}
-        {:message (tru "Updated {0} cache configuration(s)." cnt)
-         :count   cnt}))
-
-    (let [card-ids (concat
-                    question
-                    (when (seq database)
-                      (t2/select-fn-vec :id [:model/Card :id] :database_id [:in database]))
-                    (when (seq dashboard)
-                      (t2/select-fn-vec :card_id [:model/DashboardCard :card_id] :dashboard_id [:in dashboard])))]
-      (if (empty? card-ids)
-        {:status 400
-         :body   {:message (tru "You have to provide correct database, dashboard or question ids to invalidate cache.")}}
-
-        (let [cnt (t2/update! Card :id [:in card-ids]
-                              {:cache_invalidated_at (t/offset-date-time)})]
-          {:message (tru "Marked {0} questions for cache invalidation." cnt)
-           :count   cnt})))))
+  (let [cnt (if (= include :overrides)
+              (invalidate-cards database dashboard question)
+              (invalidate-cache-configs database dashboard question))]
+    (case [(= include :overrides) (pos? cnt)]
+      [false false] {:status 400
+                     :body   {:message (tru "Could not find a cache configuration to invalidate.")}}
+      [false true]  {:status 200
+                     :body   {:message (tru "Updated {0} cache configuration(s)." cnt)
+                              :count   cnt}}
+      [true false]  {:status 400
+                     :body   {:message (tru "You have to provide correct database, dashboard or question ids to invalidate cache.")}}
+      [true true]   {:status 200
+                     :body   {:message (tru "Marked {0} questions for cache invalidation." cnt)
+                              :count   cnt}})))
 
 (api/define-routes)

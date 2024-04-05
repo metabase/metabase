@@ -6125,7 +6125,7 @@ databaseChangeLog:
               - column:
                   name: cache_invalidated_at
                   type: ${timestamp_type}
-                  remarks: 'If cache should be invalidated earlier than strategy expects it to'
+                  remarks: 'An invalidation time that can supersede cache_config.invalidated_at'
                   constraints:
                     nullable: true
 

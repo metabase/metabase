@@ -20,6 +20,9 @@
 (defn- ms-ago [n]
   (u.date/add (t/offset-date-time) :millisecond (- n)))
 
+(defn- seconds-ago [n]
+  (ms-ago (long (* 1000 n))))
+
 (def ^:private ^{:arglists '([])} cached-results-query-sql
   ;; this is memoized for a given application DB so we can deliver cached results EXTRA FAST and not have to spend an
   ;; extra microsecond compiling the same exact query every time. :shrug:
@@ -92,7 +95,7 @@
   (log/tracef "Purging old cache entries.")
   (try
     (t2/delete! (t2/table-name QueryCache)
-                :updated_at [:<= (ms-ago (long (* max-age-seconds 1000)))])
+                :updated_at [:<= (seconds-ago max-age-seconds)])
     (catch Throwable e
       (log/error e "Error purging old cache entries")))
   nil)
