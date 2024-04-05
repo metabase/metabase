@@ -13,6 +13,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
@@ -51,11 +52,51 @@
   [& args]
   (apply (get-method driver/describe-table :sql-jdbc) args))
 
-;; don't use the Postgres implementation for `describe-database` as it uses a custom SQL to get the tables.
-;; we should do the same for Redshift tho
+(defn- get-tables-sql
+  [schemas table-names]
+  ;; Ref: https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java#L1794
+  (sql/format
+   {:select   [[:t.schema_name :schema]
+               [:t.table_name :name]
+               [:t.remarks :description]]
+    :from     [[:pg_catalog.svv_all_tables :t]]
+    :where    [:and ; filter out system tables
+               [(keyword "!~") :t.schema_name "^pg_"]
+               [:<> :t.schema_name "information_schema"]
+               (when schemas [:in :t.schema_name schemas])
+               (when table-names [:in :t.table_name table-names])]
+    :order-by [:schema :name]}
+   {:dialect :ansi}))
+
+(defn- get-tables
+  ;; have it as its own method for ease of testing
+  [database schemas tables]
+  (sql-jdbc.execute/reducible-query database (get-tables-sql schemas tables)))
+
+(defn- describe-syncable-tables
+  [{driver :engine :as database}]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       database
+       nil
+       (fn [^Connection conn]
+         (reduce
+          rf
+          init
+          (when-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
+            (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn driver conn)]
+              (eduction
+               (comp (filter have-select-privilege?)
+                     (map #(dissoc % :type)))
+               (get-tables database syncable-schemas nil))))))))))
+
 (defmethod driver/describe-database :redshift
- [& args]
- (apply (get-method driver/describe-database :sql-jdbc) args))
+ [_driver database]
+  ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
+  ;; memrory in a set like this
+  {:tables (into #{} (describe-syncable-tables database))})
 
 (defmethod sql-jdbc.sync/describe-fks-sql :redshift
   [driver & {:keys [schema-names table-names]}]
