@@ -52,9 +52,9 @@ describe("EmbedHomepage (OSS)", () => {
 
   it("should set 'embedding-homepage' to 'dismissed-done' when dismissing as done", async () => {
     setup();
-    userEvent.hover(screen.getByText("Hide these"));
+    await userEvent.hover(screen.getByText("Hide these"));
 
-    userEvent.click(screen.getByText("Embedding done, all good"));
+    await userEvent.click(screen.getByText("Embedding done, all good"));
 
     const lastCall = fetchMock.lastCall(
       "path:/api/setting/embedding-homepage",

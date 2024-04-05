@@ -48,12 +48,12 @@ describe("setup (EE, hosting and embedding feature)", () => {
 
   it("should set 'setup-license-active-at-setup' to true", async () => {
     await setupPremium();
-    skipWelcomeScreen();
-    skipLanguageStep();
+    await skipWelcomeScreen();
+    await skipLanguageStep();
     await submitUserInfoStep();
 
-    selectUsageReason("embedding");
-    clickNextStep();
+    await selectUsageReason("embedding");
+    await clickNextStep();
 
     screen.getByText("Finish").click();
 
