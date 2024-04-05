@@ -33,7 +33,7 @@ export const doNotCacheStrategyValidationSchema = Yup.object({
   type: Yup.string().equals(["nocache"]),
 });
 
-export const defaultMinDurationMs = 60000;
+export const defaultMinDurationMs = 1000;
 export const ttlStrategyValidationSchema = Yup.object({
   type: Yup.string().equals(["ttl"]),
   min_duration_ms: positiveInteger.default(defaultMinDurationMs),
