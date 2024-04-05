@@ -10,18 +10,22 @@ import {
   QueryColumnInfoPopover,
   TableColumnInfoPopover,
 } from "../ColumnInfoPopover";
-import { PopoverHoverTarget, HoverParent } from "../InfoIcon";
+import { PopoverHoverTarget, HoverParent, defaultDelay } from "../InfoIcon";
 export { HoverParent };
 
 export function QueryColumnInfoIcon({
   className,
-  delay = [0, 150],
+  delay = defaultDelay,
   ...props
 }: QueryColumnInfoPopoverProps) {
   const { query, stageIndex, column } = props;
   const { description = "" } = query
     ? Lib.displayInfo(query, stageIndex, column)
     : {};
+
+  if (!description) {
+    return null;
+  }
 
   return (
     <QueryColumnInfoPopover {...props} delay={delay}>
@@ -39,10 +43,14 @@ QueryColumnInfoIcon.HoverParent = HoverParent;
 
 export function TableColumnInfoIcon({
   className,
-  delay = [0, 150],
+  delay = defaultDelay,
   field,
   ...props
 }: TableColumnInfoPopoverProps) {
+  if (!field.description) {
+    return null;
+  }
+
   return (
     <TableColumnInfoPopover {...props} field={field} delay={delay}>
       <PopoverHoverTarget

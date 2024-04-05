@@ -38,6 +38,7 @@ export const NodeListItemLink = styled.a<NodeListItemLinkProps>`
   overflow-wrap: anywhere;
   word-break: break-word;
   word-wrap: anywhere;
+  min-height: 2.2rem;
   display: flex;
   padding: ${space(1)};
   text-decoration: none;

@@ -17,6 +17,8 @@ You can export the results of a question as:
 - .json
 - .xlsx
 
+If you don't see this option, you may not have [permissions to download results](../../permissions/data.md#download-results).
+
 ### Maximum number of rows you can download
 
 You can download up to 1 million rows.
@@ -29,7 +31,7 @@ Metabase will export the raw results of a question without applying any of the [
 
 ## Exporting data via a public link
 
-You can also create a [public link](../sharing/public-links.md) that people can use to download data in a specific format.
+You can also create a [public link](../sharing/public-links.md#public-link-to-export-question-results-in-csv-xlsx-json) that people can use to download data in a specific format, as well as [raw, unformatted question results](public-links.md#exporting-raw-unformatted-question-results).
 
 ## Exporting question data via alerts
 
@@ -42,6 +44,23 @@ You can export a dashboard as a PDF. Click on the three dot menu (**...**) and s
 ![Exporting a dashboard as a PDF](../images/export-dashboard-as-pdf.png).
 
 The PDF will only include screenshots of the charts as they are visible on the dashboard.
+
+### Exporting results of a dashboard card
+
+To export the results of a particular card, hover over the dashboard card, click on the three dot menu (**...**), and select **Download results**.
+
+![Export results of a dashboard card](../images/download-card-results.png)
+
+From here you can select:
+
+- .csv
+.xlsx
+- .json
+- .png (if a chart)
+
+To export the raw, unformatted results, hold down the `option` key for Macs, or `Alt` key for Windows, then click on the download file format.
+
+If you don't see this option, you may not have [permissions to download results](../../permissions/data.md#download-results).
 
 ## Exporting results of a dashboard via dashboard subscriptions
 
