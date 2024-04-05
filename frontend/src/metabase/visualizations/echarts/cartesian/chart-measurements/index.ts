@@ -73,12 +73,10 @@ const getYAxisTicksWidth = (
 
 const getXAxisTicksWidth = (
   dataset: ChartDataset,
-  settings: ComputedVisualizationSettings,
+  axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
   formatter: AxisFormatter,
   { measureText, fontFamily }: RenderingContext,
 ) => {
-  const axisEnabledSetting = settings["graph.x_axis.axis_enabled"];
-
   if (!axisEnabledSetting) {
     return { firstXTickWidth: 0, lastXTickWidth: 0, maxXTickWidth: 0 };
   }
@@ -86,7 +84,6 @@ const getXAxisTicksWidth = (
     return {
       firstXTickWidth: CHART_STYLE.axisTicks.size,
       lastXTickWidth: CHART_STYLE.axisTicks.size,
-      maxXTickWidth: CHART_STYLE.axisTicks.size,
     };
   }
 
@@ -103,21 +100,15 @@ const getXAxisTicksWidth = (
     formatter(dataset[dataset.length - 1][X_AXIS_DATA_KEY]),
     fontStyle,
   );
-  const maxXTickWidth = Math.max(
-    ...dataset.map(datum =>
-      measureText(formatter(datum[X_AXIS_DATA_KEY]), fontStyle),
-    ),
-  );
 
   if (axisEnabledSetting === "rotate-45") {
     return {
       firstXTickWidth: firstXTickWidth / Math.SQRT2,
       lastXTickWidth: lastXTickWidth / Math.SQRT2,
-      maxXTickWidth: maxXTickWidth / Math.SQRT2,
     };
   }
 
-  return { firstXTickWidth, lastXTickWidth, maxXTickWidth };
+  return { firstXTickWidth, lastXTickWidth };
 };
 
 const getXAxisTicksHeight = (
@@ -205,8 +196,6 @@ export const getTicksDimensions = (
     xTicksHeight: 0,
     firstXTickWidth: 0,
     lastXTickWidth: 0,
-    maxXTickWidth: 0,
-    minXTickSpacing: 0,
   };
 
   if (chartModel.leftAxisModel) {
@@ -235,36 +224,48 @@ export const getTicksDimensions = (
     ticksDimensions.yTicksWidthLeft -
     ticksDimensions.yTicksWidthRight;
 
-  ticksDimensions.minXTickSpacing = getMinXTickSpacing(
-    chartModel.dataset,
-    settings,
-    currentBoundaryWidth,
-    chartModel.xAxisModel.formatter,
-    renderingContext,
-  );
-
   const isTimeSeries = isTimeSeriesAxis(chartModel.xAxisModel);
   let axisEnabledSetting = settings["graph.x_axis.axis_enabled"];
   const hasBottomAxis = !!axisEnabledSetting;
 
   if (hasBottomAxis) {
-    const { firstXTickWidth, lastXTickWidth, maxXTickWidth } =
-      getXAxisTicksWidth(
-        chartModel.transformedDataset,
-        settings,
-        chartModel.xAxisModel.formatter,
-        renderingContext,
-      );
-    ticksDimensions.firstXTickWidth = firstXTickWidth;
-    ticksDimensions.lastXTickWidth = lastXTickWidth;
-    ticksDimensions.maxXTickWidth = maxXTickWidth;
+    const fontStyle = {
+      ...CHART_STYLE.axisTicks,
+      family: renderingContext.fontFamily,
+    };
+
+    const maxXTickWidth = Math.max(
+      ...chartModel.dataset.map(datum =>
+        renderingContext.measureText(
+          chartModel.xAxisModel.formatter(datum[X_AXIS_DATA_KEY]),
+          fontStyle,
+        ),
+      ),
+    );
+
+    const minXTickSpacing = getMinXTickSpacing(
+      chartModel.dataset,
+      settings,
+      currentBoundaryWidth,
+      chartModel.xAxisModel.formatter,
+      renderingContext,
+    );
 
     axisEnabledSetting = getAutoAxisEnabledSetting(
-      ticksDimensions.minXTickSpacing,
+      minXTickSpacing,
       maxXTickWidth,
       outerHeight,
       settings,
     );
+
+    const { firstXTickWidth, lastXTickWidth } = getXAxisTicksWidth(
+      chartModel.transformedDataset,
+      axisEnabledSetting,
+      chartModel.xAxisModel.formatter,
+      renderingContext,
+    );
+    ticksDimensions.firstXTickWidth = firstXTickWidth;
+    ticksDimensions.lastXTickWidth = lastXTickWidth;
 
     ticksDimensions.xTicksHeight =
       getXAxisTicksHeight(maxXTickWidth, axisEnabledSetting) +
