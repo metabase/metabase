@@ -365,7 +365,7 @@ describe("scenarios > question > custom column", () => {
     cy.log("Reported failing in v0.34.3, v0.35.4, v0.36.8.2, v0.37.0.2");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Foo Bar");
-    cy.findAllByText("57911");
+    cy.findAllByText("57,911");
   });
 
   it("should not be dropped if filter is changed after aggregation (metaabase#14193)", () => {
