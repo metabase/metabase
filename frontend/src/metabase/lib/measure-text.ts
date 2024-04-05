@@ -9,11 +9,6 @@ export const measureText: TextMeasurer = (text: string, style: FontStyle) => {
   canvas ??= document.createElement("canvas");
   const context = canvas.getContext("2d");
 
-  // Temporary here to debug
-  // https://github.com/metabase/metabase/issues/40206
-  // @ts-expect-error — doing a bad thing here
-  measureTextWidth.canvasContext = context;
-
   if (!context) {
     throw new Error("Could not create canvas context");
   }
