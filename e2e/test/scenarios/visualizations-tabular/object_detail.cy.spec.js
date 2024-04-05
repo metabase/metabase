@@ -164,7 +164,10 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     createQuestion(questionDetails, { visitQuestion: true });
 
     cy.get(".cellData").contains("4966277046676").realHover();
-    cy.findByTestId("detail-shortcut").findByRole("button").click();
+    cy.findByTestId("detail-shortcut")
+      .findByRole("button")
+      .should("be.visible")
+      .click();
 
     cy.findByRole("dialog").findByTestId("fk-relation-orders").click();
 
