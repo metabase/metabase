@@ -608,7 +608,7 @@
                                           :group_id   group-id
                                           :perm_value value
                                           :db_id      db-id})
-      (when (not= [:perms/create-queries :no] [perm-type value])
+      (when (and (= perm-type :perms/create-queries) (not= value :no))
         ;; If we're granting query access we need to ensure that data access is updated as well. This is relevant for
         ;; instances that downgrade from EE to OSS and may still have :blocked data access in some groups, which
         ;; should be reset when query access is granted.
