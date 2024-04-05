@@ -54,8 +54,8 @@ To export the results of a particular card, hover over the dashboard card, click
 From here you can select:
 
 - .csv
+.xlsx
 - .json
-- .xlsx
 - .png (if a chart)
 
 To export the raw, unformatted results, hold down the `option` key for Macs, or `Alt` key for Windows, then click on the download file format.
