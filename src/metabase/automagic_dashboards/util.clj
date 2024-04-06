@@ -12,7 +12,6 @@
    [metabase.models.interface :as mi]
    [metabase.sync.analyze.classify :as classify]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -83,7 +82,7 @@
      ;; handle field string names. Only if we have result metadata. (Not sure why)
      (when (string? id-or-name)
        (when-not result-metadata
-         (log/warn (trs "Warning: Automagic analysis context is missing result metadata. Unable to resolve Fields by name.")))
+         (log/warn "Warning: Automagic analysis context is missing result metadata. Unable to resolve Fields by name."))
        (when-let [field (m/find-first #(= (:name %) id-or-name)
                                       result-metadata)]
          (as-> field field
@@ -92,6 +91,4 @@
            (mi/instance Field field)
            (classify/run-classifiers field {}))))
      ;; otherwise this isn't returning something, and that's probably an error. Log it.
-     (log/warn (str (trs "Cannot resolve Field {0} in automagic analysis context" field-id-or-name-or-clause)
-                    \newline
-                    (u/pprint-to-str root))))))
+     (log/warnf "Cannot resolve Field %s in automagic analysis context\n%s" field-id-or-name-or-clause (u/pprint-to-str root)))))

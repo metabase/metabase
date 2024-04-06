@@ -22,7 +22,6 @@
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
    (java.sql Connection ResultSet Time)
@@ -33,20 +32,21 @@
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
-(doseq [[feature supported?] {:regex                                  false
-                              :case-sensitivity-string-filter-options false
-                              :now                                    true
-                              :datetime-diff                          true
-                              :convert-timezone                       true
-                              :test/jvm-timezone-setting              false
-                              :index-info                             true}]
+(doseq [[feature supported?] {:case-sensitivity-string-filter-options              false
+                              :convert-timezone                                    true
+                              :datetime-diff                                       true
+                              :index-info                                          true
+                              :now                                                 true
+                              :regex                                               false
+                              :sql/window-functions.order-by-output-column-numbers false
+                              :test/jvm-timezone-setting                           false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
   [_ _ db]
   (let [major-version (get-in db [:dbms_version :semantic-version 0] 0)]
     (when (zero? major-version)
-      (log/warn (trs "Unable to determine sqlserver's dbms major version. Fallback to 0.")))
+      (log/warn "Unable to determine sqlserver's dbms major version. Fallback to 0."))
     (>= major-version 16)))
 
 (defmethod driver/db-start-of-week :sqlserver
@@ -488,7 +488,9 @@
       ;; For the GROUP BY, we replace the unoptimized fields with the optimized ones, e.g.
       ;;
       ;;    GROUP BY year(field), month(field)
-      (apply sql.helpers/group-by new-hsql (mapv (partial sql.qp/->honeysql driver) optimized)))))
+      (apply sql.helpers/group-by new-hsql (mapv (partial sql.qp/->honeysql driver) optimized))
+      ;; remove duplicate group by clauses (from the optimize breakout clauses stuff)
+      (update new-hsql :group-by distinct))))
 
 (defn- optimize-order-by-subclauses
   "Optimize `:order-by` `subclauses` using [[optimized-temporal-buckets]], if possible."
@@ -508,7 +510,9 @@
   ;; year(), month(), and day() can make use of indexes while DateFromParts() cannot.
   (let [query         (update query :order-by optimize-order-by-subclauses)
         parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :order-by])]
-    (parent-method driver :order-by honeysql-form query)))
+    (-> (parent-method driver :order-by honeysql-form query)
+        ;; order bys have to be distinct in SQL Server!!!!!!!1
+        (update :order-by distinct))))
 
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]
@@ -753,7 +757,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
+          (log/debug e "Error setting statement fetch direction to FETCH_FORWARD")))
       stmt
       (catch Throwable e
         (.close stmt)

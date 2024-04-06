@@ -5,7 +5,6 @@
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
    (java.time ZonedDateTime)))
@@ -26,7 +25,7 @@
       (t/zone-id timezone-id)
       timezone-id
       (catch Throwable _
-        (log/warn (tru "Invalid timezone ID ''{0}''" timezone-id))
+        (log/warnf "Invalid timezone ID '%s'" timezone-id)
         nil))))
 
 (defn- report-timezone-id* []

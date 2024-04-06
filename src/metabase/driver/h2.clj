@@ -66,16 +66,16 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(doseq [[feature supported?] {:full-join                 false
-                              :regex                     true
-                              :percentile-aggregations   false
-                              :actions                   true
+(doseq [[feature supported?] {:actions                   true
                               :actions/custom            true
                               :datetime-diff             true
+                              :full-join                 false
+                              :index-info                true
                               :now                       true
+                              :percentile-aggregations   false
+                              :regex                     true
                               :test/jvm-timezone-setting false
-                              :uploads                   true
-                              :index-info                true}]
+                              :uploads                   true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
@@ -558,7 +558,7 @@
       (let [details (ssh/include-ssh-tunnel! db-details)
             db      (:db details)]
         (assoc details :db (str/replace-first db (str (:orig-port details)) (str (:tunnel-entrance-port details)))))
-      (do (log/error (tru "SSH tunnel can only be established for H2 connections using the TCP protocol"))
+      (do (log/error "SSH tunnel can only be established for H2 connections using the TCP protocol")
           db-details))
     db-details))
 
