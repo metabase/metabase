@@ -1,7 +1,6 @@
 (ns metabase.query-processor.util.nest-query-test
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.driver :as driver]
