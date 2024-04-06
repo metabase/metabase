@@ -5,7 +5,7 @@
    [compojure.core :refer [context defroutes GET OPTIONS]]
    [compojure.route :as route]
    [metabase.api.dataset :as api.dataset]
-   [metabase.api.legacy-metric :as api]
+   [metabase.api.routes :as api]
    [metabase.config :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
