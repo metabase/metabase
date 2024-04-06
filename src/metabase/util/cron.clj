@@ -19,7 +19,11 @@
    [:and
     ms/NonBlankString
     [:fn
-     {:error/message "Invalid cron schedule string."}
+     {:error/fn (fn [{:keys [value]} _]
+                  (try
+                    (CronExpression/validateExpression value)
+                    (catch Throwable e
+                      (str "Invalid cron schedule string: " (.getMessage e)))))}
      (fn [^String s]
        (try
          (CronExpression/validateExpression s)

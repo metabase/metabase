@@ -193,7 +193,7 @@ interface TableBreadcrumbsProps {
 
 const TableBreadcrumbs = ({ schemaId, onBack }: TableBreadcrumbsProps) => {
   return (
-    <h4 className="p2 border-bottom break-anywhere">
+    <h4 className={cx("p2 border-bottom", CS.breakAnywhere)}>
       <BackIconContainer onClick={onBack}>
         <Icon name="chevronleft" size={10} />
         {t`Schemas`}
@@ -233,7 +233,9 @@ const TableHeader = ({
   return (
     <div
       className={cx(
-        "flex justify-between align-center",
+        CS.flex,
+        CS.justifyBetween,
+        CS.alignCenter,
         AdminS.AdminListSection,
       )}
     >
@@ -276,13 +278,14 @@ const TableRow = ({
   }, [table, onSelectTable]);
 
   return (
-    <li className="hover-parent hover--visibility">
+    <li className={cx(CS.hoverParent, CS.hoverVisibility)}>
       <AdminListItem
         disabled={!isSyncCompleted(table)}
         onClick={handleSelect}
         data-testid="admin-metadata-table-list-item"
         className={cx(
-          "text-wrap justify-between",
+          CS.textWrap,
+          CS.justifyBetween,
           CS.flex,
           CS.alignCenter,
           CS.noDecoration,
@@ -292,7 +295,7 @@ const TableRow = ({
       >
         {table.displayName()}
         {isSyncCompleted(table) && (
-          <div className="hover-child float-right">
+          <div className={cx(CS.hoverChild, "float-right")}>
             <ToggleVisibilityButton
               tables={tables}
               isHidden={table.visibility_type != null}

@@ -3,6 +3,9 @@ import { t } from "ttag";
 import { createEntity, undo } from "metabase/lib/entities";
 import { TimelineEventSchema } from "metabase/schema";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const TimelineEvents = createEntity({
   name: "timelineEvents",
   nameOne: "timelineEvent",

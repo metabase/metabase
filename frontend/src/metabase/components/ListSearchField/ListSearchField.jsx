@@ -20,8 +20,7 @@ export default function ListSearchField({ autoFocus, ...props }) {
 
   return (
     <Input
-      autoFocus
-      ref={inputRef}
+      inputRef={inputRef}
       data-testid="list-search-field"
       {...props}
       leftIcon="search"

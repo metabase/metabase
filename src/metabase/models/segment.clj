@@ -83,7 +83,7 @@
             query       (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
         (lib/describe-top-level-key query :filters))
       (catch Throwable e
-        (log/error e (tru "Error calculating Segment description: {0}" (ex-message e)))
+        (log/errorf e "Error calculating Segment description: %s" (ex-message e))
         nil))))
 
 (mu/defn ^:private warmed-metadata-provider :- lib.metadata/MetadataProvider

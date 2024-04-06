@@ -78,13 +78,13 @@ describe("ChartCaption", () => {
     expect(screen.getByTestId("legend-caption")).toBeInTheDocument();
   });
 
-  it("should render markdown in description", () => {
+  it("should render markdown in description", async () => {
     setup({
       series: getSeries({ card: createMockCard({ name: "card name" }) }),
       settings: { "card.description": "[link](https://metabase.com)" },
     });
 
-    userEvent.hover(getIcon("info"));
+    await userEvent.hover(getIcon("info"));
 
     const tooltipContent = screen.getByRole("link");
     expect(tooltipContent).toBeInTheDocument();

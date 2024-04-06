@@ -9,6 +9,9 @@ interface Metric extends Omit<NormalizedMetric, "table"> {
   metadata?: Metadata;
 }
 
+/**
+ * @deprecated use RTK Query endpoints and plain api objects from metabase-types/api
+ */
 class Metric {
   private readonly _plainObject: NormalizedMetric;
 

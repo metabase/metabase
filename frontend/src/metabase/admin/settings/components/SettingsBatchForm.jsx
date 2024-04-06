@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import * as React from "react";
@@ -10,6 +11,7 @@ import _ from "underscore";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 import { isEmail, isEmpty } from "metabase/lib/utils";
 
 import { CollapsibleSectionContent } from "./SettingsBatchForm.styled";
@@ -298,7 +300,9 @@ class SettingsBatchForm extends Component {
         )}
 
         {formErrors && formErrors.message && (
-          <div className="m2 text-error text-bold">{formErrors.message}</div>
+          <div className={cx("m2 text-error", CS.textBold)}>
+            {formErrors.message}
+          </div>
         )}
 
         <div className="m2 mb4">
@@ -345,7 +349,7 @@ export default connect(
 
 const StandardSection = ({ title, children }) => (
   <div>
-    {title && <h2 className="mx2">{title}</h2>}
+    {title && <h2 className={CS.mx2}>{title}</h2>}
     <ul>{children}</ul>
   </div>
 );
@@ -364,10 +368,10 @@ class CollapsibleSection extends React.Component {
     const { title, children } = this.props;
     const { show } = this.state;
     return (
-      <section className="mb4">
+      <section className={CS.mb4}>
         <CollapsibleSectionContent onClick={this.handleToggle.bind(this)}>
-          <div className="flex align-center">
-            <DisclosureTriangle className="mx1" open={show} />
+          <div className={cx(CS.flex, CS.alignCenter)}>
+            <DisclosureTriangle className={CS.mx1} open={show} />
             <h3>{title}</h3>
           </div>
         </CollapsibleSectionContent>

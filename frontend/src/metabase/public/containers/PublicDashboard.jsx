@@ -179,7 +179,7 @@ class PublicDashboard extends Component {
         setParameterValueToDefault={setParameterValueToDefault}
         enableParameterRequiredBehavior
         actionButtons={
-          buttons.length > 0 && <div className="flex">{buttons}</div>
+          buttons.length > 0 && <div className={CS.flex}>{buttons}</div>
         }
         dashboardTabs={<DashboardTabs location={this.props.location} />}
       >

@@ -1,8 +1,11 @@
+import cx from "classnames";
 import type * as React from "react";
 import { useState, useEffect } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import ListS from "metabase/css/components/list.module.css";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
@@ -225,14 +228,32 @@ export function FilterPopover({
         {showCustom && (
           <div
             style={{ color: color("filter") }}
-            className="List-section List-section--togglable"
+            data-element-id="list-section"
+            className={cx(ListS.ListSectionToggleAble)}
             onClick={() => setEditingFilter(true)}
           >
-            <div className="List-section-header mx2 py2 flex align-center hover-parent hover--opacity cursor-pointer">
-              <span className="List-section-icon mr1 flex align-center">
+            <div
+              className={cx(
+                ListS.ListSectionHeader,
+                CS.mx2,
+                CS.py2,
+                CS.flex,
+                CS.alignCenter,
+                CS.hoverParent,
+                CS.cursorPointer,
+              )}
+            >
+              <span
+                className={cx(
+                  ListS.ListSectionIcon,
+                  CS.mr1,
+                  CS.flex,
+                  CS.alignCenter,
+                )}
+              >
                 <Icon name="filter" />
               </span>
-              <h3 className="List-section-title text-wrap">
+              <h3 className={cx(ListS.ListSectionTitle, CS.textWrap)}>
                 {CUSTOM_SECTION_NAME}
               </h3>
             </div>

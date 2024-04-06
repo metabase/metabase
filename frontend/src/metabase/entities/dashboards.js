@@ -24,6 +24,9 @@ const FAVORITE_ACTION = `metabase/entities/dashboards/FAVORITE`;
 const UNFAVORITE_ACTION = `metabase/entities/dashboards/UNFAVORITE`;
 const COPY_ACTION = `metabase/entities/dashboards/COPY`;
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Dashboards = createEntity({
   name: "dashboards",
   nameOne: "dashboard",

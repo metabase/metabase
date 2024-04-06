@@ -6,8 +6,7 @@ import _ from "underscore";
 
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import Button from "metabase/core/components/Button";
-import { useModalOpen } from "metabase/hooks/use-modal-open";
-import { isReducedMotionPreferred } from "metabase/lib/dom";
+import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
@@ -53,12 +52,17 @@ const NotebookStepPreview = ({ step, onClose }) => {
   return (
     <PreviewRoot data-testid="preview-root">
       <PreviewHeader>
-        <span className="text-bold">{t`Preview`}</span>
+        <span className={CS.textBold}>{t`Preview`}</span>
         <PreviewIconContainer>
           <Icon
             name="close"
             onClick={onClose}
-            className="text-light text-medium-hover cursor-pointer ml1"
+            className={cx(
+              CS.textLight,
+              "text-medium-hover",
+              CS.cursorPointer,
+              CS.ml1,
+            )}
           />
         </PreviewIconContainer>
       </PreviewHeader>
@@ -68,8 +72,12 @@ const NotebookStepPreview = ({ step, onClose }) => {
         </PreviewButtonContainer>
       ) : (
         <QuestionResultLoader question={activeQuestion}>
-          {({ rawSeries, result }) => (
-            <VisualizationPreview rawSeries={rawSeries} result={result} />
+          {({ rawSeries, result, error }) => (
+            <VisualizationPreview
+              rawSeries={rawSeries}
+              result={result}
+              error={error}
+            />
           )}
         </QuestionResultLoader>
       )}
@@ -77,24 +85,18 @@ const NotebookStepPreview = ({ step, onClose }) => {
   );
 };
 
-const VisualizationPreview = ({ rawSeries, result }) => {
-  const { open } = useModalOpen();
-  const preferReducedMotion = isReducedMotionPreferred();
-
-  const transitionDuration = preferReducedMotion ? 80 : 700;
+export const VisualizationPreview = ({ rawSeries, result, error }) => {
+  const err = getErrorMessage(error || result?.error);
 
   return (
     <Visualization
       rawSeries={rawSeries}
-      error={result && result.error}
+      error={err}
       className={cx("bordered shadowed rounded bg-white", {
-        p2: result && result.error,
+        p2: err,
       })}
       style={{
-        height: open
-          ? getPreviewHeightForResult(result)
-          : getPreviewHeightForResult(result) / 2,
-        transition: `height ${transitionDuration}ms cubic-bezier(0, 0, 0.2, 1)`,
+        height: err ? "auto" : getPreviewHeightForResult(result),
       }}
     />
   );
@@ -103,6 +105,22 @@ const VisualizationPreview = ({ rawSeries, result }) => {
 function getPreviewHeightForResult(result) {
   const rowCount = result ? result.data.rows.length : 1;
   return rowCount * 36 + 36 + 2;
+}
+
+function getErrorMessage(err) {
+  if (!err) {
+    return null;
+  }
+
+  if (typeof err === "string") {
+    return err;
+  }
+
+  if (typeof err.message === "string") {
+    return err.message;
+  }
+
+  return t`Could not fetch preview`;
 }
 
 export default NotebookStepPreview;

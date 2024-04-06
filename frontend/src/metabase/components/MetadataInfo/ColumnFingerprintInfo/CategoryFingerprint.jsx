@@ -1,10 +1,8 @@
 import PropTypes from "prop-types";
-import { useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { t, ngettext, msgid } from "ttag";
 
-import Fields from "metabase/entities/fields";
-import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
+import { useGetFieldValuesQuery } from "metabase/api";
 import { formatNumber } from "metabase/lib/formatting";
 import { getMetadata } from "metabase/selectors/metadata";
 
@@ -23,7 +21,6 @@ const propTypes = {
   field: PropTypes.object,
   fieldId: PropTypes.number,
   fieldValues: PropTypes.array,
-  fetchFieldValues: PropTypes.func.isRequired,
   hasListValues: PropTypes.bool,
   showAllFieldValues: PropTypes.bool,
 };
@@ -34,48 +31,27 @@ const mapStateToProps = (state, props) => {
   const { fieldId } = props;
   const metadata = getMetadata(state);
   const field = metadata.field(fieldId);
-  const fieldValues =
-    fieldId != null
-      ? Fields.selectors.getFieldValues(state, {
-          entityId: fieldId,
-        })
-      : [];
+
   return {
     field,
-    fieldValues: fieldValues || [],
     hasListValues: field?.has_field_values === "list",
   };
-};
-
-const mapDispatchToProps = {
-  fetchFieldValues: Fields.actions.fetchFieldValues,
 };
 
 export function CategoryFingerprint({
   className,
   field,
   fieldId,
-  fieldValues = [],
-  fetchFieldValues,
   hasListValues,
   showAllFieldValues,
 }) {
-  const isMissingFieldValues = fieldValues.length === 0;
-  const shouldFetchFieldValues = hasListValues && isMissingFieldValues;
+  const { data: fieldData, isLoading } = useGetFieldValuesQuery(fieldId, {
+    skip: !hasListValues,
+  });
 
-  const distinctCount = field.fingerprint?.global?.["distinct-count"];
+  const fieldValues = fieldData ? fieldData.values : [];
+  const distinctCount = field?.fingerprint?.global?.["distinct-count"];
   const formattedDistinctCount = formatNumber(distinctCount);
-
-  const [isLoading, setIsLoading] = useState(shouldFetchFieldValues);
-  const safeFetchFieldValues = useSafeAsyncFunction(fetchFieldValues);
-  useEffect(() => {
-    if (shouldFetchFieldValues) {
-      setIsLoading(true);
-      safeFetchFieldValues({ id: fieldId }).finally(() => {
-        setIsLoading(false);
-      });
-    }
-  }, [fieldId, shouldFetchFieldValues, safeFetchFieldValues]);
 
   const showDistinctCount = isLoading || distinctCount != null;
   const showFieldValuesBlock = isLoading || fieldValues.length > 0;
@@ -157,7 +133,4 @@ function ShortenedFieldValuesList({ isLoading, fieldValues }) {
 
 CategoryFingerprint.propTypes = propTypes;
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(CategoryFingerprint);
+export default connect(mapStateToProps)(CategoryFingerprint);

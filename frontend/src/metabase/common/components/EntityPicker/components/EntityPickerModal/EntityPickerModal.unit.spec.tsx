@@ -14,19 +14,21 @@ import {
   createMockSearchResults,
 } from "metabase-types/api/mocks";
 
-import type { CollectionPickerItem, EntityTab } from "../../types";
+import type { EntityTab, TypeWithModel } from "../../types";
 
 import type { EntityPickerModalOptions } from "./EntityPickerModal";
 import { EntityPickerModal } from "./EntityPickerModal";
 
-interface setupProps {
+type SampleModelType = "card" | "table";
+
+interface SetupOpts {
   title?: string;
   onItemSelect?: () => void;
   onClose?: () => void;
   onConfirm?: () => void;
-  tabs?: [EntityTab, ...EntityTab[]];
+  tabs?: [EntityTab<SampleModelType>, ...EntityTab<SampleModelType>[]];
   options?: EntityPickerModalOptions;
-  selectedItem?: null | CollectionPickerItem;
+  selectedItem?: null | TypeWithModel<number, SampleModelType>;
   actionButtons?: JSX.Element[];
 }
 
@@ -34,10 +36,10 @@ const TestPicker = ({ name }: { name: string }) => (
   <p>{`Test picker ${name}`}</p>
 );
 
-const TEST_TAB: EntityTab = {
+const TEST_TAB: EntityTab<SampleModelType> = {
   icon: "audit",
   displayName: "All the foo",
-  model: "test1",
+  model: "card",
   element: <TestPicker name="foo" />,
 };
 
@@ -49,7 +51,7 @@ const setup = ({
   tabs = [TEST_TAB],
   selectedItem = null,
   ...rest
-}: setupProps = {}) => {
+}: SetupOpts = {}) => {
   mockGetBoundingClientRect();
   mockScrollBy();
 
@@ -94,15 +96,16 @@ describe("EntityPickerModal", () => {
   });
 
   it("should show a tab list when more than 1 tab is supplied", async () => {
-    const tabs: [EntityTab, ...EntityTab[]] = [
-      TEST_TAB,
-      {
-        icon: "folder",
-        displayName: "All the bar",
-        model: "test2",
-        element: <TestPicker name="bar" />,
-      },
-    ];
+    const tabs: [EntityTab<SampleModelType>, ...EntityTab<SampleModelType>[]] =
+      [
+        TEST_TAB,
+        {
+          icon: "folder",
+          displayName: "All the bar",
+          model: "table",
+          element: <TestPicker name="bar" />,
+        },
+      ];
     setup({
       tabs,
     });
@@ -118,7 +121,7 @@ describe("EntityPickerModal", () => {
       await within(tabList).findByRole("tab", { name: /All the bar/ }),
     ).toBeInTheDocument();
 
-    userEvent.click(
+    await userEvent.click(
       await within(tabList).findByRole("tab", { name: /All the bar/ }),
     );
 
@@ -155,7 +158,7 @@ describe("EntityPickerModal", () => {
       onConfirm,
     });
 
-    userEvent.type(await screen.findByPlaceholderText("Search…"), "My ", {
+    await userEvent.type(await screen.findByPlaceholderText("Search…"), "My ", {
       delay: 50,
     });
 
@@ -166,7 +169,7 @@ describe("EntityPickerModal", () => {
 
     expect(await screen.findAllByTestId("search-result-item")).toHaveLength(2);
 
-    userEvent.click(await screen.findByText("Search Result 1"));
+    await userEvent.click(await screen.findByText("Search Result 1"));
 
     expect(onItemSelect).toHaveBeenCalledTimes(1);
   });
@@ -185,7 +188,9 @@ describe("EntityPickerModal", () => {
     expect(
       await screen.findByRole("button", { name: "Click Me" }),
     ).toBeInTheDocument();
-    userEvent.click(await screen.findByRole("button", { name: "Click Me" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Click Me" }),
+    );
 
     expect(actionFn).toHaveBeenCalledTimes(1);
   });

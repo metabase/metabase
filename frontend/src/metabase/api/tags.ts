@@ -1,21 +1,29 @@
-export const LIST_ID = "LIST" as const;
+export const TAG_TYPES = [
+  "api-key",
+  "card",
+  "database",
+  "field",
+  "field-values",
+  "metric",
+  "schema",
+  "segment",
+  "table",
+] as const;
 
-export function getListTag<T extends string>(tagType: T) {
-  return { type: tagType, id: LIST_ID } as const;
+export type TagType = typeof TAG_TYPES[number];
+
+export function tag(type: TagType) {
+  return { type };
 }
 
-export function providesList<
-  Results extends { id: string | number }[],
-  TagType extends string,
->(resultsWithIds: Results | undefined, tagType: TagType) {
-  const listTag = getListTag(tagType);
-  return resultsWithIds
-    ? [listTag, ...resultsWithIds.map(({ id }) => ({ type: tagType, id }))]
-    : [listTag];
+export function listTag(type: TagType) {
+  return { type, id: "LIST" };
 }
 
-export const API_KEY_TAG = "ApiKey" as const;
-export const API_KEY_LIST_TAG = getListTag(API_KEY_TAG);
+export function idTag(type: TagType, id: string | number) {
+  return { type, id };
+}
 
-export const tagTypes = [API_KEY_TAG];
-export type TagTypes = typeof tagTypes[number];
+export function invalidateTags<T>(error: unknown, tags: T[]) {
+  return !error ? tags : [];
+}

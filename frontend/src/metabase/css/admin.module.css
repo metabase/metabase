@@ -124,20 +124,6 @@
   outline: 0;
 }
 
-.AdminSelect {
-  display: inline-block;
-  padding: 0.6em 0.9em;
-  border: 1px solid var(--color-border);
-  background-color: var(--color-bg-white);
-  border-radius: var(--default-border-radius);
-  font-weight: 700;
-  min-width: 104px;
-}
-
-.AdminSelect:hover {
-  border-color: color-mod(var(--color-border) blackness(10%));
-}
-
 .MetadataTable {
   min-width: 800px;
 }

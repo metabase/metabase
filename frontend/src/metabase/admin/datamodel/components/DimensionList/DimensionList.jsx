@@ -7,8 +7,8 @@ import _ from "underscore";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import AccordionList from "metabase/core/components/AccordionList";
 import Tooltip from "metabase/core/components/Tooltip";
+import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
-import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { Icon, Box } from "metabase/ui";
 import { FieldDimension } from "metabase-lib/v1/Dimension";
 
@@ -111,7 +111,9 @@ export class DimensionList extends Component {
     return (
       <Box className="Field-extra">
         {item.dimension?.tag && (
-          <span className="h5 text-light px1">{item.dimension.tag}</span>
+          <span className={cx(CS.h5, CS.textLight, CS.px1)}>
+            {item.dimension.tag}
+          </span>
         )}
         {subDimensions?.length > 0 ? (
           <PopoverWithTrigger
@@ -127,7 +129,7 @@ export class DimensionList extends Component {
           >
             {({ onClose }) => (
               <DimensionPicker
-                className="scroll-y"
+                className={CS.scrollY}
                 dimension={sectionDimension}
                 dimensions={subDimensions}
                 onChangeDimension={dimension => {
@@ -144,7 +146,13 @@ export class DimensionList extends Component {
           <Tooltip tooltip={t`Add grouping`}>
             <Icon
               name="add"
-              className="mx1 cursor-pointer hover-child faded fade-in-hover"
+              className={cx(
+                CS.mx1,
+                CS.cursorPointer,
+                CS.hoverChild,
+                "faded",
+                "fade-in-hover",
+              )}
               onClick={e => {
                 e.stopPropagation();
                 this.handleAdd(item);
@@ -155,7 +163,7 @@ export class DimensionList extends Component {
         {isSelected && onRemoveDimension && (
           <Icon
             name="close"
-            className="mx1 cursor-pointer faded fade-in-hover"
+            className={cx(CS.mx1, CS.cursorPointer, "faded", "fade-in-hover")}
             onClick={e => {
               e.stopPropagation();
               this.handleRemove(item);
@@ -177,7 +185,7 @@ export class DimensionList extends Component {
     return (
       <FieldListGroupingTrigger
         className={cx(
-          QueryBuilderS.FieldListGroupingTrigger,
+          ListS.FieldListGroupingTrigger,
           "text-white-hover",
           CS.flex,
           CS.alignCenter,
@@ -256,7 +264,7 @@ export class DimensionList extends Component {
         onChange={this.handleChange}
         itemIsSelected={this.itemIsSelected}
         renderItemExtra={this.renderItemExtra}
-        getItemClassName={() => "hover-parent hover--display"}
+        getItemClassName={() => cx(CS.hoverParent, CS.hoverDisplay)}
       />
     );
   }

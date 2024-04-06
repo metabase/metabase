@@ -76,7 +76,7 @@ describe("instance analytics custom reports collection", () => {
 
   it("should not show move button", async () => {
     setup(defaultOptions);
-    userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(getIcon("ellipsis"));
     await screen.findByRole("dialog");
 
     expect(getIcon("lock")).toBeInTheDocument();
@@ -86,7 +86,7 @@ describe("instance analytics custom reports collection", () => {
 
   it("should not show archive button", async () => {
     setup(defaultOptions);
-    userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(getIcon("ellipsis"));
     await screen.findByRole("dialog");
 
     expect(getIcon("lock")).toBeInTheDocument();
@@ -109,7 +109,7 @@ describe("Official Collections Header", () => {
 
   it("should allow admin users to designate official collections", async () => {
     setup(officialCollectionOptions);
-    userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(getIcon("ellipsis"));
     expect(
       await screen.findByText("Make collection official"),
     ).toBeInTheDocument();
@@ -121,7 +121,7 @@ describe("Official Collections Header", () => {
       ...officialCollectionOptions,
       isAdmin: false,
     });
-    userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(getIcon("ellipsis"));
     expect(
       screen.queryByText("Make collection official"),
     ).not.toBeInTheDocument();
@@ -136,7 +136,7 @@ describe("Official Collections Header", () => {
         can_write: false,
       },
     });
-    userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(getIcon("ellipsis"));
     expect(
       screen.queryByText("Make collection official"),
     ).not.toBeInTheDocument();

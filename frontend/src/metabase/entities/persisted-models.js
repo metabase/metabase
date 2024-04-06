@@ -12,6 +12,9 @@ const getPersistedModelInfoByModelId = createSelector(
     Object.values(persistedModels).find(info => info.card_id === modelId),
 );
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const PersistedModels = createEntity({
   name: "persistedModels",
   nameOne: "persistedModel",

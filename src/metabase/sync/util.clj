@@ -9,7 +9,6 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
-   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.task-history :refer [TaskHistory]]
    [metabase.query-processor.interface :as qp.i]
@@ -193,7 +192,7 @@
          (do
            (log/warn e message)
            e)
-         (throw (ex-info (format "%s: %s" message (ex-message e)) {:f f} e)))))))
+         (throw e))))))
 
 (defmacro with-error-handling
   "Execute `body` in a way that catches and logs any Exceptions thrown, and returns `nil` if they do so. Pass a
@@ -379,7 +378,7 @@
   [& {:keys [id name]}]
   (format "Field %s ''%s''" (or (str id) "") name))
 
-(defmethod name-for-logging Field [field]
+(defmethod name-for-logging :model/Field [field]
   (field-name-for-logging field))
 
 ;;; this is used for result metadata stuff.
@@ -465,7 +464,7 @@
                              (do
                                (log/warn e (format "Error running step ''%s'' for %s" step-name (name-for-logging database)))
                                {:throwable e})
-                             (throw (ex-info (format "Error in sync step %s: %s" step-name (ex-message e)) {} e)))))))
+                             (throw e))))))
         end-time   (t/zoned-date-time)]
     [step-name (assoc results
                       :start-time start-time

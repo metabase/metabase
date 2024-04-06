@@ -372,7 +372,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       !!addSeriesModalDashCard && isQuestionDashCard(addSeriesModalDashCard);
     return (
       <Modal
-        className="Modal AddSeriesModal"
+        className={cx("Modal", DashboardS.AddSeriesModal)}
         data-testid="add-series-modal"
         isOpen={isOpen}
       >
@@ -574,7 +574,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
           EmbedFrameS.DashCard,
           LegendS.DashCard,
           {
-            BrandColorResizeHandle: shouldChangeResizeHandle,
+            [DashboardS.BrandColorResizeHandle]: shouldChangeResizeHandle,
           },
         )}
         isAnimationDisabled={this.state.isAnimationPaused}
@@ -594,9 +594,9 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     const rowHeight = this.getRowHeight();
     return (
       <GridLayout
-        className={cx("DashboardGrid", {
-          "Dash--editing": this.isEditingLayout,
-          "Dash--dragging": this.state.isDragging,
+        className={cx({
+          [DashboardS.DashEditing]: this.isEditingLayout,
+          [DashboardS.DashDragging]: this.state.isDragging,
         })}
         layouts={layouts}
         breakpoints={GRID_BREAKPOINTS}

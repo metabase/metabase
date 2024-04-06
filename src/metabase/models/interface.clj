@@ -206,8 +206,7 @@
     (try
       (doall (f query))
       (catch Throwable e
-        (log/error e (tru "Unable to normalize:") "\n"
-                   (u/pprint-to-str 'red query))
+        (log/errorf e "Unable to normalize:\n%s" (u/pprint-to-str 'red query))
         nil))))
 
 (defn normalize-parameters-list

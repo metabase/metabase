@@ -1,6 +1,8 @@
+import cx from "classnames";
 import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
+import CS from "metabase/css/core/index.css";
 import { parseTimestamp } from "metabase/lib/time";
 import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
 import type { DatetimeUnit } from "metabase-types/api/query";
@@ -995,7 +997,7 @@ function formatMajorMinor(
       <span>
         <span
           style={{ minWidth: options.majorWidth + "em" }}
-          className="inline-block text-right text-bold"
+          className={cx(CS.inlineBlock, CS.textRight, CS.textBold)}
         >
           {major}
         </span>
