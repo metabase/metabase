@@ -2,6 +2,7 @@
   "Middleware that converts a query into a normalized, canonical form."
   (:require
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -11,7 +12,9 @@
 
 (defn- normalize*
   [query]
-  (let [metadata-provider (or (:lib/metadata query)
+  (let [metadata-provider (or (when-let [existing (:lib/metadata query)]
+                                (when (lib.metadata.protocols/metadata-provider?  existing)
+                                  existing))
                               (qp.store/metadata-provider))]
     (lib/query metadata-provider query)))
 
