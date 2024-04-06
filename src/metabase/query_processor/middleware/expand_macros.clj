@@ -190,5 +190,5 @@
      (if-not (= query' query)
        (recur query' (inc recursion-depth))
        (do
-         (log/tracef "No more legacy Metrics/Segments to expand.")
+         (log/trace "No more legacy Metrics/Segments to expand.")
          query')))))

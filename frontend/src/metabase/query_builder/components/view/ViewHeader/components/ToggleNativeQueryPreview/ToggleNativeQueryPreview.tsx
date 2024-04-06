@@ -46,7 +46,7 @@ export const ToggleNativeQueryPreview = ({
       }),
     );
 
-    trackNotebookNativePreviewShown(!isNativePreviewSidebarOpen);
+    trackNotebookNativePreviewShown(question, !isNativePreviewSidebarOpen);
   };
 
   return (

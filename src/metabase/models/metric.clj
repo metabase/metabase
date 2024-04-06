@@ -89,7 +89,7 @@
             query       (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
         (lib/describe-query query))
       (catch Throwable e
-        (log/error e (tru "Error calculating Metric description: {0}" (ex-message e)))
+        (log/errorf e "Error calculating Metric description: %s" (ex-message e))
         nil))))
 
 (mu/defn ^:private warmed-metadata-provider :- lib.metadata/MetadataProvider

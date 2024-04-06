@@ -266,7 +266,7 @@
 ;; Log the maximum memory available to the JVM at launch time as well since it is very handy for debugging things
 #?(:clj
    (when-not *compile-files*
-     (log/info (i18n/trs "Maximum memory available to JVM: {0}" (u.format/format-bytes (.maxMemory (Runtime/getRuntime)))))))
+     (log/infof "Maximum memory available to JVM: %s" (u.format/format-bytes (.maxMemory (Runtime/getRuntime))))))
 
 ;; Set the default width for pprinting to 120 instead of 72. The default width is too narrow and wastes a lot of space
 #?(:clj  (alter-var-root #'pprint/*print-right-margin* (constantly 120))
