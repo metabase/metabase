@@ -1,7 +1,7 @@
 (ns metabase.query-processor-test.count-where-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.legacy-metric-metric :refer [LegacyMetric]]
+   [metabase.models.legacy-metric :refer [LegacyMetric]]
    [metabase.models.segment :refer [Segment]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
