@@ -246,16 +246,19 @@
   (driver/with-driver :h2
     (with-redefs [driver/db-start-of-week   (constantly :monday)
                   setting/get-value-of-type (constantly :sunday)]
-      (is (= [:dateadd
-              (h2x/literal "day")
-              (h2x/with-database-type-info [:cast [:inline -1] [:raw "long"]] "long")
-              (h2x/with-database-type-info
-               [:cast
-                [:week [:dateadd (h2x/literal "day")
-                        (h2x/with-database-type-info [:cast [:inline 1] [:raw "long"]] "long")
-                        (h2x/with-database-type-info [:cast :created_at [:raw "datetime"]] "datetime")]]
-                [:raw "datetime"]]
-               "datetime")]
+      (is (= (-> [:dateadd
+                  (h2x/literal "day")
+                  [:inline -1]
+                  (-> [:cast
+                       [:week (-> [:dateadd
+                                   (h2x/literal "day")
+                                   [:inline 1]
+                                   (-> [:cast :created_at [:raw "datetime"]]
+                                       (h2x/with-database-type-info "datetime"))]
+                                  (h2x/with-database-type-info "datetime"))]
+                       [:raw "datetime"]]
+                      (h2x/with-database-type-info "datetime"))]
+                 (h2x/with-database-type-info "datetime"))
              (sql.qp/adjust-start-of-week :h2 (fn [x] [:week x]) :created_at))))
     (testing "Do we skip the adjustment if offset = 0"
       (with-redefs [driver/db-start-of-week   (constantly :monday)
