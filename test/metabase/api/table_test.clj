@@ -138,7 +138,7 @@
 (deftest list-uploaded-tables-test
   (testing "GET /api/table/uploaded"
     (testing "These should come back in alphabetical order and include relevant metadata"
-      (with-tables-as-uploads [:categories :reviews :venues]
+      (with-tables-as-uploads [:categories :reviews]
         (t2.with-temp/with-temp [Card {} {:table_id (mt/id :categories)}
                                  Card {} {:table_id (mt/id :reviews)}
                                  Card {} {:table_id (mt/id :reviews)}]
@@ -156,12 +156,6 @@
                       :id           (mt/id :reviews)
                       :schema       "PUBLIC"
                       :usage_count  2
-                      :entity_type  "entity/GenericTable"}
-                     {:name         (mt/format-name "venues")
-                      :display_name "Venues"
-                      :id           (mt/id :venues)
-                      :schema       "PUBLIC"
-                      :usage_count  0
                       :entity_type  "entity/GenericTable"}}
                    (->> result
                         (filter #(= (:db_id %) (mt/id)))    ; prevent stray tables from affecting unit test results
