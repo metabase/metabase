@@ -121,11 +121,11 @@
   [driver & {:keys [schema-names table-names]}]
   (sql/format {:select [[:c.column_name :name]
                         [:c.data_type :database-type]
-                        [[:- :c.ordinal_position 1] :database-position]
-                        [:c.schema_name :table-schema]
+                        [[:- :c.ordinal_position [:inline 1]] :database-position]
+                        [:c.table_schema :table-schema]
                         [:c.table_name :table-name]
                         [[:not= :pk.column_name nil] :pk?]
-                        [[:case [:not= :c.remarks ""] :c.remarks :else nil] :field-comment]]
+                        [[:case [:not= :c.remarks [:inline ""]] :c.remarks :else nil] :field-comment]]
                :from [[:svv_columns :c]]
                :left-join [[{:select [:tc.table_schema
                                       :tc.table_name
@@ -136,15 +136,15 @@
                                      [:= :tc.constraint_name :kc.constraint_name]
                                      [:= :tc.table_schema :kc.table_schema]
                                      [:= :tc.table_name :kc.table_name]]]
-                             :where [:= :tc.constraint_type "PRIMARY KEY"]}
+                             :where [:= :tc.constraint_type [:inline "PRIMARY KEY"]]}
                             :pk]
                            [:and
-                            [:= :c.schema_name :pk.table_schema]
+                            [:= :c.table_schema :pk.table_schema]
                             [:= :c.table_name :pk.table_name]
                             [:= :c.column_name :pk.column_name]]]
                :where [:and
-                       [:raw "c.schema_name !~ '^information_schema|catalog_history|pg_'"]
-                       (when schema-names [:in :c.schema_name schema-names])
+                       [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
+                       (when schema-names [:in :c.table_schema schema-names])
                        (when table-names [:in :c.table_name table-names])]
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
