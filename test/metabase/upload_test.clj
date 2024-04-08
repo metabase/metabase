@@ -348,7 +348,12 @@
   `(do-with-uploads-allowed (fn [] ~@body)))
 
 (defn do-with-upload-table! [table thunk]
-  (thunk table))
+  (try (thunk table)
+       (finally
+         (when (not= driver/*driver* :redshift) ; redshift tests flake when tables are dropped
+           (driver/drop-table! driver/*driver*
+                               (:db_id table)
+                               (#'upload/table-identifier table))))))
 
 (defn- table->card [table]
   (t2/select-one :model/Card :table_id (:id table)))
@@ -1274,7 +1279,7 @@
               ;; Only create auto-pk columns for drivers that supported uploads before auto-pk columns
               ;; were introduced by metabase#36249. Otherwise we can assume that the table was created
               ;; with an auto-pk column.
-              (if (driver/create-auto-pk-with-append-csv? driver/*driver*)
+              (if (driver/create-auto-pk-with-append-csv? :redshift)
                 (do
                   (testing "Check a _mb_row_id column was created"
                     (is (= ["name" "_mb_row_id"]
@@ -1298,9 +1303,13 @@
                   (testing "Check a _mb_row_id column wasn't created"
                     (is (= ["name"]
                            (column-names-for-table table))))
-                  (testing "Check the data was uploaded into the table"
+                  (case action
+                    ::upload/append
                     (is (= [["Obi-Wan Kenobi"]
                             ["Luke Skywalker"]]
+                           (rows-for-table table)))
+                    ::upload/replace
+                    (is (= [["Luke Skywalker"]]
                            (rows-for-table table))))))
               (io/delete-file file))))))))
 
@@ -1678,7 +1687,7 @@
                     (io/delete-file file)))))))))))
 
 (deftest update-promotion-multiple-columns-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :redshift) ; redshift doesn't support promotion
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
         (with-mysql-local-infile-on-and-off
