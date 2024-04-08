@@ -16,7 +16,7 @@ import type {
 } from "metabase-types/api";
 
 import { canUseLinkedFilters } from "../../utils/linked-filters";
-import ParameterLinkedFilters from "../ParameterLinkedFilters";
+import { ParameterLinkedFilters } from "../ParameterLinkedFilters";
 import { ParameterSettings } from "../ParameterSettings";
 
 export interface ParameterSidebarProps {
@@ -209,7 +209,7 @@ export const ParameterSidebar = ({
           />
         </Tabs.Panel>
 
-        <Tabs.Panel value="filters" key="filters">
+        <Tabs.Panel pr="md" pl="md" value="filters" key="filters">
           <ParameterLinkedFilters
             parameter={parameter}
             otherParameters={otherParameters}
