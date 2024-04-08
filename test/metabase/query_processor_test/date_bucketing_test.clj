@@ -467,8 +467,7 @@
        :day
        :pacific
        (fn [rows]
-         (is (= (if (or (= :sqlite driver/*driver*)
-                        (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
+         (is (= (if (or (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
                         (not (qp.test-util/supports-report-timezone? driver/*driver*)))
                   [["2015-06-01" 6]
                    ["2015-06-02" 10]
