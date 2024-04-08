@@ -172,14 +172,15 @@
                 (is (=? {:cached false :data some?}
                         (run-query! card-id {:ignore_cache true})))))
 
-            (testing "when invalidating database config with no overrides, dashboard-related queries will still have it"
+            (testing "when invalidating database config directly, dashboard-related queries are still cached"
               (is (=? {:count 1}
                       (invalidate! 200 :database (mt/id))))
               (is (=? {:cached true :data some?}
                       (run-query! card1-id {:dashboard_id (:id dash)}))))
 
             (testing "but with overrides - will go through every card and mark cache invalidated"
-              (is (=? {:count 2}
+              ;; not a concrete number here since (mt/id) can have a bit more than 2 cards we've currently defined
+              (is (=? {:count pos-int?}
                       (invalidate! 200 :include :overrides :database (mt/id))))
               (is (=? {:cached false :data some?}
                       (run-query! card1-id {:dashboard_id (:id dash)}))))))))))
