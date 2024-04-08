@@ -5,9 +5,11 @@
    [clojure.walk :as walk]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.fix-bad-references
     :as fix-bad-refs]
@@ -769,3 +771,67 @@
                 ::add/source-alias  "CREATED_AT"
                 ::add/desired-alias "Products__CREATED_AT"}]
               (#'add/matching-field-in-join-at-this-level source-query field-clause))))))
+
+(defn- metadata-provider-with-two-models []
+  (let [result-metadata-for (fn [column-name]
+                              {:display_name   column-name
+                               :field_ref      [:field column-name {:base-type :type/Integer}]
+                               :name           column-name
+                               :base_type      :type/Integer
+                               :effective_type :type/Integer
+                               :semantic_type  nil
+                               :fingerprint
+                               {:global {:distinct-count 1, :nil% 0}
+                                :type   #:type{:Number {:min 1, :q1 1, :q3 1, :max 1, :sd nil, :avg 1}}}})]
+    (lib/composed-metadata-provider
+      meta/metadata-provider
+      (providers.mock/mock-metadata-provider
+        {:cards [{:name            "Model A"
+                  :id              1
+                  :database-id     (meta/id)
+                  :type            :model
+                  :dataset-query   {:database (mt/id)
+                                    :type     :native
+                                    :native   {:template-tags {} :query "select 1 as a1, 2 as a2;"}}
+                  :result-metadata [(result-metadata-for "A1")
+                                    (result-metadata-for "A2")]}
+                 {:name            "Model B"
+                  :id              2
+                  :database-id     (meta/id)
+                  :type            :model
+                  :dataset-query   {:database (mt/id)
+                                    :type     :native
+                                    :native   {:template-tags {} :query "select 1 as b1, 2 as b2;"}}
+                  :result-metadata [(result-metadata-for "B1")
+                                    (result-metadata-for "B2")]}
+                 {:name            "Joined"
+                  :id              3
+                  :database-id     (meta/id)
+                  :type            :model
+                  :dataset-query   {:database (meta/id)
+                                    :type     :query
+                                    :query    {:joins
+                                               [{:fields :all,
+                                                 :alias "Model B - A1",
+                                                 :strategy :inner-join,
+                                                 :condition
+                                                 [:=
+                                                  [:field "A1" {:base-type :type/Integer}]
+                                                  [:field "B1" {:base-type :type/Integer, :join-alias "Model B - A1"}]],
+                                                 :source-table "card__2"}],
+                                               :source-table "card__1"}}}]}))))
+
+(deftest ^:parallel models-with-joins-and-renamed-columns-test
+  (testing "an MBQL model with an explicit join and customized field names generate correct SQL (#40252)"
+    (qp.store/with-metadata-provider (metadata-provider-with-two-models)
+      (is (=? {:query {:fields [[:field "A1" {::add/source-table ::add/source
+                                              ::add/source-alias "A1"}]
+                                [:field "A2" {::add/source-table ::add/source
+                                              ::add/source-alias "A2"}]
+                                [:field "B1" {::add/source-table ::add/source
+                                              ::add/source-alias "Model B - A1__B1"}]
+                                [:field "B2" {::add/source-table ::add/source
+                                              ::add/source-alias "Model B - A1__B2"}]]}}
+              (add-alias-info {:type     :query
+                               :database (meta/id)
+                               :query    {:source-table "card__3"}}))))))
