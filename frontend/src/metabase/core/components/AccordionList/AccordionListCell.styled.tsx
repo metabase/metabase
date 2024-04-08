@@ -6,12 +6,16 @@ export interface ListCellItemProps {
   isClickable: boolean;
 }
 
-export const ListCellHeader = styled.div<{ borderBottom?: boolean }>`
+export const ListCellHeader = styled.div<{
+  borderTop?: boolean;
+  borderBottom?: boolean;
+}>`
   border: none;
-  border-top: 1px solid ${color("bg-medium")};
 
-  border-bottom: ${props => (props.borderBottom ? 1 : 0)}px solid
-    ${color("bg-medium")};
+  border: 0px solid ${color("bg-medium")};
+
+  border-bottom-width: ${props => (props.borderBottom ? 1 : 0)}px;
+  border-top-width: ${props => (props.borderTop ? 1 : 0)}px;
 
   li:first-child & {
     border-top: none;
