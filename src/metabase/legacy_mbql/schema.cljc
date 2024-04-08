@@ -989,7 +989,7 @@
 ;; METRICS WITH STRING IDS, e.g. `[:metric "ga:sessions"]`, are Google Analytics metrics, not Metabase metrics! They
 ;; pass straight thru to the GA query processor.
 (def ^:private MetricID
-  [:ref ::lib.schema.id/metric])
+  [:ref ::lib.schema.id/legacy-metric])
 
 (defclause metric
   metric-id [:or MetricID NonBlankString])
