@@ -634,6 +634,25 @@
                       mt/rows
                       ffirst))))))))
 
+(deftest nested-convert-timezone-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/with-report-timezone-id! "UTC"
+      (mt/dataset times-mixed
+        (testing "convert-timezone nested with datetime extract"
+          (is (= ["2004-03-19T09:19:09" ; original col
+                  "2004-03-19T10:19:09" ; converted
+                  10]                   ; hour
+                 (->> (mt/run-mbql-query
+                        times
+                        {:expressions {"converted" [:convert-timezone $times.dt "Asia/Seoul" "Asia/Shanghai"]
+                                       "hour"      [:get-hour [:expression "converted"]]}
+                         :filter      [:= $times.index 1]
+                         :fields      [$times.dt
+                                       [:expression "converted"]
+                                       [:expression "hour"]]})
+                      (mt/formatted-rows [str str int])
+                      first))))))))
+
 (deftest nested-convert-timezone-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/with-report-timezone-id! "UTC"
