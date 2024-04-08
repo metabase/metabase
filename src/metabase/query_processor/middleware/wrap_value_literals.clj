@@ -50,7 +50,9 @@
    (when (:temporal-unit opts)
      {:unit (:temporal-unit opts)})
    (when (:base-type opts)
-     {:base_type (:base-type opts)})))
+     {:base_type (:base-type opts)})
+   (when (:effective-type opts)
+     {:effective_type (:effective-type opts)})))
 
 (defmethod type-info :expression [[_ _name opts]]
   (merge
@@ -59,7 +61,9 @@
    (when (:temporal-unit opts)
      {:unit (:temporal-unit opts)})
    (when (:base-type opts)
-     {:base_type (:base-type opts)})))
+     {:base_type (:base-type opts)})
+   (when (:effective-type opts)
+     {:effective_type (:effective-type opts)})))
 
 ;;; ------------------------------------------------- add-type-info --------------------------------------------------
 

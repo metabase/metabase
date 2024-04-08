@@ -3,11 +3,13 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.query-processor.middleware.wrap-value-literals
-    :as qp.wrap-value-literals]
+   [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]))
@@ -271,3 +273,31 @@
                               [:field (meta/id :checkins :date) {:base-type :type/Text, :effective-type column-type}]
                               "2024-03-20T15:24:00-07:00[US/Pacific]"]}
                     nil)))))))))
+
+(deftest ^:parallel expression-test
+  (testing "Value literals compared to :expression refs should get wrapped"
+    (qp.store/with-metadata-provider (mt/id)
+      (let [people     (lib.metadata/table (qp.store/metadata-provider) (mt/id :people))
+            created-at (lib.metadata/field (qp.store/metadata-provider) (mt/id :people :created_at))
+            query      (as-> (lib/query (qp.store/metadata-provider) people) query
+                         (lib/expression query "CC Created At" created-at)
+                         (lib/filter query (lib/=
+                                            (lib/expression-ref query "CC Created At")
+                                            "2017-10-07"))
+                         (lib/aggregate query (lib/count)))]
+
+        (is (=? {:stages [{:filters
+                           [[:=
+                             {}
+                             [:expression {:base-type :type/DateTimeWithLocalTZ} "CC Created At"]
+                             "2017-10-07"]]}]}
+                query))
+        (is (=? {:stages [{:lib/type :mbql.stage/mbql
+                           :filters  [[:=
+                                       {}
+                                       [:expression {:base-type :type/DateTimeWithLocalTZ} "CC Created At"]
+                                       [:absolute-datetime {} (t/offset-date-time #t "2017-10-07T00:00Z") :default]]]}]}
+                (->> query
+                     lib.convert/->legacy-MBQL
+                     wrap-value-literals
+                     (lib/query query))))))))
