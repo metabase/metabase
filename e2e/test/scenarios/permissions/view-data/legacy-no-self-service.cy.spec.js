@@ -43,6 +43,7 @@ describeEE(
               1: {
                 "view-data": "legacy-no-self-service",
                 "create-queries": "query-builder-and-native",
+                download: { schemas: "full" },
               },
             },
           },
@@ -54,7 +55,7 @@ describeEE(
           "Sample Database",
           "No self-service (Deprecated)",
           "Query builder and native",
-          "No",
+          "1 million rows",
           "No",
           "No",
         ],
@@ -68,15 +69,14 @@ describeEE(
 
       modifyPermission(
         "Sample Database",
-        DATA_ACCESS_PERMISSION_INDEX,
-        "No self-service (Deprecated)",
+        NATIVE_QUERIES_PERMISSION_INDEX,
+        "No",
       );
 
-      // make a change so there's a diff in the graph allowing us to save
       modifyPermission(
         "Sample Database",
-        NATIVE_QUERIES_PERMISSION_INDEX,
-        "Query builder only",
+        DATA_ACCESS_PERMISSION_INDEX,
+        "No self-service (Deprecated)",
       );
 
       cy.intercept("PUT", "/api/permissions/graph").as("saveGraph");
@@ -88,7 +88,6 @@ describeEE(
         cy.button("Yes").click();
       });
 
-      // TODO: figure out why the BE won't accept the value...
       cy.wait("@saveGraph").then(({ response }) => {
         expect(response.statusCode).to.equal(200);
       });
@@ -97,8 +96,8 @@ describeEE(
         [
           "Sample Database",
           "No self-service (Deprecated)",
-          "Query builder only",
           "No",
+          "1 million rows",
           "No",
           "No",
         ],
