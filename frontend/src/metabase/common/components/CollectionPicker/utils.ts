@@ -1,10 +1,6 @@
 import { isRootCollection } from "metabase/collections/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
-import type {
-  CollectionId,
-  SearchRequest,
-  SearchModelType,
-} from "metabase-types/api";
+import type { CollectionId, SearchRequest } from "metabase-types/api";
 
 import type { PickerState } from "../EntityPicker";
 
@@ -110,7 +106,7 @@ export const getParentCollectionId = (
 
 export const getPathLevelForItem = (
   item: CollectionPickerItem,
-  path: PickerState<CollectionPickerItem, SearchListQuery>,
+  path: PickerState<CollectionPickerItem, SearchRequest>,
   userPersonalCollectionId?: CollectionId,
 ): number => {
   if (item.id === userPersonalCollectionId) {

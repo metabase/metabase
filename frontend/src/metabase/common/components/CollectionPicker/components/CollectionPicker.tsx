@@ -7,7 +7,7 @@ import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { Collection, SearchListQuery, SearchRequest } from "metabase-types/api";
+import type { Collection, SearchRequest } from "metabase-types/api";
 
 import {
   LoadingSpinner,

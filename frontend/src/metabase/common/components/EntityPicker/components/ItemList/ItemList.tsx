@@ -3,7 +3,6 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { VirtualizedList } from "metabase/components/VirtualizedList";
-import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
 import { Box, Center, Icon, NavLink } from "metabase/ui";
 
