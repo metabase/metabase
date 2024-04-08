@@ -169,15 +169,13 @@
 (defn- deserialize-mlv2-query
   "Reading MLv2 queries​: normalize them, then attach a MetadataProvider based on their Database."
   [query]
-  (let [{database-id :database, :as normalized} (lib/normalize query)
-        metadata-provider                       (if (lib.metadata.protocols/metadata-provider? (:lib/metadata normalized))
-                                                  ;; in case someone passes in an already-normalized query
-                                                  ;; to [[maybe-normalize-query]] below, preserve the existing metadata
-                                                  ;; provider.
-                                                  (:lib/metadata normalized)
-                                                  ((requiring-resolve 'metabase.lib.metadata.jvm/application-database-metadata-provider)
-                                                   (u/the-id database-id)))]
-    (lib/query metadata-provider normalized)))
+  (let [metadata-provider (if (lib.metadata.protocols/metadata-provider? (:lib/metadata query))
+                            ;; in case someone passes in an already-normalized query to [[maybe-normalize-query]] below,
+                            ;; preserve the existing metadata provider.
+                            (:lib/metadata query)
+                            ((requiring-resolve 'metabase.lib.metadata.jvm/application-database-metadata-provider)
+                             (u/the-id (some #(get query %) [:database "database"]))))]
+    (lib/query metadata-provider query)))
 
 (mu/defn maybe-normalize-query
   "For top-level query maps like `Card.dataset_query`. Normalizes them on the way in & out."
@@ -208,8 +206,7 @@
     (try
       (doall (f query))
       (catch Throwable e
-        (log/error e (tru "Unable to normalize:") "\n"
-                   (u/pprint-to-str 'red query))
+        (log/errorf e "Unable to normalize:\n%s" (u/pprint-to-str 'red query))
         nil))))
 
 (defn normalize-parameters-list

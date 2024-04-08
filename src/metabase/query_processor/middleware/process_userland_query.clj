@@ -14,7 +14,6 @@
     :refer [QueryExecution]]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
@@ -62,7 +61,7 @@
                                                            (try
                                                              (save-query-execution!* execution-info)
                                                              (catch Throwable e
-                                                               (log/error e (trs "Error saving query execution info"))))))))
+                                                               (log/error e "Error saving query execution info")))))))
 
 (defn- save-successful-query-execution! [cache-details is-sandboxed? query-execution result-rows]
   (let [qe-map (assoc query-execution

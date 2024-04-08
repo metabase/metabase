@@ -549,7 +549,7 @@
                    hydrate-card-details
                    (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
         (when timed-out?
-          (log/info (trs "Metadata not available soon enough. Saving card {0} and asynchronously updating metadata" id))
+          (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
           (card/schedule-metadata-saving result-metadata-chan <>))))))
 
 

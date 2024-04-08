@@ -157,9 +157,9 @@
   [field-or-column :- FieldOrColumn
    _fingerprint    :- [:maybe fingerprint/Fingerprint]]
   (when-let [inferred-semantic-type (infer-semantic-type field-or-column)]
-    (log/debug (format "Based on the name of %s, we're giving it a semantic type of %s."
-                       (sync-util/name-for-logging field-or-column)
-                       inferred-semantic-type))
+    (log/debugf "Based on the name of %s, we're giving it a semantic type of %s."
+                (sync-util/name-for-logging field-or-column)
+                inferred-semantic-type)
     (assoc field-or-column :semantic_type inferred-semantic-type)))
 
 (defn- prefix-or-postfix

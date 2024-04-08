@@ -642,20 +642,17 @@ saved later when it is ready."
           id              (:id card)]
       (cond (= port timeoutc)
             (do (a/close! result-metadata-chan)
-                (log/info (trs "Metadata not ready in {0} minutes, abandoning"
-                               (long (/ metadata-async-timeout-ms 1000 60)))))
+                (log/infof "Metadata not ready in %s minutes, abandoning" (long (/ metadata-async-timeout-ms 1000 60))))
 
             (not (seq metadata))
-            (log/info (trs "Not updating metadata asynchronously for card {0} because no metadata"
-                           id))
+            (log/infof "Not updating metadata asynchronously for card %s because no metadata" id)
             :else
             (future
               (let [current-query (t2/select-one-fn :dataset_query Card :id id)]
                 (if (= (:dataset_query card) current-query)
                   (do (t2/update! Card id {:result_metadata metadata})
-                      (log/info (trs "Metadata updated asynchronously for card {0}" id)))
-                  (log/info (trs "Not updating metadata asynchronously for card {0} because query has changed"
-                                 id)))))))))
+                      (log/infof "Metadata updated asynchronously for card %s" id))
+                  (log/infof "Not updating metadata asynchronously for card %s because query has changed" id))))))))
 
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
@@ -694,7 +691,7 @@ saved later when it is ready."
      (when-not delay-event?
        (events/publish-event! :event/card-create {:object card :user-id (:id creator)}))
      (when timed-out?
-       (log/info (trs "Metadata not available soon enough. Saving new card and asynchronously updating metadata")))
+       (log/info "Metadata not available soon enough. Saving new card and asynchronously updating metadata"))
      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
      ;; returned one -- See #4283
      (u/prog1 card
