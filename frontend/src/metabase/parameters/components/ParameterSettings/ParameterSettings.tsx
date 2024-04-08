@@ -2,7 +2,7 @@ import { useCallback, useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import { Radio, Stack, Text, TextInput } from "metabase/ui";
+import { Radio, Stack, Text, TextInput, Box } from "metabase/ui";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -21,7 +21,6 @@ import {
   SettingLabel,
   SettingLabelError,
   SettingSection,
-  SettingsRoot,
   SettingValueWidget,
 } from "./ParameterSettings.styled";
 
@@ -86,7 +85,7 @@ export const ParameterSettings = ({
   const isMultiValue = getIsMultiSelect(parameter) ? "multi" : "single";
 
   return (
-    <SettingsRoot>
+    <Box p="1.5rem 1rem">
       <SettingSection>
         <SettingLabel>{t`Label`}</SettingLabel>
         <TextInput
@@ -131,7 +130,7 @@ export const ParameterSettings = ({
         </SettingSection>
       )}
 
-      <SettingSection>
+      <Box mb="lg">
         <SettingLabel>
           {t`Default value`}
           {parameter.required &&
@@ -176,8 +175,8 @@ export const ParameterSettings = ({
             </>
           }
         ></RequiredParamToggle>
-      </SettingSection>
-    </SettingsRoot>
+      </Box>
+    </Box>
   );
 };
 
