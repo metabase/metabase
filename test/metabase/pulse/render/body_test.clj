@@ -902,3 +902,45 @@
             ;; we look for content that we are certain comes from a
             ;; successfully rendered trend chart.
             (is (= ["vs. previous month: "] span-text))))))))
+
+(deftest axis-selection-for-series-test
+  (testing "When the user specifies all series to be on left or right, it will render. (#38839)"
+    (mt/dataset test-data
+      (let [q   {:database (mt/id)
+                 :type     :query
+                 :query
+                 {:source-table (mt/id :products)
+                  :aggregation  [[:count]]
+                  :breakout
+                  [[:field (mt/id :products :category) {:base-type :type/Text}]
+                   [:field (mt/id :products :price) {:base-type :type/Float, :binning {:strategy :default}}]]}}
+            viz (fn [dir]
+                  {:series_settings
+                   {:Doohickey {:axis dir}
+                    :Gadget    {:axis dir}
+                    :Gizmo     {:axis dir}
+                    :Widget    {:axis dir}},
+                   :graph.dimensions ["PRICE" "CATEGORY"],
+                   :graph.metrics    ["count"]}) ]
+        (mt/with-temp [:model/Card {left-card-id :id} {:display                :bar
+                                                       :visualization_settings (viz "left")
+                                                       :dataset_query          q}
+                       :model/Card {right-card-id :id} {:display                :bar
+                                                        :visualization_settings (viz "right")
+                                                        :dataset_query          q}]
+          (testing "Every series on the left correctly only renders left axis."
+            (let [doc        (render.tu/render-card-as-hickory left-card-id)
+                  left-axis  (hik.s/select (hik.s/class "visx-axis-left") doc)
+                  right-axis (hik.s/select (hik.s/class "visx-axis-right") doc)]
+              (is (= {:left  1
+                      :right 0}
+                     {:left  (count left-axis)
+                      :right (count right-axis)}))))
+          (testing "Every series on the left correctly only renders right axis."
+            (let [doc        (render.tu/render-card-as-hickory right-card-id)
+                  left-axis  (hik.s/select (hik.s/class "visx-axis-left") doc)
+                  right-axis (hik.s/select (hik.s/class "visx-axis-right") doc)]
+              (is (= {:left  0
+                      :right 1}
+                     {:left  (count left-axis)
+                      :right (count right-axis)})))))))))
