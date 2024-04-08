@@ -1,10 +1,11 @@
-(ns metabase.sync.analyze.classifiers.name
+(ns metabase.analyze.classifiers.name
   "Classifier that infers the semantic type of a Field based on its name and base type."
   (:require
    [clojure.string :as str]
+   [metabase.analyze.fingerprint.schema :as fingerprint.schema]
+   [metabase.analyze.schema :as analyze.schema]
    [metabase.config :as config]
    [metabase.driver.util :as driver.u]
-   [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -140,7 +141,7 @@
     [:name      :string]
     [:base_type :keyword]
     [:semantic_type {:optional true} [:maybe :keyword]]]
-   ::i/no-kebab-case-keys])
+   ::analyze.schema/no-kebab-case-keys])
 
 (mu/defn infer-semantic-type :- [:maybe :keyword]
   "Classifer that infers the semantic type of a `field` based on its name and base type."
@@ -154,7 +155,7 @@
 (mu/defn infer-and-assoc-semantic-type :- [:maybe FieldOrColumn]
   "Returns `field-or-column` with a computed semantic type based on the name and base type of the `field-or-column`"
   [field-or-column :- FieldOrColumn
-   _fingerprint    :- [:maybe i/Fingerprint]]
+   _fingerprint    :- [:maybe fingerprint.schema/Fingerprint]]
   (when-let [inferred-semantic-type (infer-semantic-type field-or-column)]
     (log/debugf "Based on the name of %s, we're giving it a semantic type of %s."
                 (sync-util/name-for-logging field-or-column)
@@ -183,9 +184,9 @@
    [(prefix-or-postfix "companies")    :entity/CompanyTable]
    [(prefix-or-postfix "vendor")       :entity/CompanyTable]])
 
-(mu/defn infer-entity-type :- i/TableInstance
+(mu/defn infer-entity-type :- analyze.schema/Table
   "Classifer that infers the semantic type of a `table` based on its name."
-  [table :- i/TableInstance]
+  [table :- analyze.schema/Table]
   (let [table-name (-> table :name u/lower-case-en)]
     (assoc table :entity_type (or (some (fn [[pattern type]]
                                           (when (re-find pattern table-name)

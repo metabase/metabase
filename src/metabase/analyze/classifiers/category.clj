@@ -1,4 +1,4 @@
-(ns metabase.sync.analyze.classifiers.category
+(ns metabase.analyze.classifiers.category
   "Classifier that determines whether a Field should be marked as a `:type/Category` and/or as a `list` Field based on
   the number of distinct values it has.
 
@@ -11,9 +11,10 @@
   determined by the cardinality of the Field, like Category status. Thus it is entirely possibly for a Field to be
   both a Category and a `list` Field."
   (:require
+   [metabase.analyze.fingerprint.schema :as fingerprint.schema]
+   [metabase.analyze.schema :as analyze.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.field-values :as field-values]
-   [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -29,8 +30,8 @@
       (isa? semantic-type :type/FK)))
 
 (mu/defn ^:private field-should-be-category? :- [:maybe :boolean]
-  [fingerprint :- [:maybe i/Fingerprint]
-   field       :- i/FieldInstance]
+  [fingerprint :- [:maybe fingerprint.schema/Fingerprint]
+   field       :- analyze.schema/Field]
   (let [distinct-count (get-in fingerprint [:global :distinct-count])
         nil%           (get-in fingerprint [:global :nil%])]
     ;; Only mark a Field as a Category if it doesn't already have a semantic type.
@@ -46,7 +47,7 @@
 
 (mu/defn ^:private field-should-be-auto-list? :- [:maybe :boolean]
   "Based on `distinct-count`, should we mark this `field` as `has-field-values` = `auto-list`?"
-  [fingerprint :- [:maybe i/Fingerprint]
+  [fingerprint :- [:maybe fingerprint.schema/Fingerprint]
    field       :- [:map [:has-field-values {:optional true} [:maybe ::lib.schema.metadata/column.has-field-values]]]]
   ;; only update has-field-values if it hasn't been set yet. If it's already been set then it was probably done so
   ;; manually by an admin, and we don't want to stomp over their choices.
@@ -59,10 +60,10 @@
                   field-values/auto-list-cardinality-threshold)
       true)))
 
-(mu/defn infer-is-category-or-list :- [:maybe i/FieldInstance]
+(mu/defn infer-is-category-or-list :- [:maybe analyze.schema/Field]
   "Classifier that attempts to determine whether `field` ought to be marked as a Category based on its distinct count."
-  [field       :- i/FieldInstance
-   fingerprint :- [:maybe i/Fingerprint]]
+  [field       :- analyze.schema/Field
+   fingerprint :- [:maybe fingerprint.schema/Fingerprint]]
   (when (and fingerprint
              (not (cannot-be-category-or-list? field)))
     (cond-> field
