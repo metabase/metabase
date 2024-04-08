@@ -10,7 +10,7 @@
   4.  `text-fingerprint`: Looks at percentages recorded in a text Fields' TextFingerprint and infers a semantic type if
       possible
 
-  All classifier functions take two arguments, a `FieldInstance` and a possibly `nil` `Fingerprint`, and should return
+  All classifier functions take two arguments, a `Field` and a possibly `nil` `Fingerprint`, and should return
   the Field with any appropriate changes (such as a new semantic type). If no changes are appropriate, a classifier may
   return nil. Error handling is handled by `run-classifiers` below, so individual classiers do not need to handle
   errors themselves.
@@ -31,8 +31,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private classifiers
-  "Various classifier functions available. These should all take two args, a `FieldInstance` and a possibly `nil`
-  `Fingerprint`, and return `FieldInstance` with any inferred property changes, or `nil` if none could be inferred.
+  "Various classifier functions available. These should all take two args, a `Field` and a possibly `nil`
+  `Fingerprint`, and return `Field` with any inferred property changes, or `nil` if none could be inferred.
   Order is important!
 
   A classifier may see the original field (before any classifiers were run) in the metadata of the field at
