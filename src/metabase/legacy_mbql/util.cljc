@@ -304,10 +304,10 @@
     [:/ x y z & more]
     (recur (into [:/ [:/ x y]] (cons z more)))))
 
-(mu/defn desugar-expression :- mbql.s/FieldOrExpressionDef
+(mu/defn desugar-expression :- ::mbql.s/FieldOrExpressionDef
   "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers
   to compile."
-  [expression :- mbql.s/FieldOrExpressionDef]
+  [expression :- ::mbql.s/FieldOrExpressionDef]
   (-> expression
       desugar-divide-with-extra-args))
 
@@ -345,7 +345,9 @@
 (defmethod negate* :>=  [[_ field value]]  [:<  field value])
 (defmethod negate* :<=  [[_ field value]]  [:>  field value])
 
-(defmethod negate* :between [[_ field min max]] [:or [:< field min] [:> field max]])
+(defmethod negate* :between
+  [[_ field min-value max-value]]
+  [:or [:< field min-value] [:> field max-value]])
 
 (defmethod negate* :contains    [clause] [:not clause])
 (defmethod negate* :starts-with [clause] [:not clause])
@@ -400,7 +402,7 @@
   "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
   already being used in another order-by clause, this function does nothing."
   [inner-query                           :- mbql.s/MBQLQuery
-   [_dir orderable, :as order-by-clause] :- mbql.s/OrderBy]
+   [_dir orderable, :as order-by-clause] :- ::mbql.s/OrderBy]
   (let [existing-orderables (into #{}
                                   (map (fn [[_dir orderable]]
                                          orderable))
@@ -432,7 +434,7 @@
   ([x _]
    (dispatch-by-clause-name-or-class x)))
 
-(mu/defn expression-with-name :- mbql.s/FieldOrExpressionDef
+(mu/defn expression-with-name :- ::mbql.s/FieldOrExpressionDef
   "Return the `Expression` referenced by a given `expression-name`."
   [inner-query expression-name :- [:or :keyword ::lib.schema.common/non-blank-string]]
   (let [allowed-names [(qualified-name expression-name) (keyword expression-name)]]
@@ -554,8 +556,8 @@
   (let [id+original->unique (atom {})   ; map of [id original-alias] -> unique-alias
         original->count     (atom {})]  ; map of original-alias -> count
     (fn generate-name
-      ([alias]
-       (generate-name (gensym) alias))
+      ([an-alias]
+       (generate-name (gensym) an-alias))
 
       ([id original]
        (let [name-key (name-key-fn original)]

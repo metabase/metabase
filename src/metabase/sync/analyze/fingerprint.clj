@@ -4,6 +4,8 @@
   (:require
    [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
+   [metabase.analyze.fingerprint.schema :as fingerprint.schema]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
@@ -11,7 +13,6 @@
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.table :as table]
    [metabase.query-processor.store :as qp.store]
-   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -27,7 +28,7 @@
 
 (mu/defn ^:private save-fingerprint!
   [field       :- i/FieldInstance
-   fingerprint :- [:maybe i/Fingerprint]]
+   fingerprint :- [:maybe fingerprint.schema/Fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
   ;; All Fields who get new fingerprints should get marked as having the latest fingerprint version, but we'll
   ;; clear their values for `last_analyzed`. This way we know these fields haven't "completed" analysis for the

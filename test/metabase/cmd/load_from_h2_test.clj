@@ -114,7 +114,7 @@
             (log/info "rolling back to version" version)
             (t2.conn/with-connection [conn]
               (liquibase/with-liquibase [liquibase conn]
-                (liquibase/rollback-major-version db-type conn liquibase version))))
+                (liquibase/rollback-major-version conn liquibase version))))
           (log/info "creating dump" filename)
           ;; this migrates the DB back to the newest and creates a dump
           (dump-to-h2/dump-to-h2! filename)

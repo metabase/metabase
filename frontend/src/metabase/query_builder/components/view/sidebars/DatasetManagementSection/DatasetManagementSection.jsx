@@ -2,6 +2,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   setQueryBuilderMode,
@@ -70,7 +71,7 @@ function DatasetManagementSection({
         <PLUGIN_MODERATION.QuestionModerationSection
           question={dataset}
           VerifyButton={Button}
-          reviewBannerClassName="mt1"
+          reviewBannerClassName={CS.mt1}
         />
       </SectionContent>
     </div>

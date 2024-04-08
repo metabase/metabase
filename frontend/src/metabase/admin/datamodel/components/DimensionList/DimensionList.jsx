@@ -150,7 +150,7 @@ export class DimensionList extends Component {
                 CS.mx1,
                 CS.cursorPointer,
                 CS.hoverChild,
-                "faded",
+                CS.faded,
                 "fade-in-hover",
               )}
               onClick={e => {
@@ -195,7 +195,9 @@ export class DimensionList extends Component {
         data-testid="dimension-list-item-binning"
       >
         {name && <h4>{name}</h4>}
-        {!multiSelect && <Icon name="chevronright" className="ml1" size={16} />}
+        {!multiSelect && (
+          <Icon name="chevronright" className={CS.ml1} size={16} />
+        )}
       </FieldListGroupingTrigger>
     );
   }

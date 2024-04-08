@@ -94,7 +94,7 @@ const ViewFooter = ({
           isVisualized && (
             <QuestionDisplayToggle
               key="viz-table-toggle"
-              className="mx1"
+              className={CS.mx1}
               question={question}
               isShowingRawTable={isShowingRawTable}
               onToggleRawTable={isShowingRawTable => {
