@@ -601,8 +601,8 @@
    perm-type   :- PermissionType
    value       :- :keyword]
   (t2/with-transaction [_conn]
-    (let [group-id         (u/the-id group-or-id)
-          db-id            (u/the-id db-or-id)]
+    (let [group-id (u/the-id group-or-id)
+          db-id    (u/the-id db-or-id)]
       (t2/delete! :model/DataPermissions :perm_type perm-type :group_id group-id :db_id db-id)
       (t2/insert! :model/DataPermissions {:perm_type  perm-type
                                           :group_id   group-id
