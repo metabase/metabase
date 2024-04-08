@@ -1,16 +1,16 @@
-import type { Store } from "@reduxjs/toolkit";
 import type * as React from "react";
 import { t } from "ttag";
 
-import { DEFAULT_FONT } from "../../config";
-import { EmbeddingContext } from "../../context";
-import { useInitData } from "../../hooks";
-import type { SDKConfigType, EnterpriseState } from "../../types";
+import { DEFAULT_FONT } from "embedding-sdk/config";
+import { EmbeddingContext } from "embedding-sdk/context";
+import { useInitData } from "embedding-sdk/hooks";
+import type { SDKConfigType } from "embedding-sdk/types";
 
 import { SdkContentWrapper } from "./SdkContentWrapper";
+import type {AppStore} from "embedding-sdk/store/types";
 
 interface AppInitializeControllerProps {
-  store: Store<EnterpriseState>;
+  store: AppStore;
   children: React.ReactNode;
   config: SDKConfigType;
 }

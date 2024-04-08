@@ -1,24 +1,14 @@
-import type { Store } from "@reduxjs/toolkit";
 import type * as React from "react";
 import { memo } from "react";
 import { Provider } from "react-redux";
 
-import reducers from "metabase/reducers-main";
-import { getStore } from "metabase/store";
+import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
+import type {SDKConfigType} from "embedding-sdk/types";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
 
-import { tokenReducer } from "../../reducer";
-import type { SDKConfigType, EnterpriseState } from "../../types";
-import { AppInitializeController } from "../private/AppInitializeController";
-
 import "metabase/css/vendor.css";
 import "metabase/css/index.module.css";
-
-const store = getStore({
-  ...reducers,
-  embeddingSessionToken: tokenReducer,
-}) as unknown as Store<EnterpriseState>;
 
 const MetabaseProviderInternal = ({
   children,

@@ -1,8 +1,8 @@
 import { createAsyncThunk, createReducer } from "@reduxjs/toolkit";
 import type {
   EmbeddingSessionTokenState,
-  EnterpriseState,
-} from "embedding-sdk/types";
+  SdkState,
+} from "embedding-sdk/store/types";
 
 const initialState: EmbeddingSessionTokenState = {
   token: null,
@@ -10,7 +10,7 @@ const initialState: EmbeddingSessionTokenState = {
   error: null,
 };
 
-export const getSessionTokenState = (state: EnterpriseState) =>
+export const getSessionTokenState = (state: SdkState) =>
   state.embeddingSessionToken;
 
 const GET_OR_REFRESH_SESSION =
