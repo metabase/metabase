@@ -59,7 +59,9 @@ export const FeedbackModal = ({
         <Group position="right">
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button variant="filled" onClick={handleSubmit}>
-            {feedback.length > 0 ? t`Send` : t`Skip`}
+            {feedback.trim().length + email.trim().length > 0
+              ? t`Send`
+              : t`Skip`}
           </Button>
         </Group>
       </Stack>

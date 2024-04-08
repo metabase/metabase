@@ -107,6 +107,34 @@ describe("EmbedHomepage (OSS)", () => {
       ).toBeInTheDocument();
     });
 
+    it("should display 'Skip' in the button when inputs are empty, 'Send' if any input has content", async () => {
+      setup();
+      await userEvent.hover(screen.getByText("Hide these"));
+
+      await userEvent.click(screen.getByText("I ran into issues"));
+
+      expect(screen.getByText("Skip")).toBeInTheDocument();
+
+      await userEvent.type(
+        screen.getByLabelText("Feedback"),
+        "I had an issue with X",
+      );
+
+      expect(screen.queryByText("Skip")).not.toBeInTheDocument();
+      expect(screen.getByText("Send")).toBeInTheDocument();
+
+      await userEvent.clear(screen.getByLabelText("Feedback"));
+      expect(screen.getByText("Skip")).toBeInTheDocument();
+
+      await userEvent.type(
+        screen.getByLabelText("Email"),
+        "example@example.org",
+      );
+
+      expect(screen.queryByText("Skip")).not.toBeInTheDocument();
+      expect(screen.getByText("Send")).toBeInTheDocument();
+    });
+
     it("should not dismiss the homepage when the user cancels the feedback modal", async () => {
       setup();
       await userEvent.hover(screen.getByText("Hide these"));
