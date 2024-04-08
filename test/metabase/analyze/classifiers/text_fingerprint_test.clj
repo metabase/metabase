@@ -1,9 +1,9 @@
-(ns metabase.sync.analyze.classifiers.text-fingerprint-test
+(ns metabase.analyze.classifiers.text-fingerprint-test
   (:require
    [clojure.test :refer :all]
+   [metabase.analyze.classifiers.text-fingerprint :as classifiers.text-fingerprint]
    [metabase.models.field :as field :refer [Field]]
-   [metabase.models.interface :as mi]
-   [metabase.sync.analyze.classifiers.text-fingerprint :as classifiers.text-fingerprint]))
+   [metabase.models.interface :as mi]))
 
 (def ^:private ^{:arglists '([field])} can-edit?
   #'classifiers.text-fingerprint/can-edit-semantic-type?)

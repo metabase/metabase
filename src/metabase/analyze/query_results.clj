@@ -1,18 +1,18 @@
-(ns metabase.sync.analyze.query-results
+(ns metabase.analyze.query-results
   "Analysis similar to what we do as part of the Sync process, but aimed at analyzing and introspecting query
   results. The current focus of this namespace is around column metadata from the results of a query. Going forward
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
   (:require
+   [metabase.analyze.classifiers.name :as classifiers.name]
+   [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
+   [metabase.analyze.fingerprint.insights :as insights]
+   [metabase.analyze.fingerprint.schema :as fingerprint.schema]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.sync.analyze.classifiers.name :as classifiers.name]
-   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
-   [metabase.sync.analyze.fingerprint.insights :as insights]
-   [metabase.sync.interface :as i]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -43,7 +43,7 @@
    [:description        {:optional true} [:maybe :string]]
    [:semantic_type      {:optional true} [:maybe ms/FieldSemanticOrRelationTypeKeywordOrString]]
    [:unit               {:optional true} [:maybe DateTimeUnitKeywordOrString]]
-   [:fingerprint        {:optional true} [:maybe i/Fingerprint]]
+   [:fingerprint        {:optional true} [:maybe fingerprint.schema/Fingerprint]]
    [:id                 {:optional true} [:maybe ::lib.schema.id/field]]
    ;; only optional because it's not present right away, but it should be present at the end.
    [:field_ref          {:optional true} [:ref ::MaybeUnnormalizedReference]]

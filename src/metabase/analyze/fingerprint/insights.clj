@@ -1,4 +1,4 @@
-(ns metabase.sync.analyze.fingerprint.insights
+(ns metabase.analyze.fingerprint.insights
   "Deeper statistical analysis of results."
   (:require
    [java-time.api :as t]
@@ -6,9 +6,9 @@
    [kixi.stats.math :as math]
    [kixi.stats.protocols :as p]
    [medley.core :as m]
+   [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
-   [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]

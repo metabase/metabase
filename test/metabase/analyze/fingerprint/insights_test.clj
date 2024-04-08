@@ -1,7 +1,7 @@
-(ns metabase.sync.analyze.fingerprint.insights-test
+(ns metabase.analyze.fingerprint.insights-test
   (:require
    [clojure.test :refer :all]
-   [metabase.sync.analyze.fingerprint.insights
+   [metabase.analyze.fingerprint.insights
     :as
     insights])
   (:import

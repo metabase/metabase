@@ -170,6 +170,15 @@
     metabase-enterprise.sandbox.api.table                         table
     metabase-enterprise.test                                      met
     metabase.analytics.stats                                      stats
+    metabase.analyze.query-results                                qr
+    metabase.analyze.classifiers.category                         classifiers.category
+    metabase.analyze.classifiers.core                             classifiers
+    metabase.analyze.classifiers.name                             classifiers.name
+    metabase.analyze.classifiers.no-preview-display               classifiers.no-preview-display
+    metabase.analyze.classifiers.text-fingerprint                 classifiers.text-fingerprint
+    metabase.analyze.fingerprint.fingerprinters                   fingerprinters
+    metabase.analyze.fingerprint.insights                         insights
+    metabase.analyze.fingerprint.schema                           fingerprint.schema
     metabase.api.activity                                         api.activity
     metabase.api.alert                                            api.alert
     metabase.api.automagic-dashboards                             api.magic
@@ -350,14 +359,7 @@
     metabase.server.protocols                                     server.protocols
     metabase.shared.util                                          shared.u
     metabase.shared.util.currency                                 currency
-    metabase.sync.analyze.classifiers.category                    classifiers.category
-    metabase.sync.analyze.classifiers.name                        classifiers.name
-    metabase.sync.analyze.classifiers.no-preview-display          classifiers.no-preview-display
-    metabase.sync.analyze.classifiers.text-fingerprint            classifiers.text-fingerprint
-    metabase.sync.analyze.fingerprint                             fingerprint
-    metabase.sync.analyze.fingerprint.fingerprinters              fingerprinters
-    metabase.sync.analyze.fingerprint.insights                    insights
-    metabase.sync.analyze.query-results                           qr
+    metabase.sync.analyze.fingerprint                             sync.fingerprint
     metabase.sync.field-values                                    field-values
     metabase.sync.interface                                       i
     metabase.sync.schedules                                       sync.schedules
