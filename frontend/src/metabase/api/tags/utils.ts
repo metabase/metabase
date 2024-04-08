@@ -7,6 +7,7 @@ import type {
   Field,
   FieldDimension,
   FieldId,
+  ForeignKey,
   Metric,
   Segment,
   Table,
@@ -39,29 +40,31 @@ export function invalidateTags(
   return !error ? tags : [];
 }
 
-export function databaseTags(database: Database) {
+export function databaseTags(database: Database): TagDescription<TagType>[] {
   return [
     idTag("database", database.id),
     ...(database.tables ? tableListTags(database.tables) : []),
   ];
 }
 
-export function databaseListTags(databases: Database[]) {
+export function databaseListTags(
+  databases: Database[],
+): TagDescription<TagType>[] {
   return [listTag("database"), ...databases.flatMap(databaseTags)];
 }
 
-export function tableTags(table: Table) {
+export function tableTags(table: Table): TagDescription<TagType>[] {
   return [
     idTag("table", table.id),
-    ...(table.db ? [idTag("database", table.db.id)] : []),
-    ...(table.fields ? [listTag("field")] : []),
-    ...(table.fks ? [listTag("field")] : []),
-    ...(table.segments ? [listTag("segment")] : []),
-    ...(table.metrics ? [listTag("metric")] : []),
+    ...(table.db ? databaseTags(table.db) : []),
+    ...(table.fields ? fieldListTags(table.fields) : []),
+    ...(table.fks ? foreignKeyListTags(table.fks) : []),
+    ...(table.segments ? segmentListTags(table.segments) : []),
+    ...(table.metrics ? metricListTags(table.metrics) : []),
   ];
 }
 
-export function tableListTags(tables: Table[]) {
+export function tableListTags(tables: Table[]): TagDescription<TagType>[] {
   return [listTag("table"), ...tables.flatMap(tableTags)];
 }
 
@@ -75,15 +78,32 @@ export function fieldTags(field: Field): TagDescription<TagType>[] {
   ];
 }
 
-export function fieldListTags(fields: Field[]) {
+export function fieldListTags(fields: Field[]): TagDescription<TagType>[] {
   return [listTag("field"), ...fields.flatMap(fieldTags)];
 }
 
-export function fieldValuesTags(id: FieldId) {
+export function foreignKeyTags(
+  foreignKey: ForeignKey,
+): TagDescription<TagType>[] {
+  return [
+    ...(foreignKey.origin ? fieldTags(foreignKey.origin) : []),
+    ...(foreignKey.destination ? fieldTags(foreignKey.destination) : []),
+  ];
+}
+
+export function foreignKeyListTags(
+  foreignKeys: ForeignKey[],
+): TagDescription<TagType>[] {
+  return foreignKeys.flatMap(foreignKeyTags);
+}
+
+export function fieldValuesTags(id: FieldId): TagDescription<TagType>[] {
   return [idTag("field-values", id)];
 }
 
-export function fieldDimensionTags(dimension: FieldDimension) {
+export function fieldDimensionTags(
+  dimension: FieldDimension,
+): TagDescription<TagType>[] {
   return [
     ...(dimension.human_readable_field
       ? fieldTags(dimension.human_readable_field)
@@ -91,49 +111,55 @@ export function fieldDimensionTags(dimension: FieldDimension) {
   ];
 }
 
-export function fieldDimensionListTags(dimensions: FieldDimension[]) {
+export function fieldDimensionListTags(
+  dimensions: FieldDimension[],
+): TagDescription<TagType>[] {
   return dimensions.flatMap(fieldDimensionTags);
 }
 
-export function segmentTags(segment: Segment) {
+export function segmentTags(segment: Segment): TagDescription<TagType>[] {
   return [
     idTag("segment", segment.id),
     ...(segment.table ? tableTags(segment.table) : []),
   ];
 }
 
-export function segmentListTags(segments: Segment[]) {
+export function segmentListTags(
+  segments: Segment[],
+): TagDescription<TagType>[] {
   return [listTag("segment"), ...segments.flatMap(segmentTags)];
 }
 
-export function metricTags(metric: Metric) {
+export function metricTags(metric: Metric): TagDescription<TagType>[] {
   return [
     idTag("metric", metric.id),
     ...(metric.table ? tableTags(metric.table) : []),
   ];
 }
 
-export function cardTags(card: Card) {
+export function cardTags(card: Card): TagDescription<TagType>[] {
   return [idTag("card", card.id)];
 }
 
-export function cardListTags(cards: Card[]) {
+export function cardListTags(cards: Card[]): TagDescription<TagType>[] {
   return [listTag("card"), ...cards.flatMap(card => cardTags(card))];
 }
 
-export function metricListTags(metrics: Metric[]) {
+export function metricListTags(metrics: Metric[]): TagDescription<TagType>[] {
   return [listTag("metric"), ...metrics.flatMap(metricTags)];
 }
 
-export function collectionTags(collection: Collection) {
+export function collectionTags(
+  collection: Collection,
+): TagDescription<TagType>[] {
   return [idTag("collection", collection.id)];
 }
 
-export function userTags(user: UserInfo) {
+export function userTags(user: UserInfo): TagDescription<TagType>[] {
   return [idTag("user", user.id)];
 }
 
-export function timelineTags(timeline: Timeline) {
+export function timelineTags(timeline: Timeline): TagDescription<TagType>[] {
   return [
     idTag("timeline", timeline.id),
     ...(timeline.collection ? collectionTags(timeline.collection) : []),
@@ -141,13 +167,17 @@ export function timelineTags(timeline: Timeline) {
   ];
 }
 
-export function timelineEventTags(event: TimelineEvent) {
+export function timelineEventTags(
+  event: TimelineEvent,
+): TagDescription<TagType>[] {
   return [
     idTag("timeline-event", event.id),
     ...(event.creator ? userTags(event.creator) : []),
   ];
 }
 
-export function timelineEventListTags(events: TimelineEvent[]) {
+export function timelineEventListTags(
+  events: TimelineEvent[],
+): TagDescription<TagType>[] {
   return [listTag("timeline-event"), ...events.flatMap(timelineEventTags)];
 }
