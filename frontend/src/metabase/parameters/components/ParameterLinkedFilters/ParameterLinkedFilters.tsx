@@ -220,7 +220,11 @@ const LinkedParameter = ({
         <ParameterName onClick={handleExpandedChange}>
           {otherParameter.name}
         </ParameterName>
-        <Switch checked={isFiltered} onChange={handleFilterToggle} />
+        <Switch
+          role="switch"
+          checked={isFiltered}
+          onChange={handleFilterToggle}
+        />
       </ParameterBody>
       {isExpanded && (
         <LinkedFieldList
