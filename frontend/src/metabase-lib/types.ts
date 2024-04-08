@@ -129,7 +129,7 @@ export type TableDisplayInfo = {
   isImplicitlyJoinable: boolean;
 };
 
-export type CardDisplayInfo = TableDisplayInfo;
+export type CardDisplayInfo = TableDisplayInfo & { isMetric?: boolean };
 
 type TableInlineDisplayInfo = Pick<
   TableDisplayInfo,
