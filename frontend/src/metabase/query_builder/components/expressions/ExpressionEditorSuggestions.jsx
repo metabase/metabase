@@ -105,7 +105,7 @@ export default class ExpressionEditorSuggestions extends Component {
           content={
             <ExpressionList
               data-testid="expression-suggestions-list"
-              className="pb1"
+              className={CS.pb1}
             >
               {suggestions.map((suggestion, i) => (
                 <Fragment key={`$suggestion-${i}`}>
@@ -148,7 +148,7 @@ function ExpressionEditorSuggestionsListItem({
         <Icon
           name={icon}
           color={isHighlighted ? highlighted : normal}
-          className="mr1"
+          className={CS.mr1}
           data-ignore-outside-clicks
         />
         <SuggestionTitle data-ignore-outside-clicks>

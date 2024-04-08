@@ -7,8 +7,8 @@ import _ from "underscore";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import AccordionList from "metabase/core/components/AccordionList";
 import Tooltip from "metabase/core/components/Tooltip";
+import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
-import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { Icon, Box } from "metabase/ui";
 import { FieldDimension } from "metabase-lib/v1/Dimension";
 
@@ -147,10 +147,10 @@ export class DimensionList extends Component {
             <Icon
               name="add"
               className={cx(
-                "mx1",
-                "cursor-pointer",
+                CS.mx1,
+                CS.cursorPointer,
                 CS.hoverChild,
-                "faded",
+                CS.faded,
                 "fade-in-hover",
               )}
               onClick={e => {
@@ -163,7 +163,7 @@ export class DimensionList extends Component {
         {isSelected && onRemoveDimension && (
           <Icon
             name="close"
-            className="mx1 cursor-pointer faded fade-in-hover"
+            className={cx(CS.mx1, CS.cursorPointer, "faded", "fade-in-hover")}
             onClick={e => {
               e.stopPropagation();
               this.handleRemove(item);
@@ -185,7 +185,7 @@ export class DimensionList extends Component {
     return (
       <FieldListGroupingTrigger
         className={cx(
-          QueryBuilderS.FieldListGroupingTrigger,
+          ListS.FieldListGroupingTrigger,
           "text-white-hover",
           CS.flex,
           CS.alignCenter,
@@ -195,7 +195,9 @@ export class DimensionList extends Component {
         data-testid="dimension-list-item-binning"
       >
         {name && <h4>{name}</h4>}
-        {!multiSelect && <Icon name="chevronright" className="ml1" size={16} />}
+        {!multiSelect && (
+          <Icon name="chevronright" className={CS.ml1} size={16} />
+        )}
       </FieldListGroupingTrigger>
     );
   }

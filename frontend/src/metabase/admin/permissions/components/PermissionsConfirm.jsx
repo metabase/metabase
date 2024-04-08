@@ -2,6 +2,7 @@
 import { t, ngettext, msgid } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 
 import {
   ReadPermissionLabel,
@@ -23,7 +24,7 @@ const TableAccessChange = ({ tables, verb, color }) => {
       {verb}
       <Tooltip
         tooltip={
-          <div className="p1">
+          <div className={CS.p1}>
             {tableEntries.map(([id, table]) => (
               <div key={id}>{table.name}</div>
             ))}

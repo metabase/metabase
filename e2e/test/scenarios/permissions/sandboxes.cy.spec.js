@@ -226,13 +226,15 @@ describeEE("formatting > sandboxes", () => {
 
       popover().within(() => {
         // Collapse "Order/s/" in order to bring "User" into view (trick to get around virtualization - credits: @flamber)
-        cy.get(".List-section-header")
+        cy.get("[data-element-id=list-section-header]")
           .contains(/Orders?/)
           .click();
 
-        cy.get(".List-section-header").contains("User").click();
+        cy.get("[data-element-id=list-section-header]")
+          .contains("User")
+          .click();
 
-        cy.get(".List-item").contains("ID").click();
+        cy.get("[data-element-id=list-item]").contains("ID").click();
       });
 
       visualize();

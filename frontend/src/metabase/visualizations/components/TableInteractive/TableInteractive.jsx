@@ -816,7 +816,7 @@ class TableInteractive extends Component {
               <Ellipsified tooltip={columnTitle}>
                 {isSortable && isRightAligned && (
                   <Icon
-                    className="Icon mr1"
+                    className={cx("Icon", CS.mr1)}
                     name={isAscending ? "chevronup" : "chevrondown"}
                     size={10}
                     data-testid={columnInfoPopoverTestId}
@@ -825,7 +825,7 @@ class TableInteractive extends Component {
                 {columnTitle}
                 {isSortable && !isRightAligned && (
                   <Icon
-                    className="Icon ml1"
+                    className={cx("Icon", CS.ml1)}
                     name={isAscending ? "chevronup" : "chevrondown"}
                     size={10}
                     data-testid={columnInfoPopoverTestId}
@@ -1168,7 +1168,7 @@ export default _.compose(
 
 const DetailShortcut = forwardRef((_props, ref) => (
   <div
-    className="TableInteractive-cellWrapper cursor-pointer"
+    className={cx("TableInteractive-cellWrapper", CS.cursorPointer)}
     ref={ref}
     style={{
       position: "absolute",

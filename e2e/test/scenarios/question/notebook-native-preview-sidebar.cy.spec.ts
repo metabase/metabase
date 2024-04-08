@@ -16,6 +16,12 @@ import {
   createQuestion,
   saveSavedQuestion,
   withDatabase,
+  describeWithSnowplow,
+  resetSnowplow,
+  enableTracking,
+  expectGoodSnowplowEvent,
+  expectGoodSnowplowEvents,
+  expectNoBadSnowplowEvents,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -47,54 +53,48 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     });
   });
 
-  it(
-    "smoke test: should show the preview sidebar, update it, persist it and close it",
-    // Replay Chromium does not respect a media query for the sidebar, which crashes this test.
-    // We have to use a different browser until that upstream bug is fixed.
-    { browser: "firefox" },
-    () => {
-      const defaultRowLimit = 1048575;
-      const queryLimit = 2;
+  it("smoke test: should show the preview sidebar, update it, persist it and close it", () => {
+    const defaultRowLimit = 1048575;
+    const queryLimit = 2;
 
-      cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
+    cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
 
-      openReviewsTable({ mode: "notebook", limit: queryLimit });
-      cy.findByLabelText("View the SQL").click();
-      cy.wait("@nativeDataset");
-      cy.findByTestId("native-query-preview-sidebar").within(() => {
-        cy.findByText("SQL for this question").should("exist");
-        cy.get(".ace_content")
-          .should("contain", "SELECT")
-          .and("contain", queryLimit);
-        cy.button("Convert this question to SQL").should("exist");
-      });
-
-      cy.log(
-        "Sidebar state should be persisted when navigating away from the notebook",
-      );
-      visualize();
-      cy.findAllByTestId("header-cell").should("contain", "Rating");
-      cy.findByTestId("native-query-preview-sidebar")
-        .should("exist")
-        .and("not.be.visible");
-
-      openNotebook();
-      cy.findByTestId("native-query-preview-sidebar").should("be.visible");
-
-      cy.log("Modifying GUI query should update the SQL preview");
-      cy.findByTestId("step-limit-0-0").icon("close").click({ force: true });
-      cy.wait("@nativeDataset");
-      cy.findByTestId("native-query-preview-sidebar")
-        .get(".ace_content")
+    openReviewsTable({ mode: "notebook", limit: queryLimit });
+    cy.findByLabelText("View the SQL").click();
+    cy.wait("@nativeDataset");
+    cy.findByTestId("native-query-preview-sidebar").within(() => {
+      cy.findByText("SQL for this question").should("exist");
+      cy.get(".ace_content")
         .should("contain", "SELECT")
-        .and("contain", defaultRowLimit)
-        .and("not.contain", queryLimit);
+        .and("contain", queryLimit);
+      cy.button("Convert this question to SQL").should("exist");
+    });
 
-      cy.log("It should be possible to close the sidebar");
-      cy.findByLabelText("Hide the SQL").click();
-      cy.findByTestId("native-query-preview-sidebar").should("not.exist");
-    },
-  );
+    cy.log(
+      "Sidebar state should be persisted when navigating away from the notebook",
+    );
+    visualize();
+    cy.findAllByTestId("header-cell").should("contain", "Rating");
+    cy.findByTestId("native-query-preview-sidebar")
+      .should("exist")
+      .and("not.be.visible");
+
+    openNotebook();
+    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
+
+    cy.log("Modifying GUI query should update the SQL preview");
+    cy.findByTestId("step-limit-0-0").icon("close").click({ force: true });
+    cy.wait("@nativeDataset");
+    cy.findByTestId("native-query-preview-sidebar")
+      .get(".ace_content")
+      .should("contain", "SELECT")
+      .and("contain", defaultRowLimit)
+      .and("not.contain", queryLimit);
+
+    cy.log("It should be possible to close the sidebar");
+    cy.findByLabelText("Hide the SQL").click();
+    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+  });
 
   it("should not offer the sidebar preview for a user without native permissions", () => {
     cy.signIn("nosql");
@@ -307,6 +307,45 @@ describe(
       cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
       cy.findByTestId("selected-table").should("have.text", "Products");
       cy.get(".cellData").should("contain", "Small Marble Shoes");
+    });
+  },
+);
+
+describeWithSnowplow(
+  "scenarios > notebook > native query preview sidebar tracking events",
+  () => {
+    beforeEach(() => {
+      resetSnowplow();
+      restore();
+      cy.signInAsAdmin();
+      enableTracking();
+    });
+
+    afterEach(() => {
+      expectNoBadSnowplowEvents();
+    });
+
+    it("should track `notebook_native_preview_shown|hidden` events", () => {
+      cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
+      openReviewsTable({ mode: "notebook", limit: 1 });
+      expectGoodSnowplowEvents(1); // page view
+
+      cy.findByLabelText("View the SQL").click();
+      cy.wait("@nativeDataset");
+      cy.findByTestId("native-query-preview-sidebar").should("exist");
+
+      expectGoodSnowplowEvent({
+        event: "notebook_native_preview_shown",
+      });
+
+      cy.findByLabelText("Hide the SQL").click();
+      cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+
+      expectGoodSnowplowEvent({
+        event: "notebook_native_preview_hidden",
+      });
+
+      expectGoodSnowplowEvents(3);
     });
   },
 );

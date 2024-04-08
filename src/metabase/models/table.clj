@@ -6,8 +6,6 @@
    [metabase.driver :as driver]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
@@ -61,7 +59,7 @@
 (t2/define-before-insert :model/Table
   [table]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
-                  :field_order  (driver/default-field-order (t2/select-one-fn :engine Database :id (:db_id table)))}]
+                  :field_order  (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))}]
     (merge defaults table)))
 
 (defn- set-new-table-permissions!
@@ -128,9 +126,9 @@
   [table]
   (doall
    (map-indexed (fn [new-position field]
-                  (t2/update! Field (u/the-id field) {:position new-position}))
+                  (t2/update! :model/Field (u/the-id field) {:position new-position}))
                 ;; Can't use `select-field` as that returns a set while we need an ordered list
-                (t2/select [Field :id]
+                (t2/select [:model/Field :id]
                            :table_id  (u/the-id table)
                            {:order-by (case (:field_order table)
                                         :custom       [[:custom_position :asc]]
@@ -147,7 +145,7 @@
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
   [table field-ordering]
-  (= (t2/select-pks-set Field
+  (= (t2/select-pks-set :model/Field
        :table_id (u/the-id table)
        :active   true)
      (set field-ordering)))
@@ -159,8 +157,8 @@
   (t2/update! Table (u/the-id table) {:field_order :custom})
   (doall
     (map-indexed (fn [position field-id]
-                   (t2/update! Field field-id {:position        position
-                                               :custom_position position}))
+                   (t2/update! :model/Field field-id {:position        position
+                                                      :custom_position position}))
                  field-order)))
 
 
@@ -221,7 +219,7 @@
   [tables]
   (with-objects :fields
     (fn [table-ids]
-      (t2/select Field
+      (t2/select :model/Field
         :active          true
         :table_id        [:in table-ids]
         :visibility_type [:not= "retired"]
@@ -239,14 +237,14 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (t2/select-one Database :id (:db_id table)))
+  (t2/select-one :model/Database :id (:db_id table)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 (defmethod serdes/dependencies "Table" [table]
   [[{:model "Database" :id (:db_id table)}]])
 
 (defmethod serdes/generate-path "Table" [_ table]
-  (let [db-name (t2/select-one-fn :name 'Database :id (:db_id table))]
+  (let [db-name (t2/select-one-fn :name :model/Database :id (:db_id table))]
     (filterv some? [{:model "Database" :id db-name}
                     (when (:schema table)
                       {:model "Schema" :id (:schema table)})
@@ -261,18 +259,18 @@
         schema-name (when (= 3 (count path))
                       (-> path second :id))
         table-name  (-> path last :id)
-        db-id       (t2/select-one-pk Database :name db-name)]
+        db-id       (t2/select-one-pk :model/Database :name db-name)]
     (t2/select-one Table :name table-name :db_id db-id :schema schema-name)))
 
 (defmethod serdes/extract-one "Table"
   [_model-name _opts {:keys [db_id] :as table}]
   (-> (serdes/extract-one-basics "Table" table)
-      (assoc :db_id (t2/select-one-fn :name 'Database :id db_id))))
+      (assoc :db_id (t2/select-one-fn :name :model/Database :id db_id))))
 
 (defmethod serdes/load-xform "Table"
   [{:keys [db_id] :as table}]
   (-> (serdes/load-xform-basics table)
-      (assoc :db_id (t2/select-one-fn :id 'Database :name db_id))))
+      (assoc :db_id (t2/select-one-fn :id :model/Database :name db_id))))
 
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-table-path-prefix (serdes/path table))

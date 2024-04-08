@@ -97,7 +97,7 @@ const DataSelectorTablePicker = ({
       table ? <Icon name="table" /> : null;
 
     const renderItemExtra = ({ table }: { table: Table }) =>
-      table && <TableInfoIcon table={table} position="right" showIfEmpty />;
+      table && <TableInfoIcon table={table} position="right" />;
 
     const renderItemWrapper = (content: ReactNode) => (
       <HoverParent>{content}</HoverParent>

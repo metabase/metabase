@@ -6,6 +6,7 @@ import {
   Description,
   EmptyDescription,
 } from "metabase/components/MetadataInfo/MetadataInfo.styled";
+import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import ConnectedTableList from "metabase/query_builder/components/dataref/ConnectedTableList";
@@ -36,14 +37,14 @@ const TablePane = ({ table, onItemClick, onBack, onClose }: TablePaneProps) => (
   >
     <PaneContent>
       <TableInfoLoader table={table}>
-        <div className="ml1">
+        <div className={CS.ml1}>
           {table.description ? (
             <Description>{table.description}</Description>
           ) : (
             <EmptyDescription>{t`No description`}</EmptyDescription>
           )}
         </div>
-        <div className="my2">
+        <div className={CS.my2}>
           {table.fields?.length ? (
             <>
               <FieldList

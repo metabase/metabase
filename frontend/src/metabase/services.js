@@ -220,13 +220,8 @@ export const DashboardApi = {
   ),
 };
 
-export const SearchApi = {
-  list: GET("/api/search"),
-};
-
 export const CollectionsApi = {
   list: GET("/api/collection"),
-  listItems: GET("/api/collection/:collectionId/items"),
   create: POST("/api/collection"),
   get: GET("/api/collection/:id"),
   // Temporary route for getting things not in a collection
@@ -604,4 +599,10 @@ export const ApiKeysApi = {
   delete: DELETE("/api/api-key/:id"),
   edit: PUT("/api/api-key/:id"),
   regenerate: PUT("/api/api-key/:id/regenerate"),
+};
+
+export const CacheConfigApi = {
+  list: GET("/api/cache"),
+  update: PUT("/api/cache"),
+  delete: DELETE("/api/cache"),
 };

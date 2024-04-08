@@ -54,7 +54,7 @@ const ChartSettingFieldsPicker = ({
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
-                          className="mb1"
+                          className={CS.mb1}
                         >
                           <ChartSettingFieldPicker
                             {...props}
@@ -110,7 +110,7 @@ const ChartSettingFieldsPicker = ({
       {addAnother && (
         <AddAnotherContainer>
           <a
-            className={cx("text-brand", CS.textBold, "py1")}
+            className={cx(CS.textBrand, CS.textBold, CS.py1)}
             onClick={() => {
               const remaining = options.filter(
                 o => fields.indexOf(o.value) < 0,

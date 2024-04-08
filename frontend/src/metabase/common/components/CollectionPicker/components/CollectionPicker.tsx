@@ -7,7 +7,7 @@ import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { SearchListQuery } from "metabase-types/api";
+import type { SearchRequest } from "metabase-types/api";
 
 import {
   LoadingSpinner,
@@ -46,7 +46,7 @@ export const CollectionPickerInner = (
   ref: Ref<unknown>,
 ) => {
   const [path, setPath] = useState<
-    PickerState<CollectionPickerItem, SearchListQuery>
+    PickerState<CollectionPickerItem, SearchRequest>
   >(() =>
     getStateFromIdPath({
       idPath: ["root"],

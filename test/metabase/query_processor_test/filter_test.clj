@@ -765,6 +765,49 @@
                    (mt/formatted-rows [int]
                      (mt/run-mbql-query airport {:aggregation [:count], :filter [:not-empty $code]}))))))))))
 
+(deftest ^:parallel is-empty-not-empty-with-not-emptyable-args-test
+  (mt/test-drivers
+   ;; TODO: Investigate how to make the test work with Athena!
+   (disj (mt/normal-drivers) :athena)
+   (mt/dataset
+    test-data-null-date
+    (testing ":is-empty works with not emptyable type argument (#40883)"
+      (is (= [[1 1]]
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query
+               checkins
+               {:expressions {"caseExpr" [:case
+                                          [[[:is-empty [:field %null_only_date {:base-type :type/Date}]] 1]]
+                                          {:default 0}]}
+                :fields [$id [:expression "caseExpr"]]
+                :order-by [[$id :asc]]
+                :limit 1})))))
+    (testing ":not-empty works with not emptyable type argument (#40883)"
+      (is (= [[1 0]]
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query
+               checkins
+               {:expressions {"caseExpr" [:case
+                                          [[[:not-empty [:field %null_only_date {:base-type :type/Date}]] 1]]
+                                          {:default 0}]}
+                :fields [$id [:expression "caseExpr"]]
+                :order-by [[$id :asc]]
+                :limit 1})))))
+    (testing (str "nil base-type arg of :not-empty should behave as not emptyable")
+      (is (= [[1 1]]
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query
+               checkins
+               {:expressions {"caseExpr" [:case
+                                          [[[:is-empty [:field %null_only_date nil]] 1]]
+                                          {:default 0}]}
+                :fields [$id [:expression "caseExpr"]]
+                :order-by [[$id :asc]]
+                :limit 1}))))))))
+
 (deftest ^:parallel order-by-nulls-test
   (testing "Check that we can sort by numeric columns that contain NULLs (#6615)"
     (mt/dataset daily-bird-counts
