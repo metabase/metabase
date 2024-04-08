@@ -149,7 +149,7 @@
    [kixi.stats.core :as stats]
    [kixi.stats.math :as math]
    [medley.core :as m]
-   [metabase.analyze.classifiers :as classifiers]
+   [metabase.analyze.classifiers.core :as classifiers]
    [metabase.automagic-dashboards.combination :as combination]
    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.automagic-dashboards.filters :as filters]

@@ -4,7 +4,7 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.analyze.classifiers :as classifiers]
+   [metabase.analyze.classifiers.core :as classifiers]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]

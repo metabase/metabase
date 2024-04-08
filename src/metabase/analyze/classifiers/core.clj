@@ -1,4 +1,4 @@
-(ns metabase.analyze.classifiers
+(ns metabase.analyze.classifiers.core
   "Analysis sub-step that takes a fingerprint for a Field and infers and saves appropriate information like special
   type. Each 'classifier' takes the information available to it and decides whether or not to run. We currently have
   the following classifiers:
@@ -21,7 +21,7 @@
    [metabase.analyze.classifiers.name :as classifiers.name]
    [metabase.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
    [metabase.analyze.classifiers.text-fingerprint :as classifiers.text-fingerprint]
-   [metabase.analyze.fingerprint :as fingerprint]
+   [metabase.analyze.fingerprint.schema :as fingerprint.schema]
    [metabase.analyze.schema :as analyze.schema]
    [metabase.sync.util :as sync-util]
    [metabase.util.malli :as mu]))
@@ -47,7 +47,7 @@
   changes decided upon by the classifiers. The original field can be accessed in the metadata at
   `:sync.classify/original`."
   [field       :- analyze.schema/Field
-   fingerprint :- [:maybe fingerprint/Fingerprint]]
+   fingerprint :- [:maybe fingerprint.schema/Fingerprint]]
   (reduce (fn [field classifier]
             (or (sync-util/with-error-handling (format "Error running classifier on %s"
                                                        (sync-util/name-for-logging field))

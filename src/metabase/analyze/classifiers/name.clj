@@ -2,7 +2,7 @@
   "Classifier that infers the semantic type of a Field based on its name and base type."
   (:require
    [clojure.string :as str]
-   [metabase.analyze.fingerprint :as fingerprint]
+   [metabase.analyze.fingerprint.schema :as fingerprint.schema]
    [metabase.analyze.schema :as analyze.schema]
    [metabase.config :as config]
    [metabase.driver.util :as driver.u]
@@ -141,7 +141,7 @@
     [:name      :string]
     [:base_type :keyword]
     [:semantic_type {:optional true} [:maybe :keyword]]]
-   ::fingerprint/no-kebab-case-keys])
+   ::analyze.schema/no-kebab-case-keys])
 
 (mu/defn infer-semantic-type :- [:maybe :keyword]
   "Classifer that infers the semantic type of a `field` based on its name and base type."
@@ -155,7 +155,7 @@
 (mu/defn infer-and-assoc-semantic-type :- [:maybe FieldOrColumn]
   "Returns `field-or-column` with a computed semantic type based on the name and base type of the `field-or-column`"
   [field-or-column :- FieldOrColumn
-   _fingerprint    :- [:maybe fingerprint/Fingerprint]]
+   _fingerprint    :- [:maybe fingerprint.schema/Fingerprint]]
   (when-let [inferred-semantic-type (infer-semantic-type field-or-column)]
     (log/debugf "Based on the name of %s, we're giving it a semantic type of %s."
                 (sync-util/name-for-logging field-or-column)

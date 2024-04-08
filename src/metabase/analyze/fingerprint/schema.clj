@@ -1,6 +1,5 @@
-(ns metabase.analyze.fingerprint
+(ns metabase.analyze.fingerprint.schema
   (:require
-   [clojure.string :as str]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::Percent
@@ -84,11 +83,3 @@
   "Schema for a Field 'fingerprint' generated as part of the analysis stage. Used to power the 'classification'
    sub-stage of analysis. Stored as the `fingerprint` column of Field."
   [:ref ::Fingerprint])
-
-(mr/def ::no-kebab-case-keys
-  [:fn
-   {:error/message "Map should not contain any kebab-case keys"}
-   (fn [m]
-     (every? (fn [k]
-               (not (str/includes? k "-")))
-             (keys m)))])

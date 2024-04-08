@@ -3,7 +3,7 @@
    (This means Fields are generally not shown in Table results and the like, but
    still shown in a single-row object detail page.)"
   (:require
-   [metabase.analyze.fingerprint :as fingerprint]
+   [metabase.analyze.fingerprint.schema :as fingerprint.schema]
    [metabase.analyze.schema :as analyze.schema]
    [metabase.util.malli :as mu]))
 
@@ -23,6 +23,6 @@
   "Classifier that determines whether `field` should be marked 'No Preview Display'. If `field` is textual and its
   average length is too great, mark it so it isn't displayed in the UI."
   [field       :- analyze.schema/Field
-   fingerprint :- [:maybe fingerprint/Fingerprint]]
+   fingerprint :- [:maybe fingerprint.schema/Fingerprint]]
   (when (long-plain-text-field? field fingerprint)
     (assoc field :preview_display false)))

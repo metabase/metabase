@@ -172,11 +172,13 @@
     metabase.analytics.stats                                      stats
     metabase.analyze.query-results                                qr
     metabase.analyze.classifiers.category                         classifiers.category
+    metabase.analyze.classifiers.core                             classifiers
     metabase.analyze.classifiers.name                             classifiers.name
     metabase.analyze.classifiers.no-preview-display               classifiers.no-preview-display
     metabase.analyze.classifiers.text-fingerprint                 classifiers.text-fingerprint
     metabase.analyze.fingerprint.fingerprinters                   fingerprinters
     metabase.analyze.fingerprint.insights                         insights
+    metabase.analyze.fingerprint.schema                           fingerprint.schema
     metabase.api.activity                                         api.activity
     metabase.api.alert                                            api.alert
     metabase.api.automagic-dashboards                             api.magic

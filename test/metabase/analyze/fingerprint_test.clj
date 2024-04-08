@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.analyze.fingerprint :as fingerprint]))
+   [metabase.analyze.fingerprint.schema :as fingerprint.schema]))
 
 (deftest ^:parallel fingerprint-schema-test
   (testing "allows for extra keywords"
@@ -19,5 +19,5 @@
                     []]]
         (is (not (me/humanize
                   (mc/explain
-                   fingerprint/Fingerprint
+                   fingerprint.schema/Fingerprint
                    (assoc-in base (conj path :extra-key) (rand-nth [3 :extra-value 4.0 {:stuff :stuff}]))))))))))

@@ -5,9 +5,9 @@
   time."
   (:require
    [metabase.analyze.classifiers.name :as classifiers.name]
-   [metabase.analyze.fingerprint :as fingerprint]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.analyze.fingerprint.insights :as insights]
+   [metabase.analyze.fingerprint.schema :as fingerprint.schema]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -43,7 +43,7 @@
    [:description        {:optional true} [:maybe :string]]
    [:semantic_type      {:optional true} [:maybe ms/FieldSemanticOrRelationTypeKeywordOrString]]
    [:unit               {:optional true} [:maybe DateTimeUnitKeywordOrString]]
-   [:fingerprint        {:optional true} [:maybe fingerprint/Fingerprint]]
+   [:fingerprint        {:optional true} [:maybe fingerprint.schema/Fingerprint]]
    [:id                 {:optional true} [:maybe ::lib.schema.id/field]]
    ;; only optional because it's not present right away, but it should be present at the end.
    [:field_ref          {:optional true} [:ref ::MaybeUnnormalizedReference]]

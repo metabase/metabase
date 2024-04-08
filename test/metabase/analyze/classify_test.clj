@@ -1,7 +1,7 @@
 (ns metabase.analyze.classify-test
   (:require
    [clojure.test :refer :all]
-   [metabase.analyze.classifiers :as classifiers]
+   [metabase.analyze.classifiers.core :as classifiers]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]))
