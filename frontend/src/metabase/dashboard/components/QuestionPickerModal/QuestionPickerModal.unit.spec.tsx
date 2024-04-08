@@ -86,19 +86,10 @@ async function setup() {
 }
 
 describe("QuestionPickerModal", () => {
-  beforeEach(() => {
-    jest.useFakeTimers({ advanceTimers: true });
-  });
-
-  afterEach(() => {
-    jest.clearAllTimers();
-    jest.useRealTimers();
-  });
-
   it("should select a question from the root collection", async () => {
     const { onSelect, onClose } = await setup();
 
-    await userEvent.click(screen.getByText(ROOT_CARD.name));
+    await userEvent.click(await screen.findByText(ROOT_CARD.name));
 
     expect(onSelect).toHaveBeenCalledWith(ROOT_CARD.id);
     expect(onClose).toHaveBeenCalled();

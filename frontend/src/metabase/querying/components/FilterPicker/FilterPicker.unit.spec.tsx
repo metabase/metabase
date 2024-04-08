@@ -3,7 +3,6 @@ import dayjs from "dayjs";
 
 import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
 import {
-  act,
   renderWithProviders,
   screen,
   waitFor,
@@ -401,14 +400,9 @@ describe("FilterPicker", () => {
       const input = screen.getByLabelText("Expression");
       const button = screen.getByRole("button", { name: "Done" });
 
-      // The expression editor applies changes on blur,
-      // but for some reason it doesn't work without `act`.
-      // eslint-disable-next-line testing-library/no-unnecessary-act
-      await act(async () => {
-        await userEvent.clear(input);
-        await userEvent.type(input, text, { delay });
-        await userEvent.tab();
-      });
+      await userEvent.clear(input);
+      await userEvent.type(input, text, { delay });
+      await userEvent.tab();
 
       await waitFor(() => expect(button).toBeEnabled());
       await userEvent.click(button);
