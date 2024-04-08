@@ -399,11 +399,13 @@
 (mu/defn add-order-by-clause :- mbql.s/MBQLQuery
   "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
   already being used in another order-by clause, this function does nothing."
-  [inner-query                                        :- mbql.s/MBQLQuery
-   [_ [_ id-or-name :as _field], :as order-by-clause] :- mbql.s/OrderBy]
-  (let [existing-fields (set (for [[_ [_ id-or-name]] (:order-by inner-query)]
-                               id-or-name))]
-    (if (existing-fields id-or-name)
+  [inner-query                           :- mbql.s/MBQLQuery
+   [_dir orderable, :as order-by-clause] :- mbql.s/OrderBy]
+  (let [existing-orderables (into #{}
+                                  (map (fn [[_dir orderable]]
+                                         orderable))
+                                  (:order-by inner-query))]
+    (if (existing-orderables orderable)
       ;; Field already referenced, nothing to do
       inner-query
       ;; otherwise add new clause at the end
@@ -577,6 +579,7 @@
                 (assert (not= candidate original)
                         (str "unique-alias-fn must return a different string than its input. Input: "
                              (pr-str candidate)))
+                (swap! id+original->unique assoc [id name-key] candidate)
                 (recur id candidate))))))))))
 
 (mu/defn uniquify-names :- [:and
@@ -632,7 +635,6 @@
 
   Most often, `aggregation->name-fn` will be something like `annotate/aggregation-name`, but for purposes of keeping
   the `metabase.legacy-mbql` module seperate from the `metabase.query-processor` code we'll let you pass that in yourself."
-  {:style/indent 1}
   [aggregation->name-fn :- fn?
    aggregations         :- [:sequential mbql.s/Aggregation]]
   (lib.util.match/replace aggregations
@@ -648,7 +650,6 @@
 (mu/defn pre-alias-and-uniquify-aggregations :- UniquelyNamedAggregations
   "Wrap every aggregation clause in a `:named` clause with a unique name. Combines `pre-alias-aggregations` with
   `uniquify-named-aggregations`."
-  {:style/indent 1}
   [aggregation->name-fn :- fn?
    aggregations         :- [:sequential mbql.s/Aggregation]]
   (-> (pre-alias-aggregations aggregation->name-fn aggregations)
@@ -734,8 +735,7 @@
           (mbql.s/valid-temporal-unit-for-base-type? base-type unit))
     (assoc-field-options clause :temporal-unit unit)
     (do
-      (log/warn (i18n/tru "{0} is not a valid temporal unit for {1}; not adding to clause {2}"
-                          unit base-type (pr-str clause)))
+      (log/warnf "%s is not a valid temporal unit for %s; not adding to clause %s" unit base-type (pr-str clause))
       clause)))
 
 (defn remove-namespaced-options

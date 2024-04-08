@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
@@ -202,7 +203,10 @@ export function FilterPopover({
         style={{ minWidth: MIN_WIDTH, overflowY: "auto", ...style }}
       >
         {fieldPickerTitle && (
-          <SidebarHeader className="mx1 my2" title={fieldPickerTitle} />
+          <SidebarHeader
+            className={cx(CS.mx1, CS.my2)}
+            title={fieldPickerTitle}
+          />
         )}
         <DimensionList
           style={{ color: color("filter") }}
@@ -227,12 +231,13 @@ export function FilterPopover({
         {showCustom && (
           <div
             style={{ color: color("filter") }}
-            className="List-section List-section--togglable"
+            data-element-id="list-section"
+            className={cx(ListS.ListSectionToggleAble)}
             onClick={() => setEditingFilter(true)}
           >
             <div
               className={cx(
-                "List-section-header",
+                ListS.ListSectionHeader,
                 CS.mx2,
                 CS.py2,
                 CS.flex,
@@ -243,7 +248,7 @@ export function FilterPopover({
             >
               <span
                 className={cx(
-                  "List-section-icon",
+                  ListS.ListSectionIcon,
                   CS.mr1,
                   CS.flex,
                   CS.alignCenter,
@@ -251,7 +256,7 @@ export function FilterPopover({
               >
                 <Icon name="filter" />
               </span>
-              <h3 className={cx("List-section-title", CS.textWrap)}>
+              <h3 className={cx(ListS.ListSectionTitle, CS.textWrap)}>
                 {CUSTOM_SECTION_NAME}
               </h3>
             </div>
@@ -294,7 +299,7 @@ export function FilterPopover({
             data-ui-tag="add-filter"
             primaryColor={primaryColor}
             disabled={!filter.isValid()}
-            className="ml-auto"
+            className={CS.mlAuto}
             onClick={() => handleCommit()}
           >
             {isNew ? t`Add filter` : t`Update filter`}
@@ -326,7 +331,7 @@ export function FilterPopover({
                 <>
                   <FilterPopoverSeparator data-testid="filter-popover-separator" />
                   <FilterPopoverPicker
-                    className="px1 pt1 pb1"
+                    className={cx(CS.px1, CS.pt1, CS.pb1)}
                     filter={filter}
                     onFilterChange={handleFilterChange}
                     onCommit={handleCommit}
@@ -341,7 +346,7 @@ export function FilterPopover({
             </>
           )}
           <FilterPopoverFooter
-            className="px1 pb1"
+            className={cx(CS.px1, CS.pb1)}
             filter={filter}
             onFilterChange={handleFilterChange}
             onCommit={!noCommitButton ? handleCommit : null}

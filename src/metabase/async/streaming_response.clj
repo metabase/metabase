@@ -7,7 +7,6 @@
    [metabase.async.util :as async.u]
    [metabase.server.protocols :as server.protocols]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
@@ -62,7 +61,7 @@
           (json/generate-stream obj writer))
         (catch EofException _)
         (catch Throwable e
-          (log/error e (trs "Error writing error to output stream") obj))))))
+          (log/error e "Error writing error to output stream" obj))))))
 
 (defn- do-f* [f ^OutputStream os _finished-chan canceled-chan]
   (try
@@ -74,7 +73,7 @@
       (a/>!! canceled-chan ::thread-interrupted)
       nil)
     (catch Throwable e
-      (log/error e (trs "Caught unexpected Exception in streaming response body"))
+      (log/error e "Caught unexpected Exception in streaming response body")
       (write-error! os e)
       nil)))
 
@@ -87,7 +86,7 @@
                (try
                  (do-f* f os finished-chan canceled-chan)
                  (catch Throwable e
-                   (log/error e (trs "bound-fn caught unexpected Exception"))
+                   (log/error e "bound-fn caught unexpected Exception")
                    (a/>!! finished-chan :unexpected-error))
                  (finally
                    (a/>!! finished-chan (if (a/poll! canceled-chan)
@@ -149,7 +148,7 @@
     (catch ClosedChannelException _
       true)
     (catch Throwable e
-      (log/error e (trs "Error determining whether HTTP request was canceled"))
+      (log/error e "Error determining whether HTTP request was canceled")
       false)))
 
 (def ^:private async-cancellation-poll-timeout-ms
@@ -173,8 +172,8 @@
           ;; was completed) then close `canceled-status-chan` which will kill the underlying thread
           (a/close! canceled-status-chan)
           (when (= port status-timeout-chan)
-            (log/debug (trs "Check cancelation status timed out after {0}"
-                            (u/format-milliseconds async-cancellation-poll-timeout-ms))))
+            (log/debugf "Check cancelation status timed out after %s"
+                        (u/format-milliseconds async-cancellation-poll-timeout-ms)))
           (when (not= port finished-chan)
             (if canceled?
               (a/>! canceled-chan ::request-canceled)
@@ -195,11 +194,11 @@
           (start-async-cancel-loop! request finished-chan canceled-chan)
           (do-f-async async-context f delay-os finished-chan canceled-chan)))
       (catch Throwable e
-        (log/error e (trs "Unexpected exception in do-f-async"))
+        (log/error e "Unexpected exception in do-f-async")
         (try
           (.sendError response 500 (.getMessage e))
           (catch Throwable e
-            (log/error e (trs "Unexpected exception writing error response"))))
+            (log/error e "Unexpected exception writing error response")))
         (a/>!! finished-chan :unexpected-error)
         (a/close! finished-chan)
         (a/close! canceled-chan)

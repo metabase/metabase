@@ -3,7 +3,6 @@ title: Public sharing
 redirect_from:
   - /docs/latest/administration-guide/12-public-links
   - /docs/latest/embedding/12-public-links
-  - /docs/latest/questions/sharing/public-links
 ---
 
 # Public sharing

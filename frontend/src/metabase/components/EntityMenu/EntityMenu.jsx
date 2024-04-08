@@ -4,6 +4,7 @@ import { createRef, Component } from "react";
 
 import EntityMenuItem from "metabase/components/EntityMenuItem";
 import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";
+import CS from "metabase/css/core/index.css";
 import { Popover } from "metabase/ui";
 
 /**
@@ -89,7 +90,7 @@ class EntityMenu extends Component {
         </Popover.Target>
         <Popover.Dropdown>
           {menuItemContent || (
-            <ol className="p1" style={{ minWidth: minWidth ?? 184 }}>
+            <ol className={CS.p1} style={{ minWidth: minWidth ?? 184 }}>
               {items.map(item => {
                 if (!item) {
                   return null;
