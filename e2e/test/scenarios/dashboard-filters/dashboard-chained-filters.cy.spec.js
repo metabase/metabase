@@ -10,6 +10,8 @@ import {
   getDashboardCard,
   resetTestTable,
   resyncDatabase,
+  saveDashboard,
+  filterWidget,
 } from "e2e/support/helpers";
 
 const { PEOPLE } = SAMPLE_DATABASE;
@@ -45,10 +47,12 @@ describe("scenarios > dashboard > chained filter", () => {
       });
 
       // open the linked filters tab, and click the click to add a City filter
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Linked filters").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("add another dashboard filter").click();
+      cy.findAllByRole("tab").contains("Linked filters").click();
+
+      cy.findByRole("tabpanel")
+        .findByText("add another dashboard filter")
+        .click();
+
       popover().within(() => {
         cy.findByText("Location").click();
         cy.findByText("Is").click();
@@ -64,40 +68,30 @@ describe("scenarios > dashboard > chained filter", () => {
       });
 
       // Link city to state
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Limit this filter's choices")
-        .parent()
-        .within(() => {
-          // turn on the toggle
-          cy.findByText("Location")
-            .parent()
-            .within(() => {
-              cy.get("input").click();
-            });
+      cy.findByRole("tabpanel").within(() => {
+        // turn on the switch, input has 0 width and height
+        cy.findByRole("switch").parent().get("label").click();
 
-          // open up the list of linked columns
-          cy.findByText("Location").click();
-          // It's hard to assert on the "table.column" pairs.
-          // We just assert that the headers are there to know that something appeared.
-          cy.findByText("Filtering column");
-          cy.findByText("Filtered column");
-        });
+        // open up the list of linked columns
+        cy.findByText("Location").click();
+        // It's hard to assert on the "table.column" pairs.
+        // We just assert that the headers are there to know that something appeared.
+        cy.findByText("Filtering column");
+        cy.findByText("Filtered column");
+      });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Save").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("You're editing this dashboard.").should("not.exist");
+      saveDashboard();
 
       // now test that it worked!
       // Select Alaska as a state. We should see Anchorage as a option but not Anacoco
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Location").click();
+      filterWidget().contains("Location").click();
       popover().within(() => {
         cy.findByText("AK").click();
         cy.findByText("Add filter").click();
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Location 1").click();
+
+      filterWidget().contains("Location 1").click();
+
       popover().within(() => {
         cy.findByPlaceholderText(
           has_field_values === "search" ? "Search by City" : "Search the list",
@@ -108,8 +102,7 @@ describe("scenarios > dashboard > chained filter", () => {
         cy.get("input").first().clear();
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("AK").click();
+      filterWidget().contains("AK").click();
       popover().within(() => {
         cy.findByText("AK").click();
         cy.findByText("GA").click();
@@ -118,24 +111,21 @@ describe("scenarios > dashboard > chained filter", () => {
       });
 
       // do it again to make sure it isn't cached incorrectly
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Location 1").click();
+      filterWidget().contains("Location 1").click();
       popover().within(() => {
         cy.get("input").first().type("An");
         cy.findByText("Canton");
         cy.findByText("Anchorage").should("not.exist");
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("GA").click();
+      filterWidget().contains("GA").click();
       popover().within(() => {
         cy.findByText("GA").click();
         cy.findByText("Update filter").click();
       });
 
       // do it again without a state filter to make sure it isn't cached incorrectly
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Location 1").click();
+      filterWidget().contains("Location 1").click();
       popover().within(() => {
         cy.get("input").first().type("An");
         cy.findByText("Adrian");

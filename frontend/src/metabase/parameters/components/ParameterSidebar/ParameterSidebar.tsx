@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { usePrevious } from "react-use";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
@@ -72,13 +71,6 @@ export const ParameterSidebar = ({
   const parameterId = parameter.id;
   const tabs = useMemo(() => getTabs(parameter), [parameter]);
   const [tab, setTab] = useState<"filters" | "settings">(tabs[0].value);
-  const prevParameterId = usePrevious(parameterId);
-
-  useEffect(() => {
-    if (prevParameterId !== parameterId) {
-      setTab(tabs[0].value);
-    }
-  }, [parameterId, prevParameterId, tabs]);
 
   const missingRequiredDefault =
     parameter.required && parameterHasNoDisplayValue(parameter.default);
