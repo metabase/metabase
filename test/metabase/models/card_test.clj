@@ -695,9 +695,9 @@
                                                            :result_metadata metadata}]
         (doseq [card-id [card1-id card2-id]]
           (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
-            (when (= card-id card2-id)
-              (is (= :model
-                     (:type extracted))))
+            ;; card2 is model, but card1 is not
+            (is (= (= card-id card2-id)
+                   (= :model (:type extracted))))
             (is (string? (:display_name (first (:result_metadata extracted)))))
             ;; this is a quick comparison, since the actual stored metadata is quite complex
             (is (= (map :display_name metadata)
