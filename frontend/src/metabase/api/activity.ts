@@ -18,9 +18,7 @@ const ACTIVITY_TAG_TYPES: Record<ActivityModel, TagType> = {
 function activityItemListTags(items: PopularItem[]) {
   return [
     ...Object.values(ACTIVITY_TAG_TYPES).map(listTag),
-    ...items.map(item =>
-      idTag(ACTIVITY_TAG_TYPES[item.model], item.model_object.id),
-    ),
+    ...items.map(item => idTag(ACTIVITY_TAG_TYPES[item.model], item.model_id)),
   ];
 }
 
