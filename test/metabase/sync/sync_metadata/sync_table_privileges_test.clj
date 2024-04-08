@@ -12,7 +12,8 @@
 (set! *warn-on-reflection* true)
 
 (deftest sync-table-privileges!-test
-  (mt/test-drivers (disj (set/intersection (mt/normal-drivers-with-feature :schemas)))
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :table-privileges)
+                                     (mt/normal-drivers-with-feature :schemas))
     (testing "`TablePrivileges` should store the correct data for current_user and role privileges for databases with schemas"
       (mt/with-empty-db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
