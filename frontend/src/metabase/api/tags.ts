@@ -13,6 +13,8 @@ export const TAG_TYPES = [
   "snippet",
   "segment",
   "table",
+  "timeline",
+  "timeline-event",
 ] as const;
 
 export const MODEL_TO_TAG_TYPE = {
