@@ -24,9 +24,13 @@
 
 ;;; "legacy macro" as used below means EITHER a legacy Metric or a legacy Segment.
 (mr/def ::legacy-macro
-  [:or
-   ::lib.schema.metadata/legacy-metric
-   ::lib.schema.metadata/segment])
+  [:and
+   [:map
+    [:lib/type [:enum :metadata/segment :metadata/legacy-metric]]]
+   [:multi
+    {:dispatch :lib/type}
+    [:metadata/segment       ::lib.schema.metadata/segment]
+    [:metadata/legacy-metric ::lib.schema.metadata/legacy-metric]]])
 
 (mr/def ::macro-type
   [:enum :metric :segment])
@@ -51,12 +55,15 @@
 ;;;
 ;;; a legacy Segment has one or more filter clauses.
 
-(defn- legacy-macro-definition->pMBQL
+(mu/defn ^:private legacy-macro-definition->pMBQL :- ::lib.schema/stage.mbql
   "Get the definition of a legacy Metric as a pMBQL stage."
-  [definition]
+  [metadata-providerable                            :- ::lib.schema.metadata/metadata-providerable
+   {:keys [definition table-id], :as _legacy-macro} :- ::legacy-macro]
   (log/tracef "Converting legacy MBQL for macro definition from\n%s" (u/pprint-to-str definition))
-  (u/prog1 (-> (lib.convert/->pMBQL {:type  :query
-                                     :query definition})
+  (u/prog1 (-> (lib.convert/->pMBQL {:type     :query
+                                     :query    (merge {:source-table table-id}
+                                                      definition)
+                                     :database (u/the-id (lib.metadata/database metadata-providerable))})
                (lib.util/query-stage -1))
     (log/tracef "to pMBQL\n%s" (u/pprint-to-str <>))))
 
@@ -91,7 +98,7 @@
                             :segment :metadata/segment)]
     (u/prog1 (into {}
                    (map (juxt :id (fn [legacy-macro]
-                                    (update legacy-macro :definition legacy-macro-definition->pMBQL))))
+                                    (assoc legacy-macro :definition (legacy-macro-definition->pMBQL metadata-providerable legacy-macro)))))
                    (lib.metadata/bulk-metadata-or-throw metadata-providerable metadata-type legacy-macro-ids))
       ;; make sure all the IDs exist.
       (doseq [id legacy-macro-ids]

@@ -267,7 +267,7 @@
 
 (methodical/defmethod t2.model/resolve-model :metadata/legacy-metric
   [model]
-  (classloader/require 'metabase.models.metric)
+  (classloader/require 'metabase.models.legacy-metric)
   model)
 
 (methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/legacy-metric

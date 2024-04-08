@@ -3,7 +3,7 @@ import type { MetricId } from "metabase-types/api";
 
 import type { LegacyMetricMetadata, Query } from "./types";
 
-export function avaialableLegacyMetrics(
+export function availableLegacyMetrics(
   query: Query,
   stageIndex: number,
 ): LegacyMetricMetadata[] {
