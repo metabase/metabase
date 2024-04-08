@@ -92,7 +92,6 @@
      metabot-prompt-generator-token-limit
      multi-setting-read-only
      notification-link-base-url
-     no-surveys
      num-metabot-choices
      openai-api-key
      openai-available-models

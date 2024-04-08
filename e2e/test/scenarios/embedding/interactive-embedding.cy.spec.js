@@ -18,8 +18,12 @@ import {
   dashboardGrid,
   createDashboardWithTabs,
   goToTab,
+  visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
-import { createMockDashboardCard } from "metabase-types/api/mocks";
+import {
+  createMockDashboardCard,
+  createMockTextDashboardCard,
+} from "metabase-types/api/mocks";
 
 const { ORDERS } = SAMPLE_DATABASE;
 
@@ -458,6 +462,79 @@ describeEE("scenarios > embedding > full app", () => {
         },
       );
     });
+
+    it("should send `frame` message with dashboard height when the dashboard is resized (metabase#37437)", () => {
+      const TAB_1 = { id: 1, name: "Tab 1" };
+      const TAB_2 = { id: 2, name: "Tab 2" };
+      createDashboardWithTabs({
+        tabs: [TAB_1, TAB_2],
+        name: "Dashboard",
+        dashcards: [
+          createMockTextDashboardCard({
+            dashboard_tab_id: TAB_1.id,
+            size_x: 10,
+            size_y: 20,
+            text: "I am a text card",
+          }),
+        ],
+      }).then(dashboard => {
+        visitFullAppEmbeddingUrl({
+          url: `/dashboard/${dashboard.id}`,
+          onBeforeLoad(window) {
+            cy.spy(window.parent, "postMessage").as("postMessage");
+          },
+        });
+      });
+      cy.get("@postMessage")
+        .should("have.been.calledWith", {
+          metabase: {
+            type: "frame",
+            frame: {
+              mode: "fit",
+              height: Cypress.sinon.match(value => value > 1000),
+            },
+          },
+        })
+        .and("not.have.been.calledWith", {
+          metabase: {
+            type: "frame",
+            frame: {
+              mode: "fit",
+              height: Cypress.sinon.match(value => value < 400),
+            },
+          },
+        });
+
+      cy.findByRole("tab", { name: TAB_2.name }).click();
+      cy.get("@postMessage").should("have.been.calledWith", {
+        metabase: {
+          type: "frame",
+          frame: {
+            mode: "fit",
+            height: Cypress.sinon.match(value => value < 400),
+          },
+        },
+      });
+
+      cy.findByTestId("app-bar").findByText("Our analytics").click();
+
+      cy.findByRole("heading", { name: "Metabase analytics" }).should(
+        "be.visible",
+      );
+      cy.get("@postMessage").then(postMessage => {
+        expect(
+          postMessage.lastCall.calledWith({
+            metabase: {
+              type: "frame",
+              frame: {
+                mode: "fit",
+                height: 800,
+              },
+            },
+          }),
+        ).to.be.true;
+      });
+    });
   });
 
   describe("x-ray dashboards", () => {
@@ -479,18 +556,6 @@ describeEE("scenarios > embedding > full app", () => {
     });
   });
 });
-
-const visitFullAppEmbeddingUrl = ({ url, qs }) => {
-  cy.visit({
-    url,
-    qs,
-    onBeforeLoad(window) {
-      // cypress runs all tests in an iframe and the app uses this property to avoid embedding mode for all tests
-      // by removing the property the app would work in embedding mode
-      window.Cypress = undefined;
-    },
-  });
-};
 
 const visitQuestionUrl = urlOptions => {
   visitFullAppEmbeddingUrl(urlOptions);

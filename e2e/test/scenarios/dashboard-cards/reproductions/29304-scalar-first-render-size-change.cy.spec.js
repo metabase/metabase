@@ -1,5 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore } from "e2e/support/helpers";
+import { restore, visitFullAppEmbeddingUrl } from "e2e/support/helpers";
 
 // Couldn't import from `metabase/components/ExplicitSize` because dependency issue.
 // It will fail Cypress tests.
@@ -102,18 +102,3 @@ describe("issue 29304", () => {
     });
   });
 });
-
-// Use full-app embedding to test because `ExplicitSize` checks for `isCypressActive`,
-// which checks `window.Cypress`, and will disable the refresh mode on Cypress test.
-// If we test by simply visiting the dashboard, the refresh mode will be disabled,
-// and we won't be able to reproduce the problem.
-const visitFullAppEmbeddingUrl = ({ url }) => {
-  cy.visit({
-    url,
-    onBeforeLoad(window) {
-      // cypress runs all tests in an iframe and the app uses this property to avoid embedding mode for all tests
-      // by removing the property the app would work in embedding mode
-      window.Cypress = undefined;
-    },
-  });
-};
