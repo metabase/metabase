@@ -10,7 +10,6 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
@@ -125,7 +124,7 @@
   []
   (t2/select-one Database :id (public-settings/uploads-database-id)))
 
-(mu/defn table-identifier
+(mu/defn ^:private table-identifier
   "Returns a string that can be used as a table identifier in SQL, including a schema if provided."
   [{:keys [schema name] :as _table}
    :- [:map
@@ -340,25 +339,6 @@
          :num-rows          (count (rest rows))
          :generated-columns 0}))))
 
-(defn- create-from-csv-and-sync!
-  "This is separated from `create-csv-upload!` for testing"
-  [{:keys [db file schema table-name]}]
-  (let [driver            (driver.u/database->driver db)
-        schema            (some->> schema (ddl.i/format-name driver))
-        table-name        (some->> table-name (ddl.i/format-name driver))
-        schema+table-name (table-identifier {:schema schema :name table-name})
-        stats             (create-from-csv! driver (:id db) schema+table-name file)
-        ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
-        table             (sync-tables/create-or-reactivate-table! db {:name table-name :schema (not-empty schema)})
-        _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true})
-        _sync             (scan-and-sync-table! db table)
-        ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
-        ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
-        auto-pk-field     (table-id->auto-pk-column (:id table))
-        _                 (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})]
-    {:table table
-     :stats stats}))
-
 (mu/defn create-csv-upload!
   "Main entry point for CSV uploading.
 
@@ -396,14 +376,22 @@
     (collection/check-write-perms-for-collection collection-id)
     (try
       (let [timer             (start-timer)
+            driver            (driver.u/database->driver database)
             filename-prefix   (or (second (re-matches #"(.*)\.(csv|tsv)$" filename))
                                   filename)
-            driver            (driver.u/database->driver database)
             table-name        (->> (str table-prefix filename-prefix)
                                    (unique-table-name driver)
                                    (u/lower-case-en))
-            {:keys [stats
-                    table]}   (create-from-csv-and-sync! {:db database :file file :schema schema-name :table-name table-name})
+            schema+table-name (table-identifier {:schema schema-name :name table-name})
+            stats             (create-from-csv! driver (:id database) schema+table-name file)
+            ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
+            table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})
+            _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true})
+            _sync             (scan-and-sync-table! database table)
+            ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
+            ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
+            auto-pk-field     (table-id->auto-pk-column (:id table))
+            _                 (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})
             card              (card/create-card!
                                {:collection_id          collection-id
                                 :type                   :model
