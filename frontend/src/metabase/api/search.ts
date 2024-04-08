@@ -8,9 +8,9 @@ import type {
 import { Api } from "./api";
 import { idTag, listTag, MODEL_TO_TAG_TYPE } from "./tags";
 
-function searchItemListTags(items: SearchResult[], types: SearchModelType[]) {
+function searchItemListTags(items: SearchResult[], models: SearchModelType[]) {
   return [
-    ...types.map(type => listTag(MODEL_TO_TAG_TYPE[type])),
+    ...models.map(type => listTag(MODEL_TO_TAG_TYPE[type])),
     ...items.map(item => idTag(MODEL_TO_TAG_TYPE[item.model], item.id)),
   ];
 }

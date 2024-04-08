@@ -10,10 +10,10 @@ import { idTag, listTag, MODEL_TO_TAG_TYPE } from "./tags";
 
 function searchItemListTags(
   items: CollectionItem[],
-  types: CollectionItemModel[],
+  models: CollectionItemModel[],
 ) {
   return [
-    ...types.map(type => listTag(MODEL_TO_TAG_TYPE[type])),
+    ...models.map(type => listTag(MODEL_TO_TAG_TYPE[type])),
     ...items.map(item => idTag(MODEL_TO_TAG_TYPE[item.model], item.id)),
   ];
 }
