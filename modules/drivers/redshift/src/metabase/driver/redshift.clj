@@ -126,7 +126,7 @@
                         [:c.table_name :table-name]
                         [[:not= :pk.column_name nil] :pk?]
                         [[:case [:not= :c.remarks ""] :c.remarks :else nil] :field-comment]]
-               :from [[:svv_all_columns :c]]
+               :from [[:svv_columns :c]]
                :left-join [[{:select [:tc.table_schema
                                       :tc.table_name
                                       :kc.column_name]
