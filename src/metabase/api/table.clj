@@ -48,6 +48,12 @@
     (t2/hydrate tables :db)
     (filterv mi/can-read? tables)))
 
+(api/defendpoint GET "/uploaded"
+  "Get all `Tables` visible to the current user which were created by uploading a file."
+  []
+  (as-> (t2/select Table, :active true, :is_upload true, {:order-by [[:name :asc]]}) tables
+        (filterv mi/can-read? tables)))
+
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
   [id include_editable_data_model]

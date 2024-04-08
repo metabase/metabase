@@ -83,7 +83,6 @@
   (-> (field-details field)
       (dissoc :dimension_options :default_dimension_option)))
 
-
 (deftest list-table-test
   (testing "GET /api/table"
     (testing "These should come back in alphabetical order and include relevant metadata"
@@ -123,6 +122,38 @@
                   (filter #(= (:db_id %) (mt/id))) ; prevent stray tables from affecting unit test results
                   (map #(select-keys % [:name :display_name :id :entity_type]))
                   set))))))
+
+(defmacro with-tables-as-uploads
+  "Temporarily mark the given tables as uploads, as an alternate to making more expensive or brittle changes to the db."
+  [table-keys & body]
+  `(t2/with-transaction []
+     (let [where-clause# {:id [:in (map mt/id ~table-keys)]}]
+       (try
+         (t2/update! :model/Table where-clause# {:is_upload true})
+         ~@body
+         (finally
+           (t2/update! :model/Table where-clause# {:is_upload false}))))))
+
+(deftest list-uploaded-tables-test
+  (testing "GET /api/table/uploaded"
+    (testing "These should come back in alphabetical order and include relevant metadata"
+      (with-tables-as-uploads [:categories :reviews :venues]
+        (is (= #{{:name         (mt/format-name "categories")
+                  :display_name "Categories"
+                  :id           (mt/id :categories)
+                  :entity_type  "entity/GenericTable"}
+                 {:name         (mt/format-name "reviews")
+                  :display_name "Reviews"
+                  :id           (mt/id :reviews)
+                  :entity_type  "entity/GenericTable"}
+                 {:name         (mt/format-name "venues")
+                  :display_name "Venues"
+                  :id           (mt/id :venues)
+                  :entity_type  "entity/GenericTable"}}
+               (->> (mt/user-http-request :rasta :get 200 "table/uploaded")
+                    (filter #(= (:db_id %) (mt/id)))        ; prevent stray tables from affecting unit test results
+                    (map #(select-keys % [:name :display_name :id :entity_type]))
+                    set)))))))
 
 (deftest get-table-test
   (testing "GET /api/table/:id"
