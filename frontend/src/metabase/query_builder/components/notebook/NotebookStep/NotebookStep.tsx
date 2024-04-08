@@ -73,7 +73,7 @@ function NotebookStep({
               key={`actionButton_${stepUi.title}`}
               className={cx({
                 [cx(CS.mr2, CS.mt2)]: isLastStep,
-                mr1: !isLastStep,
+                [CS.mr1]: !isLastStep,
               })}
               color={stepUi.getColor()}
               large={hasLargeActionButtons}
