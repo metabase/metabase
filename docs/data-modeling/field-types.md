@@ -12,11 +12,13 @@ Field types dictate how Metabase displays its data, as well as the column’s sp
 
 ## Overall Row
 
-- **Entity Key**. The field in this table that uniquely identifies each row. Could be a product ID, serial number, etc.
-- **Entity Name**. Different from the entity key, the entity name represents what each row in the table _is_. For example, in a Users table, the User column might be the entity name.
-- **Foreign Key**. The column in this table that (usually) refers to the primary key of another table in order to connect data from different tables that are related. For example, in a Products table, you might have a Customer ID field that points to a Customers table, where Customer ID is the primary key.
+- **Entity Key**: The field in this table that uniquely identifies each row. Could be a product ID, serial number, etc.
+- **Entity Name**: Different from the entity key, the entity name represents what each row in the table _is_. For example, in a Users table, the User column might be the entity name.
+- **Foreign Key**: The column in this table that (usually) refers to the primary key of another table in order to connect data from different tables that are related. For example, in a Products table, you might have a Customer ID field that points to a Customers table, where Customer ID is the primary key.
 
 ## Common
+
+Common field types are text/varchar types.
 
 - **Category**
 - **Comment**
@@ -25,10 +27,12 @@ Field types dictate how Metabase displays its data, as well as the column’s sp
 
 ## Location
 
+Marking fields as locations tell Metabase that it can use the field to display data on a [map chart](../questions/sharing/visualizations/map.md).
+
 - **City**
 - **Country**
-- **Latitude**. Tells Metabase that the data could be plotted on a [pin map](../questions/sharing/visualizations/map.md).
-- **Longitude**
+- **Latitude**: Tells Metabase that the data could be plotted on a [pin map](../questions/sharing/visualizations/map.md).
+- **Longitude**: Did you know that you can use the moons of Jupiter to calculate longitude?
 - **State**
 - **Zip Code**
 
@@ -43,23 +47,31 @@ Financial field types tell Metabase to treat the field's values as money. If you
 - **Income**
 - **Price**
 
+See [Currency formatting options](../questions/sharing/visualizations/table.md#currency-formatting-options).
+
 ## Numeric
 
-- **Percentage**
-- **Quantity**
-- **Score**
+Metabase will treat numeric field types as numbers, either as integers or floating point numbers.
+
+- **Percentage**: Displays the number as a percentage by default.
+- **Quantity** Displays the number as normal by default.
+- **Score**.
 - **Share**. The same as percentage, so prefer "Percentage".
 
 ## Profile
 
-- **Birthday**
-- **Company**
-- **Email**
+Fields that deal with people.
+
+- **Birthday**. Everyone has a birthday, but birthdays only happen once a year.
+- **Company**.
+- **Email**.
 - **Owner**
 - **Subscription**
 - **User**
 
 ## Date and Time
+
+Date and time field types tell Metabase the field contains datetime values, so it can use date pickers and display time series (e.g., a line chart).
 
 If your database stores datetimes as a number or string, you can [cast that column to a datetime](./metadata-editing.md#casting-to-a-specific-data-type).
 
@@ -89,13 +101,15 @@ If your database stores datetimes as a number or string, you can [cast that colu
 
 ## URLs
 
-- **Avatar Image URL**
-- **Image URL**
-- **URL**
+Metabase can display fields with URLs as images or links.
+
+- **Avatar Image URL**: Displays the field as an image in table and detail views.
+- **Image URL**: Displays the field as an image in table and detail views.
+- **URL**: Displays the field as a link.
 
 ## Other
 
-- **Field containing JSON**.
+- **Field containing JSON**. See [Working with JSON](./json-unfolding.md)
 - **No semantic type** – Used for fields that don't fall into any of the above field types.
 
 ## Using field types in Metabase
@@ -108,7 +122,7 @@ With records that include integer entity keys, you can also configure text field
 
 ### X-rays
 
-When you [X-ray](../exploration-and-organization/x-rays.md) a table, model, or entity, Metabase considers both the data type and field type to display different charts that summarize that data.
+When you [X-ray](../exploration-and-organization/x-rays.md) a table, model, or entity, Metabase considers both the data type and the field type to display different charts that summarize that data.
 
 ### Field Filters
 
