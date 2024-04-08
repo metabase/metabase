@@ -60,11 +60,11 @@
                    :model/Database         {database-id-1 :id}   {}
                    :model/Table            {table-id-1 :id}      {:db_id database-id-1
                                                                   :schema "PUBLIC"}]
-      ;; Clear default perms for the group
-      (db/delete! :model/DataPermissions :group_id group-id-1)
       (testing "data permissions can be updated via API-style graph"
         (are [api-graph db-graph] (= db-graph
                                      (do
+                                       ;; Clear default perms for the group
+                                       (db/delete! :model/DataPermissions :group_id group-id-1)
                                        (data-perms.graph/update-data-perms-graph!* api-graph)
                                        (data-perms/data-permissions-graph :group-id group-id-1)))
           {group-id-1
@@ -72,21 +72,16 @@
             {:create-queries :query-builder-and-native}}}
           {group-id-1
            {database-id-1
-            {:perms/create-queries :query-builder-and-native}}}
+            {:perms/create-queries :query-builder-and-native
+             :perms/view-data :unrestricted}}}
 
           {group-id-1
            {database-id-1
             {:create-queries :query-builder}}}
           {group-id-1
            {database-id-1
-            {:perms/create-queries :query-builder}}}
-
-          {group-id-1
-           {database-id-1
-            {:create-queries :no}}}
-          {group-id-1
-           {database-id-1
-            {:perms/create-queries :no}}}
+            {:perms/create-queries :query-builder
+             :perms/view-data :unrestricted}}}
 
           {group-id-1
            {database-id-1
@@ -100,7 +95,8 @@
             {:create-queries {"PUBLIC" :query-builder}}}}
           {group-id-1
            {database-id-1
-            {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder}}}}}
+            {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder}}
+             :perms/view-data {"PUBLIC" {table-id-1 :unrestricted}}}}}
 
           {group-id-1
            {database-id-1
@@ -114,7 +110,8 @@
             {:create-queries {"PUBLIC" {table-id-1 :query-builder}}}}}
           {group-id-1
            {database-id-1
-            {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder}}}}}
+            {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder}}
+             :perms/view-data {"PUBLIC" {table-id-1 :unrestricted}}}}}
 
           {group-id-1
            {database-id-1
