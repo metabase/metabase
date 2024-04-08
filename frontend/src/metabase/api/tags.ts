@@ -10,6 +10,8 @@ import type {
   Timeline,
   TimelineEvent,
   UserInfo,
+  FieldId,
+  Metric,
 } from "metabase-types/api";
 
 export const TAG_TYPES = [
@@ -77,6 +79,12 @@ export function databaseTags(database: Database): TagDescription<TagType>[] {
   ];
 }
 
+export function databaseListTags(
+  databases: Database[],
+): TagDescription<TagType>[] {
+  return [listTag("database"), ...databases.flatMap(databaseTags)];
+}
+
 export function tableTags(table: Table): TagDescription<TagType>[] {
   return [
     idTag("table", table.id),
@@ -106,6 +114,10 @@ export function fieldListTags(fields: Field[]): TagDescription<TagType>[] {
   return [listTag("field"), ...fields.flatMap(fieldTags)];
 }
 
+export function fieldValuesTags(id: FieldId) {
+  return [idTag("field-values", id)];
+}
+
 export function fieldDimensionTags(
   dimension: FieldDimension,
 ): TagDescription<TagType>[] {
@@ -133,6 +145,17 @@ export function segmentListTags(
   segments: Segment[],
 ): TagDescription<TagType>[] {
   return [listTag("segment"), ...segments.flatMap(segmentTags)];
+}
+
+export function metricTags(metric: Metric): TagDescription<TagType>[] {
+  return [
+    idTag("metric", metric.id),
+    ...(metric.table ? tableTags(metric.table) : []),
+  ];
+}
+
+export function metricListTags(metrics: Metric[]): TagDescription<TagType>[] {
+  return [listTag("metric"), ...metrics.flatMap(metricTags)];
 }
 
 export function collectionTags(

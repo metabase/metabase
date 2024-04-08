@@ -16,14 +16,14 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { tag, idTag, listTag, invalidateTags } from "./tags";
-
-function databaseTags(database: Database) {
-  return [
-    idTag("database", database.id),
-    ...(database.tables ? [listTag("table")] : []),
-  ];
-}
+import {
+  tag,
+  idTag,
+  listTag,
+  invalidateTags,
+  databaseListTags,
+  databaseTags,
+} from "./tags";
 
 export const databaseApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -36,10 +36,7 @@ export const databaseApi = Api.injectEndpoints({
         url: "/api/database",
         body,
       }),
-      providesTags: response => [
-        listTag("database"),
-        ...(response?.data ?? []).flatMap(databaseTags),
-      ],
+      providesTags: response => databaseListTags(response?.data ?? []),
     }),
     getDatabase: builder.query<Database, GetDatabaseRequest>({
       query: ({ id, ...body }) => ({

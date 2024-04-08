@@ -1,5 +1,3 @@
-import type { TagDescription } from "@reduxjs/toolkit/query";
-
 import type {
   FieldId,
   SearchFieldValuesRequest,
@@ -13,26 +11,14 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import type { TagType } from "./tags";
-import { idTag, invalidateTags, listTag, tag } from "./tags";
-
-function fieldTags(field: Field): TagDescription<TagType>[] {
-  return [
-    ...(typeof field.id === "number" ? [idTag("field", field.id)] : []),
-    ...(field.target ? fieldTags(field.target) : []),
-    ...(field.table ? [idTag("table", field.table.id)] : []),
-    ...(field.name_field ? fieldTags(field.name_field) : []),
-    ...(field.dimensions ?? []).flatMap(dimension =>
-      dimension.human_readable_field
-        ? fieldTags(dimension.human_readable_field)
-        : [],
-    ),
-  ];
-}
-
-function fieldValuesTags(id: FieldId) {
-  return [idTag("field-values", id)];
-}
+import {
+  fieldTags,
+  fieldValuesTags,
+  idTag,
+  invalidateTags,
+  listTag,
+  tag,
+} from "./tags";
 
 export const fieldApi = Api.injectEndpoints({
   endpoints: builder => ({
