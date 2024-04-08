@@ -1,5 +1,6 @@
 (ns metabase.models.user-parameter-value
   (:require
+   [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -12,7 +13,7 @@
 (doto :model/UserParameterValue
   (derive :metabase/model))
 
-#_
+
 (t2/deftransforms :model/UserParameterValue
   {:value mi/transform-json})
 
@@ -25,14 +26,15 @@
 #_
 (t2/define-before-update :model/UserParameterValue
   [upv]
-  (u/prog1 (t2/changes puv)
+  (u/prog1 (t2/changes upv)
     (when (:value <>)
       (validate <>))))
 
 (defn- upsert!
   [user-id parameter-id value]
-  (or (pos? (t2/update! :model/UserParameterValue {:value value} {:user_id      user-id
-                                                                  :parameter_id parameter-id}))
+  (or (pos? (t2/update! :model/UserParameterValue {:user_id      user-id
+                                                   :parameter_id parameter-id}
+                        {:value value}))
       (t2/insert! :model/UserParameterValue {:user_id      user-id
                                              :parameter_id parameter-id
                                              :value        value})))
@@ -41,6 +43,14 @@
   "Upsert or delete parameter value set by the user."
   [user-id      :- ms/PositiveInt
    parameter-id :- ms/NonBlankString
-   value        :- [:maybe ms/NonBlankString]]
+   value        #_#_:- [:maybe :Any]]
   ;;WIP
   (upsert! user-id parameter-id value))
+
+
+;; hydration
+
+(methodical/defmethod t2/batched-hydrate [:model/Dashboard :last-used-param-values]
+  "Return a map of parameter-id->last used value for the dashboards."
+  [_model _k dashboards]
+  dashboards)
