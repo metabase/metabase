@@ -1,10 +1,22 @@
 import type {
+  CollectionItem,
+  CollectionItemModel,
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { MODEL_TYPES, searchItemListTags } from "./tags";
+import { idTag, listTag, MODEL_TO_TAG_TYPE } from "./tags";
+
+function searchItemListTags(
+  items: CollectionItem[],
+  types: CollectionItemModel[],
+) {
+  return [
+    ...types.map(type => listTag(MODEL_TO_TAG_TYPE[type])),
+    ...items.map(item => idTag(MODEL_TO_TAG_TYPE[item.model], item.id)),
+  ];
+}
 
 export const collectionApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -17,7 +29,7 @@ export const collectionApi = Api.injectEndpoints({
         url: `/api/collection/${id}/items`,
         body,
       }),
-      providesTags: (response, error, { models = Array.from(MODEL_TYPES) }) =>
+      providesTags: (response, error, { models = [] }) =>
         searchItemListTags(
           response?.data ?? [],
           Array.isArray(models) ? models : [models],

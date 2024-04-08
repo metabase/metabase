@@ -3,14 +3,12 @@ import type { TagDescription } from "@reduxjs/toolkit/query";
 import type {
   Card,
   Collection,
-  CollectionItem,
   Database,
   Field,
   FieldDimension,
   FieldId,
   ForeignKey,
   Metric,
-  SearchResult,
   Segment,
   Table,
   Timeline,
@@ -18,8 +16,7 @@ import type {
   UserInfo,
 } from "metabase-types/api";
 
-import type { ModelType, TagType } from "./constants";
-import { MODEL_TO_TAG_TYPE } from "./constants";
+import type { TagType } from "./constants";
 
 export function tag(type: TagType): TagDescription<TagType> {
   return { type };
@@ -183,20 +180,4 @@ export function timelineEventListTags(
   events: TimelineEvent[],
 ): TagDescription<TagType>[] {
   return [listTag("timeline-event"), ...events.flatMap(timelineEventTags)];
-}
-
-export function searchItemTags(
-  item: SearchResult | CollectionItem,
-): TagDescription<TagType>[] {
-  return [idTag(MODEL_TO_TAG_TYPE[item.model], item.id)];
-}
-
-export function searchItemListTags(
-  items: SearchResult[] | CollectionItem[],
-  types: ModelType[],
-): TagDescription<TagType>[] {
-  return [
-    ...types.map(type => listTag(MODEL_TO_TAG_TYPE[type])),
-    ...items.flatMap(searchItemTags),
-  ];
 }
