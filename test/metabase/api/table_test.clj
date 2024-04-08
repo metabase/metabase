@@ -2,6 +2,7 @@
   "Tests for /api/table endpoints."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.api.table :as api.table]
    [metabase.driver :as driver]
@@ -138,22 +139,34 @@
   (testing "GET /api/table/uploaded"
     (testing "These should come back in alphabetical order and include relevant metadata"
       (with-tables-as-uploads [:categories :reviews :venues]
-        (is (= #{{:name         (mt/format-name "categories")
-                  :display_name "Categories"
-                  :id           (mt/id :categories)
-                  :entity_type  "entity/GenericTable"}
-                 {:name         (mt/format-name "reviews")
-                  :display_name "Reviews"
-                  :id           (mt/id :reviews)
-                  :entity_type  "entity/GenericTable"}
-                 {:name         (mt/format-name "venues")
-                  :display_name "Venues"
-                  :id           (mt/id :venues)
-                  :entity_type  "entity/GenericTable"}}
-               (->> (mt/user-http-request :rasta :get 200 "table/uploaded")
-                    (filter #(= (:db_id %) (mt/id)))        ; prevent stray tables from affecting unit test results
-                    (map #(select-keys % [:name :display_name :id :entity_type]))
-                    set)))))))
+        (t2.with-temp/with-temp [Card {} {:table_id (mt/id :categories)}
+                                 Card {} {:table_id (mt/id :reviews)}
+                                 Card {} {:table_id (mt/id :reviews)}]
+          (let [result (mt/user-http-request :rasta :get 200 "table/uploaded")]
+            ;; =? doesn't seem to allow predicates inside maps, inside a set
+            (is (every? t/offset-date-time? (map :created_at result)))
+            (is (= #{{:name         (mt/format-name "categories")
+                      :display_name "Categories"
+                      :id           (mt/id :categories)
+                      :schema       "PUBLIC"
+                      :usage_count  1
+                      :entity_type  "entity/GenericTable"}
+                     {:name         (mt/format-name "reviews")
+                      :display_name "Reviews"
+                      :id           (mt/id :reviews)
+                      :schema       "PUBLIC"
+                      :usage_count  2
+                      :entity_type  "entity/GenericTable"}
+                     {:name         (mt/format-name "venues")
+                      :display_name "Venues"
+                      :id           (mt/id :venues)
+                      :schema       "PUBLIC"
+                      :usage_count  0
+                      :entity_type  "entity/GenericTable"}}
+                   (->> result
+                        (filter #(= (:db_id %) (mt/id)))    ; prevent stray tables from affecting unit test results
+                        (map #(select-keys % [:name :display_name :id :entity_type :schema :usage_count]))
+                        set)))))))))
 
 (deftest get-table-test
   (testing "GET /api/table/:id"
