@@ -298,11 +298,11 @@
       (t2/delete! :model/DataPermissions :group_id group-id-1)
       (t2/delete! :model/DataPermissions :group_id group-id-2)
       (testing "Data and query permissions can be fetched as a graph"
+        (data-perms/set-database-permission! group-id-1 database-id-1 :perms/create-queries :query-builder-and-native)
+        (data-perms/set-database-permission! group-id-1 database-id-2 :perms/create-queries :no)
         (data-perms/set-table-permission! group-id-1 table-id-1 :perms/view-data :unrestricted)
         (data-perms/set-table-permission! group-id-1 table-id-2 :perms/view-data :legacy-no-self-service)
         (data-perms/set-table-permission! group-id-1 table-id-3 :perms/view-data :unrestricted)
-        (data-perms/set-database-permission! group-id-1 database-id-1 :perms/create-queries :query-builder-and-native)
-        (data-perms/set-database-permission! group-id-1 database-id-2 :perms/create-queries :no)
         (data-perms/set-table-permission! group-id-2 table-id-1 :perms/view-data :legacy-no-self-service)
         (is (partial=
              {group-id-1
