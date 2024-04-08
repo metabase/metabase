@@ -36,7 +36,7 @@ import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
 import { OverviewSettings } from "./OverviewSettings";
 import { ParametersSettings } from "./ParametersSettings";
 import { PreviewModeSelector } from "./PreviewModeSelector";
-import { PreviewPane } from "./PreviewPane/PreviewPane";
+import { PreviewPane } from "./PreviewPane";
 import { ServerEmbedCodePane } from "./ServerEmbedCodePane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
 import { getDefaultDisplayOptions } from "./config";
