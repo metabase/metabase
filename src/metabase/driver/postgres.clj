@@ -254,6 +254,9 @@
 
 (defn- describe-syncable-tables
   [{driver :engine :as database}]
+  ;; there might be some other drivers based on `:postgres` where this is ok, but we need to specifically disallow
+  ;; `:redshift` because it doesn't have columns like `n_live_tup`.
+  (assert (not= driver :redshift) "Should not be using Postgres-specific implementation of describe-database for Redshift")
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
       (sql-jdbc.execute/do-with-connection-with-options

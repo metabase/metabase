@@ -43,11 +43,10 @@
    (-> (format "%s_%s_" local-date (public-settings/site-uuid))
        (str/replace  #"-" "_"))))
 
-(def ^{:arglists '([])} unique-prefix
-  "Unique prefix for test datasets for this instance. Format is `<current-date-utc>_<site-uuid>_`. See comments above.
-  Example:
+(defonce ^{:arglists '([]), :doc "Unique prefix for test datasets for this instance. Format is
+  `<current-date-utc>_<site-uuid>_`. See comments above. Example:
 
-    2023_02_17_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_"
+    2023_02_17_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_"} unique-prefix
   (memoize unique-prefix*))
 
 (defn old-dataset-name?
