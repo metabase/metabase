@@ -197,6 +197,7 @@ interface InstanceSettings {
   "enable-query-caching"?: boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
+  "example-dashboard-id": number | null;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
   "show-homepage-pin-message": boolean;

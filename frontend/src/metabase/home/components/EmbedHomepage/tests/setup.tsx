@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -47,5 +48,8 @@ export async function setup({
     setupEnterprisePlugins();
   }
 
-  renderWithProviders(<EmbedHomepage />, { storeInitialState: state });
+  renderWithProviders(<Route path="/" component={EmbedHomepage} />, {
+    storeInitialState: state,
+    withRouter: true,
+  });
 }

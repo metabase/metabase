@@ -31,7 +31,7 @@ export const StaticTabContent = ({
           </List.Item>
         )}
         <List.Item>{jt`${
-          exampleDashboardId !== undefined ? t`Select` : `Create`
+          exampleDashboardId !== null ? t`Select` : `Create`
         } a question or dashboard to embed. Then click ${(
           <strong key="bold">{t`share`}</strong>
         )}`}</List.Item>
