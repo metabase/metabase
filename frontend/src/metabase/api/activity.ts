@@ -1,5 +1,5 @@
 import type {
-  ActivityItemModel,
+  ActivityModel,
   PopularItem,
   RecentItem,
 } from "metabase-types/api";
@@ -8,7 +8,7 @@ import { Api } from "./api";
 import type { TagType } from "./tags";
 import { idTag, listTag } from "./tags";
 
-const ACTIVITY_TAG_TYPES: Record<ActivityItemModel, TagType> = {
+const ACTIVITY_TAG_TYPES: Record<ActivityModel, TagType> = {
   table: "table",
   card: "card",
   dataset: "card",

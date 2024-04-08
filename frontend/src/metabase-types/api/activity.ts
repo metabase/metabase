@@ -1,8 +1,9 @@
-export type ActivityItemId = number | string;
-export type ActivityItemModel = "table" | "card" | "dataset" | "dashboard";
+import type { UserId } from "./user";
+
+export type ActivityModel = "table" | "card" | "dataset" | "dashboard";
+export type ActivityModelId = number;
 
 export interface ActivityModelObject {
-  id: ActivityItemId;
   name: string;
   display_name?: string;
   moderated_status?: string;
@@ -11,13 +12,14 @@ export interface ActivityModelObject {
 export interface RecentItem {
   cnt: number;
   max_ts: string;
-  model_id: number;
-  user_id: number;
-  model: ActivityItemModel;
+  user_id: UserId;
+  model: ActivityModel;
+  model_id: ActivityModelId;
   model_object: ActivityModelObject;
 }
 
 export interface PopularItem {
-  model: ActivityItemModel;
+  model: ActivityModel;
+  model_id: ActivityModelId;
   model_object: ActivityModelObject;
 }
