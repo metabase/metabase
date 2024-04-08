@@ -16,6 +16,8 @@ Events and timelines are a way to capture that chronological knowledge and make 
 
 An event is basically a date + a title + a description + an icon. You can add events to Metabase to show important milestones, launches, or anything else, right alongside your data.
 
+Metabase will only display events on time series charts when viewing an individual question. Metabase won't display events on charts in dashboard cards.
+
 ## Timelines
 
 Timelines are groups of events associated with a [collection](collections.md).
@@ -26,7 +28,10 @@ For example, you may want to have a timeline that contains important email or sa
 
 Collections can have timelines, and timelines can contain events. In practice what this means is that events you've added to a timeline will show up on time series questions stored in the same collection as that timeline.
 
-Events are invisible on dashboards.
+- If you don't explicitly create a timeline yet, but you do create events, Metabase will automatically create a timeline for you (which acts as the default timeline for the collection).
+- You can have multiple timelines for the same collection.
+- Timelines associated with collection do not apply to that collection's sub-collections.
+
 
 ### Adding events when viewing a collection
 
@@ -107,14 +112,14 @@ Then you can delete the archived events from the **View archived events** modal,
 
 Event and timeline permissions depend on your [collection permissions](../permissions/collections.md):
 
-- **View access**: you can view the collection's events and timelines. You can also apply timelines and events to time series in other collections.
+- **View access**: you can view the collection's events and timelines. You can also temporarily apply timelines and events to time series in other collections.
 - **Curate access**. Anyone with curate access to a collection can add events and timelines to that collection.
 
 ### Make a timeline and its events available for everyone
 
 If you want the event and timeline to be available to everyone, create the timeline in a collection that the [All Users group](../people-and-groups/managing.md#all-users) has access to, as by default everyone is in the All Users group.
 
-Note that for questions outside of that collection, you can only temporarily apply those timelines to charts. The timelines won't appear automatically when you load the chart.
+Note that for questions outside of that collection, you can only temporarily apply those timelines to charts. The timelines won't appear automatically when you reload the chart.
 
 ## Further reading
 
