@@ -119,7 +119,7 @@ export interface CollectionListQuery {
 
 export interface ListCollectionItemsRequest {
   id: CollectionId;
-  models?: CollectionItemModel | CollectionItemModel[];
+  models?: CollectionItemModel[];
   archived?: boolean;
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
   limit?: number;

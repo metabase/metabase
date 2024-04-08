@@ -116,7 +116,7 @@ export interface SearchRequest {
   q?: string;
   archived?: boolean;
   table_db_id?: DatabaseId;
-  models?: SearchModelType | SearchModelType[];
+  models?: SearchModelType[];
   filter_items_in_personal_collection?: "only" | "exclude";
   context?: "search-bar" | "search-app";
   created_at?: string | null;

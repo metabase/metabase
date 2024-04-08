@@ -6,24 +6,27 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag, listTag, MODEL_TO_TAG_TYPE } from "./tags";
+import type { TagType } from "./tags";
+import { idTag, listTag } from "./tags";
 
-const COLLECTION_ITEM_MODELS: CollectionItemModel[] = [
-  "card",
-  "dataset",
-  "dashboard",
-  "snippet",
-  "collection",
-  "indexed-entity",
-];
+const COLLECTION_TAG_TYPES: Record<CollectionItemModel, TagType> = {
+  card: "card",
+  dataset: "card",
+  dashboard: "dashboard",
+  snippet: "snippet",
+  collection: "collection",
+  "indexed-entity": "indexed-entity",
+};
 
 function collectionItemListTags(
   items: CollectionItem[],
-  models: CollectionItemModel[],
+  models?: CollectionItemModel[],
 ) {
   return [
-    ...models.map(type => listTag(MODEL_TO_TAG_TYPE[type])),
-    ...items.map(item => idTag(MODEL_TO_TAG_TYPE[item.model], item.id)),
+    ...(models
+      ? models.map(type => listTag(COLLECTION_TAG_TYPES[type]))
+      : Object.values(COLLECTION_TAG_TYPES).map(listTag)),
+    ...items.map(item => idTag(COLLECTION_TAG_TYPES[item.model], item.id)),
   ];
 }
 
@@ -38,11 +41,8 @@ export const collectionApi = Api.injectEndpoints({
         url: `/api/collection/${id}/items`,
         body,
       }),
-      providesTags: (response, error, { models = COLLECTION_ITEM_MODELS }) =>
-        collectionItemListTags(
-          response?.data ?? [],
-          Array.isArray(models) ? models : [models],
-        ),
+      providesTags: (response, error, { models }) =>
+        collectionItemListTags(response?.data ?? [], models),
     }),
   }),
 });

@@ -5,20 +5,21 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag, listTag, MODEL_TO_TAG_TYPE } from "./tags";
+import type { TagType } from "./tags";
+import { idTag, listTag } from "./tags";
 
-const ACTIVITY_ITEM_MODELS: ActivityItemModel[] = [
-  "table",
-  "card",
-  "dataset",
-  "dashboard",
-];
+const ACTIVITY_TAG_TYPES: Record<ActivityItemModel, TagType> = {
+  table: "table",
+  card: "card",
+  dataset: "card",
+  dashboard: "dashboard",
+};
 
 function activityItemListTags(items: PopularItem[]) {
   return [
-    ...ACTIVITY_ITEM_MODELS.map(type => listTag(MODEL_TO_TAG_TYPE[type])),
+    ...Object.values(ACTIVITY_TAG_TYPES).map(listTag),
     ...items.map(item =>
-      idTag(MODEL_TO_TAG_TYPE[item.model], item.model_object.id),
+      idTag(ACTIVITY_TAG_TYPES[item.model], item.model_object.id),
     ),
   ];
 }

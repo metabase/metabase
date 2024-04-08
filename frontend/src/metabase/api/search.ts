@@ -6,26 +6,29 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag, listTag, MODEL_TO_TAG_TYPE } from "./tags";
+import type { TagType } from "./tags";
+import { idTag, listTag } from "./tags";
 
-const SEARCH_MODELS: SearchModelType[] = [
-  "action",
-  "card",
-  "collection",
-  "dashboard",
-  "database",
-  "dataset",
-  "indexed-entity",
-  "metric",
-  "segment",
-  "snippet",
-  "table",
-];
+const SEARCH_TAG_TYPES: Record<SearchModelType, TagType> = {
+  action: "action",
+  card: "card",
+  collection: "collection",
+  dashboard: "dashboard",
+  database: "database",
+  dataset: "card",
+  "indexed-entity": "indexed-entity",
+  metric: "metric",
+  segment: "segment",
+  snippet: "snippet",
+  table: "table",
+};
 
-function searchItemListTags(items: SearchResult[], models: SearchModelType[]) {
+function searchItemListTags(items: SearchResult[], models?: SearchModelType[]) {
   return [
-    ...models.map(type => listTag(MODEL_TO_TAG_TYPE[type])),
-    ...items.map(item => idTag(MODEL_TO_TAG_TYPE[item.model], item.id)),
+    ...(models
+      ? models.map(type => listTag(SEARCH_TAG_TYPES[type]))
+      : Object.values(SEARCH_TAG_TYPES).map(listTag)),
+    ...items.map(item => idTag(SEARCH_TAG_TYPES[item.model], item.id)),
   ];
 }
 
@@ -37,11 +40,8 @@ export const searchApi = Api.injectEndpoints({
         url: "/api/search",
         body,
       }),
-      providesTags: (response, error, { models = SEARCH_MODELS }) =>
-        searchItemListTags(
-          response?.data ?? [],
-          Array.isArray(models) ? models : [models],
-        ),
+      providesTags: (response, error, { models }) =>
+        searchItemListTags(response?.data ?? [], models),
     }),
   }),
 });

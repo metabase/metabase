@@ -16,7 +16,7 @@ import type {
   UserInfo,
 } from "metabase-types/api";
 
-import type { TagType } from "./constants";
+import type { TagType } from "./types";
 
 export function tag(type: TagType): TagDescription<TagType> {
   return { type };
