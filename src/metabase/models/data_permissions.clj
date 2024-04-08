@@ -608,6 +608,11 @@
                                           :group_id   group-id
                                           :perm_value value
                                           :db_id      db-id})
+      (when (and (= perm-type :perms/create-queries) (not= value :no))
+        ;; If we're granting query access we need to ensure that data access is updated as well. This is relevant for
+        ;; instances that downgrade from EE to OSS and may still have :blocked data access in some groups, which
+        ;; should be reset when query access is granted.
+        (set-database-permission! group-or-id db-or-id :perms/view-data :unrestricted))
       (when (= [:perms/view-data :blocked] [perm-type value])
         (set-database-permission! group-or-id db-or-id :perms/create-queries :no)
         (set-database-permission! group-or-id db-or-id :perms/download-results :no)))))
@@ -661,6 +666,13 @@
                                                       [:= :db_id     db-id]
                                                       [:= :table_id  nil]]})
               existing-db-perm-value (:perm_value existing-db-perm)]
+          (when (= perm-type :perms/create-queries)
+            ;; If we're updating create-queries to any value other than :no, we need to make sure those tables
+            ;; also have :unrestricted view data access
+            (let [view-data-table-perms (-> (filter (fn [[_ value]] (not= value :no)) table-perms)
+                                            keys
+                                            (zipmap (repeat :unrestricted)))]
+              (set-table-permissions! group-or-id :perms/view-data view-data-table-perms)))
           (if existing-db-perm
             (when (not= values #{existing-db-perm-value})
               ;; If we're setting any table permissions to a value that is different from the database-level permission,
