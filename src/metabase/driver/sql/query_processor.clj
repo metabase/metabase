@@ -1166,7 +1166,7 @@
   [:or
    [:and mbql.s/value
     [:fn {:error/message "string value"} #(string? (second %))]]
-   mbql.s/FieldOrExpressionDef])
+   ::mbql.s/FieldOrExpressionDef])
 
 (mu/defn ^:private generate-pattern
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."

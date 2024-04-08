@@ -6,7 +6,7 @@
 ;;; them, e.g. when we start working on the generative stuff
 
 (mr/def ::database
-  pos-int?)
+  [:schema {:doc/title "Valid Database ID"} pos-int?])
 
 (def saved-questions-virtual-database-id
   "The ID used to signify that a database is 'virtual' rather than physical.
@@ -26,40 +26,43 @@
 ;;; EDIT: Sometimes the FE uses this when starting a query based on a Card if it doesn't know the database associated
 ;;; with that Card. The QP will resolve this to the correct Database later.
 (mr/def ::saved-questions-virtual-database
-  [:= saved-questions-virtual-database-id])
+  [:=
+   {:doc/title   "Saved Questions Virtual Database ID"
+    :doc/message (:doc (meta #'saved-questions-virtual-database-id))}
+   saved-questions-virtual-database-id])
 
 (mr/def ::table
-  pos-int?)
+  [:schema {:doc/title "Valid Table ID"} pos-int?])
 
 (mr/def ::field
-  pos-int?)
+  [:schema {:doc/title "Valid Field ID"} pos-int?])
 
 (mr/def ::card
-  pos-int?)
+  [:schema {:doc/title "Valid Card ID"} pos-int?])
 
 (mr/def ::segment
-  pos-int?)
+  [:schema {:doc/title "Valid legacy Segment ID"} pos-int?])
 
 (mr/def ::metric
-  pos-int?)
+  [:schema {:doc/title "Valid legacy Metric ID"} pos-int?])
 
 (mr/def ::snippet
-  pos-int?)
+  [:schema {:doc/title "Valid Snippet ID"} pos-int?])
 
 (mr/def ::dimension
-  pos-int?)
+  [:schema {:doc/title "Valid Dimension ID"} pos-int?])
 
 (mr/def ::action
-  pos-int?)
+  [:schema {:doc/title "Valid Action ID"} pos-int?])
 
 (mr/def ::dashboard
-  pos-int?)
+  [:schema {:doc/title "Valid Dashboard ID"} pos-int?])
 
 (mr/def ::dashcard
-  pos-int?)
+  [:schema {:doc/title "Valid DashboardCard ID"} pos-int?])
 
 (mr/def ::user
-  pos-int?)
+  [:schema {:doc/title "Valid User ID"} pos-int?])
 
 (mr/def ::pulse
-  pos-int?)
+  [:schema {:doc/title "Valid Pulse ID"} pos-int?])
