@@ -367,3 +367,12 @@
                                                  (when (= field-name "Tax Rate")
                                                    field-metadata)))
                                          :semantic_type)))))))))
+
+(deftest ^:parallel skip-results-metadata-test
+  (let [query (mt/mbql-query venues {:limit 1})]
+    (is (=? {:status :completed
+             :data   {:results_metadata {:columns some?}}}
+            (qp/process-query query)))
+    (is (=? {:status :completed
+             :data   {:results_metadata (symbol "nil #_\"key is not present.\"")}}
+            (qp/process-query (assoc-in query [:middleware :skip-results-metadata?] true))))))

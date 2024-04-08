@@ -1290,7 +1290,7 @@
     [:condition
      {:doc/message
       "The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated
-  JOINs this is always
+  JOINs this is usually something like
 
     [:= <source-table-fk-field> [:field <dest-table-pk-field> {:join-alias <join-table-alias>}]]"}
      Filter]
@@ -1305,8 +1305,8 @@
     [:fields
      {:optional true
       :doc/message
-      "The Field to include in the results *if* a top-level `:fields` clause *is not* specified. This can be either
-  `:none`, `:all`, or a sequence of Field clauses.
+      "The Fields from this join to include in parent-level results. This can be either `:none`, `:all`, or a sequence
+  of `:field` clauses.
 
   * `:none`: no Fields from the joined table or nested query are included (unless indirectly included by breakouts or
      other clauses). This is the default, and what is used for automatically-generated joins.
@@ -1333,10 +1333,10 @@
 
     [:fk-field-id
      {:optional true
-      :doc/message "Used internally, only for annotation purposes in post-processing. When a join is implicitly
-  generated via a `:field` clause with `:source-field`, the ID of the foreign key field in the source Table will be
-  recorded here. This information is used to add `fk_field_id` information to the `:cols` in the query results; I
-  believe this is used to facilitate drill-thru? :shrug:
+      :doc/message "Mostly used only internally. When a join is implicitly generated via a `:field` clause with
+  `:source-field`, the ID of the foreign key field in the source Table will be recorded here. This information is used
+  to add `fk_field_id` information to the `:cols` in the query results, and also for drill-thru. When generating
+  explicit joins by hand you can usually omit this information, altho it doesn't hurt to include it if you know it.
 
   Don't set this information yourself. It will have no effect."}
      [:maybe ::lib.schema.id/field]]
@@ -1503,8 +1503,9 @@
    [:skip-results-metadata?
     {:optional true
      :doc/message
-     "Should we skip adding results_metadata to query results after running the query? Used by
-     `metabase.query-processor.middleware.results-metadata`; default `false`."}
+     "Should we skip adding `results_metadata` to query results after running the query? Used by
+     `metabase.query-processor.middleware.results-metadata`; default `false`. (Note: we may change the name of this
+     column in the near future, to `result_metadata`, to fix inconsistencies in how we name things.)"}
     :boolean]
 
    [:format-rows?
