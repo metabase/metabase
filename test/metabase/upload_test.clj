@@ -535,13 +535,13 @@
 (deftest create-from-csv-length-test
   (testing "Upload a CSV file with large names and numbers"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-      (let [length-limit (driver/table-name-length-limit driver/*driver*)
-            ;; Ensure the name is unique as table names can collide when using redshift
-            long-name    (->> "abc" str cycle (take (inc length-limit)) shuffle (apply str))
-            short-name   (subs long-name 0 (- length-limit (count "_yyyyMMddHHmmss")))
-            table-name   (u/upper-case-en (@#'upload/unique-table-name driver/*driver* long-name))]
-        (is (pos? length-limit) "driver/table-name-length-limit has been set")
-        (with-mysql-local-infile-on-and-off
+      (with-mysql-local-infile-on-and-off
+        (let [length-limit (driver/table-name-length-limit driver/*driver*)
+              ;; Ensure the name is unique as table names can collide when using redshift
+              long-name    (->> "abc" str cycle (take (inc length-limit)) shuffle (apply str))
+              short-name   (subs long-name 0 (- length-limit (count "_yyyyMMddHHmmss")))
+              table-name   (u/upper-case-en (@#'upload/unique-table-name driver/*driver* long-name))]
+          (is (pos? length-limit) "driver/table-name-length-limit has been set")
           (with-upload-table!
             [table (simple-upload-example-csv!
                     :table-name table-name
@@ -1641,8 +1641,12 @@
             ;; inserted rows are rolled back
             (binding [driver/*insert-chunk-rows* 1]
               (doseq [{:keys [upload-type uncoerced coerced fail-msg] :as args}
-                      [{:upload-type int-type,   :uncoerced "2.0",        :coerced 2} ;; value is coerced to int
-                       {:upload-type int-type,   :uncoerced "2.1",        :coerced 2.1} ;; column is promoted to float
+                      [(merge
+                        {:upload-type int-type, :uncoerced "2.1"}
+                        (if (= driver/*driver* :redshift)
+                          {:fail-msg "Uploaded value with the wrong type"} ; TODO: redshift doesn't allow promotion of ints to floats
+                          {:coerced 2.1})) ; column is promoted to float
+                       {:upload-type int-type,   :uncoerced "2.0",        :coerced 2} ; value is coerced to int
                        {:upload-type float-type, :uncoerced "2",          :coerced 2.0}
                        {:upload-type bool-type,  :uncoerced "0",          :coerced false}
                        {:upload-type bool-type,  :uncoerced "1.0",        :fail-msg "'1.0' is not a recognizable boolean"}
@@ -1673,7 +1677,7 @@
                               (update!)))))
                     (io/delete-file file)))))))))))
 
-(deftest update-coercing-multiple-columns-test
+(deftest update-promotion-multiple-columns-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
