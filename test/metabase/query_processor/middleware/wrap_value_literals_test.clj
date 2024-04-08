@@ -275,7 +275,7 @@
                     nil)))))))))
 
 (deftest ^:parallel expression-test
-  (testing "Value literals compared to :expression refs should get wrapped"
+  (testing "Value literals compared to :expression refs should get wrapped. Should give date literal strings :day bucketing (#17807)"
     (qp.store/with-metadata-provider (mt/id)
       (let [people     (lib.metadata/table (qp.store/metadata-provider) (mt/id :people))
             created-at (lib.metadata/field (qp.store/metadata-provider) (mt/id :people :created_at))
@@ -296,7 +296,7 @@
                            :filters  [[:=
                                        {}
                                        [:expression {:base-type :type/DateTimeWithLocalTZ} "CC Created At"]
-                                       [:absolute-datetime {} (t/offset-date-time #t "2017-10-07T00:00Z") :default]]]}]}
+                                       [:absolute-datetime {} (t/offset-date-time #t "2017-10-07T00:00Z") :day]]]}]}
                 (->> query
                      lib.convert/->legacy-MBQL
                      wrap-value-literals
