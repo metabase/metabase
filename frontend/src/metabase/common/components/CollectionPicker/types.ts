@@ -1,6 +1,6 @@
 import type {
   CollectionId,
-  SearchListQuery,
+  SearchRequest,
   SearchModelType,
   SearchResult,
 } from "metabase-types/api";
@@ -31,6 +31,6 @@ export type CollectionItemListProps = ListProps<
   CollectionId,
   SearchModelType,
   CollectionPickerItem,
-  SearchListQuery,
+  SearchRequest,
   CollectionPickerOptions
 >;

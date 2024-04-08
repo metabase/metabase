@@ -107,6 +107,7 @@
  [bookmark DashboardBookmark]
  [bookmark CollectionBookmark]
  [bookmark BookmarkOrdering]
+ [cache-config CacheConfig]
  [card Card]
  [collection Collection]
  [c-perm-revision CollectionPermissionGraphRevision]

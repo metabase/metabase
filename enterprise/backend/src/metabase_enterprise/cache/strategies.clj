@@ -24,7 +24,7 @@
     [:type [:enum :nocache :ttl :duration :schedule :query]]]
    [:multi {:dispatch :type}
     [:nocache  [:map ;; not closed due to a way it's used in tests for clarity
-                [:type keyword?]]]
+                [:type [:= :nocache]]]]
     [:ttl      [:map {:closed true}
                 [:type [:= :ttl]]
                 [:multiplier ms/PositiveInt]
@@ -80,7 +80,8 @@
           item (t2/select-one :model/CacheConfig :id q)]
       (if item
         (-> (:strategy (api.cache/row->config item))
-           (m/assoc-some :invalidated-at (:invalidated_at item)))
+            (m/assoc-some :invalidated-at (t/max (:invalidated_at item)
+                                                 (:cache_invalidated_at card))))
         (when-let [ttl (granular-duration-hours card dashboard-id)]
           {:type     :duration
            :duration ttl
@@ -98,9 +99,10 @@
 (defmethod fetch-cache-stmt-ee* :duration [strategy query-hash conn]
   (if-not (and (:duration strategy) (:unit strategy))
     (log/debugf "Caching strategy %s should have :duration and :unit" (pr-str strategy))
-    (let [duration  (t/duration (:duration strategy) (keyword (:unit strategy)))
-          timestamp (t/minus (t/offset-date-time) duration)]
-      (backend.db/prepare-statement conn query-hash timestamp))))
+    (let [duration       (t/duration (:duration strategy) (keyword (:unit strategy)))
+          duration-ago   (t/minus (t/offset-date-time) duration)
+          invalidated-at (t/max duration-ago (:invalidated-at strategy))]
+      (backend.db/prepare-statement conn query-hash invalidated-at))))
 
 (defmethod fetch-cache-stmt-ee* :schedule [{:keys [invalidated-at] :as strategy} query-hash conn]
   (if-not invalidated-at

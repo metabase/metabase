@@ -2,10 +2,12 @@
   (:require
    [clojure.walk :as walk]
    [compojure.core :refer [GET]]
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
+   [metabase.models :refer [CacheConfig Card]]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -147,5 +149,62 @@
                              (select-keys item [:strategy :config :model :model_id])
                              nil)))
   nil)
+
+(defn- invalidate-cache-configs [database dashboard question]
+  (let [conditions (for [[k vs] [[:database database]
+                                 [:dashboard dashboard]
+                                 [:question question]]
+                         v      vs]
+                     [:and [:= :model (name k)] [:= :model_id v]])]
+    (if (empty? conditions)
+      0
+      ;; using JVM date rather than DB time since it's what are used in cache tasks
+      (t2/query-one {:update (t2/table-name CacheConfig)
+                     :set    {:invalidated_at (t/offset-date-time)}
+                     :where  (into [:or] conditions)}))))
+
+(defn- invalidate-cards [database dashboard question]
+  (let [card-ids (concat
+                  question
+                  (when (seq database)
+                    (t2/select-fn-vec :id [:model/Card :id] :database_id [:in database]))
+                  (when (seq dashboard)
+                    (t2/select-fn-vec :card_id [:model/DashboardCard :card_id] :dashboard_id [:in dashboard])))]
+    (if (empty? card-ids)
+      0
+      (t2/update! Card :id [:in card-ids]
+                  {:cache_invalidated_at (t/offset-date-time)}))))
+
+(api/defendpoint POST "/invalidate"
+  "Invalidate cache entries.
+
+  Use it like `/api/cache/invalidate?database=1&dashboard=15` (any number of database/dashboard/question can be
+  supplied).
+
+  `&include=overrides` controls whenever you want to invalidate cache for a specific cache configuration without
+  touching all nested configurations, or you want your invalidation to trickle down to every card."
+  [include database dashboard question]
+  {include   [:maybe {:description "All cache configuration overrides should invalidate cache too"} [:= :overrides]]
+   database  [:maybe {:description "A database id"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
+   dashboard [:maybe {:description "A dashboard id"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
+   question  [:maybe {:description "A question id"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]}
+
+  (when-not (premium-features/enable-cache-granular-controls?)
+    (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
+
+  (let [cnt (if (= include :overrides)
+              (invalidate-cards database dashboard question)
+              (invalidate-cache-configs database dashboard question))]
+    (case [(= include :overrides) (pos? cnt)]
+      [true false]  {:status 404
+                     :body   {:message (tru "Could not find any cached questions for the given database, dashboard, or questions ids.")}}
+      [true true]   {:status 200
+                     :body   {:message (tru "Invalidated cache for {0} question(s)." cnt)
+                              :count   cnt}}
+      [false false] {:status 404
+                     :body   {:message (tru "Could not find a cache configuration to invalidate.")}}
+      [false true]  {:status 200
+                     :body   {:message (tru "Invalidated {0} cache configuration(s)." cnt)
+                              :count   cnt}})))
 
 (api/define-routes)

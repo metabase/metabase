@@ -76,7 +76,7 @@ class ClickMappings extends Component {
         </div>
         {unsetTargetsWithSourceOptions.length > 0 && (
           <div>
-            <p className="mb2 text-medium">
+            <p className={cx(CS.mb2, CS.textMedium)}>
               {this.getTargetsHeading(setTargets)}
             </p>
             <div>
@@ -220,7 +220,7 @@ function TargetWithSource({
   const source =
     getIn(clickBehavior, ["parameterMapping", id, "source"]) || null;
   return (
-    <div className="mb2">
+    <div className={CS.mb2}>
       <div
         className={cx(
           CS.bordered,
@@ -270,7 +270,7 @@ function TargetWithSource({
           </div>
         </div>
         <div
-          className={cx(CS.cursorPointer, "ml-auto")}
+          className={cx(CS.cursorPointer, CS.mlAuto)}
           onClick={() =>
             updateSettings(dissocIn(clickBehavior, ["parameterMapping", id]))
           }
