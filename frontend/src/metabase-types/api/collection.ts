@@ -94,6 +94,8 @@ export interface CollectionItem {
   database_id?: DatabaseId;
   moderated_status?: string;
   type?: string;
+  here?: CollectionItemModel[];
+  below?: CollectionItemModel[];
   can_write?: boolean;
   "last-edit-info"?: LastEditInfo;
   location?: string;
