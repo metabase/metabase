@@ -321,7 +321,8 @@
         multipart?      (get (meta method) :multipart false)
         handler-wrapper (if multipart? mp/wrap-multipart-params identity)
         schema          (into [:map] (for [[k v] arg->schema]
-                                       [(keyword k) v]))]
+                                       [(keyword k) v]))
+        quoted-args     (list 'quote args)]
     `(def ~(vary-meta fn-name
                       merge
                       {:doc          route-doc
@@ -329,6 +330,7 @@
                        :method       method-kw
                        :path         route
                        :schema       schema
+                       :args         quoted-args
                        :is-endpoint? true}
                       (meta method))
        ;; The next form is a copy of `compojure/compile-route`, with the sole addition of the call to

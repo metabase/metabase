@@ -57,9 +57,9 @@ class TableSelectorInner extends Component {
     return (
       <FieldSet
         noPadding
-        className={cx("p0", { "border-brand": tableId != null })}
+        className={cx(CS.p0, { [CS.borderBrand]: tableId != null })}
       >
-        <div className="p2" style={{ width: 200 }}>
+        <div className={CS.p2} style={{ width: 200 }}>
           <DatabaseSchemaAndTableDataSelector
             selectedTableId={tableId}
             setSourceTableFn={setTableId}

@@ -67,7 +67,15 @@ const NotebookStepPreview = ({ step, onClose }) => {
         </PreviewIconContainer>
       </PreviewHeader>
       {isDirty ? (
-        <PreviewButtonContainer className="bordered shadowed rounded bg-white p4">
+        <PreviewButtonContainer
+          className={cx(
+            CS.bordered,
+            CS.shadowed,
+            CS.rounded,
+            CS.bgWhite,
+            CS.p4,
+          )}
+        >
           <Button onClick={refresh}>{t`Refresh`}</Button>
         </PreviewButtonContainer>
       ) : (
@@ -92,8 +100,8 @@ export const VisualizationPreview = ({ rawSeries, result, error }) => {
     <Visualization
       rawSeries={rawSeries}
       error={err}
-      className={cx("bordered shadowed rounded bg-white", {
-        p2: err,
+      className={cx(CS.bordered, CS.shadowed, CS.rounded, CS.bgWhite, {
+        [CS.p2]: err,
       })}
       style={{
         height: err ? "auto" : getPreviewHeightForResult(result),

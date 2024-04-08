@@ -2,6 +2,7 @@ import { createAction } from "redux-actions";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
+import { updateUserSetting } from "metabase/redux/settings";
 import { UserApi } from "metabase/services";
 
 import { updateUrl } from "./navigation";
@@ -77,3 +78,21 @@ export const navigateBackToDashboard = createAction(NAVIGATE_BACK_TO_DASHBOARD);
 
 export const CLOSE_QB = "metabase/qb/CLOSE_QB";
 export const closeQB = createAction(CLOSE_QB);
+
+/**
+ * @param {boolean} isShown
+ */
+export const setNotebookNativePreviewState = isShown =>
+  updateUserSetting({
+    key: "notebook-native-preview-shown",
+    value: isShown,
+  });
+
+/**
+ * @param {number} width
+ */
+export const setNotebookNativePreviewSidebarWidth = width =>
+  updateUserSetting({
+    key: "notebook-native-preview-sidebar-width",
+    value: width,
+  });

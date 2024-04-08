@@ -121,7 +121,7 @@ describe("QueryBuilder", () => {
         userEvent.click(runButton);
         await waitForLoaderToBeRemoved();
 
-        const executionTime = screen.getByTestId("execution-time");
+        const executionTime = await screen.findByTestId("execution-time");
         expect(executionTime).toBeInTheDocument();
         expect(executionTime).toHaveTextContent("123 ms");
       });
@@ -134,7 +134,7 @@ describe("QueryBuilder", () => {
           }),
         });
 
-        const executionTime = screen.getByTestId("execution-time");
+        const executionTime = await screen.findByTestId("execution-time");
         expect(executionTime).toBeInTheDocument();
         expect(executionTime).toHaveTextContent("123 ms");
       });

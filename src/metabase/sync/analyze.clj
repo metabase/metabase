@@ -6,7 +6,7 @@
   (:require
    [metabase.models.field :refer [Field]]
    [metabase.sync.analyze.classify :as classify]
-   [metabase.sync.analyze.fingerprint :as fingerprint]
+   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -76,7 +76,7 @@
 (mu/defn analyze-table!
   "Perform in-depth analysis for a `table`."
   [table :- i/TableInstance]
-  (fingerprint/fingerprint-fields! table)
+  (sync.fingerprint/fingerprint-fields! table)
   (classify/classify-fields! table)
   (classify/classify-table! table)
   (update-fields-last-analyzed! table))
@@ -101,7 +101,7 @@
 
 (defn- make-analyze-steps [tables log-fn]
   [(sync-util/create-sync-step "fingerprint-fields"
-                               #(fingerprint/fingerprint-fields-for-db! % tables log-fn)
+                               #(sync.fingerprint/fingerprint-fields-for-db! % tables log-fn)
                                fingerprint-fields-summary)
    (sync-util/create-sync-step "classify-fields"
                                #(classify/classify-fields-for-db! % tables log-fn)
@@ -132,5 +132,5 @@
       (sync-util/run-sync-operation "refingerprint database"
                                     database
                                     [(sync-util/create-sync-step "refingerprinting fields"
-                                                                 #(fingerprint/refingerprint-fields-for-db! % tables log-fn)
+                                                                 #(sync.fingerprint/refingerprint-fields-for-db! % tables log-fn)
                                                                  fingerprint-fields-summary)]))))

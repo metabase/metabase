@@ -84,6 +84,7 @@
   (clojure-indent-style . always-align)
   (cljr-favor-prefix-notation . nil)
   (cljr-insert-newline-after-require . t)
+  (cljr-print-right-margin . 118)
   (clojure-docstring-fill-column . 118)
   (cider-preferred-build-tool . clojure-cli)
   (cider-default-cljs-repl . shadow-select)

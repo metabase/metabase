@@ -88,6 +88,8 @@ title: Driver interface changelog
   See the `:bigquery-cloud-sdk` implementation of `metabase.driver.sql.query-processor/preprocess` for an example of
   using this transformation.
 
+- `metabase.driver.common/class->base-type` no longer supports Joda Time classes. They have been deprecated since 2019.
+
 ## Metabase 0.49.1
 
 - Another driver feature has been added: `describe-fields`. If a driver opts-in to supporting this feature, The

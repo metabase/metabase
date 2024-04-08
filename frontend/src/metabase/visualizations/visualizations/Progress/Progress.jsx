@@ -243,11 +243,11 @@ export default class Progress extends Component {
                 <IconBorder borderWidth={2}>
                   <Icon name="check" />
                 </IconBorder>
-                <div className="pl2">{barMessage}</div>
+                <div className={CS.pl2}>{barMessage}</div>
               </div>
             )}
           </div>
-          <div className="mt1">
+          <div className={CS.mt1}>
             <span className="float-left">0</span>
             <span className="float-right">{t`Goal ${formatValue(
               goal,
