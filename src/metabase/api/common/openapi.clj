@@ -43,6 +43,29 @@
     :else
     param))
 
+(defn- fix-schema ;; TODO: unify this with `fix-type` somehow?
+  "Fix type of request body to make it more understandable to Rapidoc."
+  [{:keys [required] :as schema}]
+  (let [not-required (atom #{})]
+    (-> schema
+        (update :properties (fn [props]
+                              (into {}
+                                    (for [[k v] props]
+                                      [k
+                                       (cond
+                                         (and (:oneOf v)
+                                              (= (second (:oneOf v)) {:type "null"}))
+                                         (do
+                                           (swap! not-required conj k)
+                                           (assoc (first (:oneOf v)) :description (:description v)))
+
+                                         (= (:enum v) ["true" "false" true false])
+                                         (-> (dissoc v :enum) (assoc :type "boolean"))
+
+                                         :else
+                                         v)]))))
+        (assoc :required (vec (remove @not-required required))))))
+
 (defn- path->openapi [path]
   (str/replace path #":([^/]+)" "{$1}"))
 
@@ -65,18 +88,19 @@
 
 (defn- schema->params
   "https://spec.openapis.org/oas/latest.html#parameter-object"
-  [method full-path schema]
+  [full-path args schema]
   (let [{:keys [properties required]} (json-schema-transform schema)
         required                      (set required)
-        in-path?                      (set (map (comp keyword second) (re-seq #"\{([^}]+)\}" full-path)))]
-    (for [[k schema] properties
-          :when      (or (in-path? k) (= method :get))]
+        in-path?                      (set (map (comp keyword second) (re-seq #"\{([^}]+)\}" full-path)))
+        in-query?                     (into #{} (map #(if (symbol? %) (keyword %) %) args))]
+    (for [[k param-schema] properties
+          :when            (or (in-path? k) (in-query? k))]
       (fix-type
        (cond-> {:in          (if (in-path? k) :path :query)
                 :name        k
                 :required    (contains? required k)
-                :schema      (dissoc schema :description)}
-         (:description schema) (assoc :description (:description schema)))))))
+                :schema      (dissoc param-schema :description)}
+         (:description schema) (assoc :description (:description param-schema)))))))
 
 (defn- defendpoint->path-item
   "Generate OpenAPI desc for a single handler
@@ -84,10 +108,13 @@
   https://spec.openapis.org/oas/latest.html#path-item-object"
   [tag full-path handler-var]
   (let [{:keys [method] :as data} (meta handler-var)
-        params                    (schema->params method full-path (:schema data))
+        params                    (schema->params full-path (:args data) (:schema data))
         non-body-param?           (set (map :name params))
-        body                      (when (not= method :get)
-                                    (into [:map] (remove #(non-body-param? (first %)) (rest (:schema data)))))
+        body-params               (when (not= method :get)
+                                    (remove #(non-body-param? (first %)) (rest (:schema data))))
+        body-schema               (when (seq body-params)
+                                    (fix-schema
+                                     (json-schema-transform (into [:map] body-params))))
         ctype                     (if (:multipart (meta handler-var))
                                     "multipart/form-data"
                                     "application/json")]
@@ -96,8 +123,8 @@
                      :description (or (:orig-doc data)
                                       (:doc data))
                      :parameters params}
-              tag  (assoc :tags [tag])
-              body (assoc :requestBody {:content {ctype {:schema (json-schema-transform body)}}}))}))
+              tag         (assoc :tags [tag])
+              body-schema (assoc :requestBody {:content {ctype {:schema body-schema}}}))}))
 
 (defn openapi-object
   "Generate base object for OpenAPI (/paths and /components/schemas)
