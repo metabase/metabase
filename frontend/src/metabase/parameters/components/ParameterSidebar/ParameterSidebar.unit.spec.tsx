@@ -137,4 +137,42 @@ describe("ParameterSidebar", () => {
     await clickNextParameterButton();
     expect(labelInput).toHaveValue("Bar");
   });
+
+  describe("when parameter can't use link filters", () => {
+    it("resets tab to 'Filter settings' on parameter change", async () => {
+      const initialParameter = createMockUiParameter({
+        id: "id1",
+        name: "Foo",
+        slug: "foo",
+      });
+      const nextParameter = createMockUiParameter({
+        id: "id2",
+        name: "Bar",
+        slug: "Bar",
+        type: "date/single",
+      });
+
+      const { clickNextParameterButton } = setup({
+        initialParameter,
+        nextParameter,
+        otherParameters: [],
+      });
+
+      // switch tab
+      await userEvent.click(
+        screen.getByRole("tab", { name: "Linked filters" }),
+      );
+
+      await clickNextParameterButton();
+
+      expect(
+        screen.queryByRole("tab", { name: "Linked filters" }),
+      ).not.toBeInTheDocument();
+
+      // make sure correct tab is rendered
+      expect(
+        screen.queryByText("Limit this filter's choices"),
+      ).not.toBeInTheDocument();
+    });
+  });
 });
