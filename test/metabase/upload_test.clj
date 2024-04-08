@@ -703,9 +703,9 @@
       (testing "Can upload a CSV with missing values"
         (with-upload-table!
           [table (simple-upload-example-csv!
-                  (csv-file-with ["column_that_has_one_value,column_that_doesnt_have_a_value"
-                                  "2"
-                                  "  ,\n"]))]
+                  :file (csv-file-with ["column_that_has_one_value,column_that_doesnt_have_a_value"
+                                        "2"
+                                        "  ,\n"]))]
           (testing "Check the data was uploaded into the table correctly"
             (is (= [@#'upload/auto-pk-column-name "column_that_has_one_value", "column_that_doesnt_have_a_value"]
                    (column-names-for-table table)))
