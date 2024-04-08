@@ -17,7 +17,7 @@ function tableTags(table: Table) {
     idTag("table", table.id),
     ...(table.db ? [idTag("database", table.db.id)] : []),
     ...(table.fields ? [listTag("field")] : []),
-    // TODO: fks
+    ...(table.fks ? [listTag("field")] : []),
     ...(table.segments ? [listTag("segment")] : []),
     ...(table.metrics ? [listTag("metric")] : []),
   ];

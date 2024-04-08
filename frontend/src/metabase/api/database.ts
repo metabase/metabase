@@ -18,6 +18,13 @@ import type {
 import { Api } from "./api";
 import { tag, idTag, listTag, invalidateTags } from "./tags";
 
+function databaseTags(database: Database) {
+  return [
+    idTag("database", database.id),
+    ...(database.tables ? [listTag("table")] : []),
+  ];
+}
+
 export const databaseApi = Api.injectEndpoints({
   endpoints: builder => ({
     listDatabases: builder.query<
@@ -31,7 +38,7 @@ export const databaseApi = Api.injectEndpoints({
       }),
       providesTags: response => [
         listTag("database"),
-        ...(response?.data?.map(({ id }) => idTag("database", id)) ?? []),
+        ...(response?.data ?? []).flatMap(databaseTags),
       ],
     }),
     getDatabase: builder.query<Database, GetDatabaseRequest>({
@@ -40,7 +47,7 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${id}`,
         body,
       }),
-      providesTags: (_, error, { id }) => [idTag("database", id)],
+      providesTags: database => (database ? databaseTags(database) : []),
     }),
     getDatabaseMetadata: builder.query<Database, GetDatabaseMetadataRequest>({
       query: ({ id, ...body }) => ({
@@ -48,11 +55,7 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${id}/metadata`,
         body,
       }),
-      providesTags: database => [
-        ...(database ? [idTag("database", database.id)] : []),
-        ...(database?.tables ?? []).map(table => idTag("table", table.id)),
-        listTag("field"),
-      ],
+      providesTags: database => (database ? databaseTags(database) : []),
     }),
     listDatabaseSchemas: builder.query<string[], ListDatabaseSchemasRequest>({
       query: ({ id, ...body }) => ({

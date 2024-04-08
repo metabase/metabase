@@ -3,7 +3,7 @@ export * from "./api-key";
 export * from "./card";
 export * from "./collection";
 export * from "./database";
-export * from "./database-candidates";
+export * from "./automagic-dashboards";
 export * from "./dataset";
 export * from "./field";
 export * from "./login-history";
