@@ -10,18 +10,14 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag, invalidateTags, listTag, tag } from "./tags";
-
-function tableTags(table: Table) {
-  return [
-    idTag("table", table.id),
-    ...(table.db ? [idTag("database", table.db.id)] : []),
-    ...(table.fields ? [listTag("field")] : []),
-    ...(table.fks ? [listTag("field")] : []),
-    ...(table.segments ? [listTag("segment")] : []),
-    ...(table.metrics ? [listTag("metric")] : []),
-  ];
-}
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  tableListTags,
+  tableTags,
+  tag,
+} from "./tags";
 
 export const tableApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -30,10 +26,7 @@ export const tableApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/table",
       }),
-      providesTags: (tables = []) => [
-        listTag("table"),
-        ...tables.flatMap(tableTags),
-      ],
+      providesTags: (tables = []) => tableListTags(tables),
     }),
     getTable: builder.query<Table, GetTableRequest>({
       query: ({ id }) => ({

@@ -9,17 +9,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag, invalidateTags, listTag, tag } from "./tags";
-
-function timelineTags(timeline: Timeline) {
-  return [
-    idTag("timeline", timeline.id),
-    ...(timeline.collection
-      ? [idTag("collection", timeline.collection.id)]
-      : []),
-    ...(timeline.events ? [listTag("timeline-event")] : []),
-  ];
-}
+import { idTag, invalidateTags, listTag, tag, timelineTags } from "./tags";
 
 export const timelineApi = Api.injectEndpoints({
   endpoints: builder => ({
