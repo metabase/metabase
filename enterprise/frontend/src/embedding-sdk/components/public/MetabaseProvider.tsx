@@ -8,13 +8,17 @@ import { getStore } from "metabase/store";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
 
+import { tokenReducer } from "../../reducer";
 import type { SDKConfigType, EnterpriseState } from "../../types";
 import { AppInitializeController } from "../private/AppInitializeController";
 
 import "metabase/css/vendor.css";
 import "metabase/css/index.module.css";
 
-const store = getStore(reducers) as unknown as Store<EnterpriseState>;
+const store = getStore({
+  ...reducers,
+  embeddingSessionToken: tokenReducer,
+}) as unknown as Store<EnterpriseState>;
 
 const MetabaseProviderInternal = ({
   children,

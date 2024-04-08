@@ -8,7 +8,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { refreshCurrentUser } from "metabase/redux/user";
 import registerVisualizations from "metabase/visualizations/register";
 
-import { getOrRefreshSession, getSessionToken } from "../../reducer";
+import { getOrRefreshSession, getSessionTokenState } from "../../reducer";
 import type {
   EmbeddingSessionTokenState,
   SDKConfigType,
@@ -33,7 +33,7 @@ export const useInitData = ({
 
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [sessionToken, setSessionToken] =
+  const [sessionTokenState, setSessionTokenState] =
     useState<EmbeddingSessionTokenState | null>(null);
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export const useInitData = ({
     if (config.authType === "jwt") {
       const updateToken = () => {
         const currentState = store.getState();
-        setSessionToken(getSessionToken(currentState));
+        setSessionTokenState(getSessionTokenState(currentState));
       };
 
       const unsubscribe = store.subscribe(updateToken);
@@ -66,7 +66,7 @@ export const useInitData = ({
     if (config.authType === "jwt") {
       api.onBeforeRequest = () =>
         store.dispatch(getOrRefreshSession(config.jwtProviderUri));
-      api.sessionToken = sessionToken?.token?.id;
+      api.sessionToken = sessionTokenState?.token?.id;
     } else if (config.authType === "apiKey" && config.apiKey) {
       api.apiKey = config.apiKey;
     } else {
@@ -81,7 +81,7 @@ export const useInitData = ({
       setIsInitialized(true);
       setIsLoggedIn(true);
     });
-  }, [config, dispatch, sessionToken?.token?.id, store]);
+  }, [config, dispatch, sessionTokenState, store]);
 
   return {
     isLoggedIn,

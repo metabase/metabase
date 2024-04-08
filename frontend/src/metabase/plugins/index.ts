@@ -317,12 +317,10 @@ export const PLUGIN_REDUCERS: {
   applicationPermissionsPlugin: any;
   sandboxingPlugin: any;
   shared: any;
-  embeddingSessionToken: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
-  embeddingSessionToken: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {

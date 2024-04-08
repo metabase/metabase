@@ -27,9 +27,7 @@ export type EmbeddingSessionTokenState = {
 };
 
 export interface EnterpriseState extends State {
-  plugins: {
-    embeddingSessionToken: EmbeddingSessionTokenState;
-  };
+  embeddingSessionToken: EmbeddingSessionTokenState;
 }
 
 export type GetEnterpriseState = () => EnterpriseState;

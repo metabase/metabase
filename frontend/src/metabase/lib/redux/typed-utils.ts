@@ -13,13 +13,11 @@ export const createAsyncThunk =
 
 // similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether
 // the promise returned from the thunk resolves or rejects, similar to redux-promise
-export function createThunkAction<
-  TArgs extends any[],
-  D = Dispatch,
-  G = GetState,
->(
+export function createThunkAction<TArgs extends any[]>(
   actionType: string,
-  thunkCreator: (...args: TArgs) => (dispatch: D, getState: G) => any,
+  thunkCreator: (
+    ...args: TArgs
+  ) => (dispatch: Dispatch, getState: GetState) => any,
 ): (...args: TArgs) => any {
   return withAction(actionType)(thunkCreator);
 }

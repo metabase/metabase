@@ -1,13 +1,7 @@
-/* eslint-disable */
-import { createReducer, SerializedError } from "@reduxjs/toolkit";
-import {
-  createAsyncThunk,
-  createThunkAction,
-} from "metabase/lib/redux/typed-utils";
+import { createAsyncThunk, createReducer } from "@reduxjs/toolkit";
 import type {
   EmbeddingSessionTokenState,
   EnterpriseState,
-  GetEnterpriseState,
 } from "embedding-sdk/types";
 
 const initialState: EmbeddingSessionTokenState = {
@@ -16,23 +10,24 @@ const initialState: EmbeddingSessionTokenState = {
   error: null,
 };
 
-export const getSessionToken = (state: EnterpriseState) =>
-  state.plugins.embeddingSessionToken;
+export const getSessionTokenState = (state: EnterpriseState) =>
+  state.embeddingSessionToken;
 
 const GET_OR_REFRESH_SESSION =
   "metabase-enterprise/embeddingSessionToken/GET_OR_REFRESH_SESSION";
 
-export const getOrRefreshSession = createThunkAction(
+export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
-  (url: string) => async (_dispatch, getState: GetEnterpriseState) => {
-    const state = getSessionToken(getState());
+  async (url: string, { dispatch, getState }) => {
+    const state = getSessionTokenState(getState());
     const token = state?.token;
 
-    if (!state?.loading && (!token || token.exp * 1000 < Date.now())) {
-      _dispatch(refreshTokenAsync(url));
-    }
+    const isTokenValid = token && token.exp * 1000 >= Date.now();
 
-    return getState().plugins.embeddingSessionToken;
+    if (!state.loading && !isTokenValid) {
+      return dispatch(refreshTokenAsync(url));
+    }
+    return token;
   },
 );
 const REFRESH_TOKEN = "metabase-enterprise/embeddingSessionToken/REFRESH_TOKEN";
@@ -52,15 +47,19 @@ const tokenReducer = createReducer(initialState, builder =>
   builder
     .addCase(refreshTokenAsync.pending, state => {
       state.loading = true;
+      return state;
     })
     .addCase(refreshTokenAsync.fulfilled, (state, action) => {
       state.token = action.payload;
+      state.error = null;
       state.loading = false;
+      return state;
     })
     .addCase(refreshTokenAsync.rejected, (state, action) => {
       state.token = null;
       state.error = action.error;
       state.loading = false;
+      return state;
     }),
 );
 
