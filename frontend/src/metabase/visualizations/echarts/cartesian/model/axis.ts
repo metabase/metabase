@@ -610,6 +610,7 @@ export function getXAxisModel(
     : undefined;
 
   const xAxisScale = settings["graph.x_axis.scale"];
+  const isScatter = rawSeries[0].card.display === "scatter";
 
   if (xAxisScale === "timeseries") {
     return getTimeSeriesXAxisModel(
@@ -630,7 +631,7 @@ export function getXAxisModel(
       xAxisScale,
       settings,
       label,
-      rawSeries[0].card.display !== "scatter",
+      !isScatter,
       renderingContext,
     );
   }
@@ -656,12 +657,17 @@ export function getXAxisModel(
       computeNumericDataInverval(dataset.map(datum => datum[X_AXIS_DATA_KEY]))
     : undefined;
 
+  const valuesCount = isScatter
+    ? new Set(dataset.map(datum => datum[X_AXIS_DATA_KEY])).size
+    : dataset.length;
+
   return {
     formatter,
     label,
     isHistogram,
     histogramInterval,
     axisType: "category",
+    valuesCount,
   };
 }
 

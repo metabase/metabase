@@ -18,6 +18,7 @@ import barHistogramXScale from "./bar-histogram-x-scale.json";
 import barLinearXScale from "./bar-linear-x-scale.json";
 import barLogYScaleStackedNegative from "./bar-log-y-scale-stacked-negative.json";
 import barLogYScaleStacked from "./bar-log-y-scale-stacked.json";
+import barOrdinalXScaleAutoRotatedLabels from "./bar-ordinal-x-scale-auto-rotated-labels.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import barRelativeDatetimeOrdinalScale from "./bar-relative-datetime-ordinal-scale.json";
 import barStackDisplayOverridesSeriesDisplays from "./bar-stack-display-overrides-series-displays.json";
@@ -27,6 +28,7 @@ import barStackedPowYAxisNegatives from "./bar-stacked-pow-y-axis-negatives.json
 import barStackedPowYAxis from "./bar-stacked-pow-y-axis.json";
 import barStackedTotalFormattedValues from "./bar-stacked-total-formatted-values.json";
 import barTwoAxesStackedWithNegativeValues from "./bar-two-axes-stacked-with-negative-values.json";
+import barTwoDaysOfWeek from "./bar-two-days-of-week.json";
 import barsBreakoutSortedWithNegativeValuesPowerYAxis from "./bars-breakout-sorted-with-negative-values-power-y-axis.json";
 import combinedBarTimeSeriesDifferentGranularityWithBreakout from "./combined-bar-timeseries-different-granularity-with-breakout.json";
 import comboBarsBecomeStackedInStaticViz38827 from "./combo-becomes-stacked-in-static-viz-38827.json";
@@ -92,6 +94,7 @@ export const data = {
   barHistogramStackedNormalized,
   barHistogramUnaggregatedDimension,
   barOrdinalXScale,
+  barOrdinalXScaleAutoRotatedLabels,
   barTwoAxesStackedWithNegativeValues,
   barBreakoutWithLineSeriesStackedRightAxisOnly,
   barStackedTotalFormattedValues,
@@ -146,4 +149,5 @@ export const data = {
   logYScaleCustomYAxisRange,
   powYScaleCustomYAxisRange,
   barRelativeDatetimeOrdinalScale,
+  barTwoDaysOfWeek,
 };

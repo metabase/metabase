@@ -100,5 +100,6 @@ export const getWaterfallXAxisModel = (
   return {
     ...xAxisModel,
     totalXValue,
+    valuesCount: xAxisModel.valuesCount + 1,
   };
 };

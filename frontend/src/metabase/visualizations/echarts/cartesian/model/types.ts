@@ -1,7 +1,6 @@
 import type { Dayjs } from "dayjs";
 import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
 
-import type { OptionsType } from "metabase/lib/formatting/types";
 import type {
   X_AXIS_DATA_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
@@ -93,7 +92,7 @@ export type Datum = Record<DataKey, RowValue> & {
 export type ChartDataset<D extends Datum = Datum> = D[];
 export type Extent = [number, number];
 export type SeriesExtents = Record<DataKey, Extent>;
-export type AxisFormatter = (value: RowValue, options?: OptionsType) => string;
+export type AxisFormatter = (value: RowValue) => string;
 export type TimeSeriesAxisFormatter = (
   value: RowValue,
   unit?: DateTimeAbsoluteUnit,
@@ -133,6 +132,7 @@ export type CategoryXAxisModel = BaseXAxisModel & {
   isHistogram: boolean;
   histogramInterval?: number;
   formatter: AxisFormatter;
+  valuesCount: number;
 };
 
 export type NumericXAxisModel = BaseXAxisModel &
