@@ -87,7 +87,7 @@ export function LinkOptions({
           />
         ) : null}
       </div>
-      <div className="mt1">
+      <div className={CS.mt1}>
         {hasSelectedLinkType && clickBehavior.linkType !== "url" && (
           <div>
             <LinkedEntityPicker

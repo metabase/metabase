@@ -192,7 +192,7 @@ export default class CustomGeoJSONWidget extends Component {
         />
         {this.state.map ? (
           <Modal wide>
-            <div className="p4">
+            <div className={CS.p4}>
               <EditMap
                 map={this.state.map}
                 originalMap={this.state.originalMap}
@@ -298,7 +298,7 @@ const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
 const SettingContainer = ({
   name,
   description,
-  className = "py1",
+  className = CS.py1,
   children,
 }) => (
   <div className={className}>
@@ -436,7 +436,7 @@ const EditMap = ({
       </div>
     </div>
     <div className={cx(CS.py1, CS.flex)}>
-      <div className="ml-auto">
+      <div className={CS.mlAuto}>
         <button
           className={ButtonsS.Button}
           onClick={onCancel}

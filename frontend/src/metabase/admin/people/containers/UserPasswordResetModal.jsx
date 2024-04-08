@@ -55,7 +55,7 @@ class UserPasswordResetModal extends Component {
 
         <ButtonContainer>
           <Button
-            className="ml-auto"
+            className={CS.mlAuto}
             disabled={this.state.resetButtonDisabled}
             onClick={async () => {
               this.setState({ resetButtonDisabled: true });

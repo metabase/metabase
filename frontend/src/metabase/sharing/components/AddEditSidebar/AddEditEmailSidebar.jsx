@@ -49,7 +49,7 @@ function _AddEditEmailSidebar({
       onCancel={onCancel}
     >
       <div className={cx(CS.pt4, CS.px4, CS.flex, CS.alignCenter)}>
-        <Icon name="mail" className="mr1" size={21} />
+        <Icon name="mail" className={CS.mr1} size={21} />
         <Heading>{t`Email this dashboard`}</Heading>
       </div>
       <CaveatMessage />
@@ -57,7 +57,7 @@ function _AddEditEmailSidebar({
         className={cx(CS.my2, CS.px4, CS.fullHeight, CS.flex, CS.flexColumn)}
       >
         <div>
-          <div className={cx(CS.textBold, "mb1")}>{t`To:`}</div>
+          <div className={cx(CS.textBold, CS.mb1)}>{t`To:`}</div>
           <RecipientPicker
             isNewPulse={pulse.id == null}
             autoFocus={false}
@@ -89,7 +89,7 @@ function _AddEditEmailSidebar({
             onChannelScheduleChange(newSchedule, changedProp)
           }
         />
-        <div className="pt2 pb1">
+        <div className={cx(CS.pt2, CS.pb1)}>
           <SendTestPulse
             channel={channel}
             channelSpecs={formInput.channels}

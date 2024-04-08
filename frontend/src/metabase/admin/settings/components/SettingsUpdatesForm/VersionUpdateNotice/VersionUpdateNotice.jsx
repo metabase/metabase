@@ -118,7 +118,7 @@ function NewVersionAvailable({ currentVersion }) {
         )}
         style={{ height: 330 }}
       >
-        <h3 className={cx("pb3", CS.textUppercase)}>{t`What's Changed:`}</h3>
+        <h3 className={cx(CS.pb3, CS.textUppercase)}>{t`What's Changed:`}</h3>
 
         <Version version={versionInfo.latest} />
 
@@ -171,7 +171,7 @@ function HostingCTA() {
           >{t`Migrate to Metabase Cloud.`}</Text>
         </div>
       </HostingCTAContent>
-      <div className="pr1">
+      <div className={CS.pr1}>
         <HostingInfoLink text={t`Learn more`} />
       </div>
     </HostingCTARoot>
@@ -184,7 +184,7 @@ function Version({ version }) {
   }
 
   return (
-    <div className="pb3">
+    <div className={CS.pb3}>
       <h3 className={CS.textMedium}>
         {formatVersion(version.version)}{" "}
         {version.patch ? "(" + t`patch release` + ")" : null}
@@ -192,7 +192,7 @@ function Version({ version }) {
       <ul style={{ listStyleType: "disc", listStylePosition: "inside" }}>
         {version.highlights &&
           version.highlights.map((highlight, index) => (
-            <li key={index} style={{ lineHeight: "1.5" }} className="pl1">
+            <li key={index} style={{ lineHeight: "1.5" }} className={CS.pl1}>
               {highlight}
             </li>
           ))}

@@ -83,7 +83,7 @@ function _PulsesListSidebar({
           </Tooltip>
         </SidebarActions>
       </div>
-      <div className="my2 mx4">
+      <div className={cx(CS.my2, CS.mx4)}>
         {pulses.map(pulse => {
           const canEdit = canEditPulse(pulse, formInput);
 
@@ -116,7 +116,7 @@ function _PulsesListSidebar({
                         ? "mail"
                         : "slack"
                     }
-                    className="mr1"
+                    className={CS.mr1}
                     style={{ paddingBottom: "5px" }}
                     size={16}
                   />

@@ -79,7 +79,7 @@ export const MembershipSelect = ({
   if (groups.length === 0) {
     return (
       <PopoverWithTrigger triggerElement={triggerElement}>
-        <span className="p1">{emptyListMessage}</span>
+        <span className={CS.p1}>{emptyListMessage}</span>
       </PopoverWithTrigger>
     );
   }

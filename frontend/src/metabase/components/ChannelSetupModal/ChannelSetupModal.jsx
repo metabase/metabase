@@ -40,9 +40,9 @@ export default class ChannelSetupModal extends Component {
         }
       >
         <div
-          className={cx("ml-auto mb4", {
-            mr4: !fullPageModal,
-            [cx("mr-auto", CS.textCentered)]: fullPageModal,
+          className={cx(CS.mlAuto, CS.mb4, {
+            [CS.mr4]: !fullPageModal,
+            [cx(CS.mrAuto, CS.textCentered)]: fullPageModal,
           })}
         >
           <ChannelSetupMessage user={this.props.user} />

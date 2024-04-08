@@ -163,7 +163,7 @@ export default class PulseEditChannels extends Component {
       this.props.pulseIsValid && channelIsValid(channel, channelSpec);
 
     return (
-      <li key={index} className="py2">
+      <li key={index} className={CS.py2}>
         {channelSpec.error && (
           <div className={cx(CS.pb2, CS.textBold, CS.textError)}>
             {channelSpec.error}
@@ -215,7 +215,7 @@ export default class PulseEditChannels extends Component {
           />
         )}
         {this.props.testPulse && (
-          <div className="pt2">
+          <div className={CS.pt2}>
             <ActionButton
               actionFn={this.onTestPulseChannel.bind(this, channel)}
               disabled={
@@ -275,7 +275,9 @@ export default class PulseEditChannels extends Component {
           <ul className={cx(CS.bgLight, CS.px3)}>{channels}</ul>
         ) : channels.length > 0 && !channelSpec.configured ? (
           <div className={cx(CS.p4, CS.textCentered)}>
-            <h3 className="mb2">{t`${channelSpec.name} needs to be set up by an administrator.`}</h3>
+            <h3
+              className={CS.mb2}
+            >{t`${channelSpec.name} needs to be set up by an administrator.`}</h3>
             <ChannelSetupMessage user={user} channels={[channelSpec.name]} />
           </div>
         ) : null}

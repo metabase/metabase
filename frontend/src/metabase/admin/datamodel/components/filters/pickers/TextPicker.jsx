@@ -126,7 +126,7 @@ export default class TextPicker extends Component {
         </div>
 
         {multi ? (
-          <div className={cx("p1", CS.textSmall)}>
+          <div className={cx(CS.p1, CS.textSmall)}>
             {t`You can enter multiple values separated by commas`}
           </div>
         ) : null}

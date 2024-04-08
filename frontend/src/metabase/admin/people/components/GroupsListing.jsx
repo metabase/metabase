@@ -218,7 +218,7 @@ function GroupRow({
               bg={backgroundColor}
             />
           </span>
-          <span className={cx("ml2", CS.textBold)}>
+          <span className={cx(CS.ml2, CS.textBold)}>
             {getGroupNameLocalized(group)}
           </span>
         </Link>

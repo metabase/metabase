@@ -11,7 +11,7 @@ export const MetadataSectionHeader = ({
   title,
   description,
 }: MetadataSectionHeaderProps) => (
-  <div className="mb2">
+  <div className={CS.mb2}>
     <h4>{title}</h4>
     {description && (
       <p className={cx(CS.mb0, CS.textMedium, CS.mt1)}>{description}</p>

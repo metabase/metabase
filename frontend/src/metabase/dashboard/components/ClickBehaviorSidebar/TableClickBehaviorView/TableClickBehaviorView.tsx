@@ -85,7 +85,7 @@ export function TableClickBehaviorView({
     group => {
       const [clickBehaviorType, columnsWithClickBehavior] = group;
       return (
-        <div key={clickBehaviorType} className="mb2 px4">
+        <div key={clickBehaviorType} className={cx(CS.mb2, CS.px4)}>
           <h5 className={cx(CS.textUppercase, CS.textMedium, CS.my1)}>
             {explainClickBehaviorType(clickBehaviorType, dashcard)}
           </h5>

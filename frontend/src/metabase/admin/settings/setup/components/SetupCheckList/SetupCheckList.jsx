@@ -23,7 +23,7 @@ import {
 const TaskList = ({ tasks }) => (
   <ol>
     {tasks.map((task, index) => (
-      <li className="mb2" key={index}>
+      <li className={CS.mb2} key={index}>
         <Task {...task} />
       </li>
     ))}
@@ -37,7 +37,7 @@ const TaskSectionHeader = ({ name }) => (
 );
 
 const TaskSection = ({ name, tasks }) => (
-  <div className="mb4">
+  <div className={CS.mb4}>
     <TaskSectionHeader name={name} />
     <TaskList tasks={tasks} />
   </div>
@@ -48,7 +48,7 @@ const TaskTitle = ({ title, titleClassName }) => (
 );
 
 const TaskDescription = ({ description }) => (
-  <p className="m0 mt1">{description}</p>
+  <p className={cx(CS.m0, CS.mt1)}>{description}</p>
 );
 
 const CompletionBadge = ({ completed }) => (
@@ -130,9 +130,11 @@ class SetupCheckList extends Component {
 
     return (
       <SetupListRoot>
-        <div className="px2">
+        <div className={CS.px2}>
           <h2>{t`Getting set up`}</h2>
-          <p className="mt1">{t`A few things you can do to get the most out of Metabase.`}</p>
+          <p
+            className={CS.mt1}
+          >{t`A few things you can do to get the most out of Metabase.`}</p>
           <LoadingAndErrorWrapper
             loading={!this.state.tasks}
             error={this.state.error}

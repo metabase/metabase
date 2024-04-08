@@ -42,7 +42,7 @@ export default class LoadingAndErrorWrapper extends Component {
   renderError(contentClassName) {
     if (this.props.renderError) {
       return (
-        <div className="py4">
+        <div className={CS.py4}>
           {this.props.renderError(this.getErrorMessage())}
         </div>
       );

@@ -13,7 +13,7 @@ const MarginHostingCTA = ({ tagline }) => (
     style={{ height: 172 }}
   >
     <Icon name="cloud" size={48} style={{ color: "#B9D8F4" }} />
-    <div className="pb3">
+    <div className={CS.pb3}>
       <Text className={cx(CS.textBrand, CS.mb0)}>{tagline}</Text>
       <Text
         className={cx(CS.textBrand, CS.textBold)}

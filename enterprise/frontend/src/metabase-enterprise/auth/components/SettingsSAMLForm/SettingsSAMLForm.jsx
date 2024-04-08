@@ -76,15 +76,15 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
       enableReinitialize
     >
       {({ dirty }) => (
-        <Form className="mx2">
+        <Form className={CS.mx2}>
           <Breadcrumbs
-            className="mb3"
+            className={CS.mb3}
             crumbs={[
               [t`Authentication`, "/admin/settings/authentication"],
               [t`SAML`],
             ]}
           />
-          <h2 className="mb2">{t`Set up SAML-based SSO`}</h2>
+          <h2 className={CS.mb2}>{t`Set up SAML-based SSO`}</h2>
           <SAMLFormCaption>
             {jt`Use the settings below to configure your SSO via SAML. If you have any questions, check out our ${(
               <ExternalLink
@@ -103,7 +103,9 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
             />
           </Stack>
           <SAMLFormSection>
-            <h3 className="mb0">{t`Configure your identity provider (IdP)`}</h3>
+            <h3
+              className={CS.mb0}
+            >{t`Configure your identity provider (IdP)`}</h3>
 
             <p className={cx(CS.mb4, CS.mt1, CS.textMedium)}>
               {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
@@ -118,7 +120,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
               label={t`URL the IdP should redirect back to`}
             />
 
-            <h4 className="pt2">{t`SAML attributes`}</h4>
+            <h4 className={CS.pt2}>{t`SAML attributes`}</h4>
             <p
               className={cx(CS.mb3, CS.mt1, CS.textMedium)}
             >{t`In most IdPs, you'll need to put each of these in an input box labeled
@@ -144,8 +146,10 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           </SAMLFormSection>
 
           <SAMLFormSection>
-            {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
-            <h3 className="mb0">{t`Tell Metabase about your identity provider`}</h3>
+            <h3 className={CS.mb0}>
+              {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+              {t`Tell Metabase about your identity provider`}
+            </h3>
             <p className={cx(CS.mb4, CS.mt1, CS.textMedium)}>
               {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
               {t`Metabase will need the following info about your provider.`}
@@ -196,7 +200,9 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           </SAMLFormSection>
 
           <SAMLFormSection wide>
-            <h3 className="mb0">{t`Synchronize group membership with your SSO`}</h3>
+            <h3
+              className={CS.mb0}
+            >{t`Synchronize group membership with your SSO`}</h3>
             <p className={cx(CS.mb4, CS.mt1, CS.textMedium)}>
               {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
               {t`To enable this, you'll need to create mappings to tell Metabase which group(s) your users should

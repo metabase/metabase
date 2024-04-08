@@ -27,7 +27,7 @@ const KeyValuePairChartTooltip = ({
   const rows = useMemo(() => getRows(hovered), [hovered]);
 
   return (
-    <table className="py1 px2">
+    <table className={cx(CS.py1, CS.px2)}>
       <tbody>
         {rows.map(({ key, value, col }, index) => (
           <TooltipRow

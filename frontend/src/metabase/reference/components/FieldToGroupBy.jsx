@@ -27,7 +27,7 @@ const FieldToGroupBy = ({
         </div>
       </div>
       <Icon
-        className={cx(iconClass, "pr1")}
+        className={cx(iconClass, CS.pr1)}
         tooltip={field.description ? field.description : t`Look up this field`}
         size={16}
         name="reference"

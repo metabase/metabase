@@ -258,7 +258,7 @@ export function DashCardCardParameterMapper({
       {isVirtual && isDisabled ? (
         showVirtualDashCardInfoText(dashcard, isMobile) ? (
           <TextCardDefault>
-            <Icon name="info" size={12} className="pr1" />
+            <Icon name="info" size={12} className={CS.pr1} />
             {mappingInfoText}
           </TextCardDefault>
         ) : (

@@ -126,7 +126,7 @@ export const AccordionListCell = ({
       );
     }
   } else if (type === "header-hidden") {
-    content = <div className="my1" />;
+    content = <div className={CS.my1} />;
   } else if (type === "loading") {
     content = (
       <div className={cx(CS.m1, CS.flex, CS.layoutCentered)}>

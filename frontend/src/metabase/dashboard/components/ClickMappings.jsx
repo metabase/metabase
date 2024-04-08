@@ -220,7 +220,7 @@ function TargetWithSource({
   const source =
     getIn(clickBehavior, ["parameterMapping", id, "source"]) || null;
   return (
-    <div className="mb2">
+    <div className={CS.mb2}>
       <div
         className={cx(
           CS.bordered,
@@ -270,7 +270,7 @@ function TargetWithSource({
           </div>
         </div>
         <div
-          className={cx(CS.cursorPointer, "ml-auto")}
+          className={cx(CS.cursorPointer, CS.mlAuto)}
           onClick={() =>
             updateSettings(dissocIn(clickBehavior, ["parameterMapping", id]))
           }
