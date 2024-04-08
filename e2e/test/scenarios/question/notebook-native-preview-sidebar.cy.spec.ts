@@ -199,7 +199,6 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
 
     cy.findByLabelText("View the SQL").click();
-
     cy.findByTestId("native-query-preview-sidebar")
       .should("be.visible")
       .then($sidebar => {
@@ -433,7 +432,7 @@ type ResizeSidebarCallback = (
   sidebarWidth: number,
 ) => void;
 
-function resizeSidebar(amount: number, cb: ResizeSidebarCallback) {
+function resizeSidebar(amountX: number, cb: ResizeSidebarCallback) {
   cy.intercept("PUT", "/api/setting/notebook-native-preview-sidebar-width").as(
     "updateSidebarWidth",
   );
@@ -450,7 +449,7 @@ function resizeSidebar(amount: number, cb: ResizeSidebarCallback) {
 
     cy.findByTestId("notebook-native-preview-resize-handle")
       .realMouseDown(options)
-      .realMouseMove(amount, 0, options)
+      .realMouseMove(amountX, 0, options)
       .realMouseUp(options);
 
     cy.wait(["@updateSidebarWidth", "@sessionProperties"]);
