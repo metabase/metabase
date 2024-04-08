@@ -57,17 +57,18 @@
                [:t.table_name :name]
                [:t.table_type :type]
                [:t.remarks :description]]
-    :from     [[:pg_catalog.svv_all_tables :t]]
+    :from     [[:pg_catalog.svv_tables :t]]
     :where    [:and ; filter out system tables
                [:raw "t.schema_name !~ '^information_schema|catalog_history|pg_'"]
                [:raw "pg_catalog.has_schema_privilege(t.schema_name, 'USAGE')"]
                [:case
-                [:= :t.table_type "EXTERNAL TABLE"]
-                true ; for external tables, 'USAGE' on the schema is sufficient for select
+                ;; for external tables the 'USAGE' schema privilege is sufficient for select privileges for the table
+                [:= :t.table_type [:inline "EXTERNAL TABLE"]]
+                true
                 :else
                 [:or
-                 [:raw "pg_catalog.has_table_privilege(current_user, '\"' || t.schema_name || '\".\"' || t.table_name || '\"',  'SELECT')"]
-                 [:raw "pg_catalog.has_any_column_privilege(current_user, '\"' || t.schema_name || '\"' || '.' || '\"' || t.table_name || '\"',  'SELECT')"]]]]
+                 [:raw "pg_catalog.has_table_privilege('\"' || t.schema_name || '\".\"' || t.table_name || '\"',  'SELECT')"]
+                 [:raw "pg_catalog.has_any_column_privilege('\"' || t.schema_name || '\"' || '.' || '\"' || t.table_name || '\"',  'SELECT')"]]]]
     :order-by [:schema :name]}
    {:dialect :ansi}))
 
