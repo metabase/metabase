@@ -36,10 +36,12 @@ export const NotebookNativePreview = (): JSX.Element => {
   const sourceQuery = question.query();
   const canRun = Lib.canRun(sourceQuery);
   const payload = Lib.toLegacyQuery(sourceQuery);
-  const { data, error, isLoading } = useGetNativeDatasetQuery(payload);
+  const { data, error, isLoading, isFetching } =
+    useGetNativeDatasetQuery(payload);
 
-  const showError = canRun && error;
-  const showQuery = canRun && !error;
+  const showLoader = isLoading || isFetching;
+  const showError = !isFetching && canRun && error;
+  const showQuery = !isFetching && canRun && !error;
   const showEmptySidebar = !canRun;
 
   const formattedQuery = formatNativeQuery(data?.query, engine);
@@ -85,7 +87,7 @@ export const NotebookNativePreview = (): JSX.Element => {
       <Box
         style={{ flex: 1, borderTop: borderStyle, borderBottom: borderStyle }}
       >
-        {isLoading && <DelayedLoadingSpinner delay={1000} />}
+        {showLoader && <DelayedLoadingSpinner delay={1000} />}
         {showEmptySidebar}
         {showError && (
           <Flex align="center" justify="center" h="100%" direction="column">
