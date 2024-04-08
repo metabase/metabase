@@ -97,6 +97,8 @@ To archive a timeline:
 
 ### View archived events and timelines
 
+> Archived events and timelines can only be viewed from the collection. The don't show up in the [main archive](../exploration-and-organization/history.md).
+
 To view (and resurrect) archived timelines and events:
 
 1. Click on the **Calendar** icon in the relevant collection.
@@ -110,7 +112,7 @@ Then you can delete the archived events from the **View archived events** modal,
 
 ## Event and timeline permissions
 
-Event and timeline permissions depend on your [collection permissions](../permissions/collections.md):
+Event and timeline permissions depend on your [collection permissions](../permissions/collections.md).
 
 - **View access**: you can view the collection's events and timelines. You can also temporarily apply timelines and events to time series in other collections.
 - **Curate access**. Anyone with curate access to a collection can add events and timelines to that collection.
