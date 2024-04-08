@@ -18,7 +18,7 @@
    [metabase.models.permissions-revision :as perms-revision]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -365,10 +365,9 @@
 (defn log-permissions-changes
   "Log changes to the permissions graph."
   [old new]
-  (log/debug
-   (trs "Changing permissions")
-   "\n" (trs "FROM:") (u/pprint-to-str 'magenta old)
-   "\n" (trs "TO:")   (u/pprint-to-str 'blue    new)))
+  (log/debug "Changing permissions"
+             "\n FROM:" (u/pprint-to-str :magenta old)
+             "\n TO:"   (u/pprint-to-str :blue new)))
 
 (defn check-revision-numbers
   "Check that the revision number coming in as part of `new-graph` matches the one from `old-graph`. This way we can

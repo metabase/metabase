@@ -1,6 +1,7 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 
+import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
 
 import { DimensionListItem } from "./DimensionPicker.styled";
@@ -31,13 +32,15 @@ export const DimensionPicker = ({
           <DimensionListItem
             aria-selected={isSelected}
             key={index}
-            className={cx("List-item", {
-              "List-item--selected": isSelected,
+            data-element-id="list-item"
+            className={cx(ListS.ListItem, {
+              [ListS.ListItemSelected]: isSelected,
             })}
           >
             <a
+              data-element-id="list-item-title"
               className={cx(
-                "List-item-title",
+                ListS.ListItemTitle,
                 CS.full,
                 CS.px2,
                 CS.py1,

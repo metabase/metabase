@@ -40,15 +40,15 @@
   short circuit the setup process and make it clear we can't proceed."
   [liquibase data-source]
   (when (seq (liquibase/unrun-migrations data-source))
-    (log/info (str (trs "Database Upgrade Required")
+    (log/info (str "Database Upgrade Required"
                    "\n\n"
-                   (trs "NOTICE: Your database requires updates to work with this version of Metabase.")
+                   "NOTICE: Your database requires updates to work with this version of Metabase."
                    "\n"
-                   (trs "Please execute the following sql commands on your database before proceeding.")
+                   "Please execute the following sql commands on your database before proceeding."
                    "\n\n"
                    (liquibase/migrations-sql liquibase)
                    "\n\n"
-                   (trs "Once your database is updated try running the application again.")
+                   "Once your database is updated try running the application again."
                    "\n"))
     (throw (Exception. (trs "Database requires manual upgrade.")))))
 
@@ -70,7 +70,7 @@
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (.setAutoCommit conn false)
     ;; Set up liquibase and let it do its thing
-    (log/info (trs "Setting up Liquibase..."))
+    (log/info "Setting up Liquibase...")
     (liquibase/with-liquibase [liquibase conn]
       (try
         ;; Consolidating the changeset requires the lock, so we may need to release it first.
@@ -80,7 +80,7 @@
        (when-not (= :release-locks direction)
          (liquibase/consolidate-liquibase-changesets! conn liquibase))
 
-       (log/info (trs "Liquibase is ready."))
+       (log/info "Liquibase is ready.")
        (case direction
          :up            (liquibase/migrate-up-if-needed! liquibase data-source)
          :force         (liquibase/force-migrate-up-if-needed! liquibase data-source)
@@ -110,7 +110,7 @@
   connecting."
   [db-type     :- :keyword
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
-  (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name db-type))))
+  (log/info (u/format-color 'cyan "Verifying %s Database Connection ..." (name db-type)))
   (classloader/require 'metabase.driver.sql-jdbc.connection)
   (let [error-msg (trs "Unable to connect to Metabase {0} DB." (name db-type))]
     (try (assert ((requiring-resolve 'metabase.driver.sql-jdbc.connection/can-connect-with-spec?) {:datasource data-source}) error-msg)
@@ -118,13 +118,12 @@
            (throw (ex-info error-msg {} e)))))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (let [metadata (.getMetaData conn)]
-      (log/info (trs "Successfully verified {0} {1} application database connection."
-                     (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata))
-                (u/emoji "✅")))))
+      (log/infof "Successfully verified %s %s application database connection. %s"
+                 (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata) (u/emoji "✅")))))
 
 (mu/defn ^:private error-if-downgrade-required!
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
-  (log/info (u/format-color 'cyan (trs "Checking if a database downgrade is required...")))
+  (log/info (u/format-color 'cyan "Checking if a database downgrade is required..."))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (liquibase/with-liquibase [liquibase conn]
       (let [latest-available (liquibase/latest-available-major-version liquibase)
@@ -148,9 +147,9 @@
   [db-type       :- :keyword
    data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
    auto-migrate? :- [:maybe :boolean]]
-  (log/info (trs "Running Database Migrations..."))
+  (log/info "Running Database Migrations...")
   (migrate! db-type data-source (if auto-migrate? :up :print))
-  (log/info (trs "Database Migrations Current ... ") (u/emoji "✅")))
+  (log/info "Database Migrations Current ..." (u/emoji "✅")))
 
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
 ;;

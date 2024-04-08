@@ -117,7 +117,7 @@
           row-count                   (volatile! 0)]
       (fn
         ([]
-         (log/tracef "Writing initial metadata to results writer.")
+         (log/trace "Writing initial metadata to results writer.")
          (qp.si/begin! results-writer
                        {:data (assoc initial-metadata :ordered-cols ordered-cols)}
                        viz-settings')
@@ -129,7 +129,7 @@
                 :status :completed))
 
         ([metadata row]
-         (log/tracef "Writing one row to results writer.")
+         (log/trace "Writing one row to results writer.")
          (qp.si/write-row! results-writer row (dec (vswap! row-count inc)) ordered-cols viz-settings')
          metadata)))))
 

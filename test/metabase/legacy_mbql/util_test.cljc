@@ -121,28 +121,32 @@
                              [:asc [:field 20 nil]]]}
              (mbql.u/add-order-by-clause {:source-table 1
                                           :order-by     [[:asc [:field 10 nil]]]}
-                                         [:asc [:field 20 nil]]))))
+                                         [:asc [:field 20 nil]])))))
 
+(t/deftest ^:parallel add-order-by-clause-test-2
   (t/testing "duplicate clauses should get ignored"
     (t/is (= {:source-table 1
               :order-by     [[:asc [:field 10 nil]]]}
              (mbql.u/add-order-by-clause {:source-table 1
                                           :order-by     [[:asc [:field 10 nil]]]}
-                                         [:asc [:field 10 nil]]))))
+                                         [:asc [:field 10 nil]])))))
 
+(t/deftest ^:parallel add-order-by-clause-test-3
   (t/testing "as should clauses that reference the same Field"
     (t/is (= {:source-table 1
               :order-by     [[:asc [:field 10 nil]]]}
              (mbql.u/add-order-by-clause {:source-table 1
                                           :order-by     [[:asc [:field 10 nil]]]}
-                                         [:desc [:field 10 nil]])))
+                                         [:desc [:field 10 nil]])))))
 
-    (t/testing "fields with different amounts of wrapping (plain field vs datetime-field)"
-      (t/is (= {:source-table 1
-                :order-by     [[:asc [:field 10 nil]]]}
-               (mbql.u/add-order-by-clause {:source-table 1
-                                            :order-by     [[:asc [:field 10 nil]]]}
-                                           [:asc [:field 10 {:temporal-unit :day}]]))))))
+(t/deftest ^:parallel add-order-by-clause-test-4
+  (t/testing "fields with different temporal-units should still get added (#40995)"
+    (t/is (= {:source-table 1
+              :order-by     [[:asc [:field 10 nil]]
+                             [:asc [:field 10 {:temporal-unit :day}]]]}
+             (mbql.u/add-order-by-clause {:source-table 1
+                                          :order-by     [[:asc [:field 10 nil]]]}
+                                         [:asc [:field 10 {:temporal-unit :day}]])))))
 
 (t/deftest ^:parallel combine-filter-clauses-test
   (t/is (= [:and [:= [:field 1 nil] 100] [:= [:field 2 nil] 200]]
@@ -652,29 +656,37 @@
 (t/deftest ^:parallel unique-name-generator-test
   (t/testing "Can we get a simple unique name generator"
     (t/is (= ["count" "sum" "count_2" "count_2_2"]
-             (map (mbql.u/unique-name-generator) ["count" "sum" "count" "count_2"]))))
+             (map (mbql.u/unique-name-generator) ["count" "sum" "count" "count_2"])))))
+
+(t/deftest ^:parallel unique-name-generator-test-2
   (t/testing "Can we get an idempotent unique name generator"
     (t/is (= ["count" "sum" "count" "count_2"]
-             (map (mbql.u/unique-name-generator) [:x :y :x :z] ["count" "sum" "count" "count_2"]))))
+             (map (mbql.u/unique-name-generator) [:x :y :x :z] ["count" "sum" "count" "count_2"])))))
+
+(t/deftest ^:parallel unique-name-generator-test-3
   (t/testing "Can the same object have multiple aliases"
     (t/is (= ["count" "sum" "count" "count_2"]
-             (map (mbql.u/unique-name-generator) [:x :y :x :x] ["count" "sum" "count" "count_2"]))))
+             (map (mbql.u/unique-name-generator) [:x :y :x :x] ["count" "sum" "count" "count_2"])))))
 
-  (t/testing "idempotence (2-arity calls to generated function)"
+(t/deftest ^:parallel unique-name-generator-idempotence-test
+  (t/testing "idempotence (2-arity calls to generated function) (#40994)"
     (let [unique-name (mbql.u/unique-name-generator)]
-      (t/is (= ["A" "B" "A" "A_2"]
+      (t/is (= ["A" "B" "A" "A_2" "A_2"]
                [(unique-name :x "A")
                 (unique-name :x "B")
                 (unique-name :x "A")
-                (unique-name :y "A")]))))
+                (unique-name :y "A")
+                (unique-name :y "A")])))))
 
-  #_{:clj-kondo/ignore [:discouraged-var]}
+(t/deftest ^:parallel unique-name-generator-options-test
   (t/testing "options"
     (t/testing :name-key-fn
-      (let [f (mbql.u/unique-name-generator :name-key-fn str/lower-case)]
+      (let [f (mbql.u/unique-name-generator :name-key-fn #_{:clj-kondo/ignore [:discouraged-var]} str/lower-case)]
         (t/is (= ["x" "X_2" "X_3"]
-                 (map f ["x" "X" "X"])))))
+                 (map f ["x" "X" "X"])))))))
 
+(t/deftest ^:parallel unique-name-generator-options-test-2
+  (t/testing "options"
     (t/testing :unique-alias-fn
       (let [f (mbql.u/unique-name-generator :unique-alias-fn (fn [x y] (str y "~~" x)))]
         (t/is (= ["x" "2~~x"]

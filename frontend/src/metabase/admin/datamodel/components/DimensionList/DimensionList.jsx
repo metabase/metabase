@@ -7,8 +7,8 @@ import _ from "underscore";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import AccordionList from "metabase/core/components/AccordionList";
 import Tooltip from "metabase/core/components/Tooltip";
+import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
-import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { Icon, Box } from "metabase/ui";
 import { FieldDimension } from "metabase-lib/v1/Dimension";
 
@@ -185,7 +185,7 @@ export class DimensionList extends Component {
     return (
       <FieldListGroupingTrigger
         className={cx(
-          QueryBuilderS.FieldListGroupingTrigger,
+          ListS.FieldListGroupingTrigger,
           "text-white-hover",
           CS.flex,
           CS.alignCenter,

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
@@ -230,12 +231,13 @@ export function FilterPopover({
         {showCustom && (
           <div
             style={{ color: color("filter") }}
-            className="List-section List-section--togglable"
+            data-element-id="list-section"
+            className={cx(ListS.ListSectionToggleAble)}
             onClick={() => setEditingFilter(true)}
           >
             <div
               className={cx(
-                "List-section-header",
+                ListS.ListSectionHeader,
                 CS.mx2,
                 CS.py2,
                 CS.flex,
@@ -246,7 +248,7 @@ export function FilterPopover({
             >
               <span
                 className={cx(
-                  "List-section-icon",
+                  ListS.ListSectionIcon,
                   CS.mr1,
                   CS.flex,
                   CS.alignCenter,
@@ -254,7 +256,7 @@ export function FilterPopover({
               >
                 <Icon name="filter" />
               </span>
-              <h3 className={cx("List-section-title", CS.textWrap)}>
+              <h3 className={cx(ListS.ListSectionTitle, CS.textWrap)}>
                 {CUSTOM_SECTION_NAME}
               </h3>
             </div>
