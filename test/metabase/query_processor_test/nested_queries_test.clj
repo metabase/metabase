@@ -441,7 +441,7 @@
             :params nil}
            (-> (mt/mbql-query venues
                  {:source-query {:source-table $$venues}
-                  :breakout     [[:field [:field "category_id" {:base-type :type/Integer}] nil]]
+                  :breakout     [[:field [:field "CATEGORY_ID" {:base-type :type/Integer}] nil]]
                   :limit        10})
                qp.compile/compile
                (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))
@@ -1405,9 +1405,12 @@
                         {:source-query {:source-table $$orders
                                         :breakout     [!month.product_id->products.created_at]
                                         :aggregation  [[:count]]}
-                         :filter       [:time-interval *created_at/DateTimeWithLocalTZ -32 :year]
+                         :filter       [:time-interval
+                                        [:field (mt/format-name "created_at") {:base-type :type/DateTimeWithLocalTZ}]
+                                        -32
+                                        :year]
                          :aggregation  [[:sum *count/Integer]]
-                         :breakout     [*created_at/DateTimeWithLocalTZ]
+                         :breakout     [[:field (mt/format-name "created_at") {:base-type :type/DateTimeWithLocalTZ}]]
                          :limit        1})]
             (mt/with-native-query-testing-context query
               (is (= [["2016-04-01T00:00:00Z" 175]]

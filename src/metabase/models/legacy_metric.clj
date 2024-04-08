@@ -1,4 +1,4 @@
-(ns metabase.models.metric
+(ns metabase.models.legacy-metric
   "A Metric is a saved MBQL 'macro' expanding to a combination of `:aggregation` and/or `:filter` clauses.
   It is passed in as an `:aggregation` clause but is replaced by the `expand-macros` middleware with the appropriate
   clauses."
@@ -57,7 +57,7 @@
    (mi/can-read? (t2/select-one model pk))))
 
 (t2/deftransforms :model/LegacyMetric
-  {:definition mi/transform-metric-segment-definition})
+  {:definition mi/transform-legacy-metric-segment-definition})
 
 (t2/define-before-update :model/LegacyMetric
   [{:keys [creator_id id], :as metric}]
@@ -97,8 +97,8 @@
    metrics     :- [:maybe [:sequential (ms/InstanceOf :model/LegacyMetric)]]]
   (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider database-id)
                             (lib.metadata.protocols/store-metadatas!
-                             :metadata/metric
-                             (map #(lib.metadata.jvm/instance->metadata % :metadata/metric)
+                             :metadata/legacy-metric
+                             (map #(lib.metadata.jvm/instance->metadata % :metadata/legacy-metric)
                                   metrics)))
         segment-ids       (into #{} (lib.util.match/match (map :definition metrics)
                                       [:segment (id :guard integer?) & _]
