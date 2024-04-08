@@ -345,7 +345,9 @@
 (defmethod negate* :>=  [[_ field value]]  [:<  field value])
 (defmethod negate* :<=  [[_ field value]]  [:>  field value])
 
-(defmethod negate* :between [[_ field min max]] [:or [:< field min] [:> field max]])
+(defmethod negate* :between
+  [[_ field min-value max-value]]
+  [:or [:< field min-value] [:> field max-value]])
 
 (defmethod negate* :contains    [clause] [:not clause])
 (defmethod negate* :starts-with [clause] [:not clause])
@@ -554,8 +556,8 @@
   (let [id+original->unique (atom {})   ; map of [id original-alias] -> unique-alias
         original->count     (atom {})]  ; map of original-alias -> count
     (fn generate-name
-      ([alias]
-       (generate-name (gensym) alias))
+      ([an-alias]
+       (generate-name (gensym) an-alias))
 
       ([id original]
        (let [name-key (name-key-fn original)]

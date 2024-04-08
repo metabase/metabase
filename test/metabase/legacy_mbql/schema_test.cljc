@@ -1,4 +1,4 @@
-(ns metabase.legacy-mbql.schema-test
+(ns ^:mb/once metabase.legacy-mbql.schema-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
@@ -39,7 +39,7 @@
             [expected clause] cases]
       (testing (pr-str schema-var clause)
         (is (= expected
-               (mc/validate @schema-var clause)))))))
+               (mc/validate schema-var clause)))))))
 
 (deftest ^:parallel field-clause-test
   (testing "Make sure our schema validates `:field` clauses correctly"
@@ -119,7 +119,7 @@
                               :parameters    [parameter]}}]
         (is (nil? (me/humanize (mc/explain mbql.s/Query query))))))))
 
-(deftest ^:paralell value-test
+(deftest ^:parallel value-test
   (let [value [:value
                "192.168.1.1"
                {:base_type         :type/IPAddress

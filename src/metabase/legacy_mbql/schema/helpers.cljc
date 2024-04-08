@@ -24,8 +24,8 @@
         :rest     [:* (wrap-clause-arg-schema arg-schema)]
         (wrap-clause-arg-schema vector-arg-schema)))))
 
-;; TODO - this is a copy of the one in the [[metabase.legacy-mbql.util]] namespace. We need to reorganize things a bit so we
-;; can use the same fn and avoid circular refs
+;; TODO - this is a copy of the one in the [[metabase.legacy-mbql.util]] namespace. We need to reorganize things a bit
+;; so we can use the same fn and avoid circular refs
 (defn is-clause?
   "If `x` an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
 
@@ -53,10 +53,10 @@
     (for [[arg-name arg-schema] (partition 2 arg-schemas)]
       [arg-name (clause-arg-schema arg-schema)]))])
 
-(defn- clause-tag [clause]
-  (when (and (vector? clause)
-             (keyword? (first clause)))
-    (first clause)))
+(defn- clause-tag [a-clause]
+  (when (and (vector? a-clause)
+             (keyword? (first a-clause)))
+    (first a-clause)))
 
 (defn one-of*
   "Interal impl of `one-of` macro."
