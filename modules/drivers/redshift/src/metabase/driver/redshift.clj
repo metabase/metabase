@@ -2,6 +2,7 @@
   "Amazon Redshift Driver."
   (:require
    [cheshire.core :as json]
+   [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver :as driver]
@@ -25,7 +26,12 @@
    [metabase.util.log :as log])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
-   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Types)
+   (java.sql
+    Connection
+    PreparedStatement
+    ResultSet
+    ResultSetMetaData
+    Types)
    (java.time OffsetTime)))
 
 (set! *warn-on-reflection* true)
@@ -52,25 +58,43 @@
 
 (def ^:private get-tables-sql
   ;; Ref: https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java#L1794
-  (sql/format
-   {:select   [[:t.table_schema :schema]
-               [:t.table_name :name]
-               [:t.table_type :type]
-               [:t.remarks :description]]
-    :from     [[:pg_catalog.svv_tables :t]]
-    :where    [:and ; filter out system tables
-               [:raw "t.table_schema !~ '^information_schema|catalog_history|pg_'"]
-               [:raw "pg_catalog.has_schema_privilege(t.table_schema, 'USAGE')"]
-               [:case
-                ;; for external tables the 'USAGE' schema privilege is sufficient for select privileges for the table
-                [:= :t.table_type [:inline "EXTERNAL TABLE"]]
-                true
-                :else
-                [:or
-                 [:raw "pg_catalog.has_table_privilege('\"' || t.table_schema || '\".\"' || t.table_name || '\"',  'SELECT')"]
-                 [:raw "pg_catalog.has_any_column_privilege('\"' || t.table_schema || '\"' || '.' || '\"' || t.table_name || '\"',  'SELECT')"]]]]
-    :order-by [:schema :name]}
-   {:dialect :ansi}))
+  [(str/join
+    "\n"
+    ["select"
+     "  table_catalog as database,"
+     "  table_name as name,"
+     "  table_schema as schema,"
+     "  'BASE TABLE' as type"
+     "from information_schema.tables t"
+     "where table_schema !~ '^information_schema|catalog_history|pg_'"
+     "  and table_type = 'BASE TABLE'"
+     "  and pg_catalog.has_schema_privilege(t.table_schema, 'USAGE')"
+     "  and (pg_catalog.has_table_privilege('\"' || t.table_schema || '\".\"' || t.table_name || '\"',  'SELECT')"
+     "       or pg_catalog.has_any_column_privilege('\"' || t.table_schema || '\"' || '.' || '\"' || t.table_name || '\"',  'SELECT'))"
+     "union all"
+     "select"
+     "  table_catalog as database,"
+     "  table_name as name,"
+     "  table_schema as schema,"
+     "  case"
+     "    when view_definition ilike '%create materialized view%'"
+     "      then 'MATERIALIZED VIEW'"
+     "    else 'VIEW'"
+     "  end as type"
+     "from information_schema.views t"
+     "where table_schema !~ '^information_schema|catalog_history|pg_'"
+     "  and pg_catalog.has_schema_privilege(t.table_schema, 'USAGE')"
+     "  and (pg_catalog.has_table_privilege('\"' || t.table_schema || '\".\"' || t.table_name || '\"',  'SELECT')"
+     "       or pg_catalog.has_any_column_privilege('\"' || t.table_schema || '\"' || '.' || '\"' || t.table_name || '\"',  'SELECT'))"
+     "union all"
+     "select"
+     "  redshift_database_name as database,"
+     "  tablename as name,"
+     "  schemaname as schema,"
+     "  'EXTERNAL TABLE' as type"
+     "from svv_external_tables t"
+     "where schemaname !~ '^information_schema|catalog_history|pg_'"
+     "and pg_catalog.has_schema_privilege(t.schemaname, 'USAGE')"])])
 
 (defn- describe-database-tables
   [database]
