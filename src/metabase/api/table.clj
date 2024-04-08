@@ -526,9 +526,9 @@
                [:file (ms/InstanceOfClass java.io.File)]
                [:action upload/update-action-schema]]]
   (try
-    (let [model (upload/update-csv! options)]
+    (let [result (upload/update-csv! options)]
       {:status 200
-       :body   (:id model)})
+       :body   result})
     (catch Throwable e
       {:status (or (-> e ex-data :status-code)
                    500)
