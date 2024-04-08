@@ -76,6 +76,7 @@ export function JoinTablePicker({
           <JoinTableColumnPicker columnPicker={columnPicker} />
         ) : null
       }
+      containerStyle={CONTAINER_STYLE}
       rightContainerStyle={RIGHT_CONTAINER_STYLE}
       aria-label={t`Right table`}
     >
@@ -126,6 +127,10 @@ function JoinTableColumnPicker({ columnPicker }: JoinTableColumnPickerProps) {
     </Popover>
   );
 }
+
+const CONTAINER_STYLE = {
+  padding: 0,
+};
 
 const RIGHT_CONTAINER_STYLE = {
   width: 37,
