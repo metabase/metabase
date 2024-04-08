@@ -94,7 +94,7 @@ export function foreignKeyTags(
 export function foreignKeyListTags(
   foreignKeys: ForeignKey[],
 ): TagDescription<TagType>[] {
-  return foreignKeys.flatMap(foreignKeyTags);
+  return [listTag("field"), ...foreignKeys.flatMap(foreignKeyTags)];
 }
 
 export function fieldValuesTags(id: FieldId): TagDescription<TagType>[] {
