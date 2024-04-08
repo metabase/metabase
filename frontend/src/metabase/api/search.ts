@@ -1,7 +1,7 @@
 import type { SearchRequest, SearchResponse } from "metabase-types/api";
 
 import { Api } from "./api";
-import { searchItemListTags } from "./tags";
+import { MODEL_TYPES, searchItemListTags } from "./tags";
 
 export const searchApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -11,12 +11,11 @@ export const searchApi = Api.injectEndpoints({
         url: "/api/search",
         body,
       }),
-      providesTags: (response, error, { models = [] }) => [
-        ...searchItemListTags(
+      providesTags: (response, error, { models = Array.from(MODEL_TYPES) }) =>
+        searchItemListTags(
           response?.data ?? [],
           Array.isArray(models) ? models : [models],
         ),
-      ],
     }),
   }),
 });
