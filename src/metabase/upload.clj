@@ -601,9 +601,54 @@
   [db table]
   (nil? (can-update-error db table)))
 
+(defn- check-can-delete
+  "Throws an error if the given table is not an upload, or if the user does not have permission to delete it."
+  [db table]
+  ;; For now anyone that can update a table is allowed to delete it.
+  (when-let [error (can-update-error db table)]
+    (throw error)))
+
 ;;; +--------------------------------------------------
 ;;; |  public interface for updating an uploaded table
 ;;; +--------------------------------------------------
+
+(defn- delete-table-from-app-db! [{table-id :id table-name :name}]
+  ;; These instances will be permanently orphaned, so we might as well clean them up.
+  (doseq [model [:model/DataPermissions
+                 ;; We delete the directly connected cards, for example the initially created model.
+                 ;; More complex cards are left behind, their usage of this table may be incidental.
+                 ;; Perhaps in future we'll also want to delete the native queries that only reference this table.
+                 :model/Card
+                 :model/Segment
+                 :model/LegacyMetric
+                 ;; Both of these would have leaked otherwise, might as well clean them up.
+                 :model/GroupTableAccessPolicy
+                 :model/DataPermissions
+                 ;; will get cleaned up on next sync, but no hard in doing it pre-emptively
+                 :model/TablePrivileges]]
+    (t2/delete! model :table_id table-id))
+
+  (when-let [field-ids (seq (map :id (t2/select :model/Field :id :table_id table-id)))]
+    (doseq [child-model [:model/FieldValues
+                         :model/Dimension
+                         :model/QueryField
+                         :model/LegacyMetricImportantField]]
+      (t2/delete! child-model :field_id [:in field-ids]))
+
+    (t2/delete! :model/Field :id [:in field-ids]) )
+
+  (t2/delete! :model/Table :name table-name))
+
+(defn delete-upload!
+  "Delete the given table from both the app-db and the customer database."
+  [table]
+  (let [database   (table/database table)
+        driver     (driver.u/database->driver database)
+        table-name (table-identifier table)]
+    (check-can-delete database table)
+    (driver/drop-table! driver (:id database) table-name)
+    (delete-table-from-app-db! table)
+    :done))
 
 (def update-action-schema
   "The :action values supported by [[update-csv!]]"

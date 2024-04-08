@@ -2,7 +2,7 @@
   "/api/table endpoints."
   (:require
    [clojure.java.io :as io]
-   [compojure.core :refer [GET POST PUT]]
+   [compojure.core :refer [GET POST PUT DELETE]]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.db.query :as mdb.query]
@@ -520,15 +520,16 @@
   (-> (t2/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
 
 (mu/defn ^:private update-csv!
-  "This helper function exists to make testing the POST /api/table/:id/append-csv endpoint easier."
+  "This helper function exists to make testing the POST /api/table/:id/{action}-csv endpoints easier."
   [options :- [:map
                [:table-id ms/PositiveInt]
                [:file (ms/InstanceOfClass java.io.File)]
                [:action upload/update-action-schema]]]
   (try
-    (let [result (upload/update-csv! options)]
+    (let [_result (upload/update-csv! options)]
       {:status 200
-       :body   result})
+       ;; There is scope to return something more interesting.
+       :body   nil})
     (catch Throwable e
       {:status (or (-> e ex-data :status-code)
                    500)
@@ -551,5 +552,25 @@
   (update-csv! {:table-id id
                 :file     (get-in raw-params ["file" :tempfile])
                 :action   ::upload/replace}))
+
+(defn- delete-csv!
+  "This helper function exists to make testing the DELETE /api/table/:id endpoint easier."
+  [table-id]
+  (try
+    (let [table  (api/check-404 (t2/select-one :model/Table :id table-id))
+          result (upload/delete-upload! table)]
+      {:status 200
+       :body   (= :done result)})
+    (catch Throwable e
+      {:status (or (-> e ex-data :status-code)
+                   500)
+       :body   {:message (or (ex-message e)
+                             (tru "There was an error deleting the table"))}})))
+
+(api/defendpoint ^:multipart DELETE "/:id"
+  "Delete the given table from the database."
+  [id :as {_raw-params :params}]
+  {id ms/PositiveInt}
+  (delete-csv! id))
 
 (api/define-routes)
