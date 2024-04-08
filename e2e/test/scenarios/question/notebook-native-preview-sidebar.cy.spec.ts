@@ -2,7 +2,10 @@ import { onlyOn } from "@cypress/skip-test";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   openReviewsTable,
@@ -175,6 +178,34 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       expect(sidebarWidth).to.be.gt(initialSidebarWidth);
       expect(sidebarWidth).to.eq(maxSidebarWidth);
     });
+
+    cy.log("User preferences should be preserved across sessions");
+    cy.signOut();
+    cy.signInAsAdmin();
+    visitQuestion(ORDERS_COUNT_QUESTION_ID);
+    openNotebook();
+    cy.findByTestId("native-query-preview-sidebar")
+      .should("be.visible")
+      .then($sidebar => {
+        const sidebarWidth = $sidebar[0].getBoundingClientRect().width;
+        expect(sidebarWidth).to.eq(maxSidebarWidth);
+      });
+
+    cy.log("Preferences should not be shared across users");
+    cy.signOut();
+    cy.signInAsNormalUser();
+    visitQuestion(ORDERS_COUNT_QUESTION_ID);
+    openNotebook();
+    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+
+    cy.findByLabelText("View the SQL").click();
+
+    cy.findByTestId("native-query-preview-sidebar")
+      .should("be.visible")
+      .then($sidebar => {
+        const sidebarWidth = $sidebar[0].getBoundingClientRect().width;
+        expect(sidebarWidth).to.eq(minSidebarWidth);
+      });
   });
 });
 
