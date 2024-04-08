@@ -46,7 +46,7 @@ const HoursMinutesInput = ({
           : (value: number) => onChangeHours((hours >= 12 ? 12 : 0) + value)
       }
     />
-    <span className="px1">:</span>
+    <span className={CS.px1}>:</span>
     <NumericInput
       style={{ height: 36 }}
       size={2}
