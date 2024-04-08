@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
@@ -7,6 +8,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import UserAvatar from "metabase/components/UserAvatar";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -48,14 +50,14 @@ const PeopleListRow = ({
 
   return (
     <tr key={user.id}>
-      <td className="flex align-center">
-        <span className="text-white inline-block">
+      <td className={cx(CS.flex, CS.alignCenter)}>
+        <span className={cx(CS.textWhite, CS.inlineBlock)}>
           <UserAvatar
             bg={user.is_superuser ? color("accent2") : color("brand")}
             user={user}
           />
         </span>{" "}
-        <span className="ml2 text-bold">{getName(user)}</span>
+        <span className={cx(CS.ml2, CS.textBold)}>{getName(user)}</span>
       </td>
       <td>
         {user.google_auth ? (
@@ -101,7 +103,7 @@ const PeopleListRow = ({
           <td>
             {user.last_login ? moment(user.last_login).fromNow() : t`Never`}
           </td>
-          <td className="text-right">
+          <td className={CS.textRight}>
             {isAdmin && (
               <EntityMenu
                 triggerIcon="ellipsis"

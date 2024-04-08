@@ -4,6 +4,7 @@ import { t } from "ttag";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import type Question from "metabase-lib/v1/Question";
 
 interface Props {
@@ -40,9 +41,12 @@ export const SavedQuestionIntroModal = ({
 
   return (
     <Modal isOpen={isShowingNewbModal}>
-      <ModalContent title={title} className="Modal-content text-centered py2">
-        <div className="px2 pb2 text-paragraph">{message}</div>
-        <div className="Form-actions flex justify-center py1">
+      <ModalContent
+        title={title}
+        className={cx("Modal-content", CS.textCentered, CS.py2)}
+      >
+        <div className={cx(CS.px2, CS.pb2, CS.textParagraph)}>{message}</div>
+        <div className={cx("Form-actions", CS.flex, CS.justifyCenter, CS.py1)}>
           <button
             className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
             onClick={onClose}

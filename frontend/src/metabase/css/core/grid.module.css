@@ -1,4 +1,4 @@
-:global(.Grid) {
+.Grid {
   display: flex;
   flex-wrap: wrap;
   list-style: none;
@@ -6,36 +6,18 @@
   padding: 0;
 }
 
-:global(.Grid-cell) {
+.GridCell {
   flex: 1;
 }
 
-:global(.Grid--1of2 > .Grid-cell) {
+.Grid1of2 > .GridCell {
   flex: 0 0 50%;
 }
 
-@media (--breakpoint-min-sm) {
-  :global(.small-Grid--1of2 > .Grid-cell) {
-    flex: 0 0 50%;
-  }
-}
-
-@media (--breakpoint-min-md) {
-  :global(.md-Grid--1of2 > .Grid-cell) {
-    flex: 0 0 50%;
-  }
-}
-
-@media (--breakpoint-min-lg) {
-  :global(.large-Grid--1of2 > .Grid-cell) {
-    flex: 0 0 50%;
-  }
-}
-
-:global(.Grid--gutters) {
+.GridGutters {
   margin: -1em 0 1em -1em;
 }
 
-:global(.Grid--gutters > .Grid-cell) {
+.GridGutters > .GridCell {
   padding: 1em 0 0 1em;
 }

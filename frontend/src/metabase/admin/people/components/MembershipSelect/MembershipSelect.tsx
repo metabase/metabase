@@ -1,7 +1,9 @@
+import cx from "classnames";
 import { Fragment } from "react";
 import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import CS from "metabase/css/core/index.css";
 import {
   isDefaultGroup,
   isAdminGroup,
@@ -66,8 +68,8 @@ export const MembershipSelect = ({
 }: MembershipSelectProps) => {
   const selectedGroupIds = Array.from(memberships.keys());
   const triggerElement = (
-    <div className="flex align-center" aria-label="group-summary">
-      <span className="mr1 text-medium">
+    <div className={cx(CS.flex, CS.alignCenter)} aria-label="group-summary">
+      <span className={cx(CS.mr1, CS.textMedium)}>
         <GroupSummary groups={groups} selectedGroupIds={selectedGroupIds} />
       </span>
       <Icon className="text-light" name="chevrondown" size={10} />
@@ -77,7 +79,7 @@ export const MembershipSelect = ({
   if (groups.length === 0) {
     return (
       <PopoverWithTrigger triggerElement={triggerElement}>
-        <span className="p1">{emptyListMessage}</span>
+        <span className={CS.p1}>{emptyListMessage}</span>
       </PopoverWithTrigger>
     );
   }

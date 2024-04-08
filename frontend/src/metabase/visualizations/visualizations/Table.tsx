@@ -3,6 +3,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import * as DataGrid from "metabase/lib/data_grid";
 import { formatColumn } from "metabase/lib/formatting";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
@@ -412,7 +413,13 @@ class Table extends Component<TableProps, TableState> {
       return (
         <div
           className={cx(
-            "flex-full px1 pb1 text-centered flex flex-column layout-centered",
+            CS.flexFull,
+            CS.px1,
+            CS.pb1,
+            CS.textCentered,
+            CS.flex,
+            CS.flexColumn,
+            CS.layoutCentered,
             { "text-slate-light": isDashboard, "text-slate": !isDashboard },
           )}
         >
@@ -423,9 +430,11 @@ class Table extends Component<TableProps, TableState> {
               app/assets/img/hidden-field.png     1x,
               app/assets/img/hidden-field@2x.png  2x
             "
-            className="mb2"
+            className={CS.mb2}
           />
-          <span className="h4 text-bold">{t`Every field is hidden right now`}</span>
+          <span
+            className={cx(CS.h4, CS.textBold)}
+          >{t`Every field is hidden right now`}</span>
         </div>
       );
     }

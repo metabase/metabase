@@ -4,6 +4,7 @@ import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { WithVizSettingsData } from "metabase/dashboard/hoc/WithVizSettingsData";
 import {
   getVirtualCardType,
@@ -231,7 +232,7 @@ export function DashCardVisualization({
 
   return (
     <WrappedVisualization
-      className={cx("flex-full overflow-hidden", {
+      className={cx(CS.flexFull, CS.overflowHidden, {
         "pointer-events-none": isEditingDashboardLayout,
       })}
       classNameWidgets={cx({

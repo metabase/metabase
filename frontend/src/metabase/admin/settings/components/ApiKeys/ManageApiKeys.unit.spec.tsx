@@ -87,15 +87,15 @@ describe("ManageApiKeys", () => {
   });
   it("should create a new API key", async () => {
     await setup();
-    userEvent.click(screen.getByText("Create API Key"));
+    await userEvent.click(screen.getByText("Create API Key"));
     expect(await screen.findByText("Create a new API Key")).toBeInTheDocument();
-    userEvent.type(screen.getByLabelText(/Key name/), "New key");
-    userEvent.click(await screen.findByLabelText(/which group/i));
-    userEvent.click(await screen.findByText("flamingos"));
+    await userEvent.type(screen.getByLabelText(/Key name/), "New key");
+    await userEvent.click(await screen.findByLabelText(/which group/i));
+    await userEvent.click(await screen.findByText("flamingos"));
 
     const createButton = screen.getByRole("button", { name: "Create" });
     await waitFor(() => expect(createButton).toBeEnabled());
-    userEvent.click(createButton);
+    await userEvent.click(createButton);
 
     expect(
       await screen.findByText("Copy and save the API key"),
@@ -106,7 +106,7 @@ describe("ManageApiKeys", () => {
         ?.request?.json(),
     ).toEqual({ name: "New key", group_id: 5 });
 
-    userEvent.click(screen.getByRole("button", { name: "Done" }));
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
 
     await waitFor(() =>
       expect(
@@ -119,7 +119,7 @@ describe("ManageApiKeys", () => {
     const REGEN_URL = "path:/api/api-key/1/regenerate";
     fetchMock.put(REGEN_URL, 200);
 
-    userEvent.click(
+    await userEvent.click(
       within(
         await screen.findByRole("row", {
           name: /development api key/i,
@@ -127,8 +127,12 @@ describe("ManageApiKeys", () => {
       ).getByRole("img", { name: /pencil/i }),
     );
     await screen.findByText("Edit API Key");
-    userEvent.click(screen.getByRole("button", { name: "Regenerate API Key" }));
-    userEvent.click(await screen.findByRole("button", { name: "Regenerate" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Regenerate API Key" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Regenerate" }),
+    );
 
     await screen.findByText("Copy and save the API key");
     expect(
@@ -145,7 +149,7 @@ describe("ManageApiKeys", () => {
     const EDIT_URL = "path:/api/api-key/1";
     fetchMock.put(EDIT_URL, 200);
 
-    userEvent.click(
+    await userEvent.click(
       within(
         await screen.findByRole("row", {
           name: /development api key/i,
@@ -155,14 +159,14 @@ describe("ManageApiKeys", () => {
     await screen.findByText("Edit API Key");
 
     const group = await screen.findByLabelText(/which group/i);
-    userEvent.click(group);
-    userEvent.click(await screen.findByText("flamingos"));
+    await userEvent.click(group);
+    await userEvent.click(await screen.findByText("flamingos"));
 
     const keyName = screen.getByLabelText("Key name");
-    userEvent.clear(keyName);
-    userEvent.type(keyName, "My Key");
+    await userEvent.clear(keyName);
+    await userEvent.type(keyName, "My Key");
 
-    userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(async () => {
       expect(
         await fetchMock.lastCall(EDIT_URL, { method: "PUT" })?.request?.json(),
@@ -179,14 +183,14 @@ describe("ManageApiKeys", () => {
     const DELETE_URL = "path:/api/api-key/1";
     fetchMock.delete(DELETE_URL, 200);
 
-    userEvent.click(
+    await userEvent.click(
       within(
         await screen.findByRole("row", {
           name: /development api key/i,
         }),
       ).getByRole("img", { name: /trash/i }),
     );
-    userEvent.click(
+    await userEvent.click(
       await screen.findByRole("button", { name: "Delete API Key" }),
     );
     await waitFor(() => {

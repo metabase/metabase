@@ -8,6 +8,7 @@ import {
   expectNoBadSnowplowEvents,
   isEE,
   main,
+  popover,
   resetSnowplow,
   restore,
 } from "e2e/support/helpers";
@@ -272,6 +273,7 @@ describe("scenarios > setup", () => {
     });
 
     cy.visit("/browse");
+    cy.findByRole("tab", { name: "Databases" }).click();
     cy.findByTestId("database-browser").findByText(dbName);
   });
 
@@ -314,25 +316,39 @@ describe("scenarios > setup", () => {
       cy.button("Finish").click();
 
       // Finish & Subscribe
+      cy.intercept("GET", "/api/session/properties").as("properties");
       cy.findByText("Take me to Metabase").click();
+    });
+
+    cy.log(
+      "Make sure the embedding secret key is set after embedding has been autoenabled",
+    );
+    cy.wait("@properties").then(request => {
+      expect(request.response?.body["embedding-secret-key"]?.length).to.equal(
+        64,
+      );
     });
 
     cy.location("pathname").should("eq", "/");
 
-    main().findByText("Embed Metabase in your app").should("exist");
-
     main()
-      .findByRole("link", { name: "Learn more" })
-      .should("have.attr", "href")
-      .and(
-        "match",
-        /https:\/\/www.metabase.com\/docs\/[^\/]*\/embedding\/start\.html\?utm_media=embed-minimal-homepage/,
-      );
+      .findByText("Get started with Embedding Metabase in your app")
+      .should("exist");
 
+    // should persist page loads
     cy.reload();
 
-    // should only show up once
-    main().findByText("Embed Metabase in your app").should("not.exist");
+    main()
+      .findByText("Get started with Embedding Metabase in your app")
+      .should("exist");
+
+    main().findByText("Hide these").realHover();
+
+    popover().findByText("Embedding done, all good").click();
+
+    main()
+      .findByText("Get started with Embedding Metabase in your app")
+      .should("not.exist");
   });
 });
 

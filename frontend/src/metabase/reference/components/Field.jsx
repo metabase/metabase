@@ -31,8 +31,8 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
           ) : (
             <div>
               <Link to={url}>
-                <span className="text-brand">{field.display_name}</span>
-                <span className={cx(F.fieldActualName, "ml2")}>
+                <span className={CS.textBrand}>{field.display_name}</span>
+                <span className={cx(F.fieldActualName, CS.ml2)}>
                   {field.name}
                 </span>
               </Link>
@@ -59,7 +59,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
               optionSectionFn={o => o.section}
             />
           ) : (
-            <div className="flex">
+            <div className={CS.flex}>
               <div className={S.leftIcons}>
                 {icon && <Icon className={S.chartIcon} name={icon} size={20} />}
               </div>
@@ -83,7 +83,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         </div>
         <div className={F.fieldDataType}>{field.base_type}</div>
       </div>
-      <div className={cx(S.itemSubtitle, F.fieldSecondary, { mt1: true })}>
+      <div className={cx(S.itemSubtitle, F.fieldSecondary, { [CS.mt1]: true })}>
         <div className={F.fieldForeignKey}>
           {isEditing
             ? (isTypeFK(formField.semantic_type.value) ||
@@ -110,7 +110,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         <div className={F.fieldOther} />
       </div>
       {field.description && (
-        <div className={cx(S.itemSubtitle, "mb2", { mt1: isEditing })}>
+        <div className={cx(S.itemSubtitle, CS.mb2, { [CS.mt1]: isEditing })}>
           {field.description}
         </div>
       )}

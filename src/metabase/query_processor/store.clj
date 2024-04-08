@@ -184,7 +184,7 @@
                                                 [:lib/type :keyword]
                                                 [:id pos-int?]]]]
   "DEPRECATED -- prefer [[metabase.lib.metadata/bulk-metadata-or-throw]] instead."
-  [metadata-type :- [:enum :metadata/card :metadata/column :metadata/metric :metadata/segment :metadata/table]
+  [metadata-type :- [:enum :metadata/card :metadata/column :metadata/legacy-metric :metadata/segment :metadata/table]
    ids           :- [:maybe
                      [:or
                       [:set pos-int?]

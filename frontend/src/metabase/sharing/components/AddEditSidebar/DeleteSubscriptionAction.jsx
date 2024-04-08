@@ -44,7 +44,7 @@ function getConfirmItems(pulse) {
 
 function DeleteSubscriptionAction({ pulse, handleArchive }) {
   return pulse.id != null && !pulse.archived ? (
-    <div className={cx(CS.borderTop, CS.pt1, CS.pb3, CS.flex, "justify-end")}>
+    <div className={cx(CS.borderTop, CS.pt1, CS.pb3, CS.flex, CS.justifyEnd)}>
       <ModalWithTrigger
         triggerClasses={cx(
           ButtonsS.Button,

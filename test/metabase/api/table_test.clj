@@ -83,7 +83,6 @@
   (-> (field-details field)
       (dissoc :dimension_options :default_dimension_option)))
 
-
 (deftest list-table-test
   (testing "GET /api/table"
     (testing "These should come back in alphabetical order and include relevant metadata"
@@ -122,7 +121,50 @@
              (->> (mt/user-http-request :rasta :get 200 "table")
                   (filter #(= (:db_id %) (mt/id))) ; prevent stray tables from affecting unit test results
                   (map #(select-keys % [:name :display_name :id :entity_type]))
-                  set))))))
+                  set))))
+    (testing "Schema is \"\" rather than nil, if not set"
+      (mt/with-temp [Database {database-id :id} {}
+                     Table    {}                {:db_id        database-id
+                                                 :name         "schemaless_table"
+                                                 :display_name "Schemaless"
+                                                 :entity_type  "entity/GenericTable"
+                                                 :schema       nil}]
+        (is (= [""]
+               (->> (mt/user-http-request :rasta :get 200 "table")
+                    (filter #(= (:db_id %) database-id))
+                    (map :schema))))))))
+
+(defmacro with-tables-as-uploads
+  "Temporarily mark the given tables as uploads, as an alternate to making more expensive or brittle changes to the db."
+  [table-keys & body]
+  `(t2/with-transaction []
+     (let [where-clause# {:id [:in (map mt/id ~table-keys)]}]
+       (try
+         (t2/update! :model/Table where-clause# {:is_upload true})
+         ~@body
+         (finally
+           (t2/update! :model/Table where-clause# {:is_upload false}))))))
+
+(deftest list-uploaded-tables-test
+  (testing "GET /api/table/uploaded"
+    (testing "These should come back in alphabetical order and include relevant metadata"
+      (with-tables-as-uploads [:categories :reviews :venues]
+        (is (= #{{:name         (mt/format-name "categories")
+                  :display_name "Categories"
+                  :id           (mt/id :categories)
+                  :entity_type  "entity/GenericTable"}
+                 {:name         (mt/format-name "reviews")
+                  :display_name "Reviews"
+                  :id           (mt/id :reviews)
+                  :entity_type  "entity/GenericTable"}
+                 {:name         (mt/format-name "venues")
+                  :display_name "Venues"
+                  :id           (mt/id :venues)
+                  :entity_type  "entity/GenericTable"}}
+               (->> (mt/user-http-request :rasta :get 200 "table/uploaded")
+                    (filter #(= (:db_id %) (mt/id)))        ; prevent stray tables from affecting unit test results
+                    (map #(select-keys % [:name :display_name :id :entity_type]))
+                    set)))))))
 
 (deftest get-table-test
   (testing "GET /api/table/:id"
@@ -134,6 +176,23 @@
              :display_name "Venues"
              :db_id        (mt/id)})
            (mt/user-http-request :rasta :get 200 (format "table/%d" (mt/id :venues)))))
+
+    (testing " returns schema as \"\" not nil"
+      (mt/with-temp [Database {database-id :id} {}
+                     Table    {table-id :id}    {:db_id        database-id
+                                                 :name         "schemaless_table"
+                                                 :display_name "Schemaless"
+                                                 :entity_type  "entity/GenericTable"
+                                                 :schema       nil}]
+        (is (= (merge
+                 (dissoc (table-defaults) :segments :field_values :metrics :db)
+                 (t2/hydrate (t2/select-one [Table :id :created_at :updated_at :initial_sync_status] :id table-id) :pk_field)
+                 {:schema       ""
+                  :name         "schemaless_table"
+                  :display_name "Schemaless"
+                  :db_id        database-id})
+               (dissoc (mt/user-http-request :rasta :get 200 (str "table/" table-id))
+                       :db)))))
 
     (testing " should return a 403 for a user that doesn't have read permissions for the table"
       (mt/with-temp [Database {database-id :id} {}
@@ -319,6 +378,7 @@
               (t2/hydrate (t2/select-one [Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table)) :pk_field)
               {:description     "What a nice table!"
                :entity_type     nil
+               :schema          ""
                :visibility_type "hidden"
                :display_name    "Userz"})
              (dissoc (mt/user-http-request :crowberto :get 200 (format "table/%d" (u/the-id table)))
@@ -898,7 +958,10 @@
 ;;; |                                          POST /api/table/:id/append-csv                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn append-csv-via-api!
+(defn- append-csv! [options]
+  (@#'api.table/update-csv! (assoc options :action :metabase.upload/append)))
+
+(defn- append-csv-via-api!
   "Upload a small CSV file to the given collection ID. Default args can be overridden"
   []
   (mt/with-current-user (mt/user->id :rasta)
@@ -906,8 +969,8 @@
       (let [file  (upload-test/csv-file-with ["name" "Luke Skywalker" "Darth Vader"] (mt/random-name))
             table (upload-test/create-upload-table!)]
         (mt/with-current-user (mt/user->id :crowberto)
-          (@#'api.table/append-csv! {:id   (:id table)
-                                     :file file}))))))
+          (append-csv! {:table-id (:id table)
+                        :file     file}))))))
 
 (deftest append-csv-test
   (mt/test-driver :h2
@@ -931,6 +994,50 @@
                 table (upload-test/create-upload-table!)]
             (is (.exists file) "File should exist before append-csv!")
             (mt/with-current-user (mt/user->id :crowberto)
-              (@#'api.table/append-csv! {:id   (:id table)
-                                         :file file}))
+              (append-csv! {:table-id (:id table)
+                            :file     file}))
             (is (not (.exists file)) "File should be deleted after append-csv!")))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          POST /api/table/:id/replace-csv                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- replace-csv! [options]
+  (@#'api.table/update-csv! (assoc options :action :metabase.upload/replace)))
+
+(defn- replace-csv-via-api!
+  "Upload a small CSV file to the given collection ID. Default args can be overridden"
+  []
+  (mt/with-current-user (mt/user->id :rasta)
+                        (mt/with-empty-db
+                         (let [file  (upload-test/csv-file-with ["name" "Luke Skywalker" "Darth Vader"] (mt/random-name))
+                               table (upload-test/create-upload-table!)]
+                           (mt/with-current-user (mt/user->id :crowberto)
+                             (replace-csv! {:table-id (:id table)
+                                            :file     file}))))))
+
+(deftest replace-csv-test
+  (mt/test-driver :h2
+    (mt/with-empty-db
+     (testing "Happy path"
+       (mt/with-temporary-setting-values [uploads-enabled true]
+         (is (= {:status 200, :body nil}
+                (replace-csv-via-api!)))))
+     (testing "Failure paths return an appropriate status code and a message in the body"
+       (mt/with-temporary-setting-values [uploads-enabled false]
+         (is (= {:status 422, :body {:message "Uploads are not enabled."}}
+                (replace-csv-via-api!))))))))
+
+(deftest replace-csv-deletes-file-test
+  (testing "File gets deleted after replacing"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/with-empty-db
+         (let [filename (mt/random-name)
+               file     (upload-test/csv-file-with ["name" "Luke Skywalker" "Darth Vader"] filename)
+               table    (upload-test/create-upload-table!)]
+           (is (.exists file) "File should exist before replace-csv!")
+           (mt/with-current-user (mt/user->id :crowberto)
+             (replace-csv! {:table-id (:id table)
+                            :file     file}))
+           (is (not (.exists file)) "File should be deleted after replace-csv!")))))))

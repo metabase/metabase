@@ -491,9 +491,11 @@
                                                         (for [expression expressions
                                                               :let [legacy-clause (->legacy-MBQL expression)]]
                                                           [(lib.util/expression-name expression)
-                                                           ;; We wrap literals in :value ->pMBQL
-                                                           ;; so unwrap this direction
-                                                           (if (= :value (first legacy-clause))
+                                                           ;; We wrap literals in :value ->pMBQL so unwrap this
+                                                           ;; direction. Also, `:aggregation-options` is not allowed
+                                                           ;; inside `:expressions` in legacy, we'll just have to toss
+                                                           ;; the extra info.
+                                                           (if (#{:value :aggregation-options} (first legacy-clause))
                                                              (second legacy-clause)
                                                              legacy-clause)]))))
                 (update-list->legacy-boolean-expression :filters :filter))

@@ -85,7 +85,7 @@ describe("filtering based on the remapped column name should result in a correct
 
 function mapColumnTo({ table, column } = {}) {
   cy.findByText("Database column this maps to")
-    .closest(".Form-field")
+    .closest("[data-testid='form-field']")
     .contains("None")
     .click();
 

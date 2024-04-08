@@ -8,6 +8,7 @@
    [metabase.api.api-key :as api.api-key]
    [metabase.api.automagic-dashboards :as api.magic]
    [metabase.api.bookmark :as api.bookmark]
+   [metabase.api.cache :as api.cache]
    [metabase.api.card :as api.card]
    [metabase.api.collection :as api.collection]
    [metabase.api.common :as api :refer [defroutes context]]
@@ -20,9 +21,9 @@
    [metabase.api.geojson :as api.geojson]
    [metabase.api.google :as api.google]
    [metabase.api.ldap :as api.ldap]
+   [metabase.api.legacy-metric :as api.legacy-metric]
    [metabase.api.login-history :as api.login-history]
    [metabase.api.metabot :as api.metabot]
-   [metabase.api.metric :as api.metric]
    [metabase.api.model-index :as api.model-index]
    [metabase.api.native-query-snippet :as api.native-query-snippet]
    [metabase.api.notify :as api.notify]
@@ -105,8 +106,8 @@
   (context "/activity"             [] (+auth api.activity/routes))
   (context "/alert"                [] (+auth api.alert/routes))
   (context "/automagic-dashboards" [] (+auth api.magic/routes))
-  (context "/card"                 [] (+auth api.card/routes))
   (context "/bookmark"             [] (+auth api.bookmark/routes))
+  (context "/card"                 [] (+auth api.card/routes))
   (context "/collection"           [] (+auth api.collection/routes))
   (context "/dashboard"            [] (+auth api.dashboard/routes))
   (context "/database"             [] (+auth api.database/routes))
@@ -117,15 +118,15 @@
   (context "/geojson"              [] api.geojson/routes)
   (context "/google"               [] (+auth api.google/routes))
   (context "/ldap"                 [] (+auth api.ldap/routes))
+  (context "/legacy-metric"        [] (+auth api.legacy-metric/routes))
   (context "/login-history"        [] (+auth api.login-history/routes))
-  (context "/premium-features"     [] (+auth api.premium-features/routes))
   (context "/metabot"              [] (+auth api.metabot/routes))
-  (context "/legacy-metric"        [] (+auth api.metric/routes))
   (context "/model-index"          [] (+auth api.model-index/routes))
   (context "/native-query-snippet" [] (+auth api.native-query-snippet/routes))
   (context "/notify"               [] (+static-apikey api.notify/routes))
   (context "/permissions"          [] (+auth api.permissions/routes))
   (context "/persist"              [] (+auth api.persist/routes))
+  (context "/premium-features"     [] (+auth api.premium-features/routes))
   (context "/preview_embed"        [] (+auth api.preview-embed/routes))
   (context "/public"               [] (+public-exceptions api.public/routes))
   (context "/pulse"                [] (+auth api.pulse/routes))
@@ -133,6 +134,7 @@
   (context "/search"               [] (+auth api.search/routes))
   (context "/segment"              [] (+auth api.segment/routes))
   (context "/session"              [] api.session/routes)
+  (context "/cache"                [] (+auth api.cache/routes))
   (context "/setting"              [] (+auth api.setting/routes))
   (context "/setup"                [] api.setup/routes)
   (context "/slack"                [] (+auth api.slack/routes))

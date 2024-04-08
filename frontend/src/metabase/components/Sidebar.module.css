@@ -1,4 +1,5 @@
 .sidebar {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
   composes: py2 from "style";
   width: 30%;
   max-width: 500px;
@@ -11,13 +12,9 @@
 }
 
 .item {
-  composes: py1 mb1 from "style";
+  composes: py1 mb1 rounded pl2 from "style";
   align-items: center;
   display: flex;
-}
-
-.item {
-  composes: rounded pl2 from "style";
   font-size: 1em;
   color: var(--color-text-light);
 }
@@ -41,7 +38,7 @@
 }
 
 .name {
-  composes: ml2 text-bold from "style";
+  composes: ml2 textBold from "style";
   color: var(--color-text-medium);
   text-overflow: ellipsis;
   white-space: nowrap;

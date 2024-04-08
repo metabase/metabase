@@ -378,8 +378,8 @@
                       [:source.PRICE :PRICE]]
              :from   [[venues-source-honeysql :source]]
              :where  [:and
-                      [:>= [:raw "\"source\".\"BIRD.ID\""] (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
-                      [:< [:raw "\"source\".\"BIRD.ID\""]  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
+                      [:>= [:raw "\"source\".\"BIRD.ID\""] (t/local-date-time "2017-01-01T00:00")]
+                      [:< [:raw "\"source\".\"BIRD.ID\""]  (t/local-date-time "2017-01-08T00:00")]]
              :limit  [:inline 10]})
            (qp.compile/compile
             (mt/mbql-query venues
@@ -441,7 +441,7 @@
             :params nil}
            (-> (mt/mbql-query venues
                  {:source-query {:source-table $$venues}
-                  :breakout     [[:field [:field "category_id" {:base-type :type/Integer}] nil]]
+                  :breakout     [[:field [:field "CATEGORY_ID" {:base-type :type/Integer}] nil]]
                   :limit        10})
                qp.compile/compile
                (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))
@@ -1288,7 +1288,8 @@
                                       "FROM \"PUBLIC\".\"ORDERS\" "
                                       "WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ?)"
                                       " AND (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?)")
-                         :params [#t "2020-02-01T00:00Z[UTC]" #t "2020-03-01T00:00Z[UTC]"]}]
+                         :params [(t/offset-date-time #t "2020-02-01T00:00Z")
+                                  (t/offset-date-time #t "2020-03-01T00:00Z")]}]
           (testing "original query"
             (when (= driver/*driver* :h2)
               (is (= q1-native
@@ -1404,9 +1405,12 @@
                         {:source-query {:source-table $$orders
                                         :breakout     [!month.product_id->products.created_at]
                                         :aggregation  [[:count]]}
-                         :filter       [:time-interval *created_at/DateTimeWithLocalTZ -32 :year]
+                         :filter       [:time-interval
+                                        [:field (mt/format-name "created_at") {:base-type :type/DateTimeWithLocalTZ}]
+                                        -32
+                                        :year]
                          :aggregation  [[:sum *count/Integer]]
-                         :breakout     [*created_at/DateTimeWithLocalTZ]
+                         :breakout     [[:field (mt/format-name "created_at") {:base-type :type/DateTimeWithLocalTZ}]]
                          :limit        1})]
             (mt/with-native-query-testing-context query
               (is (= [["2016-04-01T00:00:00Z" 175]]

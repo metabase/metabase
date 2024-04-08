@@ -175,21 +175,27 @@ export default class Progress extends Component {
     };
 
     return (
-      <div className={cx(this.props.className, "flex layout-centered")}>
+      <div className={cx(this.props.className, CS.flex, CS.layoutCentered)}>
         <div
-          className="flex-full full-height flex flex-column justify-center"
+          className={cx(
+            CS.flexFull,
+            CS.fullHeight,
+            CS.flex,
+            CS.flexColumn,
+            CS.justifyCenter,
+          )}
           style={{ padding: 10, paddingTop: 0 }}
         >
           <div
             ref={this.containerRef}
-            className="relative text-bold text-medium"
+            className={cx(CS.relative, CS.textBold, CS.textMedium)}
             style={{ height: 20 }}
           >
             <div ref={this.labelRef} style={{ position: "absolute" }}>
               {formatValue(value, settings.column(column))}
             </div>
           </div>
-          <div className="relative" style={{ height: 10, marginBottom: 5 }}>
+          <div className={CS.relative} style={{ height: 10, marginBottom: 5 }}>
             <div
               ref={this.pointerRef}
               style={{
@@ -206,7 +212,7 @@ export default class Progress extends Component {
           </div>
           <div
             ref={this.barRef}
-            className={cx("relative", { "cursor-pointer": isClickable })}
+            className={cx(CS.relative, { [CS.cursorPointer]: isClickable })}
             style={{
               backgroundColor: restColor,
               borderRadius: BORDER_RADIUS,
@@ -237,11 +243,11 @@ export default class Progress extends Component {
                 <IconBorder borderWidth={2}>
                   <Icon name="check" />
                 </IconBorder>
-                <div className="pl2">{barMessage}</div>
+                <div className={CS.pl2}>{barMessage}</div>
               </div>
             )}
           </div>
-          <div className="mt1">
+          <div className={CS.mt1}>
             <span className="float-left">0</span>
             <span className="float-right">{t`Goal ${formatValue(
               goal,

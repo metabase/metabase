@@ -6,6 +6,7 @@
    [clojure.java.io :as io]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
+   [metabase.analyze.query-results :as qr]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
@@ -35,7 +36,6 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.related :as related]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
-   [metabase.sync.analyze.query-results :as qr]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
    [metabase.util :as u]
@@ -117,7 +117,7 @@
                  (when-let [query (some-> card :dataset_query lib.convert/->pMBQL)]
                    (case model-type
                      :segment (lib/uses-segment? query model-id)
-                     :metric (lib/uses-metric? query model-id)))))))
+                     :metric  (lib/uses-legacy-metric? query model-id)))))))
 
 (defmethod cards-for-filter-option* :using_metric
   [_filter-option model-id]
@@ -135,7 +135,9 @@
                                                     :from   [[(t2/table-name :model/QueryField) :qf]]
                                                     :join   [[(t2/table-name :model/Field) :f] [:= :f.id :qf.field_id]
                                                              [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
-                                                    :where  [:= :f.active false]}))
+                                                    :where  [:and
+                                                             [:= :f.active false]
+                                                             [:= :qf.direct_reference true]]}))
         card-ids              (keys card-id->query-fields)
         add-query-fields      (fn [{:keys [id] :as card}]
                                 (assoc card :query_fields (card-id->query-fields id)))]
@@ -547,7 +549,7 @@
                    hydrate-card-details
                    (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
         (when timed-out?
-          (log/info (trs "Metadata not available soon enough. Saving card {0} and asynchronously updating metadata" id))
+          (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
           (card/schedule-metadata-saving result-metadata-chan <>))))))
 
 
@@ -670,9 +672,10 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  [card-id export-format :as {{:keys [parameters]} :params}]
+  [card-id export-format :as {{:keys [parameters format_rows]} :params}]
   {card-id       ms/PositiveInt
    parameters    [:maybe ms/JSONString]
+   format_rows   [:maybe :boolean]
    export-format (into [:enum] api.dataset/export-formats)}
   (qp.card/process-query-for-card
    card-id export-format
@@ -682,7 +685,7 @@
    :middleware  {:process-viz-settings?  true
                  :skip-results-metadata? true
                  :ignore-cached-results? true
-                 :format-rows?           false
+                 :format-rows?           format_rows
                  :js-int-to-string?      false}))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------

@@ -1,5 +1,7 @@
+import cx from "classnames";
 import { isValidElement, useMemo } from "react";
 
+import CS from "metabase/css/core/index.css";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import type {
   ComputedVisualizationSettings,
@@ -25,7 +27,7 @@ const KeyValuePairChartTooltip = ({
   const rows = useMemo(() => getRows(hovered), [hovered]);
 
   return (
-    <table className="py1 px2">
+    <table className={cx(CS.py1, CS.px2)}>
       <tbody>
         {rows.map(({ key, value, col }, index) => (
           <TooltipRow
@@ -51,13 +53,13 @@ export interface TooltipRowProps {
 const TooltipRow = ({ name, value, column, settings }: TooltipRowProps) => (
   <tr>
     {name ? (
-      <TooltipTableCell className="text-light text-right pr1">
+      <TooltipTableCell className={cx(CS.textLight, CS.textRight, CS.pr1)}>
         {name}:
       </TooltipTableCell>
     ) : (
       <TooltipTableCell />
     )}
-    <TooltipTableCell className="text-bold text-left">
+    <TooltipTableCell className={cx(CS.textBold, CS.textLeft)}>
       {isValidElement(value)
         ? value
         : formatValueForTooltip({ value, column, settings })}

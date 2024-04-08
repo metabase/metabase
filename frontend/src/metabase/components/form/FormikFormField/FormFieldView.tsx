@@ -1,7 +1,10 @@
 import cx from "classnames";
 import type * as React from "react";
 
+import PopoverS from "metabase/components/Popover/Popover.module.css";
 import Tooltip from "metabase/core/components/Tooltip";
+import FormS from "metabase/css/components/form.module.css";
+import CS from "metabase/css/core/index.css";
 import type { BaseFieldDefinition } from "metabase-types/forms";
 
 import {
@@ -38,13 +41,15 @@ function FormFieldView({
   standAloneLabel,
   children,
 }: FormFieldViewProps) {
-  const rootClassNames = cx("Form-field", className, {
-    "Form--fieldError": !!error,
-    flex: horizontal,
-  });
-
   return (
-    <div id={fieldId} className={rootClassNames}>
+    <div
+      id={fieldId}
+      data-testid="form-field"
+      className={cx(FormS.FormField, PopoverS.FormField, className, {
+        [FormS.FormFieldError]: !!error,
+        [CS.flex]: horizontal,
+      })}
+    >
       {align === "left" && <InputContainer>{children}</InputContainer>}
       {(title || description) && (
         <FieldContainer horizontal={horizontal} align={align}>
@@ -72,13 +77,16 @@ function FormFieldView({
             )}
           </FieldRow>
           {description && descriptionPosition === "top" && (
-            <FormFieldDescription className="mb1" description={description} />
+            <FormFieldDescription
+              className={CS.mb1}
+              description={description}
+            />
           )}
         </FieldContainer>
       )}
       {align !== "left" && <InputContainer>{children}</InputContainer>}
       {description && descriptionPosition === "bottom" && (
-        <FormFieldDescription className="mt1" description={description} />
+        <FormFieldDescription className={CS.mt1} description={description} />
       )}
     </div>
   );

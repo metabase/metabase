@@ -1,4 +1,5 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
@@ -127,7 +128,7 @@ const MetricDetail = props => {
   });
 
   return (
-    <form style={style} className="full" onSubmit={handleSubmit}>
+    <form style={style} className={CS.full} onSubmit={handleSubmit}>
       {isEditing && (
         <EditHeader
           hasRevisionHistory={true}
@@ -164,9 +165,20 @@ const MetricDetail = props => {
       >
         {() => (
           <div className={CS.wrapper}>
-            <div className="pl4 pr3 pt4 mb4 mb1 bg-white rounded bordered">
+            <div
+              className={cx(
+                CS.pl4,
+                CS.pr3,
+                CS.pt4,
+                CS.mb4,
+                CS.mb1,
+                CS.bgWhite,
+                CS.rounded,
+                CS.bordered,
+              )}
+            >
               <List>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     field={getFormField("description")}
                     name={t`Description`}
@@ -175,7 +187,7 @@ const MetricDetail = props => {
                     isEditing={isEditing}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     field={getFormField("points_of_interest")}
                     name={t`Why this metric is interesting`}
@@ -184,7 +196,7 @@ const MetricDetail = props => {
                     isEditing={isEditing}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     field={getFormField("caveats")}
                     name={t`Things to be aware of about this metric`}
@@ -193,7 +205,7 @@ const MetricDetail = props => {
                     isEditing={isEditing}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     field={getFormField("how_is_this_calculated")}
                     name={t`How this metric is calculated`}
@@ -203,7 +215,7 @@ const MetricDetail = props => {
                   />
                 </li>
                 {table && !isEditing && (
-                  <li className="relative">
+                  <li className={CS.relative}>
                     <Formula
                       type="metric"
                       entity={entity}
@@ -214,7 +226,7 @@ const MetricDetail = props => {
                   </li>
                 )}
                 {!isEditing && (
-                  <li className="relative mt4">
+                  <li className={cx(CS.relative, CS.mt4)}>
                     <FieldsToGroupBy
                       fields={table.fields
                         .map(fieldId => metadataFields[fieldId])

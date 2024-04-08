@@ -2,6 +2,7 @@
   "Tests for /api/dashboard endpoints."
   (:require
    [cheshire.core :as json]
+   [clojure.data.csv :as csv]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -4077,11 +4078,11 @@
                                                                    :type     :query
                                                                    :query    {:expressions  {"VendorTitle" [:concat
                                                                                                             [:field
-                                                                                                             "vendor"
+                                                                                                             "VENDOR"
                                                                                                              {:base-type :type/Text}]
                                                                                                             "🦜🦜🦜"
                                                                                                             [:field
-                                                                                                             "title"
+                                                                                                             "TITLE"
                                                                                                              {:base-type :type/Text}]]},
                                                                               :source-table (format "card__%s" base-card-id)}}}
                          DashboardCard {_ :id} {:dashboard_id       dashboard-id
@@ -4363,3 +4364,25 @@
           (is (=? {:data {:rows [["1" "Red Medicine" "4" 10.0646 -165.374 3]
                                  ["2" "Stout Burgers & Beers" "11" 34.0996 -118.329 2]]}}
                   (mt/user-http-request :crowberto :post 202 (dashboard-card-query-url dashboard-id card-id dashcard-id)))))))))
+
+(deftest ^:parallel format-export-middleware-test
+  (testing "The `:format-export?` query processor middleware has the intended effect on file exports."
+    (let [q             {:database (mt/id)
+                         :type     :native
+                         :native   {:query "SELECT 2000 AS number, '2024-03-26'::DATE AS date;"}}
+          output-helper {:csv  (fn [output] (->> output csv/read-csv last))
+                         :json (fn [output] (->> output (map (juxt :NUMBER :DATE)) last))}]
+      (t2.with-temp/with-temp [Card {card-id :id} {:display :table :dataset_query q}
+                               Dashboard {dashboard-id :id} {}
+                               DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
+                                                                :card_id      card-id}]
+        (doseq [[export-format apply-formatting? expected] [[:csv true ["2,000" "March 26, 2024"]]
+                                                            [:csv false ["2000" "2024-03-26"]]
+                                                            [:json true ["2,000" "March 26, 2024"]]
+                                                            [:json false [2000 "2024-03-26"]]]]
+          (testing (format "export_format %s yields expected output for %s exports." apply-formatting? export-format)
+              (is (= expected
+                     (->> (mt/user-http-request
+                           :crowberto :post 200
+                           (format "/dashboard/%s/dashcard/%s/card/%s/query/%s?format_rows=%s"                                   dashboard-id dashcard-id card-id (name export-format) apply-formatting?))
+                          ((get output-helper export-format)))))))))))

@@ -200,7 +200,7 @@ class PublicQuestionInner extends Component {
 
     const actionButtons = result && (
       <QueryDownloadWidget
-        className="m1 text-medium-hover"
+        className={cx(CS.m1, "text-medium-hover")}
         question={question}
         result={result}
         uuid={uuid}
@@ -221,7 +221,7 @@ class PublicQuestionInner extends Component {
         setParameterValueToDefault={this.setParameterValueToDefault}
       >
         <LoadingAndErrorWrapper
-          className="flex-full"
+          className={CS.flexFull}
           loading={!result || !initialized}
           error={typeof result === "string" ? result : null}
           noWrapper

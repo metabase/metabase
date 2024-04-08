@@ -14,27 +14,19 @@ const isAllowedHTTPMethod = (method: any): method is AllowedHTTPMethods => {
 };
 
 // custom fetcher that wraps our Api client
-export const apiQuery: BaseQueryFn = async (args, ctx, extraOptions: any) => {
+export const apiQuery: BaseQueryFn = async (args, ctx) => {
   const method = typeof args === "string" ? "GET" : args?.method ?? "GET";
   const url = typeof args === "string" ? args : args.url;
+  const { bodyParamName, noEvent } = args;
 
   if (!isAllowedHTTPMethod(method)) {
     return { error: "Invalid HTTP method" };
   }
 
   try {
-    const abortControllerOption = ctx.signal
-      ? { controller: ctx.signal }
-      : undefined;
-    const options = Object.assign(
-      {},
-      abortControllerOption,
-      extraOptions?.requestOptions,
-    );
-
     const response = await api[method](url)(
       { ...args?.body, ...args?.params },
-      options,
+      { signal: ctx.signal, bodyParamName, noEvent },
     );
     return { data: response };
   } catch (error) {

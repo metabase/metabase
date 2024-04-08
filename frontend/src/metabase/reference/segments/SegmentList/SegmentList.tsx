@@ -39,7 +39,7 @@ export function SegmentList({ style }: SegmentListProps) {
   );
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   return (
-    <div style={style} className="full">
+    <div style={style} className={CS.full}>
       <ReferenceHeader name={t`Segments`} />
       <LoadingAndErrorWrapper
         loading={!loadingError && loading}

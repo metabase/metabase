@@ -1,8 +1,10 @@
 import { combineReducers } from "@reduxjs/toolkit";
+import cx from "classnames";
 import { handleActions } from "redux-actions";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { RestfulRequest } from "metabase/lib/request";
 import { addUndo } from "metabase/redux/undo";
 import { AlertApi } from "metabase/services";
@@ -57,8 +59,12 @@ export const createAlert = alert => {
     dispatch(
       addUndo({
         message: () => (
-          <div className="flex align-center text-bold">
-            <Icon name="alert_confirm" size="19" className="mr2 text-success" />
+          <div className={cx(CS.flex, CS.alignCenter, CS.textBold)}>
+            <Icon
+              name="alert_confirm"
+              size="19"
+              className={cx(CS.mr2, "text-success")}
+            />
             {t`Your alert is all set up.`}
           </div>
         ),
@@ -97,8 +103,12 @@ export const updateAlert = alert => {
     dispatch(
       addUndo({
         message: () => (
-          <div className="flex align-center text-bold">
-            <Icon name="alert_confirm" size="19" className="mr2 text-success" />
+          <div className={cx(CS.flex, CS.alignCenter, CS.textBold)}>
+            <Icon
+              name="alert_confirm"
+              size="19"
+              className={cx(CS.mr2, "text-success")}
+            />
             {t`Your alert was updated.`}
           </div>
         ),
@@ -145,8 +155,12 @@ export const deleteAlert = alertId => {
     dispatch(
       addUndo({
         message: () => (
-          <div className="flex align-center text-bold">
-            <Icon name="alert_confirm" size="19" className="mr2 text-success" />
+          <div className={cx(CS.flex, CS.alignCenter, CS.textBold)}>
+            <Icon
+              name="alert_confirm"
+              size="19"
+              className={cx(CS.mr2, "text-success")}
+            />
             {t`The alert was successfully deleted.`}
           </div>
         ),

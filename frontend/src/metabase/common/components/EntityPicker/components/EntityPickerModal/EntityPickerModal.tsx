@@ -1,11 +1,11 @@
 import { useWindowEvent } from "@mantine/hooks";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
+import type { SearchModelType, SearchResultId } from "metabase-types/api";
 
 import type {
   EntityPickerOptions,
@@ -17,43 +17,45 @@ import { EntityPickerSearchInput } from "../EntityPickerSearch/EntityPickerSearc
 import { ButtonBar } from "./ButtonBar";
 import {
   GrowFlex,
-  ModalContent,
   ModalBody,
+  ModalContent,
   SinglePickerView,
 } from "./EntityPickerModal.styled";
 import { TabsView } from "./TabsView";
 
 export type EntityPickerModalOptions = {
-  showPersonalCollection?: boolean;
-  showRootCollection?: boolean;
   showSearch?: boolean;
   hasConfirmButtons?: boolean;
   allowCreateNew?: boolean;
+  confirmButtonText?: string;
+  cancelButtonText?: string;
 };
 
 export const defaultOptions: EntityPickerModalOptions = {
-  showPersonalCollection: true,
-  showRootCollection: true,
   showSearch: true,
   hasConfirmButtons: true,
   allowCreateNew: true,
 };
 
-export interface EntityPickerModalProps<TItem> {
+export interface EntityPickerModalProps<Model extends string, Item> {
   title?: string;
-  selectedItem: TItem | null;
+  selectedItem: Item | null;
   onConfirm: () => void;
-  onItemSelect: (item: TItem) => void;
+  onItemSelect: (item: Item) => void;
   canSelectItem: boolean;
   onClose: () => void;
-  tabs: [EntityTab, ...EntityTab[]]; // Enforces that the array is not empty
+  tabs: [EntityTab<Model>, ...EntityTab<Model>[]]; // Enforces that the array is not empty
   options?: Partial<EntityPickerOptions>;
-  searchResultFilter?: (results: SearchResult[]) => SearchResult[];
+  searchResultFilter?: (results: Item[]) => Item[];
   actionButtons?: JSX.Element[];
   trapFocus?: boolean;
 }
 
-export function EntityPickerModal<TItem extends TypeWithModel>({
+export function EntityPickerModal<
+  Id extends SearchResultId,
+  Model extends SearchModelType,
+  Item extends TypeWithModel<Id, Model>,
+>({
   title = t`Choose an item`,
   onItemSelect,
   canSelectItem,
@@ -65,11 +67,9 @@ export function EntityPickerModal<TItem extends TypeWithModel>({
   actionButtons = [],
   searchResultFilter,
   trapFocus = true,
-}: EntityPickerModalProps<TItem>) {
+}: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
-    null,
-  );
+  const [searchResults, setSearchResults] = useState<Item[] | null>(null);
 
   const hydratedOptions = useMemo(
     () => ({
@@ -101,6 +101,7 @@ export function EntityPickerModal<TItem extends TypeWithModel>({
       onClose={onClose}
       data-testid="entity-picker-modal"
       trapFocus={trapFocus}
+      zIndex={400} // needed to put this above the BulkActionsToast
       closeOnEscape={false} // we're doing this manually in useWindowEvent
     >
       <Modal.Overlay />
@@ -109,7 +110,7 @@ export function EntityPickerModal<TItem extends TypeWithModel>({
           <GrowFlex justify="space-between">
             <Modal.Title lh="2.5rem">{title}</Modal.Title>
             {hydratedOptions.showSearch && (
-              <EntityPickerSearchInput
+              <EntityPickerSearchInput<Id, Model, Item>
                 models={tabModels}
                 setSearchResults={setSearchResults}
                 searchQuery={searchQuery}
@@ -139,6 +140,8 @@ export function EntityPickerModal<TItem extends TypeWithModel>({
                 onCancel={onClose}
                 canConfirm={canSelectItem}
                 actionButtons={actionButtons}
+                confirmButtonText={options?.confirmButtonText}
+                cancelButtonText={options?.cancelButtonText}
               />
             )}
           </ErrorBoundary>

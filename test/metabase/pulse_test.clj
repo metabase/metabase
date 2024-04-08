@@ -854,7 +854,7 @@
              #"You do not have permissions to view Card [\d,]+."
              (send-pulse-created-by-user!* :rasta)))))))
 
-(defn- get-positive-retry-metrics [retry]
+(defn- get-positive-retry-metrics [^io.github.resilience4j.retry.Retry retry]
   (let [metrics (bean (.getMetrics retry))]
     (into {}
           (map (fn [field]

@@ -8,6 +8,7 @@ import _ from "underscore";
 
 import Link from "metabase/core/components/Link";
 import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
 import * as Urls from "metabase/lib/urls";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -87,7 +88,7 @@ class PartialQueryBuilder extends Component {
     const previewUrl = Urls.serializedQuestion(question.card());
 
     return (
-      <div className="py1">
+      <div className={CS.py1}>
         <GuiQueryEditor
           features={features}
           legacyQuery={legacyQuery}
@@ -97,8 +98,8 @@ class PartialQueryBuilder extends Component {
           supportMultipleAggregations={false}
           canChangeTable={this.props.canChangeTable}
         >
-          <div className="flex align-center mx2 my2">
-            <span className="text-bold px3">{previewSummary}</span>
+          <div className={cx(CS.flex, CS.alignCenter, CS.mx2, CS.my2)}>
+            <span className={cx(CS.textBold, CS.px3)}>{previewSummary}</span>
             <Link
               to={previewUrl}
               target={window.OSX ? null : "_blank"}

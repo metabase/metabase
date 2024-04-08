@@ -20,7 +20,10 @@ import CS from "metabase/css/core/index.css";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { zoomInRow } from "metabase/query_builder/actions";
-import { getQueryBuilderMode } from "metabase/query_builder/selectors";
+import {
+  getRowIndexToPKMap,
+  getQueryBuilderMode,
+} from "metabase/query_builder/selectors";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { Icon, DelayGroup } from "metabase/ui";
 import {
@@ -77,6 +80,7 @@ function pickRowsToMeasure(rows, columnIndex, count = 10) {
 
 const mapStateToProps = state => ({
   queryBuilderMode: getQueryBuilderMode(state),
+  rowIndexToPkMap: getRowIndexToPKMap(state),
 });
 
 const mapDispatchToProps = dispatch => ({
@@ -391,6 +395,7 @@ class TableInteractive extends Component {
       console.error(e);
     }
   }
+
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   _getCellClickedObjectCached(
     data,
@@ -446,6 +451,7 @@ class TableInteractive extends Component {
       console.error(e);
     }
   }
+
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   _visualizationIsClickableCached(visualizationIsClickable, clicked) {
     return visualizationIsClickable(clicked);
@@ -479,17 +485,24 @@ class TableInteractive extends Component {
     }
   }
 
-  pkClick = rowIndex => {
-    const objectId = this.state.IDColumn
-      ? this.props.data.rows[rowIndex][this.state.IDColumnIndex]
-      : rowIndex;
-    return e => this.props.onZoomRow(objectId);
+  pkClick = rowIndex => () => {
+    let objectId;
+
+    if (this.state.IDColumn) {
+      objectId = this.props.data.rows[rowIndex][this.state.IDColumnIndex];
+    } else {
+      objectId = this.props.rowIndexToPkMap[rowIndex] ?? rowIndex;
+    }
+
+    this.props.onZoomRow(objectId);
   };
 
   onKeyDown = event => {
     const detailEl = this.detailShortcutRef.current;
     const visibleDetailButton =
-      !!detailEl && Array.from(detailEl.classList).includes("show") && detailEl;
+      !!detailEl &&
+      Array.from(detailEl.classList).includes(CS.show) &&
+      detailEl;
     const canViewRowDetail = !this.props.isPivoted && !!visibleDetailButton;
 
     if (event.key === "Enter" && canViewRowDetail) {
@@ -562,15 +575,17 @@ class TableInteractive extends Component {
           backgroundColor,
         }}
         className={cx(
-          "TableInteractive-cellWrapper text-dark hover-parent hover--visibility",
+          "TableInteractive-cellWrapper text-dark",
+          CS.hoverParent,
+          CS.hoverVisibility,
           {
             "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
             padLeft: columnIndex === 0 && !showDetailShortcut,
             "TableInteractive-cellWrapper--lastColumn":
               columnIndex === cols.length - 1,
             "TableInteractive-emptyCell": value == null,
-            "cursor-pointer": isClickable,
-            "justify-end": isColumnRightAligned(column),
+            [CS.cursorPointer]: isClickable,
+            [CS.justifyEnd]: isColumnRightAligned(column),
             "Table-ID": value != null && isID(column),
             "Table-FK": value != null && isFK(column),
             link: isClickable && isID(column),
@@ -590,7 +605,7 @@ class TableInteractive extends Component {
         {isCollapsed && (
           <ExpandButton
             data-testid="expand-column"
-            className="hover-child"
+            className={CS.hoverChild}
             small
             borderless
             iconSize={10}
@@ -706,9 +721,9 @@ class TableInteractive extends Component {
 
     return (
       <TableDraggable
-        /* needs to be index+name+counter so Draggable resets after each drag */
         enableUserSelectHack={false}
         enableCustomUserSelectHack={!isVirtual}
+        /* needs to be index+name+counter so Draggable resets after each drag */
         key={columnIndex + column.name + DRAG_COUNTER}
         axis="x"
         disabled={!isDraggable}
@@ -772,8 +787,8 @@ class TableInteractive extends Component {
                 columnIndex === cols.length - 1,
               "TableInteractive-cellWrapper--active": isDragging,
               "TableInteractive-headerCellData--sorted": isSorted,
-              "cursor-pointer": isClickable,
-              "justify-end": isRightAligned,
+              [CS.cursorPointer]: isClickable,
+              [CS.justifyEnd]: isRightAligned,
             },
           )}
           role="columnheader"
@@ -801,7 +816,7 @@ class TableInteractive extends Component {
               <Ellipsified tooltip={columnTitle}>
                 {isSortable && isRightAligned && (
                   <Icon
-                    className="Icon mr1"
+                    className={cx("Icon", CS.mr1)}
                     name={isAscending ? "chevronup" : "chevrondown"}
                     size={10}
                     data-testid={columnInfoPopoverTestId}
@@ -810,7 +825,7 @@ class TableInteractive extends Component {
                 {columnTitle}
                 {isSortable && !isRightAligned && (
                   <Icon
-                    className="Icon ml1"
+                    className={cx("Icon", CS.ml1)}
                     name={isAscending ? "chevronup" : "chevrondown"}
                     size={10}
                     data-testid={columnInfoPopoverTestId}
@@ -930,7 +945,7 @@ class TableInteractive extends Component {
       if (newIndex >= this.props.data.rows.length) {
         return;
       }
-      hoverDetailEl.classList.add("show");
+      hoverDetailEl.classList.add(CS.show);
       hoverDetailEl.style.top = `${newIndex * ROW_HEIGHT - scrollOffset}px`;
       hoverDetailEl.dataset.showDetailRowindex = newIndex;
       hoverDetailEl.onclick = this.pkClick(newIndex);
@@ -938,14 +953,14 @@ class TableInteractive extends Component {
     }
 
     const targetOffset = event?.currentTarget?.offsetTop;
-    hoverDetailEl.classList.add("show");
+    hoverDetailEl.classList.add(CS.show);
     hoverDetailEl.style.top = `${targetOffset - scrollOffset}px`;
     hoverDetailEl.dataset.showDetailRowindex = rowIndex;
     hoverDetailEl.onclick = this.pkClick(rowIndex);
   };
 
   handleLeaveRow = () => {
-    this.detailShortcutRef.current.classList.remove("show");
+    this.detailShortcutRef.current.classList.remove(CS.show);
   };
 
   handleOnMouseEnter = () => {
@@ -989,7 +1004,7 @@ class TableInteractive extends Component {
             }
             return (
               <TableInteractiveRoot
-                className={cx(className, "TableInteractive relative", {
+                className={cx(className, "TableInteractive", CS.relative, {
                   "TableInteractive--pivot": this.props.isPivoted,
                   "TableInteractive--ready": this.state.contentWidths,
                   // no hover if we're dragging a column
@@ -1047,7 +1062,7 @@ class TableInteractive extends Component {
                     overflow: "hidden",
                     paddingRight: getScrollBarSize(),
                   }}
-                  className="TableInteractive-header scroll-hide-all"
+                  className={cx("TableInteractive-header", CS.scrollHideAll)}
                   width={width || 0}
                   height={headerHeight}
                   rowCount={1}
@@ -1056,7 +1071,7 @@ class TableInteractive extends Component {
                   columnWidth={this.getDisplayColumnWidth}
                   cellRenderer={props =>
                     gutterColumn && props.columnIndex === 0
-                      ? () => null // we need a phantom cell to properly offset columns
+                      ? null // we need a phantom cell to properly offset columns
                       : this.tableHeaderRenderer({
                           ...props,
                           columnIndex: props.columnIndex - gutterColumn,
@@ -1085,7 +1100,7 @@ class TableInteractive extends Component {
                   rowHeight={ROW_HEIGHT}
                   cellRenderer={props =>
                     gutterColumn && props.columnIndex === 0
-                      ? () => null // we need a phantom cell to properly offset columns
+                      ? null // we need a phantom cell to properly offset columns
                       : this.cellRenderer({
                           ...props,
                           columnIndex: props.columnIndex - gutterColumn,
@@ -1113,6 +1128,7 @@ class TableInteractive extends Component {
     const height = grid.scrollHeight;
     let top = 0;
     let start = Date.now();
+
     // console.profile();
     function next() {
       grid.scrollTop = top;
@@ -1131,6 +1147,7 @@ class TableInteractive extends Component {
         }
       }, 40);
     }
+
     next();
   }
 }
@@ -1151,7 +1168,7 @@ export default _.compose(
 
 const DetailShortcut = forwardRef((_props, ref) => (
   <div
-    className="TableInteractive-cellWrapper cursor-pointer"
+    className={cx("TableInteractive-cellWrapper", CS.cursorPointer)}
     ref={ref}
     style={{
       position: "absolute",
@@ -1168,7 +1185,7 @@ const DetailShortcut = forwardRef((_props, ref) => (
         iconOnly
         iconSize={10}
         icon="expand"
-        className="TableInteractive-detailButton"
+        className={CS.TableInteractiveDetailButton}
       />
     </Tooltip>
   </div>
