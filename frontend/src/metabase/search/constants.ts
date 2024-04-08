@@ -24,4 +24,4 @@ export const enabledSearchTypes: EnabledSearchModelType[] = [
 export const SearchContextTypes = {
   SEARCH_BAR: "search-bar",
   SEARCH_APP: "search-app",
-};
+} as const;
