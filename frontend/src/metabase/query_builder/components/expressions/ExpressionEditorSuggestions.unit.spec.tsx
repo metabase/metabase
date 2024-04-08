@@ -1,7 +1,7 @@
 import { useRef } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import type * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
@@ -66,7 +66,9 @@ describe("ExpressionEditorSuggestions", () => {
   test("suggestions items should show column info icon", async () => {
     setup({ source: "[" });
 
-    await screen.findAllByTestId("expression-suggestions-list-item");
+    await waitFor(() =>
+      screen.findAllByTestId("expression-suggestions-list-item"),
+    );
 
     expect(screen.getAllByLabelText("More info").length).toBeGreaterThanOrEqual(
       1,
@@ -76,7 +78,9 @@ describe("ExpressionEditorSuggestions", () => {
   test("suggestions items should show function helptext info icons", async () => {
     setup({ source: "con" });
 
-    await screen.findAllByTestId("expression-suggestions-list-item");
+    await waitFor(() =>
+      screen.findAllByTestId("expression-suggestions-list-item"),
+    );
 
     expect(screen.getAllByLabelText("More info").length).toBeGreaterThanOrEqual(
       1,
