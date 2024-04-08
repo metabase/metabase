@@ -32,7 +32,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.signInAsAdmin();
   });
 
-  it("should show empty sidebar when no data source is selcted", () => {
+  it("should show empty sidebar when no data source is selected", () => {
     cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
     openReviewsTable({ mode: "notebook", limit: 1 });
     cy.findByLabelText("View the SQL").click();
