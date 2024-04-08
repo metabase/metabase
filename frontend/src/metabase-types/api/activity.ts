@@ -1,4 +1,4 @@
-export type ActivityItemId = number;
+export type ActivityItemId = number | string;
 export type ActivityItemModel = "table" | "card" | "dataset" | "dashboard";
 
 export interface ActivityModelObject {
