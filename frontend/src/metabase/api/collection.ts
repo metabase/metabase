@@ -8,7 +8,16 @@ import type {
 import { Api } from "./api";
 import { idTag, listTag, MODEL_TO_TAG_TYPE } from "./tags";
 
-function searchItemListTags(
+const COLLECTION_ITEM_MODELS: CollectionItemModel[] = [
+  "card",
+  "dataset",
+  "dashboard",
+  "snippet",
+  "collection",
+  "indexed-entity",
+];
+
+function collectionItemListTags(
   items: CollectionItem[],
   models: CollectionItemModel[],
 ) {
@@ -29,8 +38,8 @@ export const collectionApi = Api.injectEndpoints({
         url: `/api/collection/${id}/items`,
         body,
       }),
-      providesTags: (response, error, { models = [] }) =>
-        searchItemListTags(
+      providesTags: (response, error, { models = COLLECTION_ITEM_MODELS }) =>
+        collectionItemListTags(
           response?.data ?? [],
           Array.isArray(models) ? models : [models],
         ),

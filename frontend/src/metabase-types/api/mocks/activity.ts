@@ -1,8 +1,12 @@
-import type { ModelObject, PopularItem, RecentItem } from "metabase-types/api";
+import type {
+  ActivityModelObject,
+  PopularItem,
+  RecentItem,
+} from "metabase-types/api";
 
 export const createMockModelObject = (
-  opts?: Partial<ModelObject>,
-): ModelObject => ({
+  opts?: Partial<ActivityModelObject>,
+): ActivityModelObject => ({
   name: "Orders",
   ...opts,
 });

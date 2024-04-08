@@ -8,6 +8,20 @@ import type {
 import { Api } from "./api";
 import { idTag, listTag, MODEL_TO_TAG_TYPE } from "./tags";
 
+const SEARCH_MODELS: SearchModelType[] = [
+  "action",
+  "card",
+  "collection",
+  "dashboard",
+  "database",
+  "dataset",
+  "indexed-entity",
+  "metric",
+  "segment",
+  "snippet",
+  "table",
+];
+
 function searchItemListTags(items: SearchResult[], models: SearchModelType[]) {
   return [
     ...models.map(type => listTag(MODEL_TO_TAG_TYPE[type])),
@@ -23,7 +37,7 @@ export const searchApi = Api.injectEndpoints({
         url: "/api/search",
         body,
       }),
-      providesTags: (response, error, { models = [] }) =>
+      providesTags: (response, error, { models = SEARCH_MODELS }) =>
         searchItemListTags(
           response?.data ?? [],
           Array.isArray(models) ? models : [models],
