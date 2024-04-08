@@ -46,7 +46,7 @@ export const timelineEventApi = Api.injectEndpoints({
         invalidateTags(error, [
           listTag("timeline-event"),
           idTag("timeline-event", id),
-          ...(event ? [idTag("timeline", event.timeline_id)] : []),
+          tag("timeline"),
         ]),
     }),
     deleteTimelineEvent: builder.mutation<TimelineEvent, TimelineEventId>({

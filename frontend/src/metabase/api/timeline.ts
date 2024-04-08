@@ -11,6 +11,16 @@ import type {
 import { Api } from "./api";
 import { idTag, invalidateTags, listTag, tag } from "./tags";
 
+function timelineTags(timeline: Timeline) {
+  return [
+    idTag("timeline", timeline.id),
+    ...(timeline.collection
+      ? [idTag("collection", timeline.collection.id)]
+      : []),
+    ...(timeline.events ?? []).map(event => idTag("timeline-event", event.id)),
+  ];
+}
+
 export const timelineApi = Api.injectEndpoints({
   endpoints: builder => ({
     listTimelines: builder.query<Timeline[], ListTimelinesRequest>({
@@ -21,12 +31,7 @@ export const timelineApi = Api.injectEndpoints({
       }),
       providesTags: (timelines = []) => [
         listTag("timeline"),
-        ...timelines.flatMap(timeline => [
-          idTag("timeline", timeline.id),
-          ...(timeline.events ?? []).map(event =>
-            idTag("timeline-event", event.id),
-          ),
-        ]),
+        ...timelines.flatMap(timeline => timelineTags(timeline)),
       ],
     }),
     listCollectionTimelines: builder.query<
@@ -40,12 +45,7 @@ export const timelineApi = Api.injectEndpoints({
       }),
       providesTags: (timelines = []) => [
         listTag("timeline"),
-        ...timelines.flatMap(timeline => [
-          idTag("timeline", timeline.id),
-          ...(timeline.events ?? []).map(event =>
-            idTag("timeline-event", event.id),
-          ),
-        ]),
+        ...timelines.flatMap(timeline => timelineTags(timeline)),
       ],
     }),
     getTimeline: builder.query<Timeline, GetTimelineRequest>({
@@ -54,15 +54,7 @@ export const timelineApi = Api.injectEndpoints({
         url: `/api/timeline/${id}`,
         body,
       }),
-      providesTags: timeline =>
-        timeline
-          ? [
-              idTag("timeline", timeline.id),
-              ...(timeline.events ?? []).map(event =>
-                idTag("timeline-event", event.id),
-              ),
-            ]
-          : [],
+      providesTags: timeline => (timeline ? timelineTags(timeline) : []),
     }),
     createTimeline: builder.mutation<Timeline, CreateTimelineRequest>({
       query: body => ({
@@ -92,7 +84,11 @@ export const timelineApi = Api.injectEndpoints({
         url: `/api/timeline/${id}`,
       }),
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [listTag("timeline"), idTag("timeline", id)]),
+        invalidateTags(error, [
+          listTag("timeline"),
+          idTag("timeline", id),
+          tag("timeline-event"),
+        ]),
     }),
   }),
 });
