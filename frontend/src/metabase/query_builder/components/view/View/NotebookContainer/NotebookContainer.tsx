@@ -41,6 +41,7 @@ export const NotebookContainer = ({
   const minSidebarWidth = 428;
   const maxSidebarWidth = windowWidth - minNotebookWidth;
   const sidebarWidth = notebookNativePreviewSidebarWidth || minSidebarWidth;
+  const windowBreakpoint = 1280;
 
   const handleTransitionEnd: TransitionEventHandler<HTMLDivElement> = (
     event,
@@ -115,13 +116,13 @@ export const NotebookContainer = ({
         </Box>
       )}
 
-      {isShowingNotebookNativePreview && windowWidth < 1280 && (
+      {isShowingNotebookNativePreview && windowWidth < windowBreakpoint && (
         <Box pos="absolute" inset={0}>
           <NativeQueryPreviewSidebar />
         </Box>
       )}
 
-      {isShowingNotebookNativePreview && windowWidth >= 1280 && (
+      {isShowingNotebookNativePreview && windowWidth >= windowBreakpoint && (
         <ResizableBox
           width={sidebarWidth}
           minConstraints={[minSidebarWidth, 0]}
