@@ -15,6 +15,7 @@ export const TAG_TYPES = [
   "table",
   "timeline",
   "timeline-event",
+  "user",
 ] as const;
 
 export const MODEL_TO_TAG_TYPE = {

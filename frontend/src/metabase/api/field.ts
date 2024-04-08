@@ -1,3 +1,5 @@
+import type { TagDescription } from "@reduxjs/toolkit/query";
+
 import type {
   FieldId,
   SearchFieldValuesRequest,
@@ -11,7 +13,26 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
+import type { TagType } from "./tags";
 import { idTag, invalidateTags, listTag, tag } from "./tags";
+
+function fieldTags(field: Field): TagDescription<TagType>[] {
+  return [
+    ...(typeof field.id === "number" ? [idTag("field", field.id)] : []),
+    ...(field.target ? fieldTags(field.target) : []),
+    ...(field.table ? [idTag("table", field.table.id)] : []),
+    ...(field.name_field ? fieldTags(field.name_field) : []),
+    ...(field.dimensions ?? []).flatMap(dimension =>
+      dimension.human_readable_field
+        ? fieldTags(dimension.human_readable_field)
+        : [],
+    ),
+  ];
+}
+
+function fieldValuesTags(id: FieldId) {
+  return [idTag("field-values", id)];
+}
 
 export const fieldApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -21,14 +42,14 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${id}`,
         body,
       }),
-      providesTags: (_, error, { id }) => [idTag("field", id)],
+      providesTags: field => (field ? fieldTags(field) : []),
     }),
     getFieldValues: builder.query<GetFieldValuesResponse, FieldId>({
       query: id => ({
         method: "GET",
         url: `/api/field/${id}/values`,
       }),
-      providesTags: (_, error, fieldId) => [idTag("field-values", fieldId)],
+      providesTags: (_, error, fieldId) => fieldValuesTags(fieldId),
     }),
     searchFieldValues: builder.query<FieldValue[], SearchFieldValuesRequest>({
       query: ({ fieldId, searchFieldId, ...body }) => ({
@@ -36,7 +57,7 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${fieldId}/search/${searchFieldId}`,
         body,
       }),
-      providesTags: (_, error, { fieldId }) => [idTag("field-values", fieldId)],
+      providesTags: (_, error, { fieldId }) => fieldValuesTags(fieldId),
     }),
     updateField: builder.mutation<Field, UpdateFieldRequest>({
       query: ({ id, ...body }) => ({

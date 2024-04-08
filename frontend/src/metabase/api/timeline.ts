@@ -17,7 +17,7 @@ function timelineTags(timeline: Timeline) {
     ...(timeline.collection
       ? [idTag("collection", timeline.collection.id)]
       : []),
-    ...(timeline.events ?? []).map(event => idTag("timeline-event", event.id)),
+    ...(timeline.events ? [listTag("timeline-event")] : []),
   ];
 }
 
@@ -31,7 +31,7 @@ export const timelineApi = Api.injectEndpoints({
       }),
       providesTags: (timelines = []) => [
         listTag("timeline"),
-        ...timelines.flatMap(timeline => timelineTags(timeline)),
+        ...timelines.flatMap(timelineTags),
       ],
     }),
     listCollectionTimelines: builder.query<
@@ -45,7 +45,7 @@ export const timelineApi = Api.injectEndpoints({
       }),
       providesTags: (timelines = []) => [
         listTag("timeline"),
-        ...timelines.flatMap(timeline => timelineTags(timeline)),
+        ...timelines.flatMap(timelineTags),
       ],
     }),
     getTimeline: builder.query<Timeline, GetTimelineRequest>({

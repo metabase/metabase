@@ -8,6 +8,13 @@ import type {
 import { Api } from "./api";
 import { idTag, invalidateTags, listTag, tag } from "./tags";
 
+function timelineEventTags(event: TimelineEvent) {
+  return [
+    idTag("timeline-event", event.id),
+    ...(event.creator ? [idTag("user", event.creator.id)] : []),
+  ];
+}
+
 export const timelineEventApi = Api.injectEndpoints({
   endpoints: builder => ({
     getTimelineEvent: builder.query<TimelineEvent, TimelineEventId>({
@@ -15,8 +22,7 @@ export const timelineEventApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/timeline-event/${id}`,
       }),
-      providesTags: timelineEvent =>
-        timelineEvent ? [idTag("timeline-event", timelineEvent.id)] : [],
+      providesTags: event => (event ? timelineEventTags(event) : []),
     }),
     createTimelineEvent: builder.mutation<
       TimelineEvent,

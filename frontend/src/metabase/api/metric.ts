@@ -9,6 +9,13 @@ import type {
 import { Api } from "./api";
 import { idTag, invalidateTags, listTag, tag } from "./tags";
 
+function metricTags(metric: Metric) {
+  return [
+    idTag("metric", metric.id),
+    ...(metric.table ? [idTag("table", metric.table.id)] : []),
+  ];
+}
+
 export const metricApi = Api.injectEndpoints({
   endpoints: builder => ({
     listMetrics: builder.query<Metric[], void>({
@@ -18,7 +25,7 @@ export const metricApi = Api.injectEndpoints({
       }),
       providesTags: (metrics = []) => [
         listTag("metric"),
-        ...(metrics.map(({ id }) => idTag("metric", id)) ?? []),
+        ...metrics.flatMap(metricTags),
       ],
     }),
     getMetric: builder.query<Metric, MetricId>({
@@ -26,7 +33,7 @@ export const metricApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/legacy-metric/${id}`,
       }),
-      providesTags: metric => (metric ? [idTag("metric", metric.id)] : []),
+      providesTags: metric => (metric ? metricTags(metric) : []),
     }),
     createMetric: builder.mutation<Metric, CreateMetricRequest>({
       query: body => ({

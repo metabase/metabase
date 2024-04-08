@@ -9,6 +9,13 @@ import type {
 import { Api } from "./api";
 import { idTag, invalidateTags, listTag, tag } from "./tags";
 
+function segmentTags(segment: Segment) {
+  return [
+    idTag("segment", segment.id),
+    ...(segment.table ? [idTag("segment", segment.table.id)] : []),
+  ];
+}
+
 export const segmentApi = Api.injectEndpoints({
   endpoints: builder => ({
     listSegments: builder.query<Segment[], void>({
@@ -18,7 +25,7 @@ export const segmentApi = Api.injectEndpoints({
       }),
       providesTags: (segments = []) => [
         listTag("segment"),
-        ...(segments.map(({ id }) => idTag("segment", id)) ?? []),
+        ...segments.flatMap(segmentTags),
       ],
     }),
     getSegment: builder.query<Segment, SegmentId>({
@@ -26,7 +33,7 @@ export const segmentApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/segment/${id}`,
       }),
-      providesTags: segment => (segment ? [idTag("segment", segment.id)] : []),
+      providesTags: segment => (segment ? segmentTags(segment) : []),
     }),
     createSegment: builder.mutation<Segment, CreateSegmentRequest>({
       query: body => ({

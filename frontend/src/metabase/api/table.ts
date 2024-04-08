@@ -12,6 +12,17 @@ import type {
 import { Api } from "./api";
 import { idTag, invalidateTags, listTag, tag } from "./tags";
 
+function tableTags(table: Table) {
+  return [
+    idTag("table", table.id),
+    ...(table.db ? [idTag("database", table.db.id)] : []),
+    ...(table.fields ? [listTag("field")] : []),
+    // TODO: fks
+    ...(table.segments ? [listTag("segment")] : []),
+    ...(table.metrics ? [listTag("metric")] : []),
+  ];
+}
+
 export const tableApi = Api.injectEndpoints({
   endpoints: builder => ({
     listTables: builder.query<Table[], void>({
@@ -21,7 +32,7 @@ export const tableApi = Api.injectEndpoints({
       }),
       providesTags: (tables = []) => [
         listTag("table"),
-        ...(tables.map(({ id }) => idTag("table", id)) ?? []),
+        ...tables.flatMap(tableTags),
       ],
     }),
     getTable: builder.query<Table, GetTableRequest>({
@@ -29,7 +40,7 @@ export const tableApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/table/${id}`,
       }),
-      providesTags: table => (table ? [idTag("table", table.id)] : []),
+      providesTags: table => (table ? tableTags(table) : []),
     }),
     getTableMetadata: builder.query<Table, GetTableMetadataRequest>({
       query: ({ id, ...body }) => ({
@@ -37,7 +48,7 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}/query_metadata`,
         body,
       }),
-      providesTags: table => (table ? [idTag("table", table.id)] : []),
+      providesTags: table => (table ? tableTags(table) : []),
     }),
     listTableForeignKeys: builder.query<Field[], TableId>({
       query: id => ({
