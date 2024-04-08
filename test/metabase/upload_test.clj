@@ -348,11 +348,7 @@
   `(do-with-uploads-allowed (fn [] ~@body)))
 
 (defn do-with-upload-table! [table thunk]
-  (try (thunk table)
-       (finally
-         (driver/drop-table! driver/*driver*
-                             (:db_id table)
-                             (#'upload/table-identifier table)))))
+  (thunk table))
 
 (defn- table->card [table]
   (t2/select-one :model/Card :table_id (:id table)))

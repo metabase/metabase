@@ -67,6 +67,7 @@
                               :now                                                 true
                               :persist-models                                      true
                               :schemas                                             true
+                              :uploads                                             true
                               :sql/window-functions.order-by-output-column-numbers false}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
@@ -78,7 +79,6 @@
 (doseq [feature [:actions
                  :actions/custom
                  :table-privileges
-                 :uploads
                  :index-info]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
