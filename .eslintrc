@@ -200,10 +200,7 @@
         "*.unit.spec.jsx"
       ],
       "rules": {
-        "jest/valid-title": ["error", { "ignoreTypeOfDescribeName": true }],
-        // In unit tests, you should use `act(() => {})` to invoke things causing state updates
-        // and rerenders to remove lengthy warnings from jest. Disabling the rule allows this.
-        "testing-library/no-unnecessary-act": "off"
+        "jest/valid-title": ["error", { "ignoreTypeOfDescribeName": true }]
       }
     }
   ]

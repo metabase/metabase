@@ -68,6 +68,8 @@ title: Driver interface changelog
   fussy BigQuery working. (More on this soon.) If all else fails, you can always specify that your driver does not
   support `:window-functions`, and it will fall back to using the old broken implementation.
 
+- `metabase.driver.common/class->base-type` no longer supports Joda Time classes. They have been deprecated since 2019.
+
 ## Metabase 0.49.1
 
 - Another driver feature has been added: `describe-fields`. If a driver opts-in to supporting this feature, The

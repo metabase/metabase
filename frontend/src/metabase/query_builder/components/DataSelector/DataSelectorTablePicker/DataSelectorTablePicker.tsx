@@ -84,6 +84,7 @@ const DataSelectorTablePicker = ({
           database: selectedDatabase,
         })),
         loading: tables.length === 0 && isLoading,
+        type: "back",
       },
     ];
 

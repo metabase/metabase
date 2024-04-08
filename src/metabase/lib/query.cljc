@@ -10,6 +10,7 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -95,31 +96,25 @@
                       {:legacy-query legacy-query}
                       e)))))
 
-(defn- query-from-unknown-query [metadata-providerable query]
-  (assoc (lib.convert/->pMBQL query)
-         :lib/type     :mbql/query
-         :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)))
-
-(mu/defn ^:private query-from-existing :- ::lib.schema/query
-  "Create a pMBQL query from either an existing pMBQL query (attaching metadata provider as needed), or from a legacy MBQL
-  query (converting it to pMBQL)."
-  [metadata-providerable :- lib.metadata/MetadataProviderable
-   query                 :- :map]
-  (let [f (if (some #(get query %) [:type "type"])
-            query-from-legacy-query
-            query-from-unknown-query)]
-    (f metadata-providerable query)))
-
 (defmulti ^:private query-method
   "Implementation for [[query]]."
   {:arglists '([metadata-providerable x])}
   (fn [_metadata-providerable x]
-    (lib.dispatch/dispatch-value x))
+    (or (lib.util/normalized-query-type x)
+        (lib.dispatch/dispatch-value x)))
   :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod query-method :query ; legacy MBQL query
+  [metadata-providerable legacy-query]
+  (query-from-legacy-query metadata-providerable legacy-query))
+
+(defmethod query-method :native ; legacy native query
+  [metadata-providerable legacy-query]
+  (query-from-legacy-query metadata-providerable legacy-query))
 
 (defmethod query-method :dispatch-type/map
   [metadata-providerable query]
-  (query-from-existing metadata-providerable query))
+  (query-method metadata-providerable (assoc (lib.convert/->pMBQL query) :lib/type :mbql/query)))
 
 ;;; this should already be a query in the shape we want but:
 ;; - let's make sure it has the database metadata that was passed in
@@ -130,7 +125,8 @@
   (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
         query (-> query
                   (assoc :lib/metadata metadata-provider)
-                  (dissoc :lib.convert/converted?))
+                  (dissoc :lib.convert/converted?)
+                  lib.normalize/normalize)
         stages (:stages query)]
     (cond-> query
       converted?

@@ -7,9 +7,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
-  (:import
-   (org.joda.time DateTime)))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -247,11 +245,10 @@
     java.math.BigInteger           :type/BigInteger
     Number                         :type/Number
     String                         :type/Text
-    ;; java.sql types and Joda-Time types should be considered DEPRECATED
+    ;; java.sql types should be considered DEPRECATED
     java.sql.Date                  :type/Date
     java.sql.Timestamp             :type/DateTime
     java.util.Date                 :type/Date
-    DateTime                       :type/DateTime
     java.util.UUID                 :type/UUID
     clojure.lang.IPersistentMap    :type/Dictionary
     clojure.lang.IPersistentVector :type/Array

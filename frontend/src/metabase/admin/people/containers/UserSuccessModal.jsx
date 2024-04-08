@@ -76,7 +76,7 @@ const PasswordSuccess = ({ user, temporaryPassword }) => (
     <PasswordReveal password={temporaryPassword} />
     <div
       style={{ paddingLeft: "5em", paddingRight: "5em" }}
-      className={cx("pt4", CS.textCentered)}
+      className={cx(CS.pt4, CS.textCentered)}
     >
       {jt`If you want to be able to send email invites, just go to the ${(
         <Link to="/admin/settings/email" className={cx(CS.link, CS.textBold)}>

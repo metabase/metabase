@@ -8,6 +8,7 @@ import { useMount } from "react-use";
 import _ from "underscore";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
+import CS from "metabase/css/core/index.css";
 import {
   FixedWidthContainer,
   ParametersFixedWidthContainer,
@@ -191,7 +192,7 @@ function EmbedFrame({
                   <TitleAndDescription
                     title={finalName}
                     description={description}
-                    className="my2"
+                    className={CS.my2}
                   />
                 </FixedWidthContainer>
               </TitleAndDescriptionContainer>

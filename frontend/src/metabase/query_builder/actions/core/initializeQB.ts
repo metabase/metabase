@@ -8,7 +8,11 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { deserializeCardFromUrl, loadCard } from "metabase/lib/card";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
-import { getIsEditingInDashboard } from "metabase/query_builder/selectors";
+import {
+  getIsEditingInDashboard,
+  getIsNotebookNativePreviewShown,
+  getNotebookNativePreviewSidebarWidth,
+} from "metabase/query_builder/selectors";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -362,6 +366,12 @@ async function handleQBInit(
   });
 
   const objectId = params?.objectId || queryParams?.objectId;
+
+  uiControls.isShowingNotebookNativePreview = getIsNotebookNativePreviewShown(
+    getState(),
+  );
+  uiControls.notebookNativePreviewSidebarWidth =
+    getNotebookNativePreviewSidebarWidth(getState());
 
   dispatch({
     type: INITIALIZE_QB,

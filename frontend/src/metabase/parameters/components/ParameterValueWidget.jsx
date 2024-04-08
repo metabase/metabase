@@ -236,7 +236,7 @@ class ParameterValueWidget extends Component {
                 size={16}
               />
             )}
-            <div className={cx("mr1", CS.textNoWrap)}>
+            <div className={cx(CS.mr1, CS.textNoWrap)}>
               <FormattedParameterValue
                 parameter={parameter}
                 value={value}

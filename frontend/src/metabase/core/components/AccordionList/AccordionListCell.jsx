@@ -3,6 +3,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import ListS from "metabase/css/components/list.module.css";
@@ -12,8 +13,11 @@ import { Icon, Box } from "metabase/ui";
 
 import {
   ListCellItem,
+  ListCellHeader,
   FilterContainer,
   Content,
+  IconWrapper,
+  EmptyStateContainer,
 } from "./AccordionListCell.styled";
 
 export const AccordionListCell = ({
@@ -68,8 +72,9 @@ export const AccordionListCell = ({
       const icon = renderSectionIcon(section);
       const name = section.name;
       content = (
-        <div
+        <ListCellHeader
           data-element-id="list-section-header"
+          borderBottom={section.type === "back"}
           className={cx(
             ListS.ListSectionHeader,
             CS.px2,
@@ -122,11 +127,60 @@ export const AccordionListCell = ({
               />
             </span>
           )}
-        </div>
+        </ListCellHeader>
       );
     }
+  } else if (type === "action") {
+    const icon = renderSectionIcon(section);
+    const name = section.name;
+    content = (
+      <ListCellHeader
+        className={cx(
+          "List-section-header",
+          CS.px2,
+          CS.py2,
+          CS.flex,
+          CS.alignCenter,
+          CS.hoverParent,
+          {
+            "List-section-header--cursor": hasCursor,
+            [CS.cursorPointer]: canToggleSections,
+            [CS.textBrand]: sectionIsExpanded(sectionIndex),
+          },
+        )}
+        role="button"
+        onClick={
+          canToggleSections ? () => toggleSection(sectionIndex) : undefined
+        }
+      >
+        {icon && (
+          <span
+            className={cx(CS.mr1, CS.flex, CS.alignCenter, "List-section-icon")}
+          >
+            {icon}
+          </span>
+        )}
+        {name && (
+          <h3 className={cx("List-section-title", CS.textWrap)}>{name}</h3>
+        )}
+        {showSpinner(section) && (
+          <Box ml="0.5rem">
+            <LoadingSpinner size={16} borderWidth={2} />
+          </Box>
+        )}
+        <IconWrapper>
+          <Icon name="chevronright" size={12} />
+        </IconWrapper>
+      </ListCellHeader>
+    );
   } else if (type === "header-hidden") {
-    content = <div className="my1" />;
+    content = <div className={CS.my1} />;
+  } else if (type === "no-results") {
+    content = (
+      <EmptyStateContainer>
+        <EmptyState message={t`Didn't find any results`} icon="search" />
+      </EmptyStateContainer>
+    );
   } else if (type === "loading") {
     content = (
       <div className={cx(CS.m1, CS.flex, CS.layoutCentered)}>
@@ -155,6 +209,7 @@ export const AccordionListCell = ({
     const description = renderItemDescription(item);
     const extra = renderItemExtra(item, isSelected);
     const label = renderItemLabel ? renderItemLabel(item) : name;
+
     content = (
       <ListCellItem
         data-testid={itemTestId}

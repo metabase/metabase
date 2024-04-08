@@ -1344,11 +1344,16 @@
   Question, or another query. Suggested conditions will be returned if the existing query has a foreign key to the
   primary key of the `joinable`. (See #31175 for more info.)
 
+  When editing a join, the `position` (0-based index) of the join should be provided. Any columns introduced by that
+  join or later joins are treated as not available for join conditions.
+
   Returns `[]` if we cannot determine any \"obvious\" join conditions.
 
   > **Code health:** Healthy"
-  [a-query stage-number joinable]
-  (to-array (lib.core/suggested-join-conditions a-query stage-number joinable)))
+  ([a-query stage-number joinable]
+   (to-array (lib.core/suggested-join-conditions a-query stage-number joinable)))
+  ([a-query stage-number joinable position]
+   (to-array (lib.core/suggested-join-conditions a-query stage-number joinable position))))
 
 (defn ^:export join-fields
   "Get the fields list associated with `a-join`. That is, the set of fields from the *joinable* which are being joined
