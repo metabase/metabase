@@ -71,6 +71,7 @@ export const NotebookContainer = ({
 
       return (
         <Box
+          data-testid="notebook-native-preview-resize-handle"
           ref={ref}
           {...props}
           pos="absolute"

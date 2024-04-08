@@ -138,6 +138,44 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       });
     },
   );
+
+  it("sidebar should be resizable", () => {
+    const borderWidth = 1;
+    const sidebarMargin = 4;
+    const minNotebookWidth = 640;
+    const minSidebarWidth = 428 - borderWidth;
+    const maxSidebarWidth =
+      Cypress.config("viewportWidth") -
+      minNotebookWidth -
+      borderWidth -
+      sidebarMargin;
+
+    cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
+    cy.intercept("PUT", "/api/setting/notebook-native-preview-shown").as(
+      "updatePreviewState",
+    );
+
+    openReviewsTable({ mode: "notebook", limit: 1 });
+    cy.findByLabelText("View the SQL").click();
+    cy.wait("@updatePreviewState");
+    cy.wait("@nativeDataset");
+
+    cy.log(
+      "It should not be possible to shrink the sidebar below its min (initial) width",
+    );
+    resizeSidebar(200, (initialSidebarWidth, sidebarWidth) => {
+      expect(initialSidebarWidth).to.eq(minSidebarWidth);
+      expect(sidebarWidth).to.eq(initialSidebarWidth);
+    });
+
+    cy.log(
+      "It should be possible to resize the sidebar but not above its max width",
+    );
+    resizeSidebar(-500, (initialSidebarWidth, sidebarWidth) => {
+      expect(sidebarWidth).to.be.gt(initialSidebarWidth);
+      expect(sidebarWidth).to.eq(maxSidebarWidth);
+    });
+  });
 });
 
 describe("converting question to SQL (metabase#12651, metabase#21615, metabase#32121, metabase#40422)", () => {
@@ -357,4 +395,38 @@ function convertToSql() {
   cy.button("Convert this question to SQL").click();
   cy.wait("@dataset");
   cy.findByTestId("native-query-editor").should("be.visible");
+}
+
+type ResizeSidebarCallback = (
+  initialSidebarWidth: number,
+  sidebarWidth: number,
+) => void;
+
+function resizeSidebar(amount: number, cb: ResizeSidebarCallback) {
+  cy.intercept("PUT", "/api/setting/notebook-native-preview-sidebar-width").as(
+    "updateSidebarWidth",
+  );
+  cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+
+  cy.findByTestId("native-query-preview-sidebar").then($sidebar => {
+    const initialSidebarWidth = $sidebar[0].getBoundingClientRect().width;
+
+    const options = {
+      pointer: "mouse" as const,
+      position: "center" as const,
+      button: "left" as const,
+    };
+
+    cy.findByTestId("notebook-native-preview-resize-handle")
+      .realMouseDown(options)
+      .realMouseMove(amount, 0, options)
+      .realMouseUp(options);
+
+    cy.wait(["@updateSidebarWidth", "@sessionProperties"]);
+
+    cy.findByTestId("native-query-preview-sidebar").then($sidebar => {
+      const sidebarWidth = $sidebar[0].getBoundingClientRect().width;
+      cb(initialSidebarWidth, sidebarWidth);
+    });
+  });
 }
