@@ -9,6 +9,7 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.analyze.query-results :as qr]
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
@@ -40,7 +41,6 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.server.middleware.session :as mw.session]
    [metabase.shared.util.i18n :refer [trs]]
-   [metabase.sync.analyze.query-results :as qr]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.i18n :refer [tru]]
@@ -189,7 +189,8 @@
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (def ^:private excluded-columns-for-card-revision
-  [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version :initially_published_at])
+  [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version
+   :initially_published_at :cache_invalidated_at])
 
 (defmethod revision/revert-to-revision! :model/Card
   [model id user-id serialized-card]
@@ -642,20 +643,17 @@ saved later when it is ready."
           id              (:id card)]
       (cond (= port timeoutc)
             (do (a/close! result-metadata-chan)
-                (log/info (trs "Metadata not ready in {0} minutes, abandoning"
-                               (long (/ metadata-async-timeout-ms 1000 60)))))
+                (log/infof "Metadata not ready in %s minutes, abandoning" (long (/ metadata-async-timeout-ms 1000 60))))
 
             (not (seq metadata))
-            (log/info (trs "Not updating metadata asynchronously for card {0} because no metadata"
-                           id))
+            (log/infof "Not updating metadata asynchronously for card %s because no metadata" id)
             :else
             (future
               (let [current-query (t2/select-one-fn :dataset_query Card :id id)]
                 (if (= (:dataset_query card) current-query)
                   (do (t2/update! Card id {:result_metadata metadata})
-                      (log/info (trs "Metadata updated asynchronously for card {0}" id)))
-                  (log/info (trs "Not updating metadata asynchronously for card {0} because query has changed"
-                                 id)))))))))
+                      (log/infof "Metadata updated asynchronously for card %s" id))
+                  (log/infof "Not updating metadata asynchronously for card %s because query has changed" id))))))))
 
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
@@ -694,7 +692,7 @@ saved later when it is ready."
      (when-not delay-event?
        (events/publish-event! :event/card-create {:object card :user-id (:id creator)}))
      (when timed-out?
-       (log/info (trs "Metadata not available soon enough. Saving new card and asynchronously updating metadata")))
+       (log/info "Metadata not available soon enough. Saving new card and asynchronously updating metadata"))
      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
      ;; returned one -- See #4283
      (u/prog1 card
@@ -914,7 +912,8 @@ saved later when it is ready."
         (update :parameters             serdes/export-parameters)
         (update :parameter_mappings     serdes/export-parameter-mappings)
         (update :visualization_settings serdes/export-visualization-settings)
-        (update :result_metadata        (partial export-result-metadata card)))
+        (update :result_metadata        (partial export-result-metadata card))
+        (dissoc :cache_invalidated_at))
     (catch Exception e
       (throw (ex-info (format "Failed to export Card: %s" (ex-message e)) {:card card} e)))))
 

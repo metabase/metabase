@@ -77,14 +77,17 @@ const MetadataTableColumn = ({
       data-testid={`column-${field.name}`}
     >
       <div className={cx(CS.flex, CS.flexColumn, CS.flexAuto)}>
-        <div className="text-monospace mb1" style={{ fontSize: "12px" }}>
+        <div
+          className={cx(CS.textMonospace, CS.mb1)}
+          style={{ fontSize: "12px" }}
+        >
           {getFieldRawName(field)}
         </div>
         <div className={cx(CS.flex, CS.flexColumn)}>
           <div>
             <ColumnInput
               style={{ minWidth: 420 }}
-              className="float-left inline-block"
+              className={cx(CS.floatLeft, CS.inlineBlock)}
               type="text"
               value={field.displayName()}
               onBlurChange={handleChangeName}
@@ -93,14 +96,14 @@ const MetadataTableColumn = ({
               <div className={cx(CS.flex, CS.flexAuto)}>
                 <div className={cx(CS.pl1, CS.flexAuto)}>
                   <FieldVisibilityPicker
-                    className="block"
+                    className={CS.block}
                     field={field}
                     onUpdateField={onUpdateField}
                   />
                 </div>
                 <div className={cx(CS.flexAuto, CS.px1)}>
                   <SemanticTypeAndTargetPicker
-                    className="block"
+                    className={CS.block}
                     field={field}
                     idFields={idFields}
                     onUpdateField={onUpdateField}

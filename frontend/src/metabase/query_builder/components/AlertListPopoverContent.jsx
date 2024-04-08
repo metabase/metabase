@@ -87,11 +87,11 @@ class AlertListPopoverContent extends Component {
           <div className={cx(CS.borderTop, CS.p2, "bg-light-blue")}>
             <a
               className={cx(
-                "link",
+                CS.link,
                 CS.flex,
                 CS.alignCenter,
                 CS.textBold,
-                "text-small",
+                CS.textSmall,
               )}
               onClick={this.onAdd}
             >
@@ -174,23 +174,23 @@ class AlertListItemInner extends Component {
         })}
       >
         <Icon name="alert" size="20" />
-        <div className="full ml2">
+        <div className={cx(CS.full, CS.ml2)}>
           <div className={cx(CS.flex, "align-top")}>
             <div>
               <AlertCreatorTitle alert={alert} user={user} />
             </div>
             <div
-              className="ml-auto text-bold text-small"
+              className={cx(CS.mlAuto, CS.textBold, CS.textSmall)}
               style={{
                 transform: `translateY(4px)`,
               }}
             >
               {(isAdmin || isCurrentUser) && (
-                <a className="link" onClick={this.onEdit}>{jt`Edit`}</a>
+                <a className={CS.link} onClick={this.onEdit}>{jt`Edit`}</a>
               )}
               {!isAdmin && !unsubscribingProgress && (
                 <a
-                  className="link ml2"
+                  className={cx(CS.link, CS.ml2)}
                   onClick={this.onUnsubscribe}
                 >{jt`Unsubscribe`}</a>
               )}
@@ -203,9 +203,9 @@ class AlertListItemInner extends Component {
           {
             // To-do: @kdoh wants to look into overall alignment
           }
-          <ul className={cx(CS.flex, CS.mt2, "text-small")}>
+          <ul className={cx(CS.flex, CS.mt2, CS.textSmall)}>
             <li className={cx(CS.flex, CS.alignCenter)}>
-              <Icon name="clock" size="12" className="mr1" />{" "}
+              <Icon name="clock" size="12" className={CS.mr1} />{" "}
               <AlertScheduleText
                 schedule={alert.channels[0]}
                 verbose={!isAdmin}

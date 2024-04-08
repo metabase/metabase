@@ -40,8 +40,8 @@ export const ArchivedItem = ({
       CS.flex,
       CS.alignCenter,
       CS.p2,
-      "hover-parent",
-      "hover--visibility",
+      CS.hoverParent,
+      CS.hoverVisibility,
       CS.borderBottom,
       "bg-light-hover",
     )}
@@ -63,7 +63,7 @@ export const ArchivedItem = ({
     />
     {name}
     {(onUnarchive || onDelete) && (
-      <span className="ml-auto mr2">
+      <span className={cx(CS.mlAuto, CS.mr2)}>
         {onUnarchive && (
           <Tooltip
             tooltip={t`Unarchive this ${getTranslatedEntityName(
@@ -72,7 +72,7 @@ export const ArchivedItem = ({
           >
             <ActionIcon
               onClick={onUnarchive}
-              className="hover-child"
+              className={CS.hoverChild}
               name="unarchive"
             />
           </Tooltip>
@@ -85,7 +85,7 @@ export const ArchivedItem = ({
           >
             <ActionIcon
               onClick={onDelete}
-              className="hover-child"
+              className={CS.hoverChild}
               name="trash"
             />
           </Tooltip>

@@ -1042,23 +1042,62 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
+(defn- all-unique?
+  [funnel-rows]
+  (let [ks (into #{} (map :key) funnel-rows)]
+    (= (count ks) (count funnel-rows))))
+
+(defn- funnel-rows
+  "Creates the expected row form for the javascript side of our funnel rendering.
+  If funnel-viz exists, we want to use the value in :key as the first elem in the row.
+
+  Eg. funnel-viz -> [{:key \"asdf\" :name \"Asdf\" :enabled true}
+                     {:key \"wasd\" :name \"Wasd\" :enabled true}]
+        raw-rows -> [[1 234] [2 5678]]
+
+  Should become: [[\"asdf\" 234]
+                  [\"wasd\" 5678]]
+
+  Additionally, raw-rows can come in with strings already. In this case we want simply to re-order
+  The raw-rows based on the order of the funnel-rows.
+
+  Eg. funnel-viz -> [{:key \"wasd\" :name \"Wasd\" :enabled true}
+                     {:key \"asdf\" :name \"Asdf\" :enabled true}]
+        raw-rows ->  [[\"asdf\" 234] [\"wasd\" 5678]]
+
+  Should become: [[\"wasd\" 5678]
+                  [\"asdf\" 234]]"
+  [funnel-viz raw-rows]
+  (if (string? (ffirst raw-rows))
+    ;; re-create the rows with the order/visibility specified in the funnel-viz
+    (let [rows (into {} (vec raw-rows))]
+      (for [{k        :key
+             enabled? :enabled} funnel-viz
+            :when               enabled?]
+        [k (get rows k)]))
+    ;; re-create the rows with the label/visibilty specified in the funnel-viz
+    (let [rows-data (map (fn [{k :key enabled? :enabled} [_ value]]
+                           (when enabled?
+                             [k value])) funnel-viz raw-rows)]
+      (remove nil? rows-data))))
+
 (mu/defmethod render :funnel :- formatter/RenderedPulseCard
   [_chart-type render-type _timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (formatter/graphing-column-row-fns card data)
-        funnel-rows    (:funnel.rows viz-settings)
+        funnel-viz    (:funnel.rows viz-settings)
         raw-rows       (map (juxt x-axis-rowfn y-axis-rowfn)
                             (formatter/row-preprocess x-axis-rowfn y-axis-rowfn rows))
-        rows           (cond->> raw-rows
-                         funnel-rows (mapv (fn [[idx val]]
-                                             [(get-in funnel-rows [(dec idx) :key]) val])))
-        [x-col y-col]  cols
-        settings       (as-> (->js-viz x-col y-col viz-settings) jsviz-settings
-                         (assoc jsviz-settings :step    {:name   (:display_name x-col)
-                                                         :format (:x jsviz-settings)}
-                                :measure {:format (:y jsviz-settings)}))
-        svg            (js-svg/funnel rows settings)
-        image-bundle   (image-bundle/make-image-bundle render-type svg)]
+        rows          (if (and funnel-viz (all-unique? funnel-viz))
+                         (funnel-rows funnel-viz raw-rows)
+                         raw-rows)
+        [x-col y-col] cols
+        settings      (as-> (->js-viz x-col y-col viz-settings) jsviz-settings
+                        (assoc jsviz-settings :step    {:name   (:display_name x-col)
+                                                        :format (:x jsviz-settings)}
+                               :measure {:format (:y jsviz-settings)}))
+        svg           (js-svg/funnel rows settings)
+        image-bundle  (image-bundle/make-image-bundle render-type svg)]
     {:attachments
      (image-bundle/image-bundle->attachment image-bundle)
 

@@ -260,7 +260,7 @@ describe("AddToDashSelectDashModal", () => {
         name: "Create a new dashboard",
       });
 
-      userEvent.click(createNewDashboard);
+      await userEvent.click(createNewDashboard);
 
       // opened CreateDashboardModal
       expect(
@@ -448,7 +448,7 @@ describe("AddToDashSelectDashModal", () => {
           });
 
           it('should render "Create a new dashboard" option when opening public subcollections', async () => {
-            userEvent.click(
+            await userEvent.click(
               screen.getByRole("heading", {
                 name: COLLECTION.name,
               }),
@@ -460,7 +460,7 @@ describe("AddToDashSelectDashModal", () => {
               }),
             ).toBeInTheDocument();
 
-            userEvent.click(
+            await userEvent.click(
               screen.getByRole("heading", {
                 name: SUBCOLLECTION.name,
               }),
@@ -474,7 +474,7 @@ describe("AddToDashSelectDashModal", () => {
           });
 
           it('should render "Create a new dashboard" option when opening personal subcollections', async () => {
-            userEvent.click(
+            await userEvent.click(
               screen.getByRole("heading", {
                 name: PERSONAL_COLLECTION.name,
               }),
@@ -486,7 +486,7 @@ describe("AddToDashSelectDashModal", () => {
               }),
             ).toBeInTheDocument();
 
-            userEvent.click(
+            await userEvent.click(
               screen.getByRole("heading", {
                 name: PERSONAL_SUBCOLLECTION.name,
               }),
@@ -500,20 +500,23 @@ describe("AddToDashSelectDashModal", () => {
           });
 
           describe('when "Create a new dashboard" option is clicked', () => {
-            beforeEach(() => {
+            beforeEach(async () => {
               // Open "Create a new dashboard" modal
-              userEvent.click(
+              await userEvent.click(
                 screen.getByRole("heading", {
                   name: "Create a new dashboard",
                 }),
               );
 
-              userEvent.click(screen.getByLabelText(/Which collection/));
+              await userEvent.click(screen.getByLabelText(/Which collection/));
             });
 
             it("should render all collections", async () => {
               expect(
-                screen.getByRole("heading", { name: "New dashboard" }),
+                await screen.findByRole("heading", {
+                  name: "New dashboard",
+                  hidden: true, // This is needed because the entity picker modal is also rendered, causing this heading to be inaccessible
+                }),
               ).toBeInTheDocument();
               const popover = screen.getByTestId("entity-picker-modal");
               expect(popover).toBeInTheDocument();
@@ -536,7 +539,10 @@ describe("AddToDashSelectDashModal", () => {
 
             it('should render "New collection" option', async () => {
               expect(
-                screen.getByRole("heading", { name: "New dashboard" }),
+                await screen.findByRole("heading", {
+                  name: /new dashboard/i,
+                  hidden: true, // This is needed because the entity picker modal is also rendered, causing this heading to be inaccessible
+                }),
               ).toBeInTheDocument();
 
               const popover = screen.getByTestId("entity-picker-modal");
@@ -551,7 +557,7 @@ describe("AddToDashSelectDashModal", () => {
               beforeEach(async () => {
                 const popover = screen.getByTestId("entity-picker-modal");
 
-                userEvent.click(
+                await userEvent.click(
                   await within(popover).findByText(/new collection/),
                 );
               });
@@ -604,7 +610,7 @@ describe("AddToDashSelectDashModal", () => {
               dashboard: dashboardInPublicSubcollection,
             });
 
-            userEvent.click(
+            await userEvent.click(
               screen.getByRole("heading", {
                 name: COLLECTION.name,
               }),
@@ -629,7 +635,7 @@ describe("AddToDashSelectDashModal", () => {
               dashboard: dashboardInPersonalCollection,
             });
 
-            userEvent.click(
+            await userEvent.click(
               screen.getByRole("heading", {
                 name: PERSONAL_COLLECTION.name,
               }),
@@ -654,12 +660,12 @@ describe("AddToDashSelectDashModal", () => {
               dashboard: dashboardInPersonalSubcollection,
             });
 
-            userEvent.click(
+            await userEvent.click(
               screen.getByRole("heading", {
                 name: PERSONAL_COLLECTION.name,
               }),
             );
-            userEvent.click(
+            await userEvent.click(
               screen.getByRole("heading", {
                 name: PERSONAL_SUBCOLLECTION.name,
               }),
@@ -708,8 +714,8 @@ describe("AddToDashSelectDashModal", () => {
             ).not.toBeInTheDocument();
           });
 
-          it('should render "Create a new dashboard" option when opening personal subcollections', () => {
-            userEvent.click(
+          it('should render "Create a new dashboard" option when opening personal subcollections', async () => {
+            await userEvent.click(
               screen.getByRole("heading", {
                 name: PERSONAL_COLLECTION.name,
               }),
@@ -721,7 +727,7 @@ describe("AddToDashSelectDashModal", () => {
               }),
             ).toBeInTheDocument();
 
-            userEvent.click(
+            await userEvent.click(
               screen.getByRole("heading", {
                 name: PERSONAL_SUBCOLLECTION.name,
               }),
@@ -735,14 +741,14 @@ describe("AddToDashSelectDashModal", () => {
           });
 
           describe('when "Create a new dashboard" option is clicked when opening personal collections', () => {
-            beforeEach(() => {
+            beforeEach(async () => {
               // "Create a new dashboard" option only renders when opening personal collections
-              userEvent.click(
+              await userEvent.click(
                 screen.getByRole("heading", {
                   name: PERSONAL_COLLECTION.name,
                 }),
               );
-              userEvent.click(
+              await userEvent.click(
                 screen.getByRole("heading", {
                   name: "Create a new dashboard",
                 }),
@@ -753,7 +759,9 @@ describe("AddToDashSelectDashModal", () => {
               expect(
                 screen.getByRole("heading", { name: "New dashboard" }),
               ).toBeInTheDocument();
-              userEvent.click(await screen.findByLabelText(/Which collection/));
+              await userEvent.click(
+                await screen.findByLabelText(/Which collection/),
+              );
 
               const popover = await screen.findByTestId("entity-picker-modal");
 
@@ -828,7 +836,7 @@ describe("AddToDashSelectDashModal", () => {
               dashboard: dashboardInPersonalCollection,
             });
 
-            userEvent.click(
+            await userEvent.click(
               screen.getByRole("heading", {
                 name: PERSONAL_COLLECTION.name,
               }),
@@ -854,13 +862,13 @@ describe("AddToDashSelectDashModal", () => {
               dashboard: dashboardInPersonalSubcollection,
             });
 
-            userEvent.click(
+            await userEvent.click(
               screen.getByRole("heading", {
                 name: PERSONAL_COLLECTION.name,
               }),
             );
 
-            userEvent.click(
+            await userEvent.click(
               screen.getByRole("heading", {
                 name: PERSONAL_SUBCOLLECTION.name,
               }),
@@ -884,9 +892,9 @@ describe("AddToDashSelectDashModal", () => {
             searchResults: [DASHBOARD_RESULT_IN_PUBLIC_COLLECTION],
           });
 
-          userEvent.click(screen.getByRole("button", { name: "Search" }));
+          await userEvent.click(screen.getByRole("button", { name: "Search" }));
           const typedText = "dashboard";
-          userEvent.type(
+          await userEvent.type(
             screen.getByPlaceholderText("Search"),
             `${typedText}{enter}`,
           );
@@ -912,9 +920,9 @@ describe("AddToDashSelectDashModal", () => {
             searchResults: [DASHBOARD_RESULT_IN_PUBLIC_COLLECTION],
           });
 
-          userEvent.click(screen.getByRole("button", { name: "Search" }));
+          await userEvent.click(screen.getByRole("button", { name: "Search" }));
           const typedText = "dashboard";
-          userEvent.type(
+          await userEvent.type(
             screen.getByPlaceholderText("Search"),
             `${typedText}{enter}`,
           );
@@ -943,9 +951,9 @@ describe("AddToDashSelectDashModal", () => {
             ],
           });
 
-          userEvent.click(screen.getByRole("button", { name: "Search" }));
+          await userEvent.click(screen.getByRole("button", { name: "Search" }));
           const typedText = "dashboard";
-          userEvent.type(
+          await userEvent.type(
             screen.getByPlaceholderText("Search"),
             `${typedText}{enter}`,
           );

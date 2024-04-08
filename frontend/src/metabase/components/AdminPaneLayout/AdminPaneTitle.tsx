@@ -42,7 +42,7 @@ export const AdminPaneTitle = ({
           </Button>
         )}
       </HeadingContainer>
-      {description && <p className="text-measure">{description}</p>}
+      {description && <p className={CS.textMeasure}>{description}</p>}
     </Container>
   );
 };

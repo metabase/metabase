@@ -12,6 +12,7 @@ import {
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import {
   createQuestion,
+  entityPickerModal,
   isEE,
   isOSS,
   openNotebook,
@@ -125,7 +126,7 @@ describe("scenarios > notebook > data source", () => {
 
       startNewQuestion();
       popover().within(() => {
-        cy.get(".List-section-title")
+        cy.get("[data-element-id=list-section-title]")
           .should("have.length", 2)
           .and("contain", "Saved Questions")
           .and("not.contain", "Models");
@@ -330,14 +331,13 @@ describe("scenarios > notebook > data source", () => {
 });
 
 function moveToCollection(collection: string) {
+  cy.intercept("GET", "/api/collection/tree**").as("updateCollectionTree");
+
   openQuestionActions();
   popover().findByTextEnsureVisible("Move").click();
-  cy.findByRole("dialog").within(() => {
-    cy.intercept("GET", "/api/collection/tree**").as("updateCollectionTree");
-    cy.findAllByTestId("item-picker-item")
-      .filter(`:contains(${collection})`)
-      .click();
 
+  entityPickerModal().within(() => {
+    cy.findByText(collection).click();
     cy.button("Move").click();
     cy.wait("@updateCollectionTree");
   });

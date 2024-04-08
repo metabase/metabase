@@ -51,13 +51,13 @@ const PeopleListRow = ({
   return (
     <tr key={user.id}>
       <td className={cx(CS.flex, CS.alignCenter)}>
-        <span className="text-white inline-block">
+        <span className={cx(CS.textWhite, CS.inlineBlock)}>
           <UserAvatar
             bg={user.is_superuser ? color("accent2") : color("brand")}
             user={user}
           />
         </span>{" "}
-        <span className="ml2 text-bold">{getName(user)}</span>
+        <span className={cx(CS.ml2, CS.textBold)}>{getName(user)}</span>
       </td>
       <td>
         {user.google_auth ? (
@@ -103,7 +103,7 @@ const PeopleListRow = ({
           <td>
             {user.last_login ? moment(user.last_login).fromNow() : t`Never`}
           </td>
-          <td className="text-right">
+          <td className={CS.textRight}>
             {isAdmin && (
               <EntityMenu
                 triggerIcon="ellipsis"

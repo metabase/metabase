@@ -53,9 +53,7 @@ describe("issue 21559", { tags: "@external" }, () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(q2Details.name).click();
-    cy.get(".AddSeriesModal").within(() => {
-      cy.findByText("Done").click();
-    });
+    cy.findByTestId("add-series-modal").button("Done").click();
 
     // Make sure visualization changed to bars
     cy.get(".bar").should("have.length", 2);

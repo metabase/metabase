@@ -146,7 +146,7 @@
                    (when-let [db (t2/select-one Database :id db-id)]
                      (driver/database-supports? (:engine db) :nested-queries db))
                    (catch Throwable e
-                     (log/error e (tru "Error determining whether Database supports nested queries")))))
+                     (log/error e "Error determining whether Database supports nested queries"))))
                (t2/select-pks-set Database))))
 
 (mu/defn ^:private source-query-cards
@@ -339,6 +339,7 @@
                           (cond->> tables
                             ; filter hidden tables
                             true                        (filter (every-pred (complement :visibility_type) mi/can-read?))
+                            true                        (map (fn [table] (update table :schema str)))
                             ; filter hidden fields
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
 
@@ -654,7 +655,7 @@
                 substring (autocomplete-suggestions id (str "%" substring "%"))
                 prefix    (autocomplete-suggestions id (str prefix "%")))}
     (catch Throwable e
-      (log/warn e (trs "Error with autocomplete: {0}" (ex-message e))))))
+      (log/warnf e "Error with autocomplete: %s" (ex-message e)))))
 
 (api/defendpoint GET "/:id/card_autocomplete_suggestions"
   "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
@@ -669,7 +670,7 @@
          (filter mi/can-read?)
          (map #(select-keys % [:id :name :type :collection_name])))
     (catch Throwable e
-      (log/warn e (trs "Error with autocomplete: {0}" (ex-message e))))))
+      (log/warnf e "Error with autocomplete: %s" (ex-message e)))))
 
 
 ;;; ------------------------------------------ GET /api/database/:id/fields ------------------------------------------
@@ -690,7 +691,7 @@
        :base_type     base_type
        :semantic_type semantic_type
        :table_name    (:name table)
-       :schema        (:schema table)})))
+       :schema        (:schema table "")})))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/idfields -----------------------------------------
@@ -740,7 +741,7 @@
         {:message (tru "Unable to connect to database.")})
       (catch Throwable e
         (when (and log-exception (not (some->> e ex-cause ex-data ::driver/can-connect-message?)))
-          (log/error e (trs "Cannot connect to Database")))
+          (log/error e "Cannot connect to Database"))
         (if (-> e ex-data :message)
           (ex-data e)
           {:message (.getMessage e)})))))

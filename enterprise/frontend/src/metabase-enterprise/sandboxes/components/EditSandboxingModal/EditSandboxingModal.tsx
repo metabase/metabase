@@ -115,14 +115,14 @@ const EditSandboxingModal = ({
 
   return (
     <div>
-      <h2 className="p3">{t`Grant sandboxed access to this table`}</h2>
+      <h2 className={CS.p3}>{t`Grant sandboxed access to this table`}</h2>
 
       <div>
-        <div className="px3 pb3">
-          <div className="pb3">
+        <div className={cx(CS.px3, CS.pb3)}>
+          <div className={CS.pb3}>
             {t`When users in this group view this table they'll see a version of it that's filtered by their user attributes, or a custom view of it based on a saved question.`}
           </div>
-          <h4 className="pb1">
+          <h4 className={CS.pb1}>
             {t`How do you want to filter this table for users in this group?`}
           </h4>
           <Radio
@@ -141,8 +141,8 @@ const EditSandboxingModal = ({
           />
         </div>
         {shouldUseSavedQuestion && (
-          <div className="px3 pb3">
-            <div className="pb2">
+          <div className={cx(CS.px3, CS.pb3)}>
+            <div className={CS.pb2}>
               {t`Pick a saved question that returns the custom view of this table that these users should see.`}
             </div>
             <QuestionPicker
@@ -156,7 +156,7 @@ const EditSandboxingModal = ({
           (hasAttributesOptions || hasValidMappings ? (
             <div className={cx(CS.p3, CS.borderTop, CS.borderBottom)}>
               {shouldUseSavedQuestion && (
-                <div className="pb2">
+                <div className={CS.pb2}>
                   {t`You can optionally add additional filters here based on user attributes. These filters will be applied on top of any filters that are already in this saved question.`}
                 </div>
               )}
@@ -171,7 +171,7 @@ const EditSandboxingModal = ({
               />
             </div>
           ) : (
-            <div className="px3">
+            <div className={CS.px3}>
               <AttributeOptionsEmptyState
                 title={
                   shouldUseSavedQuestion
@@ -183,9 +183,9 @@ const EditSandboxingModal = ({
           ))}
       </div>
 
-      <div className="p3">
+      <div className={CS.p3}>
         {isValid && (
-          <div className="pb1">
+          <div className={CS.pb1}>
             <PolicySummary policy={normalizedPolicy} />
           </div>
         )}
@@ -194,7 +194,7 @@ const EditSandboxingModal = ({
           <Button onClick={onCancel}>{t`Cancel`}</Button>
           <ActionButton
             error={error}
-            className="ml1"
+            className={CS.ml1}
             actionFn={savePolicy}
             primary
             disabled={!canSave}
@@ -237,7 +237,7 @@ interface PolicySummaryProps {
 const PolicySummary = ({ policy }: PolicySummaryProps) => {
   return (
     <div>
-      <div className="px1 pb2 text-uppercase text-small text-grey-4">
+      <div className={cx(CS.px1, CS.pb2, CS.textUppercase, CS.textSmall)}>
         {t`Summary`}
       </div>
       <SummaryRow
@@ -281,14 +281,14 @@ const PolicySummary = ({ policy }: PolicySummaryProps) => {
                 ? jt`where ${(
                     <TargetName key="target" policy={policy} target={target} />
                   )} equals ${(
-                    <span key="attr" className="text-code">
+                    <span key="attr" className={CS.textCode}>
                       {attribute}
                     </span>
                   )}`
                 : jt`and ${(
                     <TargetName key="target" policy={policy} target={target} />
                   )} equals ${(
-                    <span key="attr" className="text-code">
+                    <span key="attr" className={CS.textCode}>
                       {attribute}
                     </span>
                   )}`

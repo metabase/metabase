@@ -7,7 +7,7 @@ import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { SearchListQuery } from "metabase-types/api";
+import type { Collection, SearchRequest } from "metabase-types/api";
 
 import {
   LoadingSpinner,
@@ -18,6 +18,8 @@ import type { CollectionPickerItem, CollectionPickerOptions } from "../types";
 import {
   generateKey,
   getCollectionIdPath,
+  getParentCollectionId,
+  getPathLevelForItem,
   getStateFromIdPath,
   isFolder,
 } from "../utils";
@@ -33,6 +35,7 @@ interface CollectionPickerProps {
   onItemSelect: (item: CollectionPickerItem) => void;
   initialValue?: Partial<CollectionPickerItem>;
   options?: CollectionPickerOptions;
+  shouldDisableItem?: (item: CollectionPickerItem) => boolean;
 }
 
 export const CollectionPickerInner = (
@@ -40,11 +43,12 @@ export const CollectionPickerInner = (
     onItemSelect,
     initialValue,
     options = defaultOptions,
+    shouldDisableItem,
   }: CollectionPickerProps,
   ref: Ref<unknown>,
 ) => {
   const [path, setPath] = useState<
-    PickerState<CollectionPickerItem, SearchListQuery>
+    PickerState<CollectionPickerItem, SearchRequest>
   >(() =>
     getStateFromIdPath({
       idPath: ["root"],
@@ -65,24 +69,85 @@ export const CollectionPickerInner = (
 
   const onFolderSelect = useCallback(
     ({ folder }: { folder: CollectionPickerItem }) => {
+      const isUserPersonalCollection = folder?.id === userPersonalCollectionId;
+      const isUserSubfolder =
+        path?.[1]?.query?.collection === "personal" &&
+        !isUserPersonalCollection;
+
       const newPath = getStateFromIdPath({
-        idPath: getCollectionIdPath(folder, userPersonalCollectionId),
+        idPath: getCollectionIdPath(
+          folder,
+          userPersonalCollectionId,
+          isUserSubfolder,
+        ),
         namespace: options.namespace,
       });
       setPath(newPath);
       onItemSelect(folder);
     },
-    [setPath, onItemSelect, options.namespace, userPersonalCollectionId],
+    [setPath, onItemSelect, options.namespace, userPersonalCollectionId, path],
   );
 
-  // Exposing onFolderSelect so that parent can select newly created
+  const handleItemSelect = useCallback(
+    (item: CollectionPickerItem) => {
+      const pathLevel = getPathLevelForItem(
+        item,
+        path,
+        userPersonalCollectionId,
+      );
+
+      const newPath = path.slice(0, pathLevel + 1);
+      newPath[newPath.length - 1].selectedItem = item;
+
+      setPath(newPath);
+      onItemSelect(item);
+    },
+    [path, onItemSelect, setPath, userPersonalCollectionId],
+  );
+
+  const handleNewCollection = useCallback(
+    (newCollection: Collection) => {
+      const parentCollectionId = getParentCollectionId(newCollection.location);
+
+      const newCollectionItem: CollectionPickerItem = {
+        ...newCollection,
+        collection_id: parentCollectionId,
+        model: "collection",
+      };
+
+      const selectedItem = path[path.length - 1]?.selectedItem;
+
+      if (selectedItem) {
+        // if the currently selected item is not a folder, it will be once we create a new collection within it
+        // so we need to select it
+        setPath(oldPath => [
+          ...oldPath,
+          {
+            query: {
+              collection: parentCollectionId,
+              models: ["collection"],
+              namespace: options.namespace,
+            },
+            selectedItem: newCollectionItem,
+          },
+        ]);
+        onItemSelect(newCollectionItem);
+        return;
+      }
+
+      handleItemSelect(newCollectionItem);
+    },
+    [path, handleItemSelect, onItemSelect, setPath, options.namespace],
+  );
+
+  // Exposing onItemSelect so that parent can select newly created
   // folder
   useImperativeHandle(
     ref,
     () => ({
-      onFolderSelect,
+      onNewCollection: handleNewCollection,
     }),
-    [onFolderSelect],
+    [handleNewCollection],
   );
 
   useDeepCompareEffect(
@@ -125,10 +190,11 @@ export const CollectionPickerInner = (
     <NestedItemPicker
       itemName={t`collection`}
       isFolder={isFolder}
+      shouldDisableItem={shouldDisableItem}
       options={options}
       generateKey={generateKey}
       onFolderSelect={onFolderSelect}
-      onItemSelect={onItemSelect}
+      onItemSelect={handleItemSelect}
       path={path}
       listResolver={CollectionItemPickerResolver}
     />

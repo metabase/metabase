@@ -78,7 +78,7 @@ export default class VisualizationResult extends Component {
                   <p>
                     {jt`You can also ${(
                       <a
-                        className="link"
+                        className={CS.link}
                         key="link"
                         onClick={this.showCreateAlertModal}
                       >

@@ -163,7 +163,7 @@
                  (catch Exception e1
                    ;; Unwrap exception from inside the future
                    (let [e1 (ex-cause e1)]
-                     (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
+                     (log/errorf e1 "Error fetching token status from %s:" token-check-url)
                      ;; Try the fallback URL, which was the default URL prior to 45.2
                      (try (fetch-token-and-parse-body token store-url site-uuid)
                           ;; if there was an error fetching the token from both the normal and fallback URLs, log the
@@ -171,7 +171,7 @@
                           ;; will get displayed in the Settings page in the admin panel so we do not want something
                           ;; complicated
                           (catch Exception e2
-                            (log/error (ex-cause e2) (trs "Error fetching token status from {0}:" store-url))
+                            (log/errorf (ex-cause e2) "Error fetching token status from %s:" store-url)
                             (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
                               (or
                                body
@@ -272,10 +272,10 @@
           (throw (ex-info (tru "Token format is invalid.")
                           {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
         (valid-token->features new-value)
-        (log/info (trs "Token is valid.")))
+        (log/info "Token is valid."))
       (setting/set-value-of-type! :string :premium-embedding-token new-value)
       (catch Throwable e
-        (log/error e (trs "Error setting premium features token"))
+        (log/error e "Error setting premium features token")
         (throw (ex-info (.getMessage e) (merge
                                          {:message (.getMessage e), :status-code 400}
                                          (ex-data e)))))))) ; merge in error-details if present
@@ -283,8 +283,8 @@
 (let [cached-logger (memoize/ttl
                      ^{::memoize/args-fn (fn [[token _e]] [token])}
                      (fn [_token e]
-                       (log/error (trs "Error validating token") ":" (ex-message e))
-                       (log/debug e (trs "Error validating token")))
+                       (log/error "Error validating token:" (ex-message e))
+                       (log/debug e "Error validating token"))
                      ;; log every five minutes
                      :ttl/threshold (* 1000 60 5))]
   (mu/defn ^:dynamic *token-features* :- [:set ms/NonBlankString]

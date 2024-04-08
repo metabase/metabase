@@ -23,7 +23,6 @@
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
@@ -34,11 +33,12 @@
 
 (driver/register! :redshift, :parent #{:postgres ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(doseq [[feature supported?] {:test/jvm-timezone-setting false
-                              :nested-field-columns      false
-                              :describe-fields           true
-                              :describe-fks              true
-                              :connection-impersonation  true}]
+(doseq [[feature supported?] {:connection-impersonation                            true
+                              :describe-fields                                     true
+                              :describe-fks                                        true
+                              :nested-field-columns                                false
+                              :sql/window-functions.order-by-output-column-numbers false
+                              :test/jvm-timezone-setting                           false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -50,6 +50,12 @@
 (defmethod driver/describe-table :redshift
   [& args]
   (apply (get-method driver/describe-table :sql-jdbc) args))
+
+;; don't use the Postgres implementation for `describe-database` as it uses a custom SQL to get the tables.
+;; we should do the same for Redshift tho
+(defmethod driver/describe-database :redshift
+ [& args]
+ (apply (get-method driver/describe-database :sql-jdbc) args))
 
 (defmethod sql-jdbc.sync/describe-fks-sql :redshift
   [driver & {:keys [schema-names table-names]}]
@@ -176,7 +182,7 @@
        (try
          (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
          (catch Throwable e
-           (log/debug e (trs "Error setting default holdability for connection")))))
+           (log/debug e "Error setting default holdability for connection"))))
      (f conn))))
 
 (defn- prepare-statement ^PreparedStatement [^Connection conn sql]
@@ -388,7 +394,7 @@
                           (or has-perm?
                               (log/tracef "Ignoring schema %s because no USAGE privilege on it" table-schema))))
                       (catch Throwable e
-                        (log/error e (trs "Error checking schema permissions"))
+                        (log/error e "Error checking schema permissions")
                         false))))
           reducible))))))
 
