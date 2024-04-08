@@ -17,16 +17,11 @@
   (let [group-id->sandboxes (dissoc group-id->sandboxes group_id)]
     (not-any? (fn [[other-group-id other-group-sandboxes]]
                 (and
-                 ;; If the user is in another group with view and query access to the table, and no sandbox defined for
-                 ;; it, then we assume this sandbox should not be enforced.
+                 ;; If the user is in another group with data access to the table, and no sandbox defined for it, then
+                 ;; we assume this sandbox should not be enforced.
                  (data-perms/group-has-permission-for-table? other-group-id
                                                              :perms/view-data
                                                              :unrestricted
-                                                             db_id
-                                                             table_id)
-                 (data-perms/group-has-permission-for-table? other-group-id
-                                                             :perms/create-queries
-                                                             :query-builder
                                                              db_id
                                                              table_id)
                  (not-any? (fn [sandbox] (= (:table_id sandbox) table_id)) other-group-sandboxes)))
