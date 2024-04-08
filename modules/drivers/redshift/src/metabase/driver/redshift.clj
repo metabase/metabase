@@ -53,22 +53,22 @@
 (def ^:private get-tables-sql
   ;; Ref: https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java#L1794
   (sql/format
-   {:select   [[:t.schema_name :schema]
+   {:select   [[:t.table_schema :schema]
                [:t.table_name :name]
                [:t.table_type :type]
                [:t.remarks :description]]
     :from     [[:pg_catalog.svv_tables :t]]
     :where    [:and ; filter out system tables
-               [:raw "t.schema_name !~ '^information_schema|catalog_history|pg_'"]
-               [:raw "pg_catalog.has_schema_privilege(t.schema_name, 'USAGE')"]
+               [:raw "t.table_schema !~ '^information_schema|catalog_history|pg_'"]
+               [:raw "pg_catalog.has_schema_privilege(t.table_schema, 'USAGE')"]
                [:case
                 ;; for external tables the 'USAGE' schema privilege is sufficient for select privileges for the table
                 [:= :t.table_type [:inline "EXTERNAL TABLE"]]
                 true
                 :else
                 [:or
-                 [:raw "pg_catalog.has_table_privilege('\"' || t.schema_name || '\".\"' || t.table_name || '\"',  'SELECT')"]
-                 [:raw "pg_catalog.has_any_column_privilege('\"' || t.schema_name || '\"' || '.' || '\"' || t.table_name || '\"',  'SELECT')"]]]]
+                 [:raw "pg_catalog.has_table_privilege('\"' || t.table_schema || '\".\"' || t.table_name || '\"',  'SELECT')"]
+                 [:raw "pg_catalog.has_any_column_privilege('\"' || t.table_schema || '\"' || '.' || '\"' || t.table_name || '\"',  'SELECT')"]]]]
     :order-by [:schema :name]}
    {:dialect :ansi}))
 
