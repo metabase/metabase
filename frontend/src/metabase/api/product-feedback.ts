@@ -1,6 +1,6 @@
 import { Api } from "./api";
 
-export const productFeedbackApi = Api.injectEndpoints({
+const productFeedbackApi = Api.injectEndpoints({
   endpoints: builder => ({
     sendProductFeedback: builder.mutation<
       void,
