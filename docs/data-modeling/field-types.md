@@ -10,33 +10,31 @@ While data types indicate to a database how it should interpret the values in a 
 
 Field types dictate how Metabase displays its data, as well as the column’s special functionality, if any. By marking columns in a table as **Latitude** and **Longitude**, Metabase can use the columns to create pin and heat maps. Similarly, designating a column as a **URL** allows users to click on the link to visit that URL.
 
-## List of Metabase Field Types
-
-Metabase recognizes the following field types:
-
-### Overall Row
+## Overall Row
 
 - **Entity Key**. The field in this table that uniquely identifies each row. Could be a product ID, serial number, etc.
 - **Entity Name**. Different from the entity key, the entity name represents what each row in the table _is_. For example, in a Users table, the User column might be the entity name.
 - **Foreign Key**. The column in this table that (usually) refers to the primary key of another table in order to connect data from different tables that are related. For example, in a Products table, you might have a Customer ID field that points to a Customers table, where Customer ID is the primary key.
 
-### Common
+## Common
 
 - **Category**
 - **Comment**
 - **Description**
 - **Title**
 
-### Location
+## Location
 
 - **City**
 - **Country**
-- **Latitude**
+- **Latitude**. Tells Metabase that the data could be plotted on a [pin map](../questions/sharing/visualizations/map.md).
 - **Longitude**
 - **State**
 - **Zip Code**
 
-### Financial
+## Financial
+
+Financial field types tell Metabase to treat the field's values as money. If you select any of the financial field types, Metabase will ask which currency you want to use.
 
 - **Cost**
 - **Currency**
@@ -45,14 +43,14 @@ Metabase recognizes the following field types:
 - **Income**
 - **Price**
 
-### Numeric
+## Numeric
 
 - **Percentage**
 - **Quantity**
 - **Score**
 - **Share**. The same as percentage, so prefer "Percentage".
 
-### Profile
+## Profile
 
 - **Birthday**
 - **Company**
@@ -61,7 +59,7 @@ Metabase recognizes the following field types:
 - **Subscription**
 - **User**
 
-### Date and Time
+## Date and Time
 
 If your database stores datetimes as a number or string, you can [cast that column to a datetime](./metadata-editing.md#casting-to-a-specific-data-type).
 
@@ -83,19 +81,19 @@ If your database stores datetimes as a number or string, you can [cast that colu
 - **UNIX Timestamp (Milliseconds)**
 - **UNIX Timestamp (Seconds)**
 
-### Categorical
+## Categorical
 
 - **Enum** - An abbreviation for “enumerated type,” the value of an enum draws on a predefined list of options. An example of an enum would be a field for the months of the year. This list of twelve options is defined in makeup of the column, and no options outside this list would be valid.
 - **Product**
 - **Source**. For example, the source of a visitor to your website.
 
-### URLs
+## URLs
 
 - **Avatar Image URL**
 - **Image URL**
 - **URL**
 
-### Other
+## Other
 
 - **Field containing JSON**.
 - **No semantic type** – Used for fields that don't fall into any of the above field types.
@@ -120,7 +118,7 @@ Knowing what field types are and how they work is helpful when using [field filt
 
 If you're an administrator, you can edit field types using the [Table Metadata page](./metadata-editing.md) in the Admin Panel.
 
-While data types themselves can't be edited in Metabase, admins can manually [cast data types](./metadata-editing.md#casting-to-a-specific-data-type) to be read differently, like interpreting a numerical data type as a date format.
+While data types themselves can't be edited in Metabase, admins can manually [cast certain data types](./metadata-editing.md#casting-to-a-specific-data-type) to be read differently, like interpreting a numerical data type as a date format.
 
 ### JSON unfolding
 
