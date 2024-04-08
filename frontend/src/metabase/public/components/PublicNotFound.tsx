@@ -6,7 +6,7 @@ import CS from "metabase/css/core/index.css";
 
 import EmbedFrame from "./EmbedFrame";
 
-const PublicNotFound = () => (
+export const PublicNotFound = () => (
   <EmbedFrame className={CS.spread}>
     <div className={cx(CS.flex, CS.layoutCentered, CS.flexFull, CS.flexColumn)}>
       <NoDataError mb="1rem" />
@@ -16,5 +16,3 @@ const PublicNotFound = () => (
     </div>
   </EmbedFrame>
 );
-
-export default PublicNotFound;
