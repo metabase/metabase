@@ -22,7 +22,6 @@
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
@@ -33,11 +32,12 @@
 
 (driver/register! :redshift, :parent #{:postgres ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(doseq [[feature supported?] {:test/jvm-timezone-setting false
-                              :nested-field-columns      false
-                              :describe-fields           true
-                              :describe-fks              true
-                              :connection-impersonation  true}]
+(doseq [[feature supported?] {:connection-impersonation                            true
+                              :describe-fields                                     true
+                              :describe-fks                                        true
+                              :nested-field-columns                                false
+                              :sql/window-functions.order-by-output-column-numbers false
+                              :test/jvm-timezone-setting                           false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -213,7 +213,7 @@
        (try
          (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
          (catch Throwable e
-           (log/debug e (trs "Error setting default holdability for connection")))))
+           (log/debug e "Error setting default holdability for connection"))))
      (f conn))))
 
 (defn- prepare-statement ^PreparedStatement [^Connection conn sql]
@@ -405,7 +405,6 @@
                               :filter_values       (field->parameter-value query)})
        " */ "
        (qp.util/default-query->remark query)))
-
 
 (defmethod sql-jdbc.execute/set-parameter [:redshift java.time.ZonedDateTime]
   [driver ps i t]

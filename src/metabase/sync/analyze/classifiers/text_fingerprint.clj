@@ -63,7 +63,7 @@
              (can-edit-semantic-type? field))
     (when-let [text-fingerprint (get-in fingerprint [:type :type/Text])]
       (when-let [inferred-semantic-type (infer-semantic-type-for-text-fingerprint text-fingerprint)]
-        (log/debug (format "Based on the fingerprint of %s, we're marking it as %s."
-                           (sync-util/name-for-logging field) inferred-semantic-type))
+        (log/debugf "Based on the fingerprint of %s, we're marking it as %s."
+                    (sync-util/name-for-logging field) inferred-semantic-type)
         (assoc field
                :semantic_type inferred-semantic-type)))))

@@ -104,5 +104,5 @@
           ;; in case impersonation used to be enabled and the connection still uses an impersonated role.
           (driver/set-role! driver conn role)))
       (catch Throwable e
-        (log/debug e (tru "Error setting role on connection"))
+        (log/debug e "Error setting role on connection")
         (throw e)))))
