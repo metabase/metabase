@@ -1,6 +1,7 @@
 (ns hooks.common
-  (:require [clj-kondo.hooks-api :as hooks]
-            [clojure.pprint]))
+  (:require
+   [clj-kondo.hooks-api :as hooks]
+   [clojure.pprint]))
 
 (defn with-macro-meta
   "When introducing internal nodes (let, defn, etc) it is important to provide a meta of an existing token
@@ -369,3 +370,33 @@
                                       arg])
                   body))]
     {:node node*}))
+
+(defn node->qualified-symbol [node]
+  (try
+    (when (hooks/token-node? node)
+      (let [sexpr (hooks/sexpr node)]
+        (when (symbol? sexpr)
+          (when-let [resolved (hooks/resolve {:name sexpr})]
+            (symbol (name (:ns resolved)) (name (:name resolved)))))))
+    ;; some symbols like `*count/Integer` aren't resolvable.
+    (catch Exception _
+      nil)))
+
+(defn format-string-specifier-count
+  "Number of things like `%s` in a format string, not counting newlines (`%n`) or escaped percent signs (`%%`). For
+  checking the number of args to something that takes a format string."
+  [format-string]
+  (count (re-seq #"(?<!%)%(?![%n])" format-string)))
+
+(comment
+  ;; should be 1
+  (format-string-specifier-count "%s %%")
+
+  ;; should be 2
+  (format-string-specifier-count "%s %%%n%s")
+
+  ;; should be 0
+  (format-string-specifier-count "%n%%%%")
+
+  ;; should be 1
+  (format-string-specifier-count "%-02d"))

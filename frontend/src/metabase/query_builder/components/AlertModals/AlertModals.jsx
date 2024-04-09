@@ -155,7 +155,7 @@ class CreateAlertModalContentInner extends Component {
     return (
       <ModalContent onClose={onCancel}>
         <div
-          className="PulseEdit ml-auto mr-auto mb4"
+          className={cx(CS.mlAuto, CS.mrAuto, CS.mb4)}
           style={{ maxWidth: "550px" }}
         >
           <AlertModalTitle text={t`Let's set up your alert`} />
@@ -165,7 +165,7 @@ class CreateAlertModalContentInner extends Component {
             onAlertChange={this.onAlertChange}
           />
           <AlertModalFooter>
-            <Button onClick={onCancel} className="mr2">{t`Cancel`}</Button>
+            <Button onClick={onCancel} className={CS.mr2}>{t`Cancel`}</Button>
             <ButtonWithStatus
               titleForState={{ default: t`Done` }}
               disabled={!isValid}
@@ -196,17 +196,21 @@ export class AlertEducationalScreen extends Component {
     const { onProceed } = this.props;
 
     return (
-      <div className={cx("pt2", "pb4", "ml-auto", "mr-auto", CS.textCentered)}>
-        <div className="pt4">
-          <h1 className="mb1 text-dark">{t`The wide world of alerts`}</h1>
+      <div
+        className={cx(CS.pt2, CS.pb4, CS.mlAuto, CS.mrAuto, CS.textCentered)}
+      >
+        <div className={CS.pt4}>
+          <h1
+            className={cx(CS.mb1, CS.textDark)}
+          >{t`The wide world of alerts`}</h1>
           <h3
-            className={cx("mb4", CS.textNormal, "text-dark")}
+            className={cx(CS.mb4, CS.textNormal, CS.textDark)}
           >{t`There are a few different kinds of alerts you can get`}</h3>
         </div>
         {
           // @mazameli: needed to do some negative margin spacing to match the designs
         }
-        <div className={cx(CS.textNormal, "pt3")}>
+        <div className={cx(CS.textNormal, CS.pt3)}>
           <div
             className={cx(CS.relative, CS.flex, CS.alignCenter, CS.pr4)}
             style={{ marginLeft: -80 }}
@@ -219,7 +223,7 @@ export class AlertEducationalScreen extends Component {
               "
             />
             <p
-              className={cx("ml2", CS.textLeft)}
+              className={cx(CS.ml2, CS.textLeft)}
               style={textStyle}
             >{jt`When a raw data question ${(
               <strong>{t`returns any results`}</strong>
@@ -243,7 +247,7 @@ export class AlertEducationalScreen extends Component {
               "
             />
             <p
-              className={cx("mr2", CS.textRight)}
+              className={cx(CS.mr2, CS.textRight)}
               style={textStyle}
             >{jt`When a line or bar ${(
               <strong>{t`crosses a goal line`}</strong>
@@ -261,7 +265,7 @@ export class AlertEducationalScreen extends Component {
               "
             />
             <p
-              className={cx("ml2", CS.textLeft)}
+              className={cx(CS.ml2, CS.textLeft)}
               style={textStyle}
             >{jt`When a progress bar ${(
               <strong>{t`reaches its goal`}</strong>
@@ -270,7 +274,7 @@ export class AlertEducationalScreen extends Component {
         </div>
         <Button
           primary
-          className="mt4"
+          className={CS.mt4}
           onClick={onProceed}
         >{t`Set up an alert`}</Button>
       </div>
@@ -322,7 +326,7 @@ class UpdateAlertModalContentInner extends Component {
     return (
       <ModalContent onClose={onCancel} data-testid="alert-edit">
         <div
-          className="PulseEdit ml-auto mr-auto mb4"
+          className={cx(CS.mlAuto, CS.mrAuto, CS.mb4)}
           style={{ maxWidth: "550px" }}
         >
           <AlertModalTitle text={title} />
@@ -339,7 +343,7 @@ class UpdateAlertModalContentInner extends Component {
           )}
 
           <AlertModalFooter>
-            <Button onClick={onCancel} className="mr2">{t`Cancel`}</Button>
+            <Button onClick={onCancel} className={CS.mr2}>{t`Cancel`}</Button>
             <ButtonWithStatus
               titleForState={{ default: t`Save changes` }}
               disabled={!isValid}
@@ -406,8 +410,8 @@ export class DeleteAlertSection extends Component {
           className={cx(CS.textError, CS.absolute, CS.top, CS.bgWhite, CS.px1)}
           style={{ marginTop: "-12px" }}
         >{jt`Danger Zone`}</h3>
-        <div className="ml1">
-          <h4 className={cx(CS.textBold, "mb1")}>{jt`Delete this alert`}</h4>
+        <div className={CS.ml1}>
+          <h4 className={cx(CS.textBold, CS.mb1)}>{jt`Delete this alert`}</h4>
           <div className={CS.flex}>
             <p
               className={cx(CS.h4, CS.pr2)}
@@ -439,9 +443,9 @@ export class DeleteAlertSection extends Component {
 }
 
 const AlertModalTitle = ({ text }) => (
-  <div className={cx("ml-auto", "mr-auto", "my4", "pb2", CS.textCentered)}>
+  <div className={cx(CS.mlAuto, CS.mrAuto, CS.my4, CS.pb2, CS.textCentered)}>
     <img
-      className="mb3"
+      className={CS.mb3}
       src="app/assets/img/alerts/alert-bell-confetti-illustration.png"
       srcSet="
         app/assets/img/alerts/alert-bell-confetti-illustration.png    1x,
@@ -549,8 +553,8 @@ export const AlertSettingToggle = ({
   falseText,
   setting,
 }) => (
-  <div className="mb4 pb2">
-    <h3 className="text-dark mb1">{title}</h3>
+  <div className={cx(CS.mb4, CS.pb2)}>
+    <h3 className={cx(CS.textDark, CS.mb1)}>{title}</h3>
     <Radio
       value={alert[setting]}
       onChange={value => onAlertChange({ ...alert, [setting]: value })}
@@ -565,13 +569,13 @@ export const AlertSettingToggle = ({
 export function AlertEditSchedule({ alertType, schedule, onScheduleChange }) {
   return (
     <div>
-      <h3 className="mt4 mb3 text-dark">
+      <h3 className={cx(CS.mt4, CS.mb3, CS.textDark)}>
         How often should we check for results?
       </h3>
 
-      <div className="bordered rounded mb2">
+      <div className={cx(CS.bordered, CS.rounded, CS.mb2)}>
         {alertType === ALERT_TYPE_ROWS && <RawDataAlertTip />}
-        <div className="p3 bg-light">
+        <div className={cx(CS.p3, "bg-light")}>
           <SchedulePicker
             schedule={schedule}
             scheduleOptions={["hourly", "daily", "weekly"]}
@@ -606,9 +610,11 @@ class AlertEditChannelsInner extends Component {
   render() {
     const { alert, user, users, formInput } = this.props;
     return (
-      <div className="mt4 pt2">
-        <h3 className="text-dark mb3">{jt`Where do you want to send these alerts?`}</h3>
-        <div className="mb2">
+      <div className={cx(CS.mt4, CS.pt2)}>
+        <h3
+          className={cx(CS.textDark, CS.mb3)}
+        >{jt`Where do you want to send these alerts?`}</h3>
+        <div className={CS.mb2}>
           <PulseEditChannels
             pulse={alert}
             pulseId={alert.id}

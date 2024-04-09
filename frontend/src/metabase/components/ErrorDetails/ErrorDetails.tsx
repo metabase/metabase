@@ -32,7 +32,7 @@ export default function ErrorDetails({
       </div>
       <div
         style={{ display: showError ? "inherit" : "none" }}
-        className={cx("pt3", centered ? CS.textCentered : CS.textLeft)}
+        className={cx(CS.pt3, centered ? CS.textCentered : CS.textLeft)}
       >
         <h2>{t`Here's the full error message`}</h2>
         <ErrorBox>{details}</ErrorBox>

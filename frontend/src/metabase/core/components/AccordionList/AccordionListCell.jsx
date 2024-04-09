@@ -3,16 +3,21 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { Icon, Box } from "metabase/ui";
 
 import {
   ListCellItem,
+  ListCellHeader,
   FilterContainer,
   Content,
+  IconWrapper,
+  EmptyStateContainer,
 } from "./AccordionListCell.styled";
 
 export const AccordionListCell = ({
@@ -67,16 +72,18 @@ export const AccordionListCell = ({
       const icon = renderSectionIcon(section);
       const name = section.name;
       content = (
-        <div
+        <ListCellHeader
+          data-element-id="list-section-header"
+          borderBottom={section.type === "back"}
           className={cx(
-            "List-section-header",
+            ListS.ListSectionHeader,
             CS.px2,
             CS.py2,
             CS.flex,
             CS.alignCenter,
             CS.hoverParent,
             {
-              "List-section-header--cursor": hasCursor,
+              [ListS.ListSectionHeaderCursor]: hasCursor,
               [CS.cursorPointer]: canToggleSections,
               [CS.textBrand]: sectionIsExpanded(sectionIndex),
             },
@@ -91,14 +98,19 @@ export const AccordionListCell = ({
                 CS.mr1,
                 CS.flex,
                 CS.alignCenter,
-                "List-section-icon",
+                ListS.ListSectionIcon,
               )}
             >
               {icon}
             </span>
           )}
           {name && (
-            <h3 className={cx("List-section-title", CS.textWrap)}>{name}</h3>
+            <h3
+              data-element-id="list-section-title"
+              className={cx(ListS.ListSectionTitle, CS.textWrap)}
+            >
+              {name}
+            </h3>
           )}
           {showSpinner(section) && (
             <Box ml="0.5rem">
@@ -115,11 +127,60 @@ export const AccordionListCell = ({
               />
             </span>
           )}
-        </div>
+        </ListCellHeader>
       );
     }
+  } else if (type === "action") {
+    const icon = renderSectionIcon(section);
+    const name = section.name;
+    content = (
+      <ListCellHeader
+        className={cx(
+          "List-section-header",
+          CS.px2,
+          CS.py2,
+          CS.flex,
+          CS.alignCenter,
+          CS.hoverParent,
+          {
+            "List-section-header--cursor": hasCursor,
+            [CS.cursorPointer]: canToggleSections,
+            [CS.textBrand]: sectionIsExpanded(sectionIndex),
+          },
+        )}
+        role="button"
+        onClick={
+          canToggleSections ? () => toggleSection(sectionIndex) : undefined
+        }
+      >
+        {icon && (
+          <span
+            className={cx(CS.mr1, CS.flex, CS.alignCenter, "List-section-icon")}
+          >
+            {icon}
+          </span>
+        )}
+        {name && (
+          <h3 className={cx("List-section-title", CS.textWrap)}>{name}</h3>
+        )}
+        {showSpinner(section) && (
+          <Box ml="0.5rem">
+            <LoadingSpinner size={16} borderWidth={2} />
+          </Box>
+        )}
+        <IconWrapper>
+          <Icon name="chevronright" size={12} />
+        </IconWrapper>
+      </ListCellHeader>
+    );
   } else if (type === "header-hidden") {
-    content = <div className="my1" />;
+    content = <div className={CS.my1} />;
+  } else if (type === "no-results") {
+    content = (
+      <EmptyStateContainer>
+        <EmptyState message={t`Didn't find any results`} icon="search" />
+      </EmptyStateContainer>
+    );
   } else if (type === "loading") {
     content = (
       <div className={cx(CS.m1, CS.flex, CS.layoutCentered)}>
@@ -148,6 +209,7 @@ export const AccordionListCell = ({
     const description = renderItemDescription(item);
     const extra = renderItemExtra(item, isSelected);
     const label = renderItemLabel ? renderItemLabel(item) : name;
+
     content = (
       <ListCellItem
         data-testid={itemTestId}
@@ -156,14 +218,15 @@ export const AccordionListCell = ({
         aria-selected={isSelected}
         aria-disabled={!isClickable}
         isClickable={isClickable}
+        data-element-id="list-item"
         className={cx(
-          "List-item",
+          ListS.ListItem,
           CS.flex,
           CS.mx1,
           {
-            "List-item--selected": isSelected,
-            "List-item--disabled": !isClickable,
-            "List-item--cursor": hasCursor,
+            [ListS.ListItemSelected]: isSelected,
+            [ListS.ListItemDisabled]: !isClickable,
+            [ListS.ListItemCursor]: hasCursor,
             [CS.mb1]: isLastItem,
           },
           getItemClassName(item, itemIndex),
@@ -188,12 +251,15 @@ export const AccordionListCell = ({
           )}
           <div className="List-item-content">
             {name && (
-              <h4 className={cx("List-item-title", CS.ml1, CS.textWrap)}>
+              <h4
+                data-element-id="list-item-title"
+                className={cx(ListS.ListItemTitle, CS.ml1, CS.textWrap)}
+              >
                 {name}
               </h4>
             )}
             {description && (
-              <p className={cx("List-item-description", CS.ml1, CS.textWrap)}>
+              <p className={cx(ListS.ListItemDescription, CS.ml1, CS.textWrap)}>
                 {description}
               </p>
             )}
@@ -207,7 +273,7 @@ export const AccordionListCell = ({
         {extra}
         {showItemArrows && (
           <div
-            className={cx("List-item-arrow", CS.flex, CS.alignCenter, CS.px1)}
+            className={cx(ListS.ListItemArrow, CS.flex, CS.alignCenter, CS.px1)}
           >
             <Icon name="chevronright" size={8} />
           </div>
@@ -224,9 +290,10 @@ export const AccordionListCell = ({
     <div
       style={style}
       aria-expanded={sectionIsExpanded}
-      className={cx("List-section", section.className, {
-        "List-section--expanded": sectionIsExpanded(sectionIndex),
-        "List-section--togglable": canToggleSections,
+      data-element-id="list-section"
+      className={cx(section.className, {
+        [ListS.ListSectionExpanded]: sectionIsExpanded(sectionIndex),
+        [ListS.ListSectionToggleAble]: canToggleSections,
       })}
     >
       {content}

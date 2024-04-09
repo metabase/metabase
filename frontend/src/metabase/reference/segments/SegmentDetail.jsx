@@ -181,7 +181,18 @@ const SegmentDetail = props => {
       >
         {() => (
           <div className={CS.wrapper}>
-            <div className="pl4 pr3 pt4 mb4 mb1 bg-white rounded bordered">
+            <div
+              className={cx(
+                CS.pl4,
+                CS.pr3,
+                CS.pt4,
+                CS.mb4,
+                CS.mb1,
+                CS.bgWhite,
+                CS.rounded,
+                CS.bordered,
+              )}
+            >
               <List>
                 <li>
                   <div className={S.detail}>
@@ -200,7 +211,9 @@ const SegmentDetail = props => {
                               )}
                               to={`/reference/databases/${table.db_id}/tables/${table.id}`}
                             >
-                              <span className="pt1">{table.display_name}</span>
+                              <span className={CS.pt1}>
+                                {table.display_name}
+                              </span>
                             </Link>
                           </div>
                         )}

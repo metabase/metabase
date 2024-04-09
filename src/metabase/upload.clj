@@ -86,7 +86,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn strictly-monotonic-now
+(defn- strictly-monotonic-now
   "Return an adjusted version of the current time, that it is guaranteed to never repeat the last second."
   []
   (swap! last-timestamp
@@ -584,7 +584,7 @@
   (when-let [error (can-update-error db table)]
     (throw error)))
 
-(defn can-upload-to-table?
+(defn- can-upload-to-table?
   "Returns true if the user can upload to the given database and table, and false otherwise."
   [db table]
   (nil? (can-update-error db table)))
@@ -616,7 +616,7 @@
 ;;; |  hydrate based_on_upload for FE
 ;;; +--------------------------------
 
-(defn uploadable-table-ids
+(defn- uploadable-table-ids
   "Returns the subset of table ids where the user can upload to the table."
   [table-ids]
   (set (when (seq table-ids)

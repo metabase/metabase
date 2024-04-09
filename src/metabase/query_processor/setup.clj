@@ -141,7 +141,17 @@
       (f query)
 
       :else
-      (driver/with-driver (driver.u/database->driver (:database query))
+      (let [driver (driver.u/database->driver (:database query))]
+        (driver/with-driver driver
+          (f query))))))
+
+(mu/defn ^:private do-with-escape-alias-fn :- fn?
+  [f :- [:=> [:cat ::qp.schema/query] :any]]
+  (fn [query]
+    (if-not (identical? lib.util/*escape-alias-fn* identity)
+      (f query)
+      (binding [lib.util/*escape-alias-fn* (fn [s]
+                                             (driver/escape-alias driver/*driver* s))]
         (f query)))))
 
 (mu/defn ^:private do-with-database-local-settings :- fn?
@@ -182,6 +192,7 @@
   [#'do-with-canceled-chan
    #'do-with-database-local-settings
    #'do-with-driver
+   #'do-with-escape-alias-fn
    #'do-with-metadata-provider
    #'do-with-resolved-database])
 ;;; ↑↑↑ SETUP MIDDLEWARE ↑↑↑ happens from BOTTOM to TOP e.g. [[do-with-resolved-database]] is the first to do its thing

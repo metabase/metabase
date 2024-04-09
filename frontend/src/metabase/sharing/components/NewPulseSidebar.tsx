@@ -28,24 +28,24 @@ export function NewPulseSidebar({
   const applicationName = useSelector(getApplicationName);
   return (
     <Sidebar onCancel={onCancel}>
-      <div className="mt2 pt2 px4">
+      <div className={cx(CS.mt2, CS.pt2, CS.px4)}>
         <h4>{t`Create a dashboard subscription`}</h4>
       </div>
-      <div className="my1 mx4">
+      <div className={cx(CS.my1, CS.mx4)}>
         <ChannelCard
           flat
-          className={cx("mt1 mb3", {
+          className={cx(CS.mt1, CS.mb3, {
             [cx(CS.hoverParent, CS.hoverInherit)]: emailConfigured,
           })}
           isConfigured={emailConfigured}
           onClick={onNewEmailPulse}
         >
-          <div className="px3 pt3 pb2">
+          <div className={cx(CS.px3, CS.pt3, CS.pb2)}>
             <div className={cx(CS.flex, CS.alignCenter)}>
               <Icon
                 name="mail"
                 className={cx(
-                  "mr1",
+                  CS.mr1,
                   {
                     [cx("text-brand", CS.hoverChild, CS.hoverInherit)]:
                       emailConfigured,
@@ -85,12 +85,12 @@ export function NewPulseSidebar({
           isConfigured={slackConfigured}
           onClick={onNewSlackPulse}
         >
-          <div className="px3 pt3 pb2">
+          <div className={cx(CS.px3, CS.pt3, CS.pb2)}>
             <div className={cx(CS.flex, CS.alignCenter, CS.mb1)}>
               <Icon
                 name={slackConfigured ? "slack_colorized" : "slack"}
                 size={16}
-                className={cx("mr1", {
+                className={cx(CS.mr1, {
                   "text-light": !slackConfigured,
                   [cx(CS.hoverChild, CS.hoverInherit)]: slackConfigured,
                 })}

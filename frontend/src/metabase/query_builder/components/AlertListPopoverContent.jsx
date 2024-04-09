@@ -180,7 +180,7 @@ class AlertListItemInner extends Component {
               <AlertCreatorTitle alert={alert} user={user} />
             </div>
             <div
-              className={cx("ml-auto", CS.textBold, CS.textSmall)}
+              className={cx(CS.mlAuto, CS.textBold, CS.textSmall)}
               style={{
                 transform: `translateY(4px)`,
               }}
@@ -190,7 +190,7 @@ class AlertListItemInner extends Component {
               )}
               {!isAdmin && !unsubscribingProgress && (
                 <a
-                  className={cx(CS.link, "ml2")}
+                  className={cx(CS.link, CS.ml2)}
                   onClick={this.onUnsubscribe}
                 >{jt`Unsubscribe`}</a>
               )}
@@ -205,7 +205,7 @@ class AlertListItemInner extends Component {
           }
           <ul className={cx(CS.flex, CS.mt2, CS.textSmall)}>
             <li className={cx(CS.flex, CS.alignCenter)}>
-              <Icon name="clock" size="12" className="mr1" />{" "}
+              <Icon name="clock" size="12" className={CS.mr1} />{" "}
               <AlertScheduleText
                 schedule={alert.channels[0]}
                 verbose={!isAdmin}

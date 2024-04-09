@@ -283,7 +283,9 @@ class FieldRemappingSettings extends Component {
                 />
               </PopoverWithTrigger>
               {dismissedInitialFkTargetPopover && (
-                <div className="text-error ml2">{t`Please select a column to use for display.`}</div>
+                <div
+                  className={cx(CS.textError, CS.ml2)}
+                >{t`Please select a column to use for display.`}</div>
               )}
             </>
           )}
@@ -291,11 +293,11 @@ class FieldRemappingSettings extends Component {
         {hasChanged && hasFKMappingValue && <RemappingNamingTip />}
         {mappingType === MAP_OPTIONS.custom &&
           (isFieldsAccessRestricted ? (
-            <div className="pt2 text-error">
+            <div className={cx(CS.pt2, CS.textError)}>
               {t`You need unrestricted data access on this table to map custom display values.`}
             </div>
           ) : (
-            <div className="mt3">
+            <div className={CS.mt3}>
               {hasChanged && <RemappingNamingTip />}
               <ValueRemappings
                 remappings={remapping}
@@ -456,7 +458,16 @@ class FieldValueMapping extends Component {
 }
 
 const RemappingNamingTip = () => (
-  <div className="bordered rounded p1 mt1 mb2 border-brand">
+  <div
+    className={cx(
+      CS.bordered,
+      CS.rounded,
+      CS.p1,
+      CS.mt1,
+      CS.mb2,
+      CS.borderBrand,
+    )}
+  >
     <span className={cx("text-brand", CS.textBold)}>{t`Tip: `}</span>
     {t`You might want to update the field name to make sure it still makes sense based on your remapping choices.`}
   </div>
