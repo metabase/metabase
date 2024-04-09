@@ -18,27 +18,27 @@
   margin: 0;
 }
 
-.Modal:global(.Modal--small) {
+.Modal.ModalSmall {
   width: 480px;
 } /* TODO - why is this one px? */
-.Modal:global(.Modal--medium) {
+.Modal.ModalMedium {
   width: 65%;
 }
 
-.Modal:global(.Modal--wide) {
+.Modal.ModalWide {
   width: 85%;
 }
 
-.Modal:global(.Modal--fit) {
+.Modal.ModalFit {
   width: auto;
   max-height: 100%;
 }
 
-.Modal:global(.Modal--tall) {
+.Modal.ModalTall {
   min-height: 85%;
 }
 
-:global(.Modal--full) {
+.ModalFull {
   background-color: white;
   position: fixed;
   top: 0;

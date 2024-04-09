@@ -27,6 +27,14 @@ export type WindowModalProps = BaseModalProps & {
   [size in ModalSize]?: boolean;
 };
 
+const MODAL_CLASSES = {
+  small: ModalS.ModalSmall,
+  medium: ModalS.ModalMedium,
+  wide: ModalS.ModalWide,
+  tall: ModalS.ModalTall,
+  fit: ModalS.ModalFit,
+} as const;
+
 export class WindowModal extends Component<WindowModalProps> {
   _modalElement: HTMLDivElement;
 
@@ -65,7 +73,7 @@ export class WindowModal extends Component<WindowModalProps> {
       this.props.className,
       ...modalSizes
         .filter(type => this.props[type])
-        .map(type => `Modal--${type}`),
+        .map(type => MODAL_CLASSES[type]),
     );
     return (
       <MaybeOnClickOutsideWrapper
