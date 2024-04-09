@@ -165,14 +165,20 @@ describe("ParameterSidebar", () => {
 
       await clickNextParameterButton();
 
+      // verify Linked filters tab is not rendered
       expect(
         screen.queryByRole("tab", { name: "Linked filters" }),
       ).not.toBeInTheDocument();
 
-      // make sure correct tab is rendered
+      // verify tab content corresponds to Filter settings
       expect(
         screen.queryByText("Limit this filter's choices"),
       ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("textbox", {
+          name: "Label",
+        }),
+      ).toHaveValue("Bar");
     });
   });
 });
