@@ -26,7 +26,7 @@ const BUTTON_TITLE = {
   json: t`Convert this question to a native query`,
 };
 
-export const NativeQueryPreviewSidebar = (): JSX.Element => {
+export const NotebookNativePreview = (): JSX.Element => {
   const dispatch = useDispatch();
   const question = checkNotNull(useSelector(getQuestion));
 
