@@ -19,4 +19,5 @@ export const Target = styled.div`
   top: -10px;
   bottom: -10px;
   min-height: 5px;
+  z-index: -1;
 `;
