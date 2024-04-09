@@ -9,7 +9,7 @@ import {
 
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 
-describeEE("scenarios > admin > permissions > view data > granular", () => {
+describeEE("scenarios > admin > permissions > view data > unrestricted", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
