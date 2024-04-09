@@ -67,8 +67,8 @@ export const alertApi = Api.injectEndpoints({
         method: "DELETE",
         url: `/api/alert/${id}/subscription`,
       }),
-      invalidatesTags: (alert, error) =>
-        invalidateTags(error, [listTag("alert")]),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [listTag("alert"), idTag("alert", id)]),
     }),
   }),
 });
