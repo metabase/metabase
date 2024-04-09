@@ -1058,9 +1058,14 @@
         (let [legacy-query (lib.convert/->legacy-MBQL
                             (lib.tu.mocks-31769/query metadata-provider))]
           (mt/with-native-query-testing-context legacy-query
-            (is (= [["Doohickey" 3976 "Doohickey"]
-                    ["Gadget"    4939 "Gadget"]]
-                   (mt/rows (qp/process-query legacy-query))))))))))
+            (let [results (qp/process-query legacy-query)]
+              (testing "Should return FE-friendly legacy `field_ref`s"
+                (is (= [[:field (mt/id :products :category) {:join-alias "Card 2 - Category"}]
+                        [:field "count" {:base-type :type/Integer}]]
+                       (mapv :field_ref (mt/cols results)))))
+              (is (= [["Doohickey" 3976]
+                      ["Gadget"    4939]]
+                     (mt/rows results))))))))))
 
 (deftest ^:parallel test-13000
   (testing "Should join MBQL Saved Questions (#13000, #13649, #13744)"

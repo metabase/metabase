@@ -453,7 +453,7 @@
 
   ([query :- ::qp.schema/query
     rff   :- [:maybe ::qp.schema/rff]]
-   (log/tracef "Running pivot query:\n%s" (u/pprint-to-str query))
+   (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
    (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
      (qp.setup/with-qp-setup [query query]
        (let [rff               (or rff qp.reducible/default-rff)

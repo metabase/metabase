@@ -537,3 +537,26 @@
         (is (= order-by-aggregation-expected-results
                (mt/rows
                 (qp.pivot/run-pivot-query query))))))))
+
+(deftest ^:parallel fe-friendly-legacy-field-refs-test
+  (testing "field_refs in the result metadata should match the 'traditional' legacy shape the FE expects, or it will break"
+    ;; `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` will break if the `field_ref`s don't come
+    ;; back in this EXACT shape =(, see [[metabase.query-processor.middleware.annotate/fe-friendly-legacy-ref]]
+    (let [query (mt/$ids orders
+                  {:database   (mt/id)
+                   :type       :query
+                   :query      {:source-table $$orders
+                                :aggregation  [[:count]]
+                                :breakout     [!year.created_at
+                                               $product_id->products.category
+                                               $user_id->people.source]}
+                   :pivot_rows [0 1 2]
+                   :pivot_cols []})]
+      (mt/with-native-query-testing-context query
+        (is (= (mt/$ids orders
+                 [[:field %created_at {:temporal-unit :year}]
+                  [:field %products.category {:source-field %product_id}]
+                  [:field %people.source {:source-field %user_id}]
+                  [:expression "pivot-grouping"]
+                  [:aggregation 0]])
+               (mapv :field_ref (mt/cols (qp.pivot/run-pivot-query query)))))))))

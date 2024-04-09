@@ -435,7 +435,6 @@
                         "Sum of Quantity"
                         "test-expr"]
                        (map :display_name cols)))
-
                 (is (= {:base_type       "type/Integer"
                         :effective_type  "type/Integer"
                         :name            "pivot-grouping"
@@ -444,7 +443,6 @@
                         :field_ref       ["expression" "pivot-grouping" {:base-type "type/Integer"}]
                         :source          "breakout"}
                        (nth cols 3))))
-
               (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
 
 (deftest ^:parallel pivot-filter-dataset-test
