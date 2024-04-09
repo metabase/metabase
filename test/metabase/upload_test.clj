@@ -1279,7 +1279,7 @@
               ;; Only create auto-pk columns for drivers that supported uploads before auto-pk columns
               ;; were introduced by metabase#36249. Otherwise we can assume that the table was created
               ;; with an auto-pk column.
-              (if (driver/create-auto-pk-with-append-csv? :redshift)
+              (if (driver/create-auto-pk-with-append-csv? driver/*driver*)
                 (do
                   (testing "Check a _mb_row_id column was created"
                     (is (= ["name" "_mb_row_id"]
