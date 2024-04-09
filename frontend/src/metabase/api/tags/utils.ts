@@ -130,7 +130,10 @@ export function provideCardListTags(cards: Card[]): TagDescription<TagType>[] {
 }
 
 export function provideCardTags(card: Card): TagDescription<TagType>[] {
-  return [idTag("card", card.id)];
+  return [
+    idTag("card", card.id),
+    ...(card.collection ? provideCollectionTags(card.collection) : []),
+  ];
 }
 
 export function provideCollectionItemListTags(
