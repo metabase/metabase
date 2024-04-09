@@ -20,7 +20,7 @@ export const TAG_TYPES = [
   "user",
 ] as const;
 
-export const MODEL_TO_TAG_TYPE = {
+export const TAG_TYPE_MAPPING = {
   collection: "collection",
   card: "card",
   dashboard: "dashboard",

@@ -1,6 +1,9 @@
-import type { CardType } from "./card";
+import type { CardId, CardType } from "./card";
+import type { CollectionId } from "./collection";
+import type { DashboardId } from "./dashboard";
 
-export type BookmarkType = "card" | "collection" | "dashboard";
+export const BOOKMARK_TYPES = ["card", "collection", "dashboard"] as const;
+export type BookmarkType = typeof BOOKMARK_TYPES[number];
 export type BookmarkId = string;
 
 export interface Bookmark {
@@ -15,4 +18,14 @@ export interface Bookmark {
    * Defined only when bookmark.type is "card"
    */
   card_type?: CardType;
+}
+
+export interface CreateBookmarkRequest {
+  id: CardId | CollectionId | DashboardId;
+  type: BookmarkType;
+}
+
+export interface DeleteBookmarkRequest {
+  id: CardId | CollectionId | DashboardId;
+  type: BookmarkType;
 }

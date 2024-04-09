@@ -2,6 +2,7 @@ import type { TagDescription } from "@reduxjs/toolkit/query";
 
 import type {
   ApiKey,
+  Bookmark,
   Card,
   Collection,
   CollectionItem,
@@ -23,9 +24,15 @@ import type {
   TimelineEvent,
   UserInfo,
 } from "metabase-types/api";
+import {
+  ACTIVITY_MODELS,
+  BOOKMARK_TYPES,
+  COLLECTION_ITEM_MODELS,
+  SEARCH_MODELS,
+} from "metabase-types/api";
 
 import type { TagType } from "./constants";
-import { MODEL_TO_TAG_TYPE } from "./constants";
+import { TAG_TYPE_MAPPING } from "./constants";
 
 export function tag(type: TagType): TagDescription<TagType> {
   return { type };
@@ -53,7 +60,7 @@ export function activityItemListTags(
   items: RecentItem[] | PopularItem[],
 ): TagDescription<TagType>[] {
   return [
-    ...Object.values(MODEL_TO_TAG_TYPE).map(listTag),
+    ...ACTIVITY_MODELS.map(model => listTag(TAG_TYPE_MAPPING[model])),
     ...items.flatMap(activityItemTags),
   ];
 }
@@ -61,7 +68,7 @@ export function activityItemListTags(
 export function activityItemTags(
   item: RecentItem | PopularItem,
 ): TagDescription<TagType>[] {
-  return [idTag(MODEL_TO_TAG_TYPE[item.model], item.model_id)];
+  return [idTag(TAG_TYPE_MAPPING[item.model], item.model_id)];
 }
 
 export function apiKeyListTags(apiKeys: ApiKey[]): TagDescription<TagType>[] {
@@ -97,6 +104,19 @@ export function databaseTags(database: Database): TagDescription<TagType>[] {
   ];
 }
 
+export function bookmarkListTags(
+  bookmarks: Bookmark[],
+): TagDescription<TagType>[] {
+  return [
+    ...BOOKMARK_TYPES.map(type => listTag(TAG_TYPE_MAPPING[type])),
+    ...bookmarks.flatMap(bookmarkTags),
+  ];
+}
+
+export function bookmarkTags(bookmark: Bookmark): TagDescription<TagType>[] {
+  return [idTag(TAG_TYPE_MAPPING[bookmark.type], bookmark.item_id)];
+}
+
 export function cardListTags(cards: Card[]): TagDescription<TagType>[] {
   return [listTag("card"), ...cards.flatMap(card => cardTags(card))];
 }
@@ -107,12 +127,10 @@ export function cardTags(card: Card): TagDescription<TagType>[] {
 
 export function collectionItemListTags(
   items: CollectionItem[],
-  models?: CollectionItemModel[],
+  models: CollectionItemModel[] = Array.from(COLLECTION_ITEM_MODELS),
 ): TagDescription<TagType>[] {
   return [
-    ...(models
-      ? models.map(model => listTag(MODEL_TO_TAG_TYPE[model]))
-      : Object.values(MODEL_TO_TAG_TYPE).map(listTag)),
+    ...models.map(model => listTag(TAG_TYPE_MAPPING[model])),
     ...items.flatMap(collectionItemTags),
   ];
 }
@@ -120,7 +138,7 @@ export function collectionItemListTags(
 export function collectionItemTags(
   item: CollectionItem,
 ): TagDescription<TagType>[] {
-  return [idTag(MODEL_TO_TAG_TYPE[item.model], item.id)];
+  return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
 }
 
 export function collectionTags(
@@ -191,18 +209,16 @@ export function metricTags(metric: Metric): TagDescription<TagType>[] {
 
 export function searchItemListTags(
   items: SearchResult[],
-  models?: SearchModel[],
+  models: SearchModel[] = Array.from(SEARCH_MODELS),
 ): TagDescription<TagType>[] {
   return [
-    ...(models
-      ? models.map(model => listTag(MODEL_TO_TAG_TYPE[model]))
-      : Object.values(MODEL_TO_TAG_TYPE).map(listTag)),
+    ...models.map(model => listTag(TAG_TYPE_MAPPING[model])),
     ...items.flatMap(searchItemTags),
   ];
 }
 
 export function searchItemTags(item: SearchResult): TagDescription<TagType>[] {
-  return [idTag(MODEL_TO_TAG_TYPE[item.model], item.id)];
+  return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
 }
 
 export function segmentListTags(

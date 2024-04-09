@@ -1,6 +1,12 @@
 import type { UserId } from "./user";
 
-export type ActivityModel = "table" | "card" | "dataset" | "dashboard";
+export const ACTIVITY_MODELS = [
+  "table",
+  "card",
+  "dataset",
+  "dashboard",
+] as const;
+export type ActivityModel = typeof ACTIVITY_MODELS[number];
 export type ActivityModelId = number;
 
 export interface ActivityModelObject {

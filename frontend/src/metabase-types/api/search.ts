@@ -7,19 +7,27 @@ import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { FieldReference } from "./query";
 import type { TableId } from "./table";
 
-export type EnabledSearchModel =
-  | "collection"
-  | "dashboard"
-  | "card"
-  | "database"
-  | "table"
-  | "dataset"
-  | "action"
-  | "indexed-entity";
+const ENABLED_SEARCH_MODELS = [
+  "collection",
+  "dashboard",
+  "card",
+  "database",
+  "table",
+  "dataset",
+  "action",
+  "indexed-entity",
+] as const;
 
-export type SearchModel =
-  | ("segment" | "metric" | "snippet")
-  | EnabledSearchModel;
+export const SEARCH_MODELS = [
+  ...ENABLED_SEARCH_MODELS,
+  "segment",
+  "metric",
+  "snippet",
+] as const;
+
+export type EnabledSearchModel = typeof ENABLED_SEARCH_MODELS[number];
+
+export type SearchModel = typeof SEARCH_MODELS[number];
 
 export interface SearchScore {
   weight: number;

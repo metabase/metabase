@@ -68,13 +68,15 @@ export interface Collection {
   path?: CollectionId[];
 }
 
-export type CollectionItemModel =
-  | "card"
-  | "dataset"
-  | "dashboard"
-  | "snippet"
-  | "collection"
-  | "indexed-entity";
+export const COLLECTION_ITEM_MODELS = [
+  "card",
+  "dataset",
+  "dashboard",
+  "snippet",
+  "collection",
+  "indexed-entity",
+] as const;
+export type CollectionItemModel = typeof COLLECTION_ITEM_MODELS[number];
 
 export type CollectionItemId = number;
 
