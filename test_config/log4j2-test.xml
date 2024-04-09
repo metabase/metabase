@@ -6,6 +6,7 @@
     </Console>
   </Appenders>
   <Loggers>
+    <Logger name="metabase.test.data.impl.get-or-create" level="ERROR"/>
     <Logger name="metabase" level="FATAL"/>
     <Logger name="metabase-enterprise" level="FATAL"/>
     <Logger name="liquibase" level="FATAL"/>
