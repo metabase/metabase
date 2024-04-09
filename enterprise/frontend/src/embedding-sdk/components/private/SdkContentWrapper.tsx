@@ -18,7 +18,7 @@ export const SdkContentWrapper = styled.div<{ font: string }>`
   --default-font-color: var(--color-text-dark);
   --default-bg-color: var(--color-bg-light);
 
-  //font-family: var(--default-font-family), sans-serif;
+  font-family: var(--default-font-family), sans-serif;
   font-size: var(--default-font-size);
   font-weight: 400;
   font-style: normal;
