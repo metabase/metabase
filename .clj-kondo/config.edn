@@ -84,10 +84,10 @@
 
   :discouraged-var
   {clojure.core/print                                 {:message "Use metabase.util.log instead of clojure.core/print"}
-   clojure.core/println                               {:message "Use metabase.util.log instead of clojure.core/println"}
-   clojure.core/printf                                {:message "Use metabase.util.log instead of clojure.core/printf"}
-   clojure.core/prn                                   {:message "Use metabase.util.log instead of clojure.core/prn"}
    clojure.core/pr                                    {:message "Use metabase.util.log instead of clojure.core/pr"}
+   clojure.core/printf                                {:message "Use metabase.util.log instead of clojure.core/printf"}
+   clojure.core/println                               {:message "Use metabase.util.log instead of clojure.core/println"}
+   clojure.core/prn                                   {:message "Use metabase.util.log instead of clojure.core/prn"}
    clojure.core/tap>                                  {:message "Don't use tap> is source code"}
    clojure.core/time                                  {:message "Don't use time in source code"}
    clojure.java.jdbc/get-connection                   {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/get-connection"}
@@ -103,6 +103,8 @@
    java.util.UUID/randomUUID                          {:message "Use clojure.core/random-uuid instead of java.util.UUID/randomUUID"}
    malli.core/explainer                               {:message "Use metabase.util.malli.registry/explainer instead of malli.core/explainer"}
    me.flowthing.pp/pprint                             {:message "Use metabase.util.log instead of me.flowthing.pp/pprint"}
+   medley.core/map-keys                               {:message "Use clojure.core/update-keys"}
+   medley.core/map-vals                               {:message "Use clojure.core/update-vals"}
    medley.core/random-uuid                            {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
    metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}
    metabase.test/with-temp*                           {:message "Use mt/with-temp instead of mt/with-temp*"}
@@ -700,9 +702,7 @@
     ;; eventually we should do this for the whole codebase, but the args are in the opposite order so switching them
     ;; all at once isn't trivial, at least we can stop using it in new code.
     :discouraged-var
-    {medley.core/map-keys    {:message "Use clojure.core/update-keys"}
-     medley.core/map-vals    {:message "Use clojure.core/update-vals"}
-     metabase.test/with-temp {:message "Don't use application database inside MLv2 code"}}
+    {metabase.test/with-temp {:message "Don't use application database inside MLv2 code"}}
 
     :discouraged-namespace
     {toucan.db        {:message "Don't use application database inside MLv2 code"}
