@@ -1,12 +1,13 @@
-import { isRootCollection } from "metabase/collections/utils";
+import _ from "underscore";
+
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import type {
   CollectionId,
-  SearchListQuery,
+  SearchRequest,
   SearchModelType,
 } from "metabase-types/api";
 
-import type { PickerState, IsFolder, TypeWithModel } from "../EntityPicker";
+import type { PickerState } from "../EntityPicker";
 
 import type { QuestionPickerItem } from "./types";
 
@@ -17,7 +18,7 @@ export const getCollectionIdPath = (
   >,
   userPersonalCollectionId?: CollectionId,
 ): CollectionId[] => {
-  if (isRootCollection(collection)) {
+  if (collection.id === "root" || collection.id === null) {
     return ["root"];
   }
 
@@ -56,8 +57,8 @@ export const getStateFromIdPath = ({
   idPath: CollectionId[];
   namespace?: "snippets";
   models?: SearchModelType[];
-}): PickerState<QuestionPickerItem, SearchListQuery> => {
-  const statePath: PickerState<QuestionPickerItem, SearchListQuery> = [
+}): PickerState<QuestionPickerItem, SearchRequest> => {
+  const statePath: PickerState<QuestionPickerItem, SearchRequest> = [
     {
       selectedItem: {
         name: "",
@@ -89,13 +90,16 @@ export const getStateFromIdPath = ({
   return statePath;
 };
 
-export const isFolder: IsFolder<
-  CollectionId,
-  SearchModelType,
-  QuestionPickerItem
-> = <Item extends TypeWithModel<CollectionId, SearchModelType>>(item: Item) => {
-  return item?.model === "collection";
+export const isFolder = (
+  item: QuestionPickerItem,
+  models: SearchModelType[],
+) => {
+  return (
+    item?.model === "collection" &&
+    _.intersection([...(item?.below ?? []), ...(item?.here ?? [])], models)
+      .length > 0
+  );
 };
 
-export const generateKey = (query?: SearchListQuery) =>
+export const generateKey = (query?: SearchRequest) =>
   JSON.stringify(query ?? "root");

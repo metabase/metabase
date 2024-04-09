@@ -3,6 +3,7 @@ import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
+import { isValidCollectionId } from "metabase/collections/utils";
 import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
@@ -61,7 +62,7 @@ export const CollectionPickerInner = (
     error,
     isLoading: loadingCurrentCollection,
   } = useCollectionQuery({
-    id: initialValue?.id ?? "root",
+    id: isValidCollectionId(initialValue?.id) ? initialValue?.id : "root",
     enabled: !!initialValue?.id,
   });
 
@@ -140,7 +141,7 @@ export const CollectionPickerInner = (
     [path, handleItemSelect, onItemSelect, setPath, options.namespace],
   );
 
-  // Exposing onItemSelect so that parent can select newly created
+  // Exposing onNewCollection so that parent can select newly created
   // folder
   useImperativeHandle(
     ref,
