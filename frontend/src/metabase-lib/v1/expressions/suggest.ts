@@ -120,6 +120,9 @@ export function suggest({
       index: targetOffset,
       icon: "function",
       order: 1,
+      helpText: database
+        ? getHelpText("case", database, reportTimezone)
+        : undefined,
     });
     suggestions.push(
       ...Array.from(EXPRESSION_FUNCTIONS)
@@ -134,6 +137,9 @@ export function suggest({
           index: targetOffset,
           icon: "function",
           order: 1,
+          helpText: database
+            ? getHelpText(func.displayName, database, reportTimezone)
+            : undefined,
         })),
     );
     if (startRule === "aggregation") {
@@ -267,23 +273,6 @@ export function suggest({
       }
     }
   }
-
-  // add help text to the suggestion if possible
-  suggestions = suggestions.map(suggestion => {
-    if (!database || suggestion.type !== "functions") {
-      return suggestion;
-    }
-
-    const name = getMBQLName(suggestion.name);
-    if (!name) {
-      return suggestion;
-    }
-
-    return {
-      ...suggestion,
-      helpText: getHelpText(name, database, reportTimezone),
-    };
-  });
 
   return { suggestions };
 }
