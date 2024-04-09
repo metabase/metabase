@@ -1,7 +1,6 @@
 import PropTypes from "prop-types";
 import { useMemo, useState, useCallback } from "react";
 import { connect } from "react-redux";
-import { t } from "ttag";
 import _ from "underscore";
 
 import {
@@ -23,10 +22,11 @@ import {
   BackButton,
   TreeContainer,
 } from "./SavedEntityPicker.styled";
+import { CARD_INFO } from "./constants";
 import { findCollectionByName } from "./utils";
 
 const propTypes = {
-  isDatasets: PropTypes.bool,
+  type: PropTypes.string,
   onSelect: PropTypes.func.isRequired,
   onBack: PropTypes.func.isRequired,
   collections: PropTypes.array.isRequired,
@@ -50,7 +50,7 @@ const ALL_PERSONAL_COLLECTIONS_ROOT = {
 };
 
 function SavedEntityPicker({
-  isDatasets,
+  type,
   onBack,
   onSelect,
   collections,
@@ -61,9 +61,7 @@ function SavedEntityPicker({
   rootCollection,
 }) {
   const collectionTree = useMemo(() => {
-    const modelFilter = isDatasets
-      ? model => model === "dataset"
-      : model => model === "card";
+    const modelFilter = model => CARD_INFO[type].model === model;
 
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(
@@ -96,7 +94,7 @@ function SavedEntityPicker({
       ...(rootCollection ? [getOurAnalyticsCollection(rootCollection)] : []),
       ...buildCollectionTree(preparedCollections, modelFilter),
     ];
-  }, [collections, rootCollection, currentUser, isDatasets]);
+  }, [collections, rootCollection, currentUser, type]);
 
   const initialCollection = useMemo(
     () =>
@@ -120,7 +118,7 @@ function SavedEntityPicker({
       <CollectionsContainer>
         <BackButton onClick={onBack} data-testid="saved-entity-back-navigation">
           <Icon name="chevronleft" className="mr1" />
-          {isDatasets ? t`Models` : t`Saved Questions`}
+          {CARD_INFO[type].title}
         </BackButton>
         <TreeContainer data-testid="saved-entity-collection-tree">
           <Tree
@@ -131,7 +129,7 @@ function SavedEntityPicker({
         </TreeContainer>
       </CollectionsContainer>
       <SavedEntityList
-        isDatasets={isDatasets}
+        type={type}
         collection={selectedCollection}
         selectedId={tableId}
         databaseId={databaseId}

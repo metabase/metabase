@@ -419,6 +419,20 @@ export class UnconnectedDataSelector extends Component {
 
   isLoadingDatasets = () => this.props.loading;
 
+  getCardType() {
+    const { selectedDataBucketId, savedEntityType } = this.state;
+    switch (true) {
+      case selectedDataBucketId === DATA_BUCKET.MODELS ||
+        savedEntityType === "model":
+        return "model";
+      case selectedDataBucketId === DATA_BUCKET.METRICS ||
+        savedEntityType === "metric":
+        return "metric";
+      default:
+        return "question";
+    }
+  }
+
   hasModels = () => {
     const { models, loaded } = this.props;
     return loaded && models && models.length > 0;
@@ -977,7 +991,6 @@ export class UnconnectedDataSelector extends Component {
       isSavedEntityPickerShown,
       selectedDataBucketId,
       selectedTable,
-      savedEntityType,
     } = this.state;
     const { canChangeDatabase, selectedDatabaseId } = this.props;
 
@@ -987,10 +1000,6 @@ export class UnconnectedDataSelector extends Component {
 
     const isPickerOpen =
       isSavedEntityPickerShown || selectedDataBucketId === DATA_BUCKET.MODELS;
-
-    const isDatasets =
-      selectedDataBucketId === DATA_BUCKET.MODELS ||
-      savedEntityType === "model";
 
     if (this.isLoadingDatasets()) {
       return <LoadingAndErrorWrapper loading />;
@@ -1027,7 +1036,7 @@ export class UnconnectedDataSelector extends Component {
                   selectedTable.schema &&
                   getSchemaName(selectedTable.schema.id)
                 }
-                isDatasets={isDatasets}
+                type={this.getCardType()}
                 tableId={selectedTable?.id}
                 databaseId={currentDatabaseId}
                 onSelect={this.handleSavedEntitySelect}
