@@ -307,7 +307,8 @@
 
   ;; alias for CI-specific options.
   :ci
-  {:jvm-opts ["-Xmx2g"
+  {:jvm-opts ["-Xmx12g"
+              "-Xms12g"
               ;; normally CircleCI sets `CI` as an env var, so this is mostly to replicate that locally. Hawk will not
               ;; print the progress bar in output when this is set. Progress bars aren't very CI friendly
               "-Dci=TRUE"]}
