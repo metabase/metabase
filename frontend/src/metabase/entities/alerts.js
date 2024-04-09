@@ -43,6 +43,9 @@ const Alerts = createEntity({
         dispatch,
         alertApi.endpoints.updateAlert,
       ),
+    delete: () => {
+      throw new TypeError("Alerts.api.delete is not supported");
+    },
   },
 
   actionTypes: {
