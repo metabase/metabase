@@ -487,8 +487,7 @@
         (update :tables (if remove_inactive?
                           (fn [tables]
                             (filter :active tables))
-                          identity))
-        (update :tables (mapv #(api.table/format-table-for-response %))))))
+                          identity)))))
 
 (api/defendpoint GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.

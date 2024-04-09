@@ -41,14 +41,9 @@
   "Schema for a valid table field ordering."
   (into [:enum] (map name table/field-orderings)))
 
-(defn format-schema-for-response
-  [schema]
+(defn- format-table-for-response [table]
   ;; for `nil` schemas return the empty string
-  (if (nil? schema) "" schema))
-
-(defn format-table-for-response
-  [table]
-  (update table :schema format-schema-for-response))
+  (update table :schema #(if (nil? %) "" %)))
 
 (api/defendpoint GET "/"
   "Get all `Tables`."
