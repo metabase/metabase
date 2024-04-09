@@ -2,6 +2,7 @@
   "Tests for the `:filter` clause."
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
@@ -15,6 +16,88 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]))
+
+(deftest ^:parallel equals-test
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset airports
+      (doseq [filter-clause (mt/$ids region
+                              [[:= $name "California"]
+                               [:= "California" $name]])
+              :let [query (mt/mbql-query region
+                            {:aggregation [[:count]]
+                             :filter      filter-clause})]]
+        (mt/with-native-query-testing-context query
+          (is (= [[1]]
+                 (mt/formatted-rows [int]
+                   (qp/process-query query)))))))))
+
+(deftest ^:parallel field-equals-nil-test
+  (testing "field = NULL and NULL = field should work as expected"
+    (mt/test-drivers (mt/normal-drivers)
+      (mt/dataset airports
+        (doseq [filter-clause (mt/$ids region
+                                [[:= $name nil]
+                                 [:= nil $name]])
+                :let [query (mt/mbql-query region
+                              {:aggregation [[:count]]
+                               :filter      filter-clause})]]
+          (mt/with-native-query-testing-context query
+            (is (= [[8]]
+                   (mt/formatted-rows [int]
+                     (qp/process-query query))))))))))
+
+(deftest ^:parallel literal-equals-literal-test
+  (testing "literal = literal should work as expected"
+    (mt/test-drivers (mt/normal-drivers)
+      (mt/dataset airports
+        (let [query (mt/mbql-query region
+                      {:aggregation [[:count]]
+                       :filter      [:= "ABC" "ABC"]})]
+          (mt/with-native-query-testing-context query
+            (is (= [[415]]
+                   (mt/formatted-rows [int]
+                     (qp/process-query query))))))))))
+
+(deftest ^:parallel not-equals-test
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset airports
+      (doseq [filter-clause (mt/$ids region
+                              [[:!= $name "California"]
+                               [:!= "California" $name]])
+              :let [query (mt/mbql-query region
+                            {:aggregation [[:count]]
+                             :filter      filter-clause})]]
+        (mt/with-native-query-testing-context query
+          (is (= [[414]]
+                 (mt/formatted-rows [int]
+                   (qp/process-query query)))))))))
+
+(deftest ^:parallel field-not-equals-nil-test
+  (testing "field != NULL and NULL != field should work as expected"
+    (mt/test-drivers (mt/normal-drivers)
+      (mt/dataset airports
+        (doseq [filter-clause (mt/$ids region
+                                [[:!= $name nil]
+                                 [:!= nil $name]])
+                :let [query (mt/mbql-query region
+                              {:aggregation [[:count]]
+                               :filter      filter-clause})]]
+          (mt/with-native-query-testing-context query
+            (is (= [[407]]
+                   (mt/formatted-rows [int]
+                     (qp/process-query query))))))))))
+
+(deftest ^:parallel literal-not-equals-literal-test
+  (testing "literal != literal should work as expected"
+    (mt/test-drivers (mt/normal-drivers)
+      (mt/dataset airports
+        (let [query (mt/mbql-query region
+                      {:aggregation [[:count]]
+                       :filter      [:!= "ABC" "DEF"]})]
+          (mt/with-native-query-testing-context query
+            (is (= [[415]]
+                   (mt/formatted-rows [int]
+                     (qp/process-query query))))))))))
 
 (deftest ^:parallel and-test
   (mt/test-drivers (mt/normal-drivers)
@@ -92,14 +175,28 @@
                     :order-by [[:asc $id]]}))))))))
 
 (deftest ^:parallel comparison-test-4
-  (mt/test-drivers (mt/normal-drivers)
-    (mt/dataset places-cam-likes
-      (testing "Can we use nil literal in comparisons"
-        (is (= [[3]]
-               (mt/formatted-rows [int]
-                 (mt/run-mbql-query places
-                   {:filter      [:!= $liked nil]
-                    :aggregation [[:count]]}))))))))
+  (testing "Can we use nil literal in comparisons"
+    (mt/test-drivers (mt/normal-drivers)
+      (mt/dataset airports
+        (let [query (mt/mbql-query region
+                      {:filter      [:!= $name nil]
+                       :aggregation [[:count]]})]
+          (mt/with-native-query-testing-context query
+            (is (= [[407]]
+                   (mt/formatted-rows [int]
+                     (qp/process-query query))))))))))
+
+(deftest ^:parallel comparison-test-4b
+  (testing "Can we use nil literal in comparisons -- order reversed, nil != name"
+    (mt/test-drivers (mt/normal-drivers)
+      (mt/dataset airports
+        (let [query (mt/mbql-query region
+                      {:filter      [:!= nil $name]
+                       :aggregation [[:count]]})]
+          (mt/with-native-query-testing-context query
+            (is (= [[407]]
+                   (mt/formatted-rows [int]
+                     (qp/process-query query))))))))))
 
 (deftest ^:parallel comparison-test-5
   (mt/test-drivers (mt/normal-drivers)
@@ -490,17 +587,76 @@
 ;;; |                                         = AND != WITH MULTIPLE VALUES                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest ^:parallel equals-and-not-equals-with-extra-args-test
+(deftest ^:parallel equals-with-extra-args-test
   (mt/test-drivers (mt/normal-drivers)
-    (testing ":= with >2 args"
-      (is (= 81
-             (count-with-filter-clause [:= $price 1 2]))))))
+    (testing ":= with >2 args: should generate IN or similar"
+      (are [filter-clause] (= 81
+                              (count-with-filter-clause filter-clause))
+        [:= $price 1 2]
+        [:= $price 1 2 nil]
+        [:= [:- $price 1] 0 1]))))
 
-(deftest ^:parallel equals-and-not-equals-with-extra-args-test-2
+(deftest ^:parallel not-equals-with-extra-args-test
+  (testing ":!= with >2 args: should generate NOT IN or similar"
+    (mt/test-drivers (mt/normal-drivers)
+      (doseq [filter-clause (mt/$ids venues
+                              [[:!= $price 1 2]
+                               [:!= $price 1 2 nil]
+                               [:!= [:- $price 1] 0 1]])]
+        (testing (pr-str filter-clause)
+          (let [query (mt/mbql-query venues
+                        {:aggregation [[:count]]
+                         :filter      filter-clause})]
+            (mt/with-native-query-testing-context query
+              (is (= [[19]]
+                     (mt/formatted-rows [int]
+                       (qp/process-query query)))))))))))
+
+(deftest ^:parallel not-equals-with-extra-args-test-2
+  (testing ":!= with >2 args: should generate NOT IN or similar"
+    (mt/test-drivers (mt/normal-drivers)
+      (mt/dataset airports
+        (let [query (mt/mbql-query region
+                      {:aggregation [[:count]]
+                       :filter      [:!= $name "California" "Baja California"]})]
+          (mt/with-native-query-testing-context query
+            (is (= [[413]]
+                   (mt/formatted-rows [int]
+                     (qp/process-query query))))))))))
+
+(deftest ^:parallel not-equals-with-extra-args-test-2b
+  (testing ":!= with >2 args: should generate NOT IN or similar"
+    (mt/test-drivers (mt/normal-drivers)
+      (mt/dataset airports
+        (let [query (mt/mbql-query region
+                      {:aggregation [[:count]]
+                       :filter      [:!= $name "California" "Baja California" nil]})]
+          (mt/with-native-query-testing-context query
+            (is (= [[405]]
+                   (mt/formatted-rows [int]
+                     (qp/process-query query))))))))))
+
+(deftest ^:parallel equals-with-extra-args-temporal-strings-test
   (mt/test-drivers (mt/normal-drivers)
-    (testing ":!= with >2 args"
-      (is (= 19
-             (count-with-filter-clause [:!= $price 1 2]))))))
+    (testing ":= with >2 args should work correctly with temporal strings"
+      (let [query (mt/mbql-query checkins
+                    {:aggregation [[:count]]
+                     :filter      [:= $date "2014-04-07T00:00:00" "2014-09-18T00:00:00"]})]
+        (mt/with-native-query-testing-context query
+          (is (= [[3]]
+                 (mt/formatted-rows [int]
+                   (qp/process-query query)))))))))
+
+(deftest ^:parallel not-equals-with-extra-args-temporal-strings-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing ":!= with >2 args should work correctly with temporal strings"
+      (let [query (mt/mbql-query checkins
+                    {:aggregation [[:count]]
+                     :filter      [:!= $date "2014-04-07" "2014-09-18"]})]
+        (mt/with-native-query-testing-context query
+          (is (= [[997]]
+                 (mt/formatted-rows [int]
+                   (qp/process-query query)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -885,7 +1041,7 @@
                   (update :query (fn [sql]
                                    (->> sql
                                         (driver/prettify-native-form :h2)
-                                        clojure.string/split-lines)))))))))
+                                         str/split-lines)))))))))
 
 (deftest ^:parallel generate-not-in-filter-test
   (testing ":!= with more than 2 args should get compiled to NOT IN (#23101)"
@@ -900,11 +1056,12 @@
                        "FROM"
                        "  \"PUBLIC\".\"VENUES\""
                        "WHERE"
-                       "  \"PUBLIC\".\"VENUES\".\"ID\" NOT IN (1, 2)"
+                       "  (\"PUBLIC\".\"VENUES\".\"ID\" NOT IN (1, 2))"
+                       "  OR (\"PUBLIC\".\"VENUES\".\"ID\" IS NULL)"
                        "LIMIT"
                        "  1048575"]}
               (-> (qp.compile/compile query)
                   (update :query (fn [sql]
                                    (->> sql
                                         (driver/prettify-native-form :h2)
-                                        clojure.string/split-lines)))))))))
+                                        str/split-lines)))))))))

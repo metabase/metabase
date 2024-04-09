@@ -324,21 +324,6 @@
                      y]))))))))
 
 (t/deftest ^:parallel desugar-other-filter-clauses-test
-  (t/testing "desugaring := and :!= with extra args"
-    (t/is (= [:or
-              [:= [:field 1 nil] 2]
-              [:= [:field 1 nil] 3]
-              [:= [:field 1 nil] 4]
-              [:= [:field 1 nil] 5]]
-             (mbql.u/desugar-filter-clause [:= [:field 1 nil] 2 3 4 5]))
-          "= with extra args should get converted to or")
-    (t/is (= [:and
-              [:!= [:field 1 nil] 2]
-              [:!= [:field 1 nil] 3]
-              [:!= [:field 1 nil] 4]
-              [:!= [:field 1 nil] 5]]
-             (mbql.u/desugar-filter-clause [:!= [:field 1 nil] 2 3 4 5]))
-          "!= with extra args should get converted to or"))
   (t/testing "desugaring :inside"
     (t/is (= [:and
               [:between [:field 1 nil] -10.0 10.0]
@@ -462,16 +447,10 @@
 
 (t/deftest ^:parallel negate-syntactic-sugar-filter-clause-test
   (t/testing "= with extra args"
-    (t/is (= [:and
-              [:!= [:field 1 nil] 10]
-              [:!= [:field 1 nil] 20]
-              [:!= [:field 1 nil] 30]]
+    (t/is (= [:!= [:field 1 nil] 10 20 30]
              (mbql.u/negate-filter-clause [:= [:field 1 nil] 10 20 30]))))
   (t/testing "!= with extra args"
-    (t/is (= [:or
-              [:= [:field 1 nil] 10]
-              [:= [:field 1 nil] 20]
-              [:= [:field 1 nil] 30]]
+    (t/is (= [:= [:field 1 nil] 10 20 30]
              (mbql.u/negate-filter-clause [:!= [:field 1 nil] 10 20 30]))))
   (t/testing :time-interval
     (t/is (= [:!=

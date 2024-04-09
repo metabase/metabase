@@ -244,23 +244,6 @@
     [:does-not-contain & args]
     [:not (into [:contains] args)]))
 
-(defn desugar-equals-and-not-equals-with-extra-args
-  "`:=` and `!=` clauses with more than 2 args automatically get rewritten as compound filters.
-
-     [:= field x y]  -> [:in field x y]
-     [:!= field x y] -> [:not-in field x y]"
-  [m]
-  m
-  (lib.util.match/replace m
-    [:= field x y & more]
-    [:in (into [field x y] more)]
-    #_(apply vector :or (for [x (concat [x y] more)]
-                          [:= field x]))
-
-    [:!= field x y & more]
-    (apply vector :and (for [x (concat [x y] more)]
-                         [:!= field x]))))
-
 (defn desugar-current-relative-datetime
   "Replace `relative-datetime` clauses like `[:relative-datetime :current]` with `[:relative-datetime 0 <unit>]`.
   `<unit>` is inferred from the `:field` the clause is being compared to (if any), otherwise falls back to `default.`"
@@ -325,7 +308,6 @@
   [filter-clause :- mbql.s/Filter]
   (-> filter-clause
       desugar-current-relative-datetime
-      desugar-equals-and-not-equals-with-extra-args
       desugar-does-not-contain
       desugar-time-interval
       desugar-is-null-and-not-null
@@ -337,15 +319,18 @@
 
 (defmulti ^:private negate* first)
 
-(defmethod negate* :not [[_ subclause]]    subclause)
+(defmethod negate* :not [[_ subclause]] subclause)
+
 (defmethod negate* :and [[_ & subclauses]] (into [:or]  (map negate* subclauses)))
 (defmethod negate* :or  [[_ & subclauses]] (into [:and] (map negate* subclauses)))
-(defmethod negate* :=   [[_ field value]]  [:!= field value])
-(defmethod negate* :!=  [[_ field value]]  [:=  field value])
-(defmethod negate* :>   [[_ field value]]  [:<= field value])
-(defmethod negate* :<   [[_ field value]]  [:>= field value])
-(defmethod negate* :>=  [[_ field value]]  [:<  field value])
-(defmethod negate* :<=  [[_ field value]]  [:>  field value])
+
+(defmethod negate* :=   [[_ field & values]] (into [:!= field] values))
+(defmethod negate* :!=  [[_ field & values]] (into [:=  field] values))
+
+(defmethod negate* :>   [[_ field value]] [:<= field value])
+(defmethod negate* :<   [[_ field value]] [:>= field value])
+(defmethod negate* :>=  [[_ field value]] [:<  field value])
+(defmethod negate* :<=  [[_ field value]] [:>  field value])
 
 (defmethod negate* :between
   [[_ field min-value max-value]]

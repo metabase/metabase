@@ -90,6 +90,38 @@ title: Driver interface changelog
 
 - `metabase.driver.common/class->base-type` no longer supports Joda Time classes. They have been deprecated since 2019.
 
+- Prior to Metabase 0.50.0, `:=` clauses with more than two args e.g.
+
+  ```
+  [:= a b c]
+  ```
+
+  a sequence of binary predicates joined together with `:or` e.g.
+
+  ```
+  [:or [:= a b] [:= a c]]
+  ```
+
+  and `:!=` was rewritten from something like
+
+  ```
+  [:!= a b c]
+  ```
+
+  to
+
+  ```
+  [:and [:!= a b] [:!= a c]]
+  ```
+
+  This ultimately led to inefficient query generation -- see
+  [#23101](https://github.com/metabase/metabase/issues/23101) for more information. In Metabase 0.50.0 and above,
+  drivers must be able to compile `:=` and `:!=` MBQL clauses with more than two args. In SQL, these should compile to
+  `IN` and `NOT IN` respectively. The default `:sql`/`:sql-jdbc` implementations of
+  `metabase.driver.sql.query-processor/->honeysql` have been updated to do the right thing automatically, so if your
+  driver is based on one of these you will only need to update things if you have a custom implementation of
+  `->honeysql` for `:=` or `:!=`. Non-SQL drivers will need to update their equivalent transpilation code.
+
 ## Metabase 0.49.1
 
 - Another driver feature has been added: `describe-fields`. If a driver opts-in to supporting this feature, The

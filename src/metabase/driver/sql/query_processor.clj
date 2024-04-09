@@ -1216,16 +1216,14 @@
   [:<= (->honeysql driver field) (->honeysql driver value)])
 
 (defmethod ->honeysql [:sql :=]
-  [driver [_ field & values]]
-  (assert field)
-  (let [field-honeysql (->honeysql driver field)
-        values (map (partial ->honeysql driver) values)]
-    (if (> (count values) 1)
-      [:in field-honeysql values]
-      [:= field-honeysql (first values)])))
+  [driver [_ & args]]
+  (let [args (map (partial ->honeysql driver) args)]
+    (if (> (count args) 2)
+      [:in (first args) (vec (rest args))]
+      (into [:=] args))))
 
 (defn- correct-null-behaviour
-  [driver [op & args :as clause]]
+  [driver [op & args :as _clause]]
   (if-let [field-arg (lib.util.match/match-one args
                        :field          &match)]
     ;; We must not transform the head again else we'll have an infinite loop
@@ -1233,13 +1231,48 @@
     [:or
      (into [op] (map (partial ->honeysql driver)) args)
      [:= (->honeysql driver field-arg) nil]]
-    clause))
+    (into [op] (map (partial ->honeysql driver)) args)))
 
 (defmethod ->honeysql [:sql :!=]
-  [driver [_ field value]]
-  (if (nil? (qp.wrap-value-literals/unwrap-value-literal value))
-    [:not= (->honeysql driver field) (->honeysql driver value)]
-    (correct-null-behaviour driver [:not= field value])))
+  [driver [_tag & args]]
+  {:pre [(>= (count args) 2)]}
+  (let [exclude-nils?    (some #(nil? (qp.wrap-value-literals/unwrap-value-literal %))
+                               args)
+        non-nil-args     (keep qp.wrap-value-literals/unwrap-value-literal args)
+        num-non-nil-args (count non-nil-args)]
+    (cond
+      ;; if there's exactly one non-nil arg, that must mean we're filtering [!= x nil] or [!= nil x]
+      (= num-non-nil-args 1)
+      [:not=
+       (->honeysql driver (first non-nil-args))
+       (->honeysql driver nil)]
+
+      (and (= num-non-nil-args 2)
+           exclude-nils?)
+      (into [:!=] (map (partial ->honeysql driver)) non-nil-args)
+
+      (and (= num-non-nil-args 2)
+           (not exclude-nils?))
+      (correct-null-behaviour driver (into [:!=] non-nil-args))
+
+      (and (> num-non-nil-args 2)
+           exclude-nils?)
+      (let [[x & more] (map (partial ->honeysql driver) non-nil-args)]
+        [:not-in x (vec more)])
+
+      (and (> num-non-nil-args 2)
+           (not exclude-nils?))
+      (let [[x & more] non-nil-args
+            hsql       [:not-in
+                        (->honeysql driver x)
+                        (mapv (partial ->honeysql driver) more)]]
+        (if-let [field (lib.util.match/match-one x :field)]
+          [:or hsql [:= (->honeysql driver field) nil]]
+          hsql))
+
+      ;; we should never get here, this is here to make sure we didn't accidentally miss a possibility above.
+      :else
+      (throw (AssertionError. "Shouldn't get here!")))))
 
 (defmethod ->honeysql [:sql :and]
   [driver [_tag & subclauses]]

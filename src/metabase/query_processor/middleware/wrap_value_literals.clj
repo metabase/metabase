@@ -249,8 +249,8 @@
                                     :name \"description\"}]]]"
   [mbql]
   (lib.util.match/replace mbql
-    [(clause :guard #{:= :!= :< :> :<= :>=}) field (x :guard raw-value?)]
-    [clause field (add-type-info x (type-info field))]
+    [(tag :guard #{:= :!= :< :> :<= :>=}) field & (values :guard (partial every? raw-value?))]
+    (into [tag field] (map #(add-type-info % (type-info field))) values)
 
     [:datetime-diff (x :guard string?) (y :guard string?) unit]
     [:datetime-diff (add-type-info (u.date/parse x) nil) (add-type-info (u.date/parse y) nil) unit]

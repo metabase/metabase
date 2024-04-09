@@ -66,8 +66,11 @@
   (lib.util.match/match-one filter-clause
     [_tag
      (field :guard optimizable-field?)
-     (temporal-value :guard optimizable-temporal-value?)]
-    (field-and-temporal-value-have-compatible-units? field temporal-value)))
+     &
+     (temporal-values :guard (partial every? optimizable-temporal-value?))]
+    (every?
+     (partial field-and-temporal-value-have-compatible-units? field)
+     temporal-values)))
 
 (defmethod can-optimize-filter? :between
   [filter-clause]
@@ -134,22 +137,27 @@
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod optimize-filter :=
-  [[_tag field temporal-value]]
+  [[_tag field & values]]
   (if (date-field-with-day-bucketing? field)
-    [:= (change-temporal-unit-to-default field) (change-temporal-unit-to-default temporal-value)]
+    (into [:= (change-temporal-unit-to-default field)]
+          (map change-temporal-unit-to-default)
+          values)
     (let [temporal-unit (lib.util.match/match-one field
                           [(_ :guard #{:field :expression}) _ (opts :guard :temporal-unit)]
                           (:temporal-unit opts))]
-      (when (field-and-temporal-value-have-compatible-units? field temporal-value)
+      (when (every? (partial field-and-temporal-value-have-compatible-units? field)
+                    values)
         (let [field' (change-temporal-unit-to-default field)]
-          [:and
-           [:>= field' (temporal-value-lower-bound temporal-value temporal-unit)]
-           [:< field'  (temporal-value-upper-bound temporal-value temporal-unit)]])))))
+          (into [:and]
+                (mapcat (fn [temporal-value]
+                          [[:>= field' (temporal-value-lower-bound temporal-value temporal-unit)]
+                           [:< field'  (temporal-value-upper-bound temporal-value temporal-unit)]]))
+                values))))))
 
 (defmethod optimize-filter :!=
-  [[_tag field temporal-value :as filter-clause]]
+  [[_tag field & values :as filter-clause]]
   (if (date-field-with-day-bucketing? field)
-    [:!= (change-temporal-unit-to-default field) (change-temporal-unit-to-default temporal-value)]
+    (into [:!= (change-temporal-unit-to-default field)] (map change-temporal-unit-to-default) values)
     (mbql.u/negate-filter-clause ((get-method optimize-filter :=) filter-clause))))
 
 (defn- optimize-comparison-filter

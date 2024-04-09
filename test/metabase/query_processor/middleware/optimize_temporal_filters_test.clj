@@ -220,7 +220,16 @@
               :params [#t "2019-09-24T00:00Z[UTC]"
                        #t "2019-09-25T00:00Z[UTC]"]}
              (lib.tu.macros/$ids checkins
-               (filter->sql [:= !day.date "2019-09-24T12:00:00.000Z"])))))
+               (filter->sql [:= !day.date "2019-09-24T12:00:00.000Z"]))))
+      (is (= {:query  "WHERE (CHECKINS.DATE >= ?) AND (CHECKINS.DATE < ?) AND (CHECKINS.DATE >= ?) AND (CHECKINS.DATE < ?)"
+              :params [#t "2019-09-24T00:00Z[UTC]"
+                       #t "2019-09-25T00:00Z[UTC]"
+                       #t "2024-04-08T00:00Z[UTC]"
+                       #t "2024-04-09T00:00Z[UTC]"]}
+             (lib.tu.macros/$ids checkins
+               (filter->sql [:= !day.date
+                             "2019-09-24T12:00:00.000Z"
+                             "2024-04-08T12:00:00.000Z"])))))
     (testing :<
       (is (= {:query  "WHERE CHECKINS.DATE < ?"
               :params [#t "2019-09-24T00:00Z[UTC]"]}
@@ -436,14 +445,30 @@
                                [:field (meta/id :checkins :date) {:base-type :type/Date, :temporal-unit unit}]
                                [:absolute-datetime #t "2014-05-08" unit]
                                [:absolute-datetime #t "2014-05-09" unit]]}))))
-          (is (=? {:query {:filter [:=
+          (is (=? {:query {:filter [operator
                                     [:field (meta/id :checkins :date) {:base-type :type/Date, :temporal-unit :default}]
                                     [:absolute-datetime #t "2014-05-08" :default]]}}
                   (optimize-temporal-filters/optimize-temporal-filters
                    (lib.tu.macros/mbql-query checkins
-                     {:filter [:=
+                     {:filter [operator
                                [:field (meta/id :checkins :date) {:base-type :type/Date, :temporal-unit unit}]
                                [:absolute-datetime #t "2014-05-08" unit]]})))))))))
+
+(deftest ^:parallel optimize-date-equals-multiple-dates-test
+  (testing ":= and :!= with > 2 args"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (doseq [unit     [:day :default]
+              operator [:= :!=]]
+        (is (=? {:query {:filter [operator
+                                  [:field (meta/id :checkins :date) {:base-type :type/Date, :temporal-unit :default}]
+                                  [:absolute-datetime #t "2014-05-08" :default]
+                                  [:absolute-datetime #t "2014-05-09" :default]]}}
+                (optimize-temporal-filters/optimize-temporal-filters
+                 (lib.tu.macros/mbql-query checkins
+                   {:filter [operator
+                             [:field (meta/id :checkins :date) {:base-type :type/Date, :temporal-unit unit}]
+                             [:absolute-datetime #t "2014-05-08" unit]
+                             [:absolute-datetime #t "2014-05-09" unit]]}))))))))
 
 (deftest ^:parallel do-not-change-unit-of-relative-datetime-to-default-test
   (testing "Never change the unit of a relative datetime to :default. That would not make any sense."

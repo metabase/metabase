@@ -91,6 +91,20 @@
              :query))
       "do datetime literal strings get wrapped in `absolute-datetime` clauses when in appropriate filters?"))
 
+(deftest ^:parallel wrap-datetime-literal-strings-test-1b
+  (is (= (:query
+          (lib.tu.macros/mbql-query checkins
+            {:filter [:=
+                      !month.date
+                      [:absolute-datetime (t/local-date "2018-10-01") :month]
+                      [:absolute-datetime (t/local-date "2024-04-08") :month]]}))
+         (-> (lib.tu.macros/$ids checkins
+               (lib.tu.macros/mbql-query checkins
+                 {:filter [:= !month.date "2018-10-01" "2024-04-08"]}))
+             wrap-value-literals
+             :query))
+      "do datetime literal strings get wrapped in `absolute-datetime` clauses when in appropriate filters?"))
+
 (deftest ^:parallel wrap-datetime-literal-strings-test-2
   (is (= [:datetime-diff
           [:absolute-datetime #t "2018-10-01" :default]
