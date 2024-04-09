@@ -14,8 +14,9 @@ To export the results of a questions, click on the **Download** button in the lo
 You can export the results of a question as:
 
 - .csv
-- .json
 - .xlsx
+- .json
+
 
 If you don't see this option, you may not have [permissions to download results](../../permissions/data.md#download-results).
 
@@ -54,7 +55,7 @@ To export the results of a particular card, hover over the dashboard card, click
 From here you can select:
 
 - .csv
-.xlsx
+- .xlsx
 - .json
 - .png (if a chart)
 
