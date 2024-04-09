@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import {
   QuestionPickerModal,
-  type QuestionPickerItem,
+  type QuestionPickerValueItem,
 } from "metabase/common/components/QuestionPicker";
 import { replaceCard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
@@ -26,7 +26,7 @@ function DashCardPlaceholderInner({
   const [isQuestionPickerOpen, setQuestionPickerOpen] = useState(false);
   const dispatch = useDispatch();
 
-  const handleSelectQuestion = (nextCard: QuestionPickerItem) => {
+  const handleSelectQuestion = (nextCard: QuestionPickerValueItem) => {
     dispatch(replaceCard({ dashcardId: dashcard.id, nextCardId: nextCard.id }));
     setQuestionPickerOpen(false);
   };
@@ -56,11 +56,14 @@ function DashCardPlaceholderInner({
       </Flex>
       {isQuestionPickerOpen && (
         <QuestionPickerModal
-          opened={isQuestionPickerOpen}
-          value={{
-            id: dashcard.card.id,
-            model: "card",
-          }}
+          value={
+            dashcard.card.id
+              ? {
+                  id: dashcard.card.id,
+                  model: "card",
+                }
+              : undefined
+          }
           onChange={handleSelectQuestion}
           onClose={() => setQuestionPickerOpen(false)}
         />

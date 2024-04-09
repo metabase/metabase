@@ -1,8 +1,8 @@
-import { isRootCollection } from "metabase/collections/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import type { CollectionId, SearchRequest } from "metabase-types/api";
 
 import type { PickerState } from "../EntityPicker";
+import type { QuestionPickerItem } from "../QuestionPicker";
 
 import type { CollectionPickerItem } from "./types";
 
@@ -14,7 +14,7 @@ export const getCollectionIdPath = (
   userPersonalCollectionId?: CollectionId,
   isPersonal?: boolean,
 ): CollectionId[] => {
-  if (isRootCollection(collection)) {
+  if (collection.id === null || collection.id === "root") {
     return ["root"];
   }
 
@@ -105,8 +105,8 @@ export const getParentCollectionId = (
 };
 
 export const getPathLevelForItem = (
-  item: CollectionPickerItem,
-  path: PickerState<CollectionPickerItem, SearchRequest>,
+  item: CollectionPickerItem | QuestionPickerItem,
+  path: PickerState<CollectionPickerItem | QuestionPickerItem, SearchRequest>,
   userPersonalCollectionId?: CollectionId,
 ): number => {
   if (item.id === userPersonalCollectionId) {

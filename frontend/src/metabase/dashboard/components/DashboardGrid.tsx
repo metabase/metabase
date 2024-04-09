@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { QuestionPickerItem } from "metabase/common/components/QuestionPicker";
+import type { QuestionPickerValueItem } from "metabase/common/components/QuestionPicker";
 import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
@@ -403,7 +403,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       !!replaceCardModalDashCard &&
       isQuestionDashCard(replaceCardModalDashCard);
 
-    const handleSelect = (nextCard: QuestionPickerItem) => {
+    const handleSelect = (nextCard: QuestionPickerValueItem) => {
       if (!hasValidDashCard) {
         return;
       }
@@ -436,10 +436,14 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     return (
       <QuestionPickerModal
         onChange={handleSelect}
-        value={{
-          id: replaceCardModalDashCard.card.collection_id,
-          model: "collection",
-        }}
+        value={
+          replaceCardModalDashCard.card.collection_id
+            ? {
+                id: replaceCardModalDashCard.card.collection_id,
+                model: "collection",
+              }
+            : undefined
+        }
         onClose={handleClose}
         options={{
           allowCreateNew: false,

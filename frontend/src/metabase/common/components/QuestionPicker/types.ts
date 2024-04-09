@@ -1,29 +1,31 @@
 import type {
-  CardId,
-  CollectionId,
   SearchRequest,
   SearchModelType,
-  SearchResult,
+  CardId,
 } from "metabase-types/api";
 
 import type {
-  EntityPickerModalOptions,
-  ListProps,
-  TypeWithModel,
-} from "../EntityPicker";
+  CollectionItemId,
+  CollectionPickerItem,
+} from "../CollectionPicker";
+import type { EntityPickerModalOptions, ListProps } from "../EntityPicker";
 
-export type QuestionPickerModel = Extract<SearchModelType, "card" | "dataset">;
+export type QuestionPickerModel = Extract<
+  CollectionPickerItem["model"],
+  "card" | "dataset" | "collection"
+>;
+export type QuestionPickerValueModel = Extract<
+  CollectionPickerItem["model"],
+  "card" | "dataset"
+>;
 
-export type QuestionPickerItem = TypeWithModel<
-  CollectionId | CardId,
-  SearchModelType
-> &
-  Pick<Partial<SearchResult>, "description" | "can_write"> & {
-    location?: string | null;
-    effective_location?: string | null;
-    is_personal?: boolean;
-    collection_id?: CollectionId;
-  };
+export type QuestionPickerValueItem = CollectionPickerItem & {
+  id: CardId;
+  model: QuestionPickerValueModel;
+};
+
+// we could tighten this up in the future, but there's relatively little value to it
+export type QuestionPickerItem = CollectionPickerItem;
 
 export type QuestionPickerOptions = EntityPickerModalOptions & {
   showPersonalCollections?: boolean;
@@ -31,7 +33,7 @@ export type QuestionPickerOptions = EntityPickerModalOptions & {
 };
 
 export type QuestionItemListProps = ListProps<
-  CollectionId | CardId,
+  CollectionItemId,
   SearchModelType,
   QuestionPickerItem,
   SearchRequest,
