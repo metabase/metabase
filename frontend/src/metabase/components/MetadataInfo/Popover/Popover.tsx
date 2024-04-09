@@ -60,6 +60,10 @@ export function Popover({
       transitionProps={{
         duration: group.shouldDelay ? POPOVER_TRANSITION_DURATION : 0,
       }}
+      middlewares={{
+        shift: true,
+        flip: false,
+      }}
     >
       <HoverCard.Target>{children}</HoverCard.Target>
       <Dropdown>
