@@ -51,13 +51,12 @@ See [Currency formatting options](../questions/sharing/visualizations/table.md#c
 
 ## Numeric
 
-Metabase will treat numeric field types as [numbers]((../questions/sharing/visualizations/table.md#number-formatting-options).
-).
+Metabase will treat numeric field types as [numbers](../questions/sharing/visualizations/table.md#number-formatting-options).
 
 - **Percentage**: Displays the number as a percentage by default.
 - **Quantity**: Displays the number as normal by default.
 - **Score**: Displays the number as normal by default.
-- **Share**. The same as percentage, so prefer "Percentage".
+- **Share**: The same as percentage, so prefer "Percentage".
 
 See [Number formatting options](../questions/sharing/visualizations/table.md#number-formatting-options).
 
@@ -100,9 +99,9 @@ See [Date formatting options](../questions/sharing/visualizations/table.md#date-
 
 ## Categorical
 
-- **Enum** - An abbreviation for “enumerated type,” the value of an enum draws on a predefined list of options. An example of an enum would be a field for the months of the year. This list of twelve options is defined in makeup of the column, and no options outside this list would be valid.
+- **Enum**: An abbreviation for “enumerated type,” the value of an enum draws on a predefined list of options. An example of an enum would be a field for the months of the year. This list of twelve options is defined in the makeup of the column, and no options outside this list would be valid.
 - **Product**
-- **Source**. For example, the source of a visitor to your website.
+- **Source**: For example, the source of a visitor to your website.
 
 ## URLs
 
