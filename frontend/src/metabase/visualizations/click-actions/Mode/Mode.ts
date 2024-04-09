@@ -1,4 +1,5 @@
 import { queryDrill } from "metabase/querying";
+import type { DrillThruDisplayInfo } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import type {
@@ -32,8 +33,11 @@ export class Mode {
     const mode = this._queryMode;
     const question = this._question;
     const props = { question, settings, clicked, extraData };
+
     const actions = [
-      ...(mode.hasDrills ? queryDrill(question, clicked) : []),
+      ...(mode.hasDrills
+        ? queryDrill(question, clicked, this.isDrillEnabled)
+        : []),
       ...(mode.clickActions?.flatMap(drill => drill(props)) ?? []),
     ];
 
@@ -43,4 +47,14 @@ export class Mode {
       return actions;
     }
   }
+
+  isDrillEnabled = (drill: DrillThruDisplayInfo): boolean => {
+    const mode = this._queryMode;
+
+    if (mode.hasDrills && Array.isArray(mode.hasDrills)) {
+      return mode.hasDrills.includes(drill.type);
+    }
+
+    return true;
+  };
 }

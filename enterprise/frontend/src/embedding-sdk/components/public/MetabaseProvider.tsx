@@ -13,6 +13,7 @@ import type { SDKConfigType } from "../../types";
 import { AppInitializeController } from "../private/AppInitializeController";
 
 import "metabase/css/vendor.css";
+import "../../css/index.module.css";
 import "metabase/css/index.module.css";
 
 const store = getStore(reducers, null, {

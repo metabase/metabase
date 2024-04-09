@@ -14,11 +14,11 @@ import { FilterHeader } from "metabase/query_builder/components/view/ViewHeader/
 import {
   getCard,
   getFirstQueryResult,
-  getMode,
   getQuestion,
   getUiControls,
 } from "metabase/query_builder/selectors";
 import { Group, Stack } from "metabase/ui";
+import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { CardId } from "metabase-types/api";
 
 import { useEmbeddingContext } from "../../context";
@@ -34,8 +34,8 @@ export const InteractiveQuestionSdk = (
 ): JSX.Element | null => {
   const { isInitialized, isLoggedIn } = useEmbeddingContext();
   const dispatch = useDispatch();
-  const mode = useSelector(getMode);
   const question = useSelector(getQuestion);
+  const mode = question && getEmbeddingMode(question);
   const card = useSelector(getCard);
   const result = useSelector(getFirstQueryResult);
   const uiControls = useSelector(getUiControls);

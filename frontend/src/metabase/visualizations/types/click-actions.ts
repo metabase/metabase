@@ -155,7 +155,7 @@ export type Drill<
 
 export interface QueryClickActionsMode {
   name: string;
-  hasDrills: boolean;
+  hasDrills: boolean | Lib.DrillThruType[];
   clickActions: LegacyDrill[];
   fallback?: LegacyDrill;
 }
