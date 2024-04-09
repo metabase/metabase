@@ -101,7 +101,7 @@
   [query breakout bitmask]
   (as-> query query
     ;;TODO: replace this value with a bitmask or something to indicate the source better
-    (update-in query [:query :expressions] assoc :pivot-grouping [:abs bitmask])
+    (update-in query [:query :expressions] assoc "pivot-grouping" [:abs bitmask])
     ;; in PostgreSQL and most other databases, all the expressions must be present in the breakouts. Add a pivot
     ;; grouping expression ref to the breakouts
     (assoc-in query [:query :breakout] (concat breakout [[:expression "pivot-grouping"]]))

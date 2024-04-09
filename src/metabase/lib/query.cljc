@@ -225,15 +225,15 @@
 (mu/defn uses-segment? :- :boolean
   "Tests whether `a-query` uses segment with ID `segment-id`.
   `segment-id` can be a regular segment ID or a string. The latter is for symmetry
-  with [[uses-metric?]]."
+  with [[uses-legacy-metric?]]."
   [a-query :- ::lib.schema/query
    segment-id :- [:or ::lib.schema.id/segment :string]]
   (occurs-in-stage-clause? a-query :filters #(occurs-in-expression? % :segment segment-id)))
 
-(mu/defn uses-metric? :- :boolean
+(mu/defn uses-legacy-metric? :- :boolean
   "Tests whether `a-query` uses metric with ID `metric-id`.
   `metric-id` can be a regular metric ID or a string. The latter is to support
-  some strange use-cases (see [[metabase.lib.metric-test/ga-metric-metadata-test]])."
+  some strange use-cases (see [[metabase.lib.legacy-metric-test/ga-metric-metadata-test]])."
   [a-query :- ::lib.schema/query
-   metric-id :- [:or ::lib.schema.id/metric :string]]
+   metric-id :- [:or ::lib.schema.id/legacy-metric :string]]
   (occurs-in-stage-clause? a-query :aggregation #(occurs-in-expression? % :metric metric-id)))

@@ -6,9 +6,12 @@ import { useWindowSize } from "react-use";
 
 import { color, darken } from "metabase/lib/colors";
 import { useSelector, useDispatch } from "metabase/lib/redux";
-import { setUIControls } from "metabase/query_builder/actions";
+import {
+  setNotebookNativePreviewSidebarWidth,
+  setUIControls,
+} from "metabase/query_builder/actions";
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
-import { NativeQueryPreviewSidebar } from "metabase/query_builder/components/view/NativeQueryPreviewSidebar";
+import { NotebookNativePreview } from "metabase/query_builder/components/notebook/NotebookNativePreview";
 import { getUiControls } from "metabase/query_builder/selectors";
 import { Flex, Box, rem } from "metabase/ui";
 
@@ -31,13 +34,14 @@ export const NotebookContainer = ({
     isOpen && setShouldShowNotebook(isOpen);
   }, [isOpen]);
 
-  const { isNativePreviewSidebarOpen, nativePreviewSidebarWidth } =
+  const { isShowingNotebookNativePreview, notebookNativePreviewSidebarWidth } =
     useSelector(getUiControls);
 
   const minNotebookWidth = 640;
   const minSidebarWidth = 428;
   const maxSidebarWidth = windowWidth - minNotebookWidth;
-  const sidebarWidth = nativePreviewSidebarWidth || minSidebarWidth;
+  const sidebarWidth = notebookNativePreviewSidebarWidth || minSidebarWidth;
+  const windowBreakpoint = 1280;
 
   const handleTransitionEnd: TransitionEventHandler<HTMLDivElement> = (
     event,
@@ -52,7 +56,10 @@ export const NotebookContainer = ({
     _event: SyntheticEvent,
     data: ResizeCallbackData,
   ) => {
-    dispatch(setUIControls({ nativePreviewSidebarWidth: data.size.width }));
+    const { width } = data.size;
+
+    dispatch(setUIControls({ notebookNativePreviewSidebarWidth: width }));
+    dispatch(setNotebookNativePreviewSidebarWidth(width));
   };
 
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
@@ -60,11 +67,12 @@ export const NotebookContainer = ({
   const Handle = forwardRef<HTMLDivElement, Partial<ResizableBoxProps>>(
     function Handle(props, ref) {
       const handleWidth = 6;
-      // 0.5 accounts for the border width of 1px
-      const left = rem(-(handleWidth / 2 + 0.5));
+      const borderWidth = 1;
+      const left = rem(-((handleWidth + borderWidth) / 2));
 
       return (
         <Box
+          data-testid="notebook-native-preview-resize-handle"
           ref={ref}
           {...props}
           pos="absolute"
@@ -108,13 +116,13 @@ export const NotebookContainer = ({
         </Box>
       )}
 
-      {isNativePreviewSidebarOpen && windowWidth < 1280 && (
+      {isShowingNotebookNativePreview && windowWidth < windowBreakpoint && (
         <Box pos="absolute" inset={0}>
-          <NativeQueryPreviewSidebar />
+          <NotebookNativePreview />
         </Box>
       )}
 
-      {isNativePreviewSidebarOpen && windowWidth >= 1280 && (
+      {isShowingNotebookNativePreview && windowWidth >= windowBreakpoint && (
         <ResizableBox
           width={sidebarWidth}
           minConstraints={[minSidebarWidth, 0]}
@@ -128,7 +136,7 @@ export const NotebookContainer = ({
             marginInlineStart: "0.25rem",
           }}
         >
-          <NativeQueryPreviewSidebar />
+          <NotebookNativePreview />
         </ResizableBox>
       )}
     </Flex>
