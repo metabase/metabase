@@ -33,6 +33,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       }}
       bg={active ? color("brand") : "none"}
       c={active ? color("white") : color("text-dark")}
+      aria-label={item.name}
     >
       <Flex gap=".5rem" style={{ minWidth: 0 }}>
         {item.icon && (

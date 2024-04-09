@@ -24,6 +24,8 @@ import type { SearchResult } from "metabase-types/api";
 
 import type { PaletteAction } from "../types";
 
+import { normalizedCollection } from "metabase/entities/collections";
+
 export type PalettePageId = "root" | "admin_settings";
 
 export const useCommandPalette = ({
@@ -120,7 +122,7 @@ export const useCommandPalette = ({
                 dispatch(push(wrappedResult.getUrl()));
               },
               extra: {
-                parentCollection: result.collection.name,
+                parentCollection: wrappedResult.getCollection().name,
                 isVerified: result.moderated_status === "verified",
                 database: result.database_name,
               },
@@ -150,6 +152,7 @@ export const useCommandPalette = ({
 
   const recentItemsActions = useMemo<PaletteAction[]>(() => {
     const ret: PaletteAction[] = [];
+
     recentItems?.forEach(item => {
       ret.push({
         id: `recent-item-${getName(item)}`,
@@ -159,11 +162,18 @@ export const useCommandPalette = ({
         perform: () => {
           dispatch(push(Urls.modelToUrl(item) ?? ""));
         },
-        extra: {
-          parentCollection: item.model_object.collection_name,
-          isVerified: item.model_object.moderated_status === "verified",
-          database: item.model_object.database_name,
-        },
+        extra:
+          item.model === "table"
+            ? {
+                database: item.model_object.database_name,
+              }
+            : {
+                parentCollection: normalizedCollection({
+                  id: item.model_object.collection_id,
+                  name: item.model_object.collection_name,
+                }).name,
+                isVerified: item.model_object.moderated_status === "verified",
+              },
       });
     });
 
