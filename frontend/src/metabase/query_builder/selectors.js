@@ -993,22 +993,6 @@ export const getDataReferenceStack = createSelector(
       : [],
 );
 
-export const getNativeQueryFn = createSelector(
-  [getNextRunDatasetQuery, getNextRunParameters],
-  (datasetQuery, parameters) => {
-    let lastResult = undefined;
-
-    return async (options = {}) => {
-      lastResult ??= await MetabaseApi.native({
-        ...datasetQuery,
-        parameters,
-        ...options,
-      });
-      return lastResult;
-    };
-  },
-);
-
 export const getDashboardId = state => {
   return state.qb.parentDashboard.dashboardId;
 };
