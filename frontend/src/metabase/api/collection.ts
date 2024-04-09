@@ -4,7 +4,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { collectionItemListTags } from "./tags";
+import { provideCollectionItemListTags } from "./tags";
 
 export const collectionApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -18,7 +18,7 @@ export const collectionApi = Api.injectEndpoints({
         body,
       }),
       providesTags: (response, error, { models }) =>
-        collectionItemListTags(response?.data ?? [], models),
+        provideCollectionItemListTags(response?.data ?? [], models),
     }),
   }),
 });

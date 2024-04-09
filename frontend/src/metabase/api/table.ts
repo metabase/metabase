@@ -14,8 +14,8 @@ import {
   idTag,
   invalidateTags,
   listTag,
-  tableListTags,
-  tableTags,
+  provideTableListTags,
+  provideTableTags,
   tag,
 } from "./tags";
 
@@ -26,14 +26,14 @@ export const tableApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/table",
       }),
-      providesTags: (tables = []) => tableListTags(tables),
+      providesTags: (tables = []) => provideTableListTags(tables),
     }),
     getTable: builder.query<Table, GetTableRequest>({
       query: ({ id }) => ({
         method: "GET",
         url: `/api/table/${id}`,
       }),
-      providesTags: table => (table ? tableTags(table) : []),
+      providesTags: table => (table ? provideTableTags(table) : []),
     }),
     getTableMetadata: builder.query<Table, GetTableMetadataRequest>({
       query: ({ id, ...body }) => ({
@@ -41,7 +41,7 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}/query_metadata`,
         body,
       }),
-      providesTags: table => (table ? tableTags(table) : []),
+      providesTags: table => (table ? provideTableTags(table) : []),
     }),
     listTableForeignKeys: builder.query<Field[], TableId>({
       query: id => ({

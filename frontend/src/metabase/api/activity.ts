@@ -1,7 +1,7 @@
 import type { PopularItem, RecentItem } from "metabase-types/api";
 
 import { Api } from "./api";
-import { activityItemListTags } from "./tags";
+import { provideActivityItemListTags } from "./tags";
 
 export const activityApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -10,14 +10,14 @@ export const activityApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/activity/recent_views",
       }),
-      providesTags: (items = []) => activityItemListTags(items),
+      providesTags: (items = []) => provideActivityItemListTags(items),
     }),
     listPopularItems: builder.query<PopularItem[], void>({
       query: () => ({
         method: "GET",
         url: "/api/activity/popular_items",
       }),
-      providesTags: (items = []) => activityItemListTags(items),
+      providesTags: (items = []) => provideActivityItemListTags(items),
     }),
   }),
 });

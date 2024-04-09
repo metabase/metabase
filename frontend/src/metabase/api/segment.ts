@@ -11,8 +11,8 @@ import {
   idTag,
   invalidateTags,
   listTag,
-  segmentListTags,
-  segmentTags,
+  provideSegmentListTags,
+  provideSegmentTags,
   tag,
 } from "./tags";
 
@@ -23,14 +23,14 @@ export const segmentApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/segment",
       }),
-      providesTags: (segments = []) => segmentListTags(segments),
+      providesTags: (segments = []) => provideSegmentListTags(segments),
     }),
     getSegment: builder.query<Segment, SegmentId>({
       query: id => ({
         method: "GET",
         url: `/api/segment/${id}`,
       }),
-      providesTags: segment => (segment ? segmentTags(segment) : []),
+      providesTags: segment => (segment ? provideSegmentTags(segment) : []),
     }),
     createSegment: builder.mutation<Segment, CreateSegmentRequest>({
       query: body => ({

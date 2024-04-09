@@ -12,8 +12,8 @@ import type {
 
 import { Api } from "./api";
 import {
-  fieldTags,
-  fieldValuesTags,
+  provideFieldTags,
+  provideFieldValuesTags,
   idTag,
   invalidateTags,
   listTag,
@@ -28,14 +28,14 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${id}`,
         body,
       }),
-      providesTags: field => (field ? fieldTags(field) : []),
+      providesTags: field => (field ? provideFieldTags(field) : []),
     }),
     getFieldValues: builder.query<GetFieldValuesResponse, FieldId>({
       query: id => ({
         method: "GET",
         url: `/api/field/${id}/values`,
       }),
-      providesTags: (_, error, fieldId) => fieldValuesTags(fieldId),
+      providesTags: (_, error, fieldId) => provideFieldValuesTags(fieldId),
     }),
     searchFieldValues: builder.query<FieldValue[], SearchFieldValuesRequest>({
       query: ({ fieldId, searchFieldId, ...body }) => ({
@@ -43,7 +43,7 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${fieldId}/search/${searchFieldId}`,
         body,
       }),
-      providesTags: (_, error, { fieldId }) => fieldValuesTags(fieldId),
+      providesTags: (_, error, { fieldId }) => provideFieldValuesTags(fieldId),
     }),
     updateField: builder.mutation<Field, UpdateFieldRequest>({
       query: ({ id, ...body }) => ({

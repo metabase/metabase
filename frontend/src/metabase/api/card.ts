@@ -8,7 +8,13 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { cardListTags, cardTags, idTag, invalidateTags, listTag } from "./tags";
+import {
+  provideCardListTags,
+  provideCardTags,
+  idTag,
+  invalidateTags,
+  listTag,
+} from "./tags";
 
 export const cardApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -18,7 +24,7 @@ export const cardApi = Api.injectEndpoints({
         url: "/api/card",
         body,
       }),
-      providesTags: (cards = []) => cardListTags(cards),
+      providesTags: (cards = []) => provideCardListTags(cards),
     }),
     getCard: builder.query<Card, GetCardRequest>({
       query: ({ id, ignore_error, ...body }) => ({
@@ -27,7 +33,7 @@ export const cardApi = Api.injectEndpoints({
         body,
         noEvent: ignore_error,
       }),
-      providesTags: card => (card ? cardTags(card) : []),
+      providesTags: card => (card ? provideCardTags(card) : []),
     }),
     createCard: builder.mutation<Card, CreateCardRequest>({
       query: body => ({

@@ -11,8 +11,8 @@ import {
   idTag,
   invalidateTags,
   listTag,
-  metricListTags,
-  metricTags,
+  provideMetricListTags,
+  provideMetricTags,
   tag,
 } from "./tags";
 
@@ -23,14 +23,14 @@ export const metricApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/legacy-metric",
       }),
-      providesTags: (metrics = []) => metricListTags(metrics),
+      providesTags: (metrics = []) => provideMetricListTags(metrics),
     }),
     getMetric: builder.query<Metric, MetricId>({
       query: id => ({
         method: "GET",
         url: `/api/legacy-metric/${id}`,
       }),
-      providesTags: metric => (metric ? metricTags(metric) : []),
+      providesTags: metric => (metric ? provideMetricTags(metric) : []),
     }),
     createMetric: builder.mutation<Metric, CreateMetricRequest>({
       query: body => ({

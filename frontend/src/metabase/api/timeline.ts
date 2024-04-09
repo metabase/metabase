@@ -14,8 +14,8 @@ import {
   invalidateTags,
   listTag,
   tag,
-  timelineListTags,
-  timelineTags,
+  provideTimelineListTags,
+  provideTimelineTags,
 } from "./tags";
 
 export const timelineApi = Api.injectEndpoints({
@@ -26,7 +26,7 @@ export const timelineApi = Api.injectEndpoints({
         url: "/api/timeline",
         body,
       }),
-      providesTags: (timelines = []) => timelineListTags(timelines),
+      providesTags: (timelines = []) => provideTimelineListTags(timelines),
     }),
     listCollectionTimelines: builder.query<
       Timeline[],
@@ -37,7 +37,7 @@ export const timelineApi = Api.injectEndpoints({
         url: `/api/collection/${id}/timelines`,
         body,
       }),
-      providesTags: (timelines = []) => timelineListTags(timelines),
+      providesTags: (timelines = []) => provideTimelineListTags(timelines),
     }),
     getTimeline: builder.query<Timeline, GetTimelineRequest>({
       query: ({ id, ...body }) => ({
@@ -45,7 +45,7 @@ export const timelineApi = Api.injectEndpoints({
         url: `/api/timeline/${id}`,
         body,
       }),
-      providesTags: timeline => (timeline ? timelineTags(timeline) : []),
+      providesTags: timeline => (timeline ? provideTimelineTags(timeline) : []),
     }),
     createTimeline: builder.mutation<Timeline, CreateTimelineRequest>({
       query: body => ({

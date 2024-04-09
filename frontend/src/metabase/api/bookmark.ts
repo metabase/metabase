@@ -6,7 +6,12 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { bookmarkListTags, idTag, invalidateTags, listTag } from "./tags";
+import {
+  provideBookmarkListTags,
+  idTag,
+  invalidateTags,
+  listTag,
+} from "./tags";
 
 export const bookmarkApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -15,7 +20,7 @@ export const bookmarkApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/bookmark",
       }),
-      providesTags: (bookmarks = []) => bookmarkListTags(bookmarks),
+      providesTags: (bookmarks = []) => provideBookmarkListTags(bookmarks),
     }),
     createBookmark: builder.mutation<Bookmark, CreateBookmarkRequest>({
       query: ({ id, type }) => ({

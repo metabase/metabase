@@ -21,8 +21,8 @@ import {
   idTag,
   listTag,
   invalidateTags,
-  databaseListTags,
-  databaseTags,
+  provideDatabaseListTags,
+  provideDatabaseTags,
 } from "./tags";
 
 export const databaseApi = Api.injectEndpoints({
@@ -36,7 +36,7 @@ export const databaseApi = Api.injectEndpoints({
         url: "/api/database",
         body,
       }),
-      providesTags: response => databaseListTags(response?.data ?? []),
+      providesTags: response => provideDatabaseListTags(response?.data ?? []),
     }),
     getDatabase: builder.query<Database, GetDatabaseRequest>({
       query: ({ id, ...body }) => ({
@@ -44,7 +44,7 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${id}`,
         body,
       }),
-      providesTags: database => (database ? databaseTags(database) : []),
+      providesTags: database => (database ? provideDatabaseTags(database) : []),
     }),
     getDatabaseMetadata: builder.query<Database, GetDatabaseMetadataRequest>({
       query: ({ id, ...body }) => ({
@@ -52,7 +52,7 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${id}/metadata`,
         body,
       }),
-      providesTags: database => (database ? databaseTags(database) : []),
+      providesTags: database => (database ? provideDatabaseTags(database) : []),
     }),
     listDatabaseSchemas: builder.query<string[], ListDatabaseSchemasRequest>({
       query: ({ id, ...body }) => ({

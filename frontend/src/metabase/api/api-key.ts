@@ -9,17 +9,17 @@ import type {
 } from "metabase-types/api/admin";
 
 import { Api } from "./api";
-import { apiKeyListTags, idTag, invalidateTags, listTag } from "./tags";
+import { provideApiKeyListTags, idTag, invalidateTags, listTag } from "./tags";
 
 export const apiKeyApi = Api.injectEndpoints({
   endpoints: builder => ({
     listApiKeys: builder.query<ApiKey[], void>({
       query: () => `/api/api-key`,
-      providesTags: (apiKeys = []) => apiKeyListTags(apiKeys),
+      providesTags: (apiKeys = []) => provideApiKeyListTags(apiKeys),
     }),
     countApiKeys: builder.query<number, void>({
       query: () => `/api/api-key/count`,
-      providesTags: apiKeyListTags([]),
+      providesTags: provideApiKeyListTags([]),
     }),
     createApiKey: builder.mutation<CreateApiKeyResponse, CreateApiKeyRequest>({
       query: body => ({
