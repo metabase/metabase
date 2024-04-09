@@ -52,8 +52,7 @@
   (apply (get-method driver/describe-table :sql-jdbc) args))
 
 (def ^:private get-tables-sql
-  ;; Cal 2024-04-09
-  ;; This query uses tables that the JDBC redshift driver currently uses.
+  ;; Cal 2024-04-09 This query uses tables that the JDBC redshift driver currently uses.
   ;; It does not return tables from datashares, which is a relatively new feature of redshift.
   ;; See https://github.com/dbt-labs/dbt-redshift/issues/742 for an implementation for DBT's integration with redshift
   ;; for inspiration, and the JDBC driver itself:
