@@ -56,7 +56,7 @@
   (as-> (t2/select Table, :active true, {:order-by [[:name :asc]]}) tables
     (t2/hydrate tables :db)
     (filterv mi/can-read? tables)
-    (mapv #(format-table-for-response %))))
+    (mapv format-table-for-response)))
 
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
