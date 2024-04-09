@@ -19,6 +19,8 @@ import { canUseLinkedFilters } from "../../utils/linked-filters";
 import { ParameterLinkedFilters } from "../ParameterLinkedFilters";
 import { ParameterSettings } from "../ParameterSettings";
 
+import S from "./ParameterSidebar.module.css";
+
 export interface ParameterSidebarProps {
   parameter: Parameter;
   otherParameters: Parameter[];
@@ -169,10 +171,8 @@ export const ParameterSidebar = ({
       <Tabs
         value={tab}
         onTabChange={handleTabChange}
-        styles={{
-          tab: {
-            borderRadius: 0,
-          },
+        classNames={{
+          tab: S.tab,
         }}
       >
         <Tabs.List grow>
