@@ -21,6 +21,7 @@
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.interface :as mi]
+   [metabase.native-query-analyzer :as query-analyzer]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -1122,3 +1123,13 @@
     (qs/delete-trigger scheduler (triggers/key "metabase.task.truncate-audit-log.trigger"))
     (qs/delete-job scheduler (jobs/key "metabase.task.truncate-audit-log.job"))
     (qs/shutdown scheduler)))
+
+(define-migration BackfillQueryField
+  (let [cards      (t2/select :model/Card :id [:in {:from      [[:report_card :c]]
+                                                    :left-join [[:query_field :f] [:= :f.card_id :c.id]]
+                                                    :select    [:c.id]
+                                                    :where     [:and
+                                                                [:= :c.query_type "native"]
+                                                                [:= :f.id nil]]}])]
+    (doseq [card cards]
+      (query-analyzer/update-query-fields-for-card! card))))
