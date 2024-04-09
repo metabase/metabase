@@ -26,7 +26,12 @@
    [metabase.util.log :as log])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
-   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Types)
+   (java.sql
+    Connection
+    PreparedStatement
+    ResultSet
+    ResultSetMetaData
+    Types)
    (java.time OffsetTime)))
 
 (set! *warn-on-reflection* true)
@@ -440,7 +445,7 @@
     ::upload/int                      [:bigint]
     ;; identity(1, 1) defines an auto-increment column starting from 1
     ::upload/auto-incrementing-int-pk [:bigint [:identity 1 1]]
-    ::upload/float                    [:float]
+    ::upload/float                    [(keyword "double precision")]
     ::upload/boolean                  [:boolean]
     ::upload/date                     [:date]
     ::upload/datetime                 [:timestamp]
@@ -504,3 +509,15 @@
 (defmethod driver.sql/default-database-role :redshift
   [_ _]
   "DEFAULT")
+
+(defmethod driver/add-columns! :redshift
+  [driver db-id table-name column-definitions & {:as settings}]
+  ;; Redshift doesn't support adding multiple columns at a time, so we break it up
+  (let [f (get-method driver/add-columns! :postgres)]
+    (doseq [[k v] column-definitions]
+      (f driver db-id table-name {k v} settings))))
+
+(defmethod driver/alter-columns! :redshift
+  [_driver _db-id _table-name _column-definitions]
+  ;; TODO: redshift doesn't allow promotion of ints to floats using ALTER TABLE.
+  (throw (ex-info "Uploaded value with the wrong type" {})))
