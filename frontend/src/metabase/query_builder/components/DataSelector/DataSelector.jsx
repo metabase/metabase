@@ -1062,7 +1062,7 @@ const DataSelector = _.compose(
     // we want to display a slightly different data picker view
     // (see DATA_BUCKET step)
     query: {
-      models: "dataset",
+      models: ["dataset"],
       limit: 1,
     },
     loadingAndErrorWrapper: false,

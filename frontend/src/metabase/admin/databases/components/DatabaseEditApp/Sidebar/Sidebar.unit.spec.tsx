@@ -22,7 +22,7 @@ import Sidebar from "./Sidebar";
 const NOT_SYNCED_DB_STATUSES: InitialSyncStatus[] = ["aborted", "incomplete"];
 
 function getModal() {
-  return document.querySelector(".Modal") as HTMLElement;
+  return document.querySelector("[data-testid=modal]") as HTMLElement;
 }
 
 interface SetupOpts {

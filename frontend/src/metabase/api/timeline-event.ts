@@ -6,7 +6,13 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag, invalidateTags, listTag, tag } from "./tags";
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  tag,
+  provideTimelineEventTags,
+} from "./tags";
 
 export const timelineEventApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -15,8 +21,7 @@ export const timelineEventApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/timeline-event/${id}`,
       }),
-      providesTags: timelineEvent =>
-        timelineEvent ? [idTag("timeline-event", timelineEvent.id)] : [],
+      providesTags: event => (event ? provideTimelineEventTags(event) : []),
     }),
     createTimelineEvent: builder.mutation<
       TimelineEvent,
@@ -46,7 +51,7 @@ export const timelineEventApi = Api.injectEndpoints({
         invalidateTags(error, [
           listTag("timeline-event"),
           idTag("timeline-event", id),
-          ...(event ? [idTag("timeline", event.timeline_id)] : []),
+          tag("timeline"),
         ]),
     }),
     deleteTimelineEvent: builder.mutation<TimelineEvent, TimelineEventId>({
