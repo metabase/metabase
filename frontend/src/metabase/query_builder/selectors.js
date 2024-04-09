@@ -299,8 +299,9 @@ const getNextRunParameterValues = createSelector([getParameters], parameters =>
   ),
 );
 
-const getNextRunParameters = createSelector([getParameters], parameters =>
-  normalizeParameters(parameters),
+export const getNextRunParameters = createSelector(
+  [getParameters],
+  parameters => normalizeParameters(parameters),
 );
 
 export const getQueryBuilderMode = createSelector(

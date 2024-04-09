@@ -1,16 +1,19 @@
-import { useCallback } from "react";
 import { t } from "ttag";
 
+import { useGetNativeDatasetQuery } from "metabase/api";
+import { formatNativeQuery } from "metabase/lib/engine";
+import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { checkNotNull } from "metabase/lib/types";
 import {
-  getNativeQueryFn,
   getQuestion,
+  getNextRunParameters,
 } from "metabase/query_builder/selectors";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import * as Lib from "metabase-lib";
 
-import { NativeQueryPreview, useNativeQuery } from "../NativeQueryPreview";
+import { NativeQueryPreview } from "../NativeQueryPreview";
 
 import { ModalExternalLink } from "./PreviewQueryModal.styled";
 
@@ -22,21 +25,26 @@ export const PreviewQueryModal = ({
   onClose,
 }: PreviewQueryModalProps): JSX.Element => {
   const question = checkNotNull(useSelector(getQuestion));
-  const onLoadQuery = useSelector(getNativeQueryFn);
-  const handleLoadQuery = useCallback(
-    () => onLoadQuery({ pretty: false }),
-    [onLoadQuery],
-  );
-  const { query, error, isLoading } = useNativeQuery(question, handleLoadQuery);
+  const sourceQuery = question.query();
+  const parameters = useSelector(getNextRunParameters);
+  const payload = {
+    ...Lib.toLegacyQuery(sourceQuery),
+    parameters,
+    ...{ pretty: false },
+  };
+  const { data, error, isFetching } = useGetNativeDatasetQuery(payload);
   const learnUrl = MetabaseSettings.learnUrl("debugging-sql/sql-syntax");
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+
+  const engine = question.database()?.engine;
+  const formattedQuery = formatNativeQuery(data?.query, engine);
 
   return (
     <NativeQueryPreview
       title={t`Query preview`}
-      query={query}
-      error={error}
-      isLoading={isLoading}
+      query={formattedQuery}
+      error={getResponseErrorMessage(error)}
+      isLoading={isFetching}
       onClose={onClose}
     >
       {error && showMetabaseLinks && (
