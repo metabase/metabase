@@ -549,6 +549,13 @@ BarTwoDaysOfWeek.args = {
   renderingContext,
 };
 
+export const AreaStackedAutoDataLabels = Template.bind({});
+AreaStackedAutoDataLabels.args = {
+  rawSeries: data.areaStackedAutoDataLabels as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,

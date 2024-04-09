@@ -3,6 +3,7 @@ import areaOverBar from "./area-over-bar-40209.json";
 import areaStackAllSeriesWithoutInterpolation from "./area-stack-all-series-without-interpolation.json";
 import areaStackInterpolateMissingValues from "./area-stack-interpolate-missing-values.json";
 import areaStackLinearXAxis from "./area-stack-linear-x-axis.json";
+import areaStackedAutoDataLabels from "./area-stacked-auto-data-labels.json";
 import autoYSplit from "./auto-y-split.json";
 import barAutoFormattingCompact from "./bar-auto-formatting-compact.json";
 import barAutoFormattingFull from "./bar-auto-formatting-full.json";
@@ -150,4 +151,5 @@ export const data = {
   powYScaleCustomYAxisRange,
   barRelativeDatetimeOrdinalScale,
   barTwoDaysOfWeek,
+  areaStackedAutoDataLabels,
 };
