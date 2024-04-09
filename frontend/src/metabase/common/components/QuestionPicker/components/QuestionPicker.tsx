@@ -1,21 +1,22 @@
-import type { Ref } from "react";
-import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
+import { useCallback, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
+import { isValidCollectionId } from "metabase/collections/utils";
 import { useCollectionQuery, useQuestionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { SearchRequest, SearchModelType } from "metabase-types/api";
 
-import type { CollectionPickerItem } from "../../CollectionPicker";
+import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
+import { getPathLevelForItem } from "../../CollectionPicker/utils";
 import {
   LoadingSpinner,
   NestedItemPicker,
   type PickerState,
 } from "../../EntityPicker";
-import type { QuestionPickerItem, QuestionPickerOptions } from "../types";
+import type { QuestionPickerOptions, QuestionPickerItem } from "../types";
 import {
   generateKey,
   getCollectionIdPath,
@@ -23,14 +24,13 @@ import {
   isFolder,
 } from "../utils";
 
-import { QuestionItemPickerResolver } from "./QuestionItemPickerResolver";
-
 export const defaultOptions: QuestionPickerOptions = {
   showPersonalCollections: true,
   showRootCollection: true,
+  allowCreateNew: false,
 };
 interface QuestionPickerProps {
-  onItemSelect: (item: QuestionPickerItem | CollectionPickerItem) => void;
+  onItemSelect: (item: QuestionPickerItem) => void;
   initialValue?: Pick<QuestionPickerItem, "model" | "id">;
   options: QuestionPickerOptions;
   models?: SearchModelType[];
@@ -56,7 +56,7 @@ const useGetInitialCollection = (
 
   const { data: currentCollection, error: collectionError } =
     useCollectionQuery({
-      id: collectionId ?? "root",
+      id: isValidCollectionId(collectionId) ? collectionId : "root",
       enabled: !isQuestion || !!currentQuestion,
     });
 
@@ -68,17 +68,14 @@ const useGetInitialCollection = (
   };
 };
 
-export const QuestionPickerInner = (
-  {
-    onItemSelect,
-    initialValue,
-    options,
-    models = ["dataset", "card"],
-  }: QuestionPickerProps,
-  ref: Ref<unknown>,
-) => {
+export const QuestionPicker = ({
+  onItemSelect,
+  initialValue,
+  options,
+  models = ["dataset", "card"],
+}: QuestionPickerProps) => {
   const [path, setPath] = useState<
-    PickerState<QuestionPickerItem | CollectionPickerItem, SearchRequest>
+    PickerState<QuestionPickerItem, SearchRequest>
   >(() =>
     getStateFromIdPath({
       idPath: ["root"],
@@ -107,26 +104,21 @@ export const QuestionPickerInner = (
     [setPath, onItemSelect, userPersonalCollectionId, models],
   );
 
-  const handleItemSelect = (item: QuestionPickerItem) => {
-    // set selected item at the correct level
-    const pathLevel = path.findIndex(
-      level => level?.query?.collection === (item?.collection_id ?? "root"),
-    );
+  const handleItemSelect = useCallback(
+    (item: QuestionPickerItem) => {
+      // set selected item at the correct level
+      const pathLevel = getPathLevelForItem(
+        item,
+        path,
+        userPersonalCollectionId,
+      );
 
-    const newPath = path.slice(0, pathLevel + 1);
-    newPath[newPath.length - 1].selectedItem = item;
-    setPath(newPath);
-    onItemSelect(item);
-  };
-
-  // Exposing onFolderSelect so that parent can select newly created
-  // folder
-  useImperativeHandle(
-    ref,
-    () => ({
-      onFolderSelect,
-    }),
-    [onFolderSelect],
+      const newPath = path.slice(0, pathLevel + 1);
+      newPath[newPath.length - 1].selectedItem = item;
+      setPath(newPath);
+      onItemSelect(item);
+    },
+    [setPath, onItemSelect, path, userPersonalCollectionId],
   );
 
   useDeepCompareEffect(
@@ -178,15 +170,13 @@ export const QuestionPickerInner = (
   return (
     <NestedItemPicker
       itemName={t`question`}
-      isFolder={isFolder}
+      isFolder={(item: QuestionPickerItem) => isFolder(item, models)}
       options={options}
       generateKey={generateKey}
       onFolderSelect={onFolderSelect}
       onItemSelect={handleItemSelect}
       path={path}
-      listResolver={QuestionItemPickerResolver}
+      listResolver={CollectionItemPickerResolver}
     />
   );
 };
-
-export const QuestionPicker = forwardRef(QuestionPickerInner);

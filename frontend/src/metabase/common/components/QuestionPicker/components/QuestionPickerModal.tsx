@@ -1,11 +1,7 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { useToggle } from "metabase/hooks/use-toggle";
-import { Button, Icon } from "metabase/ui";
-import type { SearchModelType } from "metabase-types/api";
-
-import { NewCollectionDialog } from "../../CollectionPicker/components/NewCollectionDialog";
+import type { CollectionPickerModel } from "../../CollectionPicker";
 import type { EntityTab } from "../../EntityPicker";
 import {
   EntityPickerModal,
@@ -15,6 +11,7 @@ import type {
   QuestionPickerItem,
   QuestionPickerOptions,
   QuestionPickerModel,
+  QuestionPickerValueItem,
 } from "../types";
 
 import {
@@ -24,21 +21,21 @@ import {
 
 interface QuestionPickerModalProps {
   title?: string;
-  onChange: (item: QuestionPickerItem) => void;
+  onChange: (item: QuestionPickerValueItem) => void;
   onClose: () => void;
   options?: QuestionPickerOptions;
   value?: Pick<QuestionPickerItem, "id" | "model">;
   models?: [QuestionPickerModel, ...QuestionPickerModel[]];
 }
 
-const canSelectItem = (item: QuestionPickerItem | null): boolean => {
-  return !!item && (item.model === "card" || item.model === "dataset");
-};
-
-const searchFilter = (
-  searchResults: QuestionPickerItem[],
-): QuestionPickerItem[] => {
-  return searchResults;
+const canSelectItem = (
+  item: QuestionPickerItem | null,
+): item is QuestionPickerValueItem => {
+  return (
+    !!item &&
+    item.can_write !== false &&
+    (item.model === "card" || item.model === "dataset")
+  );
 };
 
 const defaultOptions: QuestionPickerOptions = {
@@ -59,20 +56,11 @@ export const QuestionPickerModal = ({
     null,
   );
 
-  const [
-    isCreateDialogOpen,
-    { turnOn: openCreateDialog, turnOff: closeCreateDialog },
-  ] = useToggle(false);
-
-  const pickerRef = useRef<{
-    onFolderSelect: (item: { folder: QuestionPickerItem }) => void;
-  }>();
-
   const handleItemSelect = useCallback(
     (item: QuestionPickerItem) => {
       if (options.hasConfirmButtons) {
         setSelectedItem(item);
-      } else {
+      } else if (canSelectItem(item)) {
         onChange(item);
       }
     },
@@ -80,27 +68,15 @@ export const QuestionPickerModal = ({
   );
 
   const handleConfirm = () => {
-    if (selectedItem) {
+    if (selectedItem && canSelectItem(selectedItem)) {
       onChange(selectedItem);
     }
   };
 
-  const modalActions = [
-    <Button
-      key="collection-on-the-go"
-      miw="21rem"
-      onClick={openCreateDialog}
-      leftIcon={<Icon name="add" />}
-      disabled={selectedItem?.can_write === false}
-    >
-      {t`Create a new collection`}
-    </Button>,
-  ];
-
-  const tabs: [EntityTab<SearchModelType>, ...EntityTab<SearchModelType>[]] = [
+  const tabs: EntityTab<CollectionPickerModel>[] = [
     {
       displayName: t`Questions`,
-      model: "card" as QuestionPickerModel, // FIXME 😢
+      model: "card",
       icon: "table",
       element: (
         <QuestionPicker
@@ -108,13 +84,12 @@ export const QuestionPickerModal = ({
           initialValue={value}
           options={options}
           models={["card"]}
-          ref={pickerRef}
         />
       ),
     },
     {
       displayName: t`Models`,
-      model: "dataset" as QuestionPickerModel, // FIXME 😢
+      model: "dataset",
       icon: "model",
       element: (
         <QuestionPicker
@@ -122,40 +97,27 @@ export const QuestionPickerModal = ({
           initialValue={value}
           options={options}
           models={["dataset"]}
-          ref={pickerRef}
         />
       ),
     },
-  ].filter(tab => models.includes(tab.model)) as [
-    EntityTab<SearchModelType>,
-    ...EntityTab<SearchModelType>[],
-  ]; // FIXME 😢
+  ];
 
-  const handleNewCollectionCreate = (folder: QuestionPickerItem) => {
-    pickerRef.current?.onFolderSelect({ folder });
-  };
+  const filteredTabs = tabs.filter(tab =>
+    models.includes(tab.model as QuestionPickerModel),
+  );
 
   return (
-    <>
-      <EntityPickerModal
-        title={title}
-        onItemSelect={handleItemSelect}
-        canSelectItem={!isCreateDialogOpen && canSelectItem(selectedItem)}
-        onConfirm={handleConfirm}
-        onClose={onClose}
-        selectedItem={selectedItem}
-        tabs={tabs}
-        options={options}
-        searchResultFilter={searchFilter}
-        actionButtons={modalActions}
-        trapFocus={!isCreateDialogOpen}
-      />
-      <NewCollectionDialog
-        isOpen={isCreateDialogOpen}
-        onClose={closeCreateDialog}
-        parentCollectionId={selectedItem?.id || value?.id || "root"}
-        onNewCollection={handleNewCollectionCreate}
-      />
-    </>
+    <EntityPickerModal
+      title={title}
+      onItemSelect={handleItemSelect}
+      canSelectItem={canSelectItem(selectedItem)}
+      onConfirm={handleConfirm}
+      onClose={onClose}
+      selectedItem={selectedItem}
+      tabs={filteredTabs}
+      options={options}
+      searchResultFilter={results => results}
+      actionButtons={[]}
+    />
   );
 };

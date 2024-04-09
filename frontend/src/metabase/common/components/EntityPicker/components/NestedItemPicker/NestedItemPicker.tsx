@@ -74,12 +74,6 @@ export function NestedItemPicker<
               isSelectedItem(selectedItem, lastSelectedItem),
           );
 
-          const isCurrentLevel = Boolean(
-            selectedItem &&
-              lastSelectedItem &&
-              isSelectedItem(selectedItem, lastSelectedItem),
-          );
-
           return (
             <ListBox
               key={generateKey(query)}
