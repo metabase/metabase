@@ -1,9 +1,10 @@
-import type * as React from "react";
+import type { ReactNode } from "react";
 import { memo } from "react";
 import { Provider } from "react-redux";
 
 import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
-import type {SDKConfigType} from "embedding-sdk/types";
+import { store } from "embedding-sdk/store";
+import type { SDKConfigType } from "embedding-sdk/types";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
 
@@ -14,9 +15,9 @@ const MetabaseProviderInternal = ({
   children,
   config,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   config: SDKConfigType;
-}): React.JSX.Element => (
+}): JSX.Element => (
   <Provider store={store}>
     <EmotionCacheProvider>
       <ThemeProvider>

@@ -1,23 +1,22 @@
-import type { Store } from "@reduxjs/toolkit";
 import { useEffect, useState } from "react";
 import _ from "underscore";
 
-import { getOrRefreshSession, getSessionTokenState } from "embedding-sdk/store/reducer";
-import type {
-  SDKConfigType,
-} from "embedding-sdk/types";
+import {
+  getOrRefreshSession,
+  getSessionTokenState,
+} from "embedding-sdk/store/reducer";
+import type { EmbeddingSessionTokenState } from "embedding-sdk/store/types";
+import type { SDKConfigType } from "embedding-sdk/types";
 import { reloadSettings } from "metabase/admin/settings/settings";
 import api from "metabase/lib/api";
 import { useDispatch } from "metabase/lib/redux";
 import { refreshCurrentUser } from "metabase/redux/user";
 import registerVisualizations from "metabase/visualizations/register";
-import type {AppStore, EmbeddingSessionTokenState} from "embedding-sdk/store/types";
-
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
 
 interface InitDataLoaderParameters {
-  store: AppStore;
+  store: any;
   config: SDKConfigType;
 }
 
