@@ -5,6 +5,7 @@ import type {
   Card,
   Collection,
   Database,
+  DatabaseCandidate,
   Field,
   FieldDimension,
   FieldId,
@@ -65,6 +66,18 @@ export function apiKeyListTags(apiKeys: ApiKey[]): TagDescription<TagType>[] {
 
 export function apiKeyTags(apiKey: ApiKey): TagDescription<TagType>[] {
   return [idTag("api-key", apiKey.id)];
+}
+
+export function databaseCandidateListTags(
+  candidates: DatabaseCandidate[],
+): TagDescription<TagType>[] {
+  return [listTag("schema"), ...candidates.flatMap(databaseCandidateTags)];
+}
+
+export function databaseCandidateTags(
+  candidate: DatabaseCandidate,
+): TagDescription<TagType>[] {
+  return [idTag("schema", candidate.schema)];
 }
 
 export function databaseListTags(
