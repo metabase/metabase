@@ -149,6 +149,7 @@
    [kixi.stats.core :as stats]
    [kixi.stats.math :as math]
    [medley.core :as m]
+   [metabase.analyze.classifiers.core :as classifiers]
    [metabase.automagic-dashboards.combination :as combination]
    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.automagic-dashboards.filters :as filters]
@@ -162,13 +163,12 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :refer [LegacyMetric]]
+   [metabase.models.legacy-metric :refer [LegacyMetric]]
    [metabase.models.query :refer [Query]]
    [metabase.models.segment :refer [Segment]]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
-   [metabase.sync.analyze.classify :as classify]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru trun]]
    [metabase.util.malli :as mu]
@@ -441,7 +441,7 @@
                                         (update field :base_type keyword)
                                         (update field :semantic_type keyword)
                                         (mi/instance Field field)
-                                        (classify/run-classifiers field {})
+                                        (classifiers/run-classifiers field {})
                                         (assoc field :db db)))))]
         (constantly source-fields)))))
 

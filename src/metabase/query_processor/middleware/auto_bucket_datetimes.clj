@@ -8,6 +8,7 @@
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.log :as log]
@@ -21,7 +22,7 @@
 
 (def ^:private FieldIDOrName->TypeInfo
   [:map-of
-   [:or ms/NonBlankString ms/PositiveInt]
+   [:or ms/NonBlankString ::lib.schema.id/field]
    [:maybe FieldTypeInfo]])
 
 ;; Unfortunately these Fields won't be in the store yet since Field resolution can't happen before we add the implicit

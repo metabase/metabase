@@ -63,10 +63,32 @@ title: Driver interface changelog
     date_trunc(my_timestamp, 'month')
   ```
 
-  If neither of these strategies work for you, you might need to do something more complicated -- see
-  [#40982](https://github.com/metabase/metabase/pull/40982) for an example of complex query transformations to get
-  fussy BigQuery working. (More on this soon.) If all else fails, you can always specify that your driver does not
-  support `:window-functions`, and it will fall back to using the old broken implementation.
+  Some databases like BigQuery are fussy and don't like anything but simple column identifiers like these inside the
+  `ORDER BY` clause; in that case, we've added a new helper function,
+  `metabase.query-processor.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-cumulative-aggregation`,
+  to rewrite queries to instead generate SQL like
+
+  ```sql
+  SELECT
+    sum(sum(my_column) OVER (ORDER BY my_timestamp_month ROWS UNBOUNDED PRECEDING) AS cumulative_sum
+    my_timestamp_month AS my_timestamp_month
+  FROM (
+    SELECT
+      date_trunc(my_timestamp, 'month') AS my_timestamp_month,
+      my_column AS my_column
+    FROM
+      my_table
+  ) source
+  GROUP BY
+    my_timestamp_month
+  ORDER BY
+    my_timestamp_month
+  ```
+
+  See the `:bigquery-cloud-sdk` implementation of `metabase.driver.sql.query-processor/preprocess` for an example of
+  using this transformation.
+
+- `metabase.driver.common/class->base-type` no longer supports Joda Time classes. They have been deprecated since 2019.
 
 ## Metabase 0.49.1
 

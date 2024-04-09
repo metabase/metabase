@@ -264,8 +264,7 @@
   ([]
    (migrate! :up))
   ([direction & [version]]
-   (mdb/migrate! (mdb/db-type) (mdb/data-source)
-                 direction version)))
+   (mdb/migrate! (mdb/data-source) direction version)))
 
 (methodical/defmethod t2.connection/do-with-connection :model/Database
   "Support running arbitrary queries against data warehouse DBs for easy REPL debugging. Only works for SQL+JDBC drivers

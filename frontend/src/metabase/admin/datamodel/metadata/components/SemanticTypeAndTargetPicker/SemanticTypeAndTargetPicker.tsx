@@ -111,6 +111,7 @@ const SemanticTypeAndTargetPicker = ({
         optionSectionFn={getTypeOptionSection}
         placeholder={t`Select a semantic type`}
         searchProp="name"
+        globalSearch
       />
       {showCurrencyTypeSelect && hasSeparator && <FieldSeparator />}
       {showCurrencyTypeSelect && (

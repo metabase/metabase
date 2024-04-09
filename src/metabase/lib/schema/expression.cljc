@@ -172,7 +172,15 @@
 (mr/def ::expression
   [:maybe (expression-schema :type/* "any type of expression")])
 
+(mr/def ::expression.definition
+  [:and
+   [:ref ::expression]
+   [:cat
+    #_tag :any
+    #_opts [:map
+            [:lib/expression-name [:string {:decode/normalize common/normalize-string-key}]]]
+    #_args [:* :any]]])
+
 ;;; the `:expressions` definition map as found as a top-level key in an MBQL stage
 (mr/def ::expressions
-  [:sequential {:min 1} [:and [:ref ::expression]
-                         [:cat :any [:map [:lib/expression-name :string]] [:* :any]]]])
+  [:sequential {:min 1} [:ref ::expression.definition]])
