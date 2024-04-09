@@ -1205,7 +1205,7 @@
                                        (= table-name :collection) (assoc :where [:and
                                                                                  [:= :namespace nil] ; excludes the analytics namespace
                                                                                  [:= :personal_owner_id nil]]))]]
-                     [table-name (map #(into {} %) (t2/query query))]))]
+                     [table-name (sort-by :id (map #(into {} %) (t2/query query)))]))]
     (pretty-spit "resources/sample-content.edn" data))
   ;; (make sure there's no other content in the file)
   ;; 3. update the EDN file:
