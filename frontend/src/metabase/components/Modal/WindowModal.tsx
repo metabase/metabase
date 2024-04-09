@@ -125,7 +125,14 @@ export class WindowModal extends Component<WindowModalProps> {
           {isOpen && (
             <CSSTransition
               key="modal"
-              classNames="Modal"
+              classNames={{
+                appear: ModalS.ModalAppear,
+                appearActive: ModalS.ModalAppearActive,
+                enter: ModalS.ModalEnter,
+                enterActive: ModalS.ModalEnterActive,
+                exit: ModalS.ModalExit,
+                exitActive: ModalS.ModalExitActive,
+              }}
               timeout={{
                 appear: 250,
                 enter: 250,

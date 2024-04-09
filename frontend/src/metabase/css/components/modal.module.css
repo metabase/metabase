@@ -56,59 +56,59 @@
 
 /* backdrop */
 
-.ModalBackdrop:global(.Modal-appear),
-.ModalBackdrop:global(.Modal-enter) {
+.ModalBackdrop.ModalAppear,
+.ModalBackdrop.ModalEnter {
   background-color: color-mod(var(--color-bg-black) alpha(-99%));
 }
 
-.ModalBackdrop:global(.Modal-appear-active),
-.ModalBackdrop:global(.Modal-enter-active) {
+.ModalBackdrop.ModalAppearActive,
+.ModalBackdrop.ModalEnterActive {
   transition: background-color 200ms ease-in-out;
   background-color: color-mod(var(--color-bg-black) alpha(-40%));
 }
 
-.ModalBackdrop:global(.Modal-exit) {
+.ModalBackdrop.ModalExit {
   background-color: color-mod(var(--color-bg-black) alpha(-40%));
 }
 
-.ModalBackdrop:global(.Modal-exit-active) {
+.ModalBackdrop.ModalExitActive {
   transition: background-color 200ms ease-in-out 100ms;
   background-color: color-mod(var(--color-bg-black) alpha(-99%));
 }
 
 /* modal */
 
-.ModalBackdrop:global(.Modal-appear) .Modal,
-.ModalBackdrop:global(.Modal-enter) .Modal {
+.ModalBackdrop.ModalAppear .Modal,
+.ModalBackdrop.ModalEnter .Modal {
   opacity: 0.01;
   transform: translate(0, 40px);
 }
 
-.ModalBackdrop:global(.Modal-appear-active) .Modal,
-.ModalBackdrop:global(.Modal-enter-active) .Modal {
+.ModalBackdrop.ModalAppearActive .Modal,
+.ModalBackdrop.ModalEnterActive .Modal {
   transition: opacity 200ms linear 100ms, transform 200ms ease-in-out 100ms;
   opacity: 1;
   transform: translate(0, 0);
 }
 
-.ModalBackdrop:global(.Modal-exit) .Modal {
+.ModalBackdrop.ModalExit .Modal {
   opacity: 1;
   transform: translate(0, 0);
 }
 
-.ModalBackdrop:global(.Modal-exit-active) .Modal {
+.ModalBackdrop.ModalExitActive .Modal {
   transition: opacity 200ms linear, transform 200ms ease-in-out;
   opacity: 0.01;
   transform: translate(0, -40px);
 }
 
 @media (prefers-reduced-motion) {
-  .ModalBackdrop:global(.Modal-appear),
-  .ModalBackdrop:global(.Modal-enter),
-  .ModalBackdrop:global(.Modal-exit),
-  .ModalBackdrop:global(.Modal-appear) .Modal,
-  .ModalBackdrop:global(.Modal-enter) .Modal,
-  .ModalBackdrop:global(.Modal-exit) .Modal {
+  .ModalBackdrop.ModalAppear,
+  .ModalBackdrop.ModalEnter,
+  .ModalBackdrop.ModalExit,
+  .ModalBackdrop.ModalAppear .Modal,
+  .ModalBackdrop.ModalEnter .Modal,
+  .ModalBackdrop.ModalExit .Modal {
     transition: none;
   }
 }
