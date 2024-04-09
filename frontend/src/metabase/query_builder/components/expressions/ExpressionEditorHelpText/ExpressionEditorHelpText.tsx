@@ -1,4 +1,5 @@
-import * as React from "react";
+import type { RefObject } from "react";
+import { Fragment } from "react";
 import { t } from "ttag";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
@@ -27,7 +28,7 @@ export type ExpressionEditorHelpTextContentProps = {
 
 export type ExpressionEditorHelpTextProps =
   ExpressionEditorHelpTextContentProps & {
-    target: React.RefObject<HTMLElement>;
+    target: RefObject<HTMLElement>;
     width: number | undefined;
   };
 
@@ -71,10 +72,10 @@ export const ExpressionEditorHelpTextContent = ({
         {args != null && (
           <ArgumentsGrid data-testid="expression-helper-popover-arguments">
             {args.map(({ name, description: argDescription }) => (
-              <React.Fragment key={name}>
+              <Fragment key={name}>
                 <ArgumentTitle>{name}</ArgumentTitle>
                 <div>{argDescription}</div>
-              </React.Fragment>
+              </Fragment>
             ))}
           </ArgumentsGrid>
         )}
