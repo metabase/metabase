@@ -4,6 +4,7 @@ import {
   popover,
   visitDashboard,
   editDashboard,
+  sidebar,
 } from "e2e/support/helpers";
 
 const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -82,13 +83,10 @@ describe("issues 15119 and 16112", () => {
         editDashboard();
         cy.findByText("Rating Filter").click();
         cy.findByText("Linked filters").click();
-        // cy.findByText("Reviewer Filter").click();
-        cy.findByText("Limit this filter's choices")
-          .parent()
-          .within(() => {
-            // turn on the toggle
-            cy.get("input").click();
-          });
+
+        // turn on the toggle
+        sidebar().findByRole("switch").parent().get("label").click();
+
         cy.findByText("Save").click();
 
         cy.signIn("nodata");
