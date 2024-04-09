@@ -85,6 +85,7 @@ export class WindowModal extends Component<WindowModalProps> {
           <div
             className={cx(className, CS.relative, CS.bgWhite, CS.rounded)}
             role="dialog"
+            data-element-id="modal"
           >
             {getModalContent({
               ...this.props,

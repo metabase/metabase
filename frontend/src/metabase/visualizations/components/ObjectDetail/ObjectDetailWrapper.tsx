@@ -29,7 +29,7 @@ export function ObjectDetailWrapper({
         isOpen
         full={false}
         onClose={closeObjectDetail}
-        className={""} // need an empty className to override the Modal default width
+        className="" // need an empty className to override the Modal default width
       >
         <ObjectDetailView
           {...rest}

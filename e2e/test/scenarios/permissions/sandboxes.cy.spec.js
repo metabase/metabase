@@ -787,7 +787,7 @@ describeEE("formatting > sandboxes", () => {
         expect(response.statusCode).to.eq(400);
         expect(response.body.message).to.eq(ERROR_MESSAGE);
       });
-      cy.get(".Modal").scrollTo("bottom");
+      modal().scrollTo("bottom");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(ERROR_MESSAGE);
     });

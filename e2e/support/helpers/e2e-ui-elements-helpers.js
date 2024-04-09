@@ -23,7 +23,7 @@ export function menu() {
 }
 
 export function modal() {
-  const LEGACY_MODAL_SELECTOR = ".Modal";
+  const LEGACY_MODAL_SELECTOR = "[data-element-id=modal]";
   const MODAL_SELECTOR = ".emotion-Modal-content[role='dialog']";
   return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
 }
