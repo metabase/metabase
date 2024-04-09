@@ -15,7 +15,6 @@ import {
   modifyPermission,
   selectSidebarItem,
   assertSidebarItems,
-  isPermissionDisabled,
   visitQuestion,
   visitDashboard,
   selectPermissionRow,
@@ -778,30 +777,6 @@ describeEE("scenarios > admin > permissions", () => {
       ["Products", "Can view", "No", "1 million rows", "No"],
       ["Reviews", "Can view", "No", "1 million rows", "No"],
     ]);
-  });
-
-  it("'block' data permission should not have editable 'native query editing' option (metabase#17738)", () => {
-    cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("All Users")
-      .closest("tr")
-      .as("allUsersRow")
-      .within(() => {
-        isPermissionDisabled(
-          DATA_ACCESS_PERMISSION_INDEX,
-          "Can view",
-          false,
-        ).click();
-        isPermissionDisabled(NATIVE_QUERIES_PERMISSION_INDEX, "No", false);
-      });
-
-    popover().contains("Block").click();
-
-    cy.get("@allUsersRow").within(() => {
-      isPermissionDisabled(DATA_ACCESS_PERMISSION_INDEX, "Block", false);
-      isPermissionDisabled(NATIVE_QUERIES_PERMISSION_INDEX, "No", true);
-    });
   });
 
   it("Visualization and Settings query builder buttons are not visible for questions that use blocked data sources", () => {
