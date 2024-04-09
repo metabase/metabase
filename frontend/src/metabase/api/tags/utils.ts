@@ -4,6 +4,8 @@ import type {
   ApiKey,
   Card,
   Collection,
+  CollectionItem,
+  CollectionItemModel,
   Database,
   DatabaseCandidate,
   Field,
@@ -13,6 +15,8 @@ import type {
   Metric,
   PopularItem,
   RecentItem,
+  SearchModel,
+  SearchResult,
   Segment,
   Table,
   Timeline,
@@ -21,7 +25,7 @@ import type {
 } from "metabase-types/api";
 
 import type { TagType } from "./constants";
-import { MODEL_TO_TAG_TYPE, MODEL_TYPES } from "./constants";
+import { MODEL_TO_TAG_TYPE } from "./constants";
 
 export function tag(type: TagType): TagDescription<TagType> {
   return { type };
@@ -49,7 +53,7 @@ export function activityItemListTags(
   items: RecentItem[] | PopularItem[],
 ): TagDescription<TagType>[] {
   return [
-    ...MODEL_TYPES.map(type => listTag(MODEL_TO_TAG_TYPE[type])),
+    ...Object.values(MODEL_TO_TAG_TYPE).map(listTag),
     ...items.flatMap(activityItemTags),
   ];
 }
@@ -99,6 +103,24 @@ export function cardListTags(cards: Card[]): TagDescription<TagType>[] {
 
 export function cardTags(card: Card): TagDescription<TagType>[] {
   return [idTag("card", card.id)];
+}
+
+export function collectionItemListTags(
+  items: CollectionItem[],
+  models?: CollectionItemModel[],
+): TagDescription<TagType>[] {
+  return [
+    ...(models
+      ? models.map(model => listTag(MODEL_TO_TAG_TYPE[model]))
+      : Object.values(MODEL_TO_TAG_TYPE).map(listTag)),
+    ...items.flatMap(collectionItemTags),
+  ];
+}
+
+export function collectionItemTags(
+  item: CollectionItem,
+): TagDescription<TagType>[] {
+  return [idTag(MODEL_TO_TAG_TYPE[item.model], item.id)];
 }
 
 export function collectionTags(
@@ -165,6 +187,22 @@ export function metricTags(metric: Metric): TagDescription<TagType>[] {
     idTag("metric", metric.id),
     ...(metric.table ? tableTags(metric.table) : []),
   ];
+}
+
+export function searchItemListTags(
+  items: SearchResult[],
+  models?: SearchModel[],
+): TagDescription<TagType>[] {
+  return [
+    ...(models
+      ? models.map(model => listTag(MODEL_TO_TAG_TYPE[model]))
+      : Object.values(MODEL_TO_TAG_TYPE).map(listTag)),
+    ...items.flatMap(searchItemTags),
+  ];
+}
+
+export function searchItemTags(item: SearchResult): TagDescription<TagType>[] {
+  return [idTag(MODEL_TO_TAG_TYPE[item.model], item.id)];
 }
 
 export function segmentListTags(
