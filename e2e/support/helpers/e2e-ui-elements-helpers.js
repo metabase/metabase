@@ -23,8 +23,9 @@ export function menu() {
 }
 
 export function modal() {
+  const MODAL_SELECTOR = ".emotion-Modal-content[role='dialog']";
   const LEGACY_MODAL_SELECTOR = "[data-testid=modal]";
-  return cy.get([LEGACY_MODAL_SELECTOR].join(","));
+  return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
 }
 
 export function entityPickerModal() {
