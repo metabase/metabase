@@ -28,6 +28,8 @@ import type {
   YAxisModel,
 } from "./types";
 
+type TrendFn = (days: number) => number;
+
 const getTrendKeyForSeries = (seriesModel: SeriesModel) => {
   return `${seriesModel.dataKey}_trend`;
 };
@@ -35,7 +37,7 @@ const getTrendKeyForSeries = (seriesModel: SeriesModel) => {
 const getSeriesModelsWithTrends = (
   rawSeries: RawSeries,
   seriesModels: SeriesModel[],
-): [SeriesModel, any][] => {
+): [SeriesModel, TrendFn][] => {
   return seriesModels
     .map(seriesModel => {
       // Breakout series do not support trend lines because the data grouping happens on the client
@@ -59,7 +61,7 @@ const getSeriesModelsWithTrends = (
 
       const trendFunction = getTrendLineFunction(insight);
 
-      const resultTuple: [SeriesModel, any] = [seriesModel, trendFunction];
+      const resultTuple: [SeriesModel, TrendFn] = [seriesModel, trendFunction];
       return resultTuple;
     })
     .filter(isNotNull);
