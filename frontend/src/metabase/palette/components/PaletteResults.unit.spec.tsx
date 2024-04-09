@@ -1,7 +1,6 @@
 import { KBarProvider, useKBar } from "kbar";
 import { useEffect } from "react";
 import { withRouter, type WithRouterProps } from "react-router";
-import { waitFor } from "@testing-library/react";
 
 import {
   setupDatabasesEndpoints,
@@ -13,6 +12,7 @@ import {
   screen,
   mockGetBoundingClientRect,
   within,
+  waitFor,
 } from "__support__/ui";
 import { getAdminPaths } from "metabase/admin/app/reducers";
 import {
@@ -150,9 +150,11 @@ describe("PaletteResults", () => {
 
   it("should allow you to search entities, and provide a docs link", async () => {
     setup({ query: "Bar" });
-    await waitFor(() =>
-      expect(screen.getByText("Search results")).toBeInTheDocument(),
-    );
+
+    await waitFor(async () => {
+      expect(await screen.findByText("Search results")).toBeInTheDocument();
+    });
+
     expect(
       await screen.findByRole("option", { name: "Bar Dashboard" }),
     ).toBeInTheDocument();

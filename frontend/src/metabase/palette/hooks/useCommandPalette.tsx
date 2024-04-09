@@ -9,6 +9,7 @@ import {
   useRecentItemListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
+import { normalizedCollection } from "metabase/entities/collections";
 import { getIcon, getName } from "metabase/entities/recent-items";
 import Search from "metabase/entities/search";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -23,8 +24,6 @@ import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import type { SearchResult } from "metabase-types/api";
 
 import type { PaletteAction } from "../types";
-
-import { normalizedCollection } from "metabase/entities/collections";
 
 export type PalettePageId = "root" | "admin_settings";
 
