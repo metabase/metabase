@@ -184,6 +184,7 @@ const config = (module.exports = {
         process.env.MB_EDITION === "ee"
           ? ENTERPRISE_SRC_PATH + "/overrides"
           : SRC_PATH + "/lib/noop",
+      "embedding-sdk": __dirname + "/enterprise/frontend/src/embedding-sdk",
     },
   },
   cache: useFilesystemCache

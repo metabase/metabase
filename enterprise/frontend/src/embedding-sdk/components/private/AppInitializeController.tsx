@@ -1,4 +1,4 @@
-import type * as React from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { DEFAULT_FONT } from "../../config";
@@ -21,11 +21,15 @@ export const AppInitializeController = ({
     config,
   });
 
+  const [font, setFont] = useState(config.font ?? DEFAULT_FONT);
+
   return (
     <EmbeddingContext.Provider
       value={{
         isInitialized,
         isLoggedIn,
+        font,
+        setFont,
       }}
     >
       <SdkContentWrapper font={config.font ?? DEFAULT_FONT}>

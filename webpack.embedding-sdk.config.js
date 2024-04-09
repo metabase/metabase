@@ -62,7 +62,20 @@ module.exports = env => {
           use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
         },
         {
-          test: /\.(svg|png|eot|woff2?|ttf)$/,
+          test: /\.(eot|woff2?|ttf)$/,
+          type: "asset/resource",
+          resourceQuery: { not: [/component|source/] },
+          generator: {
+            publicPath: pathData => {
+              const filePath = pathData.module.rawRequest.replace(/\/[^\/]*$/, '');
+              return `http://localhost:3000/app/${filePath}/`;
+            },
+            filename: "[name][ext]",
+            emit: false,
+          },
+        },
+        {
+          test: /\.(svg|png)$/,
           type: "asset/inline",
           resourceQuery: { not: [/component|source/] },
         },
