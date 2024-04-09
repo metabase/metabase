@@ -74,18 +74,18 @@ describe("scenarios > visualizations > waterfall", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Select a field").click();
-    cy.get(".List-item").contains("X").click();
+    cy.get("[data-element-id=list-item]").contains("X").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Select a field").click();
-    cy.get(".List-item").contains("Y").click();
+    cy.get("[data-element-id=list-item]").contains("Y").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Axes").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Linear").click();
-    cy.get(".List-item").contains("Ordinal").click();
+    cy.get("[data-element-id=list-item]").contains("Ordinal").click();
 
     verifyWaterfallRendering("X", "Y");
   });
@@ -101,10 +101,10 @@ describe("scenarios > visualizations > waterfall", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Select a field").click();
-    cy.get(".List-item").contains("X").click();
+    cy.get("[data-element-id=list-item]").contains("X").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Select a field").click();
-    cy.get(".List-item").contains("Y").click();
+    cy.get("[data-element-id=list-item]").contains("Y").click();
 
     verifyWaterfallRendering("X", "Y");
   });
@@ -209,10 +209,10 @@ describe("scenarios > visualizations > waterfall", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Select a field").click();
-    cy.get(".List-item").contains("Created At").click();
+    cy.get("[data-element-id=list-item]").contains("Created At").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Select a field").click();
-    cy.get(".List-item").contains("Count").click();
+    cy.get("[data-element-id=list-item]").contains("Count").click();
 
     cy.get(".CardVisualization svg"); // Chart renders after removing the second metric
 

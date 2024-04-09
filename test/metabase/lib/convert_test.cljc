@@ -765,3 +765,12 @@
                  (lib/->pMBQL x))
       [:time-interval [:field 1 nil] -5 :year nil]
       [:time-interval [:field 1 nil] -5 :year {}])))
+
+(deftest ^:parallel convert-arithmetic-expressions-to-legacy-test
+  (testing "Generate correct expression definitions even if expression contains `:name` (#40982)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/breakout (meta/field-metadata :orders :created-at))
+                    (lib/expression "expr" (lib.options/update-options (lib/+ 1 2) assoc :name "my_expr", :base-type :type/Number)))]
+      (is (=? {:type  :query
+               :query {:expressions {"expr" [:+ 1 2]}}}
+              (lib.convert/->legacy-MBQL query))))))

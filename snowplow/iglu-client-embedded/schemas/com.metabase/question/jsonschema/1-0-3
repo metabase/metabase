@@ -55,10 +55,7 @@
     },
     "question_id": {
       "description": "Unique identifier for the question within the Metabase instance",
-      "type": [
-        "integer",
-        "null"
-      ],
+      "type": "integer",
       "minimum": 0,
       "maximum": 2147483647
     },
@@ -73,7 +70,8 @@
     }
   },
   "required": [
-    "event"
+    "event",
+    "question_id"
   ],
   "additionalProperties": true
 }

@@ -275,7 +275,8 @@
                  query)})))
 
 (deftest ^:parallel correct-for-null-behaviour
-  (testing "NULLs should be treated intuitively in filters (SQL has somewhat unintuitive semantics where NULLs get propagated out of expressions)."
+  (testing (str "NULLs should be treated intuitively in filters (SQL has somewhat unintuitive semantics where NULLs "
+                "get propagated out of expressions).")
     (is (= [[nil] ["bar"]]
            (query-on-dataset-with-nils {:filter [:not [:starts-with [:field "A" {:base-type :type/Text}] "f"]]})))
     (is (= [[nil] ["bar"]]

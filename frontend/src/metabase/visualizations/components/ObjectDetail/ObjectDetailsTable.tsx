@@ -111,7 +111,7 @@ export function DetailsTableCell({
       <span
         className={cx(
           {
-            "cursor-pointer": onVisualizationClick,
+            [CS.cursorPointer]: onVisualizationClick,
             link: isClickable && isLink,
           },
           className,
@@ -164,12 +164,12 @@ export function DetailsTable({
 
   if (!cols?.length) {
     return (
-      <EmptyState message={t`Select at least one column`} className="p3" />
+      <EmptyState message={t`Select at least one column`} className={CS.p3} />
     );
   }
 
   if (!row?.length) {
-    return <EmptyState message={t`No details found`} className="p3" />;
+    return <EmptyState message={t`No details found`} className={CS.p3} />;
   }
 
   return (

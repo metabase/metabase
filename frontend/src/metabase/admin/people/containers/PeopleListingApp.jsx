@@ -34,7 +34,7 @@ function PeopleListingApp({ children, isAdmin }) {
   const headingContent = (
     <div className={cx(CS.mb2, CS.flex, CS.alignCenter)}>
       <SearchInput
-        className={cx(CS.textSmall, "mr2")}
+        className={cx(CS.textSmall, CS.mr2)}
         type="text"
         placeholder={t`Find someone`}
         value={searchInputValue}

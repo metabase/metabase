@@ -232,7 +232,9 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.get(".LineAreaBarChart").get(".trend").should("be.visible");
+    cy.get("[data-element-id=line-area-bar-chart]")
+      .get(".trend")
+      .should("be.visible");
   });
 
   it("should show label for empty value series breakout (metabase#32107)", () => {

@@ -193,12 +193,12 @@ interface TableBreadcrumbsProps {
 
 const TableBreadcrumbs = ({ schemaId, onBack }: TableBreadcrumbsProps) => {
   return (
-    <h4 className={cx("p2 border-bottom", CS.breakAnywhere)}>
+    <h4 className={cx(CS.p2, CS.borderBottom, CS.breakAnywhere)}>
       <BackIconContainer onClick={onBack}>
         <Icon name="chevronleft" size={10} />
         {t`Schemas`}
       </BackIconContainer>
-      <span className="mx1">/</span>
+      <span className={CS.mx1}>/</span>
       <span>{getSchemaName(schemaId)}</span>
     </h4>
   );

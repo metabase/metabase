@@ -1,6 +1,8 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 
+import CS from "metabase/css/core/index.css";
+
 interface MetadataSectionProps {
   first?: boolean;
   last?: boolean;
@@ -9,7 +11,9 @@ interface MetadataSectionProps {
 
 const MetadataSection = ({ first, last, children }: MetadataSectionProps) => (
   <section
-    className={cx("pb4", first ? "mb4" : "my4", { "border-bottom": !last })}
+    className={cx(CS.pb4, first ? CS.mb4 : CS.my4, {
+      [CS.borderBottom]: !last,
+    })}
   >
     {children}
   </section>

@@ -150,7 +150,7 @@ export class AuditTableVisualization extends Component {
                   {formatColumn(cols[colIndex])}
                   {isSortedByColumn && (
                     <Icon
-                      className="ml1"
+                      className={CS.ml1}
                       name={sorting.isAscending ? "chevronup" : "chevrondown"}
                       size={10}
                     />
@@ -207,7 +207,9 @@ export class AuditTableVisualization extends Component {
                     <div
                       className={cx({
                         [cx(
-                          "rounded p1 text-dark",
+                          CS.rounded,
+                          CS.p1,
+                          CS.textDark,
                           CS.textMonospace,
                           CS.textSmall,
                           "bg-light",

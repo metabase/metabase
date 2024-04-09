@@ -42,7 +42,7 @@ export default class LoadingAndErrorWrapper extends Component {
   renderError(contentClassName) {
     if (this.props.renderError) {
       return (
-        <div className="py4">
+        <div className={CS.py4}>
           {this.props.renderError(this.getErrorMessage())}
         </div>
       );
@@ -153,7 +153,7 @@ export default class LoadingAndErrorWrapper extends Component {
           <div className={contentClassName}>
             {loadingScenes && loadingScenes[sceneIndex]}
             {!loadingScenes && showSpinner && <LoadingSpinner />}
-            <h2 className={cx(CS.textNormal, "text-light mt1")}>
+            <h2 className={cx(CS.textNormal, CS.textLight, CS.mt1)}>
               {loadingMessages[messageIndex]}
             </h2>
           </div>

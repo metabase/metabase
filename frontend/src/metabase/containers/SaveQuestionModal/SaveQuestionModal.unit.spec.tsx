@@ -82,6 +82,10 @@ const setup = async (
     fetchMock.get("path:/api/collection", TEST_COLLECTIONS);
     fetchMock.get("path:/api/collection/root", ROOT_TEST_COLLECTION);
     setupCollectionByIdEndpoint({ collections: [BOBBY_TEST_COLLECTION] });
+    setupCollectionItemsEndpoint({
+      collection: BOBBY_TEST_COLLECTION,
+      collectionItems: [],
+    });
   }
 
   const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
@@ -761,6 +765,10 @@ describe("SaveQuestionModal", () => {
           },
         });
         setupCollectionByIdEndpoint({ collections: [COLLECTION.PARENT] });
+        setupCollectionItemsEndpoint({
+          collection: BOBBY_TEST_COLLECTION,
+          collectionItems: [],
+        });
       });
       it("should create collection inside nested folder", async () => {
         await userEvent.click(collDropdown());
