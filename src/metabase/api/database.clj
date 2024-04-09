@@ -1148,7 +1148,8 @@
                               ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
                               {:where [:= :visibility_type nil]})))
          filter-schemas
-         (map #(api.table/format-schema-for-response %))
+         ;; for `nil` schemas return the empty string
+         (map #(if (nil? %) "" %))
          distinct
          sort)))
 
