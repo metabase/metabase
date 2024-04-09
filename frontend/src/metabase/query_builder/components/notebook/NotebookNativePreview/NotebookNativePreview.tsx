@@ -113,11 +113,14 @@ export const NotebookNativePreview = (): JSX.Element => {
         )}
       </Box>
       <Box ta="end" p="1.5rem">
-        {showQuery && (
-          <Button variant="subtle" p={0} onClick={handleConvertClick}>
-            {BUTTON_TITLE[engineType]}
-          </Button>
-        )}
+        <Button
+          variant="subtle"
+          p={0}
+          onClick={handleConvertClick}
+          disabled={!showQuery}
+        >
+          {BUTTON_TITLE[engineType]}
+        </Button>
       </Box>
     </Box>
   );
