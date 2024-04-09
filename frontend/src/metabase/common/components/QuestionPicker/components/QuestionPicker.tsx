@@ -7,7 +7,7 @@ import { useCollectionQuery, useQuestionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { SearchListQuery, SearchModelType } from "metabase-types/api";
+import type { SearchRequest, SearchModelType } from "metabase-types/api";
 
 import type { CollectionPickerItem } from "../../CollectionPicker";
 import {
@@ -78,7 +78,7 @@ export const QuestionPickerInner = (
   ref: Ref<unknown>,
 ) => {
   const [path, setPath] = useState<
-    PickerState<QuestionPickerItem | CollectionPickerItem, SearchListQuery>
+    PickerState<QuestionPickerItem | CollectionPickerItem, SearchRequest>
   >(() =>
     getStateFromIdPath({
       idPath: ["root"],
