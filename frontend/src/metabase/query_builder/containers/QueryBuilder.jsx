@@ -83,7 +83,6 @@ import {
   isResultsMetadataDirty,
   getShouldShowUnsavedChangesWarning,
   getEmbeddedParameterVisibility,
-  getIsEmbeddingSdk,
 } from "../selectors";
 import { isNavigationAllowed } from "../utils";
 
@@ -170,8 +169,6 @@ const mapStateToProps = (state, props) => {
 
     getEmbeddedParameterVisibility: slug =>
       getEmbeddedParameterVisibility(state, slug),
-
-    isEmbeddingSdk: getIsEmbeddingSdk(state),
   };
 };
 
