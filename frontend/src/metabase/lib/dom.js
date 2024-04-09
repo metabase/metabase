@@ -309,9 +309,7 @@ export function open(
 ) {
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
 
-  if (shouldOpenInBlankWindow(url, options)) {
-    openInBlankWindow(url);
-  } else if (isSameOrigin(url)) {
+   if (isSameOrigin(url)) {
     if (!isMetabaseUrl(url)) {
       clickLink(url, false);
     } else {
