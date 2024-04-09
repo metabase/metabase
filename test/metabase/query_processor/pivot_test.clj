@@ -17,7 +17,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:parallel group-bitmask-test
+(deftest group-bitmask-test
   (doseq [[indices expected] {[0]     6
                               [0 1]   4
                               [0 1 2] 0
@@ -25,7 +25,7 @@
     (is (= expected
            (#'qp.pivot/group-bitmask 3 indices)))))
 
-(deftest ^:parallel powerset-test
+(deftest powerset-test
   (is (= [[]]
          (#'qp.pivot/powerset [])))
   (is (= [[0] []]
@@ -35,7 +35,7 @@
   (is (= [[0 1 2] [1 2] [0 2] [2] [0 1] [1] [0] []]
          (#'qp.pivot/powerset [0 1 2]))))
 
-(deftest ^:parallel breakout-combinations-test
+(deftest breakout-combinations-test
   (testing "Should return the combos that Paul specified in (#14329)"
     (is (= [[0 1 2]
             [0 1]
@@ -70,7 +70,7 @@
               []]
              (#'qp.pivot/breakout-combinations 3 [] []))))))
 
-(deftest ^:parallel validate-pivot-rows-cols-test
+(deftest validate-pivot-rows-cols-test
   (testing "Should throw an Exception if you pass in invalid pivot-rows"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -103,13 +103,13 @@
        :pivot-rows [0 1 2]
        :pivot-cols []})))
 
-(deftest ^:parallel allow-snake-case-test
+(deftest allow-snake-case-test
   (testing "make sure the stuff works with either normal lisp-case keys or snake_case"
     (is (= (mt/rows (qp.pivot/run-pivot-query (test-query)))
            (mt/rows (qp.pivot/run-pivot-query (set/rename-keys (test-query)
                                                                {:pivot-rows :pivot_rows, :pivot-cols :pivot_cols})))))))
 
-(deftest ^:parallel generate-queries-test
+(deftest generate-queries-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
       (let [request {:database   (mt/db)
@@ -158,7 +158,7 @@
             (is (= 6 (count actual)))
             (is (= expected actual))))))))
 
-(deftest ^:parallel pivot-options-test
+(deftest pivot-options-test
   (testing "`pivot-options` correctly generates pivot-rows and pivot-cols from a card's viz settings"
     (let [query         (api.pivots/pivot-query false)
           viz-settings  (:visualization_settings (api.pivots/pivot-card))
@@ -173,7 +173,7 @@
         3 [[0 1 2]   [1 2] [2] [1 0] [1] []]
         4 [[0 1 2 3] [1 2] [2] [1 0] [1] []]))))
 
-(deftest ^:parallel ignore-bad-pivot-options-test
+(deftest ignore-bad-pivot-options-test
   (mt/dataset test-data
     (let [query         (mt/mbql-query products
                           {:breakout    [$category
@@ -193,7 +193,7 @@
       (is (= [[0 1] [1] [0] []]
              (#'qp.pivot/breakout-combinations 2 (:pivot-rows pivot-options) (:pivot-cols pivot-options)))))))
 
-(deftest ^:parallel nested-question-pivot-options-test
+(deftest nested-question-pivot-options-test
   (testing "#35025"
     (mt/dataset test-data
       (doseq [[message query] {"Query (incorrectly) uses :field ID refs in second stage"
@@ -224,7 +224,7 @@
                      :row_count 156}
                     (qp.pivot/run-pivot-query (assoc query :info {:visualization-settings viz-settings}))))))))))
 
-(deftest ^:parallel dont-return-too-many-rows-test
+(deftest dont-return-too-many-rows-test
   (testing "Make sure pivot queries don't return too many rows (#14329)"
     (let [results (qp.pivot/run-pivot-query (test-query))
           rows    (mt/rows results)]
@@ -263,7 +263,7 @@
        (map first)
        set))
 
-(deftest ^:parallel return-correct-columns-test
+(deftest return-correct-columns-test
   (let [results (qp.pivot/run-pivot-query (api.pivots/pivot-query))
         rows    (mt/rows results)]
     (testing "Columns should come back in the expected order"
@@ -291,7 +291,7 @@
         (is (malli= [:sequential {:min 1} Row]
                     rows))))))
 
-(deftest ^:parallel allow-other-rfs-test
+(deftest allow-other-rfs-test
   (letfn [(rff [_]
             (fn
               ([] 0)
@@ -300,13 +300,13 @@
     (is (= (count (mt/rows (qp.pivot/run-pivot-query (api.pivots/pivot-query))))
            (qp.pivot/run-pivot-query (api.pivots/pivot-query) rff)))))
 
-(deftest ^:parallel parameters-query-test
+(deftest parameters-query-test
   (mt/dataset test-data
     (is (=? {:status    :completed
              :row_count 137}
             (qp.pivot/run-pivot-query (api.pivots/parameters-query))))))
 
-(deftest ^:parallel pivots-should-not-return-expressions-test
+(deftest pivots-should-not-return-expressions-test
   (mt/dataset test-data
     (let [query (assoc (mt/mbql-query orders
                          {:aggregation [[:count]]
@@ -322,7 +322,7 @@
                    (m/dissoc-in [:data :results_metadata :checksum])
                    (m/dissoc-in [:data :native_form]))))))))
 
-(deftest ^:parallel pivots-should-not-return-expressions-test-2
+(deftest pivots-should-not-return-expressions-test-2
   (mt/dataset test-data
     (let [query (assoc (mt/mbql-query orders
                          {:aggregation [[:count]]
@@ -348,7 +348,7 @@
                                                    (assoc-in [:query :fields] [[:expression "test-expr"]])
                                                    (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]})))))))))))
 
-(deftest ^:parallel pivots-should-not-return-expressions-test-3
+(deftest pivots-should-not-return-expressions-test-3
   (mt/dataset test-data
     (testing "We should still be able to use expressions inside the aggregations"
       (is (=? {:status :completed}
@@ -417,7 +417,7 @@
                            (mt/rows (qp.pivot/run-pivot-query query))
                            (mt/rows result)))))))))))))
 
-(deftest ^:parallel pivot-with-order-by-test
+(deftest pivot-with-order-by-test
   (testing "Pivot queries should work if there is an `:order-by` clause (#17198)"
     (mt/dataset test-data
       (let [query (mt/mbql-query products
@@ -432,7 +432,7 @@
                (mt/rows
                 (qp.pivot/run-pivot-query query))))))))
 
-(deftest ^:parallel pivot-with-order-by-metric-test
+(deftest pivot-with-order-by-metric-test
   (testing "Pivot queries should allow ordering by aggregation (#22872)"
     (mt/dataset test-data
       (let  [query (mt/mbql-query reviews
