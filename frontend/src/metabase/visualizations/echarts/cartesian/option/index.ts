@@ -25,6 +25,7 @@ export const getSharedEChartsOptions = (isPlaceholder: boolean) => ({
   useUTC: true,
   animation: !isPlaceholder,
   animationDuration: 0,
+  animationDurationUpdate: 1, // by setting this to 1ms we visually eliminate shape transitions while preserving opacity transitions
   toolbox: {
     show: false,
   },
