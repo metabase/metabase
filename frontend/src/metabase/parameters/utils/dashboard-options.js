@@ -40,5 +40,5 @@ export function getDashboardParameterSections() {
       description: t`Name, Rating, Description, etc.`,
       options: buildTypedOperatorOptions("string", "string", t`Text`),
     },
-  ].filter(Boolean);
+  ];
 }

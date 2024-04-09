@@ -67,6 +67,17 @@ export function setParameterName(
   };
 }
 
+export function setParameterType(
+  parameter: Parameter,
+  type: string,
+): Parameter {
+  return {
+    ...parameter,
+    // here we need to map sliced type to the correct type
+    type,
+  };
+}
+
 export function getIsMultiSelect(parameter: Parameter): boolean {
   return parameter.isMultiSelect ?? true;
 }

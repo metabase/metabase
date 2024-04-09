@@ -103,7 +103,7 @@ export function getTemplateTagParametersFromCard(card: Card) {
 // when navigating from dashboard --> saved native question,
 // we are given dashboard parameters and a map of dashboard parameter ids to parameter values
 // we need to transform this into a map of template tag ids to parameter values
-// so that we popoulate the template tags in the native editor
+// so that we populate the template tags in the native editor
 export function remapParameterValuesToTemplateTags(
   templateTags: TemplateTag[],
   dashboardParameters: ParameterWithTarget[],

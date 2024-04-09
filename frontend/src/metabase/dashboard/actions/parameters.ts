@@ -8,10 +8,7 @@ import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-param
 import { updateDashboard } from "metabase/dashboard/actions/save";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { createAction, createThunkAction } from "metabase/lib/redux";
-import {
-  createParameter,
-  setParameterName as setParamName,
-} from "metabase/parameters/utils/dashboards";
+import * as dashboardUtils from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import {
@@ -118,7 +115,7 @@ export const addParameter = createThunkAction(
     let newId: undefined | ParameterId = undefined;
 
     updateParameters(dispatch, getState, parameters => {
-      const parameter = createParameter(option, parameters);
+      const parameter = dashboardUtils.createParameter(option, parameters);
       newId = parameter.id;
       return [...parameters, parameter];
     });
@@ -212,9 +209,20 @@ export const setParameterName = createThunkAction(
   SET_PARAMETER_NAME,
   (parameterId: ParameterId, name: string) => (dispatch, getState) => {
     updateParameter(dispatch, getState, parameterId, parameter =>
-      setParamName(parameter, name),
+      dashboardUtils.setParameterName(parameter, name),
     );
     return { id: parameterId, name };
+  },
+);
+
+export const SET_PARAMETER_TYPE = "metabase/dashboard/SET_PARAMETER_TYPE";
+export const setParameterType = createThunkAction(
+  SET_PARAMETER_TYPE,
+  (parameterId: ParameterId, type: string) => (dispatch, getState) => {
+    updateParameter(dispatch, getState, parameterId, parameter =>
+      dashboardUtils.setParameterType(parameter, type),
+    );
+    return { id: parameterId, type };
   },
 );
 

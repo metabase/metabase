@@ -24,6 +24,7 @@ export interface ParameterSidebarProps {
   parameter: Parameter;
   otherParameters: Parameter[];
   onChangeName: (parameterId: ParameterId, name: string) => void;
+  onChangeType: (parameterId: ParameterId, nextType: string) => void;
   onChangeDefaultValue: (parameterId: ParameterId, value: unknown) => void;
   onChangeIsMultiSelect: (
     parameterId: ParameterId,
@@ -58,6 +59,7 @@ export const ParameterSidebar = ({
   parameter,
   otherParameters,
   onChangeName,
+  onChangeType,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
   onChangeQueryType,
@@ -82,6 +84,13 @@ export const ParameterSidebar = ({
       onChangeName(parameterId, name);
     },
     [parameterId, onChangeName],
+  );
+
+  const handleTypeChange = useCallback(
+    (nextType: string) => {
+      onChangeType(parameterId, nextType);
+    },
+    [parameterId, onChangeType]
   );
 
   const handleDefaultValueChange = useCallback(
@@ -192,6 +201,7 @@ export const ParameterSidebar = ({
             )}
             isParameterSlugUsed={isParameterSlugUsed}
             onChangeName={handleNameChange}
+            onChangeType={handleTypeChange}
             onChangeDefaultValue={handleDefaultValueChange}
             onChangeIsMultiSelect={handleIsMultiSelectChange}
             onChangeQueryType={handleQueryTypeChange}

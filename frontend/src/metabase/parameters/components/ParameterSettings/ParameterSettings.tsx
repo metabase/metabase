@@ -2,7 +2,7 @@ import { useCallback, useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import { Radio, Stack, Text, TextInput, Box } from "metabase/ui";
+import { Radio, Stack, Text, TextInput, Box, Select } from "metabase/ui";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -23,11 +23,14 @@ import {
   SettingSection,
   SettingValueWidget,
 } from "./ParameterSettings.styled";
+import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
+import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
 
 export interface ParameterSettingsProps {
   parameter: Parameter;
   isParameterSlugUsed: (value: string) => boolean;
   onChangeName: (name: string) => void;
+  onChangeType: (type: string) => void;
   onChangeDefaultValue: (value: unknown) => void;
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
   onChangeQueryType: (queryType: ValuesQueryType) => void;
@@ -36,6 +39,14 @@ export interface ParameterSettingsProps {
   onChangeRequired: (value: boolean) => void;
   embeddedParameterVisibility: EmbeddingParameterVisibility | null;
 }
+
+const parameterSections = getDashboardParameterSections();
+const dataTypeOptions = parameterSections.map(section => {
+  return {
+    label: section.name,
+    value: section.id
+  }
+})
 
 export const ParameterSettings = ({
   parameter,
@@ -46,14 +57,17 @@ export const ParameterSettings = ({
   onChangeQueryType,
   onChangeSourceType,
   onChangeSourceConfig,
+  onChangeType,
   onChangeRequired,
   embeddedParameterVisibility,
 }: ParameterSettingsProps): JSX.Element => {
   const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
+  const [dataType, setDataType] = useState(getParameterType(parameter));
 
   useLayoutEffect(() => {
     setTempLabelValue(parameter.name);
-  }, [parameter.name]);
+    // onChangeType(parameter.type);
+  }, [onChangeType, parameter]);
 
   const labelError = getLabelError({
     labelValue: tempLabelValue,
@@ -73,6 +87,10 @@ export const ParameterSettings = ({
     }
   };
 
+  const handleDataTypeChange = (nextType: string) => {
+    onChangeType(nextType);
+  }
+
   const handleSourceSettingsChange = useCallback(
     (sourceType: ValuesSourceType, sourceConfig: ValuesSourceConfig) => {
       onChangeSourceType(sourceType);
@@ -86,7 +104,7 @@ export const ParameterSettings = ({
 
   return (
     <Box p="1.5rem 1rem">
-      <SettingSection>
+      <Box mb="xl">
         <SettingLabel>{t`Label`}</SettingLabel>
         <TextInput
           onChange={handleLabelChange}
@@ -95,7 +113,19 @@ export const ParameterSettings = ({
           error={labelError}
           aria-label={t`Label`}
         />
-      </SettingSection>
+      </Box>
+      <Box mb="xl">
+        <SettingLabel>{t`Data type`}</SettingLabel>
+        <Select
+          data={dataTypeOptions}
+          value={dataType}
+          onChange={handleDataTypeChange}
+        // value={tempLabelValue}
+        // onBlur={handleLabelBlur}
+        // error={labelError}
+        // aria-label={t`Label`}
+        />
+      </Box>
       {canUseCustomSource(parameter) && (
         <SettingSection>
           <SettingLabel>{t`How should people filter on this column?`}</SettingLabel>
