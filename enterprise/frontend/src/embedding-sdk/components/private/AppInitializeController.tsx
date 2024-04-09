@@ -32,9 +32,7 @@ export const AppInitializeController = ({
         setFont,
       }}
     >
-      <SdkContentWrapper font={config.font ?? DEFAULT_FONT}>
-        {!isInitialized ? <div>{t`Loading…`}</div> : children}
-      </SdkContentWrapper>
+      {children}
     </EmbeddingContext.Provider>
   );
 };

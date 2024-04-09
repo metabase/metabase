@@ -23,18 +23,16 @@ const MetabaseProviderInternal = ({
 }: {
   children: React.ReactNode;
   config: SDKConfigType;
-}): React.JSX.Element => {
-  return (
-    <Provider store={store}>
-      <EmotionCacheProvider>
-        <ThemeProvider>
-          <AppInitializeController config={config}>
-            {children}
-          </AppInitializeController>
-        </ThemeProvider>
-      </EmotionCacheProvider>
-    </Provider>
-  );
-};
+}): React.JSX.Element => (
+  <Provider store={store}>
+    <EmotionCacheProvider>
+      <ThemeProvider>
+        <AppInitializeController config={config}>
+          {children}
+        </AppInitializeController>
+      </ThemeProvider>
+    </EmotionCacheProvider>
+  </Provider>
+);
 
 export const MetabaseProvider = memo(MetabaseProviderInternal);

@@ -4,24 +4,24 @@
   --default-bg-color: var(--color-bg-light);
 }
 
-html {
+:global(html) {
   height: 100%; /* ensure the entire page will fill the window */
   width: 100%;
 }
 
 @media print and (orientation: portrait) {
-  html {
+  :global(html) {
     width: 8.5in;
   }
 }
 
 @media print and (orientation: landscape) {
-  html {
+  :global(html) {
     width: 11in;
   }
 }
 
-body {
+:global(body) {
   font-family: var(--default-font-family), sans-serif;
   font-size: var(--default-font-size);
   font-weight: 400;
@@ -41,8 +41,8 @@ body {
   in most cases we won't be using list-style so
   the padding isn't necessary
 */
-ul,
-ol {
+:global(ul),
+:global(ol) {
   padding: 0;
   margin: 0;
   list-style-type: none;
@@ -53,12 +53,12 @@ ol {
   which follows the suggested rendering and defaults to center, whereas
   chrome and others do not
 */
-th {
+:global(th) {
   text-align: left;
 }
 
 /* reset button element */
-button {
+:global(button) {
   font-size: 100%;
   -webkit-appearance: none;
   border: 0;
@@ -68,20 +68,20 @@ button {
   background-color: transparent;
 }
 
-a {
+:global(a) {
   color: inherit;
   cursor: pointer;
   text-decoration: none;
 }
 
-button,
-input,
-textarea {
+:global(button),
+:global(input),
+:global(textarea) {
   font-family: var(--default-font-family), "Helvetica Neue", Helvetica,
     sans-serif;
 }
 
-textarea {
+:global(textarea) {
   min-height: 110px;
 }
 
